@@ -1,8 +1,8 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.16",
+  "version": "65.1.17",
   "private": true,
-  "description": "SBC OS V65.1.16 release identity, durable-session, and login readiness hotfix",
+  "description": "SBC OS V65.1.17 automatic work-order lifecycle and production-hardening release",
   "main": "bootstrap.js",
   "scripts": {
     "build": "node bootstrap.js --verify",
