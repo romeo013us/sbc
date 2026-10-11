@@ -4,10 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'bootstrap.js'
-      - 'package.json'
       - 'apply-v65115-hotfix.js'
-      - 'hotfix-assets/**'
+      - 'hotfix-assets/v65115-*'
       - '.github/workflows/verify-sbc-v65115.yml'
   workflow_dispatch:
 
