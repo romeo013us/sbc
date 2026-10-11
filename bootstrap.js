@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.14';
-const HOTFIX_PATCH_ID = 'recovery-session-unlock-1';
+const EXPECTED_VERSION = '65.1.15';
+const HOTFIX_PATCH_ID = 'recovery-startup-readiness-2';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -127,7 +127,7 @@ function verifyOnly() {
   try {
     extractZip(bytes, temp);
     verifyExtracted(temp, SOURCE_VERSION);
-    const hotfix = require(path.join(__dirname, 'apply-v65114-hotfix.js'));
+    const hotfix = require(path.join(__dirname, 'apply-v65115-hotfix.js'));
     hotfix.apply(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -150,7 +150,7 @@ function launch() {
     fs.rmSync(runtimeDir, { recursive: true, force: true });
     extractZip(bytes, runtimeDir);
     verifyExtracted(runtimeDir, SOURCE_VERSION);
-    const hotfix = require(path.join(__dirname, 'apply-v65114-hotfix.js'));
+    const hotfix = require(path.join(__dirname, 'apply-v65115-hotfix.js'));
     hotfix.apply(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
