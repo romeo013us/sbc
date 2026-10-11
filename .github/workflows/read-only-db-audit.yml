@@ -1,0 +1,30 @@
+name: Read-only DB audit tests
+
+on:
+  pull_request:
+    paths:
+      - 'ops/read-only-db-audit.js'
+      - 'ops/read-only-db-audit.test.js'
+      - '.github/workflows/read-only-db-audit.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'ops/read-only-db-audit.js'
+      - 'ops/read-only-db-audit.test.js'
+      - '.github/workflows/read-only-db-audit.yml'
+
+jobs:
+  audit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check audit
+        run: node --check ops/read-only-db-audit.js
+      - name: Run isolated tests
+        run: node --test ops/read-only-db-audit.test.js
