@@ -16,7 +16,7 @@ const { createSessionStore } = require('../enterprise/session-store');
     }
   };
   const store = createSessionStore({
-    sessionSecret: 'v65115-test-secret',
+    sessionSecret: 'test',
     mysqlPool: null,
     getMysqlPool: () => livePool,
     getRedisClient: () => null,
