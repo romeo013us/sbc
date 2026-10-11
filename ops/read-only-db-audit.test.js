@@ -41,7 +41,7 @@ test('audit returns aggregate report and issues only SELECT statements', async (
   assert.equal(report.tenant_distribution.sbc_customers[0].tenant_id, '1');
   assert.equal(report.duplicate_idempotency_key_groups, 0);
   assert.equal(report.safety.data_changed, false);
-  assert.ok(db.calls.every(call => /^SELECT\\b/i.test(call.sql.trim())), 'every query must be SELECT-only');
+  assert.ok(db.calls.every(call => /^SELECT\b/i.test(call.sql.trim())), 'every query must be SELECT-only');
 });
 
 test('audit refuses to continue without a selected database', async () => {
