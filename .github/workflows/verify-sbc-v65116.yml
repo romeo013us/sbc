@@ -38,6 +38,9 @@ jobs:
       - name: Validate root launch files
         run: |
           node --check bootstrap.js
+          node --check persistent-state.js
+          node --check persistent-state-test.js
+          node persistent-state-test.js
           node --check apply-v65116-hotfix.js
           node --check hotfix-assets/apply-v65117-workorder-patch.js
           node --check hotfix-assets/v65117-workorder-regression-test.js
@@ -83,7 +86,7 @@ jobs:
           rm -f SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip
           test -f package-lock.json
           zip -qr SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip \
-            package.json package-lock.json bootstrap.js apply-v65116-hotfix.js \
+            package.json package-lock.json bootstrap.js persistent-state.js persistent-state-test.js apply-v65116-hotfix.js \
             hotfix-assets/apply-v65117-workorder-patch.js hotfix-assets/v65117-workorder-regression-test.js \
             hotfix-assets/apply-v65118-webhook-patch.js hotfix-assets/v65118-webhook-evidence-test.js \
             hotfix-assets/v65116-operational-unlock-test.js hotfix-assets/v65116-session-timeout-test.js \
@@ -92,6 +95,8 @@ jobs:
           unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'package.json'
           unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'package-lock.json'
           unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'bootstrap.js'
+          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'persistent-state.js'
+          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'persistent-state-test.js'
           unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'apply-v65116-hotfix.js'
           unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'hotfix-assets/apply-v65117-workorder-patch.js'
           unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'hotfix-assets/v65117-workorder-regression-test.js'
