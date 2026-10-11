@@ -71,28 +71,21 @@ function bumpRelease(rootDir) {
   const out = spawnSync(process.execPath, [script, TARGET_VERSION, RELEASE_NAME, '--apply'], { cwd: rootDir, encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024 });
   if (out.status !== 0) throw new Error(`V65.1.14 release identity update failed: ${(out.stderr || out.stdout || 'no output').slice(-2000)}`);
   const lockPath = path.join(rootDir, 'package-lock.json');
-  // The original V65.1.13 source ZIP intentionally has no lockfile. Generate
-  // a real npm v3 lock for the just-bumped manifest instead of aborting startup.
-  if (!fs.existsSync(lockPath)) {
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const generated = spawnSync(npmCmd, ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'], {
-      cwd: rootDir, encoding: 'utf8', timeout: 180000, maxBuffer: 8 * 1024 * 1024
-    });
-    if (generated.status !== 0 || !fs.existsSync(lockPath)) {
-      const detail = (generated.stderr || generated.stdout || 'npm did not create package-lock.json').slice(-2500);
-      throw new Error(`V65.1.14 lockfile generation failed safely: ${detail}`);
-    }
+  if (fs.existsSync(lockPath)) {
+    // Update a committed lockfile when present; never invoke npm during startup.
+    const lock = readJson(lockPath);
+    lock.name = pkg.name;
+    lock.version = TARGET_VERSION;
+    if (!lock.packages) lock.packages = {};
+    if (!lock.packages['']) lock.packages[''] = {};
+    lock.packages[''].name = pkg.name;
+    lock.packages[''].version = TARGET_VERSION;
+    if (pkg.dependencies) lock.packages[''].dependencies = pkg.dependencies;
+    if (pkg.engines) lock.packages[''].engines = pkg.engines;
+    writeJson(lockPath, lock);
+  } else {
+    console.log('[SBC V65.1.14] Source ZIP has no lockfile; skipping lock generation at runtime. Dependencies are installed by the GoDaddy root package.');
   }
-  const lock = readJson(lockPath);
-  lock.name = pkg.name;
-  lock.version = TARGET_VERSION;
-  if (!lock.packages) lock.packages = {};
-  if (!lock.packages['']) lock.packages[''] = {};
-  lock.packages[''].name = pkg.name;
-  lock.packages[''].version = TARGET_VERSION;
-  if (pkg.dependencies) lock.packages[''].dependencies = pkg.dependencies;
-  if (pkg.engines) lock.packages[''].engines = pkg.engines;
-  writeJson(lockPath, lock);
   const updatedPkg = readJson(packagePath);
   updatedPkg.description = 'SBC OS V65.1.14 operational recovery availability and durable session-store hotfix';
   const tests = updatedPkg.scripts['test:all'] || '';
