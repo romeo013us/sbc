@@ -29,42 +29,7 @@ function apply(rootDir) {
       throw new Error('V65.1.18 refused patch: vendor tracking handler changed; manual review required.');
     }
 
-    const newHandler = \`async function handleVendorTrackingWebhook(provider,raw){
-  // SBC_V65118_PROVIDER_MATCH_TRACKING_EVIDENCE
-  let body={};try{body=JSON.parse(raw.toString('utf8')||'{}')}catch{}
-  const m=megaData();
-  const normalizeVendor=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const expectedProvider=normalizeVendor(provider);
-  const isExpectedVendor=job=>{
-    const actual=normalizeVendor(job?.vendor);
-    if(expectedProvider==='4over4')return ['4over4','fouroverfour'].includes(actual);
-    if(expectedProvider==='vistaprint')return ['vistaprint'].includes(actual);
-    return false;
-  };
-  const jobRef=String(body.jobId||body.fulfillmentJobId||'');
-  const vendorOrderRef=String(body.orderNumber||body.vendorOrderNumber||'');
-  const job=m.fulfillmentJobs.find(j=>{
-    const refMatches=(jobRef&&String(j.id)===jobRef)||(vendorOrderRef&&String(j.vendorOrderNumber||'')===vendorOrderRef);
-    return refMatches&&isExpectedVendor(j);
-  });
-  if(!job)return {ok:false,error:'Fulfillment job not found for authenticated provider.'};
-  const status=String(body.status||body.event||'tracking_update').toLowerCase();
-  const trackingNumber=String(body.trackingNumber||body.tracking_number||job.trackingNumber||'').trim();
-  const shippingState=/shipped|dispatch|in_transit|tracking/.test(status);
-  const terminalDelivery=/delivered|complete|fulfilled/.test(status);
-  if((shippingState||terminalDelivery)&&!trackingNumber)return {ok:false,error:'tracking_number_required_for_shipping_status'};
-  // State is mutated only after both authenticated-provider matching and tracking evidence pass.
-  job.vendorStatus=status;job.trackingNumber=trackingNumber||job.trackingNumber||'';
-  if(body.orderNumber||body.vendorOrderNumber)job.vendorOrderNumber=String(body.orderNumber||body.vendorOrderNumber);
-  if(terminalDelivery)job.status='completed';
-  else if(shippingState)job.status='shipped';
-  job.updatedAt=now();
-  m.automationEvents.unshift({id:id('evt'),type:'vendor_tracking_update',message:String(provider)+' tracking update for '+job.id,meta:{jobId:job.id,orderId:job.orderId,status:job.status,vendorStatus:job.vendorStatus,trackingNumber:job.trackingNumber},createdAt:now()});
-  await megaSave(m);
-  const order=(db.orders||[]).find(o=>String(o.id)===String(job.orderId));
-  if(order){order.godKimTrackingUpdatedAt=now();order.fulfillmentStatus=job.status==='completed'?'Completed':job.status==='shipped'?'Shipped':'Fulfillment in Progress';order.updatedAt=now();await saveData();}
-  return {ok:true,provider,jobId:job.id,orderId:job.orderId,status:job.status,trackingNumber:job.trackingNumber,vendorOrderNumber:job.vendorOrderNumber||''};
-}\`;
+    const newHandler = "async function handleVendorTrackingWebhook(provider,raw){\n  // SBC_V65118_PROVIDER_MATCH_TRACKING_EVIDENCE\n  let body={};try{body=JSON.parse(raw.toString('utf8')||'{}')}catch{}\n  const m=megaData();\n  const normalizeVendor=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');\n  const expectedProvider=normalizeVendor(provider);\n  const isExpectedVendor=job=>{\n    const actual=normalizeVendor(job?.vendor);\n    if(expectedProvider==='4over4')return ['4over4','fouroverfour'].includes(actual);\n    if(expectedProvider==='vistaprint')return ['vistaprint'].includes(actual);\n    return false;\n  };\n  const jobRef=String(body.jobId||body.fulfillmentJobId||'');\n  const vendorOrderRef=String(body.orderNumber||body.vendorOrderNumber||'');\n  const job=m.fulfillmentJobs.find(j=>{\n    const refMatches=(jobRef&&String(j.id)===jobRef)||(vendorOrderRef&&String(j.vendorOrderNumber||'')===vendorOrderRef);\n    return refMatches&&isExpectedVendor(j);\n  });\n  if(!job)return {ok:false,error:'Fulfillment job not found for authenticated provider.'};\n  const status=String(body.status||body.event||'tracking_update').toLowerCase();\n  const trackingNumber=String(body.trackingNumber||body.tracking_number||job.trackingNumber||'').trim();\n  const shippingState=/shipped|dispatch|in_transit|tracking/.test(status);\n  const terminalDelivery=/delivered|complete|fulfilled/.test(status);\n  if((shippingState||terminalDelivery)&&!trackingNumber)return {ok:false,error:'tracking_number_required_for_shipping_status'};\n  // State is mutated only after both authenticated-provider matching and tracking evidence pass.\n  job.vendorStatus=status;job.trackingNumber=trackingNumber||job.trackingNumber||'';\n  if(body.orderNumber||body.vendorOrderNumber)job.vendorOrderNumber=String(body.orderNumber||body.vendorOrderNumber);\n  if(terminalDelivery)job.status='completed';\n  else if(shippingState)job.status='shipped';\n  job.updatedAt=now();\n  m.automationEvents.unshift({id:id('evt'),type:'vendor_tracking_update',message:String(provider)+' tracking update for '+job.id,meta:{jobId:job.id,orderId:job.orderId,status:job.status,vendorStatus:job.vendorStatus,trackingNumber:job.trackingNumber},createdAt:now()});\n  await megaSave(m);\n  const order=(db.orders||[]).find(o=>String(o.id)===String(job.orderId));\n  if(order){order.godKimTrackingUpdatedAt=now();order.fulfillmentStatus=job.status==='completed'?'Completed':job.status==='shipped'?'Shipped':'Fulfillment in Progress';order.updatedAt=now();await saveData();}\n  return {ok:true,provider,jobId:job.id,orderId:job.orderId,status:job.status,trackingNumber:job.trackingNumber,vendorOrderNumber:job.vendorOrderNumber||''};\n}"
     source = source.slice(0, start) + newHandler + source.slice(end);
   }
 
