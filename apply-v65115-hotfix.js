@@ -60,8 +60,16 @@ function patchRecoveryDecision(rootDir) {
       }
       await readRelational();`, 'non-empty partial-database threshold block');
   // Per-table telemetry is diagnostic only and must not delay login readiness.
-  source = mustReplaceOnce(source, /    \/\/ V64\.2\.15: automatic read-only recovery census[\s\S]*?\n\n    const localCoreCount=/, '    // V65.1.15: detailed per-table census is deferred; core row counts remain the startup gate.\n    console.log(\\'[SBC V65.1.15] Detailed per-table recovery census deferred to owner recovery diagnostics.\\');\n\n    const localCoreCount=', 'defer non-critical per-table startup census');
-  source = mustReplaceOnce(source, /    const made=makeSession\(user\);/, '    if(!MYSQL_RECOVERY_EVALUATED){\n      res.setHeader(\\'Retry-After\\',\\'10\\');\n      res.setHeader(\\'Cache-Control\\',\\'no-store\\');\n      return res.status(503).json({ok:false,error:\\'SBC database startup checks are still running. Retry sign-in in a few seconds.\\',code:\\'MYSQL_RECOVERY_STARTUP_PENDING\\',retryable:true,requestId:req.requestId||null});\n    }\n    const made=makeSession(user);', 'block login session writes until recovery evaluation completes');
+  source = mustReplaceOnce(source, /    \/\/ V64\.2\.15: automatic read-only recovery census[\s\S]*?\n\n    const localCoreCount=/, `    // V65.1.15: detailed per-table census is deferred; core row counts remain the startup gate.
+    console.log('[SBC V65.1.15] Detailed per-table recovery census deferred to owner recovery diagnostics.');
+
+    const localCoreCount=`, 'defer non-critical per-table startup census');
+  source = mustReplaceOnce(source, /    const made=makeSession\(user\);/, `    if(!MYSQL_RECOVERY_EVALUATED){
+      res.setHeader('Retry-After','10');
+      res.setHeader('Cache-Control','no-store');
+      return res.status(503).json({ok:false,error:'SBC database startup checks are still running. Retry sign-in in a few seconds.',code:'MYSQL_RECOVERY_STARTUP_PENDING',retryable:true,requestId:req.requestId||null});
+    }
+    const made=makeSession(user);`, 'block login session writes until recovery evaluation completes');
   source = mustReplaceOnce(source, /const SESSION_STORE=createSessionStore\(\{sessionSecret:SESSION_SECRET,mysqlPool,getRedisClient:/, 'const SESSION_STORE=createSessionStore({sessionSecret:SESSION_SECRET,getMysqlPool:()=>mysqlPool,getRedisClient:', 'server-to-session-store pool wiring');
   fs.writeFileSync(file, source);
 }
