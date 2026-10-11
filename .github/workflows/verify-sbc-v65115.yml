@@ -63,6 +63,29 @@ jobs:
         working-directory: .ci-work/source
         run: npm run predeploy:open-gate
 
+
+      - name: Package flat GoDaddy root release
+        run: |
+          set -euo pipefail
+          rm -f SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip
+          test -f package-lock.json
+          zip -qr SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip \
+            package.json package-lock.json bootstrap.js apply-v65115-hotfix.js hotfix-assets \
+            SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
+          unzip -t SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip
+          unzip -Z1 SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip | grep -qx 'package.json'
+          unzip -Z1 SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip | grep -qx 'package-lock.json'
+          unzip -Z1 SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip | grep -qx 'bootstrap.js'
+          unzip -Z1 SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip | grep -qx 'apply-v65115-hotfix.js'
+
+      - name: Upload downloadable release
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-v65.1.15-godaddy-root-release
+          path: SBC-OS-V65.1.15-GODADDY-ROOT-RELEASE.zip
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Package integrity test
         run: |
           test -f .ci-work/source/package.json
