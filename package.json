@@ -1,8 +1,8 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.17",
+  "version": "65.1.18",
   "private": true,
-  "description": "SBC OS V65.1.17 automatic work-order lifecycle and production-hardening release",
+  "description": "SBC OS V65.1.18 vendor-bound webhook and tracking-evidence hardening release",
   "main": "bootstrap.js",
   "scripts": {
     "build": "node bootstrap.js --verify",
