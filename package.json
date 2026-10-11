@@ -1,8 +1,8 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.15",
+  "version": "65.1.16",
   "private": true,
-  "description": "SBC OS V65.1.15 startup-readiness and durable-session hotfix GoDaddy root launcher",
+  "description": "SBC OS V65.1.16 release identity, durable-session, and login readiness hotfix",
   "main": "bootstrap.js",
   "scripts": {
     "build": "node bootstrap.js --verify",
