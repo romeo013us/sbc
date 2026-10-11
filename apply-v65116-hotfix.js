@@ -151,6 +151,7 @@ function apply(rootDir) {
     // A previous launch has already applied this exact patch. Still verify the version and pool wiring.
     if (!fs.readFileSync(path.join(rootDir, 'enterprise', 'session-store.js'), 'utf8').includes('currentMysqlPool')) throw new Error('V65.1.16 session-store patch marker is missing.');
     if (!fs.readFileSync(path.join(rootDir, 'enterprise', 'v567-nine-nine.js'), 'utf8').includes("require('../config/release-identity').RELEASE_VERSION")) throw new Error('V65.1.16 active release identity patch is missing.');
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v65117-workorder-patch.js')).apply(rootDir);
     return { version: TARGET_VERSION, alreadyApplied: true };
   }
   if (pkg.version !== BASE_VERSION) throw new Error(`V65.1.16 hotfix only accepts ${BASE_VERSION}; found ${pkg.version}.`);
