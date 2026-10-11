@@ -64,11 +64,6 @@ function patchRecoveryDecision(rootDir) {
     console.log('[SBC V65.1.16] Detailed per-table recovery census deferred to owner recovery diagnostics.');
 
     const localCoreCount=`, 'defer non-critical per-table startup census');
-  source = mustReplaceOnce(source, /    const made=makeSession\(user\);/, `    if(!MYSQL_RECOVERY_EVALUATED){
-      res.setHeader('Retry-After','10');
-      res.setHeader('Cache-Control','no-store');
-      return res.status(503).json({ok:false,error:'SBC database startup checks are still running. Retry sign-in in a few seconds.',code:'MYSQL_RECOVERY_STARTUP_PENDING',retryable:true,requestId:req.requestId||null});
-    }
   source = mustReplaceOnce(source, /    const made=makeSession\(user\);/, `    // V65.1.16: allow authenticated session creation during read-only recovery evaluation. Business writes remain guarded separately.\n    const made=makeSession(user);`, 'allow durable sign-in during recovery evaluation');
   source = mustReplaceOnce(source, /const SESSION_STORE=createSessionStore\(\{sessionSecret:SESSION_SECRET,mysqlPool,getRedisClient:/, 'const SESSION_STORE=createSessionStore({sessionSecret:SESSION_SECRET,getMysqlPool:()=>mysqlPool,getRedisClient:', 'server-to-session-store pool wiring');
   fs.writeFileSync(file, source);
