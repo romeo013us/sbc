@@ -11,6 +11,8 @@ on:
       - 'hotfix-assets/apply-v65117-workorder-patch.js'
       - 'hotfix-assets/v65117-workorder-regression-test.js'
       - '.github/workflows/verify-sbc-v65116.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
