@@ -146,7 +146,10 @@ function launch() {
     validRuntime = m.sourceHash === sourceHash && m.version === EXPECTED_VERSION && m.patchId === HOTFIX_PATCH_ID && fs.existsSync(path.join(runtimeDir, 'server.js'));
     if (validRuntime) verifyExtracted(runtimeDir, EXPECTED_VERSION);
   } catch { validRuntime = false; }
+  const persistState = require(path.join(__dirname, 'persistent-state.js')).persistState;
   if (!validRuntime) {
+    // Preserve any live data before a hash/version rebuild removes the old runtime directory.
+    if (fs.existsSync(runtimeDir)) persistState(__dirname, runtimeDir, { reused: true });
     fs.rmSync(runtimeDir, { recursive: true, force: true });
     extractZip(bytes, runtimeDir);
     verifyExtracted(runtimeDir, SOURCE_VERSION);
@@ -155,6 +158,8 @@ function launch() {
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
   }
+  // State lives outside hash-named runtime folders so upgrades do not orphan it.
+  persistState(__dirname, runtimeDir, { reused: validRuntime });
   process.chdir(runtimeDir);
   console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
   require(path.join(runtimeDir, 'server.js'));
