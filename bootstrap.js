@@ -13,7 +13,9 @@ const zlib = require('zlib');
 
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
-const EXPECTED_VERSION = '65.1.13';
+const SOURCE_VERSION = '65.1.13';
+const EXPECTED_VERSION = '65.1.14';
+const HOTFIX_PATCH_ID = 'recovery-session-unlock-1';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -107,14 +109,14 @@ function extractZip(zipBuffer, targetDir) {
   if (cursor !== centralOffset + centralSize) throw new Error('ZIP central directory length mismatch.');
 }
 
-function verifyExtracted(dir) {
+function verifyExtracted(dir, expectedVersion = EXPECTED_VERSION) {
   const packagePath = path.join(dir, 'package.json');
   const serverPath = path.join(dir, 'server.js');
   for (const f of [packagePath, serverPath]) {
     if (!fs.existsSync(f) || !fs.statSync(f).isFile()) throw new Error(`SBC source bundle is missing required file: ${path.basename(f)}`);
   }
   const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-  if (pkg.name !== EXPECTED_NAME || pkg.version !== EXPECTED_VERSION) throw new Error(`Unexpected SBC bundle identity: ${pkg.name}@${pkg.version}`);
+  if (pkg.name !== EXPECTED_NAME || pkg.version !== expectedVersion) throw new Error(`Unexpected SBC bundle identity: ${pkg.name}@${pkg.version}`);
   return pkg;
 }
 
@@ -124,8 +126,11 @@ function verifyOnly() {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sbc-root-build-verify-'));
   try {
     extractZip(bytes, temp);
-    const pkg = verifyExtracted(temp);
-    console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; extracted and checked package.json and server.js.`);
+    verifyExtracted(temp, SOURCE_VERSION);
+    const hotfix = require(path.join(__dirname, 'apply-v65114-hotfix.js'));
+    hotfix.apply(temp);
+    const pkg = verifyExtracted(temp, EXPECTED_VERSION);
+    console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 }
 
@@ -138,14 +143,17 @@ function launch() {
   let validRuntime = false;
   try {
     const m = JSON.parse(fs.readFileSync(marker, 'utf8'));
-    validRuntime = m.sourceHash === sourceHash && fs.existsSync(path.join(runtimeDir, 'server.js'));
-    if (validRuntime) verifyExtracted(runtimeDir);
+    validRuntime = m.sourceHash === sourceHash && m.version === EXPECTED_VERSION && m.patchId === HOTFIX_PATCH_ID && fs.existsSync(path.join(runtimeDir, 'server.js'));
+    if (validRuntime) verifyExtracted(runtimeDir, EXPECTED_VERSION);
   } catch { validRuntime = false; }
   if (!validRuntime) {
     fs.rmSync(runtimeDir, { recursive: true, force: true });
     extractZip(bytes, runtimeDir);
-    const pkg = verifyExtracted(runtimeDir);
-    fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, readyAt: new Date().toISOString() }, null, 2));
+    verifyExtracted(runtimeDir, SOURCE_VERSION);
+    const hotfix = require(path.join(__dirname, 'apply-v65114-hotfix.js'));
+    hotfix.apply(runtimeDir);
+    const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
+    fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
   }
   process.chdir(runtimeDir);
   console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
