@@ -1,0 +1,92 @@
+name: Build SBC V65.1.13 GoDaddy ZIP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Locate and extract uploaded SBC source ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP_FILE="SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip"
+          test -f "$ZIP_FILE" || { echo "Required source ZIP not found at repository root: $ZIP_FILE"; exit 1; }
+          mkdir -p source
+          unzip -q "$ZIP_FILE" -d source
+          if [ ! -f source/package.json ] && [ -f source/SBC-OS/package.json ]; then
+            echo "Detected nested SBC-OS folder; using it as project root."
+            mv source/SBC-OS/* source/
+            shopt -s dotglob nullglob
+            mv source/SBC-OS/.[!.]* source/ 2>/dev/null || true
+            rmdir source/SBC-OS 2>/dev/null || true
+          fi
+          test -f source/package.json
+          test -f source/server.js
+          node -e "const p=require('./source/package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.13') { console.error('Unexpected package identity:',p.name,p.version); process.exit(1) }; console.log(p.name+'@'+p.version)"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: false
+
+      - name: Generate real npm lockfile
+        working-directory: source
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install exact locked dependencies
+        working-directory: source
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run SBC test suite
+        working-directory: source
+        run: npm run test:all
+
+      - name: Run predeploy gate
+        working-directory: source
+        run: npm run predeploy:open-gate
+
+      - name: JavaScript syntax audit
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r -d '' file; do
+            case "$file" in ./node_modules/*|./.git/*) continue ;; esac
+            node --check "$file"
+            count=$((count+1))
+          done < <(find . -type f -name '*.js' -print0)
+          echo "Syntax checked $count JavaScript files."
+
+      - name: Package flat GoDaddy release ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          rm -f SBC-OS-V65.1.13-GODADDY-RELEASE.zip
+          zip -qr ../SBC-OS-V65.1.13-GODADDY-RELEASE.zip . \
+            -x './.git/*' './.github/*' './node_modules/*' './dist/*' \
+               './.env' './.env.*' './*.pem' './*.key' './SBC-OS-V65.1.13-GODADDY-RELEASE.zip'
+          cd ..
+          unzip -l SBC-OS-V65.1.13-GODADDY-RELEASE.zip | grep -E 'package.json|package-lock.json|server.js' | head -20
+          unzip -Z1 SBC-OS-V65.1.13-GODADDY-RELEASE.zip | grep -qx 'package.json'
+          unzip -Z1 SBC-OS-V65.1.13-GODADDY-RELEASE.zip | grep -qx 'package-lock.json'
+          unzip -Z1 SBC-OS-V65.1.13-GODADDY-RELEASE.zip | grep -qx 'server.js'
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-v65.1.13-godaddy-release
+          path: SBC-OS-V65.1.13-GODADDY-RELEASE.zip
+          if-no-files-found: error
+          retention-days: 7
