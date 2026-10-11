@@ -10,7 +10,8 @@ const godkimSource = fs.readFileSync(path.join(root, 'enterprise', 'kim-god-os.j
 const kim = require('../enterprise/kim-god-os');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
-assert.equal(packageJson.version, '65.1.17', 'release identity must be V65.1.17');
+const releaseIdentity = require('../config/release-identity');
+assert.equal(packageJson.version, releaseIdentity.RELEASE_VERSION, 'root package and authoritative release identity must match');
 assert.match(server, /SBC_V65117_WORK_ORDER_PIPELINE_HARDENED/, 'work-order patch marker present');
 const claimStart = server.indexOf('async function claimFulfillmentJob');
 const claimEnd = server.indexOf('async function requeueDueFailedFulfillmentJobs');
