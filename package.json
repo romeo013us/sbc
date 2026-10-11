@@ -1,0 +1,13 @@
+{
+  "name": "sbc-godaddy-deployment-root",
+  "version": "65.1.13",
+  "private": true,
+  "description": "GoDaddy Node.js entry point for SBC Command Center release package",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node -e \"const fs=require('fs'); for (const p of ['server.js','package.json','package-lock.json']) if(!fs.existsSync(p)) { console.error('Missing '+p); process.exit(1); } console.log('SBC deployment root files verified');\""
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
