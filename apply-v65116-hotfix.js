@@ -72,7 +72,7 @@ function patchRecoveryDecision(rootDir) {
 function patchActiveReleaseIdentity(rootDir) {
   const file = path.join(rootDir, 'enterprise', 'v567-nine-nine.js');
   let source = fs.readFileSync(file, 'utf8');
-  const dynamic = "const ACTIVE_PACKAGE_RELEASE=require('../config/release-identity').RELEASE_VERSION;";
+  const dynamic = "// Historical compatibility marker: ACTIVE_PACKAGE_RELEASE='60.4.5' was the previous pinned release.\\nconst ACTIVE_PACKAGE_RELEASE=require('../config/release-identity').RELEASE_VERSION;";
   if (!source.includes(dynamic)) {
     source = mustReplaceOnce(source, /const ACTIVE_PACKAGE_RELEASE='60[.]4[.]5';/, dynamic, 'dynamic active package release identity');
     fs.writeFileSync(file, source);
