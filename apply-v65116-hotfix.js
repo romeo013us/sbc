@@ -6,16 +6,16 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const BASE_VERSION = '65.1.13';
-const TARGET_VERSION = '65.1.17';
-const RELEASE_NAME = 'AUTOMATIC-WORK-ORDER-LIFECYCLE-HARDENING';
+const TARGET_VERSION = '65.1.18';
+const RELEASE_NAME = 'VENDOR-BOUND-WEBHOOK-TRACKING-EVIDENCE-GUARD';
 const PATCH_MARKER = 'SBC_V65116_RELEASE_SESSION_READY_APPLIED';
 
 function readJson(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 function writeJson(file, value) { fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n'); }
 function mustReplaceOnce(source, expression, replacement, label) {
   const matches = source.match(expression);
-  if (!matches) throw new Error(`V65.1.17 hotfix stopped: could not locate ${label}.`);
-  if (matches.length !== 1) throw new Error(`V65.1.17 hotfix stopped: ${label} matched ${matches.length} times.`);
+  if (!matches) throw new Error(`V65.1.18 hotfix stopped: could not locate ${label}.`);
+  if (matches.length !== 1) throw new Error(`V65.1.18 hotfix stopped: ${label} matched ${matches.length} times.`);
   return source.replace(expression, replacement);
 }
 
@@ -42,7 +42,7 @@ function patchSessionStore(rootDir) {
       }catch(e){logger.warn('[SBC AUTH] MySQL session write/verification:',e.message)}
     }`);
   } else if (!source.includes('MySQL session persistence read-back did not confirm the row.')) {
-    throw new Error('V65.1.17 hotfix stopped: could not locate MySQL session persistence block.');
+    throw new Error('V65.1.18 hotfix stopped: could not locate MySQL session persistence block.');
   }
   fs.writeFileSync(file, source);
 }
@@ -82,8 +82,8 @@ function patchActiveReleaseIdentity(rootDir) {
   for (const rel of ['public/app.js', 'browser_public/app.js']) {
     const uiPath = path.join(rootDir, rel);
     let ui = fs.readFileSync(uiPath, 'utf8');
-    if (!ui.includes("const V='65.1.17-work-order-ops',KEY='sbc-client-version'")) {
-      ui = mustReplaceOnce(ui, /const V='[^']+',KEY='sbc-client-version'/, "const V='65.1.17-work-order-ops',KEY='sbc-client-version'", rel + ' freshness marker');
+    if (!ui.includes("const V='65.1.18-webhook-evidence-guard',KEY='sbc-client-version'")) {
+      ui = mustReplaceOnce(ui, /const V='[^']+',KEY='sbc-client-version'/, "const V='65.1.18-webhook-evidence-guard',KEY='sbc-client-version'", rel + ' freshness marker');
       fs.writeFileSync(uiPath, ui);
     }
   }
@@ -93,10 +93,10 @@ function bumpRelease(rootDir) {
   const packagePath = path.join(rootDir, 'package.json');
   const pkg = readJson(packagePath);
   if (pkg.version === TARGET_VERSION) return;
-  if (pkg.version !== BASE_VERSION) throw new Error(`V65.1.17 hotfix expected package ${BASE_VERSION}, found ${pkg.version}.`);
+  if (pkg.version !== BASE_VERSION) throw new Error(`V65.1.18 hotfix expected package ${BASE_VERSION}, found ${pkg.version}.`);
   const script = path.join(rootDir, 'scripts', 'release-bump.js');
   const out = spawnSync(process.execPath, [script, TARGET_VERSION, RELEASE_NAME, '--apply'], { cwd: rootDir, encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024 });
-  if (out.status !== 0) throw new Error(`V65.1.17 release identity update failed: ${(out.stderr || out.stdout || 'no output').slice(-2000)}`);
+  if (out.status !== 0) throw new Error(`V65.1.18 release identity update failed: ${(out.stderr || out.stdout || 'no output').slice(-2000)}`);
   const lockPath = path.join(rootDir, 'package-lock.json');
   if (fs.existsSync(lockPath)) {
     // Update a committed lockfile when present; never invoke npm during startup.
@@ -114,13 +114,13 @@ function bumpRelease(rootDir) {
     console.log('[SBC V65.1.16] Source ZIP has no lockfile; skipping lock generation at runtime. Dependencies are installed by the GoDaddy root package.');
   }
   const updatedPkg = readJson(packagePath);
-  updatedPkg.description = 'SBC OS V65.1.17 automatic work-order lifecycle, atomic dispatch, retries, webhook integrity, and completion truth';
+  updatedPkg.description = 'SBC OS V65.1.18 provider-bound webhook validation and tracking evidence hardening';
   const tests = updatedPkg.scripts['test:all'] || '';
   const endNeedle = 'node scripts/v65113-recovery-write-failure-test.js && node scripts/ui-static-audit.js';
   if (tests.includes(endNeedle)) {
-    updatedPkg.scripts['test:all'] = tests.replace(endNeedle, 'node scripts/v65113-recovery-write-failure-test.js && node scripts/v65116-operational-unlock-test.js && node scripts/v65116-session-timeout-test.js && node scripts/v65117-workorder-regression-test.js && node scripts/ui-static-audit.js');
+    updatedPkg.scripts['test:all'] = tests.replace(endNeedle, 'node scripts/v65113-recovery-write-failure-test.js && node scripts/v65116-operational-unlock-test.js && node scripts/v65116-session-timeout-test.js && node scripts/v65117-workorder-regression-test.js && node scripts/v65118-webhook-evidence-test.js && node scripts/ui-static-audit.js');
   } else if (!tests.includes('scripts/v65116-operational-unlock-test.js')) {
-    throw new Error('V65.1.17 hotfix stopped: could not append regression tests to test:all.');
+    throw new Error('V65.1.18 hotfix stopped: could not append regression tests to test:all.');
   }
   writeJson(packagePath, updatedPkg);
 
@@ -131,7 +131,7 @@ function bumpRelease(rootDir) {
 
   // Add the two focused regression tests supplied alongside this root launcher.
   const overlayDir = path.join(__dirname, 'hotfix-assets');
-  for (const filename of ['v65116-operational-unlock-test.js', 'v65116-session-timeout-test.js', 'v65117-workorder-regression-test.js']) {
+  for (const filename of ['v65116-operational-unlock-test.js', 'v65116-session-timeout-test.js', 'v65117-workorder-regression-test.js', 'v65118-webhook-evidence-test.js']) {
     const from = path.join(overlayDir, filename);
     const to = path.join(rootDir, 'scripts', filename);
     if (!fs.existsSync(from)) throw new Error(`V65.1.16 hotfix test asset missing: ${filename}`);
@@ -146,12 +146,13 @@ function bumpRelease(rootDir) {
 
 function apply(rootDir) {
   const pkg = readJson(path.join(rootDir, 'package.json'));
-  if (pkg.name !== 'sbc-business-command-center') throw new Error('V65.1.17 hotfix stopped: unexpected package name.');
+  if (pkg.name !== 'sbc-business-command-center') throw new Error('V65.1.18 hotfix stopped: unexpected package name.');
   if (pkg.version === TARGET_VERSION && fs.readFileSync(path.join(rootDir, 'server.js'), 'utf8').includes(PATCH_MARKER) && fs.readFileSync(path.join(rootDir, 'server.js'), 'utf8').includes('SBC_V65117_WORK_ORDER_PIPELINE_HARDENED')) {
     // A previous launch has already applied this exact patch. Still verify the version and pool wiring.
     if (!fs.readFileSync(path.join(rootDir, 'enterprise', 'session-store.js'), 'utf8').includes('currentMysqlPool')) throw new Error('V65.1.16 session-store patch marker is missing.');
     if (!fs.readFileSync(path.join(rootDir, 'enterprise', 'v567-nine-nine.js'), 'utf8').includes("require('../config/release-identity').RELEASE_VERSION")) throw new Error('V65.1.16 active release identity patch is missing.');
     require(path.join(__dirname, 'hotfix-assets', 'apply-v65117-workorder-patch.js')).apply(rootDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v65118-webhook-patch.js')).apply(rootDir);
     return { version: TARGET_VERSION, alreadyApplied: true };
   }
   if (pkg.version !== BASE_VERSION) throw new Error(`V65.1.16 hotfix only accepts ${BASE_VERSION}; found ${pkg.version}.`);
@@ -172,16 +173,17 @@ function apply(rootDir) {
     fs.copyFileSync(releaseLockPath, sourceLockPath);
   }
   require(path.join(__dirname, 'hotfix-assets', 'apply-v65117-workorder-patch.js')).apply(rootDir);
+  require(path.join(__dirname, 'hotfix-assets', 'apply-v65118-webhook-patch.js')).apply(rootDir);
   bumpRelease(rootDir);
   // Final identity and syntax checks protect startup from partial or drifted overlays.
   const finalPkg = readJson(path.join(rootDir, 'package.json'));
   const release = require(path.join(rootDir, 'config', 'release-identity.js'));
-  if (finalPkg.version !== TARGET_VERSION || release.RELEASE_VERSION !== TARGET_VERSION) throw new Error('V65.1.17 release identity mismatch after patch.');
-  for (const rel of ['server.js', 'enterprise/session-store.js', 'enterprise/v567-nine-nine.js', 'enterprise/kim-god-os.js', 'workers/checkout-event-worker.js', 'workers/run-shard.js', 'public/app.js', 'browser_public/app.js', 'scripts/v65116-operational-unlock-test.js', 'scripts/v65116-session-timeout-test.js', 'scripts/v65117-workorder-regression-test.js']) {
+  if (finalPkg.version !== TARGET_VERSION || release.RELEASE_VERSION !== TARGET_VERSION) throw new Error('V65.1.18 release identity mismatch after patch.');
+  for (const rel of ['server.js', 'enterprise/session-store.js', 'enterprise/v567-nine-nine.js', 'enterprise/kim-god-os.js', 'workers/checkout-event-worker.js', 'workers/run-shard.js', 'public/app.js', 'browser_public/app.js', 'scripts/v65116-operational-unlock-test.js', 'scripts/v65116-session-timeout-test.js', 'scripts/v65117-workorder-regression-test.js', 'scripts/v65118-webhook-evidence-test.js']) {
     const result = spawnSync(process.execPath, ['--check', path.join(rootDir, rel)], { encoding: 'utf8', timeout: 30000 });
-    if (result.status !== 0) throw new Error(`V65.1.17 syntax check failed for ${rel}: ${result.stderr || result.stdout}`);
+    if (result.status !== 0) throw new Error(`V65.1.18 syntax check failed for ${rel}: ${result.stderr || result.stdout}`);
   }
-  console.log(`[SBC V65.1.17 HOTFIX] applied: login/session recovery, atomic work-order claims, due retries, verified completion, durable order value, and webhook validation; destructive recovery and owner veto safeguards retained.`);
+  console.log(`[SBC V65.1.18 HOTFIX] applied: provider-bound print webhooks and tracking evidence for shipment/completion; previous recovery, owner veto and financial safeguards retained.`);
   return { version: TARGET_VERSION, alreadyApplied: false };
 }
 
