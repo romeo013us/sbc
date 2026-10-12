@@ -6,7 +6,7 @@
 - Correct the workforce lead-create SQL shape: persist the authenticated tenant ID and `lead_intelligence_json` with matching columns/placeholders.
 - Require explicit tenant association before Revenue PLAY creates a Square checkout; reject mismatched existing orders rather than inventing a tenant.
 - Exclude clearly marked SBC system-test records from Lead Research prospecting views, active-sales counts, lead verification, Revenue PLAY, and follow-up selection without deleting CRM history.
-- Show the actual build release identity in the Agent OS panel and add patched-source syntax checks to `bootstrap.js --verify`.
+- Show the actual build release identity in the Agent OS panel, explicitly label read-only Preview status, and add patched-source syntax checks to `bootstrap.js --verify`.
 
 ## Validation performed locally
 - `node bootstrap.js --verify` — PASS
