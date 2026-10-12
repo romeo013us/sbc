@@ -12,9 +12,9 @@ for (const token of [
   'Copy link', 'Email demo', 'Text demo', '/api/website-demos',
   '/api/communications/email', '/api/communications/sms', 'customer.smsConsent === true',
   'customer.smsOptOut === true', 'customer.consentToSms === true', "currentRole() !== 'owner'",
-  'No email or SMS was sent.', 'No payment, order, or fulfillment state is changed'
+  'No email or SMS was sent.', 'No payment, order, or fulfillment state is changed', 'state.data.recovery?.required'
 ]) assert.ok(moduleSource.includes(token), `Demo Studio missing required token: ${token}`);
-for (const token of ['sbc-concept-ribbon', 'sbc-demo-studio-v6526.js', '65.1.26', 'test:v6526-demo-studio']) assert.ok(patchSource.includes(token), `patcher missing token: ${token}`);
+for (const token of ['sbc-concept-ribbon', 'sbc-demo-studio-v6526.js', '65.1.26', 'test:v6526-demo-studio', 'server-side email recovery gate', 'server-side SMS recovery gate', 'server-side demo-generation recovery gate', 'install design-specific renderer CSS', 'styleCss(styleFor(demo))']) assert.ok(patchSource.includes(token), `patcher missing token: ${token}`);
 assert.ok(!moduleSource.includes('innerHTML = customer.'), 'raw customer data must not be assigned to innerHTML');
 assert.ok(!moduleSource.includes('window.open ='), 'demo studio must not override global navigation');
 assert.ok(patchSource.includes("designStyle:style"), 'selected design variation must override a previous AI-plan style');
