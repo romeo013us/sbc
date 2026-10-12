@@ -43,8 +43,8 @@ function apply(root){
   s=s.split("${d().customers?.length||0}").join("${(d().customers||[]).filter(c=>!isSyntheticTestCustomer(c)).length}");return s;
  });
  file(root,'public/sbc-agent-os-v56-25-3.js',s=>{
-  s=once(s,"const m=data.metrics||{}; const gov=data.governor||{};","const m=data.metrics||{}; const gov=data.governor||{}; const readinessNote=(data.readOnly||data.schemaReady===false)?'<div class=\\\"sbc-agent-os-foot\\\"><span>READ-ONLY PREVIEW · schema is not initialized in this environment; writes are disabled here.</span></div>':'';",'Agent OS read-only status notice');
-  s=once(s,"<div class=\\\"sbc-agent-brains-grid\\\">${brainHtml}</div>","${readinessNote}<div class=\\\"sbc-agent-brains-grid\\\">${brainHtml}</div>",'Agent OS readiness note display');
+  s=once(s,"const m=data.metrics||{}; const gov=data.governor||{};","const m=data.metrics||{}; const gov=data.governor||{}; const readinessNote=(data.readOnly||data.schemaReady===false)?'<div class=\"sbc-agent-os-foot\"><span>READ-ONLY PREVIEW · schema is not initialized in this environment; writes are disabled here.</span></div>':'';",'Agent OS read-only status notice');
+  s=once(s,"<div class=\"sbc-agent-brains-grid\">${brainHtml}</div>","${readinessNote}<div class=\"sbc-agent-brains-grid\">${brainHtml}</div>",'Agent OS readiness note display');
   s=once(s,"<span>Release identity ${esc(data.version||'65.1.23')}</span>","<span>"+MARKER+" · Release identity ${esc(data.releaseVersion||'65.1.29')}</span>",'Agent OS release label');
   s=once(s,"<span>UI release 65.1.23</span>","<span>"+MARKER+" · UI release 65.1.29</span>",'Agent OS fallback label');return s;
  });
