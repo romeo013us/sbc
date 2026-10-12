@@ -1,4 +1,4 @@
-name: Verify SBC OS V65.1.29 Exclusive Runtime Writer Lease
+name: Verify SBC OS V65.1.31 Exclusive Runtime Writer Lease
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Validate V65.1.29 release identity and launch files
+      - name: Validate V65.1.31 release identity and launch files
         run: |
           set -euo pipefail
           node --check bootstrap.js
@@ -45,7 +45,11 @@ jobs:
           node --check hotfix-assets/v6528-runtime-writer-lease-test.js
           node --check hotfix-assets/apply-v6529-open-readiness.js
           node --check hotfix-assets/v6529-open-readiness-test.js
-          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.29'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
+          node --check hotfix-assets/apply-v6530-writer-lease-marker-fix.js
+          node --check hotfix-assets/v6530-writer-lease-marker-fix-test.js
+          node --check hotfix-assets/apply-v6531-release-identity.js
+          node --check hotfix-assets/v6531-release-identity-test.js
+          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.31'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
           test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
           test -f hotfix-assets/apply-v6526-demo-studio.js
           test -f hotfix-assets/v6526-demo-studio-test.js
@@ -56,6 +60,10 @@ jobs:
           test -f hotfix-assets/apply-v6529-open-readiness.js
           test -f hotfix-assets/v6529-open-readiness-test.js
           test -f RELEASE-NOTES-V65.1.29-OPEN-READINESS.md
+          test -f hotfix-assets/apply-v6530-writer-lease-marker-fix.js
+          test -f hotfix-assets/v6530-writer-lease-marker-fix-test.js
+          test -f hotfix-assets/apply-v6531-release-identity.js
+          test -f hotfix-assets/v6531-release-identity-test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
 
       - name: Install locked root dependencies
