@@ -46,10 +46,9 @@ function apply(root) {
     server = onceText(
       server,
       "    await initReadReplica();\n    await initAmqp();\n    return true;",
-      "    await initReadReplica();\n    await initAmqp();\n    // " + MARKER + ": isolate authentication traffic from CRM and automation query contention.\n    try {\n      sessionMysqlPool = wrapMySQLPool(mysql.createPool({host:process.env.DB_HOST,user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,port:Number(process.env.DB_PORT||3306),waitForConnections:true,connectionLimit:2,maxIdle:1,idleTimeout:Number(process.env.SBC_DB_IDLE_TIMEOUT_MS||5000),queueLimit:10,enableKeepAlive:true,keepAliveInitialDelay:Number(process.env.SBC_DB_KEEPALIVE_INITIAL_DELAY_MS||10000),connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),charset:'utf8mb4'}), {attempts:2,metrics:{queries:0,retries:0,recycled:0,failures:0,active:0},onRetry:info=>console.warn('[SBC AUTH MYSQL] transient '+info.operation+' retry '+info.attempt+': '+(info.code||info.message))});\n      console.log('[" + MARKER + "] dedicated durable-session pool initialized; maxConnections=2.');\n    } catch (sessionPoolError) { sessionMysqlPool = null; console.warn('[" + MARKER + "] dedicated session pool unavailable; shared MySQL pool fallback remains fail-closed:',String(sessionPoolError&&sessionPoolError.message||sessionPoolError)); }\n    return true;",
-      'dedicated session pool initialization'
+      "    await initReadReplica();\n    await initAmqp();\n    return true;",
+      'remove late session pool initialization'
     );
-
     server = onceText(
       server,
       "    mysqlPool=null;\n    storageMode='file';",
@@ -91,6 +90,20 @@ function apply(root) {
   const helperSource = path.join(__dirname, 'durable-session-secret.js');
   const helperTarget = path.join(root, 'enterprise', 'durable-session-secret.js');
   fs.copyFileSync(helperSource, helperTarget);
+
+    server = onceText(
+      server,
+      "    await RUNTIME_GATE.ensureSchema();\n    // Migration ledger is created/reconciled by ensureEnterpriseSchema() below.",
+      "    // " + MARKER + ": create a small auth-only pool before schema/recovery work begins. Login is separately gated until recovery evaluation completes.\n    try {\n      sessionMysqlPool = wrapMySQLPool(mysql.createPool({host:process.env.DB_HOST,user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,port:Number(process.env.DB_PORT||3306),waitForConnections:true,connectionLimit:2,maxIdle:1,idleTimeout:Number(process.env.SBC_DB_IDLE_TIMEOUT_MS||5000),queueLimit:10,enableKeepAlive:true,keepAliveInitialDelay:Number(process.env.SBC_DB_KEEPALIVE_INITIAL_DELAY_MS||10000),connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),charset:'utf8mb4'}), {attempts:2,metrics:{queries:0,retries:0,recycled:0,failures:0,active:0},onRetry:info=>console.warn('[SBC AUTH MYSQL] transient '+info.operation+' retry '+info.attempt+': '+(info.code||info.message))});\n      console.log('[" + MARKER + "] dedicated durable-session pool initialized; maxConnections=2.');\n    } catch (sessionPoolError) { sessionMysqlPool = null; console.warn('[" + MARKER + "] dedicated session pool unavailable; shared MySQL pool fallback remains fail-closed:',String(sessionPoolError&&sessionPoolError.message||sessionPoolError)); }\n    await RUNTIME_GATE.ensureSchema();\n    // Migration ledger is created/reconciled by ensureEnterpriseSchema() below.",
+      'early dedicated session pool initialization'
+    );
+
+    server = onceText(
+      server,
+      "app.post('/api/login',rateLimit(),async(req,res)=>{\n  try{\n    if(!MYSQL_RECOVERY_REQUIRED) ensureCoreTeamProfiles();",
+      "app.post('/api/login',rateLimit(),async(req,res)=>{\n  if(!MYSQL_RECOVERY_EVALUATED) return res.status(503).json({ok:false,error:'SBC is still verifying authoritative MySQL recovery. Retry sign-in shortly.',code:'MYSQL_RECOVERY_NOT_EVALUATED',retryable:true,requestId:req.requestId||null});\n  try{\n    if(!MYSQL_RECOVERY_REQUIRED) ensureCoreTeamProfiles();",
+      'login gate while authoritative recovery evaluation is incomplete'
+    );
 
   const autopilotPath = path.join(root, 'enterprise', 'v56170-six-phase-autopilot.js');
   let autopilot = fs.readFileSync(autopilotPath, 'utf8');
