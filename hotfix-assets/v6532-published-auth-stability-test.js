@@ -25,6 +25,7 @@ assert.match(patch, /sessionMysqlPool\|\|mysqlPool/, 'session storage has a dedi
 assert.match(patch, /connectionLimit:2/, 'auth traffic uses a bounded independent pool');
 assert.match(patch, /MYSQL_RECOVERY_NOT_EVALUATED/, 'sign-in is rejected while authoritative recovery is still evaluating');
 assert.match(patch, /early dedicated session pool initialization/, 'session pool is available before lengthy schema reconciliation');
+assert.match(patch, /close isolated session pool on shutdown/, 'dedicated pool is closed during graceful shutdown');
 assert.match(fs.readFileSync(path.join(__dirname, 'apply-v6529-open-readiness.js'), 'utf8'), /tenantId:Number\(r\.tenant_id\)/, 'the prior release already hydrates tenant identity from MySQL');
 assert.match(patch, /TENANT_CONTEXT_REQUIRED/, 'autopilot holds when tenant provenance is absent');
 console.log('[SBC V65.1.32] durable session key, isolated auth pool, and tenant-context safety checks PASS');
