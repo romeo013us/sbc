@@ -9,6 +9,7 @@ on:
       - 'package-lock.json'
       - 'persistent-state.js'
       - 'persistent-state-test.js'
+      - 'apply-v65116-hotfix.js'
       - 'hotfix-assets/**'
       - 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip'
       - '.github/workflows/verify-sbc-v65116.yml'
@@ -31,23 +32,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Validate release identity and launch files
+      - name: Validate V65.1.28 release identity and launch files
         run: |
           set -euo pipefail
           node --check bootstrap.js
           node --check persistent-state.js
           node --check persistent-state-test.js
+          node --check hotfix-assets/apply-v6528-runtime-writer-lease.js
+          node --check hotfix-assets/v6528-runtime-writer-lease-test.js
           node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.28'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
           test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
-          test -f persistent-state.js
-          test -f persistent-state-test.js
-          test -f package.json
-          test -f hotfix-assets/apply-v6526-demo-studio.js || grep -q "apply-v6526-demo-studio.js" bootstrap.js
-          test -f hotfix-assets/v6526-demo-studio-test.js || grep -q "v6526-demo-studio-test.js" package.json
-          test -f hotfix-assets/apply-v6528-runtime-writer-lease.js || grep -q "apply-v6528-runtime-writer-lease.js" bootstrap.js
-          test -f hotfix-assets/v6528-runtime-writer-lease-test.js || grep -q "v6528-runtime-writer-lease-test.js" package.json
-          test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
+          test -f hotfix-assets/apply-v6526-demo-studio.js
+          test -f hotfix-assets/v6526-demo-studio-test.js
+          test -f hotfix-assets/apply-v6527-persistence-writer-lock.js
+          test -f hotfix-assets/v6527-persistence-writer-lock-test.js
+          test -f hotfix-assets/apply-v6528-runtime-writer-lease.js
+          test -f hotfix-assets/v6528-runtime-writer-lease-test.js
+          unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
 
       - name: Install locked root dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
