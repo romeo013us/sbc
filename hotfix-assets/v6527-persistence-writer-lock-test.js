@@ -11,5 +11,5 @@ assert.match(patch,/SELECT RELEASE_LOCK\(\?\) AS released/,'same connection rele
 assert.match(patch,/refusing partial patch/,'patch refuses to apply if anchors drift');
 assert.match(bootstrap,/apply-v6527-persistence-writer-lock\.js'\)\)\.apply\(temp\)/,'verification applies patch');
 assert.match(bootstrap,/apply-v6527-persistence-writer-lock\.js'\)\)\.apply\(runtimeDir\)/,'launch applies patch');
-assert.match(bootstrap,/EXPECTED_VERSION = '65\.1\.28'/,'bootstrap release identity bumped');
+assert.match(bootstrap,/EXPECTED_VERSION = '65.1.29'/,'bootstrap release identity bumped');
 console.log('V65.1.27 persistence writer lock: 7/7 PASS (tested in V65.1.28 release)');
