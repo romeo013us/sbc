@@ -42,12 +42,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '--- session-store symbol locations (source only; no runtime credentials) ---'
-          grep -nE 'sessionSecret|SESSION_SECRET|persistSession|mysqlQuery|withTimeout|signature|createHmac|timingSafeEqual|TENANT_CONTEXT_REQUIRED' source/enterprise/session-store.js | head -100 || true
-          echo '--- tenant-context throw sites ---'
-          grep -R -n --include='*.js' 'TENANT_CONTEXT_REQUIRED' source/server.js source/routes source/enterprise | head -80 || true
-          echo '--- auth/session call sites ---'
-          grep -nE 'SESSION_STORE|makeSession|persistSession|verify.*token|token.*signature|session store timeout' source/server.js | head -100 || true
+          echo '--- complete session-store source (source only; no runtime credentials) ---'
+          sed -n '1,280p' source/enterprise/session-store.js
+          echo '--- tenant-context throw sites with surrounding code ---'
+          grep -R -n -B 10 -A 12 --include='*.js' 'TENANT_CONTEXT_REQUIRED' source/server.js source/routes source/enterprise | head -220 || true
+          echo '--- auth/session call sites with surrounding code ---'
+          grep -n -B 8 -A 12 -E 'SESSION_STORE|makeSession|persistSession|verify.*token|token.*signature|session store timeout' source/server.js | head -240 || true
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
