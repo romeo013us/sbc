@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const modulePath = path.join(__dirname, 'sbc-demo-studio-v6526.js');
 const patchPath = path.join(__dirname, 'apply-v6526-demo-studio.js');
@@ -19,4 +20,8 @@ assert.ok(!moduleSource.includes('innerHTML = customer.'), 'raw customer data mu
 assert.ok(!moduleSource.includes('window.open ='), 'demo studio must not override global navigation');
 assert.ok(patchSource.includes("designStyle:style"), 'selected design variation must override a previous AI-plan style');
 assert.ok(patchSource.includes("const oldReturn = \"  return String(result.html||'').replace('</body>',checkoutBlock+'</body>');\""), 'patcher must target the existing demo renderer');
+for (const file of ['apply-v6520-hardening.js', 'apply-v6523-read-query-cancel.js', 'apply-v6526-demo-studio.js', 'sbc-demo-studio-v6526.js']) {
+  const checked = spawnSync(process.execPath, ['--check', path.join(__dirname, file)], { encoding: 'utf8' });
+  assert.equal(checked.status, 0, `${file} syntax check failed: ${checked.stderr || checked.stdout}`);
+}
 console.log('[SBC V65.1.26] PASS: Demo Studio UI, owner-only email, server-validated SMS consent, responsive preview, safe generation, and personalized site rendering.');
