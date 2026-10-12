@@ -19,3 +19,12 @@
 
 ## Deployment verification still required
 Local regression and renderer tests pass. A live GoDaddy deployment, browser walkthrough on the hosted instance, and actual provider delivery test were not performed during this build. Do not call the release live until Published logs and a controlled customer-safe demo test confirm it.
+
+
+## Review fixes added before deployment
+- The generated owner identity receives an explicit tenant before strict tenant authorization is enforced.
+- Preview's MySQL query wrapper blocks schema-changing SQL before a connection is acquired, including DDL attempted by GET/status handlers.
+- Read-query timeouts now classify SELECT CTEs as reads without treating data-changing CTEs as read-only.
+- Customer 360 and Demo Studio recognize nested `recovery.required`; the server independently blocks email, SMS, and demo generation while recovery is unevaluated/required or the runtime is read-only.
+- Editorial, tactile, minimal, and professional directions now change generated website CSS/layout rather than only metadata.
+- Regression tests cover these fixes. GoDaddy runtime behavior still requires deployment verification; production recovery protections remain enabled.
