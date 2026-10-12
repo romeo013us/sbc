@@ -23,6 +23,8 @@ try {
 const patch = fs.readFileSync(path.join(__dirname, 'apply-v6532-published-auth-stability.js'), 'utf8');
 assert.match(patch, /sessionMysqlPool\|\|mysqlPool/, 'session storage has a dedicated-pool-first binding');
 assert.match(patch, /connectionLimit:2/, 'auth traffic uses a bounded independent pool');
+assert.match(patch, /MYSQL_RECOVERY_NOT_EVALUATED/, 'sign-in is rejected while authoritative recovery is still evaluating');
+assert.match(patch, /early dedicated session pool initialization/, 'session pool is available before lengthy schema reconciliation');
 assert.match(patch, /tenantId:Number\(r\.tenant_id\|\|0\)/, 'tenant IDs are preserved when relational records are hydrated');
 assert.match(patch, /TENANT_CONTEXT_REQUIRED/, 'autopilot holds when tenant provenance is absent');
 console.log('[SBC V65.1.32] durable session key, isolated auth pool, and tenant-context safety checks PASS');
