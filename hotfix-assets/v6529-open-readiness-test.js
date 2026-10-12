@@ -18,6 +18,8 @@ check('test customers cannot enter Revenue PLAY',()=>{assert.match(patch,/SYNTHE
 check('checkout requires explicit tenant association',()=>{assert.match(patch,/LEAD_TENANT_ASSOCIATION_REQUIRED/);assert.match(patch,/CHECKOUT_TENANT_MISMATCH/)});
 check('lead insertion writes tenant and lead-intelligence columns with matching values',()=>{assert.match(patch,/INSERT INTO sbc_customers \(id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,lead_intelligence_json,created_at,updated_at\) VALUES \(\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?,\?\)/)});
 check('lead duplicate checks are tenant-scoped',()=>{assert.match(patch,/tenant-scoped local duplicate check/);assert.match(patch,/tenant-scoped MySQL duplicate query/);assert.match(patch,/\[tenantId,normPhone,normPhone,normEmail,email,normBusiness,business\]/)});
+check('system-test orders cannot enter revenue reconciliation',()=>{assert.match(patch,/isSystemTestOrder/);assert.match(patch,/God-Tier reconciliation suppression/);assert.match(patch,/paid metrics exclude test orders/)});
+check('dashboard print count and recent activity are truthful',()=>{assert.match(patch,/dashboard print-order count uses print pipeline/);assert.match(patch,/dashboard activity deduplication/)});
 check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.29'/)});
 console.log(`V65.1.29 open-readiness regression: ${checks.length}/${checks.length} PASS`);
 for(const name of checks)console.log('PASS '+name);
