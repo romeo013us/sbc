@@ -38,8 +38,8 @@ function apply(root) {
 
     server = onceText(
       server,
-      "getMysqlPool:()=>mysqlPool",
-      "getMysqlPool:()=>sessionMysqlPool||mysqlPool",
+      "const SESSION_STORE=createSessionStore({sessionSecret:SESSION_SECRET,getMysqlPool:()=>mysqlPool,getRedisClient:",
+      "const SESSION_STORE=createSessionStore({sessionSecret:SESSION_SECRET,getMysqlPool:()=>sessionMysqlPool||mysqlPool,getRedisClient:",
       'session store pool selection'
     );
 
