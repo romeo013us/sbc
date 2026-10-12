@@ -80,7 +80,7 @@ function apply(root){
   return s;
  });
  file(root,'public/app.js',s=>{
-  s=once(s,"function dashboard(){","/* "+MARKER+": dashboard order metrics and recent activity are truthful. */\\nfunction dashboard(){",'dashboard idempotence marker');
+  s=once(s,"function dashboard(){","/* "+MARKER+": dashboard order metrics and recent activity are truthful. */\nfunction dashboard(){",'dashboard idempotence marker');
   s=once(s,"r=Array.isArray(d.renewals)?d.renewals:[];const won=","r=Array.isArray(d.renewals)?d.renewals:[],activities=Array.isArray(d.activities)?d.activities:[];const won=",'dashboard activity list safety');
   s=once(s,"o.filter(x=>x.status!=='Delivered'&&x.status!=='Cancelled').length} print orders open","Number(d.ecosystem?.orderPipelines?.print?.orders||0)} print orders open",'dashboard print-order count uses print pipeline');
   s=once(s,"d.activities.slice(0,8).map(a=>","activities.filter((a,i,all)=>all.findIndex(x=>String(x.type)===String(a.type)&&String(x.message)===String(a.message))===i).slice(0,8).map(a=>",'dashboard activity deduplication');
