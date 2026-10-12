@@ -19,10 +19,13 @@
 1. Root release `npm run test:all` — PASS.
 2. `node bootstrap.js --verify` — PASS; verified the patched source archive and V65.1.26 release identity.
 3. Independently extracted source and applied all five hotfix layers — PASS.
-4. Full patched source `npm run test:all` — PASS, exit code 0; legacy release-identity assertions were aligned to the active release version, and the recovery/session regression now asserts the current fail-closed behavior rather than an obsolete function comment.
-5. JavaScript syntax checks: `server.js`, Demo Studio module, `public/app.js`, `public/v32-2-upgrade.js` — PASS.
-6. Independent website renderer test: complete HTML, personalized headline, escaped business name, services/contact sections — PASS.
-7. ZIP integrity check — PASS (`unzip -t`; no compressed-data errors).
+4. Full patched source `npm run test:all` — PASS, exit code 0.
+5. Preview DDL regression — PASS for pool queries and leased MySQL connections; DDL is rejected before execution in read-only mode.
+6. SQL classification regression — PASS for read-only SELECT CTEs, data-changing UPDATE/DELETE CTEs, and DDL detection.
+7. Owner tenant and recovery-gate regressions — PASS; the generated owner gets explicit tenant scope, and email/SMS/demo-generation routes are patched to fail closed during recovery/read-only operation.
+8. Renderer smoke test — PASS; editorial, tactile, minimal, and professional directions generated four distinct HTML outputs.
+9. JavaScript syntax checks — PASS for patched `server.js`, site design engine, and release patchers.
+10. ZIP integrity check — PASS after final packaging (`unzip -t`; no compressed-data errors).
 
 ## Not proven locally
 - No live GoDaddy Published or Preview browser session was used.
