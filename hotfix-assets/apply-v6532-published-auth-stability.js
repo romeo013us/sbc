@@ -56,35 +56,9 @@ function apply(root) {
       'clear session pool when MySQL initialization fails'
     );
 
-    server = onceText(
-      server,
-      'customers:customers.map(r=>({id:r.id,businessName:',
-      'customers:customers.map(r=>({id:r.id,tenantId:Number(r.tenant_id||0),businessName:',
-      'preserve customer tenant identity during MySQL hydration'
-    );
-    server = onceText(
-      server,
-      'quotes:quotes.map(r=>({id:r.id,quoteNumber:',
-      'quotes:quotes.map(r=>({id:r.id,tenantId:Number(r.tenant_id||0),quoteNumber:',
-      'preserve quote tenant identity during MySQL hydration'
-    );
-    server = onceText(
-      server,
-      'orders:orders.map(r=>({id:r.id,customerId:',
-      'orders:orders.map(r=>({id:r.id,tenantId:Number(r.tenant_id||0),customerId:',
-      'preserve order tenant identity during MySQL hydration'
-    );
-    server = onceText(
-      server,
-      'renewals:renewals.map(r=>({id:r.id,customerId:',
-      'renewals:renewals.map(r=>({id:r.id,tenantId:Number(r.tenant_id||0),customerId:',
-      'preserve renewal tenant identity during MySQL hydration'
-    );
-
     fs.writeFileSync(serverPath, server);
   } else {
     if (!server.includes("getMysqlPool:()=>sessionMysqlPool||mysqlPool")) throw new Error(MARKER + ': isolated session pool binding missing.');
-    if (!server.includes('tenantId:Number(r.tenant_id||0)')) throw new Error(MARKER + ': tenant hydration patch missing.');
   }
 
   const helperSource = path.join(__dirname, 'durable-session-secret.js');
