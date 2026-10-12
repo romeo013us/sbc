@@ -99,8 +99,12 @@ jobs:
           grep -R -n -i -E 'CREATE[[:space:]]+(TABLE|INDEX|DATABASE)|ALTER[[:space:]]+(TABLE|DATABASE)|DROP[[:space:]]+(TABLE|DATABASE)|RENAME[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' "$ROOT" --include='*.js' --exclude-dir=node_modules | head -300 || true
           echo '--- schema/migration entrypoints ---'
           grep -R -n -E 'ensureSchema|ensureEnterpriseSchema|runMigrations|migrate|initMysql|schemaSync|syncSchema' "$ROOT/server.js" "$ROOT/enterprise" "$ROOT/routes" --include='*.js' 2>/dev/null | head -300 || true
-          echo '--- boot-time schema call sites ---'
-          grep -n -B 12 -A 20 -E 'ensureSchema|ensureEnterpriseSchema|runMigrations|migrate|CREATE TABLE|ALTER TABLE' "$ROOT/server.js" | head -300 || true
+          echo '--- initMysql schema and migration sequence ---'
+          sed -n '1050,1285p' "$ROOT/server.js"
+          echo '--- enterprise schema and migration functions ---'
+          sed -n '2195,2345p' "$ROOT/server.js"
+          echo '--- migration function declarations ---'
+          grep -n -E 'function runSchemaMigrations|async function runSchemaMigrations|function ensureEnterpriseSchema|async function ensureEnterpriseSchema|function ensureSchema|async function ensureSchema' "$ROOT/server.js" | head -120
 
       - name: Run complete SBC regression suite
         run: npm run test:all
