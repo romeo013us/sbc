@@ -1,0 +1,4 @@
+'use strict';
+const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const root=path.resolve(__dirname,'..');
+const patch=fs.readFileSync(path.join(__dirname,'apply-v6528-runtime-writer-lease.js'),'utf8');const bootstrap=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');
+assert.match(patch,/GET_LOCK\\(\\?, 0\\)/);assert.match(patch,/SBC_RUNTIME_WRITER_BUSY/);assert.match(patch,/IS_USED_LOCK\\(\\?\\)/);assert.match(patch,/SBC_RUNTIME_WRITER_LEASE_REQUIRED/);assert.match(patch,/SBC_RUNTIME_WRITER_LEASE_LOST/);assert.match(patch,/MYSQL_RECOVERY_REQUIRED=true/);assert.match(bootstrap,/apply-v6528-runtime-writer-lease\\.js'\\)\\)\\.apply\\(temp\\)/);assert.match(bootstrap,/apply-v6528-runtime-writer-lease\\.js'\\)\\)\\.apply\\(runtimeDir\\)/);assert.match(bootstrap,/EXPECTED_VERSION = '65\\.1\\.28'/);console.log('V65.1.28 runtime writer lease: 9/9 PASS');
