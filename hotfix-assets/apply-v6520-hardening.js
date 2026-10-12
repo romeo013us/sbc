@@ -27,6 +27,15 @@ function patchFallbacks(rootDir) {
    // Fail closed if the authenticated identity has no explicit tenant; do not synthesize tenant 1.
    src=src.replace(/function tenantIdForUser\(u\)\{return Number\(u\?\.tenantId\|\|TENANT_DEFAULT_ID\)\}/,
     "function tenantIdForUser(u){return __sbcRequireTenantId(u?.tenantId)}");
+   // The bootstrap-created owner is a system principal and must have explicit tenant scope before strict auth runs.
+   const ownerCreateOld="u={id:'usr_owner',username:'owner',name:'Romeo',role:'owner',active:true,mustChangePassword:false,createdAt:now()};";
+   const ownerCreateNew="u={id:'usr_owner',tenantId:TENANT_DEFAULT_ID,username:'owner',name:'Romeo',role:'owner',active:true,mustChangePassword:false,createdAt:now()};";
+   if(src.includes(ownerCreateOld)) src=src.replace(ownerCreateOld,ownerCreateNew);
+   else if(!src.includes("u={id:'usr_owner',tenantId:TENANT_DEFAULT_ID,username:'owner'")) throw new Error('OWNER_TENANT_BOOTSTRAP_ANCHOR_DRIFT');
+   const ownerNormalizeOld="u.role='owner'; u.active=u.active!==false; u.mustChangePassword=false;";
+   const ownerNormalizeNew="u.role='owner'; u.active=u.active!==false; u.mustChangePassword=false; if(!Number.isSafeInteger(Number(u.tenantId))||Number(u.tenantId)<=0)u.tenantId=TENANT_DEFAULT_ID;";
+   if(src.includes(ownerNormalizeOld)) src=src.replace(ownerNormalizeOld,ownerNormalizeNew);
+   else if(!src.includes('u.tenantId=TENANT_DEFAULT_ID')) throw new Error('OWNER_TENANT_NORMALIZATION_ANCHOR_DRIFT');
    // Auth returns a controlled 403 rather than allowing an invalid tenant through.
    src=src.replace("  req.tenantId=tenantIdForUser(u);\n  // V65.1.8:","  try { req.tenantId=tenantIdForUser(u); } catch { return res.status(403).json({error:'TENANT_CONTEXT_REQUIRED',message:'Account has no validated tenant assignment. Complete the reviewed tenant migration before access.'}); }\n  req.tenantContextId=req.tenantId;\n  // V65.1.8:");
    // Do not silently attach a tenant to legacy records in request-time normalization.
