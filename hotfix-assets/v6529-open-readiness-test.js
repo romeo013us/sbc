@@ -20,6 +20,7 @@ check('lead insertion writes tenant and lead-intelligence columns with matching 
 check('lead duplicate checks are tenant-scoped',()=>{assert.match(patch,/tenant-scoped local duplicate check/);assert.match(patch,/tenant-scoped MySQL duplicate query/);assert.match(patch,/\[tenantId,normPhone,normPhone,normEmail,email,normBusiness,business\]/)});
 check('system-test orders cannot enter revenue reconciliation',()=>{assert.match(patch,/isSystemTestOrder/);assert.match(patch,/God-Tier reconciliation suppression/);assert.match(patch,/paid metrics exclude test orders/)});
 check('dashboard print count and recent activity are truthful',()=>{assert.match(patch,/dashboard print-order count uses print pipeline/);assert.match(patch,/dashboard activity deduplication/)});
+check('Agent OS identifies read-only Preview rather than implying full readiness',()=>{assert.match(patch,/Agent OS read-only status notice/);assert.match(patch,/READ-ONLY PREVIEW · schema is not initialized/)});
 check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.29'/)});
 console.log(`V65.1.29 open-readiness regression: ${checks.length}/${checks.length} PASS`);
 for(const name of checks)console.log('PASS '+name);
