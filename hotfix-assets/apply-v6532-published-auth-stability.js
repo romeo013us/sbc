@@ -101,7 +101,7 @@ function apply(root) {
     }
     queryGuard = onceText(queryGuard, runFreshOld, runFreshNew, 'explicit DDL opt-in in pooled queries');
     queryGuard = onceText(queryGuard, connectionOld, connectionNew, 'explicit DDL opt-in in leased connections');
-    queryGuard = queryGuard.replace('const SBC_V6523_READ_QUERY_CANCEL', 'const ' + MARKER + ' = true;\n// const SBC_V6523_READ_QUERY_CANCEL');
+    queryGuard += '\n// ' + MARKER + ': DDL requires both writer role and ENABLE_DDL=true.\n';
     fs.writeFileSync(queryGuardPath, queryGuard);
   }
 
