@@ -121,7 +121,7 @@ function verifyExtracted(dir, expectedVersion = EXPECTED_VERSION) {
 }
 
 function verifyPatchedSyntax(dir) {
-  const files = ['server.js','enterprise/sbc-agent-operating-system-v56-25-3.js','enterprise/sbc-growth-os-v650.js','enterprise/revenue-autopilot-supervisor-v552.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','public/v56240-growth-hardening.js'];
+  const files = ['server.js','enterprise/sbc-agent-operating-system-v56-25-3.js','enterprise/sbc-growth-os-v650.js','enterprise/revenue-autopilot-supervisor-v552.js','enterprise/v56134-god-tier-revenue.js','enterprise/v56134-ten-brain.js','public/app.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','public/v56240-growth-hardening.js'];
   const execFileSync = require('child_process').execFileSync;
   for (const rel of files) {
     const target = path.join(dir, rel);
