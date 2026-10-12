@@ -15,7 +15,7 @@ try {
   const stat = fs.statSync(path.join(tmp, KEY_FILE));
   assert.equal(stat.mode & 0o777, 0o600, 'the persisted signing key is owner-readable only');
   assert.equal(resolveSessionSecret({ env: { SBC_SESSION_SECRET: 'explicit-existing-key' }, dataDir: tmp }), 'explicit-existing-key', 'an existing explicit secret is preserved without rotation');
-  assert.throws(() => resolveSessionSecret({ env: {}, dataDir: path.join(tmp, 'missing-dir', 'key-parent', '..') }), /SBC_SESSION_KEY_STORAGE/);
+  assert.throws(() => resolveSessionSecret({ env: {} }), /SBC_SESSION_KEY_STORAGE_REQUIRED/);
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
