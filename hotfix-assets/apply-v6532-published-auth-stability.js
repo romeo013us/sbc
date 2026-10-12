@@ -3,8 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const MARKER = 'SBC_V6532_PUBLISHED_AUTH_STABILITY';
-const VERSION = '65.1.32';
+const MARKER = 'SBC_V6533_STARTUP_DDL_GATE';
+const VERSION = '65.1.33';
 
 function once(source, expression, replacement, label) {
   const matches = source.match(expression) || [];
@@ -56,9 +56,53 @@ function apply(root) {
       'clear session pool when MySQL initialization fails'
     );
 
+    server = onceText(
+      server,
+      "const SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';",
+      "const SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';\nconst SBC_DDL_ENABLED = String(process.env.ENABLE_DDL || '').trim().toLowerCase() === 'true'; // " + MARKER,
+      'explicit opt-in for schema changes'
+    );
+
+    server = onceText(
+      server,
+      "if(SBC_RUNTIME_READ_ONLY){\n      // Do not run DDL, migrations, seeders, or repairs from Preview. Hydrate only.",
+      "if(SBC_RUNTIME_READ_ONLY || !SBC_DDL_ENABLED){\n      // " + MARKER + ": no startup DDL unless explicitly enabled; hydrate existing tables only.\n      // Do not run migrations, seeders, or repairs in this mode.",
+      'skip startup DDL unless explicitly enabled'
+    );
+
+    server = onceText(
+      server,
+      "initMysql().then(async()=>{if(SBC_RUNTIME_READ_ONLY){",
+      "initMysql().then(async()=>{if(SBC_RUNTIME_READ_ONLY || !SBC_DDL_ENABLED){",
+      'skip schema-dependent startup workers without DDL opt-in'
+    );
+
+    server = onceText(
+      server,
+      "}).then(async()=>{if(SBC_RUNTIME_READ_ONLY){",
+      "}).then(async()=>{if(SBC_RUNTIME_READ_ONLY || !SBC_DDL_ENABLED){",
+      'skip autonomous startup sweep without DDL opt-in'
+    );
+
     fs.writeFileSync(serverPath, server);
   } else {
     if (!server.includes("getMysqlPool:()=>sessionMysqlPool||mysqlPool")) throw new Error(MARKER + ': isolated session pool binding missing.');
+  }
+
+  const queryGuardPath = path.join(root, 'enterprise', 'v56133-mysql-query-guard.js');
+  let queryGuard = fs.readFileSync(queryGuardPath, 'utf8');
+  if (!queryGuard.includes(MARKER)) {
+    const runFreshOld = "String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase() !== 'writer' && sqlInfo.isDdl";
+    const runFreshNew = "(String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase() !== 'writer' || String(process.env.ENABLE_DDL || '').trim().toLowerCase() !== 'true') && sqlInfo.isDdl";
+    const connectionOld = "String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase() !== 'writer' && sbcClassifySql(args[0]).isDdl";
+    const connectionNew = "(String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase() !== 'writer' || String(process.env.ENABLE_DDL || '').trim().toLowerCase() !== 'true') && sbcClassifySql(args[0]).isDdl";
+    if (!queryGuard.includes(runFreshOld) || !queryGuard.includes(connectionOld)) {
+      throw new Error(MARKER + ': expected Preview DDL guard anchors were not found.');
+    }
+    queryGuard = onceText(queryGuard, runFreshOld, runFreshNew, 'explicit DDL opt-in in pooled queries');
+    queryGuard = onceText(queryGuard, connectionOld, connectionNew, 'explicit DDL opt-in in leased connections');
+    queryGuard = queryGuard.replace('const SBC_V6523_READ_QUERY_CANCEL', 'const ' + MARKER + ' = true;\n// const SBC_V6523_READ_QUERY_CANCEL');
+    fs.writeFileSync(queryGuardPath, queryGuard);
   }
 
   const helperSource = path.join(__dirname, 'durable-session-secret.js');
@@ -151,7 +195,7 @@ function apply(root) {
   const swPath = path.join(root, 'public', 'sw.js');
   if (fs.existsSync(swPath)) {
     let sw = fs.readFileSync(swPath, 'utf8');
-    sw = onceText(sw, "const CACHE='sbc-static-v65-1-31';", "const CACHE='sbc-static-v65-1-32';", 'browser cache identity');
+    sw = onceText(sw, "const CACHE='sbc-static-v65-1-31';", "const CACHE='sbc-static-v65-1-33';", 'browser cache identity');
     fs.writeFileSync(swPath, sw);
   }
 
