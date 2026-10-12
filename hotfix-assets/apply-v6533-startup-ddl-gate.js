@@ -155,9 +155,9 @@ function apply(root) {
   if (pkg.version !== VERSION) {
     if (pkg.version !== '65.1.31') throw new Error(MARKER + ': expected 65.1.31 source, found ' + pkg.version);
     pkg.version = VERSION;
-    pkg.description = 'SBC OS V65.1.32 durable authentication and tenant-context stability';
+    pkg.description = 'SBC OS V65.1.33 explicit startup DDL gate and durable authentication stability';
   }
-  const testPath = path.join(__dirname, 'v6532-published-auth-stability-test.js');
+  const testPath = path.join(__dirname, 'v6533-startup-ddl-gate-test.js');
   const testTarget = path.join(root, 'scripts', 'v6532-published-auth-stability-test.js');
   fs.copyFileSync(testPath, testTarget);
   if (!pkg.scripts['test:v6532-auth-stability']) pkg.scripts['test:v6532-auth-stability'] = 'node scripts/v6532-published-auth-stability-test.js';
