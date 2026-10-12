@@ -1,4 +1,4 @@
-name: Verify SBC OS V65.1.26 Demo Studio
+name: Verify SBC OS V65.1.28 Demo Studio
 
 on:
   push:
@@ -38,12 +38,16 @@ jobs:
         run: |
           set -euo pipefail
           node --check bootstrap.js
-          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.26'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
+          node --check hotfix-assets/apply-v6528-runtime-writer-lease.js
+          node --check hotfix-assets/v6528-runtime-writer-lease-test.js
+          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.28'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
           test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
           test -f persistent-state.js
           test -f persistent-state-test.js
           test -f hotfix-assets/apply-v6526-demo-studio.js
           test -f hotfix-assets/v6526-demo-studio-test.js
+          test -f hotfix-assets/apply-v6528-runtime-writer-lease.js
+          test -f hotfix-assets/v6528-runtime-writer-lease-test.js
 
       - name: Install locked root dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
