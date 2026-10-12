@@ -35,6 +35,16 @@ jobs:
           test -f source/package.json
           test -f source/server.js
           node -e "const p=require('./source/package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.13') { console.error('Unexpected package identity:',p.name,p.version); process.exit(1) }; console.log(p.name+'@'+p.version)"
+      - name: Read-only audit of startup DDL and migration calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- schema-changing SQL in JS sources ---'
+          grep -R -n -i -E 'CREATE[[:space:]]+(TABLE|INDEX|DATABASE)|ALTER[[:space:]]+(TABLE|DATABASE)|DROP[[:space:]]+(TABLE|DATABASE)|RENAME[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' source --include='*.js' --exclude-dir=node_modules | head -300 || true
+          echo '--- startup schema/migration entrypoints ---'
+          grep -R -n -E 'ensureSchema|ensureEnterpriseSchema|runMigrations|migrate|initMysql|schemaSync|syncSchema' source/server.js source/enterprise source/routes --include='*.js' | head -300 || true
+          echo '--- boot-time schema calls with context ---'
+          grep -n -B 12 -A 20 -E 'ensureSchema|ensureEnterpriseSchema|runMigrations|migrate|CREATE TABLE|ALTER TABLE' source/server.js | head -300 || true
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
