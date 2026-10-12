@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const patch=fs.readFileSync(path.join(__dirname,'apply-v6528-runtime-writer-lease.js'),'utf8');
+const bootstrap=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');
+assert.ok(patch.includes("GET_LOCK(?, 0)"),'exclusive nonblocking process lease');
+assert.ok(patch.includes('SBC_RUNTIME_WRITER_BUSY'),'second writer fails closed');
+assert.ok(patch.includes('IS_USED_LOCK(?)'),'ownership checked on persistence writes');
+assert.ok(patch.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'),'missing lease blocks writes');
+assert.ok(patch.includes('SBC_RUNTIME_WRITER_LEASE_LOST'),'lost lease blocks writes');
+assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'lease failure enters recovery-safe mode');
+assert.ok(bootstrap.includes("apply-v6528-runtime-writer-lease.js')).apply(temp)"),'build applies patch');
+assert.ok(bootstrap.includes("apply-v6528-runtime-writer-lease.js')).apply(runtimeDir)"),'runtime applies patch');
+assert.ok(bootstrap.includes("EXPECTED_VERSION = '65.1.28'"),'release version');
+console.log('V65.1.28 runtime writer lease: 9/9 PASS');

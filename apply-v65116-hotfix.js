@@ -52,13 +52,7 @@ function patchRecoveryDecision(rootDir) {
   let source = fs.readFileSync(file, 'utf8');
   if (source.includes(PATCH_MARKER)) return;
   const expression = /if\(Number\(countRows\[0\]\?\.customers\|\|0\) < VERIFIED_PRE_CORRUPTION_CRM_COUNT\)\{\s*storageMode='mysql-recovery-required';\s*MYSQL_RECOVERY_REQUIRED=true;\s*MYSQL_RECOVERY_EVALUATED=true;\s*console\.error\(`\[SBC RECOVERY GUARD\] REFUSING PARTIAL-DATABASE ACTIVATION:[\s\S]*?return true;\s*\}\s*await readRelational\(\);/;
-  source = mustReplaceOnce(source, expression, `const actualCustomerCount=Number(countRows[0]?.customers||0);
-      if(actualCustomerCount < VERIFIED_PRE_CORRUPTION_CRM_COUNT){
-        // ${PATCH_MARKER}: treat the historical row count as a warning, not an app-wide lock.
-        // Continue only when an existing relational core is present. No missing records are created.
-        console.warn(\`[SBC RECOVERY GUARD] HISTORICAL BASELINE MISMATCH — continuing with existing non-empty MySQL data: customers=\${actualCustomerCount}, historicalBaseline=\${VERIFIED_PRE_CORRUPTION_CRM_COUNT}, activeLeadBaseline=\${VERIFIED_PRE_CORRUPTION_ACTIVE_LEADS}. No missing customer rows were synthesized.\`);
-      }
-      await readRelational();`, 'non-empty partial-database threshold block');
+  source = mustReplaceOnce(source, expression, "if(Number(countRows[0]?.customers||0) < VERIFIED_PRE_CORRUPTION_CRM_COUNT){\n        const actualCustomerCount=Number(countRows[0]?.customers||0);\n        storageMode='mysql-recovery-required';\n        MYSQL_RECOVERY_REQUIRED=true;\n        MYSQL_RECOVERY_EVALUATED=true;\n        console.error('[SBC RECOVERY GUARD] REFUSING PARTIAL-DATABASE ACTIVATION: customers=' + actualCustomerCount + ', historicalBaseline=' + VERIFIED_PRE_CORRUPTION_CRM_COUNT + ', activeLeadBaseline=' + VERIFIED_PRE_CORRUPTION_ACTIVE_LEADS + '. No customer records were synthesized; recovery remains locked pending authoritative reconciliation.');\n        return true;\n      }\n      await readRelational();", 'preserve verified historical customer baseline');
   // Per-table telemetry is diagnostic only and must not delay login readiness.
   source = mustReplaceOnce(source, /    \/\/ V64\.2\.15: automatic read-only recovery census[\s\S]*?\n\n    const localCoreCount=/, `    // V65.1.16: detailed per-table census is deferred; core row counts remain the startup gate.
     console.log('[SBC V65.1.16] Detailed per-table recovery census deferred to owner recovery diagnostics.');
@@ -131,7 +125,7 @@ function bumpRelease(rootDir) {
 
   // Add the two focused regression tests supplied alongside this root launcher.
   const overlayDir = path.join(__dirname, 'hotfix-assets');
-  for (const filename of ['v65116-operational-unlock-test.js', 'v65116-session-timeout-test.js', 'v65117-workorder-regression-test.js', 'v65118-webhook-evidence-test.js']) {
+  for (const filename of ['v65116-operational-unlock-test.js', 'v65116-session-timeout-test.js', 'v65117-workorder-regression-test.js', 'apply-v65118-webhook-patch.js', 'v65118-webhook-evidence-test.js']) {
     const from = path.join(overlayDir, filename);
     const to = path.join(rootDir, 'scripts', filename);
     if (!fs.existsSync(from)) throw new Error(`V65.1.16 hotfix test asset missing: ${filename}`);
@@ -147,13 +141,14 @@ function bumpRelease(rootDir) {
 function apply(rootDir) {
   const pkg = readJson(path.join(rootDir, 'package.json'));
   if (pkg.name !== 'sbc-business-command-center') throw new Error('V65.1.18 hotfix stopped: unexpected package name.');
-  if (pkg.version === TARGET_VERSION && fs.readFileSync(path.join(rootDir, 'server.js'), 'utf8').includes(PATCH_MARKER) && fs.readFileSync(path.join(rootDir, 'server.js'), 'utf8').includes('SBC_V65117_WORK_ORDER_PIPELINE_HARDENED')) {
+  if ((pkg.version === TARGET_VERSION || pkg.version === '65.1.19' || pkg.version === '65.1.20') && fs.readFileSync(path.join(rootDir, 'server.js'), 'utf8').includes(PATCH_MARKER) && fs.readFileSync(path.join(rootDir, 'server.js'), 'utf8').includes('SBC_V65117_WORK_ORDER_PIPELINE_HARDENED')) {
     // A previous launch has already applied this exact patch. Still verify the version and pool wiring.
     if (!fs.readFileSync(path.join(rootDir, 'enterprise', 'session-store.js'), 'utf8').includes('currentMysqlPool')) throw new Error('V65.1.16 session-store patch marker is missing.');
     if (!fs.readFileSync(path.join(rootDir, 'enterprise', 'v567-nine-nine.js'), 'utf8').includes("require('../config/release-identity').RELEASE_VERSION")) throw new Error('V65.1.16 active release identity patch is missing.');
     require(path.join(__dirname, 'hotfix-assets', 'apply-v65117-workorder-patch.js')).apply(rootDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v65118-webhook-patch.js')).apply(rootDir);
-    return { version: TARGET_VERSION, alreadyApplied: true };
+    const phase = require(path.join(__dirname, 'hotfix-assets', 'v65119-phases-1-4.js')).apply(rootDir);
+    return { version: phase.version, alreadyApplied: true, phases: phase.phases };
   }
   if (pkg.version !== BASE_VERSION) throw new Error(`V65.1.16 hotfix only accepts ${BASE_VERSION}; found ${pkg.version}.`);
   patchSessionStore(rootDir);
@@ -179,12 +174,14 @@ function apply(rootDir) {
   const finalPkg = readJson(path.join(rootDir, 'package.json'));
   const release = require(path.join(rootDir, 'config', 'release-identity.js'));
   if (finalPkg.version !== TARGET_VERSION || release.RELEASE_VERSION !== TARGET_VERSION) throw new Error('V65.1.18 release identity mismatch after patch.');
-  for (const rel of ['server.js', 'enterprise/session-store.js', 'enterprise/v567-nine-nine.js', 'enterprise/kim-god-os.js', 'workers/checkout-event-worker.js', 'workers/run-shard.js', 'public/app.js', 'browser_public/app.js', 'scripts/v65116-operational-unlock-test.js', 'scripts/v65116-session-timeout-test.js', 'scripts/v65117-workorder-regression-test.js', 'scripts/v65118-webhook-evidence-test.js']) {
+  for (const rel of ['server.js', 'enterprise/session-store.js', 'enterprise/v567-nine-nine.js', 'enterprise/kim-god-os.js', 'workers/checkout-event-worker.js', 'workers/run-shard.js', 'public/app.js', 'browser_public/app.js', 'scripts/v65116-operational-unlock-test.js', 'scripts/v65116-session-timeout-test.js', 'scripts/v65117-workorder-regression-test.js', 'scripts/apply-v65118-webhook-patch.js', 'scripts/v65118-webhook-evidence-test.js']) {
     const result = spawnSync(process.execPath, ['--check', path.join(rootDir, rel)], { encoding: 'utf8', timeout: 30000 });
     if (result.status !== 0) throw new Error(`V65.1.18 syntax check failed for ${rel}: ${result.stderr || result.stdout}`);
   }
-  console.log(`[SBC V65.1.18 HOTFIX] applied: provider-bound print webhooks and tracking evidence for shipment/completion; previous recovery, owner veto and financial safeguards retained.`);
-  return { version: TARGET_VERSION, alreadyApplied: false };
+  const phase = require(path.join(__dirname, 'hotfix-assets', 'v65119-phases-1-4.js')).apply(rootDir);
+  for (const rel of ['server.js','routes/v65119-control-plane.js','scripts/v65119-phases-test.js']) { const result=spawnSync(process.execPath,['--check',path.join(rootDir,rel)],{encoding:'utf8',timeout:30000}); if(result.status!==0) throw new Error(`V65.1.19 syntax check failed for ${rel}: ${result.stderr||result.stdout}`); }
+  console.log(`[SBC V65.1.21 HOTFIX] applied: governed Phases 1–4 control plane plus strict tenant hardening and atomic webhook recovery.`);
+  return { version: phase.version, alreadyApplied: false, phases: phase.phases };
 }
 
 module.exports = { apply, BASE_VERSION, TARGET_VERSION, PATCH_MARKER };

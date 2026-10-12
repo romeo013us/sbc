@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const patch=fs.readFileSync(path.join(__dirname,'apply-v6527-persistence-writer-lock.js'),'utf8');
+const bootstrap=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');
+assert.match(patch,/SELECT GET_LOCK\(\?, 0\) AS acquired/,'writer lock must be non-blocking');
+assert.match(patch,/PERSISTENCE_WRITER_BUSY/,'contending process fails closed');
+assert.match(patch,/SELECT RELEASE_LOCK\(\?\) AS released/,'same connection releases named lock');
+assert.match(patch,/refusing partial patch/,'patch refuses to apply if anchors drift');
+assert.match(bootstrap,/apply-v6527-persistence-writer-lock\.js'\)\)\.apply\(temp\)/,'verification applies patch');
+assert.match(bootstrap,/apply-v6527-persistence-writer-lock\.js'\)\)\.apply\(runtimeDir\)/,'launch applies patch');
+assert.match(bootstrap,/EXPECTED_VERSION = '65\.1\.28'/,'bootstrap release identity bumped');
+console.log('V65.1.27 persistence writer lock: 7/7 PASS (tested in V65.1.28 release)');
