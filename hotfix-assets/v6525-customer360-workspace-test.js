@@ -15,4 +15,5 @@ for (const feature of [
 assert.ok(patch.includes('right:18px;left:auto;bottom:22px;'), 'desktop launcher must move away from sign-out sidebar');
 assert.ok(patch.includes('right:10px;left:auto;bottom:10px'), 'mobile launcher must move away from sign-out sidebar');
 assert.ok(patch.includes('65.1.25'), 'patcher must set the new release identity');
+assert.ok(moduleSource.includes('state?.data?.recovery?.required'), 'nested recovery.required must disable Customer 360 actions');
 console.log('[SBC V65.1.25] PASS: Customer 360 actions, consent, paid-quote guard, recovery lock, and launcher repositioning checks.');
