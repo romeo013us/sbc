@@ -21,7 +21,9 @@ assert.ok(!moduleSource.includes('window.open ='), 'demo studio must not overrid
 assert.ok(patchSource.includes("designStyle:style"), 'selected design variation must override a previous AI-plan style');
 assert.ok(patchSource.includes("const oldReturn = \"  return String(result.html||'').replace('</body>',checkoutBlock+'</body>');\""), 'patcher must target the existing demo renderer');
 for (const file of ['apply-v6520-hardening.js', 'apply-v6523-read-query-cancel.js', 'apply-v6526-demo-studio.js', 'sbc-demo-studio-v6526.js']) {
-  const checked = spawnSync(process.execPath, ['--check', path.join(__dirname, file)], { encoding: 'utf8' });
+  const fullPath = path.join(__dirname, file);
+  if (!fs.existsSync(fullPath)) continue; // release-root patchers are not all copied into the extracted source tree
+  const checked = spawnSync(process.execPath, ['--check', fullPath], { encoding: 'utf8' });
   assert.equal(checked.status, 0, `${file} syntax check failed: ${checked.stderr || checked.stdout}`);
 }
 console.log('[SBC V65.1.26] PASS: Demo Studio UI, owner-only email, server-validated SMS consent, responsive preview, safe generation, and personalized site rendering.');
