@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.31';
-const HOTFIX_PATCH_ID = 'release-identity-cache-fix-v6531';
+const EXPECTED_VERSION = '65.1.32';
+const HOTFIX_PATCH_ID = 'published-auth-stability-v6532';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -121,7 +121,7 @@ function verifyExtracted(dir, expectedVersion = EXPECTED_VERSION) {
 }
 
 function verifyPatchedSyntax(dir) {
-  const files = ['server.js','enterprise/sbc-agent-operating-system-v56-25-3.js','enterprise/sbc-growth-os-v650.js','enterprise/revenue-autopilot-supervisor-v552.js','enterprise/v56134-god-tier-revenue.js','enterprise/v56134-ten-brain.js','public/app.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','public/v56240-growth-hardening.js'];
+  const files = ['server.js','enterprise/sbc-agent-operating-system-v56-25-3.js','enterprise/sbc-growth-os-v650.js','enterprise/revenue-autopilot-supervisor-v552.js','enterprise/v56134-god-tier-revenue.js','enterprise/v56134-ten-brain.js','public/app.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','public/v56240-growth-hardening.js','enterprise/durable-session-secret.js','enterprise/v56170-six-phase-autopilot.js'];
   const execFileSync = require('child_process').execFileSync;
   for (const rel of files) {
     const target = path.join(dir, rel);
@@ -150,6 +150,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6529-open-readiness.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6530-writer-lease-marker-fix.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6531-release-identity.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6532-published-auth-stability.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -187,6 +188,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6529-open-readiness.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6530-writer-lease-marker-fix.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6531-release-identity.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6532-published-auth-stability.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
