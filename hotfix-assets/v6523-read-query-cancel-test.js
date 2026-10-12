@@ -27,6 +27,12 @@ if(!fs.existsSync(guardPath)){
   const ddlGuard=wrapPool({getConnection:async()=>{acquired++;return {query:async()=>{throw new Error('DDL reached database')},execute:async()=>{throw new Error('DDL reached database')},release(){},destroy(){}}}});
   await assert.rejects(ddlGuard.query('CREATE TABLE should_not_run(id INT)'),e=>e.code==='SBC_PREVIEW_DDL_BLOCKED');
   assert.equal(acquired,0,'Preview DDL must be rejected before opening a DB connection');
+  let directExecuted=0;
+  const leasedPool=wrapPool({getConnection:async()=>({query:async()=>{directExecuted++;return [[],[]]},execute:async()=>{directExecuted++;return [[],[]]},release(){},destroy(){}})});
+  const leased=await leasedPool.getConnection();
+  await assert.rejects(leased.query('ALTER TABLE should_not_run ADD COLUMN unsafe INT'),e=>e.code==='SBC_PREVIEW_DDL_BLOCKED');
+  assert.equal(directExecuted,0,'leased connection must reject Preview DDL before executing it');
+  leased.release();
   if(priorRole===undefined)delete process.env.SBC_RUNTIME_ROLE;else process.env.SBC_RUNTIME_ROLE=priorRole;
   console.log('V65.1.23/V65.1.26 query guard tests: PASS (bounded reads, CTE DML classification, Preview DDL blocked)');
  })().catch(e=>{console.error(e);process.exitCode=1});
