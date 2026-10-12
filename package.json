@@ -1,17 +1,18 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.26",
+  "version": "65.1.27",
   "private": true,
-  "description": "SBC OS V65.1.26 premium Demo Studio release bootstrap",
+  "description": "SBC OS V65.1.27 persistence single-writer lock release bootstrap",
   "main": "bootstrap.js",
   "scripts": {
     "build": "node bootstrap.js --verify",
     "start": "node bootstrap.js",
     "test:phases": "node hotfix-assets/v65119-phases-test.js",
     "test:tenant-hardening": "node bootstrap.js --verify",
-    "test:all": "node bootstrap.js --verify && node persistent-state-test.js && node hotfix-assets/v65119-phases-test.js && node hotfix-assets/v6522-api-stabilization-test.js && node hotfix-assets/v6524-single-writer-test.js && node hotfix-assets/v6525-customer360-workspace-test.js && npm run test:v6526-demo-studio && node hotfix-assets/v6523-read-query-cancel-test.js",
+    "test:all": "node bootstrap.js --verify && node persistent-state-test.js && node hotfix-assets/v65119-phases-test.js && node hotfix-assets/v6522-api-stabilization-test.js && node hotfix-assets/v6524-single-writer-test.js && node hotfix-assets/v6525-customer360-workspace-test.js && npm run test:v6526-demo-studio && node hotfix-assets/v6523-read-query-cancel-test.js && node hotfix-assets/v6527-persistence-writer-lock-test.js",
     "test:api-stabilization": "node hotfix-assets/v6522-api-stabilization-test.js",
-    "test:v6526-demo-studio": "node hotfix-assets/v6526-demo-studio-test.js"
+    "test:v6526-demo-studio": "node hotfix-assets/v6526-demo-studio-test.js",
+    "test:v6527-writer-lock": "node hotfix-assets/v6527-persistence-writer-lock-test.js && node bootstrap.js --verify"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
