@@ -17,7 +17,7 @@ assert.match(route,/BLOCKED_NO_CONSENT/,'outreach blocks missing consent');
 assert.match(route,/APPROVED_MANUAL/,'approval does not auto-send');
 assert.match(route,/RETRY_QUEUED/,'fault redrive is queue-only');
 assert.match(route,/tenantFrom\(req\)/,'routes require explicit tenant context');
-assert.doesNotMatch(route,/tenantId\s*\|\|\s*1/,'no tenant 1 fallback');const tenantPatch=fs.readFileSync(path.join(__dirname,'apply-v6520-hardening.js'),'utf8');assert.match(tenantPatch,/tenantId:TENANT_DEFAULT_ID,username:'owner'/,'new owner must receive an explicit tenant before strict authorization');assert.match(tenantPatch,/u\.tenantId=TENANT_DEFAULT_ID/,'bootstrap owner normalization must repair only the generated owner identity');
+assert.doesNotMatch(route,/tenantId\s*\|\|\s*1/,'no tenant 1 fallback');const tenantPatchPath=[path.join(__dirname,'apply-v6520-hardening.js'),path.join(__dirname,'..','hotfix-assets','apply-v6520-hardening.js')].find(p=>fs.existsSync(p));if(!tenantPatchPath)throw Error('tenant hardening patch source not found');const tenantPatch=fs.readFileSync(tenantPatchPath,'utf8');assert.match(tenantPatch,/tenantId:TENANT_DEFAULT_ID,username:'owner'/,'new owner must receive an explicit tenant before strict authorization');assert.match(tenantPatch,/u\.tenantId=TENANT_DEFAULT_ID/,'bootstrap owner normalization must repair only the generated owner identity');
 assert.match(route,/grossProfit/,'margin reporting computes gross profit');
 assert.match(route,/ops-center/,'Phase 4 cockpit served');
 assert.match(route,/productionMutation|ownerApprovalRequired|OWNER_APPROVAL_REQUIRED|sideEffects/,'governed mutation language present');
