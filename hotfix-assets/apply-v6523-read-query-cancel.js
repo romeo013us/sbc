@@ -36,6 +36,10 @@ function apply(root){
     let last;`;
   if(s.split(oldStart).length!==2)throw new Error(MARKER+': runFresh anchor mismatch');
   s=s.replace(oldStart,newStart);
+  const connAnchor="          if (isBroken(target)) throw Object.assign(new Error('SBC_MYSQL_BROKEN_CONNECTION'), {code:'SBC_MYSQL_BROKEN_CONNECTION'});";
+  const connGuard="          if (isBroken(target)) throw Object.assign(new Error('SBC_MYSQL_BROKEN_CONNECTION'), {code:'SBC_MYSQL_BROKEN_CONNECTION'});\n          if (['query','execute'].includes(prop) && String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase() !== 'writer' && sbcClassifySql(args[0]).isDdl) throw Object.assign(new Error('SBC_PREVIEW_DDL_BLOCKED: schema-changing SQL is disabled outside the Published writer runtime.'), {code:'SBC_PREVIEW_DDL_BLOCKED',sbcNoRetry:true});";
+  if(s.split(connAnchor).length!==2)throw new Error(MARKER+': leased connection DDL guard anchor mismatch');
+  s=s.replace(connAnchor,connGuard);
   const old=String.raw`        const result = await guardedConn[method](...args);
         releaseQuietly(guardedConn);
         return result;`;
