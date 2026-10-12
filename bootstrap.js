@@ -1,6 +1,6 @@
 'use strict';
 
-// GoDaddy repository-root launcher for SBC OS V65.1.27.
+// GoDaddy repository-root launcher for SBC OS V65.1.28.
 // Application source is stored in the adjacent source ZIP. GoDaddy installs the
 // listed runtime dependencies at this repository root; extracted modules resolve
 // upward to that node_modules directory.
@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.27';
-const HOTFIX_PATCH_ID = 'persistence-writer-v6527';
+const EXPECTED_VERSION = '65.1.28';
+const HOTFIX_PATCH_ID = 'runtime-writer-lease-v6528';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -135,6 +135,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6525-customer360-workspace.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6526-demo-studio.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6527-persistence-writer-lock.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6528-runtime-writer-lease.js')).apply(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
@@ -167,6 +168,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6525-customer360-workspace.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6526-demo-studio.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6527-persistence-writer-lock.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6528-runtime-writer-lease.js')).apply(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
   }
