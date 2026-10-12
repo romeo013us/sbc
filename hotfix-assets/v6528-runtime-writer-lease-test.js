@@ -13,5 +13,5 @@ assert.ok(patch.includes('SBC_RUNTIME_WRITER_LEASE_LOST'),'lost lease blocks wri
 assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'lease failure enters recovery-safe mode');
 assert.ok(bootstrap.includes("apply-v6528-runtime-writer-lease.js')).apply(temp)"),'build applies patch');
 assert.ok(bootstrap.includes("apply-v6528-runtime-writer-lease.js')).apply(runtimeDir)"),'runtime applies patch');
-assert.ok(bootstrap.includes("EXPECTED_VERSION = '65.1.29'"),'release version');
-console.log('V65.1.29 runtime writer lease: 9/9 PASS');
+assert.ok(bootstrap.includes("EXPECTED_VERSION = '65.1.31'"),'release version');
+console.log('V65.1.31 runtime writer lease: 9/9 PASS');

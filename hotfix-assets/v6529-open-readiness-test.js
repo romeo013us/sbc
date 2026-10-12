@@ -8,7 +8,7 @@ const bootstrap=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 const checks=[];
 function check(name,fn){fn();checks.push(name);}
-check('release identity is V65.1.29',()=>assert.equal(pkg.version,'65.1.29'));
+check('release identity is V65.1.31',()=>assert.equal(pkg.version,'65.1.31'));
 check('patcher is registered for verification and launch',()=>{assert.match(bootstrap,/apply-v6529-open-readiness\.js'\)\)\.apply\(temp\)/);assert.match(bootstrap,/apply-v6529-open-readiness\.js'\)\)\.apply\(runtimeDir\)/)});
 check('Preview status never requires DDL',()=>{assert.match(patch,/allowSchemaWrites=\(\)=>false/);assert.match(patch,/if\(!writerAllowed\)return/);assert.match(patch,/await ensureSchema\(\)/)});
 check('Growth Preview status is read-only',()=>{assert.match(patch,/const canWrite=String\(process\.env\.SBC_RUNTIME_ROLE\|\|''\)\.toLowerCase\(\)==='writer'/);assert.match(patch,/Preview is read-only\. No growth schema or configuration changes were attempted/)});
@@ -25,6 +25,6 @@ check('Lead Research count distinguishes total CRM from the 250-row page cap',()
 check('dashboard active lead count excludes synthetic test customers',()=>{assert.match(patch,/dashboard active leads exclude system tests/);assert.match(patch,/dashboard active lead classifier/)});
 check('dashboard print count and recent activity are truthful',()=>{assert.match(patch,/dashboard print-order count uses print pipeline/);assert.match(patch,/dashboard activity deduplication/)});
 check('Agent OS identifies read-only Preview rather than implying full readiness',()=>{assert.match(patch,/Agent OS read-only status notice/);assert.match(patch,/READ-ONLY PREVIEW · schema is not initialized/)});
-check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.29'/)});
-console.log(`V65.1.29 open-readiness regression: ${checks.length}/${checks.length} PASS`);
+check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.31'/)});
+console.log(`V65.1.31 open-readiness regression: ${checks.length}/${checks.length} PASS`);
 for(const name of checks)console.log('PASS '+name);
