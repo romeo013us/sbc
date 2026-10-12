@@ -1,6 +1,6 @@
 'use strict';
 
-// GoDaddy repository-root launcher for SBC OS V65.1.13.
+// GoDaddy repository-root launcher for SBC OS V65.1.26.
 // Application source is stored in the adjacent source ZIP. GoDaddy installs the
 // listed runtime dependencies at this repository root; extracted modules resolve
 // upward to that node_modules directory.
@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.18';
-const HOTFIX_PATCH_ID = 'webhook-evidence-hardening-5';
+const EXPECTED_VERSION = '65.1.26';
+const HOTFIX_PATCH_ID = 'demo-studio-v6526';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -129,6 +129,11 @@ function verifyOnly() {
     verifyExtracted(temp, SOURCE_VERSION);
     const hotfix = require(path.join(__dirname, 'apply-v65116-hotfix.js'));
     hotfix.apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6522-api-stabilization.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6523-read-query-cancel.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6524-single-writer.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6525-customer360-workspace.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6526-demo-studio.js')).apply(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
@@ -146,15 +151,25 @@ function launch() {
     validRuntime = m.sourceHash === sourceHash && m.version === EXPECTED_VERSION && m.patchId === HOTFIX_PATCH_ID && fs.existsSync(path.join(runtimeDir, 'server.js'));
     if (validRuntime) verifyExtracted(runtimeDir, EXPECTED_VERSION);
   } catch { validRuntime = false; }
+  const persistState = require(path.join(__dirname, 'persistent-state.js')).persistState;
   if (!validRuntime) {
+    // V65.1.19: adopt any live state BEFORE the folder is deleted, so a rebuild can never wipe it.
+    if (fs.existsSync(runtimeDir)) persistState(__dirname, runtimeDir, { reused: true });
     fs.rmSync(runtimeDir, { recursive: true, force: true });
     extractZip(bytes, runtimeDir);
     verifyExtracted(runtimeDir, SOURCE_VERSION);
     const hotfix = require(path.join(__dirname, 'apply-v65116-hotfix.js'));
     hotfix.apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6522-api-stabilization.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6523-read-query-cancel.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6524-single-writer.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6525-customer360-workspace.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6526-demo-studio.js')).apply(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
   }
+  // V65.1.19: data/ and backups/ live in one permanent folder outside every hashed runtime folder.
+  persistState(__dirname, runtimeDir, { reused: validRuntime });
   process.chdir(runtimeDir);
   console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
   require(path.join(runtimeDir, 'server.js'));

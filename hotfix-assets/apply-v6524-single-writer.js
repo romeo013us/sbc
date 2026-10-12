@@ -1,0 +1,43 @@
+'use strict';
+const fs=require('fs');
+const path=require('path');
+const MARKER='SBC_V6524_SINGLE_WRITER_PREVIEW';
+function once(s,old,next,label){const n=s.split(old).length-1;if(n!==1)throw new Error(MARKER+': '+label+' anchor count '+n);return s.replace(old,next)}
+function apply(root){
+ const server=path.join(root,'server.js');
+ if(!fs.existsSync(server))throw new Error(MARKER+': missing server.js');
+ let s=fs.readFileSync(server,'utf8');
+ if(!s.includes(MARKER)){
+  s=once(s,'let mysqlPool = null;\nlet db = {};',`let mysqlPool = null;\n// ${MARKER}: Preview and Published share one MySQL database; only Published may write.\nconst SBC_RUNTIME_ROLE = String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase();\nif (!['writer','readonly'].includes(SBC_RUNTIME_ROLE)) throw new Error('${MARKER}: SBC_RUNTIME_ROLE must be writer or readonly.');\nconst SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';\nlet db = {};`,'runtime role declaration');
+  s=once(s,"app.use(createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED}));",`app.use(createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED}));\n// ${MARKER}: Preview is a read-only consumer of the shared production database.\napp.use((req,res,next)=>{\n  if(!SBC_RUNTIME_READ_ONLY || !String(req.path||'').startsWith('/api/') || !['POST','PUT','PATCH','DELETE'].includes(String(req.method||'').toUpperCase())) return next();\n  if(req.path==='/api/login' || req.path==='/api/logout') return next();\n  return res.status(423).json({ok:false,error:'SBC_READ_ONLY_RUNTIME',readOnly:true,message:'This Preview runtime is read-only because Preview and Published share the SBC database. Use the Published app for approved changes.'});\n});`,'read-only API gate');
+  s=once(s,'    await RUNTIME_GATE.ensureSchema();',`    if(SBC_RUNTIME_READ_ONLY){\n      // Do not run DDL, migrations, seeders, or repairs from Preview. Hydrate only.\n      try{\n        await mysqlPool.query('SELECT DATABASE() AS database_name');\n        await readRelational();\n        const [[counts]]=await mysqlPool.query('SELECT (SELECT COUNT(*) FROM sbc_customers) AS customers,(SELECT COUNT(*) FROM sbc_quotes) AS quotes,(SELECT COUNT(*) FROM sbc_orders) AS orders,(SELECT COUNT(*) FROM sbc_renewals) AS renewals');\n        if(Number(counts?.customers||0)<VERIFIED_PRE_CORRUPTION_CRM_COUNT){MYSQL_RECOVERY_REQUIRED=true;storageMode='mysql-recovery-required';}\n        else storageMode='mysql-relational-read-only';\n        MYSQL_RECOVERY_EVALUATED=true;\n        console.log('[${MARKER}] runtime role=readonly; read-only MySQL hydration complete; schema/migrations/seeds skipped.');\n      }catch(e){\n        MYSQL_RECOVERY_REQUIRED=true;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-recovery-required';\n        console.error('[${MARKER}] read-only hydration failed closed:',String(e?.message||e));\n      }\n      return true;\n    }\n    console.log('[${MARKER}] runtime role=writer; this Published runtime owns MySQL mutations.');\n    await RUNTIME_GATE.ensureSchema();`,'read-only MySQL startup');
+  s=once(s,'async function saveData(){\n  // V65.1.11:',`async function saveData(){\n  if(SBC_RUNTIME_READ_ONLY){return {skipped:true,reason:'SBC_READ_ONLY_RUNTIME'};}\n  // V65.1.11:`,'saveData write guard');
+  s=once(s,'initMysql().then(async()=>{SBC_UNATTENDED_NOTIFICATIONS.start();',`initMysql().then(async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('[${MARKER}] read-only runtime: skipping notifications, seed/repair writes, and all automation startup.');return;}SBC_UNATTENDED_NOTIFICATIONS.start();`,'startup worker guard');
+  const autonomyAnchor = "}).then(async()=>{if(MYSQL_RECOVERY_REQUIRED){console.warn('[SBC RECOVERY GUARD] runtime is in safe recovery mode; background automation, revenue, Kim missions, and mutation workers remain suspended until authoritative MySQL restore.');return;}";
+  const autonomyReplacement = "}).then(async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('"+MARKER+" read-only runtime: autonomous sweep and all background mutation timers skipped.');return;}if(MYSQL_RECOVERY_REQUIRED){console.warn('[SBC RECOVERY GUARD] runtime is in safe recovery mode; background automation, revenue, Kim missions, and mutation workers remain suspended until authoritative MySQL restore.');return;}";
+  s=once(s,autonomyAnchor,autonomyReplacement,'autonomy worker guard');
+  s=once(s,'const startOperationalRuntime=async()=>{',`const startOperationalRuntime=async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('[${MARKER}] read-only runtime: background workers and WebSockets not started.');return;}`,'operational worker guard');
+  fs.writeFileSync(server,s);
+ }
+ const testSource=path.join(__dirname,'v6524-single-writer-test.js');
+ const testDest=path.join(root,'hotfix-assets','v6524-single-writer-test.js');
+ if(fs.existsSync(testSource)){fs.mkdirSync(path.dirname(testDest),{recursive:true});fs.copyFileSync(testSource,testDest);}
+ const pkgPath=path.join(root,'package.json');
+ const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8'));
+ if(pkg.name!=='sbc-business-command-center')throw new Error(MARKER+': unexpected package identity');
+ pkg.version='65.1.24';pkg.description='SBC OS V65.1.24 single-writer runtime gate and read-only Preview isolation';
+ fs.writeFileSync(pkgPath,JSON.stringify(pkg,null,2)+'\n');
+ const ver=path.join(root,'VERSION');if(fs.existsSync(ver))fs.writeFileSync(ver,fs.readFileSync(ver,'utf8').replace(/65\.1\.23/g,'65.1.24'));
+ const ident=path.join(root,'config','release-identity.js');if(fs.existsSync(ident)){let x=fs.readFileSync(ident,'utf8').replace(/65\.1\.23/g,'65.1.24').replace(/patch:\s*23\b/,'patch:24');fs.writeFileSync(ident,x);}
+ const scripts=path.join(root,'scripts');if(fs.existsSync(scripts))for(const n of fs.readdirSync(scripts)){if(!n.endsWith('.js'))continue;const f=path.join(scripts,n);let x=fs.readFileSync(f,'utf8').replace(/65\\\.1\\\.23/g,'65\\.1\\.24').replace(/65\.1\.23/g,'65.1.24').replace(/patch:23\b/g,'patch:24').replace(/patch===23\b/g,'patch===24');fs.writeFileSync(f,x)}
+ const pkgLock=path.join(root,'package-lock.json');if(fs.existsSync(pkgLock)){const lock=JSON.parse(fs.readFileSync(pkgLock,'utf8'));lock.version='65.1.24';if(lock.packages?.['']){lock.packages[''].version='65.1.24';lock.packages[''].description=pkg.description;}fs.writeFileSync(pkgLock,JSON.stringify(lock,null,2)+'\n');}
+ const notes=path.join(root,'RELEASE-NOTES-V65.1.24-SINGLE-WRITER.md');fs.writeFileSync(notes,"# SBC OS V65.1.24 \u2014 Single-writer runtime gate\n\n## Why\nOct 11 logs show repeated STALE_MODEL_REFUSED errors with the database epoch advancing beyond a process snapshot, MySQL lock-wait timeouts, and session-store timeouts. Preview and Published share one database, so both runtimes must not run full-snapshot persistence.\n\n## Required runtime configuration\n- Published: set SBC_RUNTIME_ROLE=writer. Only Published runs migrations, seed/repair, full-snapshot saves, and background automation.\n- Preview: set SBC_RUNTIME_ROLE=readonly, or leave it unset (fail-closed default). Preview hydrates existing schema with SELECTs only, skips migrations/seeding/background workers, blocks API business mutations, and serves a read-only UI.\n- Configure roles in each environment's own settings before deploying. Never set both environments to writer.\n\n## Safeguards\n- Does not reset or bypass the persistence epoch check.\n- Does not restore data, unlock recovery, initiate payments/refunds, or send outreach.\n- If Preview cannot hydrate, it fails closed into recovery-safe status.\n- Retains V65.1.23 read-query cancellation.\n\n## Limits\nLocal regression tests do not prove GoDaddy environment scoping. After deployment, verify writer only in Published and readonly in Preview, then confirm stale-epoch and lock-wait errors stop before enabling business writes.\n");
+ // append package test to test:all
+ // package object remains in scope for test-script registration
+ if(!pkg.scripts['test:all'].includes('v6524-single-writer-test.js'))pkg.scripts['test:all']+=' && node hotfix-assets/v6524-single-writer-test.js'
+ fs.writeFileSync(pkgPath,JSON.stringify(pkg,null,2)+'\n')
+ // update lock root description and package version after test script update
+ if(fs.existsSync(pkgLock)){const lock=JSON.parse(fs.readFileSync(pkgLock,'utf8'));lock.version='65.1.24';if(lock.packages?.['']){lock.packages[''].version='65.1.24';lock.packages[''].description=pkg.description;lock.packages[''].scripts=pkg.scripts;}fs.writeFileSync(pkgLock,JSON.stringify(lock,null,2)+'\n')}
+ return {marker:MARKER,version:'65.1.24'};
+}
+module.exports={apply,MARKER};
