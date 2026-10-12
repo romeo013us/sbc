@@ -1,35 +1,13 @@
 'use strict';
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const root = path.resolve(__dirname, '..');
-const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
-
-const start = server.indexOf('async function handleVendorTrackingWebhook(provider,raw){');
-const end = server.indexOf("\napp.post('/api/webhooks/4over4'", start);
-assert.ok(start >= 0 && end > start, 'vendor tracking handler must exist');
-const handler = server.slice(start, end);
-
-assert.match(handler, /SBC_V65118_PROVIDER_MATCH_TRACKING_EVIDENCE/, 'V65.1.18 evidence guard marker');
-assert.match(handler, /normalizeVendor\(job\?\.vendor\)/, 'webhook must normalize the job vendor');
-assert.match(handler, /expectedProvider==='4over4'.*fouroverfour/s, '4OVER4 endpoint may update only 4OVER4 jobs');
-assert.match(handler, /expectedProvider==='vistaprint'.*vistaprint/s, 'VistaPrint endpoint may update only VistaPrint jobs');
-assert.match(handler, /return refMatches&&isExpectedVendor\(j\)/, 'job match must include provider match');
-assert.match(handler, /if\(\(shippingState\|\|terminalDelivery\)&&!trackingNumber\)return \{ok:false,error:'tracking_number_required_for_shipping_status'\}/, 'shipping and terminal statuses require tracking evidence');
-const evidenceIndex = handler.indexOf('if((shippingState||terminalDelivery)&&!trackingNumber)');
-const mutationIndex = handler.indexOf('job.vendorStatus=status;');
-assert.ok(evidenceIndex >= 0 && mutationIndex > evidenceIndex, 'evidence must be validated before mutating the job');
-assert.match(handler, /if\(terminalDelivery\)job\.status='completed'/, 'only terminal delivery statuses mark completion after the evidence gate');
-assert.equal((server.match(/res\.status\(result\.ok\?200:409\)\.json\(result\)/g)||[]).length, 2, 'both vendor endpoints return conflict for rejected webhook events');
-assert.doesNotMatch(server, /res\.status\(200\)\.json\(await handleVendorTrackingWebhook\(/, 'vendor endpoint must not acknowledge rejected event bodies with HTTP 200');
-console.log(JSON.stringify({
-  ok: true,
-  version: '65.1.18',
-  checks: [
-    'provider-to-job binding',
-    'vendor reference cannot cross provider boundaries',
-    'tracking evidence required for shipped/delivered/fulfilled events',
-    'invalid events leave state unchanged',
-    'rejected webhook payloads return HTTP 409'
-  ]
-}, null, 2));
+const assert=require('node:assert/strict');const fs=require('node:fs');const os=require('node:os');const path=require('node:path');const vm=require('node:vm');const candidates=[path.join(__dirname,'apply-v65118-webhook-patch.js'),path.join(__dirname,'..','hotfix-assets','apply-v65118-webhook-patch.js'),path.join(__dirname,'..','..','hotfix-assets','apply-v65118-webhook-patch.js'),path.join(__dirname,'..','..','..','hotfix-assets','apply-v65118-webhook-patch.js')];const patchPath=candidates.find(p=>fs.existsSync(p));if(!patchPath)throw new Error('V65.1.18 patcher not found in asset, source, or CI overlay locations');const {apply}=require(patchPath);
+const original="async function handleVendorTrackingWebhook(provider,raw){\nlet body=JSON.parse(raw.toString('utf8')||'{}');const m=megaData();const job=m.fulfillmentJobs.find(j=>String(j.id)===String(body.jobId));if(!job)return {ok:false};const status=String(body.status||'').toLowerCase();job.vendorStatus=status; job.trackingNumber=body.trackingNumber||'';if(/delivered|complete|fulfilled/.test(status))job.status='completed';await megaSave(m);return {ok:true};\n}";
+const old4="try{res.status(200).json(await handleVendorTrackingWebhook('4over4',raw));}catch(e){res.status(500).json({error:e.message});}";const oldVista="try{res.status(200).json(await handleVendorTrackingWebhook('vistaprint',raw));}catch(e){res.status(500).json({error:e.message});}";
+function state(vendor,status){return {fulfillmentJobs:[{id:'job-1',orderId:'order-1',vendor:vendor||'4Over4',vendorStatus:'created',trackingNumber:status==='completed'?'TRACK-123':'',status:status||'pending',seenEvents:[]}],automationEvents:[]};}
+async function run(handler,payload,provider,vendor,existingState){const s=existingState||state(vendor),before=JSON.stringify(s);const c={Buffer,JSON,String,RegExp,require,megaData:()=>s,megaSave:async()=>{},saveData:async()=>{},db:{orders:[]},now:()=> 'test-time',id:()=> 'event-1'};vm.createContext(c);vm.runInContext(handler,c);const result=await c.handleVendorTrackingWebhook(provider||'4over4',Buffer.from(JSON.stringify(payload)));return {result,state:s,before};}
+(async()=>{const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v65118-webhook-'));try{const file=path.join(tmp,'server.js');fs.writeFileSync(file,original+"\napp.post('/api/webhooks/4over4', (req,res)=>{"+old4+"});\napp.post('/api/webhooks/vistaprint', (req,res)=>{"+oldVista+"});\n");const a=apply(tmp),first=fs.readFileSync(file,'utf8'),b=apply(tmp),second=fs.readFileSync(file,'utf8');assert.equal(a.idempotent,true);assert.equal(b.idempotent,true);assert.equal(second,first,'second application must be byte-for-byte stable');assert.match(second,/SBC_V65118_REPLAY_ORDER_GUARD/,'replay guard marker must be installed');assert.match(second,/createHash\('sha256'\)/,'event payload must be fingerprinted');assert.match(second,/rankState\(nextState\)<rankState\(job\.status\)/,'state rank must reject backward transitions');const start=second.indexOf('async function handleVendorTrackingWebhook(provider,raw){'),end=second.indexOf("\napp.post('/api/webhooks/4over4'",start);assert.ok(start>=0&&end>start);const handler=second.slice(start,end);
+for(const status of ['in_transit','in-transit','in transit',' SHIPPED ']){const out=await run(handler,{jobId:'job-1',status});assert.equal(out.result.ok,false,status+' without tracking must be rejected');assert.equal(out.result.error,'tracking_number_required_for_shipping_status');assert.equal(JSON.stringify(out.state),out.before,status+' must not mutate state when rejected');}
+for(const status of ['in_transit','in-transit','in transit',' SHIPPED ']){const out=await run(handler,{jobId:'job-1',status,tracking_number:'TRACK-123'});assert.equal(out.result.ok,true);assert.equal(out.state.fulfillmentJobs[0].status,'shipped');assert.equal(out.state.fulfillmentJobs[0].trackingNumber,'TRACK-123');assert.equal(out.state.automationEvents.length,1);}
+const mismatch=await run(handler,{jobId:'job-1',status:'in transit',tracking_number:'TRACK-123'},'4over4','VistaPrint');assert.equal(mismatch.result.ok,false,'provider mismatch must be rejected');assert.equal(mismatch.state.automationEvents.length,0);assert.equal(mismatch.state.fulfillmentJobs[0].status,'pending');
+const duplicatePayload={jobId:'job-1',status:'shipped',tracking_number:'TRACK-123'};const duplicateState=state();const firstDelivery=await run(handler,duplicatePayload,'4over4','4Over4',duplicateState);assert.equal(firstDelivery.result.ok,true);const eventCount=duplicateState.automationEvents.length;const duplicate=await run(handler,duplicatePayload,'4over4','4Over4',duplicateState);assert.equal(duplicate.result.ignored,'duplicate_event');assert.equal(duplicateState.automationEvents.length,eventCount,'duplicate must not create a second automation event');assert.equal(duplicateState.fulfillmentJobs[0].seenEvents.length,1);
+const completedState=state('4Over4','completed');const stale=await run(handler,{jobId:'job-1',status:'shipped',tracking_number:'TRACK-123'},'4over4','4Over4',completedState);assert.equal(stale.result.ignored,'stale_event');assert.equal(completedState.fulfillmentJobs[0].status,'completed','stale shipping must not downgrade completed job');assert.equal(completedState.automationEvents.length,0,'stale event must not emit a new event');const staleReplay=await run(handler,{jobId:'job-1',status:'shipped',tracking_number:'TRACK-123'},'4over4','4Over4',completedState);assert.equal(staleReplay.result.ignored,'duplicate_event','ignored stale event must be recorded for replay suppression');
+console.log(JSON.stringify({ok:true,version:'65.1.18',checks:['patch applies twice and is byte-for-byte idempotent','status spelling/case variants normalize consistently','missing tracking rejects before mutation','valid tracking permits shipment transition','provider mismatch cannot mutate another vendor job','replayed payload is deduplicated','stale shipped event cannot downgrade completed job']},null,2));}finally{fs.rmSync(tmp,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});
