@@ -104,6 +104,7 @@ function apply(root) {
       "app.post('/api/login',rateLimit(),async(req,res)=>{\n  if(!MYSQL_RECOVERY_EVALUATED) return res.status(503).json({ok:false,error:'SBC is still verifying authoritative MySQL recovery. Retry sign-in shortly.',code:'MYSQL_RECOVERY_NOT_EVALUATED',retryable:true,requestId:req.requestId||null});\n  try{\n    if(!MYSQL_RECOVERY_REQUIRED) ensureCoreTeamProfiles();",
       'login gate while authoritative recovery evaluation is incomplete'
     );
+    fs.writeFileSync(serverPath, server);
 
   const autopilotPath = path.join(root, 'enterprise', 'v56170-six-phase-autopilot.js');
   let autopilot = fs.readFileSync(autopilotPath, 'utf8');
