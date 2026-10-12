@@ -1,4 +1,4 @@
-name: Verify SBC V65.1.18 vendor webhook evidence hardening
+name: Verify SBC OS V65.1.28 Demo Studio
 
 on:
   push:
@@ -6,12 +6,11 @@ on:
     paths:
       - 'bootstrap.js'
       - 'package.json'
-      - 'apply-v65116-hotfix.js'
-      - 'hotfix-assets/v65116-*'
-      - 'hotfix-assets/apply-v65117-workorder-patch.js'
-      - 'hotfix-assets/v65117-workorder-regression-test.js'
-      - 'hotfix-assets/apply-v65118-webhook-patch.js'
-      - 'hotfix-assets/v65118-webhook-evidence-test.js'
+      - 'package-lock.json'
+      - 'persistent-state.js'
+      - 'persistent-state-test.js'
+      - 'hotfix-assets/**'
+      - 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip'
       - '.github/workflows/verify-sbc-v65116.yml'
   pull_request:
     branches: [main]
@@ -33,88 +32,28 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: package.json
+          cache-dependency-path: package-lock.json
 
-      - name: Validate root launch files
+      - name: Validate release identity and launch files
         run: |
+          set -euo pipefail
           node --check bootstrap.js
-          node --check persistent-state.js
-          node --check persistent-state-test.js
-          node persistent-state-test.js
-          node --check apply-v65116-hotfix.js
-          node --check hotfix-assets/apply-v65117-workorder-patch.js
-          node --check hotfix-assets/v65117-workorder-regression-test.js
-          node --check hotfix-assets/apply-v65118-webhook-patch.js
-          node --check hotfix-assets/v65118-webhook-evidence-test.js
-          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.18'||p.scripts.start!=='node bootstrap.js') process.exit(1); console.log(p.name+'@'+p.version)"
+          node --check hotfix-assets/apply-v6528-runtime-writer-lease.js
+          node --check hotfix-assets/v6528-runtime-writer-lease-test.js
+          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.28'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
+          test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
+          test -f persistent-state.js
+          test -f persistent-state-test.js
+          test -f hotfix-assets/apply-v6526-demo-studio.js
+          test -f hotfix-assets/v6526-demo-studio-test.js
+          test -f hotfix-assets/apply-v6528-runtime-writer-lease.js
+          test -f hotfix-assets/v6528-runtime-writer-lease-test.js
 
-      - name: Install root launcher dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install locked root dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Extract and apply the deterministic hotfix to the source bundle
-        run: |
-          set -euo pipefail
-          rm -rf .ci-work
-          mkdir -p .ci-work/source
-          unzip -q SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip -d .ci-work/source
-          node -e "const p=require('./apply-v65116-hotfix.js'); const r=p.apply(require('path').resolve('.ci-work/source')); console.log(JSON.stringify(r))"
-          node --check .ci-work/source/server.js
-          node --check .ci-work/source/enterprise/session-store.js
-          node --check .ci-work/source/enterprise/kim-god-os.js
-          node --check .ci-work/source/workers/checkout-event-worker.js
-          node --check .ci-work/source/workers/run-shard.js
-          node -e "const p=require('./.ci-work/source/package.json'); const r=require('./.ci-work/source/config/release-identity.js'); if(p.version!=='65.1.18'||r.RELEASE_VERSION!==p.version) process.exit(1); console.log('patched release identity verified')"
+      - name: Verify SBC root release build
+        run: npm run build
 
-      - name: Install source dependency lock
-        working-directory: .ci-work/source
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Run complete SBC test suite
-        working-directory: .ci-work/source
+      - name: Run complete SBC regression suite
         run: npm run test:all
-
-      - name: Run predeploy open gate
-        working-directory: .ci-work/source
-        run: npm run predeploy:open-gate
-
-
-      - name: Package flat GoDaddy root release
-        run: |
-          set -euo pipefail
-          rm -f SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip
-          test -f package-lock.json
-          zip -qr SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip \
-            package.json package-lock.json bootstrap.js persistent-state.js persistent-state-test.js apply-v65116-hotfix.js \
-            hotfix-assets/apply-v65117-workorder-patch.js hotfix-assets/v65117-workorder-regression-test.js \
-            hotfix-assets/apply-v65118-webhook-patch.js hotfix-assets/v65118-webhook-evidence-test.js \
-            hotfix-assets/v65116-operational-unlock-test.js hotfix-assets/v65116-session-timeout-test.js \
-            SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
-          unzip -t SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'package.json'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'package-lock.json'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'bootstrap.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'persistent-state.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'persistent-state-test.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'apply-v65116-hotfix.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'hotfix-assets/apply-v65117-workorder-patch.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'hotfix-assets/v65117-workorder-regression-test.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'hotfix-assets/apply-v65118-webhook-patch.js'
-          unzip -Z1 SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip | grep -qx 'hotfix-assets/v65118-webhook-evidence-test.js'
-
-      - name: Upload downloadable release
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbc-v65.1.18-godaddy-root-release
-          path: SBC-OS-V65.1.18-GODADDY-ROOT-RELEASE.zip
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Package integrity test
-        run: |
-          test -f .ci-work/source/package.json
-          test -f .ci-work/source/package-lock.json
-          test -f .ci-work/source/server.js
-          unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip >/dev/null
-          echo "Source archive, hotfix overlay, and release identity checks passed."
