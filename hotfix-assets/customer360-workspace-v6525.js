@@ -9,7 +9,7 @@
   const quotes = () => (state && state.data && Array.isArray(state.data.quotes)) ? state.data.quotes : [];
   const customerById = id => customers().find(c => String(c.id ?? c.customer_id ?? c.customerId ?? '') === String(id));
   const quoteCustomerId = q => String(q.customerId ?? q.customer_id ?? q.customerID ?? '');
-  const isLocked = () => Boolean(state?.data?.recoveryRequired || state?.data?.readOnly || state?.data?.mysqlRecoveryRequired);
+  const isLocked = () => Boolean(state?.data?.recovery?.required || state?.data?.recoveryRequired || state?.data?.readOnly || state?.data?.mysqlRecoveryRequired);
   const canSell = () => !['caller','demo'].includes(String(state?.me?.role || '').toLowerCase());
   function addButton(parent, label, cls, fn, disabled, title){
     const b = document.createElement('button'); b.type='button'; b.className='btn '+(cls||''); b.textContent=label;
