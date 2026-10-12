@@ -148,7 +148,7 @@ function apply(root) {
     let identity = fs.readFileSync(identityPath, 'utf8');
     identity = identity.replace(/const RELEASE_VERSION = '[^']+';/, "const RELEASE_VERSION = '" + VERSION + "';");
     identity = identity.replace(/const RELEASE_NAME = '[^']+';/, "const RELEASE_NAME = 'PUBLISHED_AUTH_STABILITY';");
-    identity = identity.replace(/major:\\d+,minor:\\d+,patch:\\d+/, 'major:65,minor:1,patch:32');
+    identity = identity.replace(/major:\d+,minor:\d+,patch:\d+/, 'major:65,minor:1,patch:32');
     fs.writeFileSync(identityPath, identity);
   }
 
