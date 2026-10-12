@@ -148,6 +148,8 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6527-persistence-writer-lock.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6528-runtime-writer-lease.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6529-open-readiness.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6530-writer-lease-marker-fix.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6531-release-identity.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -183,6 +185,8 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6527-persistence-writer-lock.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6528-runtime-writer-lease.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6529-open-readiness.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6530-writer-lease-marker-fix.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6531-release-identity.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
