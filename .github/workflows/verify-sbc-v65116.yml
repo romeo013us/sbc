@@ -86,5 +86,21 @@ jobs:
       - name: Verify SBC root release build
         run: npm run build
 
+      - name: Read-only audit of source startup DDL
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source-audit
+          unzip -q SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip -d source-audit
+          ROOT=source-audit
+          if [ ! -f "$ROOT/server.js" ] && [ -f "$ROOT/SBC-OS/server.js" ]; then ROOT="$ROOT/SBC-OS"; fi
+          test -f "$ROOT/server.js"
+          echo '--- DDL statements in source JS ---'
+          grep -R -n -i -E 'CREATE[[:space:]]+(TABLE|INDEX|DATABASE)|ALTER[[:space:]]+(TABLE|DATABASE)|DROP[[:space:]]+(TABLE|DATABASE)|RENAME[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' "$ROOT" --include='*.js' --exclude-dir=node_modules | head -300 || true
+          echo '--- schema/migration entrypoints ---'
+          grep -R -n -E 'ensureSchema|ensureEnterpriseSchema|runMigrations|migrate|initMysql|schemaSync|syncSchema' "$ROOT/server.js" "$ROOT/enterprise" "$ROOT/routes" --include='*.js' 2>/dev/null | head -300 || true
+          echo '--- boot-time schema call sites ---'
+          grep -n -B 12 -A 20 -E 'ensureSchema|ensureEnterpriseSchema|runMigrations|migrate|CREATE TABLE|ALTER TABLE' "$ROOT/server.js" | head -300 || true
+
       - name: Run complete SBC regression suite
         run: npm run test:all
