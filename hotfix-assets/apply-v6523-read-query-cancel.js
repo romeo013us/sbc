@@ -9,14 +9,39 @@ function apply(root){
  if(!s.includes(MARKER)){
   const anchor="const TRANSIENT_CODES = new Set([";
   if(s.split(anchor).length!==2) throw new Error(MARKER+': guard anchor mismatch');
-  s=s.replace(anchor,"// "+MARKER+": cancel timed-out read-only work by destroying its leased connection.\n"+anchor);
+  s=s.replace(anchor,"// "+MARKER+": cancel timed-out read-only work by destroying its leased connection.\n"+String.raw`function sbcClassifySql(sql){
+ const normalized=String(typeof sql==='string'?sql:(sql&&sql.sql)||'').replace(/(?:--[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g,' ').trim();
+ const words=[];let depth=0,quote='',i=0;
+ while(i<normalized.length){const ch=normalized[i],next=normalized[i+1];
+  if(quote){if(ch==='\\'){i+=2;continue;}if(ch===quote){if(normalized[i+1]===quote&&quote!==String.fromCharCode(96)){i+=2;continue;}quote='';}i++;continue;}
+  if((ch==='-'&&next==='-')||ch==='#'){while(i<normalized.length&&normalized[i]!=='\n')i++;continue;}
+  if(ch==='/'&&next==='*'){i+=2;while(i<normalized.length&&!(normalized[i]==='*'&&normalized[i+1]==='/'))i++;i=Math.min(normalized.length,i+2);continue;}
+  if(ch==='\''||ch==='\"'||ch===String.fromCharCode(96)){quote=ch;i++;continue;}
+  if(ch==='('){depth++;i++;continue;}if(ch===')'){depth=Math.max(0,depth-1);i++;continue;}
+  if(depth===0&&/[A-Za-z_]/.test(ch)){let j=i+1;while(j<normalized.length&&/[A-Za-z0-9_$]/.test(normalized[j]))j++;words.push(normalized.slice(i,j).toUpperCase());i=j;continue;}
+  i++;
+ }
+ const startsWithWith=/^WITH\b/i.test(normalized);
+ const verb=startsWithWith?(words.find(w=>['SELECT','INSERT','UPDATE','DELETE','REPLACE'].includes(w))||''):(normalized.match(/^(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN|INSERT|UPDATE|DELETE|REPLACE|CREATE|ALTER|DROP|TRUNCATE|RENAME|GRANT|REVOKE|ANALYZE|OPTIMIZE|REPAIR|INSTALL|UNINSTALL)\b/i)||[])[1]?.toUpperCase()||'';
+ const isReadOnly=/^(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN)\b/i.test(normalized)||(startsWithWith&&verb==='SELECT');
+ const isDdl=/^(CREATE|ALTER|DROP|TRUNCATE|RENAME|GRANT|REVOKE|ANALYZE|OPTIMIZE|REPAIR|INSTALL|UNINSTALL)\b/i.test(normalized);
+ return {normalized,verb,isReadOnly,isDdl};
+}`+"\n"+anchor);
+  const oldStart='  async function runFresh(method, args) {\n    let last;';
+  const newStart=String.raw`  async function runFresh(method, args) {
+    const sqlInfo=sbcClassifySql(args[0]);
+    if (String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase() !== 'writer' && sqlInfo.isDdl) {
+      throw Object.assign(new Error('SBC_PREVIEW_DDL_BLOCKED: schema-changing SQL is disabled outside the Published writer runtime.'), {code:'SBC_PREVIEW_DDL_BLOCKED',sbcNoRetry:true});
+    }
+    let last;`;
+  if(s.split(oldStart).length!==2)throw new Error(MARKER+': runFresh anchor mismatch');
+  s=s.replace(oldStart,newStart);
   const old=String.raw`        const result = await guardedConn[method](...args);
         releaseQuietly(guardedConn);
         return result;`;
-  const next=String.raw`        const sqlArg = args[0];
-        const sqlText = typeof sqlArg === 'string' ? sqlArg : String(sqlArg?.sql || '');
-        const normalizedSql = sqlText.replace(/(?:--[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g, ' ').trim();
-        const isReadOnly = /^(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN|WITH)\b/i.test(normalizedSql);
+  const next=String.raw`        const sqlInfo = sbcClassifySql(args[0]);
+        const normalizedSql = sqlInfo.normalized;
+        const isReadOnly = sqlInfo.isReadOnly;
         let result;
         if (isReadOnly) {
           let timer;
@@ -40,6 +65,9 @@ function apply(root){
   const old2='        const transient = isTransientMySQLError(error);';
   if(s.split(old2).length!==2) throw new Error(MARKER+': retry anchor mismatch');
   s=s.replace(old2,'        const transient = !error?.sbcNoRetry && isTransientMySQLError(error);');
+  const exportAnchor='module.exports = { wrapPool, isTransientMySQLError, wrapConnection };';
+  if(s.split(exportAnchor).length!==2)throw new Error(MARKER+': export anchor mismatch');
+  s=s.replace(exportAnchor,'module.exports = { wrapPool, isTransientMySQLError, wrapConnection, classifySql: sbcClassifySql };');
   fs.writeFileSync(file,s);
  }
  const sourcePkgPath=path.join(root,'package.json'); const sourcePkg=JSON.parse(fs.readFileSync(sourcePkgPath,'utf8')); if(!sourcePkg.scripts['test:all'].includes('v6523-read-query-cancel-test.js')) sourcePkg.scripts['test:all'] += ' && node hotfix-assets/v6523-read-query-cancel-test.js'; fs.writeFileSync(sourcePkgPath,JSON.stringify(sourcePkg,null,2)+'\n');
