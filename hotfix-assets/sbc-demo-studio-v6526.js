@@ -31,6 +31,8 @@
       </div>`;
     if (typeof openModal !== 'function') throw new Error('SBC modal host is unavailable.');
     openModal('SBC Demo Studio', html);
+    const selectedStyle = document.getElementById('v6526DesignStyle');
+    if (selectedStyle) selectedStyle.value = demo.designStyle || demo.templateMetadata?.designStyle || 'generative';
     wireStudio();
   }
 
@@ -112,7 +114,7 @@
   window.generateWebsiteDemo = async function (customerId) {
     const customer = getCustomer(customerId);
     if (!customer) { showToast('Customer record not found. Refresh Customer 360 and try again.'); return; }
-    if (typeof state !== 'undefined' && state.data && (state.data.recoveryRequired || state.data.readOnly || state.data.mysqlRecoveryRequired)) { showToast('Demo generation is disabled while SBC is in recovery/read-only mode.'); return; }
+    if (typeof state !== 'undefined' && state.data && (state.data.recovery?.required || state.data.recoveryRequired || state.data.readOnly || state.data.mysqlRecoveryRequired)) { showToast('Demo generation is disabled while SBC is in recovery/read-only mode.'); return; }
     try {
       openModal('SBC Demo Studio', '<div class="v6526-studio-loading"><div class="v6526-spinner"></div><h3>Building the website concept…</h3><p>Preparing the industry-specific layout and preview link.</p></div>');
       const result = await apiCall('/api/website-demos', { method: 'POST', body: JSON.stringify({ customerId: customer.id, fast: true }) });
