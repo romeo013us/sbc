@@ -25,6 +25,6 @@ check('Lead Research count distinguishes total CRM from the 250-row page cap',()
 check('dashboard active lead count excludes synthetic test customers',()=>{assert.match(patch,/dashboard active leads exclude system tests/);assert.match(patch,/dashboard active lead classifier/)});
 check('dashboard print count and recent activity are truthful',()=>{assert.match(patch,/dashboard print-order count uses print pipeline/);assert.match(patch,/dashboard activity deduplication/)});
 check('Agent OS identifies read-only Preview rather than implying full readiness',()=>{assert.match(patch,/Agent OS read-only status notice/);assert.match(patch,/READ-ONLY PREVIEW · schema is not initialized/)});
-check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.29'/)});
+check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.31'/)});
 console.log(`V65.1.31 open-readiness regression: ${checks.length}/${checks.length} PASS`);
 for(const name of checks)console.log('PASS '+name);
