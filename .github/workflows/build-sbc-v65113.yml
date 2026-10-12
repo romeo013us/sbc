@@ -2,6 +2,8 @@ name: Build SBC V65.1.13 GoDaddy ZIP
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -35,6 +37,17 @@ jobs:
           test -f source/package.json
           test -f source/server.js
           node -e "const p=require('./source/package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.13') { console.error('Unexpected package identity:',p.name,p.version); process.exit(1) }; console.log(p.name+'@'+p.version)"
+
+      - name: Diagnose bundled authentication and tenant-context code
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- session-store symbol locations (source only; no runtime credentials) ---'
+          grep -nE 'sessionSecret|SESSION_SECRET|persistSession|mysqlQuery|withTimeout|signature|createHmac|timingSafeEqual|TENANT_CONTEXT_REQUIRED' source/enterprise/session-store.js | head -100 || true
+          echo '--- tenant-context throw sites ---'
+          grep -R -n --include='*.js' 'TENANT_CONTEXT_REQUIRED' source/server.js source/routes source/enterprise | head -80 || true
+          echo '--- auth/session call sites ---'
+          grep -nE 'SESSION_STORE|makeSession|persistSession|verify.*token|token.*signature|session store timeout' source/server.js | head -100 || true
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
