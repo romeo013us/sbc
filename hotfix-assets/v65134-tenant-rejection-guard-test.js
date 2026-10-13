@@ -11,6 +11,7 @@ const fakeProcess = { on: emitter.on.bind(emitter), emit: emitter.emit.bind(emit
 const logs = [];
 const logger = { error: (...args) => logs.push(args.join(' ')) };
 assert.equal(installTenantRejectionGuard(fakeProcess, logger), true);
+assert.equal(installTenantRejectionGuard(fakeProcess, logger), false);
 fakeProcess.on('unhandledRejection', reason => { throw new Error('fatal handler invoked: ' + reason.message); });
 assert.doesNotThrow(() => fakeProcess.emit('unhandledRejection', Object.assign(new Error('TENANT_CONTEXT_REQUIRED'), { code: 'TENANT_CONTEXT_REQUIRED' }), Promise.resolve()));
 assert.equal(logs.length, 1);
