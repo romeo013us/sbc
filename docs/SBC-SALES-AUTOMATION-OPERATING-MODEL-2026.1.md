@@ -131,7 +131,7 @@ These are verification tasks, not assumptions:
 
 - The reviewed source snapshot contains a Command Center Sales Order Builder that creates an internal order and can request a Square payment link; payment confirmation can create a fulfillment task. This does not by itself prove GoDaddy reseller order creation is integrated.
 - No verified GoDaddy reseller order-creation adapter or live test evidence was found in the reviewed source snapshot. Confirm the supported reseller API/product flow and credentials before building an adapter.
-- Confirm the current source of truth for package prices and inclusions. The reviewed source snapshot lists $199, $349, and $699 in its Sales Order Builder, while the business pricing notes list $199, $349, and $599. Do not silently choose one: reconcile storefront, Command Center, payment links, and approved price sheet before training reps to quote prices.
+- The owner confirmed that $699 is the correct top-package price. Keep the approved package prices and inclusions consistent across the storefront, Command Center catalog, payment links, receipts, and sales-training materials. Verify these values in Preview before enabling production sales; do not substitute an older price note.
 - The latest provided GoDaddy logs show Preview running read-only and skipping background automation while recovery remains unresolved. This is not a production-readiness sign-off.
 - Verify that provider orders, payment events, fulfillment tasks, customer notices, and Training Center completion are durable and tenant-scoped in the actual GoDaddy Preview before any Live release.
 
