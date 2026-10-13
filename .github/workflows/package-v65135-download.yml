@@ -1,0 +1,39 @@
+name: Package SBC V65.1.35 for GoDaddy
+
+on:
+  push:
+    branches:
+      - release/v65.1.35-downloadable-package
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify release and regression suite
+        run: npm run test:all
+      - name: Build deployment ZIP
+        run: |
+          zip -r SBC-OS-V65.1.35-GODADDY-DEPLOY.zip . \
+            -x './.git/*' './.github/*' './node_modules/*' './SBC-OS-V65.1.35-GODADDY-DEPLOY.zip'
+          test -s SBC-OS-V65.1.35-GODADDY-DEPLOY.zip
+          unzip -t SBC-OS-V65.1.35-GODADDY-DEPLOY.zip
+      - name: Upload deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SBC-OS-V65.1.35-GODADDY-DEPLOY
+          path: SBC-OS-V65.1.35-GODADDY-DEPLOY.zip
+          if-no-files-found: error
+          retention-days: 14
