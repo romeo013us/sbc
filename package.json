@@ -1,8 +1,8 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.34",
+  "version": "65.1.33",
   "private": true,
-  "description": "SBC OS V65.1.34 tenant-context rejection containment with fail-closed background handling",
+  "description": "SBC OS V65.1.33 explicit startup DDL gate and durable authentication stability",
   "main": "bootstrap.js",
   "scripts": {
     "build": "node bootstrap.js --verify",
