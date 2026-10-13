@@ -9,7 +9,7 @@ function put(rel,s){const p=path.join(root,rel);fs.mkdirSync(path.dirname(p),{re
 function get(rel){return fs.readFileSync(path.join(root,rel),'utf8');}
 try{
   put('index.php','<a>See the $99 / $199 / $349 / $599 Packages</a><div class="price">$599 <small>setup</small></div><a class="btn btn-orange price-btn" href="https://square.link/u/hNjjflul" target="_blank" rel="noopener">Launch for $599</a>');
-  put('server.js',"const CATALOG=[{id:'professional',price:699,paymentUrl:PAYMENT_LINKS.essentials}];const V25_BUNDLES={professional:{price:699,paymentUrl:PAYMENT_LINKS.essentials}};packages:{entry:99,starter:199,essentials:349,professional:599}");
+  put('server.js',"const CATALOG=[{id:'completeLaunch',price:699,paymentUrl:PAYMENT_LINKS.essentials}];const V25_BUNDLES={completeLaunch:{price:699,paymentUrl:PAYMENT_LINKS.essentials}};packages:{entry:99,starter:199,essentials:349,professional:599}");
   put('enterprise/sbc-revenue-closer-v5611.js',"FULL_LAUNCH: { sku: 'SBC-599-COMPLETE', price: 599, name: 'SBC Complete Business Package' }");
   put('enterprise/sbc-revenue-growth-v56122.js',"{sku:'SBC-599-COMPLETE',price:599,fit:['needsWebsite','needsCards','highUrgency']}");
   put('enterprise/sbc-elite-closer-v5612.js',"SBC_599: {sku:'SBC-599-COMPLETE',price:599,name:'SBC Complete Business Package'};return OFFERS.SBC_599;");
@@ -30,10 +30,10 @@ try{
   put('config/release-identity.js',"const RELEASE_VERSION = '65.1.33';\nconst RELEASE_NAME = 'PUBLISHED_AUTH_STABILITY';\nconst RELEASE = Object.freeze({version:RELEASE_VERSION,name:RELEASE_NAME,major:65,minor:1,patch:32});");
   const r=patch.apply(root);assert.equal(r.version,'65.1.34');
   assert.match(get('index.php'),/\$699/);assert.match(get('index.php'),/tel:305-496-1065/);assert.doesNotMatch(get('index.php'),/square\.link\/u\/hNjjflul|Launch for \$599/);
-  assert.match(get('server.js'),/professional:699/);assert.equal((get('server.js').match(/paymentUrl:''/g)||[]).length,2);
+  assert.match(get('server.js'),/professional:599,completeLaunch:699/);assert.equal((get('server.js').match(/paymentUrl:''/g)||[]).length,2);
   for(const f of ['enterprise/sbc-revenue-closer-v5611.js','enterprise/sbc-revenue-growth-v56122.js','enterprise/sbc-elite-closer-v5612.js']) assert.doesNotMatch(get(f),/SBC-599-COMPLETE|price: ?599|SBC_599/);
   assert.match(get('enterprise/automatic-lead-sale-execution.js'),/SBC Complete Business Launch':699/);assert.match(get('enterprise/automatic-lead-sale-execution.js'),/Business Growth':999/);
-  assert.match(get('enterprise/sbc-commercial-os-v602.js'),/setup:699/);assert.match(get('enterprise/v56220-economic-control.js'),/professional:699/);
+  assert.match(get('enterprise/sbc-commercial-os-v602.js'),/setup:699/);assert.match(get('enterprise/v56220-economic-control.js'),/professional:599,completeLaunch:699/);
   assert.match(get('enterprise/v56140-90day-revenue-command.js'),/sbc-699-complete/);assert.doesNotMatch(get('enterprise/v56140-90day-revenue-command.js'),/assumedAverageSale\|\|599/);
   assert.match(get('public/index.html'),/V65\.1\.34/);assert.match(get('public/sw.js'),/sbc-static-v65-1-34/);
   assert.equal(JSON.parse(get('package.json')).version,'65.1.34');assert.equal(JSON.parse(get('package-lock.json')).version,'65.1.34');
