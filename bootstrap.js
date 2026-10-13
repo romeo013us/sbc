@@ -197,6 +197,8 @@ function launch() {
   persistState(__dirname, runtimeDir, { reused: validRuntime });
   process.chdir(runtimeDir);
   console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
+  // V65.1.34: fail closed on tenantless background rejections without masking other fatal errors.
+  require(path.join(__dirname, 'tenant-rejection-guard.js')).installTenantRejectionGuard(process, console);
   require(path.join(runtimeDir, 'server.js'));
 }
 
