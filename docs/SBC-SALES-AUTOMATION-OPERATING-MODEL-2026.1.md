@@ -138,3 +138,12 @@ These are verification tasks, not assumptions:
 ## 8. Release gate
 
 The sales workflow is ready for wider use only when all acceptance tests pass in Preview, existing customer/training data is preserved, a test order can be traced end-to-end without a duplicate charge, and the owner explicitly approves the release. Keep Live publishing, customer imports, and production financial mutations blocked until then.
+
+
+## 9. Price consistency audit
+
+A read-only audit of the bundled `SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip` found stale $599 top-package mappings in the server revenue-proof status, sales offer/closer modules, lead-to-offer mapping, commercial-readiness/economic-control catalogs, 90-day revenue-command SKU lookup and planning default, training curriculum, and release manifest. The reviewed source snapshot also used the legacy `SBC-599-COMPLETE` SKU.
+
+A correction patch and a pricing-consistency regression test were generated from that V65.1.13 snapshot. Local verification passed the pricing regression test, JavaScript syntax checks for changed files, and the commercial OS test. The patch is not a live deployment and has not been proven against the newer V65.1.33 Preview source. Do not deploy the older V65.1.13 bundle over V65.1.33; reconcile the correction against the current source, run the full CI suite, then verify storefront, Command Center catalog, checkout amount, receipt, and training in Preview.
+
+The separate $699 top-package price is the approved owner value. Any other $599 value must be classified by its actual product/billing meaning before changing it; numeric IDs, timestamps, and unrelated estimates are not package prices.
