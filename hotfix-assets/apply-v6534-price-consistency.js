@@ -25,7 +25,7 @@ function apply(root){
     return s;
   });
   edit(root,'server.js',s=>{
-    s=replaceExact(s,'packages:{entry:99,starter:199,essentials:349,professional:599}','packages:{entry:99,starter:199,essentials:349,professional:699}','revenue-proof package status');
+    s=replaceExact(s,'packages:{entry:99,starter:199,essentials:349,professional:599}','packages:{entry:99,starter:199,essentials:349,professional:599,completeLaunch:699}','revenue-proof package status');
     s=replaceExact(s,'paymentUrl:PAYMENT_LINKS.essentials',"paymentUrl:''",'stale static checkout attached to Complete package',2);
     return s;
   });
@@ -37,10 +37,10 @@ function apply(root){
   });
   edit(root,'enterprise/automatic-lead-sale-execution.js',s=>{
     s=replaceExact(s,"l.dealValue>=599?'Professional Business'","l.dealValue>=699?'SBC Complete Business Launch'",'lead-sale package threshold');
-    return replaceExact(s,"'Professional Business':599,'Business Growth':899,'SBC Complete Business Package':599","'Professional Business':699,'SBC Complete Business Launch':699,'Business Growth':999",'lead-sale catalog prices');
+    return replaceExact(s,"'Professional Business':599,'Business Growth':899,'SBC Complete Business Package':599","'Professional Business':599,'SBC Complete Business Launch':699,'Business Growth':999",'lead-sale catalog prices');
   });
   edit(root,'enterprise/sbc-commercial-os-v602.js',s=>replaceExact(s,"{id:'professional',name:'Professional Business',monthly:99,setup:599,description:'Full managed business operating package.'","{id:'professional',name:'Professional Business',monthly:99,setup:699,description:'Full managed business operating package.'",'commercial OS setup fee'));
-  edit(root,'enterprise/v56220-economic-control.js',s=>replaceExact(s,'const prices={entry:99,starter:199,essentials:349,professional:599};','const prices={entry:99,starter:199,essentials:349,professional:699};','economic control catalog'));
+  edit(root,'enterprise/v56220-economic-control.js',s=>replaceExact(s,'const prices={entry:99,starter:199,essentials:349,professional:599};','const prices={entry:99,starter:199,essentials:349,professional:599,completeLaunch:699};','economic control catalog'));
   edit(root,'enterprise/v56140-90day-revenue-command.js',s=>{
     s=replaceExact(s,"find(['sbc-599-complete','complete business'])","find(['sbc-699-complete','sbc complete business launch','complete business'])",'Complete SKU lookup');
     s=replaceExact(s,'Number(plan.assumedAverageSale||599)','Number(plan.assumedAverageSale||699)','revenue planning close-count defaults',2);
@@ -52,7 +52,7 @@ function apply(root){
       return replaceExact(s,'The $599 assumption is a planning benchmark.','The $699 assumption is a planning benchmark.','browser planning copy');
     });
   }
-  edit(root,'enterprise/v56170-six-phase-autopilot.js',s=>replaceExact(s,"return {id:'professional',name:'Professional Business',price:599};","return {id:'professional',name:'SBC Complete Business Launch',price:699};",'autopilot package mapping'));
+  edit(root,'enterprise/v56170-six-phase-autopilot.js',s=>replaceExact(s,"return {id:'professional',name:'Professional Business',price:599};","return {id:'completeLaunch',name:'SBC Complete Business Launch',price:699};",'autopilot package mapping'));
   edit(root,'enterprise/v56-autonomous-operations.js',s=>replaceExact(s,'Number(c.dealValue||599)','Number(c.dealValue||0)','remove fabricated fallback deal value'));
   edit(root,'enterprise/training-system-v2.js',s=>{
     s=replaceExact(s,'The Three Packages','The Four Packages','current training module title and references',4);
