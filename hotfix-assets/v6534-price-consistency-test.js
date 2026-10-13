@@ -37,7 +37,7 @@ try{
   assert.match(get('enterprise/v56140-90day-revenue-command.js'),/sbc-699-complete/);assert.doesNotMatch(get('enterprise/v56140-90day-revenue-command.js'),/assumedAverageSale\|\|599/);
   assert.match(get('public/index.html'),/V65\.1\.34/);assert.match(get('public/sw.js'),/sbc-static-v65-1-34/);
   assert.equal(JSON.parse(get('package.json')).version,'65.1.34');assert.equal(JSON.parse(get('package-lock.json')).version,'65.1.34');
-  assert.match(get('enterprise/v56210-commercial-readiness.js'),/distinct from the one-time \$699/);
+  assert.match(get('enterprise/v56210-commercial-readiness.js'),/not the one-time \\$699/);
   assert.doesNotMatch(get('enterprise/training-system-v2.js'),/The Three Packages|\$599/);assert.match(get('enterprise/training-system-v2.js'),/The Four Packages/);
   console.log('[SBC V65.1.34] package price mappings, stale checkout guard, release identity and cache regression PASS');
 }finally{fs.rmSync(root,{recursive:true,force:true});}
