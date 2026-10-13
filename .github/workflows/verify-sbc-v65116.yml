@@ -35,7 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Validate V65.1.34 release identity and launch files
+      - name: Validate V65.1.35 release identity and launch files
         run: |
           set -euo pipefail
           node --check bootstrap.js
@@ -54,6 +54,8 @@ jobs:
           node --check hotfix-assets/v6533-startup-ddl-gate-test.js
           node --check hotfix-assets/apply-v6534-price-consistency.js
           node --check hotfix-assets/v6534-price-consistency-test.js
+          node --check hotfix-assets/apply-v6535-writer-no-ddl-operational-startup.js
+          node --check hotfix-assets/v6535-writer-no-ddl-operational-startup-test.js
           node --check hotfix-assets/apply-v6530-writer-lease-marker-fix.js
           node --check hotfix-assets/v6530-writer-lease-marker-fix-test.js
           node --check hotfix-assets/apply-v6531-release-identity.js
