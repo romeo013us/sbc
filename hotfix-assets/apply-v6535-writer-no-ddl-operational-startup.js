@@ -94,6 +94,16 @@ function apply(root) {
   if (!fs.existsSync(testSource)) throw new Error(MARKER + ': regression test source missing');
   fs.mkdirSync(path.dirname(testTarget), { recursive: true });
   fs.copyFileSync(testSource, testTarget);
+  const integrityPath = path.join(root, 'enterprise', 'v4341-kim-resilience-control.js');
+  if (fs.existsSync(integrityPath)) {
+    delete require.cache[require.resolve(integrityPath)];
+    const integrity = require(integrityPath);
+    if (typeof integrity.integrityManifest === 'function') integrity.integrityManifest();
+    if (typeof integrity.verifyIntegrity === 'function') {
+      const check = integrity.verifyIntegrity();
+      if (!check.ok) throw new Error(MARKER + ': runtime integrity manifest mismatch: ' + JSON.stringify(check.mismatches || []));
+    }
+  }
   return { marker: MARKER, version: TO, ddlStillOptIn: true, writerOperationsDoNotRequireDdlFlag: true };
 }
 module.exports = { apply, MARKER, FROM, TO };
