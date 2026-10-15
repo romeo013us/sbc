@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * SBC V65.1.40 startup sequence regression.
+ * SBC V65.1.39 startup sequence regression.
  *
  * This test combines assertions against the repository's actual startup patches
  * with a deterministic contract model. It does not connect to MySQL or prove
@@ -21,7 +21,6 @@ const singleWriterPatch = read('hotfix-assets/apply-v6524-single-writer.js');
 const ddlPatch = read('hotfix-assets/apply-v6533-startup-ddl-gate.js');
 const workerPatch = read('hotfix-assets/apply-v6535-writer-no-ddl-operational-startup.js');
 const safeStartupPatch = read('hotfix-assets/apply-v6539-safe-no-ddl-startup.js');
-const economicCyclePatch = read('hotfix-assets/apply-v6540-no-ddl-economic-cycle.js');
 
 function assertPatchOrder(segment, target, label) {
   const expected = [
@@ -31,8 +30,7 @@ function assertPatchOrder(segment, target, label) {
     'apply-v6535-writer-no-ddl-operational-startup.js',
     'apply-v6537-effective-runtime-role.js',
     'apply-v6538-writer-hydration-without-ddl.js',
-    'apply-v6539-safe-no-ddl-startup.js',
-    'apply-v6540-no-ddl-economic-cycle.js'
+    'apply-v6539-safe-no-ddl-startup.js'
   ];
   let last = -1;
   for (const patch of expected) {
@@ -45,7 +43,7 @@ function assertPatchOrder(segment, target, label) {
 }
 
 function sourceContractChecks() {
-  assert.equal(pkg.version, '65.1.40', 'test is tied to the deployed V65.1.40 source');
+  assert.equal(pkg.version, '65.1.39', 'test is tied to the deployed V65.1.39 source');
   assert.match(bootstrap, /process\.env\.SBC_BOOT_ID = sbcBootId/,
     'each launched process gets a unique boot correlation ID');
   assert.match(bootstrap, /\[SBC BOOT CORRELATION\] boot_id=/,
@@ -101,10 +99,8 @@ function sourceContractChecks() {
     'schema-dependent startup workers are held when DDL is not explicitly enabled');
   assert.match(safeStartupPatch, /Published HTTP\/API listener remains available/,
     'the HTTP/API listener remains available in no-DDL safe mode');
-  assert.match(economicCyclePatch, /NO_DDL_RUNTIME_PROFILE/,
-    'economic mutation cycle is suppressed when explicit DDL opt-in is absent');
 
-  console.log('[SBC V65.1.40] source-contract checks PASS');
+  console.log('[SBC V65.1.39] source-contract checks PASS');
 }
 
 /**
@@ -239,8 +235,8 @@ async function modelChecks() {
 (async () => {
   sourceContractChecks();
   await modelChecks();
-  console.log('[SBC V65.1.40] startup sequence regression PASS');
+  console.log('[SBC V65.1.39] startup sequence regression PASS');
 })().catch(error => {
-  console.error('[SBC V65.1.40] startup sequence regression FAIL:', error);
+  console.error('[SBC V65.1.39] startup sequence regression FAIL:', error);
   process.exitCode = 1;
 });
