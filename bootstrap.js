@@ -170,7 +170,38 @@ function verifyOnly() {
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 }
 
+function ensureRootRuntimeDependencies() {
+  // GoDaddy may invoke the package entrypoint directly, bypassing npm's prestart
+  // lifecycle. Repair a stale node_modules tree before the extracted server imports
+  // Day.js (including its bundled UTC plugin).
+  try {
+    require.resolve('dayjs/plugin/utc', { paths: [__dirname] });
+    require.resolve('dayjs', { paths: [__dirname] });
+    console.log('[SBC DEPENDENCY PREFLIGHT] PASS: Day.js and UTC plugin resolve.');
+    return;
+  } catch (_) {
+    console.warn('[SBC DEPENDENCY PREFLIGHT] Day.js UTC plugin is missing; repairing from package-lock.json.');
+  }
+
+  const repairScript = path.join(__dirname, 'scripts', 'ensure-runtime-dependencies.js');
+  if (!fs.existsSync(repairScript)) {
+    throw new Error('Day.js UTC plugin is missing and the locked dependency repair script is unavailable.');
+  }
+  const result = require('child_process').spawnSync(process.execPath, [repairScript], {
+    cwd: __dirname,
+    stdio: 'inherit',
+    timeout: 240000,
+    env: process.env
+  });
+  if (result.error) throw new Error('Day.js dependency repair could not run: ' + result.error.message);
+  if (result.status !== 0) throw new Error('Day.js dependency repair failed with exit status ' + result.status + '.');
+  require.resolve('dayjs/plugin/utc', { paths: [__dirname] });
+  require.resolve('dayjs', { paths: [__dirname] });
+  console.log('[SBC DEPENDENCY PREFLIGHT] PASS: locked repair verified Day.js UTC plugin.');
+}
+
 function launch() {
+  ensureRootRuntimeDependencies();
   if (!fs.existsSync(RELEASE_ZIP)) throw new Error(`Required SBC source ZIP missing: ${path.basename(RELEASE_ZIP)}`);
   const bytes = fs.readFileSync(RELEASE_ZIP);
   const sourceHash = crypto.createHash('sha256').update(bytes).digest('hex');
