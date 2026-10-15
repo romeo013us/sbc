@@ -33,7 +33,10 @@ function assertPatchOrder(segment, target, label) {
     'apply-v6539-safe-no-ddl-startup.js',
     'apply-v6541-lead-import.js',
     'apply-v6542-voice-call-diagnostics.js',
-    'apply-v6543-lead-import-commit-contract.js'
+    'apply-v6543-lead-import-commit-contract.js',
+    'apply-v6544-ask-kim-drag.js',
+    'apply-v6545-baseline-gated-ddl-unblock.js',
+    'apply-v6546-release-identity-current-version.js'
   ];
   let last = -1;
   for (const patch of expected) {
@@ -46,7 +49,9 @@ function assertPatchOrder(segment, target, label) {
 }
 
 function sourceContractChecks() {
-  assert.equal(pkg.version, '65.1.43', 'test is tied to the deployed V65.1.43 source');
+  const expectedRelease = bootstrap.match(/const EXPECTED_VERSION = '([^']+)'/);
+  assert.ok(expectedRelease, 'bootstrap declares an expected runtime release');
+  assert.equal(pkg.version, expectedRelease[1], 'root package and bootstrap expected version must match');
   assert.match(bootstrap, /process\.env\.SBC_BOOT_ID = sbcBootId/,
     'each launched process gets a unique boot correlation ID');
   assert.match(bootstrap, /\[SBC BOOT CORRELATION\] boot_id=/,

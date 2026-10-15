@@ -99,7 +99,7 @@ function apply(root) {
       'sbcWriterLeaseReady',
       'VERIFIED_PRE_CORRUPTION_CRM_COUNT',
       '!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED || !sbcWriterLeaseReady',
-      'SBC_READ_ONLY_RUNTIME',
+      'SBC_RUNTIME_READ_ONLY',
       'ENABLE_DDL',
       'SBC_V6539_SAFE_NO_DDL_STARTUP'
     ]) {
