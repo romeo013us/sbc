@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'scripts/ensure-runtime-dependencies.js'
+      - 'scripts/diagnose-call-path.js'
       - 'persistent-state.js'
       - 'persistent-state-test.js'
       - 'apply-v65116-hotfix.js'
