@@ -2,7 +2,7 @@
 'use strict';
 if(window.__SBC_V6541_LEAD_IMPORT__)return;window.__SBC_V6541_LEAD_IMPORT__=true;
 const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const css=\`
+const css=`
 #sbc-lead-import-launcher{position:fixed;right:22px;bottom:82px;z-index:10020;border:0;border-radius:999px;padding:13px 18px;background:#155eef;color:#fff;font:700 14px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px #0b1f4433;cursor:pointer}
 #sbc-lead-import-overlay{position:fixed;inset:0;z-index:10030;background:#0b1020a8;display:none;align-items:center;justify-content:center;padding:18px;font:14px/1.45 system-ui,sans-serif;color:#172033}
 #sbc-lead-import-overlay.open{display:flex}#sbc-lead-import-panel{width:min(1050px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 80px #0004}
@@ -19,7 +19,7 @@ const css=\`
 #sbc-lead-import-actions button{border:1px solid #d0d5dd;border-radius:9px;padding:10px 14px;background:#fff;color:#344054;font-weight:700;cursor:pointer}
 #sbc-lead-import-actions button.primary{background:#155eef;border-color:#155eef;color:#fff}#sbc-lead-import-actions button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:600px){#sbc-lead-import-launcher{right:12px;bottom:70px}#sbc-lead-import-body{padding:15px}#sbc-lead-import-head{padding:17px}#sbc-lead-import-table{font-size:11px}}
-\`;
+`;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const btn=document.createElement('button');btn.id='sbc-lead-import-launcher';btn.type='button';btn.textContent='＋ Import Leads';
 const overlay=document.createElement('div');overlay.id='sbc-lead-import-overlay';overlay.innerHTML='<section id="sbc-lead-import-panel" role="dialog" aria-modal="true" aria-labelledby="sbc-lead-import-title"><header id="sbc-lead-import-head"><div><h2 id="sbc-lead-import-title">Import Leads</h2><p>Upload CSV · Preview duplicates · Import safely into your tenant</p></div><button type="button" id="sbc-lead-import-x" aria-label="Close" style="border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer">×</button></header><div id="sbc-lead-import-body"><label for="sbc-lead-import-file"><strong>Select a CSV file</strong><p>Use the SBC lead import template. CSV files only; up to 500 rows per import.</p></label><input id="sbc-lead-import-file" type="file" accept=".csv,text/csv"><div id="sbc-lead-import-status">Choose a CSV file to begin. Preview does not write any records.</div><div id="sbc-lead-import-summary"></div><div id="sbc-lead-import-tablewrap" hidden><table id="sbc-lead-import-table"><thead><tr><th>Business</th><th>Contact</th><th>Phone</th><th>Email</th><th>Website</th><th>Import status</th></tr></thead><tbody></tbody></table></div><div id="sbc-lead-import-actions"><button type="button" id="sbc-lead-import-close">Close</button><button type="button" id="sbc-lead-import-preview" class="primary" disabled>Preview import</button><button type="button" id="sbc-lead-import-commit" class="primary" disabled>Import new leads</button></div></div></section>';
