@@ -48,6 +48,7 @@ function apply(root){
  let html=read(root,'public/index.html').replace(/V65\.1\.45/g,'V65.1.46').replace(/65\.1\.45/g,'65.1.46');write(root,'public/index.html',html);
  let sw=read(root,'public/sw.js');const cache=sw.match(/const CACHE='[^']+'/);if(!cache)throw Error(MARKER+': service worker cache declaration missing');write(root,'public/sw.js',sw.replace(cache[0],"const CACHE='sbc-static-v65-1-46-tenant-propagation'"));
  const vp=path.join(root,'VERSION');if(fs.existsSync(vp))write(root,'VERSION',read(root,'VERSION').replace(/65\.1\.45/g,'65.1.46'));
+ const hd=path.join(root,'hotfix-assets');fs.mkdirSync(hd,{recursive:true});fs.copyFileSync(__filename,path.join(hd,'apply-v6547-tenant-propagation.js'));fs.copyFileSync(path.join(__dirname,'v6547-tenant-propagation-test.js'),path.join(hd,'v6547-tenant-propagation-test.js'));
  return {marker:MARKER,version:TO,tenantPropagation:true,publicRoutesHostMapped:true,sqlTenantColumnFixed:true};
 }
 module.exports={apply,MARKER,FROM,TO};
