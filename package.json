@@ -5,6 +5,7 @@
   "description": "SBC OS V65.1.39 prevents schema-dependent startup from running without explicit DDL opt-in",
   "main": "bootstrap.js",
   "scripts": {
+    "prestart": "node scripts/ensure-runtime-dependencies.js",
     "build": "node bootstrap.js --verify",
     "start": "node bootstrap.js",
     "test:phases": "node hotfix-assets/v65119-phases-test.js",
