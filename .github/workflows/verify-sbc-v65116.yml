@@ -176,13 +176,13 @@ jobs:
           RELEASE_DIR="dist/SBC-V${RELEASE_VERSION}-GoDaddy-Patch"
           mkdir -p "$RELEASE_DIR/hotfix-assets" "$RELEASE_DIR/scripts"
           cp bootstrap.js package.json package-lock.json "$RELEASE_DIR/"
-          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js hotfix-assets/apply-v6543-lead-import-commit-contract.js hotfix-assets/v6543-lead-import-commit-contract-test.js hotfix-assets/apply-v6544-ask-kim-drag.js hotfix-assets/sbc-ask-kim-drag-v6544.js hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js hotfix-assets/apply-v6546-release-identity-current-version.js hotfix-assets/v6546-release-identity-current-version-test.js "$RELEASE_DIR/hotfix-assets/"
+          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js hotfix-assets/apply-v6543-lead-import-commit-contract.js hotfix-assets/v6543-lead-import-commit-contract-test.js hotfix-assets/apply-v6544-ask-kim-drag.js hotfix-assets/sbc-ask-kim-drag-v6544.js hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js hotfix-assets/apply-v6546-release-identity-current-version.js hotfix-assets/v6546-release-identity-current-version-test.js hotfix-assets/apply-v6547-tenant-propagation.js hotfix-assets/v6547-tenant-propagation-test.js "$RELEASE_DIR/hotfix-assets/"
           cp scripts/v65137-startup-sequence.test.js "$RELEASE_DIR/scripts/"
           cat > "$RELEASE_DIR/README.txt" <<EOF
-          SBC OS V${RELEASE_VERSION} — Runtime Startup Fix
+          SBC OS V${RELEASE_VERSION} — Tenant Propagation and Runtime Startup Fix
           ===============================================
 
-          This patch aligns Published startup and the release identity gate while retaining database recovery and writer-lease controls.
+          This patch propagates validated tenant identity through CRM, checkout, portal and background-facing records, and aligns the Published release identity while retaining database recovery and writer-lease controls.
 
           BEFORE INSTALLING
           1. Back up matching files from the current GoDaddy app root.
