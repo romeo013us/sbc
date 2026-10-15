@@ -1,0 +1,102 @@
+'use strict';
+
+/**
+ * Diagnostic only: extract the committed baseline ZIP, apply the same source
+ * patches as bootstrap.js, and show call sites that can explain
+ * "production startup blocked: SBC_PREVIEW_DDL_BLOCKED".
+ * This script never connects to MySQL and never deploys or mutates production.
+ */
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+
+const root = path.resolve(__dirname, '..');
+const zip = path.join(root, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sbc-v6539-startup-trace-'));
+const patchPaths = [
+  'apply-v65116-hotfix.js',
+  'hotfix-assets/apply-v6522-api-stabilization.js',
+  'hotfix-assets/apply-v6523-read-query-cancel.js',
+  'hotfix-assets/apply-v6524-single-writer.js',
+  'hotfix-assets/apply-v6525-customer360-workspace.js',
+  'hotfix-assets/apply-v6526-demo-studio.js',
+  'hotfix-assets/apply-v6527-persistence-writer-lock.js',
+  'hotfix-assets/apply-v6528-runtime-writer-lease.js',
+  'hotfix-assets/apply-v6529-open-readiness.js',
+  'hotfix-assets/apply-v6530-writer-lease-marker-fix.js',
+  'hotfix-assets/apply-v6531-release-identity.js',
+  'hotfix-assets/apply-v6533-startup-ddl-gate.js',
+  'hotfix-assets/apply-v6534-price-consistency.js',
+  'hotfix-assets/apply-v6535-writer-no-ddl-operational-startup.js',
+  'hotfix-assets/apply-v6536-runtime-beacon.js',
+  'hotfix-assets/apply-v6537-effective-runtime-role.js',
+  'hotfix-assets/apply-v6538-writer-hydration-without-ddl.js'
+];
+const patterns = [
+  /\[SBC STARTUP\].{0,100}production startup blocked/g,
+  /SBC_PREVIEW_DDL_BLOCKED/g,
+  /RUNTIME_GATE\.ensureSchema/g,
+  /SBC_DDL_ENABLED/g,
+  /SBC_V6538_WRITER_HYDRATION_WITHOUT_DDL/g,
+  /function startOperationalRuntime/g
+];
+
+function walk(dir, result = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, result);
+    else if (/\.(?:js|cjs|mjs)$/.test(entry.name)) result.push(full);
+  }
+  return result;
+}
+
+try {
+  if (!fs.existsSync(zip)) throw new Error('required source ZIP is missing');
+  execFileSync('unzip', ['-q', zip, '-d', temp], { stdio: 'pipe' });
+  for (const rel of patchPaths) {
+    const modulePath = path.join(root, rel);
+    if (!fs.existsSync(modulePath)) throw new Error('missing source patch ' + rel);
+    const patch = require(modulePath);
+    if (typeof patch.apply !== 'function') throw new Error('patch has no apply(root): ' + rel);
+    patch.apply(temp);
+  }
+
+  const hits = [];
+  for (const file of walk(temp)) {
+    let text;
+    try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const lines = text.split(/\r?\n/);
+    for (const pattern of patterns) {
+      for (let index = 0; index < lines.length; index++) {
+        pattern.lastIndex = 0;
+        if (!pattern.test(lines[index])) continue;
+        const key = path.relative(temp, file) + ':' + (index + 1) + ':' + pattern.source;
+        if (hits.some(hit => hit.key === key)) continue;
+        hits.push({ key, file, line: index + 1, pattern: pattern.source, lines });
+        if (hits.length >= 90) break;
+      }
+      if (hits.length >= 90) break;
+    }
+    if (hits.length >= 90) break;
+  }
+
+  console.log('[SBC V65.1.39 DIAGNOSTIC] patched source trace; no database connection made.');
+  if (!hits.length) {
+    console.log('No matching startup / DDL-gate locations found in patched source.');
+  }
+  for (const hit of hits) {
+    const rel = path.relative(temp, hit.file);
+    console.log('\n--- ' + rel + ':' + hit.line + ' pattern=' + hit.pattern + ' ---');
+    const start = Math.max(0, hit.line - 3);
+    const end = Math.min(hit.lines.length, hit.line + 2);
+    for (let i = start; i < end; i++) {
+      const line = hit.lines[i];
+      console.log(String(i + 1).padStart(5) + (i + 1 === hit.line ? ' > ' : '   ') +
+        line.slice(0, 600));
+    }
+  }
+} finally {
+  fs.rmSync(temp, { recursive: true, force: true });
+}
