@@ -37,7 +37,7 @@ initMysql().then(async()=>{ console.log('startup'); });
   assert.match(server, /const SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';/);
   assert.match(server, /SBC_RUNTIME_ROLE must be writer or readonly/);
   assert.match(server, /\[SBC ROLE SOURCE CHECK\] env=/);
-  assert.match(server, /SBC_RUNTIME_WRITER_LEASE_REQUIRED/);
+  assert.equal((server.match(/const SBC_RUNTIME_ROLE =/g) || []).length, 1, 'exactly one effective role declaration');\n  assert.equal((server.match(/const SBC_RUNTIME_READ_ONLY =/g) || []).length, 1, 'exactly one read-only declaration');\n  assert.match(server, /SBC_RUNTIME_WRITER_LEASE_REQUIRED/);
   assert.match(server, /SBC_RUNTIME_WRITER_LEASE_LOST/);
   assert.match(server, /!MYSQL_RECOVERY_EVALUATED \|\| MYSQL_RECOVERY_REQUIRED \|\| !sbcWriterLeaseReady/);
   assert.match(server, /SBC_READ_ONLY_RUNTIME/);
