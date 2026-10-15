@@ -5,6 +5,31 @@ function once(s,a,b,l){const n=s.split(a).length-1;if(n!==1)throw Error(MARKER+'
 function section(s,start,end,a,b,l){const i=s.indexOf(start),j=s.indexOf(end,i+start.length);if(i<0||j<0)throw Error(MARKER+': missing '+l+' section');const x=s.slice(i,j);if(x.includes(b))return s;const n=x.split(a).length-1;if(n!==1)throw Error(MARKER+': '+l+' anchor count '+n);return s.slice(0,i)+x.replace(a,b)+s.slice(j);}
 function read(r,p){const f=path.join(r,p);if(!fs.existsSync(f))throw Error(MARKER+': missing '+p);return fs.readFileSync(f,'utf8');}
 function write(r,p,s){fs.writeFileSync(path.join(r,p),s);}
+function alignReleaseIdentityPins(root){
+ const paths=['server.js','browser_public/app.js','public/app.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','enterprise/v567-nine-nine.js','config/release-identity.js'];
+ const changed=[];
+ for(const rel of paths){
+  const file=path.join(root,rel);if(!fs.existsSync(file))continue;
+  const before=fs.readFileSync(file,'utf8');
+  if(!/RELEASE_IDENTITY_MISMATCH|EXPECTED_RELEASE_VERSION|RELEASE_VERSION/.test(before))continue;
+  const after=before.replace(/65\.1\.(?:18|45)\b/g,TO);
+  if(after!==before){fs.writeFileSync(file,after);changed.push(rel);}
+ }
+ const base=path.join(root,'enterprise');
+ if(fs.existsSync(base))for(const entry of fs.readdirSync(base,{withFileTypes:true})){
+  if(!entry.isFile()||!entry.name.endsWith('.js'))continue;
+  const rel=path.join('enterprise',entry.name),file=path.join(root,rel),before=fs.readFileSync(file,'utf8');
+  if(!before.includes('RELEASE_IDENTITY_MISMATCH'))continue;
+  const after=before.replace(/65\.1\.(?:18|45)\b/g,TO);
+  if(after!==before){fs.writeFileSync(file,after);if(!changed.includes(rel))changed.push(rel);}
+ }
+ for(const rel of paths){
+  const file=path.join(root,rel);if(!fs.existsSync(file))continue;
+  const source=fs.readFileSync(file,'utf8');
+  if(/EXPECTED_RELEASE_VERSION\s*=\s*['"]65\.1\.(?:18|45)/.test(source))throw Error(MARKER+': stale release pin remains in '+rel);
+ }
+ return changed;
+}
 function apply(root){
  let s=read(root,'server.js');if(s.includes(MARKER))throw Error(MARKER+': already applied');
  s=once(s,'function requireRequestTenant(req){ return PRODUCTION_HARDENING.requireTenant(req?.tenantId); }',"function requireRequestTenant(req){ return PRODUCTION_HARDENING.requireTenant(req?.tenantId); }\n// "+MARKER+": public ingress resolves tenant scope from the authoritative host map.\nfunction requireMappedRequestTenant(req){const m=V569_PRODUCTION_EXPANSION.tenantFromHost(req?.headers?.host||req?.hostname||'');const n=Number(m?.tenantId);if(!m?.ok||!Number.isSafeInteger(n)||n<1)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED: public host is not mapped to a tenant.'),{code:'TENANT_CONTEXT_REQUIRED',status:403});return n;}",'host tenant resolver');
@@ -45,10 +70,11 @@ function apply(root){
  const lock=JSON.parse(read(root,'package-lock.json'));if(lock.name!==pkg.name||lock.version!==FROM||lock.packages?.['']?.version!==FROM)throw Error(MARKER+': lockfile identity mismatch');lock.version=TO;lock.packages[''].version=TO;lock.packages[''].description=pkg.description;lock.packages[''].scripts=pkg.scripts;write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\n');
  let id=read(root,'config/release-identity.js');id=once(id,"const RELEASE_VERSION = '65.1.45';","const RELEASE_VERSION = '65.1.46';",'release version');id=once(id,"const RELEASE_NAME = 'RELEASE_IDENTITY_CURRENT_VERSION';","const RELEASE_NAME = 'TENANT_PROPAGATION';",'release name');id=once(id,'major:65,minor:1,patch:45','major:65,minor:1,patch:46','semantic version');write(root,'config/release-identity.js',id);
  let browser=read(root,'browser_public/app.js');if(!/65\.1\.45/.test(browser))throw Error(MARKER+': browser release pin missing');write(root,'browser_public/app.js',browser.replace(/65\.1\.45/g,'65.1.46'));
+ const alignedReleasePins=alignReleaseIdentityPins(root);if(!alignedReleasePins.length)throw Error(MARKER+': no runtime release identity pins were aligned.');
  let html=read(root,'public/index.html').replace(/V65\.1\.45/g,'V65.1.46').replace(/65\.1\.45/g,'65.1.46');write(root,'public/index.html',html);
  let sw=read(root,'public/sw.js');const cache=sw.match(/const CACHE='[^']+'/);if(!cache)throw Error(MARKER+': service worker cache declaration missing');write(root,'public/sw.js',sw.replace(cache[0],"const CACHE='sbc-static-v65-1-46-tenant-propagation'"));
  const vp=path.join(root,'VERSION');if(fs.existsSync(vp))write(root,'VERSION',read(root,'VERSION').replace(/65\.1\.45/g,'65.1.46'));
  const hd=path.join(root,'hotfix-assets');fs.mkdirSync(hd,{recursive:true});fs.copyFileSync(__filename,path.join(hd,'apply-v6547-tenant-propagation.js'));fs.copyFileSync(path.join(__dirname,'v6547-tenant-propagation-test.js'),path.join(hd,'v6547-tenant-propagation-test.js'));
- return {marker:MARKER,version:TO,tenantPropagation:true,publicRoutesHostMapped:true,sqlTenantColumnFixed:true};
+ return {marker:MARKER,version:TO,tenantPropagation:true,publicRoutesHostMapped:true,sqlTenantColumnFixed:true,releasePinsAligned:alignedReleasePins};
 }
-module.exports={apply,MARKER,FROM,TO};
+module.exports={apply,MARKER,FROM,TO,alignReleaseIdentityPins};
