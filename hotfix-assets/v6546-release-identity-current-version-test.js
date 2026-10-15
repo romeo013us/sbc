@@ -17,9 +17,10 @@ function get(rel) { return fs.readFileSync(path.join(root, rel), 'utf8'); }
 try {
   put('server.js', [
     "const packageVersion = require('./package.json').version;",
-    "const EXPECTED_RELEASE_VERSION = '65.1.18';",
-    "if (packageVersion !== EXPECTED_RELEASE_VERSION) console.error('[SBC RELEASE IDENTITY] FATAL: RELEASE_IDENTITY_MISMATCH package=' + packageVersion + ' expected 65.1.18 (or supported rollback release)');"
+    "const EXPECTED_RELEASE_VERSION = require('./browser_public/app').EXPECTED_RELEASE_VERSION;",
+    "if (packageVersion !== EXPECTED_RELEASE_VERSION) console.error('[SBC RELEASE IDENTITY] FATAL: RELEASE_IDENTITY_MISMATCH package=' + packageVersion + ' expected ' + EXPECTED_RELEASE_VERSION + ' (or supported rollback release)');"
   ].join('\n'));
+  put('browser_public/app.js', "const EXPECTED_RELEASE_VERSION = '65.1.18'; module.exports = { EXPECTED_RELEASE_VERSION };");
   put('package.json', JSON.stringify({name:'sbc-business-command-center',version:'65.1.44',scripts:{'test:all':'node bootstrap.js --verify'}},null,2)+'\n');
   put('package-lock.json', JSON.stringify({name:'sbc-business-command-center',version:'65.1.44',lockfileVersion:3,packages:{'':{name:'sbc-business-command-center',version:'65.1.44',scripts:{}}}},null,2)+'\n');
   put('config/release-identity.js', [
@@ -36,9 +37,10 @@ try {
   const result = patch.apply(root);
   assert.equal(result.version,'65.1.45');
   assert.equal(result.releaseGuardFilesChanged,1);
-  assert.equal(result.releaseGuardReplacements,2);
+  assert.equal(result.releaseGuardReplacements,1);
   assert.doesNotMatch(get('server.js'),/65\.1\.18/);
-  assert.match(get('server.js'),/EXPECTED_RELEASE_VERSION = '65\.1\.45'/);
+  assert.match(get('server.js'),/RELEASE_IDENTITY_MISMATCH/);
+  assert.match(get('browser_public/app.js'),/EXPECTED_RELEASE_VERSION = '65\.1\.45'/);
   assert.equal(JSON.parse(get('package.json')).version,'65.1.45');
   assert.equal(JSON.parse(get('package-lock.json')).version,'65.1.45');
   assert.equal(JSON.parse(get('package-lock.json')).packages[''].version,'65.1.45');
