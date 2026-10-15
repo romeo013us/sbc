@@ -1,8 +1,8 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.39",
+  "version": "65.1.41",
   "private": true,
-  "description": "SBC OS V65.1.39 prevents schema-dependent startup from running without explicit DDL opt-in",
+  "description": "SBC OS V65.1.41 adds a tenant-scoped CSV Lead Import screen with preview and duplicate checks",
   "main": "bootstrap.js",
   "scripts": {
     "prestart": "node scripts/ensure-runtime-dependencies.js",
