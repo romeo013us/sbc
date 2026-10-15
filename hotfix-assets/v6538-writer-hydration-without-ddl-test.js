@@ -79,7 +79,7 @@ try {
     /if\(SBC_RUNTIME_READ_ONLY \|\| !SBC_DDL_ENABLED\)/,
     'disabled DDL must not convert the Published writer into Preview');
 
-  const leaseAt = server.indexOf('process writer lease acquired; connectionId=');
+  const leaseAt = server.indexOf('process writer lease acquired; boot_id=');
   const hydrateAt = server.indexOf('if(!SBC_DDL_ENABLED){');
   const ddlAt = server.indexOf('await RUNTIME_GATE.ensureSchema();');
   assert.ok(leaseAt >= 0 && hydrateAt > leaseAt,
