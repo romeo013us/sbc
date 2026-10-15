@@ -144,27 +144,27 @@ jobs:
           cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/hotfix-assets/
           cp scripts/v65137-startup-sequence.test.js dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/scripts/
           cat > dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/README.txt <<'EOF'
-SBC OS V65.1.41 — GoDaddy Lead Import Patch
-===========================================
-
-Contents: the root launcher/manifests and the new Lead Import overlay/test files.
-
-BEFORE INSTALLING
-1. Back up the matching files from your current GoDaddy app root.
-2. Confirm this is the SBC Preview deployment, not Published/Live.
-3. Do not modify database tables, secrets, ENABLE_DDL, recovery flags, or writer-lease settings.
-
-INSTALL
-1. Extract this ZIP into the SBC application root, preserving the included folders.
-2. Allow overwrite only for the files contained in this patch.
-3. Restart the SBC Preview Node.js app in GoDaddy.
-4. Confirm the app reports release 65.1.41 and the "Import Leads" button appears.
-5. Open Import Leads, select the SBC barber-shop CSV, choose Preview import, review duplicates, then choose Import new leads.
-6. If the server says imports are locked, stop. That means the existing recovery/read-only/writer gate is doing its job; do not bypass it.
-
-The patch adds a tenant-scoped, owner-only import endpoint. Preview is read-only. Actual inserts use a transaction, skip detected duplicates, and fail closed if tenant_id is absent or the existing write gate is closed.
-
-Do not deploy to Published/Live until Preview startup, duplicate preview, and an authorized test import have been verified.
+          SBC OS V65.1.41 — GoDaddy Lead Import Patch
+          ===========================================
+          
+          Contents: the root launcher/manifests and the new Lead Import overlay/test files.
+          
+          BEFORE INSTALLING
+          1. Back up the matching files from your current GoDaddy app root.
+          2. Confirm this is the SBC Preview deployment, not Published/Live.
+          3. Do not modify database tables, secrets, ENABLE_DDL, recovery flags, or writer-lease settings.
+          
+          INSTALL
+          1. Extract this ZIP into the SBC application root, preserving the included folders.
+          2. Allow overwrite only for the files contained in this patch.
+          3. Restart the SBC Preview Node.js app in GoDaddy.
+          4. Confirm the app reports release 65.1.41 and the "Import Leads" button appears.
+          5. Open Import Leads, select the SBC barber-shop CSV, choose Preview import, review duplicates, then choose Import new leads.
+          6. If the server says imports are locked, stop. That means the existing recovery/read-only/writer gate is doing its job; do not bypass it.
+          
+          The patch adds a tenant-scoped, owner-only import endpoint. Preview is read-only. Actual inserts use a transaction, skip detected duplicates, and fail closed if tenant_id is absent or the existing write gate is closed.
+          
+          Do not deploy to Published/Live until Preview startup, duplicate preview, and an authorized test import have been verified.
 EOF
           cd dist
           zip -qr ../SBC-V65.1.41-GoDaddy-Lead-Import-Patch.zip SBC-V65.1.41-GoDaddy-Lead-Import-Patch
