@@ -82,6 +82,25 @@ try {
     if (hits.length >= 90) break;
   }
 
+  // Inspect the full initMysql().then(...) segment before the listener/worker function.
+  for (const file of walk(temp)) {
+    if (path.basename(file) !== 'server.js') continue;
+    const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+    const startAt = lines.findIndex(line => /startOperationalRuntime\s*=\s*async\s*\(\)\s*=>\s*\{/.test(line));
+    if (startAt >= 0) {
+      let chainAt = -1;
+      for (let j = 0; j < startAt; j++) if (/initMysql\(\)\.then/.test(lines[j])) chainAt = j;
+      console.log('\n=== INIT MYSQL PROMISE CHAIN BEFORE OPERATIONAL RUNTIME === start=' + (chainAt + 1) + ' end=' + startAt);
+      if (chainAt >= 0) {
+        for (let j = chainAt; j < startAt; j++) {
+          if (/await|ensureTables|ensureSchema|CREATE TABLE|ALTER TABLE|CREATE INDEX|migrat|RUNTIME_GATE|SBC_UNATTENDED_NOTIFICATIONS|SBC STARTUP|\.then\(|\.catch\(/.test(lines[j])) {
+            console.log(String(j + 1).padStart(5) + ' [line_length=' + lines[j].length + '] ' + lines[j].slice(0, 6000));
+          }
+        }
+      }
+    }
+  }
+
   // Print the preceding startup chain (which declares and invokes startOperationalRuntime)
   // so an earlier rejected initialization can be distinguished from worker startup failure.
   for (const file of walk(temp)) {
