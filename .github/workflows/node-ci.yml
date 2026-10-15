@@ -21,5 +21,7 @@ jobs:
         run: npm ci
       - name: Test baseline-gated DDL unblock
         run: npm run test:v6545-baseline-gated-ddl-unblock
+      - name: Test release identity alignment
+        run: npm run test:v6546-release-identity-current-version
       - name: Verify complete deployment bundle
         run: npm run build
