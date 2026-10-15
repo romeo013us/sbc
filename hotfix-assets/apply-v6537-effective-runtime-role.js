@@ -48,7 +48,7 @@ function apply(root) {
     throw new Error(MARKER + ': multiple SBC_RUNTIME_READ_ONLY declarations; refusing ambiguous patch');
   }
 
-  if (!server.includes("if (!['writer', 'readonly'].includes(SBC_RUNTIME_ROLE))")) {
+  const hasRoleValidation = /if\\s*\\(\\s*!\\s*\\[\\s*['\"]writer['\"]\\s*,\\s*['\"]readonly['\"]\\s*\\]\\.includes\\(SBC_RUNTIME_ROLE\\)\\s*\\)/.test(server);\n  if (!hasRoleValidation) {
     server = replaceOne(server,
       /^const SBC_RUNTIME_ROLE = String\(process\.env\.SBC_RUNTIME_ROLE \|\| 'readonly'\)\.trim\(\)\.toLowerCase\(\);$/m,
       roleDeclaration + "\nif (!['writer', 'readonly'].includes(SBC_RUNTIME_ROLE)) throw new Error('" + MARKER + ": SBC_RUNTIME_ROLE must be writer or readonly.');",
