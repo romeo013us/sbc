@@ -2,7 +2,7 @@ name: Verify SBC OS V65.1.41 Lead Import and Startup Safety
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'chore/**']
     paths:
       - 'bootstrap.js'
       - 'runtime-env-beacon.js'
