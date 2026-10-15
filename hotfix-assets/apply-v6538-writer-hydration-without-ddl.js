@@ -57,9 +57,9 @@ function apply(root) {
     server = onceText(server, roleSourceLine, correlatedRoleSource, 'correlate role diagnostic with boot ID and PID');
 
     const leaseLog =
-      "console.log('['+MARKER+'] process writer lease acquired; connectionId='+sbcWriterLeaseConnectionId);";
+      "console.log('[SBC_V6528_RUNTIME_WRITER_LEASE] process writer lease acquired; connectionId='+sbcWriterLeaseConnectionId);";
     const correlatedLeaseLog =
-      "console.log('['+MARKER+'] process writer lease acquired; boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' port='+String(process.env.PORT||'<absent>')+' connectionId='+sbcWriterLeaseConnectionId);";
+      "console.log('[SBC_V6528_RUNTIME_WRITER_LEASE] process writer lease acquired; boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' port='+String(process.env.PORT||'<absent>')+' connectionId='+sbcWriterLeaseConnectionId);";
     server = onceText(server, leaseLog, correlatedLeaseLog, 'correlate lease acquisition with boot ID and PID');
 
     const schemaAnchor =
