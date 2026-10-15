@@ -82,6 +82,22 @@ try {
     if (hits.length >= 90) break;
   }
 
+  // Print the preceding startup chain (which declares and invokes startOperationalRuntime)
+  // so an earlier rejected initialization can be distinguished from worker startup failure.
+  for (const file of walk(temp)) {
+    if (path.basename(file) !== 'server.js') continue;
+    const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+    const startAt = lines.findIndex(line => /startOperationalRuntime\s*=\s*async\s*\(\)\s*=>\s*\{/.test(line));
+    if (startAt >= 0) {
+      console.log('\n=== PARENT STARTUP CHAIN BEFORE OPERATIONAL RUNTIME ===');
+      for (let j = Math.max(0, startAt - 45); j < startAt; j++) {
+        if (/initMysql|\.then\(|\.catch\(|SBC_UNATTENDED_NOTIFICATIONS|notifications scheduler|MYSQL_RECOVERY|sbcWriterLeaseReady|await|WebSocket setup|httpServer|RUNTIME_GATE|ensure|startOperational/.test(lines[j])) {
+          console.log(String(j + 1).padStart(5) + ' [line_length=' + lines[j].length + '] ' + lines[j].slice(0, 5000));
+        }
+      }
+    }
+  }
+
   // Locate the worker-leader initializer invoked with await during operational startup.
   for (const file of walk(temp)) {
     const source = fs.readFileSync(file, 'utf8');
