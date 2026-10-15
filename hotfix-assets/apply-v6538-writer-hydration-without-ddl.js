@@ -32,9 +32,6 @@ function apply(root) {
   let server = fs.readFileSync(serverPath, 'utf8');
 
   if (!server.includes(MARKER)) {
-    // V65.1.33 combined two different policies in one branch:
-    // Preview must remain read-only, while a Published writer with DDL disabled
-    // must still acquire the lease and evaluate the existing schema safely.
     const ddlCoupledPreviewBranch =
       "if(SBC_RUNTIME_READ_ONLY || !SBC_DDL_ENABLED){\n" +
       "      // SBC_V6533_STARTUP_DDL_GATE: no startup DDL unless explicitly enabled; hydrate existing tables only.\n" +
@@ -52,9 +49,19 @@ function apply(root) {
       'separate Preview role from DDL opt-in'
     );
 
-    // Insert after the writer lease and dedicated auth-pool setup, immediately
-    // before the first schema-creation call. Existing-schema hydration is SELECT
-    // only; failures retain recovery-safe mode and never enable DDL implicitly.
+    const roleSourceLine =
+      "console.log('[SBC ROLE SOURCE CHECK] env=' + String(process.env.SBC_RUNTIME_ROLE || '<absent>') + ' effective=' + SBC_RUNTIME_ROLE + ' readOnly=' + SBC_RUNTIME_READ_ONLY);";
+    const correlatedRoleSource =
+      "console.log('[SBC BOOT CORRELATION] boot_id=' + String(process.env.SBC_BOOT_ID || '<not-set>') + ' pid=' + process.pid + ' port=' + String(process.env.PORT || '<absent>') + ' role_env=' + String(process.env.SBC_RUNTIME_ROLE || '<absent>'));\n" +
+      "console.log('[SBC ROLE SOURCE CHECK] boot_id=' + String(process.env.SBC_BOOT_ID || '<not-set>') + ' pid=' + process.pid + ' port=' + String(process.env.PORT || '<absent>') + ' env=' + String(process.env.SBC_RUNTIME_ROLE || '<absent>') + ' effective=' + SBC_RUNTIME_ROLE + ' readOnly=' + SBC_RUNTIME_READ_ONLY);";
+    server = onceText(server, roleSourceLine, correlatedRoleSource, 'correlate role diagnostic with boot ID and PID');
+
+    const leaseLog =
+      "console.log('['+MARKER+'] process writer lease acquired; connectionId='+sbcWriterLeaseConnectionId);";
+    const correlatedLeaseLog =
+      "console.log('['+MARKER+'] process writer lease acquired; boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' port='+String(process.env.PORT||'<absent>')+' connectionId='+sbcWriterLeaseConnectionId);";
+    server = onceText(server, leaseLog, correlatedLeaseLog, 'correlate lease acquisition with boot ID and PID');
+
     const schemaAnchor =
       "    await RUNTIME_GATE.ensureSchema();\n" +
       "    // Migration ledger is created/reconciled by ensureEnterpriseSchema() below.";
@@ -69,10 +76,10 @@ function apply(root) {
       "        if(Number(counts?.customers||0)<VERIFIED_PRE_CORRUPTION_CRM_COUNT){MYSQL_RECOVERY_REQUIRED=true;storageMode='mysql-recovery-required';}\n" +
       "        else storageMode='mysql-relational';\n" +
       "        MYSQL_RECOVERY_EVALUATED=true;\n" +
-      "        console.log('[" + MARKER + "] writer lease held; existing-schema hydration complete; startup DDL/migrations/seeds skipped.');\n" +
+      "        console.log('[" + MARKER + "] boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' writer lease held; existing-schema hydration complete; startup DDL/migrations/seeds skipped.');\n" +
       "      }catch(e){\n" +
       "        MYSQL_RECOVERY_REQUIRED=true;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-recovery-required';\n" +
-      "        console.error('[" + MARKER + "] writer hydration failed closed:',String(e?.message||e));\n" +
+      "        console.error('[" + MARKER + "] boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' writer hydration failed closed:',String(e?.message||e));\n" +
       "      }\n" +
       "      return true;\n" +
       "    }\n" +
@@ -85,12 +92,12 @@ function apply(root) {
       'add SELECT-only writer hydration before schema initialization'
     );
 
-    const leaseLog = 'process writer lease acquired; connectionId=';
+    const leaseMarker = 'process writer lease acquired; boot_id=';
     const ddlBranch = 'if(!SBC_DDL_ENABLED){';
-    if (!server.includes(leaseLog)) {
-      throw new Error(MARKER + ': writer-lease acquisition diagnostic missing');
+    if (!server.includes(leaseMarker)) {
+      throw new Error(MARKER + ': correlated writer-lease acquisition diagnostic missing');
     }
-    if (server.indexOf(leaseLog) > server.indexOf(ddlBranch)) {
+    if (server.indexOf(leaseMarker) > server.indexOf(ddlBranch)) {
       throw new Error(MARKER + ': DDL-disabled hydration occurs before lease acquisition');
     }
     if (!server.includes('!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED || !sbcWriterLeaseReady')) {
@@ -101,8 +108,9 @@ function apply(root) {
     if (!server.includes("if(!SBC_DDL_ENABLED){") ||
         !server.includes("writer lease held; existing-schema hydration complete") ||
         !server.includes("writer hydration failed closed") ||
-        !server.includes("process writer lease acquired; connectionId=")) {
-      throw new Error(MARKER + ': marker exists but writer hydration patch is incomplete');
+        !server.includes("process writer lease acquired; boot_id=") ||
+        !server.includes("[SBC ROLE SOURCE CHECK] boot_id=")) {
+      throw new Error(MARKER + ': marker exists but writer hydration / correlated diagnostics are incomplete');
     }
   }
 
