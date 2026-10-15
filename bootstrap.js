@@ -206,6 +206,10 @@ function launch() {
   // V65.1.19: data/ and backups/ live in one permanent folder outside every hashed runtime folder.
   persistState(__dirname, runtimeDir, { reused: validRuntime });
   process.chdir(runtimeDir);
+  // Correlate role, writer-lease, recovery, and worker decisions to this process instance.
+  const sbcBootId = Date.now().toString(36) + '-' + process.pid + '-' + crypto.randomBytes(4).toString('hex');
+  process.env.SBC_BOOT_ID = sbcBootId;
+  console.log(`[SBC BOOT CORRELATION] boot_id=${sbcBootId} pid=${process.pid} port=${process.env.PORT || '<absent>'} role_env=${String(process.env.SBC_RUNTIME_ROLE || '<absent>')}`);
   console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
   console.log(require(path.join(__dirname, 'runtime-env-beacon.js')).buildBeaconLine(process.env, os.hostname()));
   // V65.1.34: fail closed on tenantless background rejections without masking other fatal errors.
