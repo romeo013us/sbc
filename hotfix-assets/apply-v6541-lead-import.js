@@ -57,7 +57,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
  let html=read(root,'public/index.html');
  if(!html.includes('/sbc-lead-import-v6541.js'))html=once(html,'</body>','<script src="/sbc-lead-import-v6541.js?v=65.1.41-lead-import"></script>\n</body>','lead import screen script');
  html=html.replace(/V65\.1\.39/g,'V65.1.41').replace(/65\.1\.39/g,'65.1.41');write(root,'public/index.html',html);
- let sw=read(root,'public/sw.js');sw=sw.replace(/sbc-static-v65-1-39/g,'sbc-static-v65-1-41');if(!sw.includes('sbc-static-v65-1-41'))throw new Error(MARKER+': service-worker cache version could not be updated');write(root,'public/sw.js',sw);
+ let sw=read(root,'public/sw.js');const cache=sw.match(/const CACHE='[^']+'/);if(!cache)throw new Error(MARKER+': service-worker cache declaration could not be found');sw=sw.replace(cache[0],\"const CACHE='sbc-static-v65-1-41'\");if(!sw.includes(\"const CACHE='sbc-static-v65-1-41'\"))throw new Error(MARKER+': service-worker cache version could not be updated');write(root,'public/sw.js',sw);
  const pkg=JSON.parse(read(root,'package.json'));if(pkg.name!=='sbc-business-command-center'||pkg.version!==FROM)throw new Error(MARKER+': expected '+FROM+'; found '+pkg.version);
  pkg.version=TO;pkg.description='SBC OS V65.1.41 adds a tenant-scoped CSV Lead Import screen with preview and duplicate checks';pkg.scripts=pkg.scripts||{};pkg.scripts['test:v6541-lead-import']='node hotfix-assets/v6541-lead-import-test.js';
  if(!String(pkg.scripts['test:all']||'').includes('v6541-lead-import-test.js'))pkg.scripts['test:all']=String(pkg.scripts['test:all']||'node bootstrap.js --verify')+' && node hotfix-assets/v6541-lead-import-test.js';
