@@ -17,6 +17,12 @@ function apply(root) {
     html = once(html, '</body>', '<script src="/sbc-ask-kim-drag-v6544.js?v=65.1.43-kim-drag"></script>\n</body>', 'Ask Kim draggable UI script insertion');
   }
   fs.writeFileSync(indexPath, html);
+  const swPath = path.join(pub, 'sw.js');
+  if (fs.existsSync(swPath)) {
+    let sw = fs.readFileSync(swPath, 'utf8');
+    const cache = sw.match(/const CACHE='[^']+'/);
+    if (cache) { sw = sw.replace(cache[0], "const CACHE='sbc-static-v65-1-44-kim-drag'"); fs.writeFileSync(swPath, sw); }
+  }
   fs.copyFileSync(modulePath, path.join(pub, 'sbc-ask-kim-drag-v6544.js'));
   fs.copyFileSync(modulePath, path.join(root, 'hotfix-assets', 'sbc-ask-kim-drag-v6544.js'));
   fs.copyFileSync(__filename, path.join(root, 'hotfix-assets', 'apply-v6544-ask-kim-drag.js'));
