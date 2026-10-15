@@ -142,46 +142,43 @@ jobs:
       - name: Run complete SBC regression suite
         run: npm run test:all
 
-      - name: Package V65.1.43 GoDaddy patch
+      - name: Package current GoDaddy patch
         if: success()
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
-          mkdir -p dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix/hotfix-assets
-          mkdir -p dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix/scripts
-          cp bootstrap.js package.json package-lock.json dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix/
-          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js hotfix-assets/apply-v6543-lead-import-commit-contract.js hotfix-assets/v6543-lead-import-commit-contract-test.js dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix/hotfix-assets/
-          cp scripts/v65137-startup-sequence.test.js dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix/scripts/
-          cat > dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix/README.txt <<'EOF'
-          SBC OS V65.1.43 — Lead Import Commit Fix
-          ===========================================
-          
-          Contents: the root launcher/manifests, Lead Import screen, Twilio diagnostics, and commit-response fix.
-          
+          RELEASE_DIR="dist/SBC-V${RELEASE_VERSION}-GoDaddy-Patch"
+          mkdir -p "$RELEASE_DIR/hotfix-assets" "$RELEASE_DIR/scripts"
+          cp bootstrap.js package.json package-lock.json "$RELEASE_DIR/"
+          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js hotfix-assets/apply-v6543-lead-import-commit-contract.js hotfix-assets/v6543-lead-import-commit-contract-test.js hotfix-assets/apply-v6544-ask-kim-drag.js hotfix-assets/sbc-ask-kim-drag-v6544.js hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js hotfix-assets/apply-v6546-release-identity-current-version.js hotfix-assets/v6546-release-identity-current-version-test.js "$RELEASE_DIR/hotfix-assets/"
+          cp scripts/v65137-startup-sequence.test.js "$RELEASE_DIR/scripts/"
+          cat > "$RELEASE_DIR/README.txt" <<EOF
+          SBC OS V${RELEASE_VERSION} — Runtime Startup Fix
+          ===============================================
+
+          This patch aligns Published startup and the release identity gate while retaining database recovery and writer-lease controls.
+
           BEFORE INSTALLING
-          1. Back up the matching files from your current GoDaddy app root.
-          2. Confirm this is the SBC Preview deployment, not Published/Live.
-          3. Do not modify database tables, secrets, ENABLE_DDL, recovery flags, or writer-lease settings.
-          
-          INSTALL
-          1. Extract this ZIP into the SBC application root, preserving the included folders.
-          2. Allow overwrite only for the files contained in this patch.
-          3. Restart the SBC Preview Node.js app in GoDaddy.
-          4. Confirm the app reports release 65.1.43. Preview must show duplicates; Import must confirm a positive saved count or explicitly explain why none were saved.
-          5. Open Import Leads, select the SBC barber-shop CSV, choose Preview import, review duplicates, then choose Import new leads.
-          6. If the server says imports are locked, stop. That means the existing recovery/read-only/writer gate is doing its job; do not bypass it.
-          
-          The patch adds a tenant-scoped, owner-only import endpoint. Preview is read-only. Actual inserts use a transaction, skip detected duplicates, and fail closed if tenant_id is absent or the existing write gate is closed.
-          
-          Do not deploy to Published/Live until Preview startup, duplicate preview, and an authorized test import have been verified.
+          1. Back up matching files from the current GoDaddy app root.
+          2. Confirm this is the intended SBC application.
+          3. Do not delete secrets or manually change database/recovery flags.
+
+          DEPLOY
+          1. Prefer the connected GoDaddy Preview -> Update Preview flow from GitHub main.
+          2. Review the build result before publishing.
+          3. Publish only after Preview startup and CRM visibility are verified.
+
+          The patch does not synthesize customer records or disable read-only, recovery, tenant, or writer-lease protections.
           EOF
-          cd dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix
-          zip -qr ../SBC-V65.1.43-GoDaddy-Lead-Import-Fix.zip bootstrap.js package.json package-lock.json hotfix-assets scripts README.txt
+          cd "$RELEASE_DIR"
+          zip -qr "../SBC-V${RELEASE_VERSION}-GoDaddy-Patch.zip" bootstrap.js package.json package-lock.json hotfix-assets scripts README.txt
 
       - name: Upload GoDaddy patch artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SBC-V65.1.43-GoDaddy-Lead-Import-Fix
-          path: dist/SBC-V65.1.43-GoDaddy-Lead-Import-Fix.zip
+          name: SBC-V${{ steps.release.outputs.version }}-GoDaddy-Patch
+          path: dist/SBC-V${{ steps.release.outputs.version }}-GoDaddy-Patch.zip
           if-no-files-found: error
           retention-days: 14
