@@ -1,4 +1,4 @@
-name: Verify SBC OS V65.1.41 Lead Import and Startup Safety
+name: Verify SBC OS V65.1.42 Voice Diagnostics and Startup Safety
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Validate V65.1.39 release identity and launch files
+      - name: Validate V65.1.42 release identity and launch files
         run: |
           set -euo pipefail
           node --check bootstrap.js
@@ -70,6 +70,8 @@ jobs:
           node --check hotfix-assets/v6538-writer-hydration-without-ddl-test.js
           node --check hotfix-assets/apply-v6539-safe-no-ddl-startup.js
           node --check hotfix-assets/apply-v6541-lead-import.js
+          node --check hotfix-assets/apply-v6542-voice-call-diagnostics.js
+          node --check hotfix-assets/v6542-voice-call-diagnostics-test.js
           node --check hotfix-assets/lead-import-v6541.js
           node --check hotfix-assets/v6541-lead-import-test.js
           node --check hotfix-assets/v6539-safe-no-ddl-startup-test.js
@@ -79,7 +81,7 @@ jobs:
           node --check hotfix-assets/v6530-writer-lease-marker-fix-test.js
           node --check hotfix-assets/apply-v6531-release-identity.js
           node --check hotfix-assets/v6531-release-identity-test.js
-          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.41'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
+          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.42'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
           test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
           test -f hotfix-assets/apply-v6526-demo-studio.js
           test -f hotfix-assets/v6526-demo-studio-test.js
@@ -116,6 +118,8 @@ jobs:
           test -f hotfix-assets/apply-v6541-lead-import.js
           test -f hotfix-assets/lead-import-v6541.js
           test -f hotfix-assets/v6541-lead-import-test.js
+          test -f hotfix-assets/apply-v6542-voice-call-diagnostics.js
+          test -f hotfix-assets/v6542-voice-call-diagnostics-test.js
           test -f scripts/v65137-startup-sequence.test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
 
@@ -134,20 +138,20 @@ jobs:
       - name: Run complete SBC regression suite
         run: npm run test:all
 
-      - name: Package V65.1.41 GoDaddy patch
+      - name: Package V65.1.42 GoDaddy patch
         if: success()
         run: |
           set -euo pipefail
-          mkdir -p dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/hotfix-assets
-          mkdir -p dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/scripts
-          cp bootstrap.js package.json package-lock.json dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/
-          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/hotfix-assets/
-          cp scripts/v65137-startup-sequence.test.js dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/scripts/
-          cat > dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch/README.txt <<'EOF'
-          SBC OS V65.1.41 — GoDaddy Lead Import Patch
+          mkdir -p dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix/hotfix-assets
+          mkdir -p dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix/scripts
+          cp bootstrap.js package.json package-lock.json dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix/
+          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix/hotfix-assets/
+          cp scripts/v65137-startup-sequence.test.js dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix/scripts/
+          cat > dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix/README.txt <<'EOF'
+          SBC OS V65.1.42 — Lead Import and Voice Diagnostics Patch
           ===========================================
           
-          Contents: the root launcher/manifests and the new Lead Import overlay/test files.
+          Contents: the root launcher/manifests, Lead Import screen, and improved Twilio calling diagnostics.
           
           BEFORE INSTALLING
           1. Back up the matching files from your current GoDaddy app root.
@@ -158,7 +162,7 @@ jobs:
           1. Extract this ZIP into the SBC application root, preserving the included folders.
           2. Allow overwrite only for the files contained in this patch.
           3. Restart the SBC Preview Node.js app in GoDaddy.
-          4. Confirm the app reports release 65.1.41 and the "Import Leads" button appears.
+          4. Confirm the app reports release 65.1.42, the "Import Leads" button appears, and calling errors identify missing Twilio configuration.
           5. Open Import Leads, select the SBC barber-shop CSV, choose Preview import, review duplicates, then choose Import new leads.
           6. If the server says imports are locked, stop. That means the existing recovery/read-only/writer gate is doing its job; do not bypass it.
           
@@ -166,14 +170,14 @@ jobs:
           
           Do not deploy to Published/Live until Preview startup, duplicate preview, and an authorized test import have been verified.
           EOF
-          cd dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch
-          zip -qr ../SBC-V65.1.41-GoDaddy-Lead-Import-Patch.zip bootstrap.js package.json package-lock.json hotfix-assets scripts README.txt
+          cd dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix
+          zip -qr ../SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix.zip bootstrap.js package.json package-lock.json hotfix-assets scripts README.txt
 
       - name: Upload GoDaddy patch artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SBC-V65.1.41-GoDaddy-Lead-Import-Patch
-          path: dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch.zip
+          name: SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix
+          path: dist/SBC-V65.1.42-GoDaddy-Lead-Import-and-Voice-Fix.zip
           if-no-files-found: error
           retention-days: 14
