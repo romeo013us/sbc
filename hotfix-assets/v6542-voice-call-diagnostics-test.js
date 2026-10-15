@@ -10,8 +10,8 @@ try{
  const result=require('./apply-v6542-voice-call-diagnostics.js').apply(temp);
  const app=fs.readFileSync(path.join(temp,'public/app.js'),'utf8'),html=fs.readFileSync(path.join(temp,'public/index.html'),'utf8'),sw=fs.readFileSync(path.join(temp,'public/sw.js'),'utf8'),pkg=JSON.parse(fs.readFileSync(path.join(temp,'package.json'),'utf8')),lock=JSON.parse(fs.readFileSync(path.join(temp,'package-lock.json'),'utf8')),identity=fs.readFileSync(path.join(temp,'config/release-identity.js'),'utf8');
  assert.equal(result.version,'65.1.42');assert.equal(pkg.version,'65.1.42');assert.equal(lock.packages[''].version,'65.1.42');
- assert(app.includes('Missing GoDaddy Secrets: '+ ')); // patched error path must name absent keys
- assert(app.includes('Call could not start: '));assert(app.includes('Phone error: '+ ')); 
+ assert(app.includes('Missing GoDaddy Secrets: ')); // patched error path must name absent keys
+ assert(app.includes('Call could not start: '));assert(app.includes('Phone error: ')); 
  assert(html.includes('app.js?v=65.1.42-voice-diagnostics'));assert(sw.includes("const CACHE='sbc-static-v65-1-42'"));
  assert(identity.includes("const RELEASE_VERSION = '65.1.42';"));assert(identity.includes("const RELEASE_NAME = 'VOICE_CALL_DIAGNOSTICS';"));
  cp.execFileSync(process.execPath,['--check',path.join(temp,'public/app.js')]);
