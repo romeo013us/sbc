@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.39';
-const HOTFIX_PATCH_ID = 'safe-no-ddl-startup-v6539';
+const EXPECTED_VERSION = '65.1.41';
+const HOTFIX_PATCH_ID = 'lead-import-screen-v6541';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -121,7 +121,7 @@ function verifyExtracted(dir, expectedVersion = EXPECTED_VERSION) {
 }
 
 function verifyPatchedSyntax(dir) {
-  const files = ['server.js','enterprise/sbc-agent-operating-system-v56-25-3.js','enterprise/sbc-growth-os-v650.js','enterprise/revenue-autopilot-supervisor-v552.js','enterprise/v56134-god-tier-revenue.js','enterprise/v56134-ten-brain.js','public/app.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','public/v56240-growth-hardening.js','enterprise/durable-session-secret.js','enterprise/v56170-six-phase-autopilot.js','enterprise/v56133-mysql-query-guard.js','enterprise/sbc-revenue-closer-v5611.js','enterprise/sbc-revenue-growth-v56122.js','enterprise/sbc-elite-closer-v5612.js','enterprise/automatic-lead-sale-execution.js','enterprise/sbc-commercial-os-v602.js','enterprise/v56220-economic-control.js','enterprise/v56140-90day-revenue-command.js','browser_public/v56140-90day-revenue-command.js','public/v56140-90day-revenue-command.js','enterprise/v56-autonomous-operations.js','enterprise/training-system-v2.js','enterprise/v56210-commercial-readiness.js'];
+  const files = ['server.js','enterprise/sbc-agent-operating-system-v56-25-3.js','enterprise/sbc-growth-os-v650.js','enterprise/revenue-autopilot-supervisor-v552.js','enterprise/v56134-god-tier-revenue.js','enterprise/v56134-ten-brain.js','public/app.js','public/v10.js','public/sbc-agent-os-v56-25-3.js','public/v56240-growth-hardening.js','public/sbc-lead-import-v6541.js','enterprise/durable-session-secret.js','enterprise/v56170-six-phase-autopilot.js','enterprise/v56133-mysql-query-guard.js','enterprise/sbc-revenue-closer-v5611.js','enterprise/sbc-revenue-growth-v56122.js','enterprise/sbc-elite-closer-v5612.js','enterprise/automatic-lead-sale-execution.js','enterprise/sbc-commercial-os-v602.js','enterprise/v56220-economic-control.js','enterprise/v56140-90day-revenue-command.js','browser_public/v56140-90day-revenue-command.js','public/v56140-90day-revenue-command.js','enterprise/v56-autonomous-operations.js','enterprise/training-system-v2.js','enterprise/v56210-commercial-readiness.js'];
   const execFileSync = require('child_process').execFileSync;
   for (const rel of files) {
     const target = path.join(dir, rel);
@@ -157,6 +157,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6537-effective-runtime-role.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6538-writer-hydration-without-ddl.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6539-safe-no-ddl-startup.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6541-lead-import.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -201,6 +202,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6537-effective-runtime-role.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6538-writer-hydration-without-ddl.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6539-safe-no-ddl-startup.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6541-lead-import.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
