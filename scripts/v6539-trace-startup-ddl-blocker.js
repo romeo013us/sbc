@@ -82,6 +82,20 @@ try {
     if (hits.length >= 90) break;
   }
 
+  // Locate the worker-leader initializer invoked with await during operational startup.
+  for (const file of walk(temp)) {
+    const source = fs.readFileSync(file, 'utf8');
+    if (!/acquireWorkerLeader/.test(source)) continue;
+    const lines = source.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (!/acquireWorkerLeader/.test(lines[i])) continue;
+      console.log('\n=== WORKER LEADER CALL/DEFINITION: ' + path.relative(temp, file) + ':' + (i + 1) + ' ===');
+      for (let j = Math.max(0, i - 3); j <= Math.min(lines.length - 1, i + 4); j++) {
+        console.log(String(j + 1).padStart(5) + ' [line_length=' + lines[j].length + '] ' + lines[j].slice(0, 6000));
+      }
+    }
+  }
+
   // Also print the beginning of startOperationalRuntime so we can identify the
   // earliest awaited operation that can reject the startup promise.
   for (const file of walk(temp)) {
