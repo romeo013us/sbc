@@ -75,8 +75,8 @@ try {
   assert.equal(result.version, '65.1.44');
   assert.equal(result.requiresNoAdditionalSecret, true);
   assert.equal(result.baselineRecoveryAndExclusiveWriterChecksPreserved, true);
-  assert.match(server, /let SBC_DDL_ENABLED = String(process.env.ENABLE_DDL/);
-  assert.match(server, /const SBC_DDL_ENV_MISSING = !String(process.env.ENABLE_DDL/);
+  assert.match(server, /let SBC_DDL_ENABLED = String\(process\.env\.ENABLE_DDL/);
+  assert.match(server, /const SBC_DDL_ENV_MISSING = !String\(process\.env\.ENABLE_DDL/);
   assert.match(server, /function sbcMayAutoEnableDdl/);
   assert.match(server, /customers:verifiedCustomerCount,minimum:VERIFIED_PRE_CORRUPTION_CRM_COUNT/);
   assert.match(server, /recoveryRequired:MYSQL_RECOVERY_REQUIRED,recoveryEvaluated:MYSQL_RECOVERY_EVALUATED,writerLeaseReady:sbcWriterLeaseReady/);
