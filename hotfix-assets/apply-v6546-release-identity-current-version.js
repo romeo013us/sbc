@@ -39,7 +39,13 @@ function alignReleaseIdentityGuard(root) {
   if (!markerFiles.length) throw new Error(MARKER + ': release identity guard source was not found.');
   let changedFiles = 0;
   let replacements = 0;
-  for (const file of markerFiles) {
+  const identityFiles = new Set(markerFiles);
+  // The production guard reports enterprise/v567-nine-nine.js, but its pinned
+  // baseline is stored in the bundled browser release manifest instead of in
+  // that guard's source. Align that manifest too when present.
+  const browserIdentity = path.join(root, 'browser_public', 'app.js');
+  if (fs.existsSync(browserIdentity)) identityFiles.add(browserIdentity);
+  for (const file of identityFiles) {
     let source = fs.readFileSync(file, 'utf8');
     const count = source.split(PINNED_BASELINE).length - 1;
     if (count > 0) {
@@ -55,10 +61,10 @@ function alignReleaseIdentityGuard(root) {
       .filter(item => item.source.includes(PINNED_BASELINE))
       .map(item => path.relative(root, item.file));
     const found = markerFiles.map(file => path.relative(root, file)).join(', ');
-    throw new Error(MARKER + ': release identity guard was found but its pinned baseline anchor was not in the guard file(s). Guard files: ' + found + '; JavaScript files containing ' + PINNED_BASELINE + ': ' + (pinLocations.join(', ') || '<none>'));
+    throw new Error(MARKER + ': release identity guard was found but its pinned baseline anchor was not in the guard or browser manifest. Guard files: ' + found + '; JavaScript files containing ' + PINNED_BASELINE + ': ' + (pinLocations.join(', ') || '<none>'));
   }
-  // Prove the old pin no longer remains in any release-identity guard source.
-  for (const file of markerFiles) {
+  // Prove the old pin no longer remains in the guard and bundled browser identity.
+  for (const file of identityFiles) {
     const source = fs.readFileSync(file, 'utf8');
     if (source.includes(PINNED_BASELINE)) {
       throw new Error(MARKER + ': stale pinned release version remains in ' + path.relative(root, file));
