@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * SBC V65.1.42 startup sequence regression.
+ * SBC V65.1.43 startup sequence regression.
  *
  * This test combines assertions against the repository's actual startup patches
  * with a deterministic contract model. It does not connect to MySQL or prove
@@ -32,7 +32,8 @@ function assertPatchOrder(segment, target, label) {
     'apply-v6538-writer-hydration-without-ddl.js',
     'apply-v6539-safe-no-ddl-startup.js',
     'apply-v6541-lead-import.js',
-    'apply-v6542-voice-call-diagnostics.js'
+    'apply-v6542-voice-call-diagnostics.js',
+    'apply-v6543-lead-import-commit-contract.js'
   ];
   let last = -1;
   for (const patch of expected) {
@@ -45,7 +46,7 @@ function assertPatchOrder(segment, target, label) {
 }
 
 function sourceContractChecks() {
-  assert.equal(pkg.version, '65.1.42', 'test is tied to the deployed V65.1.42 source');
+  assert.equal(pkg.version, '65.1.43', 'test is tied to the deployed V65.1.43 source');
   assert.match(bootstrap, /process\.env\.SBC_BOOT_ID = sbcBootId/,
     'each launched process gets a unique boot correlation ID');
   assert.match(bootstrap, /\[SBC BOOT CORRELATION\] boot_id=/,
