@@ -8,12 +8,12 @@ function write(root,rel,s){fs.writeFileSync(path.join(root,rel),s);}
 function apply(root){
  let server=read(root,'server.js');
  if(!server.includes(MARKER)){
- const route=String.raw\`
+ const route=String.raw`
 // SBC_V6541_LEAD_IMPORT: authenticated CSV lead import with preview, tenant scoping, duplicate checks, and recovery-safe writes.
 app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
  const dryRun=req.body?.dryRun!==false,rows=Array.isArray(req.body?.rows)?req.body.rows:[];
  if(!rows.length||rows.length>500)return res.status(400).json({ok:false,error:'Provide between 1 and 500 lead rows.'});
- const clean=(v,max=1000)=>String(v==null?'':v).trim().slice(0,max),normPhone=v=>clean(v,80).replace(/\\D/g,''),normEmail=v=>clean(v,254).toLowerCase(),normName=v=>clean(v,255).toLowerCase().replace(/\\s+/g,' ');
+ const clean=(v,max=1000)=>String(v==null?'':v).trim().slice(0,max),normPhone=v=>clean(v,80).replace(/\D/g,''),normEmail=v=>clean(v,254).toLowerCase(),normName=v=>clean(v,255).toLowerCase().replace(/\s+/g,' ');
  const normalized=rows.map((r,i)=>({row:i+1,businessName:clean(r.business_name||r.businessName,255),contactName:clean(r.contact_name||r.contactName,255),phone:clean(r.phone,80),email:clean(r.email,254),website:clean(r.website,1000),websiteStatus:clean(r.website_status||r.websiteStatus,120),source:clean(r.lead_source||r.source,255)||'User-provided lead research',notes:clean(r.research_notes||r.notes,4000),industry:clean(r.business_category||r.industry,255)||'Barber Shop'}));
  if(normalized.some(r=>!r.businessName))return res.status(400).json({ok:false,error:'Every row must include a business name.',invalidRows:normalized.filter(r=>!r.businessName).map(r=>r.row)});
  if(!dryRun&&(SBC_RUNTIME_READ_ONLY||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady))return res.status(423).json({ok:false,code:'SBC_IMPORT_WRITE_LOCKED',error:'Preview is available, but saving is blocked while SBC is read-only, recovery is unevaluated/required, or the exclusive writer lease is unavailable. No records were written.'});
@@ -47,7 +47,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
  }catch(e){if(conn&&!dryRun){try{await conn.rollback();}catch{}}console.error('[SBC_V6541_LEAD_IMPORT] import failed:',e&&e.message?e.message:e);res.status(e&&e.code==='TENANT_CONTEXT_REQUIRED'?403:500).json({ok:false,error:'Lead import failed safely. No partial import was committed.',detail:String(e&&e.message||'Unexpected import error').slice(0,300)});}
  finally{if(conn)conn.release();}
 });
-\`;
+`;
  const i=server.lastIndexOf('app.listen(');if(i<0||server.indexOf('app.listen(')!==i)throw new Error(MARKER+': expected one app.listen startup anchor');
  server=server.slice(0,i)+route+'\n'+server.slice(i);write(root,'server.js',server);
  }
