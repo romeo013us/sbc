@@ -31,7 +31,8 @@ const patchPaths = [
   'hotfix-assets/apply-v6535-writer-no-ddl-operational-startup.js',
   'hotfix-assets/apply-v6536-runtime-beacon.js',
   'hotfix-assets/apply-v6537-effective-runtime-role.js',
-  'hotfix-assets/apply-v6538-writer-hydration-without-ddl.js'
+  'hotfix-assets/apply-v6538-writer-hydration-without-ddl.js',
+  'hotfix-assets/apply-v6539-safe-no-ddl-startup.js'
 ];
 const patterns = [
   /\[SBC STARTUP\].{0,100}production startup blocked/g,
