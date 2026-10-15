@@ -41,7 +41,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
    await conn.query("INSERT INTO sbc_customers (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,lead_intelligence_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",[c.id,c.tenantId,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,'[]','{}',sqlDateTime(c.createdAt),sqlDateTime(c.updatedAt)]);
    created.push(c);
   }
-  if(!dryRun){await conn.commit();if(Array.isArray(db?.customers))created.forEach(c=>db.customers.push(c));}
+  if(!dryRun){await conn.commit();if(typeof db!=='undefined'&&Array.isArray(db.customers))created.forEach(c=>db.customers.push(c));}
   res.setHeader('Cache-Control','no-store');
   res.json({ok:true,dryRun,tenantId,total:normalized.length,imported:dryRun?0:created.length,ready:results.filter(r=>r.status==='ready').length,duplicates:results.filter(r=>r.status==='duplicate').length,results,message:dryRun?'Preview complete. No records were written.':'Import complete: '+created.length+' added; '+results.filter(r=>r.status==='duplicate').length+' duplicates skipped.'});
  }catch(e){if(conn&&!dryRun){try{await conn.rollback();}catch{}}console.error('[SBC_V6541_LEAD_IMPORT] import failed:',e&&e.message?e.message:e);res.status(e&&e.code==='TENANT_CONTEXT_REQUIRED'?403:500).json({ok:false,error:'Lead import failed safely. No partial import was committed.',detail:String(e&&e.message||'Unexpected import error').slice(0,300)});}
