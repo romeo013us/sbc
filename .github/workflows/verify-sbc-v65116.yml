@@ -1,4 +1,4 @@
-name: Verify SBC OS V65.1.43 Lead Import Commit Contract and Startup Safety
+name: Verify SBC OS Current Release Identity and Startup Safety
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Validate V65.1.43 release identity and launch files
+      - name: Validate current release identity and launch files
         run: |
           set -euo pipefail
           node --check bootstrap.js
@@ -74,6 +74,10 @@ jobs:
           node --check hotfix-assets/v6542-voice-call-diagnostics-test.js
           node --check hotfix-assets/apply-v6543-lead-import-commit-contract.js
           node --check hotfix-assets/v6543-lead-import-commit-contract-test.js
+          node --check hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js
+          node --check hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js
+          node --check hotfix-assets/apply-v6546-release-identity-current-version.js
+          node --check hotfix-assets/v6546-release-identity-current-version-test.js
           node --check hotfix-assets/lead-import-v6541.js
           node --check hotfix-assets/v6541-lead-import-test.js
           node --check hotfix-assets/v6539-safe-no-ddl-startup-test.js
@@ -83,7 +87,18 @@ jobs:
           node --check hotfix-assets/v6530-writer-lease-marker-fix-test.js
           node --check hotfix-assets/apply-v6531-release-identity.js
           node --check hotfix-assets/v6531-release-identity-test.js
-          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.43'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const p = require('./package.json');
+          const lock = require('./package-lock.json');
+          const bootstrap = fs.readFileSync('bootstrap.js', 'utf8');
+          const match = bootstrap.match(/const EXPECTED_VERSION = '([^']+)'/);
+          if (p.name !== 'sbc-business-command-center' || p.main !== 'bootstrap.js' || p.scripts.start !== 'node bootstrap.js' || !match || p.version !== match[1] || lock.version !== p.version || lock.packages?.['']?.version !== p.version) {
+            console.error('Release identity mismatch', {packageVersion:p.version, bootstrapVersion:match?.[1], lockVersion:lock.version, lockRootVersion:lock.packages?.['']?.version});
+            process.exit(1);
+          }
+          console.log(p.name + '@' + p.version + ' matches bootstrap and lockfile');
+          NODE
           test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
           test -f hotfix-assets/apply-v6526-demo-studio.js
           test -f hotfix-assets/v6526-demo-studio-test.js
@@ -124,8 +139,18 @@ jobs:
           test -f hotfix-assets/v6542-voice-call-diagnostics-test.js
           test -f hotfix-assets/apply-v6543-lead-import-commit-contract.js
           test -f hotfix-assets/v6543-lead-import-commit-contract-test.js
+          test -f hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js
+          test -f hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js
+          test -f hotfix-assets/apply-v6546-release-identity-current-version.js
+          test -f hotfix-assets/v6546-release-identity-current-version-test.js
           test -f scripts/v65137-startup-sequence.test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
+
+      - name: Resolve current release version
+        id: release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Install locked root dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
