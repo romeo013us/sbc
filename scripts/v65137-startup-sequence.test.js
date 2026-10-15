@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * SBC V65.1.38 startup sequence regression.
+ * SBC V65.1.39 startup sequence regression.
  *
  * This test combines assertions against the repository's actual startup patches
  * with a deterministic contract model. It does not connect to MySQL or prove
@@ -20,6 +20,7 @@ const leasePatch = read('hotfix-assets/apply-v6528-runtime-writer-lease.js');
 const singleWriterPatch = read('hotfix-assets/apply-v6524-single-writer.js');
 const ddlPatch = read('hotfix-assets/apply-v6533-startup-ddl-gate.js');
 const workerPatch = read('hotfix-assets/apply-v6535-writer-no-ddl-operational-startup.js');
+const safeStartupPatch = read('hotfix-assets/apply-v6539-safe-no-ddl-startup.js');
 
 function assertPatchOrder(segment, target, label) {
   const expected = [
@@ -28,7 +29,8 @@ function assertPatchOrder(segment, target, label) {
     'apply-v6533-startup-ddl-gate.js',
     'apply-v6535-writer-no-ddl-operational-startup.js',
     'apply-v6537-effective-runtime-role.js',
-    'apply-v6538-writer-hydration-without-ddl.js'
+    'apply-v6538-writer-hydration-without-ddl.js',
+    'apply-v6539-safe-no-ddl-startup.js'
   ];
   let last = -1;
   for (const patch of expected) {
@@ -41,7 +43,7 @@ function assertPatchOrder(segment, target, label) {
 }
 
 function sourceContractChecks() {
-  assert.equal(pkg.version, '65.1.38', 'test is tied to the deployed V65.1.38 source');
+  assert.equal(pkg.version, '65.1.39', 'test is tied to the deployed V65.1.39 source');
   assert.match(bootstrap, /process\.env\.SBC_BOOT_ID = sbcBootId/,
     'each launched process gets a unique boot correlation ID');
   assert.match(bootstrap, /\[SBC BOOT CORRELATION\] boot_id=/,
@@ -93,8 +95,12 @@ function sourceContractChecks() {
     'workers require writer role, completed recovery evaluation, clear recovery, and an active lease');
   assert.match(workerPatch, /DDL remains opt-in/,
     'worker startup does not require DDL to be enabled');
+  assert.match(safeStartupPatch, /!SBC_DDL_ENABLED/,
+    'schema-dependent startup workers are held when DDL is not explicitly enabled');
+  assert.match(safeStartupPatch, /Published HTTP\/API listener remains available/,
+    'the HTTP/API listener remains available in no-DDL safe mode');
 
-  console.log('[SBC V65.1.38] source-contract checks PASS');
+  console.log('[SBC V65.1.39] source-contract checks PASS');
 }
 
 /**
@@ -155,6 +161,7 @@ class SystemInitializer {
 
     const ddlEnabled = String(this.env.ENABLE_DDL || '').trim().toLowerCase() === 'true';
     if (ddlEnabled) await this.db.executeDDL();
+    if (!ddlEnabled) return { status: 'HTTP_API_SAFE_MODE', ddlEnabled: false };
 
     this.recoveryEvaluated = this.recovery !== 'not-evaluated';
     if (!this.recoveryEvaluated || this.recovery === 'required') {
@@ -182,13 +189,13 @@ async function modelChecks() {
     const db = new MockDatabase();
     const runtime = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer' }, db);
     const result = await runtime.runStartupSequence('published');
-    assert.equal(result.status, 'OPERATIONAL');
+    assert.equal(result.status, 'HTTP_API_SAFE_MODE');
     assert.equal(result.ddlEnabled, false, 'unset ENABLE_DDL remains disabled');
     assert.equal(runtime.leaseAcquired, true);
-    assert.equal(runtime.recoveryEvaluated, true);
-    assert.equal(runtime.workersStarted, true, 'clear-recovery workers may start without DDL opt-in');
+    assert.equal(runtime.recoveryEvaluated, false, 'no-DDL mode does not enter schema-dependent worker initialization');
+    assert.equal(runtime.workersStarted, false, 'schema-dependent workers are held until DDL is explicitly enabled');
     assert.equal(db.schemaChanged, false, 'no schema mutation when ENABLE_DDL is unset');
-    console.log('PASS: Writer with DDL unset acquires a lease; clear recovery permits workers but not DDL.');
+    console.log('PASS: Writer with DDL unset acquires a lease; HTTP/API stays up while schema-dependent workers are held.');
   }
 
   {
@@ -228,8 +235,8 @@ async function modelChecks() {
 (async () => {
   sourceContractChecks();
   await modelChecks();
-  console.log('[SBC V65.1.38] startup sequence regression PASS');
+  console.log('[SBC V65.1.39] startup sequence regression PASS');
 })().catch(error => {
-  console.error('[SBC V65.1.38] startup sequence regression FAIL:', error);
+  console.error('[SBC V65.1.39] startup sequence regression FAIL:', error);
   process.exitCode = 1;
 });
