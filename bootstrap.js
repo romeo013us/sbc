@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '65.1.43';
-const HOTFIX_PATCH_ID = 'lead-import-commit-contract-v6543';
+const HOTFIX_PATCH_ID = 'ask-kim-draggable-panel-v6544';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -160,6 +160,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6541-lead-import.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6542-voice-call-diagnostics.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6543-lead-import-commit-contract.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6544-ask-kim-drag.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -207,6 +208,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6541-lead-import.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6542-voice-call-diagnostics.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6543-lead-import-commit-contract.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6544-ask-kim-drag.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
