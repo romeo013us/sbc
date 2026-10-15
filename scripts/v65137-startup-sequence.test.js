@@ -36,7 +36,8 @@ function assertPatchOrder(segment, target, label) {
     'apply-v6543-lead-import-commit-contract.js',
     'apply-v6544-ask-kim-drag.js',
     'apply-v6545-baseline-gated-ddl-unblock.js',
-    'apply-v6546-release-identity-current-version.js'
+    'apply-v6546-release-identity-current-version.js',
+    'apply-v6547-tenant-propagation.js'
   ];
   let last = -1;
   for (const patch of expected) {
