@@ -82,6 +82,20 @@ try {
     if (hits.length >= 90) break;
   }
 
+  // Also print the beginning of startOperationalRuntime so we can identify the
+  // earliest awaited operation that can reject the startup promise.
+  for (const file of walk(temp)) {
+    if (path.basename(file) !== 'server.js') continue;
+    const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+    const startAt = lines.findIndex(line => /startOperationalRuntime\s*=\s*async\s*\(\)\s*=>\s*\{/.test(line));
+    if (startAt >= 0) {
+      console.log('\n=== OPERATIONAL RUNTIME STARTUP BODY: ' + path.relative(temp, file) + ':' + (startAt + 1) + ' ===');
+      for (let j = startAt; j < Math.min(lines.length, startAt + 45); j++) {
+        console.log(String(j + 1).padStart(5) + ' [line_length=' + lines[j].length + '] ' + lines[j].slice(0, 9000));
+      }
+    }
+  }
+
   // Emit the full startup promise chain around the production-blocked catch. These lines
   // contain source code only and are truncated only at 9000 chars per line.
   for (const file of walk(temp)) {
