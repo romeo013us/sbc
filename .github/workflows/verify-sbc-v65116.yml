@@ -1,4 +1,4 @@
-name: Verify SBC OS V65.1.38 Writer Startup and Price Consistency
+name: Verify SBC OS V65.1.39 Writer Startup and Price Consistency
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Validate V65.1.38 release identity and launch files
+      - name: Validate V65.1.39 release identity and launch files
         run: |
           set -euo pipefail
           node --check bootstrap.js
@@ -66,13 +66,15 @@ jobs:
           node --check hotfix-assets/v6537-effective-runtime-role-test.js
           node --check hotfix-assets/apply-v6538-writer-hydration-without-ddl.js
           node --check hotfix-assets/v6538-writer-hydration-without-ddl-test.js
+          node --check hotfix-assets/apply-v6539-safe-no-ddl-startup.js
+          node --check hotfix-assets/v6539-safe-no-ddl-startup-test.js
           node --check scripts/v65137-startup-sequence.test.js
           node --check scripts/v6539-trace-startup-ddl-blocker.js
           node --check hotfix-assets/apply-v6530-writer-lease-marker-fix.js
           node --check hotfix-assets/v6530-writer-lease-marker-fix-test.js
           node --check hotfix-assets/apply-v6531-release-identity.js
           node --check hotfix-assets/v6531-release-identity-test.js
-          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.38'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
+          node -e "const p=require('./package.json'); if(p.name!=='sbc-business-command-center'||p.version!=='65.1.39'||p.main!=='bootstrap.js'||p.scripts.start!=='node bootstrap.js') { console.error('Unexpected release identity or entrypoint', p.name, p.version, p.main, p.scripts.start); process.exit(1); } console.log(p.name+'@'+p.version)"
           test -f SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
           test -f hotfix-assets/apply-v6526-demo-studio.js
           test -f hotfix-assets/v6526-demo-studio-test.js
@@ -104,6 +106,8 @@ jobs:
           test -f hotfix-assets/v6537-effective-runtime-role-test.js
           test -f hotfix-assets/apply-v6538-writer-hydration-without-ddl.js
           test -f hotfix-assets/v6538-writer-hydration-without-ddl-test.js
+          test -f hotfix-assets/apply-v6539-safe-no-ddl-startup.js
+          test -f hotfix-assets/v6539-safe-no-ddl-startup-test.js
           test -f scripts/v65137-startup-sequence.test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
 
