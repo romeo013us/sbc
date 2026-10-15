@@ -21,7 +21,8 @@
     "test:v6533-startup-ddl-gate": "node hotfix-assets/v6533-startup-ddl-gate-test.js",
     "test:v65134-tenant-rejection-guard": "node hotfix-assets/v65134-tenant-rejection-guard-test.js",
     "test:v6534-price-consistency": "node hotfix-assets/v6534-price-consistency-test.js",
-    "test:v6535-writer-no-ddl": "node hotfix-assets/v6535-writer-no-ddl-operational-startup-test.js"
+    "test:v6535-writer-no-ddl": "node hotfix-assets/v6535-writer-no-ddl-operational-startup-test.js",
+    "dev": "node bootstrap.js"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
