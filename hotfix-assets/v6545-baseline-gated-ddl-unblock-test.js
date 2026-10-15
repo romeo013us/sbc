@@ -83,7 +83,7 @@ try {
   assert.match(server, /process.env.ENABLE_DDL='true'/);
   assert.match(server, /verified customer baseline is short/);
   assert.match(server, /startup schema work remains gated/);
-  assert.match(server, /await RUNTIME_GATE.ensureSchema();/);
+  assert.match(server, /await RUNTIME_GATE\.ensureSchema\(\);/);
   assert.match(server, /!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED || !sbcWriterLeaseReady/);
   assert.match(server, /SBC_V6539_SAFE_NO_DDL_STARTUP/);
   assert.match(server, /const startOperationalRuntime=async()=>{if(SBC_RUNTIME_READ_ONLY){return;}if(!SBC_DDL_ENABLED){return;}await SBC_GOD_EVENTS.ensureTables();}/);
