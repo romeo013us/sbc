@@ -46,13 +46,8 @@ function apply(root) {
 
   pkg.version = TO;
   pkg.description = 'SBC OS V65.1.36 runtime-beacon deployment identity; writer and recovery gates unchanged';
-  pkg.scripts = pkg.scripts || {};
-  pkg.scripts['test:v6536-runtime-beacon'] = 'node hotfix-assets/v6536-runtime-beacon-test.js';
-  if (!String(pkg.scripts['test:all'] || '').includes('v6536-runtime-beacon-test.js')) {
-    pkg.scripts['test:all'] = (pkg.scripts['test:all'] || 'node bootstrap.js --verify') +
-      ' && node hotfix-assets/v6536-runtime-beacon-test.js';
-  }
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  // The root repository's test suite exercises this release patch. The extracted
+  // production package keeps its existing tests/scripts unchanged.
 
   const lockPath = path.join(root, 'package-lock.json');
   if (!fs.existsSync(lockPath)) throw new Error(MARKER + ': package-lock.json missing');
