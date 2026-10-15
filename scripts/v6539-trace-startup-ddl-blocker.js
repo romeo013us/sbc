@@ -82,6 +82,22 @@ try {
     if (hits.length >= 90) break;
   }
 
+  // Emit the full startup promise chain around the production-blocked catch. These lines
+  // contain source code only and are truncated only at 9000 chars per line.
+  for (const file of walk(temp)) {
+    let source;
+    try { source = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const lines = source.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (!/production startup blocked/.test(lines[i])) continue;
+      console.log('\n=== FULL STARTUP FAILURE CHAIN: ' + path.relative(temp, file) + ':' + (i + 1) + ' ===');
+      for (let j = Math.max(0, i - 6); j <= Math.min(lines.length - 1, i + 1); j++) {
+        console.log(String(j + 1).padStart(5) + (j === i ? ' > ' : '   ') +
+          '[line_length=' + lines[j].length + '] ' + lines[j].slice(0, 9000));
+      }
+    }
+  }
+
   console.log('[SBC V65.1.39 DIAGNOSTIC] patched source trace; no database connection made.');
   if (!hits.length) {
     console.log('No matching startup / DDL-gate locations found in patched source.');
