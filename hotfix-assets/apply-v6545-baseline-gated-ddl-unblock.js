@@ -175,6 +175,8 @@ function apply(root) {
   const testTarget = path.join(root, 'hotfix-assets', 'v6545-baseline-gated-ddl-unblock-test.js');
   fs.mkdirSync(path.dirname(testTarget), { recursive: true });
   fs.copyFileSync(testSource, testTarget);
+  const patchTarget = path.join(root, 'hotfix-assets', 'apply-v6545-baseline-gated-ddl-unblock.js');
+  fs.copyFileSync(__filename, patchTarget);
 
   const versionPath = path.join(root, 'VERSION');
   if (fs.existsSync(versionPath)) {
