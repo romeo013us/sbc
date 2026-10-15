@@ -50,8 +50,12 @@ function alignReleaseIdentityGuard(root) {
     }
   }
   if (!replacements) {
+    const pinLocations = walkJavaScript(root)
+      .map(file => ({ file, source: fs.readFileSync(file, 'utf8') }))
+      .filter(item => item.source.includes(PINNED_BASELINE))
+      .map(item => path.relative(root, item.file));
     const found = markerFiles.map(file => path.relative(root, file)).join(', ');
-    throw new Error(MARKER + ': release identity guard was found but its pinned baseline anchor was not. Files: ' + found);
+    throw new Error(MARKER + ': release identity guard was found but its pinned baseline anchor was not in the guard file(s). Guard files: ' + found + '; JavaScript files containing ' + PINNED_BASELINE + ': ' + (pinLocations.join(', ') || '<none>'));
   }
   // Prove the old pin no longer remains in any release-identity guard source.
   for (const file of markerFiles) {
