@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * SBC V65.1.37 startup sequence regression.
+ * SBC V65.1.38 startup sequence regression.
  *
  * This test combines assertions against the repository's actual startup patches
  * with a deterministic contract model. It does not connect to MySQL or prove
@@ -27,7 +27,8 @@ function assertPatchOrder(segment, target, label) {
     'apply-v6528-runtime-writer-lease.js',
     'apply-v6533-startup-ddl-gate.js',
     'apply-v6535-writer-no-ddl-operational-startup.js',
-    'apply-v6537-effective-runtime-role.js'
+    'apply-v6537-effective-runtime-role.js',
+    'apply-v6538-writer-hydration-without-ddl.js'
   ];
   let last = -1;
   for (const patch of expected) {
@@ -40,7 +41,7 @@ function assertPatchOrder(segment, target, label) {
 }
 
 function sourceContractChecks() {
-  assert.equal(pkg.version, '65.1.37', 'test is tied to the deployed V65.1.37 source');
+  assert.equal(pkg.version, '65.1.38', 'test is tied to the deployed V65.1.38 source');
   assertPatchOrder(
     bootstrap.slice(bootstrap.indexOf('function verifyOnly()'), bootstrap.indexOf('function launch()')),
     'temp',
@@ -89,7 +90,7 @@ function sourceContractChecks() {
   assert.match(workerPatch, /DDL remains opt-in/,
     'worker startup does not require DDL to be enabled');
 
-  console.log('[SBC V65.1.37] source-contract checks PASS');
+  console.log('[SBC V65.1.38] source-contract checks PASS');
 }
 
 /**
@@ -223,8 +224,8 @@ async function modelChecks() {
 (async () => {
   sourceContractChecks();
   await modelChecks();
-  console.log('[SBC V65.1.37] startup sequence regression PASS');
+  console.log('[SBC V65.1.38] startup sequence regression PASS');
 })().catch(error => {
-  console.error('[SBC V65.1.37] startup sequence regression FAIL:', error);
+  console.error('[SBC V65.1.38] startup sequence regression FAIL:', error);
   process.exitCode = 1;
 });
