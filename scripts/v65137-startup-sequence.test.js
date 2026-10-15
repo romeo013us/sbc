@@ -200,11 +200,11 @@ async function modelChecks() {
 
   {
     const db = new MockDatabase();
-    const primary = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer' }, db);
+    const primary = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer', ENABLE_DDL: 'true' }, db);
     const primaryResult = await primary.runStartupSequence('primary');
     assert.equal(primaryResult.status, 'OPERATIONAL');
 
-    const secondary = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer' }, db);
+    const secondary = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer', ENABLE_DDL: 'true' }, db);
     const secondaryResult = await secondary.runStartupSequence('secondary');
     assert.equal(secondaryResult.status, 'RECOVERY_SAFE');
     assert.equal(secondary.workersStarted, false);
@@ -214,7 +214,7 @@ async function modelChecks() {
 
   {
     const db = new MockDatabase();
-    const runtime = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer' }, db, 'required');
+    const runtime = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer', ENABLE_DDL: 'true' }, db, 'required');
     const result = await runtime.runStartupSequence('published-recovery-required');
     assert.equal(result.status, 'RECOVERY_SAFE');
     assert.equal(runtime.leaseAcquired, true);
@@ -224,7 +224,7 @@ async function modelChecks() {
 
   {
     const db = new MockDatabase();
-    const runtime = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer' }, db, 'not-evaluated');
+    const runtime = new SystemInitializer({ SBC_RUNTIME_ROLE: 'writer', ENABLE_DDL: 'true' }, db, 'not-evaluated');
     const result = await runtime.runStartupSequence('published-recovery-pending');
     assert.equal(result.status, 'RECOVERY_SAFE');
     assert.equal(runtime.workersStarted, false);
