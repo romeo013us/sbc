@@ -67,6 +67,7 @@ jobs:
           node --check hotfix-assets/apply-v6538-writer-hydration-without-ddl.js
           node --check hotfix-assets/v6538-writer-hydration-without-ddl-test.js
           node --check scripts/v65137-startup-sequence.test.js
+          node --check scripts/v6539-trace-startup-ddl-blocker.js
           node --check hotfix-assets/apply-v6530-writer-lease-marker-fix.js
           node --check hotfix-assets/v6530-writer-lease-marker-fix-test.js
           node --check hotfix-assets/apply-v6531-release-identity.js
@@ -111,6 +112,9 @@ jobs:
 
       - name: Verify SBC root release build
         run: npm run build
+
+      - name: Trace patched production startup DDL blocker
+        run: node scripts/v6539-trace-startup-ddl-blocker.js
 
       - name: Run complete SBC regression suite
         run: npm run test:all
