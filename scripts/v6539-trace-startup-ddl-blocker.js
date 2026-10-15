@@ -90,8 +90,10 @@ try {
     const startAt = lines.findIndex(line => /startOperationalRuntime\s*=\s*async\s*\(\)\s*=>\s*\{/.test(line));
     if (startAt >= 0) {
       console.log('\n=== OPERATIONAL RUNTIME STARTUP BODY: ' + path.relative(temp, file) + ':' + (startAt + 1) + ' ===');
-      for (let j = startAt; j < Math.min(lines.length, startAt + 45); j++) {
-        console.log(String(j + 1).padStart(5) + ' [line_length=' + lines[j].length + '] ' + lines[j].slice(0, 9000));
+      for (let j = startAt; j < Math.min(lines.length, startAt + 100); j++) {
+        if (j < startAt + 8 || /ensureTables|ensureSchema|CREATE TABLE|ensureEnterpriseSchema|migrat|mysqlPool\.query|start[A-Z]\\w+\\(|RUNTIME_GATE|workerLeader|startup blocked|\bawait\b/.test(lines[j])) {
+          console.log(String(j + 1).padStart(5) + ' [line_length=' + lines[j].length + '] ' + lines[j].slice(0, 5000));
+        }
       }
     }
   }
