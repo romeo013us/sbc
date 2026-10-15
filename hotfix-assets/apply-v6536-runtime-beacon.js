@@ -46,6 +46,7 @@ function apply(root) {
 
   pkg.version = TO;
   pkg.description = 'SBC OS V65.1.36 runtime-beacon deployment identity; writer and recovery gates unchanged';
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   // The root repository's test suite exercises this release patch. The extracted
   // production package keeps its existing tests/scripts unchanged.
 
