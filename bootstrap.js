@@ -1,6 +1,6 @@
 'use strict';
 
-// GoDaddy repository-root launcher for SBC OS V65.1.34.
+// GoDaddy repository-root launcher for SBC OS V65.1.35.
 // Application source is stored in the adjacent source ZIP. GoDaddy installs the
 // listed runtime dependencies at this repository root; extracted modules resolve
 // upward to that node_modules directory.
@@ -201,6 +201,7 @@ function launch() {
   persistState(__dirname, runtimeDir, { reused: validRuntime });
   process.chdir(runtimeDir);
   console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
+  console.log(require(path.join(__dirname, 'runtime-env-beacon.js')).buildBeaconLine(process.env, os.hostname()));
   // V65.1.34: fail closed on tenantless background rejections without masking other fatal errors.
   require(path.join(__dirname, 'tenant-rejection-guard.js')).installTenantRejectionGuard(process, console);
   require(path.join(runtimeDir, 'server.js'));

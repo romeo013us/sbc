@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'bootstrap.js'
+      - 'runtime-env-beacon.js'
+      - 'runtime-env-beacon-test.js'
       - 'package.json'
       - 'package-lock.json'
       - 'persistent-state.js'
@@ -39,6 +41,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check bootstrap.js
+          node --check runtime-env-beacon.js
+          node --check runtime-env-beacon-test.js
           node --check persistent-state.js
           node --check persistent-state-test.js
           node --check hotfix-assets/apply-v6528-runtime-writer-lease.js
