@@ -165,7 +165,7 @@ jobs:
           The patch adds a tenant-scoped, owner-only import endpoint. Preview is read-only. Actual inserts use a transaction, skip detected duplicates, and fail closed if tenant_id is absent or the existing write gate is closed.
           
           Do not deploy to Published/Live until Preview startup, duplicate preview, and an authorized test import have been verified.
-EOF
+          EOF
           cd dist
           zip -qr ../SBC-V65.1.41-GoDaddy-Lead-Import-Patch.zip SBC-V65.1.41-GoDaddy-Lead-Import-Patch
 
