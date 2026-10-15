@@ -48,7 +48,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
  finally{if(conn)conn.release();}
 });
 `;
- const i=server.lastIndexOf('app.listen(');if(i<0||server.indexOf('app.listen(')!==i)throw new Error(MARKER+': expected one app.listen startup anchor');
+ const anchor='const startOperationalRuntime=async()=>{',i=server.indexOf(anchor);if(i<0||server.indexOf(anchor,i+anchor.length)!==-1)throw new Error(MARKER+': expected one operational runtime startup anchor');
  server=server.slice(0,i)+route+'\n'+server.slice(i);write(root,'server.js',server);
  }
  const pub=path.join(root,'public'),source=path.join(__dirname,'lead-import-v6541.js');
