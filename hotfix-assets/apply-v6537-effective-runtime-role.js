@@ -22,7 +22,7 @@ function apply(root) {
   // V65.1.24's patch treated the presence of its marker as proof that the
   // role declaration was already correct. This patch independently enforces
   // the effective role from the actual process environment.
-  const rolePattern = /^\s*(?:const|let|var)\s+SBC_RUNTIME_ROLE\s*=\s*[^;\n]*;\s*$/gm;
+  const rolePattern = /^[ \\t]*(?:const|let|var)[ \\t]+SBC_RUNTIME_ROLE[ \\t]*=[ \\t]*[^;\\n]*;[ \\t]*$/gm;
   const roleMatches = server.match(rolePattern) || [];
   const roleDeclaration = "const SBC_RUNTIME_ROLE = String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase();";
   if (roleMatches.length === 1) {
@@ -35,7 +35,7 @@ function apply(root) {
     throw new Error(MARKER + ': multiple SBC_RUNTIME_ROLE declarations; refusing ambiguous patch');
   }
 
-  const readOnlyPattern = /^\s*(?:const|let|var)\s+SBC_RUNTIME_READ_ONLY\s*=\s*[^;\n]*;\s*$/gm;
+  const readOnlyPattern = /^[ \\t]*(?:const|let|var)[ \\t]+SBC_RUNTIME_READ_ONLY[ \\t]*=[ \\t]*[^;\\n]*;[ \\t]*$/gm;
   const readOnlyMatches = server.match(readOnlyPattern) || [];
   const readOnlyDeclaration = "const SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';";
   if (readOnlyMatches.length === 1) {
