@@ -114,6 +114,9 @@ jobs:
           test -f hotfix-assets/v6540-no-ddl-economic-cycle-test.js
           test -f scripts/v65137-startup-sequence.test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
+          echo '--- Read-only economic-control source discovery ---'
+          unzip -Z1 SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip | grep 'enterprise/v56220-economic-control.js' || true
+          unzip -p SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip '*/enterprise/v56220-economic-control.js' 2>/dev/null | grep -n -E -C 3 'Economic Control|economicControl|runEconomic|executePrimary|ensureTables|CREATE TABLE|ALTER TABLE' | head -180 || true
 
       - name: Install locked root dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
