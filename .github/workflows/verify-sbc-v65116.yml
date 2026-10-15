@@ -166,8 +166,8 @@ jobs:
           
           Do not deploy to Published/Live until Preview startup, duplicate preview, and an authorized test import have been verified.
           EOF
-          cd dist
-          zip -qr SBC-V65.1.41-GoDaddy-Lead-Import-Patch.zip SBC-V65.1.41-GoDaddy-Lead-Import-Patch
+          cd dist/SBC-V65.1.41-GoDaddy-Lead-Import-Patch
+          zip -qr ../SBC-V65.1.41-GoDaddy-Lead-Import-Patch.zip bootstrap.js package.json package-lock.json hotfix-assets scripts README.txt
 
       - name: Upload GoDaddy patch artifact
         if: success()
