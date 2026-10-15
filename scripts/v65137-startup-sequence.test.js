@@ -42,6 +42,10 @@ function assertPatchOrder(segment, target, label) {
 
 function sourceContractChecks() {
   assert.equal(pkg.version, '65.1.38', 'test is tied to the deployed V65.1.38 source');
+  assert.match(bootstrap, /process\.env\.SBC_BOOT_ID = sbcBootId/,
+    'each launched process gets a unique boot correlation ID');
+  assert.match(bootstrap, /\[SBC BOOT CORRELATION\] boot_id=/,
+    'bootstrap logs its process boot ID before server startup');
   assertPatchOrder(
     bootstrap.slice(bootstrap.indexOf('function verifyOnly()'), bootstrap.indexOf('function launch()')),
     'temp',
