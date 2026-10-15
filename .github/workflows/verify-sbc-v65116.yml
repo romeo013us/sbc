@@ -136,7 +136,9 @@ jobs:
         run: npm run test:all
 
       - name: Diagnose existing call path in bundled source
-        run: node scripts/diagnose-call-path.js
+        run: |
+          node --check scripts/diagnose-call-path.js
+          node scripts/diagnose-call-path.js
 
       - name: Package V65.1.41 GoDaddy patch
         if: success()
