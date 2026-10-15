@@ -20,6 +20,7 @@ function get(rel) {
 
 try {
   put('server.js', [
+    "console.log('[SBC ROLE SOURCE CHECK] env=' + String(process.env.SBC_RUNTIME_ROLE || '<absent>') + ' effective=' + SBC_RUNTIME_ROLE + ' readOnly=' + SBC_RUNTIME_READ_ONLY);",
     "if(SBC_RUNTIME_READ_ONLY || !SBC_DDL_ENABLED){",
     "      // SBC_V6533_STARTUP_DDL_GATE: no startup DDL unless explicitly enabled; hydrate existing tables only.",
     "      // Do not run migrations, seeders, or repairs in this mode.",
@@ -95,6 +96,10 @@ try {
   assert.match(hydrateBlock, /return true;/);
   assert.match(server, /!MYSQL_RECOVERY_EVALUATED \|\| MYSQL_RECOVERY_REQUIRED \|\| !sbcWriterLeaseReady/,
     'operational workers remain protected by recovery and lease gates');
+  assert.match(server, /\[SBC ROLE SOURCE CHECK\] boot_id=.*pid=.*port=/,
+    'role diagnostic is correlated to a unique boot, PID, and port');
+  assert.match(server, /process writer lease acquired; boot_id=.*pid=.*port=.*connectionId=/,
+    'lease acquisition has the same boot correlation fields');
 
   const pkg = JSON.parse(get('package.json'));
   const lock = JSON.parse(get('package-lock.json'));
