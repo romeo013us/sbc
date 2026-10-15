@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),zip=path.join(root,'SBC-OS-V65.1.13-ROOT
 try{
  cp.execFileSync('unzip',['-q',zip,'-d',tmp]);
  const targets=[
-  {file:'server.js',terms:['function openSbcDialer','async function openSbcDialer','app.get(\\'/api/voice/status\\'','app.get(\\'/api/voice/token\\'','app.post(\\'/api/voice/twiml\\'']},
+  {file:'server.js',terms:['function openSbcDialer','async function openSbcDialer','app.get('/api/voice/status'','app.get('/api/voice/token'','app.post('/api/voice/twiml'']},
   {file:'public/app.js',terms:['function openSbcDialer','async function openSbcDialer','async function ensureSbcVoice','async function sbcVoiceStatus']}
  ];
  function showTarget(file,src,term){const at=src.indexOf(term);if(at<0)return;const from=Math.max(0,at-350),to=Math.min(src.length,at+4200);console.log('\\nTARGET '+file+' term='+term+' offset='+at+'\\n'+src.slice(from,to)+'\\n---END TARGET---');}
