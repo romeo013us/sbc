@@ -19,7 +19,7 @@ try{
  assert.match(server,/SBC_V6549_LORNA_LEAST_PRIVILEGE/);
  assert.match(server,/sbcLornaAllowedRequest/);
  assert.match(server,/sessionUser\(req\)/);
- assert.match(server,/LORNA_LEAST_PRIVILEGE_DENIED/);
+ assert.match(server,/LORNA_LEAST_PRIVILEGE_DENIED/);\n assert.match(server,/researcher\\?db\\.customers\\.filter/);\n assert.match(server,/websiteDemos:researcher\\?\\{\\}/);\n assert.match(server,/users:\\['owner','manager'\\]\\.includes/);
  assert.match(server,/MYSQL_RECOVERY_REQUIRED/);
  const html=get('public/index.html');
  assert.match(html,/sbc-lorna-least-privilege-ui/);
