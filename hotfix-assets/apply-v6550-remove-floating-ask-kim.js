@@ -1,0 +1,60 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path');
+const MARKER='SBC_V6550_REMOVE_FLOATING_ASK_KIM',FROM='65.1.48',TO='65.1.49';
+function once(s,a,b,label){const n=s.split(a).length-1;if(n!==1)throw new Error(MARKER+': '+label+' anchor count '+n);return s.replace(a,b);}
+function read(root,rel){const f=path.join(root,rel);if(!fs.existsSync(f))throw new Error(MARKER+': missing '+rel);return fs.readFileSync(f,'utf8');}
+function write(root,rel,s){fs.writeFileSync(path.join(root,rel),s);}
+function apply(root){
+ const pkg=JSON.parse(read(root,'package.json'));
+ if(pkg.name!=='sbc-business-command-center'||pkg.version!==FROM)throw new Error(MARKER+': expected package '+FROM+'; found '+pkg.version);
+ let kim=read(root,'public/sbc-kim-canonical-v6424.js');
+ if(kim.includes(MARKER))throw new Error(MARKER+': patch already present in source');
+ kim=once(kim,"'#sbcKimLauncher,#v56KimDrawer,.akx-launcher,.sbc-kim-bottom-launcher,' +","'#ckLauncher,.ck-launcher,#kimGreatnessFab,#sbcKimLauncher,#v56KimDrawer,.akx-launcher,.sbc-kim-bottom-launcher,' +",'remove launcher from canonical legacy cleanup');
+ kim=once(kim,"function killLegacyKim(){\n  document.querySelectorAll('#v56KimDrawer,.v56-kim-drawer,[data-v56-kim],[data-kim-legacy]').forEach(x=>x.remove());\n}","function killLegacyKim(){\n  document.querySelectorAll('#ckLauncher,.ck-launcher,#kimGreatnessFab,.akx-launcher,#sbcKimLauncher,.sbc-kim-bottom-launcher,#v56KimDrawer,.v56-kim-drawer,[data-v56-kim],[data-kim-legacy]').forEach(x=>x.remove());\n}\n// "+MARKER+": no global floating launcher; use the in-page Ask Kim actions.",'remove injected launchers on every mutation');
+ kim=once(kim,"function open(prefill){const d=ensure();restore(d);d.classList.remove('hidden');d.hidden=false;d.style.display='flex';d.setAttribute('aria-hidden','false');const l=$('#ckLauncher');if(l)l.classList.add('hidden');context();","function open(prefill){const d=ensure();restore(d);d.classList.remove('hidden');d.hidden=false;d.style.display='flex';d.setAttribute('aria-hidden','false');context();",'remove launcher coupling from open');
+ kim=once(kim,"function close(){const d=dock();if(!d)return;d.classList.add('hidden');d.hidden=true;d.style.display='none';d.setAttribute('aria-hidden','true');$('#ckLauncher')?.classList.remove('hidden')}","function close(){const d=dock();if(!d)return;d.classList.add('hidden');d.hidden=true;d.style.display='none';d.setAttribute('aria-hidden','true')}",'remove launcher resurrection on close');
+ const create="restore(d);if(!$('#ckLauncher')){const b=document.createElement('button');b.id='ckLauncher';b.className='ck-launcher';b.type='button';b.innerHTML='<span class=\"orb\">✦</span><span><small>ASK KIM</small><strong>Open Chief of Staff</strong></span>';document.body.appendChild(b);b.onclick=()=>open()}";
+ kim=once(kim,create,"restore(d);document.querySelectorAll('#ckLauncher,.ck-launcher,#kimGreatnessFab,.akx-launcher,#sbcKimLauncher,.sbc-kim-bottom-launcher').forEach(x=>x.remove())",'remove fixed launcher creation');
+ write(root,'public/sbc-kim-canonical-v6424.js',kim);
+ let html=read(root,'public/index.html');
+ const css='<style id="sbc-no-floating-ask-kim-v6550">#ckLauncher,.ck-launcher,#kimGreatnessFab,.akx-launcher,#sbcKimLauncher,.sbc-kim-bottom-launcher{display:none!important;visibility:hidden!important;pointer-events:none!important}</style>';
+ html=once(html,'</head>',css+'\n</head>','hide cached or legacy floating launchers');
+ html=html.replace(/\?v=[^"'&\\s]+/g,'?v=65.1.49-kim-launcher-removed');
+ html=html.replace(/V65\.1\.48/g,'V65.1.49').replace(/65\.1\.48/g,'65.1.49');
+ write(root,'public/index.html',html);
+ let sw=read(root,'public/sw.js');
+ if(!/const CACHE=['"][^'"]+['"]/.test(sw))throw new Error(MARKER+': service worker cache key missing');
+ sw=sw.replace(/const CACHE=['"][^'"]+['"]/, "const CACHE='sbc-static-v65-1-49-kim-launcher-removed'");
+ if(!sw.includes("keys.filter(k=>/^sbc-static-v/.test(k)&&k!==CACHE)"))throw new Error(MARKER+': old service-worker cache purge guard missing');
+ write(root,'public/sw.js',sw);
+ pkg.version=TO;
+ pkg.description='SBC OS V65.1.49 removes the blocking floating Ask Kim launcher while preserving in-page Ask Kim access';
+ pkg.scripts=pkg.scripts||{};
+ pkg.scripts['test:v6550-remove-floating-ask-kim']='node hotfix-assets/v6550-remove-floating-ask-kim-test.js';
+ if(!String(pkg.scripts['test:all']||'').includes('v6550-remove-floating-ask-kim-test.js'))pkg.scripts['test:all']=String(pkg.scripts['test:all']||'node bootstrap.js --verify')+' && node hotfix-assets/v6550-remove-floating-ask-kim-test.js';
+ write(root,'package.json',JSON.stringify(pkg,null,2)+'\n');
+ const lock=JSON.parse(read(root,'package-lock.json'));
+ if(lock.name!==pkg.name||lock.version!==FROM||lock.packages?.['']?.version!==FROM)throw new Error(MARKER+': package-lock root identity mismatch');
+ lock.version=TO;lock.packages[''].version=TO;lock.packages[''].description=pkg.description;lock.packages[''].scripts=pkg.scripts;
+ write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\n');
+ let identity=read(root,'config/release-identity.js');
+ identity=once(identity,"const RELEASE_VERSION = '65.1.48';","const RELEASE_VERSION = '65.1.49';",'release version');
+ identity=once(identity,"const RELEASE_NAME = 'LORNA_LEAST_PRIVILEGE';","const RELEASE_NAME = 'REMOVE_FLOATING_ASK_KIM';",'release name');
+ identity=once(identity,'major:65,minor:1,patch:48','major:65,minor:1,patch:49','semantic release version');
+ write(root,'config/release-identity.js',identity);
+ let browser=read(root,'browser_public/app.js');
+ if(!browser.includes('65.1.48'))throw new Error(MARKER+': browser release identity anchor missing');
+ write(root,'browser_public/app.js',browser.replace(/65\.1\.48/g,'65.1.49'));
+ const versionPath=path.join(root,'VERSION');
+ if(fs.existsSync(versionPath))write(root,'VERSION',read(root,'VERSION').replace(/65\.1\.48/g,'65.1.49'));
+ const server=read(root,'server.js');
+ if(!server.includes('MYSQL_RECOVERY_REQUIRED')||!server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'))throw new Error(MARKER+': recovery/writer safety markers missing');
+ write(root,'server.js',server+'\n// '+MARKER+': no global Ask Kim launcher; in-page Ask Kim actions remain available.\n');
+ const dir=path.join(root,'hotfix-assets');fs.mkdirSync(dir,{recursive:true});
+ fs.copyFileSync(__filename,path.join(dir,'apply-v6550-remove-floating-ask-kim.js'));
+ const testSource=path.join(__dirname,'v6550-remove-floating-ask-kim-test.js');
+ if(!fs.existsSync(testSource))throw new Error(MARKER+': regression test source missing');
+ fs.copyFileSync(testSource,path.join(dir,'v6550-remove-floating-ask-kim-test.js'));
+ return {marker:MARKER,version:TO,floatingAskKimLauncherRemoved:true,inPageAskKimPreserved:true,cacheBusted:true,recoveryAndWriterGuardsPreserved:true};
+}
+module.exports={apply,MARKER,FROM,TO};
