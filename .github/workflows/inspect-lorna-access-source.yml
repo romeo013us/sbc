@@ -57,6 +57,18 @@ jobs:
               for i,line in enumerate(text.splitlines()):
                 if '/api/workforce/lorna' in line or 'data-view="acquisition"' in line:
                   print(f'{p.relative_to(root)}:{i+1}: {line[:1600]}')
+          print('--- FRONTEND API BOOTSTRAP CALLS ---')
+          for rel in ['public/app.js','public/v10.js','public/sbc-acquisition.js','public/v56.js','public/v56-25-3.js']:
+            p=root/rel
+            if p.exists():
+              lines=p.read_text(errors='ignore').splitlines()
+              print('FILE',rel,'LINES',len(lines))
+              count=0
+              for i,line in enumerate(lines):
+                if '/api/' in line or 'data-view' in line or 'state.me' in line:
+                  print(f'{rel}:{i+1}: {line[:1800]}')
+                  count+=1
+                  if count>=25: break
           patterns=[
             ('AUTH',r'function auth|const auth\s*=|let auth\s*=|function ownerOnly|const ownerOnly\s*='),
             ('ROLE',r'lead_researcher|lead_generator|researcher|prospector|ownerOnly|role ===|role==='),
