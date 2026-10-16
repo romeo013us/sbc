@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '65.1.63';
-const HOTFIX_PATCH_ID = 'sales-operating-model-v6563';
+const HOTFIX_PATCH_ID = 'sales-operating-model-v6563-mysql-lease-lifecycle';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -274,6 +274,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6561-brand-system.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6562-executive-dashboard.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6563-sales-operating-model.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6564-mysql-lease-lifecycle.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));

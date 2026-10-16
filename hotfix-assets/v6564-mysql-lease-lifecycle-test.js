@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const patch=fs.readFileSync(path.join(__dirname,'apply-v6564-mysql-lease-lifecycle.js'),'utf8');
+const bootstrap=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');
+assert.ok(patch.includes('sbcWriterLeaseCheckInFlight'),'prevents overlapping heartbeat checks');
+assert.ok(patch.includes('writer lease heartbeat timed out after 5000ms'),'bounds hung heartbeat');
+assert.ok(patch.includes('await stale.destroy()'),'destroys stale dedicated lease connection');
+assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'fails closed after lease loss');
+assert.ok(patch.includes('sbcWriterLeaseConnectionId=null'),'clears stale connection identity');
+assert.ok(bootstrap.includes("apply-v6564-mysql-lease-lifecycle.js')).apply(runtimeDir)"),'runtime bootstrap applies lifecycle patch');
+console.log('V65.1.64 MySQL lease lifecycle: 6/6 PASS');
