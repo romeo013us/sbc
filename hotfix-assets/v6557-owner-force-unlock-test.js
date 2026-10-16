@@ -25,6 +25,8 @@ try{
 "const SBC_RUNTIME_WRITER_LOCK_NAME='sbc:runtime:writer:v1';",
 "const SBC_RUNTIME_WRITER_LEASE_REQUIRED='SBC_RUNTIME_WRITER_LEASE_REQUIRED';",
 "const VERIFIED_PRE_CORRUPTION_CRM_COUNT=248;",
+"    // SBC_V6528_RUNTIME_WRITER_LEASE: acquire exclusive lease before any DDL, migration, seed, repair, or worker write.",
+"    if(!SBC_RUNTIME_READ_ONLY){let leaseCandidate=null;try{",
 "app.use(createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED}));",
 "app.use((req,res,next)=>{if(!SBC_RUNTIME_READ_ONLY || !String(req.path||'').startsWith('/api/') || !['POST','PUT','PATCH','DELETE'].includes(String(req.method||'').toUpperCase())) return next();if(req.path==='/api/login' || req.path==='/api/logout') return next();return res.status(423).json({error:'SBC_READ_ONLY_RUNTIME'});});",
 "async function initMysql(){",
@@ -44,7 +46,7 @@ try{
  put('hotfix-assets/v6557-owner-force-unlock-test.js','// placeholder');
  const r=require('./apply-v6557-owner-force-unlock.js').apply(dir);
  assert.equal(r.version,'65.1.57');assert.equal(r.persistentOwnerForceUnlock,true);assert.equal(r.exclusiveWriterLeasePreserved,true);
- const srv=get('server.js');assert.match(srv,/let SBC_RUNTIME_ROLE/);assert.match(srv,/let SBC_RUNTIME_READ_ONLY/);assert.match(srv,/sbc_owner_force_unlock_v6557/);assert.match(srv,/app\.post\('\/api\/owner\/recovery\/force-unlock'/);assert.match(srv,/RUNTIME_GATE\.setKill\(false,stops/);assert.match(srv,/if\(relationalCoreCount > 0 \|\| SBC_OWNER_FORCE_UNLOCK_ACTIVE\)/);assert.match(srv,/if\(!SBC_OWNER_FORCE_UNLOCK_ACTIVE && Number\(countRows/);
+ const srv=get('server.js');assert.match(srv,/let SBC_RUNTIME_ROLE/);assert.match(srv,/let SBC_RUNTIME_READ_ONLY/);assert.match(srv,/sbc_owner_force_unlock_v6557/);assert.match(srv,/app\.post\('\/api\/owner\/recovery\/force-unlock'/);assert.match(srv,/RUNTIME_GATE\.setKill\(false,stops/);assert.match(srv,/sbc_revenue_control\(tenant_id,global_kill,outbound_kill,sales_kill,fulfillment_kill/);assert.match(srv,/if\(relationalCoreCount > 0 \|\| SBC_OWNER_FORCE_UNLOCK_ACTIVE\)/);assert.match(srv,/if\(!SBC_OWNER_FORCE_UNLOCK_ACTIVE && Number\(countRows/);assert.ok(srv.indexOf('ownerUnlockState')<srv.indexOf('SBC_V6528_RUNTIME_WRITER_LEASE'),'persisted owner override must load before lease acquisition at startup');
  for(const f of ['public/app.js','browser_public/app.js']){assert.match(get(f),/sbcV6557OwnerForceUnlockOnce/);assert.match(get(f),/\/api\/owner\/recovery\/force-unlock/);}
  for(const f of ['public/index.html','browser_public/index.html'])assert.match(get(f),/65\.1\.57-owner-force-unlock/);
  assert.match(get('public/sw.js'),/sbc-static-v65-1-57-owner-force-unlock/);assert.equal(JSON.parse(get('package.json')).version,'65.1.57');assert.match(get('config/release-identity.js'),/OWNER_FORCE_UNLOCK_AND_OPERATIONAL_GATES/);
