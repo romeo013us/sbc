@@ -25,6 +25,8 @@ jobs:
         run: npm run test:v6555-theme-contrast
       - name: Test Twilio Voice SDK v2 local bundle and call API
         run: npm run test:v6556-voice-sdk
+      - name: Test owner recovery force-unlock and operational gate clearing
+        run: npm run test:v6557-owner-force-unlock
       - name: Verify complete SBC release build
         run: npm run build
       - name: Test baseline-gated DDL unblock
