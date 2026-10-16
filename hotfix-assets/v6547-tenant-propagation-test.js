@@ -3,10 +3,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 const releasePatch=require('./apply-v6547-tenant-propagation');
 const root=path.resolve(__dirname,'..'),patch=fs.readFileSync(path.join(root,'hotfix-assets/apply-v6547-tenant-propagation.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')),lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
-assert.equal(pkg.version,'65.1.61');assert.equal(lock.version,'65.1.61');assert.equal(lock.packages[''].version,'65.1.61');
+assert.equal(pkg.version,'65.1.62');assert.equal(lock.version,'65.1.62');assert.equal(lock.packages[''].version,'65.1.62');
 for(const p of [/requireMappedRequestTenant\(req\)/,/tenantId:rec\.tenantId/,/tenantId:requireRequestTenant\(req\)/,/Customer not found in the authenticated tenant/,/public host is not mapped to a tenant/,/SBC_V6547_TENANT_PROPAGATION/])assert.match(patch,p);
 assert.doesNotMatch(patch,/tenantId\s*\|\|\s*1/);assert.doesNotMatch(patch,/SBC_RUNTIME_READ_ONLY\s*=\s*false/);assert.doesNotMatch(patch,/MYSQL_RECOVERY_REQUIRED\s*=\s*false/);
-const b=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');assert.match(b,/apply-v6547-tenant-propagation\.js/);assert.match(b,/apply-v6548-lead-import-cache-contract\.js/);assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));assert.ok(b.includes('apply-v6558-economic-control-ddl-gate.js'));assert.ok(b.includes('apply-v6559-launch-phone-theme-layout.js'));assert.ok(b.includes('apply-v6550-remove-floating-ask-kim.js'));assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));assert.ok(b.includes('apply-v6558-economic-control-ddl-gate.js'));assert.ok(b.includes('apply-v6553-command-center-redesign.js'));assert.ok(b.includes('apply-v6555-theme-contrast.js'));assert.ok(b.includes('apply-v6556-twilio-voice-sdk.js'));assert.ok(b.includes('apply-v6560-live-call-notes.js'));assert.ok(b.includes('apply-v6561-brand-system.js'));assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));
+const b=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');assert.match(b,/apply-v6547-tenant-propagation\.js/);assert.match(b,/apply-v6548-lead-import-cache-contract\.js/);assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));assert.ok(b.includes('apply-v6558-economic-control-ddl-gate.js'));assert.ok(b.includes('apply-v6559-launch-phone-theme-layout.js'));assert.ok(b.includes('apply-v6550-remove-floating-ask-kim.js'));assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));assert.ok(b.includes('apply-v6558-economic-control-ddl-gate.js'));assert.ok(b.includes('apply-v6553-command-center-redesign.js'));assert.ok(b.includes('apply-v6555-theme-contrast.js'));assert.ok(b.includes('apply-v6556-twilio-voice-sdk.js'));assert.ok(b.includes('apply-v6560-live-call-notes.js'));assert.ok(b.includes('apply-v6561-brand-system.js'));assert.ok(b.includes('apply-v6562-executive-dashboard.js'));assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));
 
 {
  const fixture=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6547-release-pin-'));
@@ -22,4 +22,4 @@ const b=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');assert.match(b,/a
  }finally{fs.rmSync(fixture,{recursive:true,force:true});}
 }
 
-console.log('[SBC V65.1.61] tenant propagation and brand-system release contract PASS');
+console.log('[SBC V65.1.62] tenant propagation and executive-dashboard release contract PASS');
