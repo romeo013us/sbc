@@ -176,13 +176,13 @@ jobs:
           RELEASE_DIR="dist/SBC-V${RELEASE_VERSION}-GoDaddy-Patch"
           mkdir -p "$RELEASE_DIR/hotfix-assets" "$RELEASE_DIR/scripts"
           cp bootstrap.js package.json package-lock.json "$RELEASE_DIR/"
-          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js hotfix-assets/apply-v6543-lead-import-commit-contract.js hotfix-assets/v6543-lead-import-commit-contract-test.js hotfix-assets/apply-v6544-ask-kim-drag.js hotfix-assets/sbc-ask-kim-drag-v6544.js hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js hotfix-assets/apply-v6546-release-identity-current-version.js hotfix-assets/v6546-release-identity-current-version-test.js hotfix-assets/apply-v6547-tenant-propagation.js hotfix-assets/v6547-tenant-propagation-test.js "$RELEASE_DIR/hotfix-assets/"
+          cp hotfix-assets/apply-v6541-lead-import.js hotfix-assets/lead-import-v6541.js hotfix-assets/v6541-lead-import-test.js hotfix-assets/apply-v6542-voice-call-diagnostics.js hotfix-assets/v6542-voice-call-diagnostics-test.js hotfix-assets/apply-v6543-lead-import-commit-contract.js hotfix-assets/v6543-lead-import-commit-contract-test.js hotfix-assets/apply-v6544-ask-kim-drag.js hotfix-assets/sbc-ask-kim-drag-v6544.js hotfix-assets/apply-v6545-baseline-gated-ddl-unblock.js hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js hotfix-assets/apply-v6546-release-identity-current-version.js hotfix-assets/v6546-release-identity-current-version-test.js hotfix-assets/apply-v6547-tenant-propagation.js hotfix-assets/v6547-tenant-propagation-test.js hotfix-assets/apply-v6548-lead-import-cache-contract.js hotfix-assets/v6548-lead-import-cache-contract-test.js "$RELEASE_DIR/hotfix-assets/"
           cp scripts/v65137-startup-sequence.test.js "$RELEASE_DIR/scripts/"
           cat > "$RELEASE_DIR/README.txt" <<EOF
-          SBC OS V${RELEASE_VERSION} — Tenant Propagation and Runtime Startup Fix
+          SBC OS V${RELEASE_VERSION} — Lead Import Cache and Commit Contract Fix
           ===============================================
 
-          This patch propagates validated tenant identity through CRM, checkout, portal and background-facing records, and aligns the Published release identity while retaining database recovery and writer-lease controls.
+          This patch refreshes the lead-import browser asset and service-worker cache so the explicit import/commit confirmation contract is loaded, while preserving tenant isolation, recovery and writer-lease controls.
 
           BEFORE INSTALLING
           1. Back up matching files from the current GoDaddy app root.
@@ -191,7 +191,7 @@ jobs:
 
           DEPLOY
           1. Prefer the connected GoDaddy Preview -> Update Preview flow from GitHub main.
-          2. Review the build result before publishing.
+          2. Review the build result and verify the runtime release identity before publishing.
           3. Publish only after Preview startup and CRM visibility are verified.
 
           The patch does not synthesize customer records or disable read-only, recovery, tenant, or writer-lease protections.
