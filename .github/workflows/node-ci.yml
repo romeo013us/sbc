@@ -29,6 +29,8 @@ jobs:
         run: npm run test:v6557-owner-force-unlock
       - name: Test Economic Control recurring DDL gate
         run: npm run test:v6558-economic-control-ddl-gate
+      - name: Test live call notes, autosave, and call history
+        run: npm run test:v6560-live-call-notes
       - name: Verify complete SBC release build
         run: npm run build
       - name: Test baseline-gated DDL unblock
