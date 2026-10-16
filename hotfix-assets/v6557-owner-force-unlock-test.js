@@ -23,6 +23,7 @@ try{
 "let MYSQL_RECOVERY_EVALUATED = false;",
 "let SBC_DDL_ENABLED=false,storageMode='mysql-recovery-required';",
 "const SBC_RUNTIME_WRITER_LOCK_NAME='sbc:runtime:writer:v1';",
+"const SBC_RUNTIME_WRITER_LEASE_REQUIRED='SBC_RUNTIME_WRITER_LEASE_REQUIRED';",
 "const VERIFIED_PRE_CORRUPTION_CRM_COUNT=248;",
 "app.use(createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED}));",
 "app.use((req,res,next)=>{if(!SBC_RUNTIME_READ_ONLY || !String(req.path||'').startsWith('/api/') || !['POST','PUT','PATCH','DELETE'].includes(String(req.method||'').toUpperCase())) return next();if(req.path==='/api/login' || req.path==='/api/logout') return next();return res.status(423).json({error:'SBC_READ_ONLY_RUNTIME'});});",
