@@ -57,7 +57,7 @@ jobs:
               for i,line in enumerate(text.splitlines()):
                 if '/api/workforce/lorna' in line or 'data-view="acquisition"' in line:
                   print(f'{p.relative_to(root)}:{i+1}: {line[:1600]}')
-                    patterns=[
+          patterns=[
             ('AUTH',r'function auth|const auth\s*=|let auth\s*=|function ownerOnly|const ownerOnly\s*='),
             ('ROLE',r'lead_researcher|lead_generator|researcher|prospector|ownerOnly|role ===|role==='),
             ('NAV',r'Employees|Users & Security|Payments|Refund|Settings|Training|Time Clock|Lead Research|Fulfillment|Finance|Dashboard|Onboarding'),
