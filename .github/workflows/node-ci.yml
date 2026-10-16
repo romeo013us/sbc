@@ -27,6 +27,8 @@ jobs:
         run: npm run test:v6556-voice-sdk
       - name: Test owner recovery force-unlock and operational gate clearing
         run: npm run test:v6557-owner-force-unlock
+      - name: Test Economic Control recurring DDL gate
+        run: npm run test:v6558-economic-control-ddl-gate
       - name: Verify complete SBC release build
         run: npm run build
       - name: Test baseline-gated DDL unblock
