@@ -1,8 +1,8 @@
 {
   "name": "sbc-business-command-center",
-  "version": "65.1.54",
+  "version": "65.1.56",
   "private": true,
-  "description": "SBC OS V65.1.54 Stark Cinematic Cockpit release tooling; visual-only patch with recovery and writer safeguards preserved",
+  "description": "SBC OS V65.1.56: God-Tier Stark HUD, light/dark contrast, shortcut cleanup, and local Twilio Voice SDK 2.18.5",
   "main": "bootstrap.js",
   "scripts": {
     "prestart": "node scripts/ensure-runtime-dependencies.js",
@@ -10,7 +10,7 @@
     "start": "node bootstrap.js",
     "test:phases": "node hotfix-assets/v65119-phases-test.js",
     "test:tenant-hardening": "node bootstrap.js --verify",
-    "test:all": "node bootstrap.js --verify && node persistent-state-test.js && node hotfix-assets/v65119-phases-test.js && node hotfix-assets/v6522-api-stabilization-test.js && node hotfix-assets/v6524-single-writer-test.js && node hotfix-assets/v6525-customer360-workspace-test.js && npm run test:v6526-demo-studio && node hotfix-assets/v6523-read-query-cancel-test.js && node hotfix-assets/v6527-persistence-writer-lock-test.js && node hotfix-assets/v6528-runtime-writer-lease-test.js && node hotfix-assets/v6529-open-readiness-test.js && node hotfix-assets/v6530-writer-lease-marker-fix-test.js && node hotfix-assets/v6531-release-identity-test.js && node hotfix-assets/v6533-startup-ddl-gate-test.js && node hotfix-assets/v65134-tenant-rejection-guard-test.js && node hotfix-assets/v6534-price-consistency-test.js && node hotfix-assets/v6535-writer-no-ddl-operational-startup-test.js && node runtime-env-beacon-test.js && node hotfix-assets/v6536-runtime-beacon-test.js && node hotfix-assets/v6537-effective-runtime-role-test.js && node scripts/v65137-startup-sequence.test.js && node hotfix-assets/v6538-writer-hydration-without-ddl-test.js && node hotfix-assets/v6539-safe-no-ddl-startup-test.js && node hotfix-assets/v6541-lead-import-test.js && node hotfix-assets/v6542-voice-call-diagnostics-test.js && node hotfix-assets/v6543-lead-import-commit-contract-test.js && node hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js && node hotfix-assets/v6546-release-identity-current-version-test.js && node hotfix-assets/v6547-tenant-propagation-test.js && node hotfix-assets/v6548-lead-import-cache-contract-test.js && node hotfix-assets/v6549-lorna-least-privilege-test.js && node hotfix-assets/v6550-remove-floating-ask-kim-test.js && node hotfix-assets/v6553-command-center-redesign-test.js && node hotfix-assets/v6554-stark-cockpit-test.js",
+    "test:all": "node bootstrap.js --verify && node persistent-state-test.js && node hotfix-assets/v65119-phases-test.js && node hotfix-assets/v6522-api-stabilization-test.js && node hotfix-assets/v6524-single-writer-test.js && node hotfix-assets/v6525-customer360-workspace-test.js && npm run test:v6526-demo-studio && node hotfix-assets/v6523-read-query-cancel-test.js && node hotfix-assets/v6527-persistence-writer-lock-test.js && node hotfix-assets/v6528-runtime-writer-lease-test.js && node hotfix-assets/v6529-open-readiness-test.js && node hotfix-assets/v6530-writer-lease-marker-fix-test.js && node hotfix-assets/v6531-release-identity-test.js && node hotfix-assets/v6533-startup-ddl-gate-test.js && node hotfix-assets/v65134-tenant-rejection-guard-test.js && node hotfix-assets/v6534-price-consistency-test.js && node hotfix-assets/v6535-writer-no-ddl-operational-startup-test.js && node runtime-env-beacon-test.js && node hotfix-assets/v6536-runtime-beacon-test.js && node hotfix-assets/v6537-effective-runtime-role-test.js && node scripts/v65137-startup-sequence.test.js && node hotfix-assets/v6538-writer-hydration-without-ddl-test.js && node hotfix-assets/v6539-safe-no-ddl-startup-test.js && node hotfix-assets/v6541-lead-import-test.js && node hotfix-assets/v6542-voice-call-diagnostics-test.js && node hotfix-assets/v6543-lead-import-commit-contract-test.js && node hotfix-assets/v6545-baseline-gated-ddl-unblock-test.js && node hotfix-assets/v6546-release-identity-current-version-test.js && node hotfix-assets/v6547-tenant-propagation-test.js && node hotfix-assets/v6548-lead-import-cache-contract-test.js && node hotfix-assets/v6549-lorna-least-privilege-test.js && node hotfix-assets/v6550-remove-floating-ask-kim-test.js && node hotfix-assets/v6553-command-center-redesign-test.js && node hotfix-assets/v6554-stark-cockpit-test.js && node hotfix-assets/v6555-theme-contrast-test.js && node hotfix-assets/v6556-twilio-voice-sdk-test.js",
     "test:api-stabilization": "node hotfix-assets/v6522-api-stabilization-test.js",
     "test:v6526-demo-studio": "node hotfix-assets/v6526-demo-studio-test.js",
     "test:v6527-writer-lock": "node hotfix-assets/v6527-persistence-writer-lock-test.js && node bootstrap.js --verify",
@@ -39,7 +39,9 @@
     "test:v6549-lorna-least-privilege": "node hotfix-assets/v6549-lorna-least-privilege-test.js",
     "test:v6550-remove-floating-ask-kim": "node hotfix-assets/v6550-remove-floating-ask-kim-test.js",
     "test:v6553-command-center-redesign": "node hotfix-assets/v6553-command-center-redesign-test.js",
-    "test:v6554-stark-cockpit": "node hotfix-assets/v6554-stark-cockpit-test.js"
+    "test:v6554-stark-cockpit": "node hotfix-assets/v6554-stark-cockpit-test.js",
+    "test:v6555-theme-contrast": "node hotfix-assets/v6555-theme-contrast-test.js",
+    "test:v6556-voice-sdk": "node hotfix-assets/v6556-twilio-voice-sdk-test.js"
   },
   "dependencies": {
     "amqplib": "^0.10.9",

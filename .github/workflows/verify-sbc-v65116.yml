@@ -81,6 +81,10 @@ jobs:
           node --check hotfix-assets/v6553-command-center-redesign-test.js
           node --check hotfix-assets/apply-v6554-stark-cockpit.js
           node --check hotfix-assets/v6554-stark-cockpit-test.js
+          node --check hotfix-assets/apply-v6555-theme-contrast.js
+          node --check hotfix-assets/v6555-theme-contrast-test.js
+          node --check hotfix-assets/apply-v6556-twilio-voice-sdk.js
+          node --check hotfix-assets/v6556-twilio-voice-sdk-test.js
           node --check hotfix-assets/v6546-release-identity-current-version-test.js
           node --check hotfix-assets/lead-import-v6541.js
           node --check hotfix-assets/v6541-lead-import-test.js
@@ -158,6 +162,7 @@ jobs:
           test -f hotfix-assets/v6554-stark-cockpit-test.js
           test -f RELEASE-NOTES-V65.1.53-COMMAND-CENTER-REDESIGN.md
           test -f RELEASE-NOTES-V65.1.54-STARK-CINEMATIC-COCKPIT.md
+          test -f RELEASE-NOTES-V65.1.56-TWILIO-VOICE-SDK-V2.md
           test -f RELEASE-NOTES-V65.1.48-LORNA-LEAST-PRIVILEGE.md
           test -f scripts/v65137-startup-sequence.test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip

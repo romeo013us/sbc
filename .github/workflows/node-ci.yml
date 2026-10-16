@@ -21,6 +21,12 @@ jobs:
         run: npm ci
       - name: Test Stark Cinematic Cockpit patch
         run: npm run test:v6554-stark-cockpit
+      - name: Test God-Tier theme contrast, HUD motion, and shortcut cleanup
+        run: npm run test:v6555-theme-contrast
+      - name: Test Twilio Voice SDK v2 local bundle and call API
+        run: npm run test:v6556-voice-sdk
+      - name: Verify complete SBC release build
+        run: npm run build
       - name: Test baseline-gated DDL unblock
         run: npm run test:v6545-baseline-gated-ddl-unblock
       - name: Test release identity alignment
