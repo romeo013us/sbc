@@ -14,13 +14,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '--- ROOT PACKAGE FILE LIST ---'
-          unzip -l SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip | head -80
-          echo '--- EXTRACT NESTED SOURCE ARCHIVE ---'
-          unzip -p SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip > /tmp/sbc-source.zip
-          unzip -l /tmp/sbc-source.zip | head -80
+          echo '--- ROOT PACKAGE KEY FILES ---'
+          unzip -l SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip | grep -E '(^|/)(server\.js|index\.html|sw\.js|package\.json)$' | head -100
           mkdir -p /tmp/sbc-source
-          unzip -q /tmp/sbc-source.zip -d /tmp/sbc-source
+          unzip -q SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip -d /tmp/sbc-source
           python3 - <<'PY'
           from pathlib import Path
           import re
