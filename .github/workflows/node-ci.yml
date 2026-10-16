@@ -19,6 +19,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Test Stark Cinematic Cockpit patch
+        run: npm run test:v6554-stark-cockpit
       - name: Test baseline-gated DDL unblock
         run: npm run test:v6545-baseline-gated-ddl-unblock
       - name: Test release identity alignment
