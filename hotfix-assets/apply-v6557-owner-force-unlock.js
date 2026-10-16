@@ -47,6 +47,8 @@ const FORCE_ROUTE=[
 ].join('\n');
 function patchServer(root){
  let s=read(root,'server.js');
+ s=once(s,"app.use(createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED}));","app.use(createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED,allowPaths:['/api/owner/recovery/force-unlock']}));",'recovery middleware unlock allowlist');
+ s=once(s,"if(req.path==='/api/login' || req.path==='/api/logout') return next();","if(req.path==='/api/login' || req.path==='/api/logout' || req.path==='/api/owner/recovery/force-unlock') return next();",'read-only middleware unlock allowlist');
  s=once(s,"const SBC_RUNTIME_ROLE = String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase();","let SBC_RUNTIME_ROLE = String(process.env.SBC_RUNTIME_ROLE || 'readonly').trim().toLowerCase();",'mutable runtime role');
  s=once(s,"const SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';","let SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';",'mutable read-only state');
  s=once(s,"let MYSQL_RECOVERY_EVALUATED = false;","let MYSQL_RECOVERY_EVALUATED = false;\nlet SBC_OWNER_FORCE_UNLOCK_ACTIVE = false;\n"+LEASE_HELPER,'force-unlock state/helper');
