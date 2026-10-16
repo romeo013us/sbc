@@ -31,6 +31,8 @@ jobs:
         run: npm run test:v6558-economic-control-ddl-gate
       - name: Test live call notes, autosave, and call history
         run: npm run test:v6560-live-call-notes
+      - name: Test V65.1.61 Obsidian Cobalt Ember brand system
+        run: npm run test:v6561-brand-system
       - name: Verify complete SBC release build
         run: npm run build
       - name: Test baseline-gated DDL unblock
