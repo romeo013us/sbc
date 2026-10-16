@@ -35,6 +35,8 @@ jobs:
         run: npm run test:v6561-brand-system
       - name: Test V65.1.62 Executive Command Deck dashboard layout
         run: npm run test:v6562-executive-dashboard
+      - name: Test bounded MySQL writer-lease lifecycle
+        run: npm run test:v6564-mysql-lease-lifecycle
       - name: Verify complete SBC release build
         run: npm run build
       - name: Test baseline-gated DDL unblock
