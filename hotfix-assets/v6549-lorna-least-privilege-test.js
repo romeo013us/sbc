@@ -35,7 +35,10 @@ try{
  assert.match(server,/api\/v9\/bootstrap/);
  assert.match(server,/api\/v9\/lead-verification/);
  assert.match(server,/api\/v9\/time\/clock/);
- assert.match(server,/sbcLornaRole\\(req\\.user\\)/);\n assert.match(server,/outside your assigned research queue/);\n assert.match(server,/const mine=sbcLornaRole\\(req\\.user\\)/);\n assert.match(server,/MYSQL_RECOVERY_REQUIRED/);
+ assert.match(server,/sbcLornaRole\\(req\\.user\\)/);
+ assert.match(server,/outside your assigned research queue/);
+ assert.match(server,/const mine=sbcLornaRole\\(req\\.user\\)/);
+ assert.match(server,/MYSQL_RECOVERY_REQUIRED/);
  const html=get('public/index.html');
  assert.match(html,/sbc-lorna-least-privilege-ui/);
  assert.match(html,/acquisition/);
