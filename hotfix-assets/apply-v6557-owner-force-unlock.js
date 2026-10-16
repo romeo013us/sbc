@@ -69,6 +69,8 @@ function patchServer(root){
  s=once(s,"if(Number(counts?.customers||0)<VERIFIED_PRE_CORRUPTION_CRM_COUNT){","if(!SBC_OWNER_FORCE_UNLOCK_ACTIVE&&Number(counts?.customers||0)<VERIFIED_PRE_CORRUPTION_CRM_COUNT){",'read-only baseline override');
  s=once(s,"if(relationalCoreCount > 0){","if(relationalCoreCount > 0 || SBC_OWNER_FORCE_UNLOCK_ACTIVE){",'core-empty override');
  s=once(s,"if(Number(countRows[0]?.customers||0) < VERIFIED_PRE_CORRUPTION_CRM_COUNT){","if(!SBC_OWNER_FORCE_UNLOCK_ACTIVE && Number(countRows[0]?.customers||0) < VERIFIED_PRE_CORRUPTION_CRM_COUNT){",'recovery baseline override');
+ const seedAnchor="const leadMesh=await seedLeadMeshToMySQL();const seeded=seedStarterLeadPack();";
+ if(s.includes(seedAnchor))s=once(s,seedAnchor,"const leadMesh=SBC_OWNER_FORCE_UNLOCK_ACTIVE?{added:0,skipped:0}:await seedLeadMeshToMySQL();const seeded=SBC_OWNER_FORCE_UNLOCK_ACTIVE?{added:0,skipped:0,removedDuplicates:0}:seedStarterLeadPack();",'skip auto-generated starter leads during force unlock');
  const routeAnchor="\n\n// V64.2.28 — SOVEREIGN RECOVERY CONTROL PLANE (READ-ONLY)";
  s=once(s,routeAnchor,"\n"+FORCE_ROUTE+routeAnchor,'owner force-unlock route');
  return s;
@@ -98,7 +100,7 @@ function apply(root){
  const pkg=JSON.parse(read(root,'package.json')),lock=JSON.parse(read(root,'package-lock.json'));
  if(pkg.name!=='sbc-business-command-center'||pkg.version!==FROM||lock.version!==FROM||lock.packages?.['']?.version!==FROM)throw Error(MARKER+': expected package/lock identity '+FROM);
  write(root,'server.js',patchServer(root));
- patchApp(root,'public/app.js');if(fs.existsSync(path.join(root,'browser_public/app.js')))patchApp(root,'browser_public/app.js');
+ write(root,'public/app.js',patchApp(root,'public/app.js'));if(fs.existsSync(path.join(root,'browser_public/app.js')))write(root,'browser_public/app.js',patchApp(root,'browser_public/app.js'));
  patchHtml(root,'public/index.html');if(fs.existsSync(path.join(root,'browser_public/index.html')))patchHtml(root,'browser_public/index.html');
  let sw=read(root,'public/sw.js');if(!/const CACHE=['"][^'"]+['"]/.test(sw))throw Error(MARKER+': service-worker cache key missing');sw=sw.replace(/const CACHE=['"][^'"]+['"]/, "const CACHE='sbc-static-v65-1-57-owner-force-unlock'");if(!sw.includes("keys.filter(k=>/^sbc-static-v/.test(k)&&k!==CACHE)"))throw Error(MARKER+': service-worker cache purge guard missing');write(root,'public/sw.js',sw);
  if(fs.existsSync(path.join(root,'browser_public/sw.js'))){let b=read(root,'browser_public/sw.js');if(/const CACHE=['"][^'"]+['"]/.test(b))write(root,'browser_public/sw.js',b.replace(/const CACHE=['"][^'"]+['"]/, "const CACHE='sbc-static-v65-1-57-owner-force-unlock'"))}
