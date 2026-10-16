@@ -1,6 +1,6 @@
 'use strict';
 
-// GoDaddy repository-root launcher for SBC OS V65.1.47.
+// GoDaddy repository-root launcher for SBC OS V65.1.48.
 // Application source is stored in the adjacent source ZIP. GoDaddy installs the
 // listed runtime dependencies at this repository root; extracted modules resolve
 // upward to that node_modules directory.
@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.47';
-const HOTFIX_PATCH_ID = 'lead-import-cache-contract-v6548';
+const EXPECTED_VERSION = '65.1.48';
+const HOTFIX_PATCH_ID = 'lorna-least-privilege-v6549';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -165,6 +165,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6546-release-identity-current-version.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6547-tenant-propagation.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6548-lead-import-cache-contract.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6549-lorna-least-privilege.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -248,6 +249,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6546-release-identity-current-version.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6547-tenant-propagation.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6548-lead-import-cache-contract.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6549-lorna-least-privilege.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
