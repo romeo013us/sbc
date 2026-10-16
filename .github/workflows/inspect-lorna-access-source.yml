@@ -40,6 +40,14 @@ jobs:
                 print(f'public/index.html:{i+1}: {line[:1200]}')
                 count+=1
                 if count>=100: break
+          if server.exists():
+            print('--- LEAD RESEARCHER RELEVANT API ROUTES ---')
+            lines=server.read_text(errors='ignore').splitlines()
+            count=0
+            for i,line in enumerate(lines):
+              if re.search(r'app\\.(?:get|post|put|patch|delete)\\s*\\(\\s*[\\'\"]/(?:api/)?[^\\'\"]*(?:lead|crm|training|time|clock|onboard|workforce|employee|task|profile|me|session|notification|auth)',line,re.I):
+                print(f'server.js:{i+1}: {line[:1000]}');count+=1
+                if count>=120: break
           patterns=[
             ('AUTH',r'function auth|const auth\s*=|let auth\s*=|function ownerOnly|const ownerOnly\s*='),
             ('ROLE',r'lead_researcher|lead_generator|researcher|prospector|ownerOnly|role ===|role==='),
