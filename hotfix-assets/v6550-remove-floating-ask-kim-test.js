@@ -39,7 +39,7 @@ try{
  assert.ok(!html.includes('65.1.13-recovery-authfix'));
  assert.match(get('public/sw.js'),/sbc-static-v65-1-49-kim-launcher-removed/);
  const pkg=JSON.parse(get('package.json')),lock=JSON.parse(get('package-lock.json'));
- assert.equal(pkg.version,'65.1.54');assert.equal(lock.version,'65.1.54');assert.equal(lock.packages[''].version,'65.1.54');
+ assert.equal(pkg.version,'65.1.49');assert.equal(lock.version,'65.1.49');assert.equal(lock.packages[''].version,'65.1.49');
  assert.match(pkg.scripts['test:all'],/v6550-remove-floating-ask-kim-test\.js/);
  assert.match(get('config/release-identity.js'),/REMOVE_FLOATING_ASK_KIM/);
  assert.match(get('browser_public/app.js'),/65\.1\.49/);
