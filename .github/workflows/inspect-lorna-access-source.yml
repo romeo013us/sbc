@@ -45,7 +45,7 @@ jobs:
             lines=server.read_text(errors='ignore').splitlines()
             count=0
             for i,line in enumerate(lines):
-              if re.search(r'app\\.(?:get|post|put|patch|delete)\\s*\\(\\s*[\\'\"]/(?:api/)?[^\\'\"]*(?:lead|crm|training|time|clock|onboard|workforce|employee|task|profile|me|session|notification|auth)',line,re.I):
+              if any(k in line.lower() for k in ["app.get('/api/me", "app.get('/api/crm", "app.post('/api/crm", "app.get('/api/training", "app.post('/api/training", "app.get('/api/workforce", "app.post('/api/workforce", "app.get('/api/time", "app.post('/api/time", "app.get('/api/onboarding", "app.post('/api/onboarding", "app.get('/api/tasks", "app.post('/api/tasks", "app.get('/api/notifications", "app.post('/api/notifications", "app.post('/api/v10/leads"]):
                 print(f'server.js:{i+1}: {line[:1000]}');count+=1
                 if count>=120: break
           patterns=[
