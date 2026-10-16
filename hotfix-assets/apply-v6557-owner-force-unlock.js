@@ -57,7 +57,7 @@ function patchServer(root){
 "try{",
 "      const [[ownerUnlockState]]=await mysqlPool.query('SELECT setting_value FROM sbc_settings WHERE setting_key=? LIMIT 1',['sbc_owner_force_unlock_v6557']);",
 "      if(String(ownerUnlockState?.setting_value||'').trim().toLowerCase()==='true'){",
-"        SBC_OWNER_FORCE_UNLOCK_ACTIVE=true;SBC_RUNTIME_ROLE='writer';SBC_RUNTIME_READ_ONLY=false;",
+"        const ownerLeaseReady=await sbcV6557AcquireWriterLease();if(ownerLeaseReady){SBC_OWNER_FORCE_UNLOCK_ACTIVE=true;SBC_RUNTIME_ROLE='writer';SBC_RUNTIME_READ_ONLY=false;SBC_DDL_ENABLED=true;process.env.SBC_RUNTIME_ROLE='writer';process.env.ENABLE_DDL='true';}else{console.error('[SBC V6557 OWNER FORCE UNLOCK] persisted override remains inactive because exclusive runtime lease could not be acquired.');}",
 "        process.env.SBC_RUNTIME_ROLE='writer';process.env.ENABLE_DDL='true';SBC_DDL_ENABLED=true;",
 "        MYSQL_RECOVERY_REQUIRED=false;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-relational';",
 "        console.warn('[SBC V6557 OWNER FORCE UNLOCK] persisted owner override loaded.');",
