@@ -53,9 +53,9 @@ jobs:
             if p.suffix not in ('.js','.html'): continue
             try: text=p.read_text(errors='ignore')
             except: continue
-            if '/api/workforce/lorna' in text or 'data-view="acquisition"' in text or 'data-view=\\'acquisition\\'' in text:
+            if '/api/workforce/lorna' in text or 'data-view="acquisition"' in text:
               for i,line in enumerate(text.splitlines()):
-                if '/api/workforce/lorna' in line or 'data-view="acquisition"' in line or 'data-view=\\'acquisition\\'' in line:
+                if '/api/workforce/lorna' in line or 'data-view="acquisition"' in line:
                   print(f'{p.relative_to(root)}:{i+1}: {line[:1600]}')
                     patterns=[
             ('AUTH',r'function auth|const auth\s*=|let auth\s*=|function ownerOnly|const ownerOnly\s*='),
