@@ -6,7 +6,7 @@ function write(root,rel,s){const f=path.join(root,rel);fs.mkdirSync(path.dirname
 function once(s,a,b,label){const n=s.split(a).length-1;if(n!==1)throw Error(MARKER+': '+label+' anchor count '+n);return s.replace(a,b)}
 function gateEnsureTables(source){
  if(source.includes(MARKER)){if(!source.includes('global.SBC_ECONOMIC_CONTROL_SCHEMA_ALLOWED()'))throw Error(MARKER+': marker exists but ensureTables guard is missing');return {source,alreadyApplied:true}}
- const opener=/(?:async\s+ensureTables\s*\([^)]*\)\s*\{|ensureTables\s*:\s*async\s*(?:function\s*)?\([^)]*\)\s*=>\s*\{|ensureTables\s*=\s*async\s*\([^)]*\)\s*=>\s*\{|ensureTables\s*\([^)]*\)\s*\{)/g;
+ const opener=/(?:async\s+ensureTables\s*\([^)]*\)\s*\{|ensureTables\s*:\s*async\s*(?:function\s*)?\([^)]*\)\s*(?:=>\s*)?\{|ensureTables\s*=\s*async\s*\([^)]*\)\s*=>\s*\{|ensureTables\s*\([^)]*\)\s*\{)/g;
  const matches=[...source.matchAll(opener)];
  if(matches.length!==1)throw Error(MARKER+': expected exactly one Economic Control ensureTables function; found '+matches.length);
  const m=matches[0],at=m.index+m[0].length;
