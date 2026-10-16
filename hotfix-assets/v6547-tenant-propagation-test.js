@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 const releasePatch=require('./apply-v6547-tenant-propagation');
 const root=path.resolve(__dirname,'..'),patch=fs.readFileSync(path.join(root,'hotfix-assets/apply-v6547-tenant-propagation.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')),lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
-assert.equal(pkg.version,'65.1.53');assert.equal(lock.version,'65.1.53');assert.equal(lock.packages[''].version,'65.1.53');
+assert.equal(pkg.version,'65.1.54');assert.equal(lock.version,'65.1.54');assert.equal(lock.packages[''].version,'65.1.54');
 for(const p of [/requireMappedRequestTenant\(req\)/,/tenantId:rec\.tenantId/,/tenantId:requireRequestTenant\(req\)/,/Customer not found in the authenticated tenant/,/public host is not mapped to a tenant/,/SBC_V6547_TENANT_PROPAGATION/])assert.match(patch,p);
 assert.doesNotMatch(patch,/tenantId\s*\|\|\s*1/);assert.doesNotMatch(patch,/SBC_RUNTIME_READ_ONLY\s*=\s*false/);assert.doesNotMatch(patch,/MYSQL_RECOVERY_REQUIRED\s*=\s*false/);
 const b=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');assert.match(b,/apply-v6547-tenant-propagation\.js/);assert.match(b,/apply-v6548-lead-import-cache-contract\.js/);assert.match(b,/command-center-redesign-v6553/);assert.ok(b.includes('apply-v6550-remove-floating-ask-kim.js'));assert.match(b,/command-center-redesign-v6553/);assert.ok(b.includes('apply-v6553-command-center-redesign.js'));
