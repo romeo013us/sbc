@@ -145,6 +145,9 @@ jobs:
           test -f hotfix-assets/v6546-release-identity-current-version-test.js
           test -f hotfix-assets/apply-v6549-lorna-least-privilege.js
           test -f hotfix-assets/v6549-lorna-least-privilege-test.js
+          test -f hotfix-assets/apply-v6550-remove-floating-ask-kim.js
+          test -f hotfix-assets/v6550-remove-floating-ask-kim-test.js
+          test -f RELEASE-NOTES-V65.1.49-REMOVE-FLOATING-ASK-KIM.md
           test -f RELEASE-NOTES-V65.1.48-LORNA-LEAST-PRIVILEGE.md
           test -f scripts/v65137-startup-sequence.test.js
           unzip -t SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip
