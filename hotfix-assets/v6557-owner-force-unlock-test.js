@@ -20,7 +20,7 @@ try{
 "let sbcWriterLeaseConn=null,sbcWriterLeaseConnectionId=null,sbcWriterLeaseReady=false,sbcWriterLeaseTimer=null;",
 "let mysqlPool={query:async()=>[[{setting_value:'true'}]]};",
 "let MYSQL_RECOVERY_REQUIRED=false;",
-"let MYSQL_RECOVERY_EVALUATED=false;",
+"let MYSQL_RECOVERY_EVALUATED = false;",
 "let SBC_DDL_ENABLED=false,storageMode='mysql-recovery-required';",
 "const SBC_RUNTIME_WRITER_LOCK_NAME='sbc:runtime:writer:v1';",
 "const VERIFIED_PRE_CORRUPTION_CRM_COUNT=248;",
