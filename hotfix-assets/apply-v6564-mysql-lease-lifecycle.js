@@ -9,7 +9,24 @@ function apply(root){
   s=once(s,stateAnchor,stateAnchor+'\n// '+MARKER+': prevent overlapping lease checks and retire broken lease sockets.\nlet sbcWriterLeaseCheckInFlight=false;', 'lease state');
   const timerAnchor="sbcWriterLeaseTimer=setInterval(async()=>{try{const [[r]]=await sbcWriterLeaseConn.query('SELECT IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME]);if(Number(r&&r.owner)!==sbcWriterLeaseConnectionId)throw new Error('writer lease ownership changed');}catch(e){sbcWriterLeaseReady=false;MYSQL_RECOVERY_REQUIRED=true;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-recovery-required';console.error('['+MARKER+'] writer lease lost; recovery-safe mode enabled:',String(e&&e.message||e));clearInterval(sbcWriterLeaseTimer);sbcWriterLeaseTimer=null;}},10000);";
   const timerReplacement="sbcWriterLeaseTimer=setInterval(async()=>{if(sbcWriterLeaseCheckInFlight||!sbcWriterLeaseConn||!sbcWriterLeaseReady)return;sbcWriterLeaseCheckInFlight=true;let timer;try{const leaseConn=sbcWriterLeaseConn,leaseId=sbcWriterLeaseConnectionId;const result=await Promise.race([leaseConn.query('SELECT IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('writer lease heartbeat timed out after 5000ms'),{code:'SBC_WRITER_LEASE_HEARTBEAT_TIMEOUT'})),5000)})]);const r=result&&result[0]&&result[0][0];if(Number(r&&r.owner)!==leaseId)throw new Error('writer lease ownership changed');}catch(e){sbcWriterLeaseReady=false;MYSQL_RECOVERY_REQUIRED=true;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-recovery-required';const stale=sbcWriterLeaseConn;sbcWriterLeaseConn=null;sbcWriterLeaseConnectionId=null;console.error('['+MARKER+'] lease heartbeat failed; writer readiness revoked and recovery-safe mode enabled:',String(e&&e.message||e));clearInterval(sbcWriterLeaseTimer);sbcWriterLeaseTimer=null;try{if(stale)await stale.destroy()}catch{}}finally{clearTimeout(timer);sbcWriterLeaseCheckInFlight=false;}},10000);";
-  s=once(s,timerAnchor,timerReplacement,'bounded single-flight lease heartbeat');
+  const timerCount=s.split(timerAnchor).length-1;
+  if(timerCount===1){
+   s=s.replace(timerAnchor,timerReplacement);
+  }else{
+   // Source bundles can carry equivalent formatting changes from earlier patches.
+   // Match the whole timer callback by its stable assignment and interval terminator.
+   const timerPattern=/sbcWriterLeaseTimer=setInterval\(async\(\)=>\{[\s\S]*?\},10000\);/g;
+   const matches=s.match(timerPattern)||[];
+   if(matches.length!==1){
+    if(s.includes('sbcWriterLeaseCheckInFlight')&&s.includes('writer lease heartbeat timed out after 5000ms')){
+     // Already hardened by an equivalent patch; no-op.
+    }else{
+     throw Error(MARKER+': expected exactly one writer-lease heartbeat timer; exact anchor count '+timerCount+', fallback timer count '+matches.length);
+    }
+   }else{
+    s=s.replace(timerPattern,timerReplacement);
+   }
+  }
  }
  const pkgPath=path.join(root,'package.json'),pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8'));
  if(!pkg.scripts['test:v6564-mysql-lease-lifecycle'])pkg.scripts['test:v6564-mysql-lease-lifecycle']='node hotfix-assets/v6564-mysql-lease-lifecycle-test.js';
