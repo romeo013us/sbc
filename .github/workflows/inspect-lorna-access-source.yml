@@ -1,0 +1,49 @@
+name: Inspect Lorna Access Source
+on:
+  push:
+    branches: ['chore/lorna-access-audit']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect embedded application source without exposing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- ROOT PACKAGE FILE LIST ---'
+          unzip -l SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip | head -80
+          echo '--- EXTRACT NESTED SOURCE ARCHIVE ---'
+          unzip -p SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip > /tmp/sbc-source.zip
+          unzip -l /tmp/sbc-source.zip | head -80
+          mkdir -p /tmp/sbc-source
+          unzip -q /tmp/sbc-source.zip -d /tmp/sbc-source
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('/tmp/sbc-source')
+          files=[p for p in root.rglob('*') if p.is_file() and p.suffix in ('.js','.html')]
+          print('SOURCE FILE COUNT',len(files))
+          patterns=[
+            ('AUTH',r'function auth|const auth\s*=|let auth\s*=|function ownerOnly|const ownerOnly\s*='),
+            ('ROLE',r'lead_researcher|lead_generator|researcher|prospector|ownerOnly|role ===|role==='),
+            ('NAV',r'Employees|Users & Security|Payments|Refund|Settings|Training|Time Clock|Lead Research|Fulfillment|Finance|Dashboard|Onboarding'),
+            ('API',r'app\.(?:get|post|put|patch|delete)\s*\(\s*[\'\"]/(?:api|admin|ops)')
+          ]
+          for label,pat in patterns:
+            print('---',label,'---')
+            count=0
+            for p in files:
+              try: lines=p.read_text(errors='ignore').splitlines()
+              except: continue
+              for i,line in enumerate(lines):
+                if re.search(pat,line,re.I):
+                  print(f'{p.relative_to(root)}:{i+1}: {line[:900]}')
+                  count+=1
+                  if count>=80: break
+              if count>=80: break
+            print('MATCHES_SHOWN',count)
+          PY
