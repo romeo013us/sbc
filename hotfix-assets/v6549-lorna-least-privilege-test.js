@@ -5,7 +5,13 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6549-lorna-'));
 function put(rel,content){const f=path.join(root,rel);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,content);}
 function get(rel){return fs.readFileSync(path.join(root,rel),'utf8');}
 try{
- put('server.js',"app.get('/api/gateways/readiness',auth,(req,res)=>{});\nconst guards='SBC_RUNTIME_WRITER_LEASE_REQUIRED MYSQL_RECOVERY_REQUIRED';\n");
+ put('server.js',[
+  "app.get('/api/gateways/readiness',auth,(req,res)=>{});",
+  "const guards='SBC_RUNTIME_WRITER_LEASE_REQUIRED MYSQL_RECOVERY_REQUIRED';",
+  "const customers=caller?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id):researcher?db.customers:fulfillment?db.customers.filter(c=>true):db.customers;",
+  "const out={websiteDemos:v.websiteDemos,workforceNotes:v.workforceNotes||{}};",
+  "res.json({stats,leads:mine.slice(0,1000),users:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});"
+ ].join('\n')+'\n');
  put('public/index.html','<title>SBC V65.1.47</title><div data-view="dashboard"></div><div data-view="acquisition"></div></body>');
  put('public/sw.js',"const CACHE='sbc-static-v65-1-47-import-contract';");
  put('package.json',JSON.stringify({name:'sbc-business-command-center',version:'65.1.47',description:'old'},null,2));
@@ -19,7 +25,13 @@ try{
  assert.match(server,/SBC_V6549_LORNA_LEAST_PRIVILEGE/);
  assert.match(server,/sbcLornaAllowedRequest/);
  assert.match(server,/sessionUser\(req\)/);
- assert.match(server,/LORNA_LEAST_PRIVILEGE_DENIED/);\n assert.match(server,/researcher\\?db\\.customers\\.filter/);\n assert.match(server,/websiteDemos:researcher\\?\\{\\}/);\n assert.match(server,/users:\\['owner','manager'\\]\\.includes/);
+ assert.match(server,/LORNA_LEAST_PRIVILEGE_DENIED/);
+ assert.match(server,/researcher\?db\.customers\.filter/);
+ assert.match(server,/websiteDemos:researcher\?\{\}/);
+ assert.match(server,/users:\['owner','manager'\]\.includes/);
+ assert.match(server,/api\/v9\/bootstrap/);
+ assert.match(server,/api\/v9\/lead-verification/);
+ assert.match(server,/api\/v9\/time\/clock/);
  assert.match(server,/MYSQL_RECOVERY_REQUIRED/);
  const html=get('public/index.html');
  assert.match(html,/sbc-lorna-least-privilege-ui/);
@@ -32,6 +44,5 @@ try{
  assert.equal(JSON.parse(get('package-lock.json')).packages[''].version,'65.1.48');
  assert.match(get('config/release-identity.js'),/LORNA_LEAST_PRIVILEGE/);
  assert.match(get('browser_public/app.js'),/65\.1\.48/);
- assert.equal(patch.apply.toString().includes(''),true);
  console.log('[SBC V65.1.48] Lorna least-privilege patch regression PASS');
 }finally{fs.rmSync(root,{recursive:true,force:true});}
