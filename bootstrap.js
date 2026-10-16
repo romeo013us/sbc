@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '65.1.57';
-const HOTFIX_PATCH_ID = 'owner-force-unlock-v6557';
+const HOTFIX_PATCH_ID = 'owner-force-unlock-v6557-r2';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
