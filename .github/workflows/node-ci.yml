@@ -23,5 +23,7 @@ jobs:
         run: npm run test:v6545-baseline-gated-ddl-unblock
       - name: Test release identity alignment
         run: npm run test:v6546-release-identity-current-version
+      - name: Test lead-import cache and commit contract
+        run: npm run test:v6548-import-cache-fix
       - name: Verify complete deployment bundle
         run: npm run build
