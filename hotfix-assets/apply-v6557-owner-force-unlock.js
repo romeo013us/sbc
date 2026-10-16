@@ -32,16 +32,19 @@ const FORCE_ROUTE=[
 "  if(!sbcWriterLeaseReady){const acquired=await sbcV6557AcquireWriterLease();if(!acquired)return res.status(423).json({ok:false,error:'SBC_RUNTIME_WRITER_BUSY',message:'Another runtime currently owns the MySQL writer lease.'});}",
 "  SBC_RUNTIME_ROLE='writer';SBC_RUNTIME_READ_ONLY=false;process.env.SBC_RUNTIME_ROLE='writer';",
 "  process.env.ENABLE_DDL='true';SBC_DDL_ENABLED=true;",
+"  SBC_OWNER_FORCE_UNLOCK_ACTIVE=true;MYSQL_RECOVERY_REQUIRED=false;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-relational';",
 "  await ensureEnterpriseSchema();",
+"  await mysqlPool.query('INSERT INTO sbc_settings(setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)',['sbc_owner_force_unlock_v6557','true']);",
 "  await runSchemaMigrations();",
+"  await ensureRevenueOSSchema();",
+"  const unlockTenantId=requireRequestTenant(req);",
+"  await mysqlPool.query('INSERT INTO sbc_revenue_control(tenant_id,global_kill,outbound_kill,sales_kill,fulfillment_kill,updated_by,updated_at) VALUES(?,0,0,0,0,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE global_kill=0,outbound_kill=0,sales_kill=0,fulfillment_kill=0,updated_by=VALUES(updated_by),updated_at=UTC_TIMESTAMP()',[unlockTenantId,req.user?.id||'owner']);",
 "  await RUNTIME_GATE.ensureSchema();",
 "  const stops=Object.fromEntries(PRODUCTION_HARDENING.KILL_STATES.map(k=>[k,false]));",
 "  await RUNTIME_GATE.setKill(false,stops,req.user?.id||'owner');",
-"  await mysqlPool.query('INSERT INTO sbc_settings(setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)',['sbc_owner_force_unlock_v6557','true']);",
-"  SBC_OWNER_FORCE_UNLOCK_ACTIVE=true;MYSQL_RECOVERY_REQUIRED=false;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-relational';",
 "  await readRelational();",
 "  res.setHeader('Cache-Control','no-store');",
-"  return res.json({ok:true,version:BUILD_VERSION,recoveryLockCleared:true,persisted:true,runtimeRole:SBC_RUNTIME_ROLE,readOnly:SBC_RUNTIME_READ_ONLY,ddlEnabled:SBC_DDL_ENABLED,writerLeaseReady:sbcWriterLeaseReady,operationalKillSwitchesCleared:true,message:'Owner force-unlock applied. Recovery, read-only mode, DDL gate and operational kill switches are cleared; the exclusive writer lease remains active for database integrity.'});",
+"  return res.json({ok:true,version:BUILD_VERSION,recoveryLockCleared:true,persisted:true,runtimeRole:SBC_RUNTIME_ROLE,readOnly:SBC_RUNTIME_READ_ONLY,ddlEnabled:SBC_DDL_ENABLED,writerLeaseReady:sbcWriterLeaseReady,operationalKillSwitchesCleared:true,message:'Owner force-unlock applied. Recovery/read-only/DDL gates, runtime kill switches, and tenant revenue/outbound/sales/fulfillment stops are cleared; the exclusive writer lease remains active.'});",
 " }catch(e){return res.status(503).json({ok:false,error:'OWNER_FORCE_UNLOCK_FAILED',message:String(e?.message||e)});}",
 "});"
 ].join('\n');
@@ -53,6 +56,7 @@ function patchServer(root){
  s=once(s,"const SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';","let SBC_RUNTIME_READ_ONLY = SBC_RUNTIME_ROLE !== 'writer';",'mutable read-only state');
  s=once(s,"let MYSQL_RECOVERY_EVALUATED = false;","let MYSQL_RECOVERY_EVALUATED = false;\nlet SBC_OWNER_FORCE_UNLOCK_ACTIVE = false;\n"+LEASE_HELPER,'force-unlock state/helper');
  const readOnlyAnchor="if(SBC_RUNTIME_READ_ONLY){\n      // SBC_V6538_WRITER_HYDRATION_WITHOUT_DDL:";
+ const leaseAnchor="    // SBC_V6528_RUNTIME_WRITER_LEASE: acquire exclusive lease before any DDL, migration, seed, repair, or worker write.\n    if(!SBC_RUNTIME_READ_ONLY){let leaseCandidate=null;try{";
  const overrideInit=[
 "try{",
 "      const [[ownerUnlockState]]=await mysqlPool.query('SELECT setting_value FROM sbc_settings WHERE setting_key=? LIMIT 1',['sbc_owner_force_unlock_v6557']);",
@@ -65,7 +69,8 @@ function patchServer(root){
 "    }catch{}",
 "    "
 ].join('\n');
- s=once(s,readOnlyAnchor,overrideInit+readOnlyAnchor,'persistent override startup load');
+ if(s.includes(leaseAnchor))s=once(s,leaseAnchor,overrideInit+leaseAnchor,'persistent override before writer lease acquisition');
+ else s=once(s,readOnlyAnchor,overrideInit+readOnlyAnchor,'persistent override startup load fallback');
  s=once(s,"if(Number(counts?.customers||0)<VERIFIED_PRE_CORRUPTION_CRM_COUNT){","if(!SBC_OWNER_FORCE_UNLOCK_ACTIVE&&Number(counts?.customers||0)<VERIFIED_PRE_CORRUPTION_CRM_COUNT){",'read-only baseline override');
  s=once(s,"if(relationalCoreCount > 0){","if(relationalCoreCount > 0 || SBC_OWNER_FORCE_UNLOCK_ACTIVE){",'core-empty override');
  s=once(s,"if(Number(countRows[0]?.customers||0) < VERIFIED_PRE_CORRUPTION_CRM_COUNT){","if(!SBC_OWNER_FORCE_UNLOCK_ACTIVE && Number(countRows[0]?.customers||0) < VERIFIED_PRE_CORRUPTION_CRM_COUNT){",'recovery baseline override');
