@@ -15,6 +15,11 @@ function sbcLornaAllowedRequest(req,user){
  if(!p.startsWith('/api/'))return !/^\/(?:office-box|ops-center|admin|settings|system-console|commercial-console)(?:\/|$)/i.test(p);
  if((p==='/api/login'||p==='/api/logout')&&['POST','GET'].includes(m))return true;
  if(p==='/api/me'||p==='/api/release-identity')return m==='GET';
+ if(p==='/api/v9/bootstrap')return m==='GET';
+ if(p==='/api/v9/lead-verification')return m==='GET';
+ if(/^\/api\/v9\/lead-verification\/[^/]+$/.test(p))return m==='POST';
+ if(p==='/api/v9/time/clock')return m==='POST';
+ if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
  if(p==='/api/workforce/lead-draft')return m==='GET';
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
@@ -51,6 +56,9 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
 });
 `;
  server=once(server,"app.get('/api/gateways/readiness',auth,",""+gate+"\napp.get('/api/gateways/readiness',auth,",'install deny-by-default route gate before API routes');
+ server=once(server,'researcher?db.customers:fulfillment?','researcher?db.customers.filter(c=>{const status=String(c?.status||\'Lead\').trim().toLowerCase();const assignedTo=String(c?.assignedTo||\'\');const mine=!assignedTo||assignedTo===String(req.user.id);const active=!([\'customer\',\'lost\',\'do not call\',\'dnc\',\'closed\',\'duplicate\'].includes(status));const notSalesReady=String(c?.verificationStatus||\'\')!==\'Sales Ready\';return active&&mine&&(notSalesReady||assignedTo===String(req.user.id));}):fulfillment?','scope Lorna bootstrap lead records');
+ server=once(server,'websiteDemos:v.websiteDemos,workforceNotes:v.workforceNotes||{}','websiteDemos:researcher?{}:v.websiteDemos,workforceNotes:researcher?{}:(v.workforceNotes||{})','hide other workforce notes and demos');
+ server=once(server,"res.json({stats,leads:mine.slice(0,1000),users:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});","res.json({stats,leads:mine.slice(0,1000),users:['owner','manager'].includes(req.user.role)?(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role})):[]});",'hide employee roster from researcher verification response');
  if(!server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED')||!server.includes('MYSQL_RECOVERY_REQUIRED'))throw new Error(MARKER+': existing recovery/writer protections missing');
  write(root,'server.js',server);
  let html=read(root,'public/index.html');
@@ -103,7 +111,7 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
    return response;
   });
  };
- var observer=new MutationObserver(function(){apply();});
+ var observer=new MutationObserver(function(){apply();var app=document.querySelector('#app');if(!role&&app&&!app.classList.contains('hidden'))readMe();});
  function start(){readMe();var target=document.body;if(target)observer.observe(target,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
