@@ -10,3 +10,5 @@ body[data-theme="light"] .hero h1,body[data-theme="light"] .hero h2,body[data-th
 .sbc-v6559-reorderable.sbc-v6559-dragging{opacity:.45!important}
 .sbc-v6559-reorderable.sbc-v6559-drop-target{outline:2px dashed #F47721!important;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.sbc-v6559-reorderable{transition:none!important}}
+
+body[data-theme="light"] .hero *,body[data-theme="light"] .topbar *,body[data-theme="light"] .sidebar *,body[data-theme="light"] .card-head *,body[data-theme="light"] .modal-head *,body[data-theme="light"] th *,body[data-theme="light"] .nav-item.active *{color:#F47721!important}
