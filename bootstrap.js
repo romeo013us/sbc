@@ -1,6 +1,6 @@
 'use strict';
 
-// GoDaddy repository-root launcher for SBC OS V65.1.45.
+// GoDaddy repository-root launcher for SBC OS V65.1.47.
 // Application source is stored in the adjacent source ZIP. GoDaddy installs the
 // listed runtime dependencies at this repository root; extracted modules resolve
 // upward to that node_modules directory.
@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.46';
-const HOTFIX_PATCH_ID = 'tenant-propagation-v6547-release-pin-rebuild';
+const EXPECTED_VERSION = '65.1.47';
+const HOTFIX_PATCH_ID = 'lead-import-cache-contract-v6548';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -164,6 +164,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6545-baseline-gated-ddl-unblock.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6546-release-identity-current-version.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6547-tenant-propagation.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6548-lead-import-cache-contract.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
@@ -246,6 +247,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6545-baseline-gated-ddl-unblock.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6546-release-identity-current-version.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6547-tenant-propagation.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6548-lead-import-cache-contract.js')).apply(runtimeDir);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
