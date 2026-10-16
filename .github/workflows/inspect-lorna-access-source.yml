@@ -24,6 +24,22 @@ jobs:
           root=Path('/tmp/sbc-source')
           files=[p for p in root.rglob('*') if p.is_file() and p.suffix in ('.js','.html')]
           print('SOURCE FILE COUNT',len(files))
+          server=root/'server.js'
+          if server.exists():
+            lines=server.read_text(errors='ignore').splitlines()
+            for lo,hi in [(2418,2470),(2480,2525)]:
+              print(f'--- SERVER CONTEXT {lo}-{hi} ---')
+              for i in range(lo-1,min(hi,len(lines))): print(f'{i+1}: {lines[i][:1200]}')
+          html=root/'public/index.html'
+          if html.exists():
+            lines=html.read_text(errors='ignore').splitlines()
+            print('--- MAIN HTML NAV/ROLE CONTEXT ---')
+            count=0
+            for i,line in enumerate(lines):
+              if re.search(r'nav|sidebar|lead_researcher|Users & Security|Payments|Settings|Training|Time Clock|Lead Research|Fulfillment|Finance|Dashboard|Onboarding|employees|data-page',line,re.I):
+                print(f'public/index.html:{i+1}: {line[:1200]}')
+                count+=1
+                if count>=100: break
           patterns=[
             ('AUTH',r'function auth|const auth\s*=|let auth\s*=|function ownerOnly|const ownerOnly\s*='),
             ('ROLE',r'lead_researcher|lead_generator|researcher|prospector|ownerOnly|role ===|role==='),
