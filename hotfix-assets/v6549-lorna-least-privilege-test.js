@@ -8,7 +8,10 @@ try{
  put('server.js',[
   "app.get('/api/gateways/readiness',auth,(req,res)=>{});",
   "const guards='SBC_RUNTIME_WRITER_LEASE_REQUIRED MYSQL_RECOVERY_REQUIRED';",
+  "const v=v9data(), role=req.user.role, isOwnerRole=role==='owner', manager=role==='manager', caller=role==='caller', researcher=role==='lead_researcher', fulfillment=role==='fulfillment';",
   "const customers=caller?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id):researcher?db.customers:fulfillment?db.customers.filter(c=>true):db.customers;",
+  "const mine=req.user.role==='lead_researcher'?all.filter(c=>!c.verificationStatus||c.verificationStatus!=='Sales Ready'||c.assignedTo===req.user.id):all;",
+  "const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));if(!c)return res.status(404).json({error:'Lead not found.'});",
   "const out={websiteDemos:v.websiteDemos,workforceNotes:v.workforceNotes||{}};",
   "res.json({stats,leads:mine.slice(0,1000),users:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});"
  ].join('\n')+'\n');
