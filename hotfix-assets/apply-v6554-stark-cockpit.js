@@ -62,6 +62,8 @@ function apply(root){
  const server=read(root,'server.js');
  if(!server.includes('MYSQL_RECOVERY_REQUIRED')||!server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'))throw Error(MARKER+': recovery/writer guard markers missing; refusing release');
  write(root,'server.js',server+'\n// '+MARKER+': visual-only release; existing recovery, tenant, and writer safeguards remain.\n');
+ const hotfixDir=path.join(root,'hotfix-assets');fs.mkdirSync(hotfixDir,{recursive:true});fs.copyFileSync(__filename,path.join(hotfixDir,'apply-v6554-stark-cockpit.js'));
+ const testSource=path.join(__dirname,'v6554-stark-cockpit-test.js');if(!fs.existsSync(testSource))throw Error(MARKER+': regression test source missing');fs.copyFileSync(testSource,path.join(hotfixDir,'v6554-stark-cockpit-test.js'));
  return {marker:MARKER,version:TO,visualOnly:true,fullWidthWorkspace:true,recoveryAndWriterGuardsPreserved:true};
 }
 module.exports={apply,MARKER,FROM,TO};
