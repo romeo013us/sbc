@@ -9,10 +9,11 @@ A presentation-layer redesign of the existing Command Center. It changes layout,
 - Redesigned KPI cards, tables, forms, modals, and buttons.
 - Jade, mint, coral, and warm-neutral palette.
 - Responsive tablet/mobile rules and coordinated dark mode.
+- Removes fixed bottom Lead Workspace/Ask Kim launchers; Lead Workspace access is placed in the sidebar so the workspace remains reachable without floating controls.
 - Versioned stylesheet and service-worker cache key.
 
 ## Recovery-control correction
-A header-only guard removes buttons whose labels explicitly say “Recovery Lock,” “Lock Recovery,” or “Unlock Recovery.” It does not remove recovery status content or controls in dedicated administrative workflows. The theme switch remains.
+A header-only guard removes buttons whose labels explicitly say “Recovery Lock,” “Lock Recovery,” or “Unlock Recovery.” The patch also removes known fixed bottom launchers for Lead Workspace/Ask Kim and moves Lead Workspace access into the sidebar. Existing in-page Ask Kim actions remain. It does not remove recovery status content or controls in dedicated administrative workflows. The theme switch remains.
 
 ## Safety
 Visual-only patch. CRM, lead import, Kim in-page actions, authentication, database logic, tenant isolation, recovery gating, and writer-lease logic are preserved. No database writes, recovery unlock, or production deployment are performed by this patch.
