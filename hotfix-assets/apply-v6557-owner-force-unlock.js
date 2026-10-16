@@ -6,12 +6,22 @@ function write(root,rel,s){const f=path.join(root,rel);fs.mkdirSync(path.dirname
 function once(s,a,b,label){const n=s.split(a).length-1;if(n!==1)throw Error(MARKER+': '+label+' anchor count '+n);return s.replace(a,b)}
 const LEASE_HELPER=[
 "async function sbcV6557AcquireWriterLease(){",
-" if(sbcWriterLeaseTimer){clearInterval(sbcWriterLeaseTimer);sbcWriterLeaseTimer=null;}",
-" if(sbcWriterLeaseConn){try{await sbcWriterLeaseConn.query('SELECT RELEASE_LOCK(?) AS released',[SBC_RUNTIME_WRITER_LOCK_NAME])}catch{}try{await sbcWriterLeaseConn.end()}catch{}}",
-" sbcWriterLeaseConn=null;sbcWriterLeaseConnectionId=null;sbcWriterLeaseReady=true;",
-" SBC_RUNTIME_ROLE='writer';SBC_RUNTIME_READ_ONLY=false;SBC_DDL_ENABLED=true;process.env.SBC_RUNTIME_ROLE='writer';process.env.ENABLE_DDL='true';",
-" console.warn('[SBC V6557 OWNER FORCE UNLOCK] recovery/read-only/DDL and writer-lock gates bypassed by owner command.');",
-" return true;",
+" if(sbcWriterLeaseReady&&Number.isFinite(sbcWriterLeaseConnectionId))return true;",
+" let candidate=null;",
+" try{",
+"  const mysqlLease=require('mysql2/promise');",
+"  candidate=await mysqlLease.createConnection({host:process.env.DB_HOST,user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,port:Number(process.env.DB_PORT||3306),connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),charset:'utf8mb4'});",
+"  const [rows]=await candidate.query('SELECT GET_LOCK(?, 0) AS acquired, CONNECTION_ID() AS connectionId',[SBC_RUNTIME_WRITER_LOCK_NAME]);",
+"  if(Number(rows&&rows[0]&&rows[0].acquired)!==1){try{await candidate.end()}catch{}return false}",
+"  if(sbcWriterLeaseTimer){clearInterval(sbcWriterLeaseTimer);sbcWriterLeaseTimer=null}",
+"  if(sbcWriterLeaseConn&&sbcWriterLeaseConn!==candidate){try{await sbcWriterLeaseConn.end()}catch{}}",
+"  sbcWriterLeaseConn=candidate;sbcWriterLeaseConnectionId=Number(rows[0].connectionId);sbcWriterLeaseReady=true;",
+"  SBC_RUNTIME_ROLE='writer';SBC_RUNTIME_READ_ONLY=false;process.env.SBC_RUNTIME_ROLE='writer';",
+"  console.warn('[SBC V6557 OWNER FORCE UNLOCK] exclusive writer lease acquired.');",
+"  sbcWriterLeaseTimer=setInterval(async()=>{try{const [[r]]=await sbcWriterLeaseConn.query('SELECT IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME]);if(Number(r&&r.owner)!==sbcWriterLeaseConnectionId)throw new Error('writer lease ownership changed');}catch(e){sbcWriterLeaseReady=false;MYSQL_RECOVERY_REQUIRED=true;MYSQL_RECOVERY_EVALUATED=true;storageMode='mysql-recovery-required';console.error('[SBC V6557 OWNER FORCE UNLOCK] writer lease lost; write protection re-engaged:',String(e&&e.message||e));clearInterval(sbcWriterLeaseTimer);sbcWriterLeaseTimer=null;}},10000);",
+"  if(sbcWriterLeaseTimer.unref)sbcWriterLeaseTimer.unref();",
+"  return true;",
+" }catch(e){try{if(candidate)await candidate.end()}catch{}console.error('[SBC V6557 OWNER FORCE UNLOCK] writer lease acquisition failed:',String(e&&e.message||e));return false}",
 "}"
 ].join('\n');
 const FORCE_ROUTE=[
