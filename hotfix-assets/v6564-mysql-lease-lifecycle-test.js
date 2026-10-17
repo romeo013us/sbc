@@ -9,6 +9,8 @@ assert.ok(patch.includes('writer lease heartbeat timed out after 5000ms'),'bound
 assert.ok(patch.includes('await stale.destroy()'),'destroys stale dedicated lease connection');
 assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'fails closed after lease loss');
 assert.ok(patch.includes('sbcWriterLeaseConnectionId=null'),'clears stale connection identity');
-assert.ok(patch.includes('fallback timer count'),'supports source-bundle timer formatting variation');
+assert.ok(patch.includes('for(const candidate of leaseMatches)s=s.replace(candidate,timerReplacement)'),'hardens every matching writer-lock timer');
+assert.ok(patch.includes('sbcWriterLeaseTimerHandles.push(sbcWriterLeaseTimer)'),'tracks every interval handle');
+assert.ok(patch.includes('for(const handle of sbcWriterLeaseTimerHandles)clearInterval(handle)'),'clears all intervals on lease failure');
 assert.ok(bootstrap.includes("apply-v6564-mysql-lease-lifecycle.js')).apply(runtimeDir)"),'runtime bootstrap applies lifecycle patch');
-console.log('V65.1.64 MySQL lease lifecycle: 6/6 PASS');
+console.log('V65.1.64 MySQL lease lifecycle: 9/9 PASS');
