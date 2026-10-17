@@ -17,14 +17,17 @@ function apply(root){
    // Match the whole timer callback by its stable assignment and interval terminator.
    const timerPattern=/sbcWriterLeaseTimer=setInterval\(async\(\)=>\{[\s\S]*?\},10000\);/g;
    const matches=s.match(timerPattern)||[];
-   if(matches.length!==1){
+   // Some source bundles contain another timer with the same interval shape.
+   // Only the writer-lock heartbeat that checks IS_USED_LOCK is eligible.
+   const leaseMatches=matches.filter(x=>x.includes('IS_USED_LOCK')&&x.includes('SBC_RUNTIME_WRITER_LOCK_NAME'));
+   if(leaseMatches.length!==1){
     if(s.includes('sbcWriterLeaseCheckInFlight')&&s.includes('writer lease heartbeat timed out after 5000ms')){
      // Already hardened by an equivalent patch; no-op.
     }else{
-     throw Error(MARKER+': expected exactly one writer-lease heartbeat timer; exact anchor count '+timerCount+', fallback timer count '+matches.length);
+     throw Error(MARKER+': expected exactly one writer-lease heartbeat timer; exact anchor count '+timerCount+', fallback timer count '+matches.length+', writer-lock heartbeat count '+leaseMatches.length);
     }
    }else{
-    s=s.replace(timerPattern,timerReplacement);
+    s=s.replace(leaseMatches[0],timerReplacement);
    }
   }
  }
