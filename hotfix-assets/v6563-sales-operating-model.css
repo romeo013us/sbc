@@ -24,3 +24,36 @@
 @media(max-width:1050px){#sbcSalesOperatingModelV6563 .sbc63-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){#sbcSalesOperatingModelV6563{margin:12px 0 18px;padding:15px;border-radius:14px}#sbcSalesOperatingModelV6563 .sbc63-head{flex-direction:column;gap:12px}#sbcSalesOperatingModelV6563 .sbc63-grid{grid-template-columns:1fr}#sbcSalesOperatingModelV6563 .sbc63-lane{padding:14px}}
 @media(prefers-reduced-motion:reduce){#sbcSalesOperatingModelV6563 *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* V65.1.63 layout repair: the operating-model panel is inserted as a sibling
+   of the dashboard, so legacy grid/flex parents must not squeeze it into a
+   narrow implicit column. Keep the panel full-width and its text readable. */
+#sbcSalesOperatingModelV6563{
+  display:block!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:1600px!important;
+  grid-column:1 / -1!important;
+  justify-self:stretch!important;
+  flex:0 0 100%!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+}
+#sbcSalesOperatingModelV6563 *{box-sizing:border-box}
+#sbcSalesOperatingModelV6563 .sbc63-head,
+#sbcSalesOperatingModelV6563 .sbc63-grid,
+#sbcSalesOperatingModelV6563 .sbc63-rule{min-width:0;width:100%}
+#sbcSalesOperatingModelV6563 .sbc63-head>div{min-width:0;flex:1 1 auto}
+#sbcSalesOperatingModelV6563 .sbc63-head p,
+#sbcSalesOperatingModelV6563 .sbc63-lane h3,
+#sbcSalesOperatingModelV6563 .sbc63-lane p,
+#sbcSalesOperatingModelV6563 .sbc63-foot strong,
+#sbcSalesOperatingModelV6563 .sbc63-rule{overflow-wrap:anywhere;word-break:normal}
+@media(max-width:1050px){
+  #sbcSalesOperatingModelV6563 .sbc63-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  #sbcSalesOperatingModelV6563 .sbc63-head{align-items:stretch}
+  #sbcSalesOperatingModelV6563 .sbc63-grid{grid-template-columns:minmax(0,1fr)}
+}
