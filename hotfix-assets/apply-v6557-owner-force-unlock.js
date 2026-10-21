@@ -12,8 +12,8 @@ function apply(root){
  for(const rel of ['public/index.html','browser_public/index.html']){
   if(!fs.existsSync(path.join(root,rel)))continue;
   let s=read(root,rel);
-  s=s.replace(/app\\.js\\?v=[^"'\\s>]+/g,'app.js?v=65.1.57-recovery-control-removed');
-  s=s.replace(/65\\.1\\.56/g,'65.1.57');
+  s=s.replace(/app\.js\?v=[^"'\s>]+/g,'app.js?v=65.1.57-recovery-control-removed');
+  s=s.replace(/65\.1\.56/g,'65.1.57');
   write(root,rel,s);
  }
  for(const rel of ['public/sw.js','browser_public/sw.js']){
@@ -27,18 +27,18 @@ function apply(root){
   let s=read(root,identity);
   s=s.replace(/const RELEASE_VERSION = '[^']+';/,"const RELEASE_VERSION = '65.1.57';");
   s=s.replace(/const RELEASE_NAME = '[^']+';/,"const RELEASE_NAME = 'RECOVERY_CONTROL_REMOVED';");
-  s=s.replace(/major:65,minor:1,patch:\\d+/,'major:65,minor:1,patch:57');
+  s=s.replace(/major:65,minor:1,patch:\d+/,'major:65,minor:1,patch:57');
   write(root,identity,s);
  }
- if(fs.existsSync(path.join(root,'VERSION')))write(root,'VERSION',read(root,'VERSION').replace(/65\\.1\\.56/g,'65.1.57'));
+ if(fs.existsSync(path.join(root,'VERSION')))write(root,'VERSION',read(root,'VERSION').replace(/65\.1\.56/g,'65.1.57'));
  pkg.version=TO;
  pkg.description='SBC OS V65.1.57 removes the unsafe owner force-unlock route and automatic client trigger; normal recovery and writer-lease safeguards remain enforced.';
  pkg.scripts=pkg.scripts||{};
  pkg.scripts['test:v6557-owner-force-unlock']='node hotfix-assets/v6557-owner-force-unlock-test.js';
  if(!String(pkg.scripts['test:all']||'').includes('v6557-owner-force-unlock-test.js'))pkg.scripts['test:all']=String(pkg.scripts['test:all']||'node bootstrap.js --verify')+' && node hotfix-assets/v6557-owner-force-unlock-test.js';
- write(root,'package.json',JSON.stringify(pkg,null,2)+'\\n');
+ write(root,'package.json',JSON.stringify(pkg,null,2)+'\n');
  lock.version=TO;lock.packages[''].version=TO;lock.packages[''].description=pkg.description;lock.packages[''].scripts=pkg.scripts;
- write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\\n');
+ write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\n');
  const hd=path.join(root,'hotfix-assets');fs.mkdirSync(hd,{recursive:true});
  fs.copyFileSync(__filename,path.join(hd,'apply-v6557-owner-force-unlock.js'));
  const test=path.join(__dirname,'v6557-owner-force-unlock-test.js');if(!fs.existsSync(test))throw Error(MARKER+': regression test missing');
