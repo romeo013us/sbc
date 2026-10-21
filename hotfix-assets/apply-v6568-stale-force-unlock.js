@@ -78,6 +78,11 @@ function apply(root) {
   lock.packages[''].scripts = pkg.scripts;
   write(root, 'package-lock.json', JSON.stringify(lock, null, 2) + '\n');
 
+  const hotfixDir = path.join(root, 'hotfix-assets');
+  fs.mkdirSync(hotfixDir, { recursive: true });
+  fs.copyFileSync(__filename, path.join(hotfixDir, 'apply-v6568-stale-force-unlock.js'));
+  fs.copyFileSync(path.join(__dirname, 'v6568-stale-force-unlock-test.js'), path.join(hotfixDir, 'v6568-stale-force-unlock-test.js'));
+
   return { marker: MARKER, version: TO, changedAssets, retiredInvocation: true,
     cacheBusted: true, oldStaticCachesPurgedOnActivation: true,
     recoveryAndWriterLeaseGuardsChanged: false };
