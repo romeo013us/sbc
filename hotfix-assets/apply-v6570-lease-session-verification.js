@@ -15,10 +15,17 @@ function write(root, rel, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, value);
 }
-function all(source, before, after, label) {
-  const count = source.split(before).length - 1;
-  if (count < 1) throw new Error(MARKER + ': expected at least one ' + label + ' anchor, found ' + count);
-  return { source: source.split(before).join(after), count };
+function replaceMatches(source, pattern, replacer, label) {
+  let count = 0;
+  const result = source.replace(pattern, (...args) => {
+    count += 1;
+    return replacer(...args);
+  });
+  if (count < 1) {
+    const nearby = (source.match(/.{0,70}IS_USED_LOCK.{0,100}/g) || []).slice(0, 4).join(' | ');
+    throw new Error(MARKER + ': expected at least one ' + label + ' anchor, found 0; nearby lock-query text=' + (nearby || '<none>'));
+  }
+  return { source: result, count };
 }
 function apply(root) {
   const pkg = JSON.parse(read(root, 'package.json'));
@@ -30,20 +37,24 @@ function apply(root) {
 
   let server = read(root, 'server.js');
   if (!server.includes(MARKER)) {
-    const queryResult = all(
+    // Match the SQL call independent of spacing, quote style, alias casing,
+    // connection-variable name, or formatting of the argument list.
+    const queryResult = replaceMatches(
       server,
-      "leaseConn.query('SELECT IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME])",
-      "leaseConn.query('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME])",
+      /([A-Za-z_$][\w$]*)\.query\(\s*(['"])SELECT\s+IS_USED_LOCK\(\?\)\s+(?:AS\s+)?owner\2/gi,
+      (_match, conn, quote) => conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote,
       'dedicated-session ownership query'
     );
     server = queryResult.source;
-    const ownerResult = all(
+    const ownerResult = replaceMatches(
       server,
-      "if(Number(r&&r.owner)!==leaseId)throw new Error('writer lease ownership changed');",
+      /if\s*\(\s*Number\(r\s*&&\s*r\.owner\)\s*!==\s*leaseId\s*\)\s*throw new Error\(['"]writer lease ownership changed['"]\);/g,
       "if(Number(r&&r.sessionId)!==leaseId)throw Object.assign(new Error('writer lease session identity changed'),{code:'SBC_WRITER_LEASE_SESSION_CHANGED'});if(Number(r&&r.owner)!==leaseId)throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_WRITER_LEASE_OWNERSHIP_CHANGED'});",
       'session and advisory-lock verification'
     );
-    if (queryResult.count !== ownerResult.count) throw new Error(MARKER + ': lease query/owner anchor counts differ: ' + queryResult.count + '/' + ownerResult.count);
+    if (queryResult.count !== ownerResult.count) {
+      throw new Error(MARKER + ': lease query/owner anchor counts differ: ' + queryResult.count + '/' + ownerResult.count);
+    }
     server = ownerResult.source;
     server = server.replace(
       "console.error('['+MARKER+'] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',String(e&&e.message||e),'retryDelayMs='+sbcWriterLeaseRetryDelayMs);",
