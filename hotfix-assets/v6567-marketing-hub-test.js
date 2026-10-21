@@ -11,7 +11,7 @@ try{
  put('browser_public/index.html','<html><head></head><body>Browser shell</body></html>');
  put('public/sw.js',"const CACHE='sbc-static-v65-1-65';");
  put('browser_public/sw.js',"const CACHE='sbc-static-v65-1-65';");
- put('config/release-identity.js',"const RELEASE_VERSION = '65.1.65'; const RELEASE_NAME = 'API_CIRCUIT_BREAKER'; const RELEASE = Object.freeze({version:RELEASE_VERSION,name:RELEASE_NAME,major:65,minor:1,patch:65});");
+ put('config/release-identity.js',"const RELEASE_VERSION = '65.1.65'; const RELEASE_NAME = 'DASHBOARD_LAYOUT_STABILITY'; const RELEASE = Object.freeze({version:RELEASE_VERSION,name:RELEASE_NAME,major:65,minor:1,patch:65});");
  put('VERSION','65.1.65');
  put('enterprise/v567-nine-nine.js',"const ACTIVE_PACKAGE_RELEASE='65.1.65'; const COMPATIBLE_PACKAGE_RELEASES=Object.freeze(new Set(['65.1.65']));");
  const r=require('./apply-v6567-marketing-hub.js').apply(root);
