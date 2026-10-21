@@ -189,6 +189,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(temp);
     require(path.join(temp, 'hotfix-assets', 'v6573-release-503-forms-test.js'));
+    require(path.join(temp, 'scripts', 'query-guard-cleanup-regression.test.js'));
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
