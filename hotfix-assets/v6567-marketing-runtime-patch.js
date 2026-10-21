@@ -31,10 +31,10 @@ function patchSessionStore(root){
  "  }"
  ].join('\n');
  source=once(source,'  async function sessionUser(req){',helper+'\n  async function sessionUser(req){','durable session lookup helper');
- const start=source.indexOf("    if(!rec&&mysqlPool){try{const [rows]=await withTimeout(mysqlQuery('SELECT user_id");
+ const start=source.indexOf("    if(!rec&&currentMysqlPool()){try{const [rows]=await withTimeout(mysqlQuery('SELECT user_id");
  const end=source.indexOf("\n    if(!rec)return null;",start);
  if(start<0||end<0)throw Error(MARKER+': durable session fallback block anchors missing');
- source=source.slice(0,start)+"    if(!rec&&mysqlPool){rec=await durableSessionLookup(token,sessionHash(token));}"+source.slice(end);
+ source=source.slice(0,start)+"    if(!rec&&currentMysqlPool()){rec=await durableSessionLookup(token,sessionHash(token));}"+source.slice(end);
  write(root,rel,source);return true;
 }
 function patchServer(root){
