@@ -60,13 +60,13 @@
     catch (error) {
       if (isCore) {
         consecutiveFailures++;
-        if (consecutiveFailures >= threshold) { openedAt = Date.now(); showStandby(); }
+        if (consecutiveFailures >= threshold) { openedAt = Date.now(); lastProbe = openedAt; showStandby(); }
       }
       throw error;
     }
     if (isCore && response.status === 503) {
       consecutiveFailures++;
-      if (consecutiveFailures >= threshold) { openedAt = Date.now(); showStandby(); }
+      if (consecutiveFailures >= threshold) { openedAt = Date.now(); lastProbe = openedAt; showStandby(); }
     } else if (isCore && response.ok) {
       consecutiveFailures = 0;
       if (openedAt) closeStandby();
