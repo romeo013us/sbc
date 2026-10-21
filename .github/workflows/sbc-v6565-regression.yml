@@ -1,0 +1,37 @@
+name: SBC V65.1.64 Stability Checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bootstrap.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'hotfix-assets/**'
+      - '.github/workflows/sbc-v6565-regression.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check bootstrap syntax
+        run: node --check bootstrap.js
+      - name: Run V65.1.64 dashboard stability regression
+        run: npm run test:v6565-dashboard-stability
+      - name: Validate full release bundle
+        run: npm run build
+      - name: Run complete regression suite
+        run: npm run test:all
