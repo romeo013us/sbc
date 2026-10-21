@@ -16,6 +16,14 @@ function apply(root){
   s=s.replace(/65\.1\.56/g,'65.1.57');
   write(root,rel,s);
  }
+ for(const rel of ['public/app.js','browser_public/app.js']){
+  if(!fs.existsSync(path.join(root,rel)))continue;
+  let s=read(root,rel);
+  if(!s.includes('SBC_V6557_REMOVE_RECOVERY_UNLOCK_CONTROL')){
+   s += "\\n;/* SBC_V6557_REMOVE_RECOVERY_UNLOCK_CONTROL: remove unsafe recovery unlock controls from the UI. */\\n(function(){function prune(){try{document.querySelectorAll('button,a,[role=button],input[type=button],input[type=submit]').forEach(function(el){var label=[el.innerText,el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.value].filter(Boolean).join(' ').toLowerCase();if(/force.?unlock|recovery.?lock|recovery.?unlock/.test(label))el.remove();});}catch(_){}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',prune,{once:true});else prune();try{new MutationObserver(prune).observe(document.documentElement,{subtree:true,childList:true});}catch(_){}})();\\n";
+   write(root,rel,s);
+  }
+ }
  for(const rel of ['public/sw.js','browser_public/sw.js']){
   if(!fs.existsSync(path.join(root,rel)))continue;
   let s=read(root,rel);
