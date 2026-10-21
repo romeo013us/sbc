@@ -31,6 +31,7 @@ try {
   assert.equal((server.match(/CONNECTION_ID\(\)\s+AS\s+sessionId/g) || []).length, 2);
   assert.equal((server.match(/SBC_WRITER_LEASE_SESSION_CHANGED/g) || []).length, 2);
   assert.equal((server.match(/SBC_WRITER_LEASE_OWNERSHIP_CHANGED/g) || []).length, 2);
+  assert.doesNotMatch(get('hotfix-assets/apply-v6570-lease-session-verification.js'), /const guard = \/if\\\\s/);
   assert.match(server, /recovery-gated/);
   assert.match(server, /sqlState/);
   assert.equal(server.includes("console.error('['+MARKER+']"), false);
