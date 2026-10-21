@@ -11,7 +11,7 @@ try{
  fs.writeFileSync(path.join(root,'enterprise/v567-nine-nine.js'),"const ACTIVE_PACKAGE_RELEASE='65.1.71';");
  fs.writeFileSync(path.join(root,'VERSION'),'65.1.71');
  const out=apply(root);assert.equal(out.version,'65.1.72');assert.equal(out.crmWrites,false);assert.equal(out.changed.length,2);
- for(const p of ['public/index.html','browser_public/index.html']){const s=fs.readFileSync(path.join(root,p),'utf8');assert.match(s,new RegExp(MARKER));assert.match(s,/ResizeObserver/);assert.match(s,/minmax\(min\(100%,240px\),1fr\)/);assert.equal(apply(root).changed.length,0);}
+ for(const p of ['public/index.html','browser_public/index.html']){const s=fs.readFileSync(path.join(root,p),'utf8');assert.match(s,new RegExp(MARKER));assert.match(s,/ResizeObserver/);assert.match(s,/minmax\(min\(100%,240px\),1fr\)/);assert.match(s,/sbc-master-header/);assert.match(s,/sbc-firewall-badge/);assert.match(s,/sbc-brain-grid-nexus/);assert.match(s,/repeat\(5,minmax\(0,1fr\)\)/);assert.match(s,/max-width:560px/);assert.equal(apply(root).changed.length,0);}
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version,'65.1.72');
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8')).packages[''].version,'65.1.72');
  assert.ok(fs.readFileSync(path.join(root,'config/release-identity.js'),'utf8').includes('65.1.72'));
