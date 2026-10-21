@@ -43,7 +43,7 @@ function apply(root) {
       'session and advisory-lock verification'
     );
     server = server.replace(
-      "console.error('['+MARKER+'] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',String(e&&e.message||e),'retryDelayMs='+sbcWriterLeaseRetryDelayMs);",
+      "console.error('[SBC_V6564_MYSQL_LEASE_LIFECYCLE] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',JSON.stringify({code:String(e&&e.code||'UNKNOWN').slice(0,80),errno:Number.isFinite(Number(e&&e.errno))?Number(e.errno):null,sqlState:String(e&&e.sqlState||'').slice(0,16)||null,message:String(e&&e.message||e).slice(0,240),retryDelayMs:sbcWriterLeaseRetryDelayMs}));",
       "console.error('['+MARKER+'] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',JSON.stringify({code:String(e&&e.code||'UNKNOWN').slice(0,80),errno:Number.isFinite(Number(e&&e.errno))?Number(e.errno):null,sqlState:String(e&&e.sqlState||'').slice(0,16)||null,message:String(e&&e.message||e).slice(0,240),retryDelayMs:sbcWriterLeaseRetryDelayMs}));"
     );
     if (!server.includes('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner')) {
