@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '65.1.72';
-const HOTFIX_PATCH_ID = 'dashboard-layout-stability-v6572';
+const HOTFIX_PATCH_ID = 'god-tier-visual-validation-v6573';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
