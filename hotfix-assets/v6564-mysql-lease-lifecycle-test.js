@@ -8,6 +8,8 @@ assert.ok(patch.includes('sbcWriterLeaseCheckInFlight'),'prevents overlapping he
 assert.ok(patch.includes('writer lease heartbeat timed out after 5000ms'),'bounds hung heartbeat');
 assert.ok(patch.includes('writer lease reconnect timed out after 5000ms'),'bounds reconnect attempts');
 assert.ok(patch.includes('enableKeepAlive:true'),'enables TCP keepalive on reconnect');
+assert.ok(patch.includes('initial lease TCP keepalive'),'enables TCP keepalive on initial lease connection');
+assert.ok(patch.includes('sbcWriterLeaseRetryAt=0,sbcWriterLeaseRetryDelayMs=5000'),'declares retry state before heartbeat runs');
 assert.ok(patch.includes('sbcWriterLeaseRetryDelayMs=Math.min(sbcWriterLeaseRetryDelayMs*2,60000)'),'uses bounded exponential backoff');
 assert.ok(patch.includes('GET_LOCK(?, 0) AS acquired'),'reacquires the exclusive named lease, never bypasses ownership');
 assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'fails closed after lease loss');
@@ -15,4 +17,4 @@ assert.ok(patch.includes('authoritative recovery verification pass'),'keeps writ
 assert.ok(patch.includes('await stale.destroy()'),'destroys stale dedicated lease connection');
 assert.ok(patch.includes('sbcWriterLeaseTimerHandles.push(sbcWriterLeaseTimer)'),'tracks heartbeat interval handles');
 assert.ok(bootstrap.includes("apply-v6564-mysql-lease-lifecycle.js')).apply(runtimeDir)"),'runtime bootstrap applies lifecycle patch');
-console.log('V65.1.64 MySQL lease lifecycle: 11/11 PASS');
+console.log('V65.1.64 MySQL lease lifecycle: 13/13 PASS');
