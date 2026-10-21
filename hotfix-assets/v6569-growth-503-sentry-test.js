@@ -7,7 +7,7 @@ try{
  const pkg={name:'sbc-business-command-center',version:'65.1.67',scripts:{'test:all':'node bootstrap.js --verify'}};
  const lock={name:pkg.name,version:pkg.version,lockfileVersion:3,packages:{'':{name:pkg.name,version:pkg.version,scripts:{}}}};
  put('package.json',JSON.stringify(pkg));put('package-lock.json',JSON.stringify(lock));
- put('server.js',"const app = express();\nif(e?.code==='SESSION_STORE_UNAVAILABLE'){res.setHeader('Retry-After',String(Math.max(1,Number(e.retryAfterSeconds||1))));return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,retryAfterSeconds:Math.max(1,Number(e.retryAfterSeconds||1)),requestId:req.requestId||null});}\n");
+ put('server.js',"let   app = express();\nif(e?.code==='SESSION_STORE_UNAVAILABLE'){res.setHeader('Retry-After',String(Math.max(1,Number(e.retryAfterSeconds||1))));return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,retryAfterSeconds:Math.max(1,Number(e.retryAfterSeconds||1)),requestId:req.requestId||null});}\n");
  const r=require('./apply-v6569-growth-503-sentry.js').apply(root);
  assert.equal(r.version,'65.1.68');assert.equal(r.guardsChanged,false);
  const s=get('server.js');
