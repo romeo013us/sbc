@@ -42,7 +42,7 @@ function apply(root) {
     const queryResult = replaceMatches(
       server,
       /([A-Za-z_$][\w$]*)\.query\(\s*(['"])SELECT\s+IS_USED_LOCK\(\?\)\s+(?:AS\s+)?owner\2/gi,
-      (_match, conn, quote) => conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote + ',[SBC_RUNTIME_WRITER_LOCK_NAME])',
+      (_match, conn, quote) => conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote,
       'dedicated-session ownership query'
     );
     server = queryResult.source;
