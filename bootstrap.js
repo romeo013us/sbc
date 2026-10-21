@@ -185,6 +185,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6568-stale-force-unlock.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6569-growth-503-sentry.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6570-lease-session-verification.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6571-bilingual-sales-ops.js')).apply(temp);
     verifyPatchedSyntax(temp);
     const pkg = verifyExtracted(temp, EXPECTED_VERSION);
     console.log(`[SBC ROOT BUILD] PASS: ${pkg.name}@${pkg.version}; operational hotfix, release identity, session store, and source entrypoint verified.`);
