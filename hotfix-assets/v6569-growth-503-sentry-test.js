@@ -11,6 +11,7 @@ try{
  const r=require('./apply-v6569-growth-503-sentry.js').apply(root);
  assert.equal(r.version,'65.1.68');assert.equal(r.guardsChanged,false);
  const s=get('server.js');
+ cp.execFileSync(process.execPath,['--check',path.join(root,'server.js')]);
  assert.match(s,/SBC_V6569_GROWTH_503_SENTRY/);assert.match(s,/growth_status_5xx/);assert.match(s,/SESSION_STORE_UNAVAILABLE/);assert.match(s,/tenantContextPresent/);assert.match(s,/writerLeaseReady/);assert.match(s,/recoveryRequired/);assert.match(s,/res\\.status\\(503\\)/);
  assert.doesNotMatch(s,/req\\.headers\\.cookie/);assert.doesNotMatch(s,/req\\.body/);assert.doesNotMatch(s,/Authorization: Bearer/);
  assert.equal(JSON.parse(get('package.json')).version,'65.1.68');assert.equal(JSON.parse(get('package-lock.json')).version,'65.1.68');
