@@ -15,10 +15,10 @@ function write(root, rel, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, value);
 }
-function once(source, before, after, label) {
+function all(source, before, after, label) {
   const count = source.split(before).length - 1;
-  if (count !== 1) throw new Error(MARKER + ': expected exactly one ' + label + ' anchor, found ' + count);
-  return source.replace(before, after);
+  if (count < 1) throw new Error(MARKER + ': expected at least one ' + label + ' anchor, found ' + count);
+  return { source: source.split(before).join(after), count };
 }
 function apply(root) {
   const pkg = JSON.parse(read(root, 'package.json'));
@@ -30,18 +30,21 @@ function apply(root) {
 
   let server = read(root, 'server.js');
   if (!server.includes(MARKER)) {
-    server = once(
+    const queryResult = all(
       server,
       "leaseConn.query('SELECT IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME])",
       "leaseConn.query('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME])",
       'dedicated-session ownership query'
     );
-    server = once(
+    server = queryResult.source;
+    const ownerResult = all(
       server,
       "if(Number(r&&r.owner)!==leaseId)throw new Error('writer lease ownership changed');",
       "if(Number(r&&r.sessionId)!==leaseId)throw Object.assign(new Error('writer lease session identity changed'),{code:'SBC_WRITER_LEASE_SESSION_CHANGED'});if(Number(r&&r.owner)!==leaseId)throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_WRITER_LEASE_OWNERSHIP_CHANGED'});",
       'session and advisory-lock verification'
     );
+    if (queryResult.count !== ownerResult.count) throw new Error(MARKER + ': lease query/owner anchor counts differ: ' + queryResult.count + '/' + ownerResult.count);
+    server = ownerResult.source;
     server = server.replace(
       "console.error('['+MARKER+'] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',String(e&&e.message||e),'retryDelayMs='+sbcWriterLeaseRetryDelayMs);",
       "console.error('[SBC_V6564_MYSQL_LEASE_LIFECYCLE] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',JSON.stringify({code:String(e&&e.code||'UNKNOWN').slice(0,80),errno:Number.isFinite(Number(e&&e.errno))?Number(e.errno):null,sqlState:String(e&&e.sqlState||'').slice(0,16)||null,message:String(e&&e.message||e).slice(0,240),retryDelayMs:sbcWriterLeaseRetryDelayMs}));"
