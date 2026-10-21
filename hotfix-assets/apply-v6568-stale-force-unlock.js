@@ -31,9 +31,9 @@ function apply(root) {
     // Keep the legacy function definition for compatibility, but remove every invocation.
     source = source.replace(/(?<!function )\bsbcV6557OwnerForceUnlockOnce\s*\(\s*\)\s*;?/g,
       '/* ' + MARKER + ': obsolete client invocation removed */');
-    // Also remove direct request statements for the retired endpoint when present.
-    source = source.replace(/^[^\n]*(?:fetch|api|request)[^\n]*\/api\/owner\/recovery\/force-unlock[^\n]*;?[ \t]*$/gm,
-      '/* ' + MARKER + ': obsolete recovery endpoint request removed */');
+    // Retire the legacy endpoint literal as a second line of defense.
+    source = source.replace(/\/api\/owner\/recovery\/force-unlock\b/g,
+      '/api/owner/recovery/force-unlock-retired');
     if (source !== before) {
       if (!source.includes(MARKER)) throw new Error(MARKER + ': source edit marker missing');
       write(root, rel, source);
