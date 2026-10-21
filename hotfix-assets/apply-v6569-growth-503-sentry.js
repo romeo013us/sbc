@@ -9,7 +9,7 @@ function apply(root){
  if(pkg.name!=='sbc-business-command-center'||pkg.version!==FROM||lock.version!==FROM||lock.packages?.['']?.version!==FROM)throw Error(MARKER+': expected release '+FROM);
  let server=read(root,'server.js');
  if(!server.includes(MARKER)){
-  const appAnchor='const app = express();';
+  const appAnchorMatch=/(?:const|let|var)\s+app\s*=\s*express\s*\(\s*\)\s*;?/;
   const middleware=[
    appAnchor,
    '// '+MARKER+': observe only the Growth Status 5xx path; never log cookies, tokens, request bodies, or SQL.',
@@ -19,7 +19,7 @@ function apply(root){
    '  next();',
    '});'
   ].join('\n');
-  server=once(server,appAnchor,middleware,'Express app initialization');
+  const appMatch=appAnchorMatch.exec(server);if(!appMatch)throw Error(MARKER+': Express app initialization anchor missing');server=server.slice(0,appMatch.index)+middleware+server.slice(appMatch.index+appMatch[0].length);
  }
  if(!server.includes('SBC_V6569_SESSION_ERROR_DETAIL')){
   const old="if(e?.code==='SESSION_STORE_UNAVAILABLE'){res.setHeader('Retry-After',String(Math.max(1,Number(e.retryAfterSeconds||1))));return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,retryAfterSeconds:Math.max(1,Number(e.retryAfterSeconds||1)),requestId:req.requestId||null});}";
