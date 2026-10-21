@@ -23,7 +23,7 @@ try {
     const s=get(file);
     assert.match(s,/function sbcV6557OwnerForceUnlockOnce/);
     assert.doesNotMatch(s,/sbcV6557OwnerForceUnlockOnce\(\);/);
-    assert.doesNotMatch(s,/fetch\(['"]\/api\/owner\/recovery\/force-unlock/);
+    assert.doesNotMatch(s,/\/api\/owner\/recovery\/force-unlock['"]/);
   }
   for(const file of ['public/index.html','browser_public/index.html']) assert.match(get(file),/65\.1\.67-stale-force-unlock-retired/);
   for(const file of ['public/sw.js','browser_public/sw.js']) assert.match(get(file),/sbc-static-v65-1-67-force-unlock-retired/);
