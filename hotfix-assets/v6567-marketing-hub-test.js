@@ -20,7 +20,7 @@ try{
  "    if(!rec&&mysqlPool){try{const [rows]=await withTimeout(mysqlQuery('SELECT user_id,UNIX_TIMESTAMP(created_at)*1000 AS created_ms,UNIX_TIMESTAMP(expires_at)*1000 AS expires_ms,UNIX_TIMESTAMP(last_seen_at)*1000 AS last_seen_ms FROM sbc_sessions WHERE token_hash=? AND expires_at>=UTC_TIMESTAMP() LIMIT 1',[sessionHash(token)]),persistTimeoutMs+250);if(rows[0]){rec={createdAt:Number(rows[0].created_ms),userId:rows[0].user_id,tenantId:tenantDefaultId,expiresAt:Number(rows[0].expires_ms)};try{const [br]=await withTimeout(mysqlQuery('SELECT role FROM sbc_session_bindings WHERE token_hash=? LIMIT 1',[sessionHash(token)]),persistTimeoutMs+250);rec.role=String(br[0]?.role||'')}catch(e){logger.warn('[SBC AUTH] session role binding read:',e.message)}if(isRedisReady()&&redis){const ttl=Math.max(1,Math.ceil((rec.expiresAt-Date.now())/1000));redis.set(sessionRedisKey(token),JSON.stringify(rec),{EX:ttl}).catch(()=>{})}withTimeout(mysqlQuery('UPDATE sbc_sessions SET last_seen_at=UTC_TIMESTAMP() WHERE token_hash=?',[sessionHash(token)]),persistTimeoutMs+250).catch(()=>{})}}catch(e){logger.warn('[SBC AUTH] durable session read unavailable:',e.message);const unavailable=new Error('Session store temporarily unavailable.');unavailable.code='SESSION_STORE_UNAVAILABLE';throw unavailable}}",
  "    if(!rec)return null;",
  "  }",
- "}"].join('\\n'));
+ "}"].join('\n'));
  put('public/index.html','<html><head><title>SBC</title></head><body><aside class="sidebar"><nav></nav></aside><main></main></body></html>');
  put('browser_public/index.html','<html><head></head><body>Browser shell</body></html>');
  put('public/sw.js',"const CACHE='sbc-static-v65-1-65';");
