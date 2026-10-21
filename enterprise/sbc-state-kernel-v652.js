@@ -74,7 +74,7 @@ export class SBCStateKernel {
     switch (eventType) {
       case 'TRANSACTION_CONFIRMED':
         // This projection is informational; never use it as a payment ledger.
-        return { ...snapshot, transactionStatus: 'CONFIRMED', transactionAmount: payload.amount };
+        return { ...snapshot, transactionEventObserved: true, transactionEventAmount: payload.amount };
       case 'FULFILLMENT_COMPLETE':
         return { ...snapshot, fulfillmentStatus: 'COMPLETE', fulfillmentUpdatedAt: this.clock() };
       default:
