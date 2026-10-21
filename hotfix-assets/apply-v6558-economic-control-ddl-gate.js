@@ -38,7 +38,7 @@ function apply(root){
  write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\n');
  let identity=read(root,'config/release-identity.js');
  identity=once(identity,"const RELEASE_VERSION = '65.1.57';","const RELEASE_VERSION = '65.1.58';",'runtime release version');
- identity=once(identity,"const RELEASE_NAME = 'OWNER_FORCE_UNLOCK_AND_OPERATIONAL_GATES';","const RELEASE_NAME = 'ECONOMIC_CONTROL_DDL_GATE';",'runtime release name');
+ identity=once(identity,"const RELEASE_NAME = 'RECOVERY_CONTROL_REMOVED';","const RELEASE_NAME = 'ECONOMIC_CONTROL_DDL_GATE';",'runtime release name');
  identity=once(identity,'major:65,minor:1,patch:57','major:65,minor:1,patch:58','runtime semantic version');write(root,'config/release-identity.js',identity);
  for(const rel of ['public/index.html','browser_public/index.html'])if(fs.existsSync(path.join(root,rel))){let s=read(root,rel).replace(/65\.1\.57/g,'65.1.58');if(!s.includes(MARKER))s=s.replace('</head>','<!-- '+MARKER+' -->\n</head>');write(root,rel,s)}
  for(const rel of ['public/app.js','browser_public/app.js'])if(fs.existsSync(path.join(root,rel)))write(root,rel,read(root,rel).replace(/65\.1\.57-owner-force-unlock/g,'65.1.58-economic-control-ddl-gate'));
