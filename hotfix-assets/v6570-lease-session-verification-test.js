@@ -34,7 +34,7 @@ try {
   assert.match(server, /r&&r\.sessionId\)!==leaseId/);
   assert.match(server, /SBC_WRITER_LEASE_SESSION_CHANGED/);
   assert.match(server, /SBC_WRITER_LEASE_OWNERSHIP_CHANGED/);
-  assert.equal((server.match(/SELECT CONNECTION_ID\\(\\) AS sessionId/g) || []).length, 2, 'all dedicated lease heartbeat queries must be hardened');
+  assert.equal((server.match(/SELECT CONNECTION_ID\(\) AS sessionId/g) || []).length, 2, 'all dedicated lease heartbeat queries must be hardened');
   assert.match(server, /recovery-gated/);
   assert.match(server, /sqlState/);
   assert.equal(server.includes("console.error('['+MARKER+']"), false, 'generated heartbeat logger must not reference an undefined patch-local MARKER');
