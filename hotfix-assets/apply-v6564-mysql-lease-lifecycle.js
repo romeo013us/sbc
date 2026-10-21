@@ -28,7 +28,7 @@ function apply(root){
     for(const candidate of leaseMatches)s=s.replace(candidate,timerReplacement);
    }
   }
-  s=once(s,'  if(!mysqlPool) return;',"  if(!mysqlPool) return;\n  if(!SBC_RUNTIME_READ_ONLY && (!sbcWriterLeaseReady || !MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED)) throw Object.assign(new Error('SBC_RUNTIME_WRITER_LEASE_REQUIRED: write refused until exclusive lease and authoritative recovery verification pass.'),{code:'SBC_RUNTIME_WRITER_LEASE_REQUIRED'});",'write fail-closed guard');
+  s=once(s,\"connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),charset:'utf8mb4'\",\"connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),enableKeepAlive:true,keepAliveInitialDelay:10000,charset:'utf8mb4'\",'initial lease TCP keepalive');\n  s=once(s,'  if(!mysqlPool) return;',"  if(!mysqlPool) return;\n  if(!SBC_RUNTIME_READ_ONLY && (!sbcWriterLeaseReady || !MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED)) throw Object.assign(new Error('SBC_RUNTIME_WRITER_LEASE_REQUIRED: write refused until exclusive lease and authoritative recovery verification pass.'),{code:'SBC_RUNTIME_WRITER_LEASE_REQUIRED'});",'write fail-closed guard');
  }
  const pkgPath=path.join(root,'package.json'),pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8'));
  if(!pkg.scripts['test:v6564-mysql-lease-lifecycle'])pkg.scripts['test:v6564-mysql-lease-lifecycle']='node hotfix-assets/v6564-mysql-lease-lifecycle-test.js';
