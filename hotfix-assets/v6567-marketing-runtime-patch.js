@@ -41,7 +41,7 @@ function patchServer(root){
  const rel='server.js';let source=read(root,rel);
  if(!source.includes('SBC_V6567_SESSION_BACKPRESSURE')){
   const from="if(e?.code==='SESSION_STORE_UNAVAILABLE') return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,requestId:req.requestId||null});";
-  const to="if(e?.code==='SESSION_STORE_UNAVAILABLE'){res.setHeader('Retry-After',String(Math.max(1,Number(e.retryAfterSeconds||1))));return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,retryAfterSeconds:Math.max(1,Number(e.retryAfterSeconds||1)),requestId:req.requestId||null});}";
+  const to="// SBC_V6567_SESSION_BACKPRESSURE: bound auth retries after durable-store pressure.\n  if(e?.code==='SESSION_STORE_UNAVAILABLE'){res.setHeader('Retry-After',String(Math.max(1,Number(e.retryAfterSeconds||1))));return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,retryAfterSeconds:Math.max(1,Number(e.retryAfterSeconds||1)),requestId:req.requestId||null});}";
   source=once(source,from,to,'session retry-after response');
  }
  if(!source.includes('SBC_V6567_MARKETING_API')){
