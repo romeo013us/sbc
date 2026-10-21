@@ -59,7 +59,7 @@ async function sbcMarketingProviderAuth(platform,tenantId){
  if(platform==='facebook'||platform==='instagram'){
   const pageId=await sbcMarketingSecret('META_PAGE_ID',tenantId),pageToken=await sbcMarketingSecret('META_PAGE_ACCESS_TOKEN',tenantId),igId=await sbcMarketingSecret('META_INSTAGRAM_BUSINESS_ACCOUNT_ID',tenantId);
   if(!pageId||!pageToken||(platform==='instagram'&&!igId))throw Object.assign(new Error('MARKETING_CREDENTIALS_MISSING'),{code:'MARKETING_CREDENTIALS_MISSING'});
-  const version=String(process.env.META_GRAPH_API_VERSION||'v26.0').replace(/[^v0-9.]/g,'');const graphBase='https://graph.facebook.com/'+(version||'v26.0');
+  const configuredVersion=await sbcMarketingSecret('META_GRAPH_API_VERSION',tenantId);const version=String(configuredVersion||process.env.META_GRAPH_API_VERSION||'v26.0').replace(/[^v0-9.]/g,'');const graphBase='https://graph.facebook.com/'+(version||'v26.0');
   const page=await sbcMarketingFetchJSON(graphBase+'/'+encodeURIComponent(pageId)+'?fields=id,name',{headers:{Authorization:'Bearer '+pageToken}});
   if(String(page.id||'')!==String(pageId))throw Object.assign(new Error('META_PAGE_ID_MISMATCH'),{code:'META_PAGE_ID_MISMATCH'});
   if(platform==='instagram'){const ig=await sbcMarketingFetchJSON(graphBase+'/'+encodeURIComponent(igId)+'?fields=id,username',{headers:{Authorization:'Bearer '+pageToken}});if(String(ig.id||'')!==String(igId))throw Object.assign(new Error('META_INSTAGRAM_ID_MISMATCH'),{code:'META_INSTAGRAM_ID_MISMATCH'});}
