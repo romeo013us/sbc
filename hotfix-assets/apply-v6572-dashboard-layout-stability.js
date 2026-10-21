@@ -67,13 +67,13 @@ if(fs.existsSync(pkgFile)){const pkg=JSON.parse(fs.readFileSync(pkgFile,'utf8'))
 const lockFile=path.join(root,'package-lock.json');
 if(fs.existsSync(lockFile)){const lock=JSON.parse(fs.readFileSync(lockFile,'utf8'));lock.version=VERSION;if(lock.packages&&lock.packages[''])lock.packages[''].version=VERSION;fs.writeFileSync(lockFile,JSON.stringify(lock,null,2)+'\n');}
 const releaseFile=path.join(root,'config/release-identity.js');
-if(fs.existsSync(releaseFile)){let s=fs.readFileSync(releaseFile,'utf8');s=s.replace(/65\\.1\\.71/g,VERSION);fs.writeFileSync(releaseFile,s);}
+if(fs.existsSync(releaseFile)){let s=fs.readFileSync(releaseFile,'utf8');s=s.replace(/65\.1\.71/g,VERSION);fs.writeFileSync(releaseFile,s);}
 const enterpriseFile=path.join(root,'enterprise/v567-nine-nine.js');
-if(fs.existsSync(enterpriseFile)){let s=fs.readFileSync(enterpriseFile,'utf8');s=s.replace(/65\\.1\\.71/g,VERSION);fs.writeFileSync(enterpriseFile,s);}
+if(fs.existsSync(enterpriseFile)){let s=fs.readFileSync(enterpriseFile,'utf8');s=s.replace(/65\.1\.71/g,VERSION);fs.writeFileSync(enterpriseFile,s);}
 const versionFile=path.join(root,'VERSION');
 if(fs.existsSync(versionFile))fs.writeFileSync(versionFile,VERSION+'\n');
 const swFile=path.join(root,'public/sw.js');
-if(fs.existsSync(swFile)){let s=fs.readFileSync(swFile,'utf8');s=s.replace(/65-1-71/g,'65-1-72').replace(/65\\.1\\.71/g,VERSION);fs.writeFileSync(swFile,s);}
+if(fs.existsSync(swFile)){let s=fs.readFileSync(swFile,'utf8');s=s.replace(/65-1-71/g,'65-1-72').replace(/65\.1\.71/g,VERSION);fs.writeFileSync(swFile,s);}
 }
 function apply(root){
 var changed=[];
