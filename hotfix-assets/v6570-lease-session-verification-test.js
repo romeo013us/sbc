@@ -18,7 +18,7 @@ try {
   put('server.js', [
     "const SBC_RUNTIME_WRITER_LOCK_NAME='sbc:runtime:writer:v1';",
     "const [[r]]=await sbcWriterLeaseConn.query('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME]);if(Number(r&&r.owner)!==sbcWriterLeaseConnectionId)throw new Error('writer lease ownership changed');",
-    "const [[owner]]=await conn.query('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME]);if(Number(owner&&owner.owner)!==sbcWriterLeaseConnectionId)throw new Error('writer lease ownership changed');",
+    "const [[owner]]=await conn.query('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner',[SBC_RUNTIME_WRITER_LOCK_NAME]);if(Number(owner&&owner.owner)!==sbcWriterLeaseConnectionId)throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_RUNTIME_WRITER_LEASE_LOST'});",
     "console.error('['+MARKER+'] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',String(e&&e.message||e),'retryDelayMs='+sbcWriterLeaseRetryDelayMs);"
   ].join('\n'));
   const result = require('./apply-v6570-lease-session-verification.js').apply(root);
