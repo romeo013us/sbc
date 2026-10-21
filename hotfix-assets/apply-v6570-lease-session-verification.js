@@ -32,7 +32,7 @@ function apply(root) {
       conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote);
 
     // Match the row alias and lease-ID variable used by each concrete guard.
-    const guard = /if\s*\(\s*Number\s*\(\s*([A-Za-z_$][\w$]*)\s*&&\s*\1\.owner\s*\)\s*!==\s*([A-Za-z_$][\w$]*)\s*\)\s*throw\s+new\s+Error\s*\(\s*(['"])writer lease ownership changed\3\s*\)\s*;/g;
+    const guard = /if\\s*\\(\\s*Number\\s*\\(\\s*([A-Za-z_$][\\w$]*)\\s*&&\\s*\\1\\.owner\\s*\\)\\s*!==\\s*([A-Za-z_$][\\w$]*)\\s*\\)\\s*throw[^;]*;/g;
     let guardCount = 0;
     server = server.replace(guard, (_match, row, leaseId) => {
       guardCount += 1;
