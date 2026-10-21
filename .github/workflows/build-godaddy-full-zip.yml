@@ -1,5 +1,15 @@
 name: Build GoDaddy Full ZIP
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-godaddy-full-zip.yml'
+      - 'bootstrap.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'hotfix-assets/**'
+      - 'enterprise/**'
+      - 'scripts/**'
   workflow_dispatch:
 permissions:
   contents: read
