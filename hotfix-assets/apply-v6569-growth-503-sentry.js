@@ -10,8 +10,10 @@ function apply(root){
  let server=read(root,'server.js');
  if(!server.includes(MARKER)){
   const appAnchorMatch=/(?:const|let|var)\s+app\s*=\s*express\s*\(\s*\)\s*;?/;
+  const appMatch=appAnchorMatch.exec(server);
+  if(!appMatch)throw Error(MARKER+': Express app initialization anchor missing');
   const middleware=[
-   appAnchor,
+   appMatch[0],
    '// '+MARKER+': observe only the Growth Status 5xx path; never log cookies, tokens, request bodies, or SQL.',
    'app.use((req,res,next)=>{',
    '  const isGrowthStatus=String(req.path||req.url||\"\").split(\"?\")[0]===\"/api/v56240/growth/status\";',
@@ -19,7 +21,7 @@ function apply(root){
    '  next();',
    '});'
   ].join('\n');
-  const appMatch=appAnchorMatch.exec(server);if(!appMatch)throw Error(MARKER+': Express app initialization anchor missing');server=server.slice(0,appMatch.index)+middleware+server.slice(appMatch.index+appMatch[0].length);
+  server=server.slice(0,appMatch.index)+middleware+server.slice(appMatch.index+appMatch[0].length);
  }
  if(!server.includes('SBC_V6569_SESSION_ERROR_DETAIL')){
   const old="if(e?.code==='SESSION_STORE_UNAVAILABLE'){res.setHeader('Retry-After',String(Math.max(1,Number(e.retryAfterSeconds||1))));return res.status(503).json({error:'Session validation temporarily unavailable.',code:'SESSION_STORE_UNAVAILABLE',retryable:true,retryAfterSeconds:Math.max(1,Number(e.retryAfterSeconds||1)),requestId:req.requestId||null});}";
