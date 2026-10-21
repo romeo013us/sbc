@@ -10,6 +10,7 @@ function apply(root){
  const pkg=JSON.parse(read(root,'package.json')),lock=JSON.parse(read(root,'package-lock.json'));
  if(pkg.name!=='sbc-business-command-center'||pkg.version!==FROM||lock.version!==FROM||lock.packages?.['']?.version!==FROM)throw Error(MARKER+': expected package/lock '+FROM+'; found '+pkg.version+'/'+lock.version);
  const server=read(root,'server.js');if(!server.includes('MYSQL_RECOVERY_REQUIRED')||!server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'))throw Error(MARKER+': recovery/writer safeguards missing');
+ require(path.join(__dirname,'v6567-marketing-runtime-patch.js')).apply(root);
  patchHtml(root,'public/index.html');if(fs.existsSync(path.join(root,'browser_public/index.html')))patchHtml(root,'browser_public/index.html');
  const js=read(__dirname,'v6567-marketing-hub.js'),css=read(__dirname,'v6567-marketing-hub.css');
  for(const rel of ['public','browser_public'])if(fs.existsSync(path.join(root,rel))){write(root,rel+'/sbc-v6567-marketing-hub.js',js);write(root,rel+'/sbc-v6567-marketing-hub.css',css)}
@@ -21,7 +22,7 @@ function apply(root){
  pkg.scripts=pkg.scripts||{};pkg.scripts['test:v6567-marketing-hub']='node hotfix-assets/v6567-marketing-hub-test.js';
  if(!String(pkg.scripts['test:all']||'').includes('v6567-marketing-hub-test.js'))pkg.scripts['test:all']=String(pkg.scripts['test:all']||'node bootstrap.js --verify')+' && node hotfix-assets/v6567-marketing-hub-test.js';
  write(root,'package.json',JSON.stringify(pkg,null,2)+'\n');lock.version=TO;lock.packages[''].version=TO;lock.packages[''].description=pkg.description;lock.packages[''].scripts=pkg.scripts;write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\n');
- const hd=path.join(root,'hotfix-assets');fs.mkdirSync(hd,{recursive:true});fs.copyFileSync(__filename,path.join(hd,'apply-v6567-marketing-hub.js'));fs.copyFileSync(path.join(__dirname,'v6567-marketing-hub-test.js'),path.join(hd,'v6567-marketing-hub-test.js'));
+ const hd=path.join(root,'hotfix-assets');fs.mkdirSync(hd,{recursive:true});fs.copyFileSync(__filename,path.join(hd,'apply-v6567-marketing-hub.js'));fs.copyFileSync(path.join(__dirname,'v6567-marketing-hub-test.js'),path.join(hd,'v6567-marketing-hub-test.js'));fs.copyFileSync(path.join(__dirname,'v6567-marketing-runtime-patch.js'),path.join(hd,'v6567-marketing-runtime-patch.js'));
  return {marker:MARKER,version:TO,contentStudio:true,approvalQueue:true,calendarPlanning:true,officialIntegrationsHonest:true,livePublishingEnabled:false,recoveryAndWriterGuardsPreserved:true};
 }
 module.exports={apply,MARKER,FROM,TO};
