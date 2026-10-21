@@ -15,18 +15,6 @@ function write(root, rel, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, value);
 }
-function replaceMatches(source, pattern, replacer, label) {
-  let count = 0;
-  const result = source.replace(pattern, (...args) => {
-    count += 1;
-    return replacer(...args);
-  });
-  if (count < 1) {
-    const nearby = (source.match(/.{0,70}IS_USED_LOCK.{0,100}/g) || []).slice(0, 4).join(' | ');
-    throw new Error(MARKER + ': expected at least one ' + label + ' anchor, found 0; nearby lock-query text=' + (nearby || '<none>'));
-  }
-  return { source: result, count };
-}
 function apply(root) {
   const pkg = JSON.parse(read(root, 'package.json'));
   const lock = JSON.parse(read(root, 'package-lock.json'));
@@ -37,30 +25,33 @@ function apply(root) {
 
   let server = read(root, 'server.js');
   if (!server.includes(MARKER)) {
-    // Match the SQL call independent of spacing, quote style, alias casing,
-    // connection-variable name, or formatting of the argument list.
-    const queryResult = replaceMatches(
-      server,
-      /([A-Za-z_$][\w$]*)\.query\(\s*(['"])SELECT\s+IS_USED_LOCK\(\?\)\s+(?:AS\s+)?owner\2/gi,
-      (_match, conn, quote) => conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote,
-      'dedicated-session ownership query'
-    );
-    server = queryResult.source;
-    const ownerResult = replaceMatches(
-      server,
-      /if\s*\(\s*Number\(r\s*&&\s*r\.owner\)\s*!==\s*leaseId\s*\)\s*throw new Error\(['"]writer lease ownership changed['"]\);/g,
-      "if(Number(r&&r.sessionId)!==leaseId)throw Object.assign(new Error('writer lease session identity changed'),{code:'SBC_WRITER_LEASE_SESSION_CHANGED'});if(Number(r&&r.owner)!==leaseId)throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_WRITER_LEASE_OWNERSHIP_CHANGED'});",
-      'session and advisory-lock verification'
-    );
-    if (queryResult.count !== ownerResult.count) {
-      throw new Error(MARKER + ': lease query/owner anchor counts differ: ' + queryResult.count + '/' + ownerResult.count);
+    // The preceding lease patch may already have added CONNECTION_ID(). Support
+    // both the original query and that already-upgraded query without duplicating SQL.
+    const originalQuery = /([A-Za-z_$][\w$]*)\.query\(\s*(['"])SELECT\s+IS_USED_LOCK\(\?\)\s+(?:AS\s+)?owner\2/gi;
+    server = server.replace(originalQuery, (_match, conn, quote) =>
+      conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote);
+
+    // Match the row alias and lease-ID variable used by each concrete guard.
+    const guard = /if\s*\(\s*Number\s*\(\s*([A-Za-z_$][\w$]*)\s*&&\s*\1\.owner\s*\)\s*!==\s*([A-Za-z_$][\w$]*)\s*\)\s*throw\s+new\s+Error\s*\(\s*(['"])writer lease ownership changed\3\s*\)\s*;/g;
+    let guardCount = 0;
+    server = server.replace(guard, (_match, row, leaseId) => {
+      guardCount += 1;
+      return "if(Number(" + row + "&&" + row + ".sessionId)!==" + leaseId + ")throw Object.assign(new Error('writer lease session identity changed'),{code:'SBC_WRITER_LEASE_SESSION_CHANGED'});if(Number(" + row + "&&" + row + ".owner)!==" + leaseId + ")throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_WRITER_LEASE_OWNERSHIP_CHANGED'});";
+    });
+    const lockQueryCount = (server.match(/IS_USED_LOCK\s*\(\s*\?\s*\)\s+(?:AS\s+)?owner/gi) || []).length;
+    const sessionQueryCount = (server.match(/CONNECTION_ID\s*\(\s*\)\s+AS\s+sessionId/gi) || []).length;
+    if (guardCount < 1) {
+      const nearby = (server.match(/.{0,80}IS_USED_LOCK.{0,140}/g) || []).slice(0, 4).join(' | ');
+      throw new Error(MARKER + ': no lease ownership guards found; lock queries=' + lockQueryCount + '; nearby=' + (nearby || '<none>'));
     }
-    server = ownerResult.source;
+    if (lockQueryCount !== guardCount || sessionQueryCount < guardCount) {
+      throw new Error(MARKER + ': query/guard/session counts mismatch: queries=' + lockQueryCount + ', guards=' + guardCount + ', sessionQueries=' + sessionQueryCount);
+    }
     server = server.replace(
       "console.error('['+MARKER+'] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',String(e&&e.message||e),'retryDelayMs='+sbcWriterLeaseRetryDelayMs);",
       "console.error('[SBC_V6564_MYSQL_LEASE_LIFECYCLE] lease heartbeat/reconnect failed; writes remain recovery-gated; retry scheduled:',JSON.stringify({code:String(e&&e.code||'UNKNOWN').slice(0,80),errno:Number.isFinite(Number(e&&e.errno))?Number(e.errno):null,sqlState:String(e&&e.sqlState||'').slice(0,16)||null,message:String(e&&e.message||e).slice(0,240),retryDelayMs:sbcWriterLeaseRetryDelayMs}));"
     );
-    if (!server.includes('SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner')) {
+    if (!server.includes('CONNECTION_ID() AS sessionId') || !server.includes('SBC_WRITER_LEASE_SESSION_CHANGED')) {
       throw new Error(MARKER + ': session-identity verification not installed');
     }
     write(root, 'server.js', server);
