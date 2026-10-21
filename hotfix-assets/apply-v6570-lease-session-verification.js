@@ -37,11 +37,11 @@ function apply(root) {
 
   let server = read(root, 'server.js');
   if (!server.includes(MARKER)) {
-    // Accept equivalent formatting and either lease connection variable name.
-    // Verify session identity and advisory-lock ownership on the SAME connection.
+    // Match the SQL call independent of spacing, quote style, alias casing,
+    // connection-variable name, or formatting of the argument list.
     const queryResult = replaceMatches(
       server,
-      /([A-Za-z_$][\w$]*)\.query\(\s*(['"])SELECT\s+IS_USED_LOCK\(\?\)\s+AS\s+owner\2\s*,\s*\[\s*SBC_RUNTIME_WRITER_LOCK_NAME\s*\]\s*\)/g,
+      /([A-Za-z_$][\w$]*)\.query\(\s*(['"])SELECT\s+IS_USED_LOCK\(\?\)\s+(?:AS\s+)?owner\2/gi,
       (_match, conn, quote) => conn + '.query(' + quote + 'SELECT CONNECTION_ID() AS sessionId, IS_USED_LOCK(?) AS owner' + quote + ',[SBC_RUNTIME_WRITER_LOCK_NAME])',
       'dedicated-session ownership query'
     );
