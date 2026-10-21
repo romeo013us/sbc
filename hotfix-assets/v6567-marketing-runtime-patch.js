@@ -118,6 +118,14 @@ app.post('/api/marketing/content/:itemId/publish',auth,ownerOnly,async(req,res)=
 `;
   source=once(source,"app.get('/api/kim/v329/summary',auth,kimV329Gate,async(req,res)=>{",routes+"\napp.get('/api/kim/v329/summary',auth,kimV329Gate,async(req,res)=>{",'Marketing Hub API insertion');
  }
+ if(!source.includes('SBC_V6567_MARKETING_VAULT_ALLOWLIST')){
+  const allowAnchor="  'GOOGLE_MAPS_API_KEY','HUNTER_API_KEY','APOLLO_API_KEY','CLAY_API_KEY','CLAY_WEBHOOK_URL','CLAY_WEBHOOK_TOKEN'\n]);";
+  const allowReplace="  'GOOGLE_MAPS_API_KEY','HUNTER_API_KEY','APOLLO_API_KEY','CLAY_API_KEY','CLAY_WEBHOOK_URL','CLAY_WEBHOOK_TOKEN',\n  // SBC_V6567_MARKETING_VAULT_ALLOWLIST\n  'META_PAGE_ID','META_PAGE_ACCESS_TOKEN','META_INSTAGRAM_BUSINESS_ACCOUNT_ID','META_GRAPH_API_VERSION',\n  'GOOGLE_BUSINESS_PROFILE_CLIENT_ID','GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET','GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN','GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID','GOOGLE_BUSINESS_PROFILE_LOCATION_ID'\n]);";
+  source=once(source,allowAnchor,allowReplace,'provider vault allowlist');
+  const statusAnchor="    'GOOGLE_MAPS_API_KEY','HUNTER_API_KEY','APOLLO_API_KEY'\n  ];";
+  const statusReplace="    'GOOGLE_MAPS_API_KEY','HUNTER_API_KEY','APOLLO_API_KEY',\n    // SBC_V6567_MARKETING_VAULT_ALLOWLIST\n    'META_PAGE_ID','META_PAGE_ACCESS_TOKEN','META_INSTAGRAM_BUSINESS_ACCOUNT_ID','META_GRAPH_API_VERSION',\n    'GOOGLE_BUSINESS_PROFILE_CLIENT_ID','GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET','GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN','GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID','GOOGLE_BUSINESS_PROFILE_LOCATION_ID'\n  ];";
+  source=once(source,statusAnchor,statusReplace,'provider vault status inventory');
+ }
  write(root,rel,source);return true;
 }
 function apply(root){patchSessionStore(root);patchServer(root);return {sessionSingleFlight:true,boundedConcurrentReads:12,retryAfter:true,marketingApi:true,tenantScopedContent:true,ownerApproval:true,writerAndRecoveryGatesPreserved:true,publishingDisabledUntilVerified:true}}
