@@ -26,7 +26,7 @@ const ledger = {
 const kernel = new SBCStateKernel({ ledger, readModelCache: cache, clock: () => 123 });
 const packet = { tenantId: 'tenant-A', eventType: 'TRANSACTION_CONFIRMED', idempotencyKey: 'evt-1', payload: { customerId: 'cust-1', amount: 25 } };
 assert.equal((await kernel.dispatchAuthoritativeCommand(packet)).committed, true);
-assert.equal(snapshots.get('cust-1').transactionAmount, 25);
+assert.equal(snapshots.get('cust-1').transactionEventAmount, 25);
 assert.equal((await kernel.dispatchAuthoritativeCommand(packet)).duplicateDetected, true);
 assert.equal(seen.size, 1);
 await assert.rejects(() => kernel.dispatchAuthoritativeCommand({ ...packet, tenantId: '' }), /tenantId/);
