@@ -40,7 +40,7 @@ export class KimGovernedSandbox {
     await fs.mkdir(this.holding, { recursive: true, mode: 0o700 });
     const realHolding = await fs.realpath(this.holding);
     const realRoot = await fs.realpath(this.root);
-    if (realHolding === realRoot || !realHolding.startsWith(path.dirname(realRoot) + path.sep)) {
+    if (realHolding === realRoot || realHolding.startsWith(realRoot + path.sep)) {
       throw new Error('Holding directory must be outside the active repository');
     }
     const proposalPath = path.join(realHolding, proposalId + '.json');
