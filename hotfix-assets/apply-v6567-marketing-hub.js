@@ -1,0 +1,27 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path');
+const MARKER='SBC_V6567_MARKETING_HUB',FROM='65.1.65',TO='65.1.66';
+function read(root,rel){const f=path.join(root,rel);if(!fs.existsSync(f))throw Error(MARKER+': missing '+rel);return fs.readFileSync(f,'utf8')}
+function write(root,rel,s){const f=path.join(root,rel);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,s)}
+function once(s,a,b,label){const n=s.split(a).length-1;if(n!==1)throw Error(MARKER+': expected one '+label+' anchor, found '+n);return s.replace(a,b)}
+function patchHtml(root,rel){let s=read(root,rel);if(s.includes(MARKER))throw Error(MARKER+': marker already exists in '+rel);if(!s.includes('</head>')||!s.includes('</body>'))throw Error(MARKER+': HTML head/body anchor missing in '+rel);s=once(s,'</head>','<link rel="stylesheet" href="/sbc-v6567-marketing-hub.css?v='+TO+'">\n<!-- '+MARKER+': Marketing Hub assets -->\n</head>',rel+' head');s=once(s,'</body>','<script defer src="/sbc-v6567-marketing-hub.js?v='+TO+'"></script>\n</body>',rel+' body');write(root,rel,s)}
+function patchSw(root,rel){if(!fs.existsSync(path.join(root,rel)))return;let s=read(root,rel);if(!/const CACHE=['"][^'"]+['"]/.test(s))throw Error(MARKER+': service worker cache anchor missing in '+rel);s=s.replace(/const CACHE=['"][^'"]+['"]/, "const CACHE='sbc-static-v65-1-66-marketing-hub'");if(!s.includes("keys.filter(k=>/^sbc-static-v/.test(k)&&k!==CACHE)"))s+="\nself.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>/^sbc-static-v/.test(k)&&k!==CACHE).map(k=>caches.delete(k)))))});\n";write(root,rel,s)}
+function apply(root){
+ const pkg=JSON.parse(read(root,'package.json')),lock=JSON.parse(read(root,'package-lock.json'));
+ if(pkg.name!=='sbc-business-command-center'||pkg.version!==FROM||lock.version!==FROM||lock.packages?.['']?.version!==FROM)throw Error(MARKER+': expected package/lock '+FROM+'; found '+pkg.version+'/'+lock.version);
+ const server=read(root,'server.js');if(!server.includes('MYSQL_RECOVERY_REQUIRED')||!server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'))throw Error(MARKER+': recovery/writer safeguards missing');
+ patchHtml(root,'public/index.html');if(fs.existsSync(path.join(root,'browser_public/index.html')))patchHtml(root,'browser_public/index.html');
+ const js=read(__dirname,'v6567-marketing-hub.js'),css=read(__dirname,'v6567-marketing-hub.css');
+ for(const rel of ['public','browser_public'])if(fs.existsSync(path.join(root,rel))){write(root,rel+'/sbc-v6567-marketing-hub.js',js);write(root,rel+'/sbc-v6567-marketing-hub.css',css)}
+ patchSw(root,'public/sw.js');patchSw(root,'browser_public/sw.js');
+ if(fs.existsSync(path.join(root,'config/release-identity.js'))){let s=read(root,'config/release-identity.js');s=s.replace("const RELEASE_VERSION = '65.1.65';","const RELEASE_VERSION = '65.1.66';").replace("const RELEASE_NAME = 'API_CIRCUIT_BREAKER';","const RELEASE_NAME = 'MARKETING_HUB';").replace('major:65,minor:1,patch:65','major:65,minor:1,patch:66');if(!s.includes("RELEASE_VERSION = '65.1.66'"))throw Error(MARKER+': release identity version anchor missing');write(root,'config/release-identity.js',s)}
+ if(fs.existsSync(path.join(root,'VERSION')))write(root,'VERSION',read(root,'VERSION').replace(/65\.1\.65/g,TO));
+ const runtime='enterprise/v567-nine-nine.js';if(fs.existsSync(path.join(root,runtime))){let s=read(root,runtime);s=s.replace(/const ACTIVE_PACKAGE_RELEASE='65\.1\.65';/,"const ACTIVE_PACKAGE_RELEASE='65.1.66';");if(s.includes('COMPATIBLE_PACKAGE_RELEASES=Object.freeze(new Set([')&&!s.includes("'65.1.66'"))s=s.replace('COMPATIBLE_PACKAGE_RELEASES=Object.freeze(new Set([',"COMPATIBLE_PACKAGE_RELEASES=Object.freeze(new Set(['65.1.66',");if(!s.includes("'65.1.66'"))throw Error(MARKER+': runtime release allowlist anchor missing');write(root,runtime,s)}
+ pkg.version=TO;pkg.description='SBC OS V65.1.66 adds a guarded Marketing Hub for content drafting, owner approval workflow, local calendar planning, and honest official-channel connection status. Live publishing remains disabled until server-side persistence, credentials, permissions, and publish verification are implemented.';
+ pkg.scripts=pkg.scripts||{};pkg.scripts['test:v6567-marketing-hub']='node hotfix-assets/v6567-marketing-hub-test.js';
+ if(!String(pkg.scripts['test:all']||'').includes('v6567-marketing-hub-test.js'))pkg.scripts['test:all']=String(pkg.scripts['test:all']||'node bootstrap.js --verify')+' && node hotfix-assets/v6567-marketing-hub-test.js';
+ write(root,'package.json',JSON.stringify(pkg,null,2)+'\n');lock.version=TO;lock.packages[''].version=TO;lock.packages[''].description=pkg.description;lock.packages[''].scripts=pkg.scripts;write(root,'package-lock.json',JSON.stringify(lock,null,2)+'\n');
+ const hd=path.join(root,'hotfix-assets');fs.mkdirSync(hd,{recursive:true});fs.copyFileSync(__filename,path.join(hd,'apply-v6567-marketing-hub.js'));fs.copyFileSync(path.join(__dirname,'v6567-marketing-hub-test.js'),path.join(hd,'v6567-marketing-hub-test.js'));
+ return {marker:MARKER,version:TO,contentStudio:true,approvalQueue:true,calendarPlanning:true,officialIntegrationsHonest:true,livePublishingEnabled:false,recoveryAndWriterGuardsPreserved:true};
+}
+module.exports={apply,MARKER,FROM,TO};
