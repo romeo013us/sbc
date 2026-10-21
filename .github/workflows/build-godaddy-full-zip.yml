@@ -1,0 +1,38 @@
+name: Build GoDaddy Full ZIP
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify release identity and build
+        run: |
+          node --check bootstrap.js
+          node hotfix-assets/v6573-release-503-forms-test.js
+          node scripts/query-guard-cleanup-regression.test.js
+      - name: Assemble repository and GoDaddy deployment package
+        run: |
+          set -euo pipefail
+          mkdir -p dist/SBC-V65.1.73-GoDaddy-FULL-BUILD
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='dist' ./ dist/SBC-V65.1.73-GoDaddy-FULL-BUILD/
+          test -f dist/SBC-V65.1.73-GoDaddy-FULL-BUILD/bootstrap.js
+          test -f dist/SBC-V65.1.73-GoDaddy-FULL-BUILD/package.json
+          node -e "const p=require('./dist/SBC-V65.1.73-GoDaddy-FULL-BUILD/package.json');if(p.version!=='65.1.73')process.exit(2)"
+          cd dist
+          zip -qr SBC-V65.1.73-GoDaddy-FULL-BUILD.zip SBC-V65.1.73-GoDaddy-FULL-BUILD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SBC-V65.1.73-GoDaddy-FULL-BUILD
+          path: dist/SBC-V65.1.73-GoDaddy-FULL-BUILD.zip
+          if-no-files-found: error
+          retention-days: 14
