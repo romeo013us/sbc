@@ -14,7 +14,7 @@ try{
  for(const p of ['public/index.html','browser_public/index.html']){const s=fs.readFileSync(path.join(root,p),'utf8');assert.match(s,new RegExp(MARKER));assert.match(s,/ResizeObserver/);assert.match(s,/minmax\(min\(100%,240px\),1fr\)/);assert.equal(apply(root).changed.length,0);}
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version,'65.1.72');
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8')).packages[''].version,'65.1.72');
- assert.match(fs.readFileSync(path.join(root,'config/release-identity.js'),'utf8'),/65\\.1\\.72/);
- assert.match(fs.readFileSync(path.join(root,'enterprise/v567-nine-nine.js'),'utf8'),/65\\.1\\.72/);
+ assert.ok(fs.readFileSync(path.join(root,'config/release-identity.js'),'utf8').includes('65.1.72'));
+ assert.ok(fs.readFileSync(path.join(root,'enterprise/v567-nine-nine.js'),'utf8').includes('65.1.72'));
  console.log('V65.1.72 dashboard layout stability tests passed.');
 }finally{fs.rmSync(root,{recursive:true,force:true});}
