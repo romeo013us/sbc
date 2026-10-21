@@ -34,6 +34,8 @@ try {
   assert.match(server, /SBC_WRITER_LEASE_OWNERSHIP_CHANGED/);
   assert.match(server, /recovery-gated/);
   assert.match(server, /sqlState/);
+  assert.doesNotMatch(server, /console\\.error\\('\['\\+MARKER\\+\]/, 'generated heartbeat logger must not reference an undefined patch-local MARKER');
+  assert.match(server, /SBC_V6564_MYSQL_LEASE_LIFECYCLE/);
   assert.equal(JSON.parse(get('package.json')).version, '65.1.70');
   assert.equal(JSON.parse(get('package-lock.json')).version, '65.1.70');
   console.log('[SBC V65.1.70 LEASE SESSION VERIFICATION] PASS');
