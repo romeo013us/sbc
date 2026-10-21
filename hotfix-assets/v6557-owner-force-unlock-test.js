@@ -19,7 +19,7 @@ try{
  assert.equal(r.version,'65.1.57');assert.equal(r.forceUnlockRouteInjected,false);assert.equal(r.automaticUnlockInjected,false);assert.equal(r.persistentOwnerOverrideInjected,false);
  assert.equal(JSON.parse(get('package.json')).version,'65.1.57');
  assert.equal(JSON.parse(get('package-lock.json')).version,'65.1.57');
- for(const f of ['public/app.js','browser_public/app.js']){assert.doesNotMatch(get(f),/sbcV6557OwnerForceUnlockOnce|\/api\/owner\/recovery\/force-unlock/);}
+ for(const f of ['public/app.js','browser_public/app.js']){assert.doesNotMatch(get(f),/sbcV6557OwnerForceUnlockOnce|\/api\/owner\/recovery\/force-unlock/);assert.match(get(f),/SBC_V6557_REMOVE_RECOVERY_UNLOCK_CONTROL/);}
  for(const f of ['public/index.html','browser_public/index.html'])assert.match(get(f),/65.1.57-recovery-control-removed/);
  assert.match(get('public/sw.js'),/sbc-static-v65-1-57-recovery-control-removed/);
  assert.match(get('server.js'),/SBC_RUNTIME_WRITER_LEASE_REQUIRED/);
