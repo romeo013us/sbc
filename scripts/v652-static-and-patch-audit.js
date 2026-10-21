@@ -8,10 +8,10 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const MARKER = 'SBC_V6564_MYSQL_LEASE_LIFECYCLE';
-const TIMER_PATTERN = /sbcWriterLeaseTimer\\s*=\\s*setInterval\\(async\\(\\)=>\\{[\\s\\S]*?\\},10000\\);/g;
-const GENERAL_TIMER_PATTERN = /sbcWriterLeaseTimer\\s*=\\s*setInterval\\(/g;
+const TIMER_PATTERN = /sbcWriterLeaseTimer\s*=\s*setInterval\(async\(\)=>\{[\s\S]*?\},10000\);/g;
+const GENERAL_TIMER_PATTERN = /sbcWriterLeaseTimer\s*=\s*setInterval\(/g;
 const SAFE_RELATIVE = (name) => !!name && !name.startsWith('/') && !/^[A-Za-z]:/.test(name) &&
-  !name.replace(/\\\\/g, '/').split('/').includes('..');
+  !name.replace(/\\/g, '/').split('/').includes('..');
 
 function countMatches(source, pattern) {
   return (source.match(pattern) || []).length;
@@ -21,7 +21,7 @@ function readReleaseZip(root) {
   const bootstrapPath = path.join(root, 'bootstrap.js');
   if (!fs.existsSync(bootstrapPath)) throw new Error('bootstrap.js not found; run from the repository root.');
   const bootstrap = fs.readFileSync(bootstrapPath, 'utf8');
-  const match = bootstrap.match(/const RELEASE_ZIP = path\\.join\\(__dirname, '([^']+)'\\);/);
+  const match = bootstrap.match(/const RELEASE_ZIP = path\.join\(__dirname, '([^']+)'\);/);
   if (!match) throw new Error('Could not resolve RELEASE_ZIP from bootstrap.js.');
   const zipPath = path.join(root, match[1]);
   if (!fs.existsSync(zipPath)) throw new Error('Source ZIP missing: ' + zipPath);
@@ -30,7 +30,7 @@ function readReleaseZip(root) {
 
 function safeExtract(zipPath, targetDir) {
   // Validate archive entry names before extraction; reject path traversal.
-  const names = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' }).split(/\\r?\\n/).filter(Boolean);
+  const names = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
   const unsafe = names.filter(name => !SAFE_RELATIVE(name));
   if (unsafe.length) throw new Error('Unsafe ZIP entry path(s): ' + unsafe.slice(0, 5).join(', '));
   execFileSync('unzip', ['-q', zipPath, '-d', targetDir], { stdio: 'pipe' });
@@ -66,7 +66,7 @@ function runStaticAndPatchAudit(repoRoot = process.cwd()) {
     // Build an isolated patch fixture. The patch may write only inside dryRun.
     fs.copyFileSync(serverPath, path.join(dryRun, 'server.js'));
     const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-    fs.writeFileSync(path.join(dryRun, 'package.json'), JSON.stringify(pkg, null, 2) + '\\n');
+    fs.writeFileSync(path.join(dryRun, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
     fs.mkdirSync(path.join(dryRun, 'hotfix-assets'), { recursive: true });
 
     // The patch implementation reads its regression test relative to its own location.
@@ -82,7 +82,7 @@ function runStaticAndPatchAudit(repoRoot = process.cwd()) {
     const patchedMetrics = {
       exactLegacyHeartbeatBlocks: countMatches(patched, TIMER_PATTERN),
       generalHeartbeatRegistrations: countMatches(patched, GENERAL_TIMER_PATTERN),
-      hardenedHeartbeatRegistrations: (patched.match(/sbcWriterLeaseTimer\\s*=\\s*setInterval\\(async\\(\\)=>\\{[\\s\\S]*?\\},5000\\);/g) || []).length
+      hardenedHeartbeatRegistrations: (patched.match(/sbcWriterLeaseTimer\s*=\s*setInterval\(async\(\)=>\{[\s\S]*?\},5000\);/g) || []).length
     };
 
     const result = {
