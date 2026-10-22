@@ -1,6 +1,6 @@
 'use strict';
 
-// GoDaddy repository-root launcher for SBC OS V65.1.73.
+// GoDaddy repository-root launcher for SBC OS V66.0.0.
 // Application source is stored in the adjacent source ZIP. GoDaddy installs the
 // listed runtime dependencies at this repository root; extracted modules resolve
 // upward to that node_modules directory.
@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip');
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
-const EXPECTED_VERSION = '65.1.73';
-const HOTFIX_PATCH_ID = 'release-503-form-field-identity-v6573';
+const EXPECTED_VERSION = '66.0.0';
+const HOTFIX_PATCH_ID = 'v6600-responsive-layout-release-identity';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -203,6 +203,8 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'v6575-normalize-html-asset-identity-test.js'));
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'v6600-release-layout-test.js'));
     loadManifestValidator().audit(temp, EXPECTED_VERSION);
     require(path.join(__dirname, 'scripts', 'manifest-identity-validator.test.js'));
     require(path.join(temp, 'hotfix-assets', 'v6573-release-503-forms-test.js'));
@@ -315,6 +317,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
