@@ -22,20 +22,20 @@ function apply(root){
  for(const rel of ['public/index.html','browser_public/index.html']){
   const f=path.join(root,rel);if(!fs.existsSync(f))continue;
   let html=fs.readFileSync(f,'utf8');
-  if(!html.includes(MARKER)){const style='<style id="sbc-v6600-release-layout">'+CSS+'</style>';html=/<\\/head>/i.test(html)?html.replace(/<\\/head>/i,style+'\\n</head>'):style+'\\n'+html;}
-  html=html.replace(/([?&]v=)65\\.1\\.(?:61|72|73)(?=([&#"'\\s]|$))/g,'$1'+VERSION);
-  html=html.replace(/((?:release|version|build)[^\\r\\n]{0,100}?)(V?)65\\.1\\.(?:61|72|73)/gi,'$1$2'+VERSION);
-  html=html.replace(/V?65\\.1\\.(?:61|72|73)/g,VERSION);
+  if(!html.includes(MARKER)){const style='<style id="sbc-v6600-release-layout">'+CSS+'</style>';html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,style+'\n</head>'):style+'\n'+html;}
+  html=html.replace(/([?&]v=)65\.1\.(?:61|72|73)(?=([&#"'\s]|$))/g,'$1'+VERSION);
+  html=html.replace(/((?:release|version|build)[^\r\n]{0,100}?)(V?)65\.1\.(?:61|72|73)/gi,'$1$2'+VERSION);
+  html=html.replace(/V?65\.1\.(?:61|72|73)/g,VERSION);
   fs.writeFileSync(f,html);changed.push(rel);
  }
  for(const rel of ['package.json','package-lock.json']){
   const f=path.join(root,rel);if(!fs.existsSync(f))continue;const o=JSON.parse(fs.readFileSync(f,'utf8'));o.version=VERSION;if(o.packages&&o.packages[''])o.packages[''].version=VERSION;
   if(rel==='package.json')o.description='SBC OS V66.0.0: responsive dashboard shell and synchronized release identity; business data and writer safeguards preserved.';
   if(rel==='package-lock.json'&&o.packages&&o.packages[''])o.packages[''].description='SBC OS V66.0.0: responsive dashboard shell and synchronized release identity; business data and writer safeguards preserved.';
-  fs.writeFileSync(f,JSON.stringify(o,null,2)+'\\n');changed.push(rel);
+  fs.writeFileSync(f,JSON.stringify(o,null,2)+'\n');changed.push(rel);
  }
- const v=path.join(root,'VERSION');if(fs.existsSync(v)){fs.writeFileSync(v,VERSION+'\\n');changed.push('VERSION')}
- const sw=path.join(root,'public/sw.js');if(fs.existsSync(sw)){let s=fs.readFileSync(sw,'utf8').replace(/65-1-(?:61|72|73)/g,'66-0-0').replace(/65\\.1\\.(?:61|72|73)/g,VERSION);fs.writeFileSync(sw,s);changed.push('public/sw.js')}
+ const v=path.join(root,'VERSION');if(fs.existsSync(v)){fs.writeFileSync(v,VERSION+'\n');changed.push('VERSION')}
+ const sw=path.join(root,'public/sw.js');if(fs.existsSync(sw)){let s=fs.readFileSync(sw,'utf8').replace(/65-1-(?:61|72|73)/g,'66-0-0').replace(/65\.1\.(?:61|72|73)/g,VERSION);fs.writeFileSync(sw,s);changed.push('public/sw.js')}
  return {marker:MARKER,version:VERSION,changed,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
 }
 module.exports={apply,VERSION,MARKER};
