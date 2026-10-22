@@ -17,6 +17,16 @@ html,body{width:100%;min-width:320px;min-height:100%;margin:0}
 @media(max-width:640px){:root{--sbc-nav-width:72px;--sbc-layout-gap:10px}.dashboard-viewport>.navigation-rail-container,.dashboard-viewport>aside,.dashboard-viewport>.sidebar{width:var(--sbc-nav-width);max-width:var(--sbc-nav-width)}.dashboard-grid,.metrics-grid,.stat-grid,.kpi-grid,.dashboard-cards,.home-grid,.sbc63-grid{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
+function alignReleaseIdentity(root){
+ const walk=(dir,out=[])=>{if(!fs.existsSync(dir))return out;for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','data','backups','.git'].includes(e.name)||e.name.startsWith('.sbc-runtime-'))continue;const f=path.join(dir,e.name);if(e.isDirectory())walk(f,out);else if(/\\.(?:js|cjs|mjs)$/.test(e.name))out.push(f)}return out};
+ const guardFiles=walk(root).filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH'));
+ const browser=path.join(root,'browser_public/app.js');if(fs.existsSync(browser)&&!guardFiles.includes(browser))guardFiles.push(browser);
+ let replacements=0;
+ for(const f of guardFiles){let s=fs.readFileSync(f,'utf8');const n=s.split('65.1.73').length-1;if(n){s=s.split('65.1.73').join(VERSION);fs.writeFileSync(f,s);replacements+=n}}
+ const stale=guardFiles.filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH')&&fs.readFileSync(f,'utf8').includes('expected 65.1.73'));
+ if(stale.length)throw Error(MARKER+': stale release guard pin remains in '+stale.map(f=>path.relative(root,f)).join(', '));
+ return {guardFiles:guardFiles.map(f=>path.relative(root,f)),replacements};
+}
 function apply(root){
  const changed=[];
  for(const rel of ['public/index.html','browser_public/index.html']){
@@ -36,6 +46,6 @@ function apply(root){
  }
  const v=path.join(root,'VERSION');if(fs.existsSync(v)){fs.writeFileSync(v,VERSION+'\n');changed.push('VERSION')}
  const sw=path.join(root,'public/sw.js');if(fs.existsSync(sw)){let s=fs.readFileSync(sw,'utf8').replace(/65-1-(?:61|72|73)/g,'66-0-0').replace(/65\.1\.(?:61|72|73)/g,VERSION);fs.writeFileSync(sw,s);changed.push('public/sw.js')}
- return {marker:MARKER,version:VERSION,changed,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
+ const releaseIdentity=alignReleaseIdentity(root);\n return {marker:MARKER,version:VERSION,changed,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
 }
 module.exports={apply,VERSION,MARKER};
