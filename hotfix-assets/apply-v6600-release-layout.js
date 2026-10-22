@@ -61,6 +61,7 @@ function apply(root){
  }
  const v=path.join(root,'VERSION');if(fs.existsSync(v)){fs.writeFileSync(v,VERSION+'\n');changed.push('VERSION')}
  const sw=path.join(root,'public/sw.js');if(fs.existsSync(sw)){let s=fs.readFileSync(sw,'utf8').replace(/65-1-(?:61|72|73)/g,'66-0-0').replace(/65\.1\.(?:61|72|73)/g,VERSION);fs.writeFileSync(sw,s);changed.push('public/sw.js')}
- const releaseIdentity=alignReleaseIdentity(root);\n return {marker:MARKER,version:VERSION,changed,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
+ const releaseIdentity=alignReleaseIdentity(root);
+ return {marker:MARKER,version:VERSION,changed,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
 }
 module.exports={apply,VERSION,MARKER};
