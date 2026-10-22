@@ -18,7 +18,7 @@ html,body{width:100%;min-width:320px;min-height:100%;margin:0}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 function alignReleaseIdentity(root){
- const walk=(dir,out=[])=>{if(!fs.existsSync(dir))return out;for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','data','backups','.git'].includes(e.name)||e.name.startsWith('.sbc-runtime-'))continue;const f=path.join(dir,e.name);if(e.isDirectory())walk(f,out);else if(/\\.(?:js|cjs|mjs)$/.test(e.name))out.push(f)}return out};
+else if(/\.(?:js|cjs|mjs|json|css|html)$/.test(e.name))out.push(f);
  const guardFiles=walk(root).filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH'));
  const browser=path.join(root,'browser_public/app.js');if(fs.existsSync(browser)&&!guardFiles.includes(browser))guardFiles.push(browser);
  let replacements=0;
