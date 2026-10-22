@@ -1,0 +1,29 @@
+name: SBC V65.1.72 Navigation Rail
+on:
+  push:
+    branches: [feature/v65-1-72-draggable-nav-rail]
+    paths:
+      - 'hotfix-assets/*v6574-draggable-nav-rail*'
+      - '.github/workflows/v6574-nav-rail.yml'
+  pull_request:
+    paths:
+      - 'hotfix-assets/*v6574-draggable-nav-rail*'
+      - '.github/workflows/v6574-nav-rail.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-ui-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check hotfix-assets/v6574-draggable-nav-rail.js
+          node --check hotfix-assets/apply-v6574-draggable-nav-rail.js
+          node --check hotfix-assets/v6574-draggable-nav-rail-test.js
+      - name: Isolated patch test
+        run: node hotfix-assets/v6574-draggable-nav-rail-test.js
