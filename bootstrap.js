@@ -204,7 +204,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'v6575-normalize-html-asset-identity-test.js'));
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(temp);
-    require(path.join(__dirname, 'hotfix-assets', 'apply-v6601-remove-revenue-heroes.js')).apply(undefined);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6601-remove-revenue-heroes.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'v6601-remove-revenue-heroes-test.js'));
     require(path.join(__dirname, 'hotfix-assets', 'v6600-release-layout-test.js'));
     loadManifestValidator().audit(temp, EXPECTED_VERSION);
@@ -320,7 +320,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(runtimeDir);
-    require(path.join(__dirname, 'hotfix-assets', 'apply-v6601-remove-revenue-heroes.js')).apply(undefined);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6601-remove-revenue-heroes.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'v6601-remove-revenue-heroes-test.js'));
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
