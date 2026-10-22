@@ -18,15 +18,17 @@ const SCRIPT = `<script id="sbc-v6601-remove-revenue-heroes">
       (t.indexOf('GOD-TIER REVENUE AUTOPILOT')>=0 && t.indexOf('FULFILLMENT JOBS')>=0);
   }
   function chooseBlock(el){
-    var n=el, best=el;
+    var n=el, best=el, fallback=el.parentElement||el;
     for(var i=0;n&&i<9;i++,n=n.parentElement){
       var tag=(n.tagName||'').toLowerCase();
       var cls=String(n.className&&n.className.baseVal||n.className||'');
       var id=String(n.id||'');
+      var nt=textOf(n);
+      if(i>0&&nt.length>textOf(el).length+40&&nt.length<1800)fallback=n;
       if(/^(section|article|aside)$/.test(tag) || /card|panel|hero|revenue|autopilot|widget|module|feature/i.test(cls+' '+id)) best=n;
       if(tag==='main'||id==='content'||/main-content|page-content|dashboard-content/i.test(cls)) break;
     }
-    return best;
+    return best===el?fallback:best;
   }
   function scrub(){
     var all=document.querySelectorAll('body *');
