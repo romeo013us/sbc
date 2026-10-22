@@ -35,7 +35,7 @@ function alignReleaseIdentity(root){
  let replacements=0;
  for(const f of guardFiles){
   const before=fs.readFileSync(f,'utf8');
-  let after=before.replace(/(RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+)(?:V)?65\.1\.73/g,'$1'+VERSION);
+  let after=before.replace(/(RELEASE_IDENTITY_MISMATCH[^\r\n]*?expected\s+)(?:V)?65\.1\.73/g,'$1'+VERSION);
   if(f===browser)after=after.replace(/((?:supportedRelease|expectedRelease|releaseVersion|APP_VERSION|BUILD_VERSION)\s*[:=]\s*['"]?)(?:V)?65\.1\.73/gi,'$1'+VERSION);
   if(after!==before){
    const markerCount=(before.match(/RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+(?:V)?65\.1\.73/g)||[]).length;
