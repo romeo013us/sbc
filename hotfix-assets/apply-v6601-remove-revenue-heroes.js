@@ -6,11 +6,11 @@ const SCRIPT = `<script id="sbc-v6601-remove-revenue-heroes">
 (function(){
   var marker='SBC_V6601_REMOVE_REVENUE_HEROES';
   var titles=[
-    /V56\.13\.5\s*[·|—-]?\s*CONSULTATIVE REVENUE ENGINE/i,
+    /V56\\.13\\.5\\s*[·|—-]?\\s*CONSULTATIVE REVENUE ENGINE/i,
     /GOD[- ]TIER REVENUE AUTOPILOT/i
   ];
   var labels=['DYNAMIC SOLUTION MAPPING ACROSS THE CANONICAL SBC CATALOG','DISCOVERY → SOLUTION GRAPH → CHECKOUT','KIM REVENUE CLOSER'];
-  function textOf(el){return String(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();}
+  function textOf(el){return String(el.innerText||el.textContent||'').replace(/\\s+/g,' ').trim();}
   function isTarget(el){
     var t=textOf(el);
     return titles.some(function(re){return re.test(t);}) ||
