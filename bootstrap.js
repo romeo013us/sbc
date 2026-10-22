@@ -188,6 +188,9 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6571-bilingual-sales-ops.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(temp);
+    require(path.join(temp, 'scripts', 'manifest-identity-validator.js')).audit(temp, EXPECTED_VERSION);
+    require(path.join(temp, 'scripts', 'manifest-identity-validator.test.js'));
     require(path.join(temp, 'hotfix-assets', 'v6573-release-503-forms-test.js'));
     require(path.join(temp, 'scripts', 'query-guard-cleanup-regression.test.js'));
     verifyPatchedSyntax(temp);
@@ -296,6 +299,8 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6571-bilingual-sales-ops.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(runtimeDir);
+    require(path.join(runtimeDir, 'scripts', 'manifest-identity-validator.js')).audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));

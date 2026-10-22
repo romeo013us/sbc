@@ -58,7 +58,8 @@
     "test:v6570-lease-session-verification": "node hotfix-assets/v6570-lease-session-verification-test.js",
     "test:v6571-bilingual-sales-ops": "node hotfix-assets/v6571-bilingual-sales-ops-test.js",
     "test:v652-sovereign-core": "node enterprise/v652-sovereign-core-test.js",
-    "test:v6573-release-503-forms": "node hotfix-assets/v6573-release-503-forms-test.js"
+    "test:v6573-release-503-forms": "node hotfix-assets/v6573-release-503-forms-test.js",
+    "test:manifest-identity": "node scripts/manifest-identity-validator.test.js"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
