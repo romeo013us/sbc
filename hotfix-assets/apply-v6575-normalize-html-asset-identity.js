@@ -14,7 +14,7 @@ function apply(root){
   // Preserve historical module tags and unrelated references to the old version.
   const after=before
    .replace(LEGACY,'$1'+version)
-   .replace(/((?:release|version|build)[^\\n]{0,80}?)65\\.1\\.61/gi, '$1'+version);
+   .replace(/((?:release|version|build)[^\r\n]{0,80}?)(V?)65\.1\.61/gi, '$1$2'+version);
   if(after!==before){fs.writeFileSync(file,after);changed.push(rel);}
  }
  if(!changed.length){
