@@ -301,7 +301,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6571-bilingual-sales-ops.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(runtimeDir);
-    require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-normalize-html-asset-identity.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(runtimeDir);
     require(path.join(__dirname, 'scripts', 'manifest-identity-validator.js')).audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
