@@ -9,8 +9,8 @@ try{
  const result=patch.apply(root);
  const html=fs.readFileSync(path.join(pub,'index.html'),'utf8');
  assert.deepEqual(result.changed,['public/index.html']);
- assert.match(html,/a\.css\?v=65\.1\.73/);
- assert.match(html,/b\.js\?x=1&v=65\.1\.73/);
+ assert.match(html,/a\.css\?v=66\.0\.0/);
+ assert.match(html,/b\.js\?x=1&v=66\.0\.0/);
  assert.match(html,/old\.js\?v=65\.1\.67/);
  assert.doesNotMatch(html,/[?&]v=65\.1\.61/);
  console.log('[SBC V6575] PASS: targeted stale HTML asset token normalized; unrelated historical tags preserved.');
