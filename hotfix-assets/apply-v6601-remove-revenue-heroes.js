@@ -6,11 +6,11 @@ const SCRIPT = `<script id="sbc-v6601-remove-revenue-heroes">
 (function(){
   var marker='SBC_V6601_REMOVE_REVENUE_HEROES';
   var titles=[
-    /V56\\.13\\.5\\s*[·|—-]?\\s*CONSULTATIVE REVENUE ENGINE/i,
+    /V56\.13\.5\s*[·|—-]?\s*CONSULTATIVE REVENUE ENGINE/i,
     /GOD[- ]TIER REVENUE AUTOPILOT/i
   ];
   var labels=['DYNAMIC SOLUTION MAPPING ACROSS THE CANONICAL SBC CATALOG','DISCOVERY → SOLUTION GRAPH → CHECKOUT','KIM REVENUE CLOSER'];
-  function textOf(el){return String(el.innerText||el.textContent||'').replace(/\\s+/g,' ').trim();}
+  function textOf(el){return String(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();}
   function isTarget(el){
     var t=textOf(el);
     return titles.some(function(re){return re.test(t);}) ||
@@ -63,8 +63,8 @@ function apply(root){
   const file=path.join(root,rel);if(!fs.existsSync(file))continue;
   let html=fs.readFileSync(file,'utf8');
   if(html.includes(MARKER))continue;
-  if(/<\\/body>/i.test(html))html=html.replace(/<\\/body>/i,SCRIPT+'\\n</body>');
-  else if(/<\\/html>/i.test(html))html=html.replace(/<\\/html>/i,SCRIPT+'\\n</html>');
+  if(/<\/body>/i.test(html))html=html.replace(/<\/body>/i,SCRIPT+'\n</body>');
+  else if(/<\/html>/i.test(html))html=html.replace(/<\/html>/i,SCRIPT+'\n</html>');
   else throw new Error(MARKER+': no body/html close tag in '+rel);
   fs.writeFileSync(file,html);changed.push(rel);
  }
