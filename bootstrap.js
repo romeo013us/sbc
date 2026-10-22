@@ -131,6 +131,18 @@ function verifyPatchedSyntax(dir) {
   }
 }
 
+function loadManifestValidator() {
+  const candidates = [
+    path.join(__dirname, 'scripts', 'manifest-identity-validator.js'),
+    path.join(process.cwd(), 'scripts', 'manifest-identity-validator.js')
+  ];
+  const file = candidates.find(candidate => fs.existsSync(candidate));
+  if (!file) {
+    throw new Error('[SBC ROOT BOOTSTRAP] FATAL: manifest validator not found in launcher or project root; checked: ' + candidates.join(', '));
+  }
+  return require(file);
+}
+
 function verifyOnly() {
   if (!fs.existsSync(RELEASE_ZIP)) throw new Error(`Required SBC source ZIP missing: ${path.basename(RELEASE_ZIP)}`);
   const bytes = fs.readFileSync(RELEASE_ZIP);
@@ -191,7 +203,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'v6575-normalize-html-asset-identity-test.js'));
-    require(path.join(__dirname, 'scripts', 'manifest-identity-validator.js')).audit(temp, EXPECTED_VERSION);
+    loadManifestValidator().audit(temp, EXPECTED_VERSION);
     require(path.join(__dirname, 'scripts', 'manifest-identity-validator.test.js'));
     require(path.join(temp, 'hotfix-assets', 'v6573-release-503-forms-test.js'));
     require(path.join(temp, 'scripts', 'query-guard-cleanup-regression.test.js'));
@@ -302,7 +314,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(runtimeDir);
-    require(path.join(__dirname, 'scripts', 'manifest-identity-validator.js')).audit(runtimeDir, EXPECTED_VERSION);
+    loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
