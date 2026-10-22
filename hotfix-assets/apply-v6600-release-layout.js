@@ -18,12 +18,27 @@ html,body{width:100%;min-width:320px;min-height:100%;margin:0}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 function alignReleaseIdentity(root){
-else if(/\.(?:js|cjs|mjs|json|css|html)$/.test(e.name))out.push(f);
- const guardFiles=walk(root).filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH'));
- const browser=path.join(root,'browser_public/app.js');if(fs.existsSync(browser)&&!guardFiles.includes(browser))guardFiles.push(browser);
+ const walk=(dir,out=[])=>{
+  if(!fs.existsSync(dir))return out;
+  for(const e of fs.readdirSync(dir,{withFileTypes:true})){
+   if(['node_modules','data','backups','.git'].includes(e.name)||e.name.startsWith('.sbc-runtime-'))continue;
+   const f=path.join(dir,e.name);
+   if(e.isDirectory())walk(f,out);
+   else if(/\.(?:js|cjs|mjs|json|css|html)$/.test(e.name))out.push(f);
+  }
+  return out;
+ };
+ const candidates=walk(root);
+ const guardFiles=candidates.filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH'));
+ const browser=path.join(root,'browser_public/app.js');
+ if(fs.existsSync(browser)&&!guardFiles.includes(browser))guardFiles.push(browser);
  let replacements=0;
- for(const f of guardFiles){let s=fs.readFileSync(f,'utf8');const n=s.split('65.1.73').length-1;if(n){s=s.split('65.1.73').join(VERSION);fs.writeFileSync(f,s);replacements+=n}}
- const stale=guardFiles.filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH')&&fs.readFileSync(f,'utf8').includes('expected 65.1.73'));
+ for(const f of guardFiles){
+  const before=fs.readFileSync(f,'utf8');
+  const after=before.replace(/(RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+)(?:V)?65\.1\.73/g,'$1'+VERSION);
+  if(after!==before){replacements+=(before.match(/(RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+)(?:V)?65\.1\.73/g)||[]).length;fs.writeFileSync(f,after);}
+ }
+ const stale=guardFiles.filter(f=>/RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+(?:V)?65\.1\.73/.test(fs.readFileSync(f,'utf8')));
  if(stale.length)throw Error(MARKER+': stale release guard pin remains in '+stale.map(f=>path.relative(root,f)).join(', '));
  return {guardFiles:guardFiles.map(f=>path.relative(root,f)),replacements};
 }
