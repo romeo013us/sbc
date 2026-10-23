@@ -5,8 +5,9 @@ const MARKER='SBC_V6574_DRAGGABLE_NAV_RAIL';
 function once(s,a,b,label){const n=s.split(a).length-1;if(n!==1)throw new Error(MARKER+': '+label+' anchor count '+n);return s.replace(a,b);}
 function apply(root){
  const htmlPath=path.join(root,'public/index.html');
- const cssSource=path.join(__dirname,'v6574-draggable-nav-rail.css');
- const jsSource=path.join(__dirname,'v6574-draggable-nav-rail.js');
+ const sourceDir=fs.existsSync(path.join(root,'hotfix-assets','v6574-draggable-nav-rail.css'))?path.join(root,'hotfix-assets'):__dirname;
+ const cssSource=path.join(sourceDir,'v6574-draggable-nav-rail.css');
+ const jsSource=path.join(sourceDir,'v6574-draggable-nav-rail.js');
  if(!fs.existsSync(htmlPath)||!fs.existsSync(cssSource)||!fs.existsSync(jsSource))throw new Error(MARKER+': expected public/index.html and both navigation assets');
  let html=fs.readFileSync(htmlPath,'utf8');
  if(html.includes(MARKER)||html.includes('/sbc-v6574-draggable-nav-rail.css'))throw new Error(MARKER+': patch already applied');
