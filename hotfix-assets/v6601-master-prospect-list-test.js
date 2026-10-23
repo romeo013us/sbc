@@ -43,7 +43,7 @@ try{
   "function setStatus(){} function parseCsv(){} async function request(){} function renderResults(){}",
   "btn.addEventListener('click',()=>overlay.classList.add('open'));function close(){overlay.classList.remove('open');}",
   "})();"
- ].join('\\n');
+ ].join('\n');
  fs.writeFileSync(path.join(pub,'sbc-lead-import-v6541.js'),fixture);
  const result=patch.apply(root);
  assert.equal(result.marker,patch.MARKER);
