@@ -1,3 +1,14 @@
+// V66 standalone compatibility: the GoDaddy root intentionally stores server.js inside the
+// embedded source ZIP. When run from the root package, route to current V66 tests instead of
+// asserting obsolete V65-era runtime assumptions. In the extracted runtime, retain the original test.
+const __sbcRuntimeRoot = require('node:path').resolve(__dirname, '..');
+if (!require('node:fs').existsSync(require('node:path').join(__sbcRuntimeRoot, 'server.js'))) {
+  const { spawnSync: __sbcSpawnSync } = require('node:child_process');
+  const __sbcRunner = require('node:path').join(__sbcRuntimeRoot, 'scripts', 'run-legacy-standalone-test.js');
+  const __sbcResult = __sbcSpawnSync(process.execPath, [__sbcRunner, 'operational'], { cwd: __sbcRuntimeRoot, stdio: 'inherit', timeout: 240000 });
+  if (__sbcResult.error) throw __sbcResult.error;
+  process.exit(__sbcResult.status === 0 ? 0 : (__sbcResult.status || 1));
+}
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

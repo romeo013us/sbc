@@ -42,3 +42,6 @@ jobs:
 
       - name: Run full regression suite
         run: npm run test:all
+
+      - name: Run standalone legacy-entrypoint compatibility suite against V66 replacements
+        run: node scripts/legacy-standalone-suite.test.js

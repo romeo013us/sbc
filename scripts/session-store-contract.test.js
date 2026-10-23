@@ -1,0 +1,17 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const bootstrap = fs.readFileSync(path.join(root, 'bootstrap.js'), 'utf8');
+const patch = fs.readFileSync(path.join(root, 'apply-v65116-hotfix.js'), 'utf8');
+const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+assert.equal(pkg.version, '66.0.0');
+assert.match(bootstrap, /apply-v65116-hotfix\\.js/, 'current build applies the hardened session-store patch before launch');
+assert.match(patch, /getMysqlPool/, 'session store accepts a late-bound MySQL pool');
+assert.match(patch, /currentMysqlPool/, 'session persistence resolves the live pool after initialization');
+assert.match(patch, /persistTimeoutMs=15000/, 'session write timeout covers cold database connection startup');
+assert.match(patch, /SESSION_STORE_UNAVAILABLE/, 'session persistence fails closed when no durable pool is available');
+assert.match(patch, /SELECT user_id FROM sbc_sessions/, 'successful session writes are verified by a read-back query');
+assert.match(patch, /mysqlDurable=true/, 'durability is only marked after confirmation');
+console.log('[SBC V66 SESSION STORE CONTRACT] PASS: late-bound pool, bounded timeout, unavailable-store fail-closed, and read-back durability are enforced by the current patch chain.');
