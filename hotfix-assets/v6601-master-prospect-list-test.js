@@ -31,17 +31,19 @@ assert.equal(new Set(parsed.slice(1).map(r=>normalize(r[bi]))).size,253,'busines
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6601-master-list-'));
 try{
  const pub=path.join(root,'public');fs.mkdirSync(pub,{recursive:true});
- const fixture=`(function(){
-const css=`#sbc-lead-import-launcher{position:fixed;}`;
-const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
-const btn=document.createElement('button');btn.id='sbc-lead-import-launcher';
-const overlay=document.createElement('div');overlay.id='sbc-lead-import-overlay';
-document.body.append(btn,overlay);
-const byId=id=>document.getElementById(id),status=byId('sbc-lead-import-status'),previewBtn=byId('sbc-lead-import-preview'),commitBtn=byId('sbc-lead-import-commit'),fileInput=byId('sbc-lead-import-file');
-let rows=[],preview=null;
-function setStatus(){} function parseCsv(){} async function request(){} function renderResults(){}
-btn.addEventListener('click',()=>overlay.classList.add('open'));function close(){overlay.classList.remove('open');}
-})();`;
+ const fixture=[
+  "(function(){",
+  "const css='#sbc-lead-import-launcher{position:fixed;}';",
+  "const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);",
+  "const btn=document.createElement('button');btn.id='sbc-lead-import-launcher';",
+  "const overlay=document.createElement('div');overlay.id='sbc-lead-import-overlay';",
+  "document.body.append(btn,overlay);",
+  "const byId=id=>document.getElementById(id),status=byId('sbc-lead-import-status'),previewBtn=byId('sbc-lead-import-preview'),commitBtn=byId('sbc-lead-import-commit'),fileInput=byId('sbc-lead-import-file');",
+  "let rows=[],preview=null;",
+  "function setStatus(){} function parseCsv(){} async function request(){} function renderResults(){}",
+  "btn.addEventListener('click',()=>overlay.classList.add('open'));function close(){overlay.classList.remove('open');}",
+  "})();"
+ ].join('\\n');
  fs.writeFileSync(path.join(pub,'sbc-lead-import-v6541.js'),fixture);
  const result=patch.apply(root);
  assert.equal(result.marker,patch.MARKER);
