@@ -14,4 +14,4 @@ assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'lease failure enters r
 assert.ok(bootstrap.includes("apply-v6528-runtime-writer-lease.js')).apply(temp)"),'build applies patch');
 assert.ok(bootstrap.includes("apply-v6528-runtime-writer-lease.js')).apply(runtimeDir)"),'runtime applies patch');
 assert.match(bootstrap,/EXPECTED_VERSION = '65\.1\.\d+'/,'release version follows the current 65.1 patch series');
-console.log('V65.1.33 runtime writer lease regression: 9/9 PASS');
+console.log('Runtime writer lease regression: release-identity assertion is version-agnostic; safeguards verified.');
