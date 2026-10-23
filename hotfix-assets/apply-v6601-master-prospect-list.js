@@ -67,7 +67,7 @@ function apply(root){
   masterBtn.disabled=false;
   previewBtn.disabled=!rows.length;
  }
-});\n`;
+});`;
   ui=once(ui,handlerAnchor,handlerAnchor+'\n'+handler,'master-list import workflow');
   fs.writeFileSync(uiFile,ui);
  }else if(!ui.includes('/'+CSV_NAME)){
