@@ -40,16 +40,16 @@ function alignReleaseIdentity(root){
   const before=fs.readFileSync(f,'utf8');
   // The deployed source has used both a literal error message and a separate supported-release allowlist.
   // Normalize the old release pin throughout every file participating in that identity guard.
-  let after=before.replace(/65\\.1\\.73/g,VERSION);
+  let after=before.replace(/65\.1\.73/g,VERSION);
 
   if(after!==before){
-   const markerCount=(before.match(/65\\.1\\.73/g)||[]).length;
+   const markerCount=(before.match(/65\.1\.73/g)||[]).length;
    const browserCount=0;
    replacements+=markerCount+browserCount;
    fs.writeFileSync(f,after);
   }
  }
- const stale=guardFiles.filter(f=>/65\\.1\\.73/.test(fs.readFileSync(f,'utf8')));
+ const stale=guardFiles.filter(f=>/65\.1\.73/.test(fs.readFileSync(f,'utf8')));
  if(stale.length)throw Error(MARKER+': stale release guard pin remains in '+stale.map(f=>path.relative(root,f)).join(', '));
  return {guardFiles:guardFiles.map(f=>path.relative(root,f)),replacements};
 }
