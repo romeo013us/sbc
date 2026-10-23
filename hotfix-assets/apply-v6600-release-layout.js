@@ -32,7 +32,7 @@ function alignReleaseIdentity(root){
   return out;
  };
  const candidates=walk(root);
- const guardFiles=candidates.filter(f=>fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH') && !/(?:-test|\.test)\.(?:js|cjs|mjs)$/i.test(f) && !/[/\\]config[/\\]release-identity\.js$/i.test(f));
+ const guardFiles=candidates.filter(f=>(/[/\\]enterprise[/\\]/i.test(f) || /[/\\]browser_public[/\\]app\.js$/i.test(f)) && fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH') && !/(?:-test|\.test)\.(?:js|cjs|mjs)$/i.test(f));
  const browser=path.join(root,'browser_public/app.js');
  if(fs.existsSync(browser)&&!guardFiles.includes(browser))guardFiles.push(browser);
  let replacements=0;
