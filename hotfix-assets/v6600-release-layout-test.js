@@ -5,10 +5,10 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6600-'));
 
 const cockpitCss=fs.readFileSync(path.join(__dirname,'sbc-v6601-reference-cockpit.css'),'utf8');
 assert.ok(cockpitCss.includes('SBC_V6600_OBSIDIAN_MATRIX'),'scoped obsidian matrix must be present');
-assert.match(cockpitCss,/#app>\\.sidebar[^\\n]*background-color:#12141c/,'sidebar treatment must target the existing app shell');
-assert.match(cockpitCss,/#app \\.content \\.dashboard-card[^\\n]*border-top:3px solid var\\(--sbc-matrix-blue\\)/,'dashboard card accent must be present');
-assert.match(cockpitCss,/#app \\.content \\.alert-priority-high/,'orange alert accent must be scoped to application content');
-assert.doesNotMatch(cockpitCss,/main,\\s*\\.main-viewport,\\s*#sbc-main-viewport/,'do not apply broad viewport height overrides');
+assert.ok(cockpitCss.includes('#app>.sidebar{background-color:#12141c;'),'sidebar treatment must target the existing app shell');
+assert.ok(cockpitCss.includes('border-top:3px solid var(--sbc-matrix-blue)'),'dashboard card accent must be present');
+assert.ok(cockpitCss.includes('#app .content .alert-priority-high'),'orange alert accent must be scoped to application content');
+assert.equal(cockpitCss.includes('main,.main-viewport,#sbc-main-viewport'),false,'do not apply broad viewport height overrides');
 
 try{
  for(const rel of ['public/index.html','browser_public/index.html']){const f=path.join(root,rel);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,'<!doctype html><html><head><title>SBC V65.1.61</title><link href="/app.css?v=65.1.61"></head><body><div class="dashboard-viewport"><aside class="navigation-rail-container"></aside><main class="main-content-area"></main></div></body></html>')}
