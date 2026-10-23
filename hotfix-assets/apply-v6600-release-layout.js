@@ -84,13 +84,27 @@ function installReferenceCockpit(root){
    html=html.replace(/<link\b[^>]*href=["'][^"']*sbc-v6574-draggable-nav-rail\.css[^>]*>\s*/gi,'');
    html=html.replace(/<script\b[^>]*src=["'][^"']*sbc-v6574-draggable-nav-rail\.js[^>]*><\/script>\s*/gi,'');
    const link='<link rel="stylesheet" data-sbc-v6601-reference-cockpit="true" href="/sbc-v6601-reference-cockpit.css?v=66.0.0">';
+   // Keep legacy navigation assets registered for the immutable manifest contract,
+   // but do not load the draggable behavior script in V66. The CSS is neutralized
+   // by the fixed-rail cockpit stylesheet, so no resize or drag UI is reintroduced.
+   const navCss='<link rel="stylesheet" data-sbc-v6600-nav-compat="true" href="/sbc-v6574-draggable-nav-rail.css">';
+   const navJs='<script data-sbc-v6600-nav-compat="disabled" type="application/x-sbc-disabled" data-src="/sbc-v6574-draggable-nav-rail.js"></script>';
+   if(!html.includes('/sbc-v6574-draggable-nav-rail.css'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,navCss+'\\n</head>'):navCss+'\\n'+html;
+   if(!html.includes('/sbc-v6574-draggable-nav-rail.js'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,navJs+'\\n</head>'):navJs+'\\n'+html;
    if(!html.includes(marker)&&!html.includes('data-sbc-v6601-reference-cockpit="true"'))html=/<\/html>/i.test(html)?html.replace(/<\/html>/i,link+'\n</html>'):(/<\/body>/i.test(html)?html.replace(/<\/body>/i,link+'\n</body>'):link+'\n'+html);
    fs.writeFileSync(htmlPath,html);
    if(!html.includes('data-sbc-v6601-reference-cockpit="true"'))throw Error(marker+': stylesheet link not installed in '+rel+'/index.html');
    installed.push(rel+'/index.html');
   }
  }
- for(const rel of ['public/sbc-v6574-draggable-nav-rail.css','public/sbc-v6574-draggable-nav-rail.js','browser_public/sbc-v6574-draggable-nav-rail.css','browser_public/sbc-v6574-draggable-nav-rail.js']){const f=path.join(root,rel);if(fs.existsSync(f))fs.rmSync(f,{force:true});}
+ // Retain manifest-required filenames while disabling all draggable navigation behavior.
+ const neutralNavCss='/* SBC V66 compatibility asset: intentionally neutralized; fixed sidebar is managed by the V66 cockpit stylesheet. */\\n';
+ const neutralNavJs='/* SBC V66 compatibility asset: draggable sidebar behavior intentionally disabled. */\\n';
+ for(const rel of ['public','browser_public']){
+   const dir=path.join(root,rel);if(!fs.existsSync(dir))continue;
+   fs.writeFileSync(path.join(dir,'sbc-v6574-draggable-nav-rail.css'),neutralNavCss);
+   fs.writeFileSync(path.join(dir,'sbc-v6574-draggable-nav-rail.js'),neutralNavJs);
+ }
  return installed;
 }
 function apply(root){
