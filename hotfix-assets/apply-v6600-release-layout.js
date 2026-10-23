@@ -1,6 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
-const VERSION='66.0.0',MARKER='SBC_V6600_RELEASE_LAYOUT';
+const VERSION='66.0.0',MARKER='SBC_V6600_RELEASE_LAYOUT',FORM_MARKER='SBC_V6600_FORM_FIELD_IDENTITY';
+const FORM_SCRIPT="<script id=\"sbc-v6600-form-field-identity\" data-sbc-v6600-form-field-identity=\"true\">(function(){\n\"use strict\";\nif(window.__SBC_V6600_FORM_FIELD_IDENTITY__)return;window.__SBC_V6600_FORM_FIELD_IDENTITY__=true;var seq=0;\nfunction repair(root){(root||document).querySelectorAll(\"input,select,textarea\").forEach(function(el){var id=String(el.id||\"\").trim(),name=String(el.getAttribute(\"name\")||\"\").trim();if(id&&name)return;var base=\"sbc-field-\"+String(el.type||el.tagName||\"input\").toLowerCase().replace(/[^a-z0-9_-]/g,\"\")+\"-\"+(++seq);if(!id){id=base;while(document.getElementById(id))id=base+\"-\"+(++seq);el.id=id;}if(!name){var candidate=id,n=1;while(Array.prototype.some.call(document.querySelectorAll(\"[name]\"),function(x){return x!==el&&x.getAttribute(\"name\")===candidate;}))candidate=id+\"-\"+(++n);el.setAttribute(\"name\",candidate);}});}\nfunction start(){repair(document);if(window.MutationObserver){var observer=new MutationObserver(function(records){records.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType===1){if(n.matches&&n.matches(\"input,select,textarea\")&&(!n.id||!n.getAttribute(\"name\")))repair(n.parentNode||document);else if(n.querySelectorAll)repair(n);}});});});observer.observe(document.documentElement,{childList:true,subtree:true});}}\nif(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",start,{once:true});else start();\n})();</script>";
 const CSS=`
 /* ${MARKER}: responsive shell containment; never override application visibility state. */
 :root{--sbc-nav-width:260px;--sbc-nav-collapsed:72px;--sbc-header-height:64px;--sbc-layout-gap:16px;--sbc-bg-graphite:#141820;--sbc-bg-surface:#1e2635;--sbc-accent-blue:#1677ff;--sbc-accent-cyan:#00dfd8;--sbc-accent-orange:#ff6a00}
@@ -37,26 +38,37 @@ function alignReleaseIdentity(root){
   return out;
  };
  const candidates=walk(root);
- const guardFiles=candidates.filter(f=>(/[/\\]enterprise[/\\]/i.test(f) || /[/\\]browser_public[/\\]app\.js$/i.test(f)) && fs.readFileSync(f,'utf8').includes('RELEASE_IDENTITY_MISMATCH') && !/(?:-test|\.test)\.(?:js|cjs|mjs)$/i.test(f));
+ const guardFiles=candidates.filter(f=>/RELEASE_IDENTITY_MISMATCH|ACTIVE_PACKAGE_RELEASE|RELEASE_VERSION/.test(fs.readFileSync(f,'utf8')) && !/(?:-test|\.test)\.(?:js|cjs|mjs)$/i.test(f));
  const browser=path.join(root,'browser_public/app.js');
  if(fs.existsSync(browser)&&!guardFiles.includes(browser))guardFiles.push(browser);
  let replacements=0;
  for(const f of guardFiles){
   const before=fs.readFileSync(f,'utf8');
-  // The deployed source has used both a literal error message and a separate supported-release allowlist.
-  // Normalize the old release pin throughout every file participating in that identity guard.
-  let after=before.replace(/65\.1\.73/g,VERSION);
-
+  const after=before.replace(/65\.1\.(?:71|72|73)/g,VERSION);
   if(after!==before){
-   const markerCount=(before.match(/65\.1\.73/g)||[]).length;
-   const browserCount=0;
-   replacements+=markerCount+browserCount;
+   replacements+=(before.match(/65\.1\.(?:71|72|73)/g)||[]).length;
    fs.writeFileSync(f,after);
   }
  }
- const stale=guardFiles.filter(f=>/65\.1\.73/.test(fs.readFileSync(f,'utf8')));
+ const stale=guardFiles.filter(f=>/65\.1\.(?:71|72|73)/.test(fs.readFileSync(f,'utf8')));
  if(stale.length)throw Error(MARKER+': stale release guard pin remains in '+stale.map(f=>path.relative(root,f)).join(', '));
  return {guardFiles:guardFiles.map(f=>path.relative(root,f)),replacements};
+}
+function injectFormIdentity(root){
+ const changed=[];
+ for(const rel of ['public/index.html','browser_public/index.html']){
+  const file=path.join(root,rel);if(!fs.existsSync(file))continue;
+  let html=fs.readFileSync(file,'utf8');
+  if(!html.includes(FORM_MARKER)){
+   if(/<\/body>/i.test(html))html=html.replace(/<\/body>/i,FORM_SCRIPT+'\n</body>');
+   else html+='\n'+FORM_SCRIPT+'\n';
+   fs.writeFileSync(file,html);
+  }
+  if(!html.includes(FORM_MARKER))throw Error(MARKER+': form-field identity script was not installed in '+rel);
+  changed.push(rel);
+ }
+ if(!changed.length)throw Error(MARKER+': no HTML entrypoint available for form-field identity');
+ return changed;
 }
 function apply(root){
  const changed=[];
@@ -69,6 +81,7 @@ function apply(root){
   html=html.replace(/V?65\.1\.(?:61|72|73)/g,VERSION);
   fs.writeFileSync(f,html);changed.push(rel);
  }
+ const formEntrypoints=injectFormIdentity(root);
  for(const rel of ['package.json','package-lock.json']){
   const f=path.join(root,rel);if(!fs.existsSync(f))continue;const o=JSON.parse(fs.readFileSync(f,'utf8'));o.version=VERSION;if(o.packages&&o.packages[''])o.packages[''].version=VERSION;
   if(rel==='package.json')o.description='SBC OS V66.0.0: responsive dashboard shell and synchronized release identity; business data and writer safeguards preserved.';
@@ -77,7 +90,25 @@ function apply(root){
  }
  const v=path.join(root,'VERSION');if(fs.existsSync(v)){fs.writeFileSync(v,VERSION+'\n');changed.push('VERSION')}
  const sw=path.join(root,'public/sw.js');if(fs.existsSync(sw)){let s=fs.readFileSync(sw,'utf8').replace(/65-1-(?:61|72|73)/g,'66-0-0').replace(/65\.1\.(?:61|72|73)/g,VERSION);fs.writeFileSync(sw,s);changed.push('public/sw.js')}
+ const supportFiles=[
+  ['enterprise/v56133-mysql-query-guard.js','enterprise/v56133-mysql-query-guard.js'],
+  ['scripts/query-guard-cleanup-regression.test.js','scripts/query-guard-cleanup-regression.test.js']
+ ];
+ for(const [sourceRel,targetRel] of supportFiles){
+  const source=path.join(__dirname,'..',sourceRel),target=path.join(root,targetRel);
+  if(!fs.existsSync(source))throw Error(MARKER+': required V66 support file missing: '+sourceRel);
+  fs.mkdirSync(path.dirname(target),{recursive:true});
+  fs.copyFileSync(source,target);
+ }
+ const pkgPath=path.join(root,'package.json'),lockPath=path.join(root,'package-lock.json');
+ const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8')),lock=JSON.parse(fs.readFileSync(lockPath,'utf8'));
+ pkg.scripts=pkg.scripts||{};
+ if(!String(pkg.scripts['test:all']||'').includes('query-guard-cleanup-regression.test.js'))pkg.scripts['test:all']=String(pkg.scripts['test:all']||'node bootstrap.js --verify')+' && node scripts/query-guard-cleanup-regression.test.js';
+ lock.packages=lock.packages||{};lock.packages['']=lock.packages['']||{};
+ lock.packages[''].scripts=pkg.scripts;lock.packages[''].version=VERSION;
+ fs.writeFileSync(pkgPath,JSON.stringify(pkg,null,2)+'\n');
+ fs.writeFileSync(lockPath,JSON.stringify(lock,null,2)+'\n');
  const releaseIdentity=alignReleaseIdentity(root);
- return {marker:MARKER,version:VERSION,changed,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
+ return {marker:MARKER,version:VERSION,changed,formEntrypoints,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
 }
 module.exports={apply,VERSION,MARKER};

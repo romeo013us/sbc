@@ -32,7 +32,7 @@ const groups = {
 
 function run(groupName) {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  assert.equal(pkg.version, '66.0.0', 'legacy standalone checks must route to the current V66 release, not V65.1.73');
+  assert.equal(pkg.version, '66.0.0', 'legacy standalone checks must route to the current V66.0.0 release identity');
   const files = groups[groupName];
   assert.ok(files, `Unknown legacy standalone test group: ${groupName}`);
   for (const rel of files) {

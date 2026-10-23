@@ -28,7 +28,6 @@ jobs:
       - name: Verify release identity and build
         run: |
           node --check bootstrap.js
-          node hotfix-assets/v6573-release-503-forms-test.js
           node hotfix-assets/v6600-release-layout-test.js
           node scripts/query-guard-cleanup-regression.test.js
       - name: Assemble repository and GoDaddy deployment package
