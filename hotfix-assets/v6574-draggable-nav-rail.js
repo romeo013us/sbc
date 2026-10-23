@@ -3,7 +3,7 @@
 var KEY='sbc-nav-rail-v6574',COLLAPSED=64,DEFAULT=260;
 function read(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(_){return {}}}
 function save(state){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(_){}}
-function findSidebar(){return document.querySelector('.sidebar')||document.querySelector('aside[data-sidebar]')||document.querySelector('[data-sidebar]')||document.querySelector('aside[aria-label]')}
+function findSidebar(){return document.querySelector('.sidebar')||document.querySelector('.navigation-rail-container')||document.querySelector('#sidebar')||document.querySelector('aside[data-sidebar]')||document.querySelector('[data-sidebar]')||document.querySelector('aside[aria-label]')||document.querySelector('aside')}
 function init(){
  var sidebar=findSidebar();if(!sidebar)return false;
  if(sidebar.dataset.sbcNavRailReady==='true')return true;
