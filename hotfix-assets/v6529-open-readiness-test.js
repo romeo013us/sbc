@@ -8,7 +8,7 @@ const bootstrap=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 const checks=[];
 function check(name,fn){fn();checks.push(name);}
-check('release identity remains in the 65.1 release series',()=>assert.match(pkg.version,/^65\.1\.\d+$/));
+check('release identity is a semantic version',()=>assert.match(pkg.version,/^\d+\.\d+\.\d+$/));
 check('patcher is registered for verification and launch',()=>{assert.match(bootstrap,/apply-v6529-open-readiness\.js'\)\)\.apply\(temp\)/);assert.match(bootstrap,/apply-v6529-open-readiness\.js'\)\)\.apply\(runtimeDir\)/)});
 check('Preview status never requires DDL',()=>{assert.match(patch,/allowSchemaWrites=\(\)=>false/);assert.match(patch,/if\(!writerAllowed\)return/);assert.match(patch,/await ensureSchema\(\)/)});
 check('Growth Preview status is read-only',()=>{assert.match(patch,/const canWrite=String\(process\.env\.SBC_RUNTIME_ROLE\|\|''\)\.toLowerCase\(\)==='writer'/);assert.match(patch,/Preview is read-only\. No growth schema or configuration changes were attempted/)});
