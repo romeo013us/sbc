@@ -39,8 +39,14 @@ jobs:
           test -f dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/bootstrap.js
           test -f dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/package.json
           node -e "const p=require('./dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/package.json');if(p.version!=='66.0.0')process.exit(2)"
-          cd dist
-          zip -qr SBC-V66.0.0-GoDaddy-FULL-BUILD.zip SBC-V66.0.0-GoDaddy-FULL-BUILD
+          cd dist/SBC-V66.0.0-GoDaddy-FULL-BUILD
+          zip -qr ../SBC-V66.0.0-GoDaddy-FULL-BUILD.zip .
+          cd ..
+          unzip -t SBC-V66.0.0-GoDaddy-FULL-BUILD.zip
+          unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'package.json'
+          unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'package-lock.json'
+          unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'bootstrap.js'
+          unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip'
       - uses: actions/upload-artifact@v4
         with:
           name: SBC-V66.0.0-GoDaddy-FULL-BUILD
