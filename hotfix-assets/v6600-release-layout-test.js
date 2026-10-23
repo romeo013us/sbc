@@ -29,10 +29,10 @@ try{
  assert.ok(fs.readFileSync(path.join(root,'browser_public/index.html'),'utf8').includes('data-sbc-v6601-reference-cockpit="true"'));
  const publicHtml=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
  const browserHtml=fs.readFileSync(path.join(root,'browser_public/index.html'),'utf8');
- assert.match(publicHtml,/href="\\/sbc-v6574-draggable-nav-rail\\.css"/,'manifest-required navigation CSS must remain registered');
- assert.match(browserHtml,/href="\\/sbc-v6574-draggable-nav-rail\\.css"/,'browser entrypoint must register navigation CSS');
- assert.match(publicHtml,/data-src="\\/sbc-v6574-draggable-nav-rail\\.js"/,'legacy JS name must be inert registration only');
- assert.match(publicHtml,/type="application\\/x-sbc-disabled"/,'legacy nav script must not execute');
+ assert.ok(publicHtml.includes('href="/sbc-v6574-draggable-nav-rail.css"'),'manifest-required navigation CSS must remain registered');
+ assert.ok(browserHtml.includes('href="/sbc-v6574-draggable-nav-rail.css"'),'browser entrypoint must register navigation CSS');
+ assert.ok(publicHtml.includes('data-src="/sbc-v6574-draggable-nav-rail.js"'),'legacy JS name must be inert registration only');
+ assert.ok(publicHtml.includes('type="application/x-sbc-disabled"'),'legacy nav script must not execute');
  assert.equal(fs.readFileSync(path.join(root,'public/sbc-v6574-draggable-nav-rail.js'),'utf8').includes('addEventListener'),false,'compatibility JS asset must contain no handlers');
  assert.equal(fs.readFileSync(path.join(root,'public/sbc-v6574-draggable-nav-rail.css'),'utf8').includes('cursor:col-resize'),false,'compatibility CSS asset must not expose draggable rail');
   assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package.json'))).version,VERSION);assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'))).packages[''].version,VERSION);
