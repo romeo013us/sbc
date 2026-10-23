@@ -98,8 +98,8 @@ function installReferenceCockpit(root){
   }
  }
  // Retain manifest-required filenames while disabling all draggable navigation behavior.
- const neutralNavCss='/* SBC V66 compatibility asset: intentionally neutralized; fixed sidebar is managed by the V66 cockpit stylesheet. */\\n';
- const neutralNavJs='/* SBC V66 compatibility asset: draggable sidebar behavior intentionally disabled. */\\n';
+ const neutralNavCss='/* SBC V66 compatibility asset: intentionally neutralized; fixed sidebar is managed by the V66 cockpit stylesheet. */'+'\n';
+ const neutralNavJs='/* SBC V66 compatibility asset: draggable sidebar behavior intentionally disabled. */'+'\n';
  for(const rel of ['public','browser_public']){
    const dir=path.join(root,rel);if(!fs.existsSync(dir))continue;
    fs.writeFileSync(path.join(dir,'sbc-v6574-draggable-nav-rail.css'),neutralNavCss);
