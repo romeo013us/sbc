@@ -19,3 +19,16 @@ html{min-width:320px;background:var(--sbc-graphite)}body{min-width:320px;min-hei
 @media(max-width:760px){#app.app{display:flex;flex-direction:column}#app>.sidebar{position:relative;inset:auto;flex:0 0 auto;width:100%;min-width:0;max-width:100%;min-height:0;height:auto;max-height:none;overflow:visible;border-right:0;border-bottom:1px solid var(--sbc-line)}#app .brand{min-height:64px;padding:11px 14px}#app .v56-primary-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:9px}#app .v56-legacy-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}#app .sidebar-group-label{margin:10px 9px 5px}#app .nav-item{min-height:38px;padding:8px;font-size:11px}#app .sidebar-bottom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0;padding:10px}#app>.main{min-height:0;width:100%;min-width:0}#app .topbar{position:relative;flex-direction:column;align-items:stretch;gap:12px;min-height:0;padding:14px}#app .top-actions{justify-content:flex-start}#app .global-search{flex:1 1 100%;max-width:none}#app .content{padding:12px}#app .content .dashboard-grid,#app .content .metrics-grid,#app .content .stat-grid,#app .content .kpi-grid,#app .content .dashboard-cards,#app .content .home-grid,#app .content .grid,#app .content .cards-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:380px){#app .v56-primary-nav,#app .v56-legacy-tools{grid-template-columns:minmax(0,1fr)}#app .top-actions{align-items:stretch}#app .sbc-build-version{font-size:8px}}
 @media(prefers-reduced-motion:reduce){#app *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important}}
+
+/* SBC_V6600_OBSIDIAN_MATRIX: scoped visual alignment only; preserve DOM, event handlers, and live data rendering. */
+:root{--sbc-matrix-obsidian:#0b0c10;--sbc-matrix-panel:#161922;--sbc-matrix-blue:#0095ff;--sbc-matrix-orange:#ff6b00}
+html{background:var(--sbc-matrix-obsidian)}
+body{background-color:var(--sbc-matrix-obsidian);color:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+#app.app{background:linear-gradient(135deg,#0b0c10 0%,#11131a 100%)}
+#app>.sidebar{background-color:#12141c;border-right:1px solid rgba(0,149,255,.15);box-shadow:2px 0 12px rgba(0,0,0,.5);flex-shrink:0}
+#app>.main{background:transparent}
+#app .content{min-width:0;overflow-x:hidden}
+#app .content .dashboard-card,#app .content .telemetry-panel,#app .content .pipeline-card,#app .content .card,#app .content .panel,#app .content .stat-card,#app .content .metric-card,#app .content .kpi-card,#app .content .module-card{background:var(--sbc-matrix-panel);border-top:3px solid var(--sbc-matrix-blue);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:border-color .2s ease,transform .2s ease}
+#app .content .dashboard-card:hover,#app .content .telemetry-panel:hover,#app .content .pipeline-card:hover{border-color:rgba(0,149,255,.4);transform:translateY(-2px)}
+#app .content .alert-priority-high,#app .content .critical-telemetry,#app .content .status-indicator-orange{border-top:3px solid var(--sbc-matrix-orange);color:#ff8c33}
+@media(prefers-reduced-motion:reduce){#app .content .dashboard-card,#app .content .telemetry-panel,#app .content .pipeline-card{transition:none!important}}
