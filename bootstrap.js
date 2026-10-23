@@ -204,6 +204,7 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'v6575-normalize-html-asset-identity-test.js'));
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(temp);
+    require(path.join(__dirname, 'hotfix-assets', 'v6574-draggable-nav-rail-test.js'));
     require(path.join(__dirname, 'hotfix-assets', 'v6600-release-layout-test.js'));
     loadManifestValidator().audit(temp, EXPECTED_VERSION);
     require(path.join(__dirname, 'scripts', 'manifest-identity-validator.test.js'));
