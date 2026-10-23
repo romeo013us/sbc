@@ -11,5 +11,6 @@ assert.match(patch,/SELECT RELEASE_LOCK\(\?\) AS released/,'same connection rele
 assert.match(patch,/refusing partial patch/,'patch refuses to apply if anchors drift');
 assert.match(bootstrap,/apply-v6527-persistence-writer-lock\.js'\)\)\.apply\(temp\)/,'verification applies patch');
 assert.match(bootstrap,/apply-v6527-persistence-writer-lock\.js'\)\)\.apply\(runtimeDir\)/,'launch applies patch');
-assert.match(bootstrap,/EXPECTED_VERSION = '65\.1\.\d+'/,'bootstrap release identity uses the current 65.1 patch version');
+const pkg = JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
+assert.match(bootstrap, new RegExp("EXPECTED_VERSION = '" + pkg.version.replace(/\./g, '\\.') + "'"), 'bootstrap release identity matches package.json');
 console.log('V65.1.27 persistence writer lock: 7/7 PASS (tested in V65.1.33 release)');
