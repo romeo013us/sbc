@@ -5,7 +5,7 @@ const MARKER='SBC_V6574_DRAGGABLE_NAV_RAIL';
 function once(s,a,b,label){const n=s.split(a).length-1;if(n!==1)throw new Error(MARKER+': '+label+' anchor count '+n);return s.replace(a,b);}
 function apply(root){
  const htmlPath=path.join(root,'public/index.html');
- const sourceDir=fs.existsSync(path.join(root,'hotfix-assets','v6574-draggable-nav-rail.css'))?path.join(root,'hotfix-assets'):__dirname;
+ const sourceDir=__dirname;
  const cssSource=path.join(sourceDir,'v6574-draggable-nav-rail.css');
  const jsSource=path.join(sourceDir,'v6574-draggable-nav-rail.js');
  const browserHtml=path.join(root,'browser_public/index.html');
