@@ -9,6 +9,9 @@ const sourceJs=path.join(__dirname,'v6574-draggable-nav-rail.js');
 const sourceCss=path.join(__dirname,'v6574-draggable-nav-rail.css');
 const js=fs.readFileSync(sourceJs,'utf8');
 const css=fs.readFileSync(sourceCss,'utf8');
+assert.match(js,/querySelector\('\.navigation-rail-container'\)/,'must detect the actual navigation rail shell');
+assert.match(js,/querySelector\('#sidebar'\)/,'must detect id-based sidebars');
+assert.match(js,/querySelector\('aside'\)/,'must fall back to an aside rail when no standard class exists');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6574-nav-'));
 try{
   for(const rel of ['public/index.html','browser_public/index.html']){
