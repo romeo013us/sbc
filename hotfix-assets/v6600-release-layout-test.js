@@ -1,7 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {apply,MARKER,VERSION}=require('./apply-v6600-release-layout');
-const navRail=require('./apply-v6574-draggable-nav-rail');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6600-'));
 try{
  for(const rel of ['public/index.html','browser_public/index.html']){const f=path.join(root,rel);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,'<!doctype html><html><head><title>SBC V65.1.61</title><link href="/app.css?v=65.1.61"></head><body><div class="dashboard-viewport"><aside class="navigation-rail-container"></aside><main class="main-content-area"></main></div></body></html>')}
@@ -16,7 +15,12 @@ try{
  assert.deepEqual(result.formEntrypoints,['public/index.html','browser_public/index.html']);
  for(const rel of ['public/index.html','browser_public/index.html'])assert.match(fs.readFileSync(path.join(root,rel),'utf8'),/SBC_V6600_FORM_FIELD_IDENTITY/);assert.equal(result.version,VERSION);assert.equal(result.crmWrites,false);assert.equal(result.databaseChanges,false);assert.equal(result.releaseIdentity.replacements,2);assert.ok(fs.readFileSync(guardPath,'utf8').includes('expected 66.0.0'));assert.ok(fs.readFileSync(browserPath,'utf8').includes('66.0.0'));
  for(const rel of ['public/index.html','browser_public/index.html']){const html=fs.readFileSync(path.join(root,rel),'utf8');assert.ok(html.includes(MARKER));assert.match(html,/grid-template-columns:var\(--sbc-nav-width\) minmax\(0,1fr\)/);assert.match(html,/app\.css\?v=66\.0\.0/);assert.match(html,/data-collapsed="true"/);assert.match(html,/sidebar-collapsed/);assert.match(html,/--sbc-nav-collapsed:72px/);assert.match(html,/#sbc-command-center-root/,'supports the explicit command-center root wrapper');assert.match(html,/#sbc-main-workspace-viewport/,'main workspace must be shrink-safe and scrollable');assert.match(html,/min-height:0/,'flex and grid children must not retain intrinsic minimum height');assert.match(html,/sbc-module-grid-containment/,'module grid must reflow at narrow widths');assert.match(html,/minmax\(0,1fr\)/,'workspace grid must use a zero-minimum flexible track');assert.doesNotMatch(html,/65\.1\.61/)}
- const railResult=navRail.apply(root);assert.equal(railResult.crmWrites,false);assert.ok(fs.existsSync(path.join(root,'public/sbc-v6574-draggable-nav-rail.css')));assert.ok(fs.existsSync(path.join(root,'public/sbc-v6574-draggable-nav-rail.js')));assert.ok(fs.readFileSync(path.join(root,'public/index.html'),'utf8').includes('/sbc-v6574-draggable-nav-rail.css'));assert.ok(fs.readFileSync(path.join(root,'public/index.html'),'utf8').includes('/sbc-v6574-draggable-nav-rail.js'));
+ assert.ok(fs.existsSync(path.join(root,'public/sbc-v6601-reference-cockpit.css')));
+ assert.ok(fs.existsSync(path.join(root,'browser_public/sbc-v6601-reference-cockpit.css')));
+ assert.ok(fs.readFileSync(path.join(root,'public/index.html'),'utf8').includes('data-sbc-v6601-reference-cockpit="true"'));
+ assert.ok(fs.readFileSync(path.join(root,'browser_public/index.html'),'utf8').includes('data-sbc-v6601-reference-cockpit="true"'));
+ assert.doesNotMatch(fs.readFileSync(path.join(root,'public/index.html'),'utf8'),/sbc-v6574-draggable-nav-rail/);
+ assert.equal(fs.existsSync(path.join(root,'public/sbc-v6574-draggable-nav-rail.js')),false);
   assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package.json'))).version,VERSION);assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'))).packages[''].version,VERSION);
  console.log('[SBC V6600] PASS: responsive shell, both HTML entrypoints, and release metadata verified; no database writes.');
 }finally{fs.rmSync(root,{recursive:true,force:true})}
