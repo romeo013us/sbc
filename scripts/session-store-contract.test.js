@@ -7,7 +7,7 @@ const bootstrap = fs.readFileSync(path.join(root, 'bootstrap.js'), 'utf8');
 const patch = fs.readFileSync(path.join(root, 'apply-v65116-hotfix.js'), 'utf8');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 assert.equal(pkg.version, '66.0.0');
-assert.match(bootstrap, /apply-v65116-hotfix\\.js/, 'current build applies the hardened session-store patch before launch');
+assert.match(bootstrap, /apply-v65116-hotfix\.js/, 'current build applies the hardened session-store patch before launch');
 assert.match(patch, /getMysqlPool/, 'session store accepts a late-bound MySQL pool');
 assert.match(patch, /currentMysqlPool/, 'session persistence resolves the live pool after initialization');
 assert.match(patch, /persistTimeoutMs=15000/, 'session write timeout covers cold database connection startup');
