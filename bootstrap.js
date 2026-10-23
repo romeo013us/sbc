@@ -200,7 +200,6 @@ function verifyOnly() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6571-bilingual-sales-ops.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(temp);
-    require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(temp);
     require(path.join(__dirname, 'hotfix-assets', 'v6575-normalize-html-asset-identity-test.js'));
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(temp);
@@ -315,7 +314,6 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6571-bilingual-sales-ops.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6572-dashboard-layout-stability.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6573-release-503-forms.js')).apply(runtimeDir);
-    require(path.join(__dirname, 'hotfix-assets', 'apply-v6574-draggable-nav-rail.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6575-normalize-html-asset-identity.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6600-release-layout.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
