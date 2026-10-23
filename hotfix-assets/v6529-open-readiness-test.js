@@ -26,5 +26,5 @@ check('dashboard active lead count excludes synthetic test customers',()=>{asser
 check('dashboard print count and recent activity are truthful',()=>{assert.match(patch,/dashboard print-order count uses print pipeline/);assert.match(patch,/dashboard activity deduplication/)});
 check('Agent OS identifies read-only Preview rather than implying full readiness',()=>{assert.match(patch,/Agent OS read-only status notice/);assert.match(patch,/READ-ONLY PREVIEW · schema is not initialized/)});
 check('agent OS release identity comes from the build',()=>{assert.match(patch,/releaseVersion:\(\)=>BUILD_VERSION/);assert.match(patch,/data\.releaseVersion\|\|'65\.1\.31'/)});
-console.log(`V65.1.33 open-readiness regression: ${checks.length}/${checks.length} PASS`);
+console.log(`Open-readiness regression: ${checks.length}/${checks.length} PASS`);
 for(const name of checks)console.log('PASS '+name);
