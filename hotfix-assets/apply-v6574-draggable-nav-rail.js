@@ -8,20 +8,18 @@ function apply(root){
  const sourceDir=fs.existsSync(path.join(root,'hotfix-assets','v6574-draggable-nav-rail.css'))?path.join(root,'hotfix-assets'):__dirname;
  const cssSource=path.join(sourceDir,'v6574-draggable-nav-rail.css');
  const jsSource=path.join(sourceDir,'v6574-draggable-nav-rail.js');
+ const browserHtml=path.join(root,'browser_public/index.html');
  if(!fs.existsSync(htmlPath)||!fs.existsSync(cssSource)||!fs.existsSync(jsSource))throw new Error(MARKER+': expected public/index.html and both navigation assets');
+ if(fs.existsSync(browserHtml)&&(!fs.readFileSync(browserHtml,'utf8').includes('/sbc-v6574-draggable-nav-rail.js'))){
+  let browser=fs.readFileSync(browserHtml,'utf8');
+  browser=once(browser,'</head>','<link rel="stylesheet" href="/sbc-v6574-draggable-nav-rail.css?v=65.1.72-nav-rail">\\n</head>','browser CSS insertion');
+  browser=once(browser,'</body>','<script src="/sbc-v6574-draggable-nav-rail.js?v=65.1.72-nav-rail" defer></script>\\n<!-- '+MARKER+' -->\\n</body>','browser script insertion');
+  fs.writeFileSync(browserHtml,browser);
+ }
  let html=fs.readFileSync(htmlPath,'utf8');
  if(html.includes(MARKER)||html.includes('/sbc-v6574-draggable-nav-rail.css'))throw new Error(MARKER+': patch already applied');
  html=once(html,'</head>','<link rel="stylesheet" href="/sbc-v6574-draggable-nav-rail.css?v=65.1.72-nav-rail">\n</head>','CSS insertion');
  html=once(html,'</body>','<script src="/sbc-v6574-draggable-nav-rail.js?v=65.1.72-nav-rail" defer></script>\n<!-- '+MARKER+' -->\n</body>','script insertion');
- const browserHtml=path.join(root,'browser_public/index.html');
- if(fs.existsSync(browserHtml)){
-  let browser=fs.readFileSync(browserHtml,'utf8');
-  if(!browser.includes('/sbc-v6574-draggable-nav-rail.js')){
-   browser=once(browser,'</head>','<link rel="stylesheet" href="/sbc-v6574-draggable-nav-rail.css?v=65.1.72-nav-rail">\n</head>','browser CSS insertion');
-   browser=once(browser,'</body>','<script src="/sbc-v6574-draggable-nav-rail.js?v=65.1.72-nav-rail" defer></script>\n<!-- '+MARKER+' -->\n</body>','browser script insertion');
-   fs.writeFileSync(browserHtml,browser);
-  }
- }
  fs.writeFileSync(htmlPath,html);
  fs.copyFileSync(cssSource,path.join(root,'public/sbc-v6574-draggable-nav-rail.css'));
  fs.copyFileSync(jsSource,path.join(root,'public/sbc-v6574-draggable-nav-rail.js'));
