@@ -12,8 +12,8 @@ function apply(root){
  if(!fs.existsSync(htmlPath)||!fs.existsSync(cssSource)||!fs.existsSync(jsSource))throw new Error(MARKER+': expected public/index.html and both navigation assets');
  if(fs.existsSync(browserHtml)&&(!fs.readFileSync(browserHtml,'utf8').includes('/sbc-v6574-draggable-nav-rail.js'))){
   let browser=fs.readFileSync(browserHtml,'utf8');
-  browser=once(browser,'</head>','<link rel="stylesheet" href="/sbc-v6574-draggable-nav-rail.css?v=65.1.72-nav-rail">\\n</head>','browser CSS insertion');
-  browser=once(browser,'</body>','<script src="/sbc-v6574-draggable-nav-rail.js?v=65.1.72-nav-rail" defer></script>\\n<!-- '+MARKER+' -->\\n</body>','browser script insertion');
+  browser=once(browser,'</head>','<link rel="stylesheet" href="/sbc-v6574-draggable-nav-rail.css?v=65.1.72-nav-rail">\n</head>','browser CSS insertion');
+  browser=once(browser,'</body>','<script src="/sbc-v6574-draggable-nav-rail.js?v=65.1.72-nav-rail" defer></script>\n<!-- '+MARKER+' -->\n</body>','browser script insertion');
   fs.writeFileSync(browserHtml,browser);
  }
  let html=fs.readFileSync(htmlPath,'utf8');
