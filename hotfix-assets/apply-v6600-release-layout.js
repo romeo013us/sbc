@@ -84,7 +84,7 @@ function installReferenceCockpit(root){
    html=html.replace(/<link\b[^>]*href=["'][^"']*sbc-v6574-draggable-nav-rail\.css[^>]*>\s*/gi,'');
    html=html.replace(/<script\b[^>]*src=["'][^"']*sbc-v6574-draggable-nav-rail\.js[^>]*><\/script>\s*/gi,'');
    const link='<link rel="stylesheet" data-sbc-v6601-reference-cockpit="true" href="/sbc-v6601-reference-cockpit.css?v=66.0.0">';
-   if(!html.includes(marker)&&!html.includes('data-sbc-v6601-reference-cockpit="true"'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,link+'\n</head>'):link+'\n'+html;
+   if(!html.includes(marker)&&!html.includes('data-sbc-v6601-reference-cockpit="true"'))html=/<\\/html>/i.test(html)?html.replace(/<\\/html>/i,link+'\\n</html>'):(/<\\/body>/i.test(html)?html.replace(/<\\/body>/i,link+'\\n</body>'):link+'\\n'+html);
    fs.writeFileSync(htmlPath,html);
    if(!html.includes('data-sbc-v6601-reference-cockpit="true"'))throw Error(marker+': stylesheet link not installed in '+rel+'/index.html');
    installed.push(rel+'/index.html');
