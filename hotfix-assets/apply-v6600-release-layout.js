@@ -70,6 +70,29 @@ function injectFormIdentity(root){
  if(!changed.length)throw Error(MARKER+': no HTML entrypoint available for form-field identity');
  return changed;
 }
+function installReferenceCockpit(root){
+ const marker='SBC_V6601_REFERENCE_COCKPIT';
+ const source=path.join(__dirname,'sbc-v6601-reference-cockpit.css');
+ if(!fs.existsSync(source))throw Error(marker+': required cockpit stylesheet missing');
+ const installed=[];
+ for(const rel of ['public','browser_public']){
+  const dir=path.join(root,rel);if(!fs.existsSync(dir))continue;
+  fs.copyFileSync(source,path.join(dir,'sbc-v6601-reference-cockpit.css'));
+  const htmlPath=path.join(dir,'index.html');
+  if(fs.existsSync(htmlPath)){
+   let html=fs.readFileSync(htmlPath,'utf8');
+   html=html.replace(/<link\b[^>]*href=["'][^"']*sbc-v6574-draggable-nav-rail\.css[^>]*>\s*/gi,'');
+   html=html.replace(/<script\b[^>]*src=["'][^"']*sbc-v6574-draggable-nav-rail\.js[^>]*><\/script>\s*/gi,'');
+   const link='<link rel="stylesheet" data-sbc-v6601-reference-cockpit="true" href="/sbc-v6601-reference-cockpit.css?v=66.0.0">';
+   if(!html.includes(marker)&&!html.includes('data-sbc-v6601-reference-cockpit="true"'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,link+'\n</head>'):link+'\n'+html;
+   fs.writeFileSync(htmlPath,html);
+   if(!html.includes('data-sbc-v6601-reference-cockpit="true"'))throw Error(marker+': stylesheet link not installed in '+rel+'/index.html');
+   installed.push(rel+'/index.html');
+  }
+ }
+ for(const rel of ['public/sbc-v6574-draggable-nav-rail.css','public/sbc-v6574-draggable-nav-rail.js','browser_public/sbc-v6574-draggable-nav-rail.css','browser_public/sbc-v6574-draggable-nav-rail.js']){const f=path.join(root,rel);if(fs.existsSync(f))fs.rmSync(f,{force:true});}
+ return installed;
+}
 function apply(root){
  const changed=[];
  for(const rel of ['public/index.html','browser_public/index.html']){
@@ -108,7 +131,8 @@ function apply(root){
  lock.packages[''].scripts=pkg.scripts;lock.packages[''].version=VERSION;
  fs.writeFileSync(pkgPath,JSON.stringify(pkg,null,2)+'\n');
  fs.writeFileSync(lockPath,JSON.stringify(lock,null,2)+'\n');
+ const referenceEntrypoints=installReferenceCockpit(root);
  const releaseIdentity=alignReleaseIdentity(root);
- return {marker:MARKER,version:VERSION,changed,formEntrypoints,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
+ return {marker:MARKER,version:VERSION,changed,formEntrypoints,referenceEntrypoints,releaseIdentity,crmWrites:false,databaseChanges:false,leaseSafeguardsChanged:false};
 }
 module.exports={apply,VERSION,MARKER};
