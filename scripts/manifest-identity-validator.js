@@ -12,28 +12,33 @@ function audit(root, expectedVersion) {
   }
 
   const htmlPaths = ['public/index.html', 'browser_public/index.html']
-    .map(rel => path.join(root, rel)).filter(file => fs.existsSync(file));
+    .map(rel => ({ rel, file: path.join(root, rel) })).filter(item => fs.existsSync(item.file));
   if (!htmlPaths.length) throw new Error('[SBC MANIFEST] no generated HTML entrypoint found');
 
-  let htmlCombined = '';
-  for (const file of htmlPaths) htmlCombined += '\n' + fs.readFileSync(file, 'utf8');
+  const htmlCombined = htmlPaths.map(item => fs.readFileSync(item.file, 'utf8')).join('\n');
   if (/\bv=65\.1\.61(?:[&#"'\s]|$)/i.test(htmlCombined)) {
     throw new Error('[SBC MANIFEST] stale v=65.1.61 asset token remains in HTML');
   }
   if (/65\.1\.61/.test(htmlCombined) && /(?:release|version|build)[^\n]{0,80}65\.1\.61/i.test(htmlCombined)) {
     throw new Error('[SBC MANIFEST] HTML release identity still advertises V65.1.61');
   }
-  const navCss = path.join(root, 'public/sbc-v6574-draggable-nav-rail.css');
-  const navJs = path.join(root, 'public/sbc-v6574-draggable-nav-rail.js');
-  if (!fs.existsSync(navCss) || !fs.existsSync(navJs) ||
-      !htmlCombined.includes('/sbc-v6574-draggable-nav-rail.css') ||
-      !htmlCombined.includes('/sbc-v6574-draggable-nav-rail.js')) {
-    throw new Error('[SBC MANIFEST] draggable navigation rail is not fully registered in generated HTML/assets');
+
+  const cssName = 'sbc-v6574-draggable-nav-rail.css';
+  const jsName = 'sbc-v6574-draggable-nav-rail.js';
+  for (const item of htmlPaths) {
+    const html = fs.readFileSync(item.file, 'utf8');
+    const assetDir = path.dirname(item.file);
+    for (const name of [cssName, jsName]) {
+      if (!html.includes('/' + name)) {
+        throw new Error('[SBC MANIFEST] ' + item.rel + ' is missing navigation asset registration: ' + name);
+      }
+      const asset = path.join(assetDir, name);
+      if (!fs.existsSync(asset) || !fs.statSync(asset).isFile() || fs.statSync(asset).size === 0) {
+        throw new Error('[SBC MANIFEST] ' + item.rel + ' has no matching generated asset: ' + asset);
+      }
+    }
   }
-  for (const file of [navCss, navJs]) {
-    if (fs.statSync(file).size === 0) throw new Error('[SBC MANIFEST] empty navigation asset: ' + path.basename(file));
-  }
-  console.log('[SBC MANIFEST] PASS package=' + version + ', HTML=' + htmlPaths.length + ', navigation assets registered');
+  console.log('[SBC MANIFEST] PASS package=' + version + ', HTML=' + htmlPaths.length + ', per-entrypoint navigation assets registered');
   return true;
 }
 
