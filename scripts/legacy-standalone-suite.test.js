@@ -18,7 +18,7 @@ for (const [rel, group] of wrappers) {
   const source = fs.readFileSync(path.join(root, rel), 'utf8');
   assert.match(source, /V66 standalone compatibility/, rel + ' documents the root-package routing');
   assert.match(source, /run-legacy-standalone-test\.js/, rel + ' routes to the current V66 test runner');
-  assert.match(source, new RegExp("['\\"]" + group + "['\\"]"), rel + ' maps to the correct current test group');
+  assert.ok(source.includes("'" + group + "'"), rel + ' maps to the correct current test group');
 }
 for (const group of ['operational', 'session', 'workorder', 'webhook']) runner.run(group);
 console.log('[SBC V66 LEGACY STANDALONE SUITE] PASS: all eight legacy entrypoints route to current-release regression coverage.');
