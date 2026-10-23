@@ -38,16 +38,18 @@ function alignReleaseIdentity(root){
  let replacements=0;
  for(const f of guardFiles){
   const before=fs.readFileSync(f,'utf8');
-  let after=before.replace(/(RELEASE_IDENTITY_MISMATCH[^\r\n]*?expected\s+)(?:V)?65\.1\.73/g,'$1'+VERSION);
-  if(f===browser)after=after.replace(/((?:supportedRelease|expectedRelease|releaseVersion|APP_VERSION|BUILD_VERSION)\s*[:=]\s*['"]?)(?:V)?65\.1\.73/gi,'$1'+VERSION);
+  // The deployed source has used both a literal error message and a separate supported-release allowlist.
+  // Normalize the old release pin throughout every file participating in that identity guard.
+  let after=before.replace(/65\\.1\\.73/g,VERSION);
+
   if(after!==before){
-   const markerCount=(before.match(/RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+(?:V)?65\.1\.73/g)||[]).length;
-   const browserCount=f===browser?(before.match(/(?:supportedRelease|expectedRelease|releaseVersion|APP_VERSION|BUILD_VERSION)\s*[:=]\s*['"]?(?:V)?65\.1\.73/gi)||[]).length:0;
+   const markerCount=(before.match(/65\\.1\\.73/g)||[]).length;
+   const browserCount=0;
    replacements+=markerCount+browserCount;
    fs.writeFileSync(f,after);
   }
  }
- const stale=guardFiles.filter(f=>/RELEASE_IDENTITY_MISMATCH[^\r\n]{0,240}?expected\s+(?:V)?65\.1\.73/.test(fs.readFileSync(f,'utf8')));
+ const stale=guardFiles.filter(f=>/65\\.1\\.73/.test(fs.readFileSync(f,'utf8')));
  if(stale.length)throw Error(MARKER+': stale release guard pin remains in '+stale.map(f=>path.relative(root,f)).join(', '));
  return {guardFiles:guardFiles.map(f=>path.relative(root,f)),replacements};
 }
