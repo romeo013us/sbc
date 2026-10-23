@@ -1,0 +1,44 @@
+name: SBC Root Verification
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check bootstrap and navigation patch syntax
+        run: |
+          node --check bootstrap.js
+          node --check hotfix-assets/apply-v6600-release-layout.js
+          node --check hotfix-assets/apply-v6574-draggable-nav-rail.js
+          node --check hotfix-assets/v6574-draggable-nav-rail.js
+          node --check hotfix-assets/v6574-draggable-nav-rail-test.js
+
+      - name: Verify generated runtime and manifest
+        run: npm run build
+
+      - name: Run full regression suite
+        run: npm run test:all
