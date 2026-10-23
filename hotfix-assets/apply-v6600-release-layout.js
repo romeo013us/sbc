@@ -89,8 +89,8 @@ function installReferenceCockpit(root){
    // by the fixed-rail cockpit stylesheet, so no resize or drag UI is reintroduced.
    const navCss='<link rel="stylesheet" data-sbc-v6600-nav-compat="true" href="/sbc-v6574-draggable-nav-rail.css">';
    const navJs='<script data-sbc-v6600-nav-compat="disabled" type="application/x-sbc-disabled" data-src="/sbc-v6574-draggable-nav-rail.js"></script>';
-   if(!html.includes('/sbc-v6574-draggable-nav-rail.css'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,navCss+'\\n</head>'):navCss+'\\n'+html;
-   if(!html.includes('/sbc-v6574-draggable-nav-rail.js'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,navJs+'\\n</head>'):navJs+'\\n'+html;
+   if(!html.includes('/sbc-v6574-draggable-nav-rail.css'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,navCss+'\n</head>'):navCss+'\n'+html;
+   if(!html.includes('/sbc-v6574-draggable-nav-rail.js'))html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,navJs+'\n</head>'):navJs+'\n'+html;
    if(!html.includes(marker)&&!html.includes('data-sbc-v6601-reference-cockpit="true"'))html=/<\/html>/i.test(html)?html.replace(/<\/html>/i,link+'\n</html>'):(/<\/body>/i.test(html)?html.replace(/<\/body>/i,link+'\n</body>'):link+'\n'+html);
    fs.writeFileSync(htmlPath,html);
    if(!html.includes('data-sbc-v6601-reference-cockpit="true"'))throw Error(marker+': stylesheet link not installed in '+rel+'/index.html');
