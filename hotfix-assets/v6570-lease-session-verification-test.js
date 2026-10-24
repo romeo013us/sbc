@@ -24,12 +24,13 @@ try {
   const result = require('./apply-v6570-lease-session-verification.js').apply(root);
   assert.equal(result.version, '65.1.70');
   assert.equal(result.sameSessionConnectionIdChecked, true);
+  assert.equal(result.pooledWriteChecksLeaseOwnerOnly, true);
   assert.equal(result.advisoryLockOwnerChecked, true);
   assert.equal(result.recoveryGateChanged, false);
   assert.equal(result.tenantIsolationChanged, false);
   const server = get('server.js');
   assert.equal((server.match(/CONNECTION_ID\(\)\s+AS\s+sessionId/g) || []).length, 2);
-  assert.equal((server.match(/SBC_WRITER_LEASE_SESSION_CHANGED/g) || []).length, 2);
+  assert.equal((server.match(/SBC_WRITER_LEASE_SESSION_CHANGED/g) || []).length, 1, 'only dedicated lease connection compares session identity');
   assert.equal((server.match(/SBC_WRITER_LEASE_OWNERSHIP_CHANGED/g) || []).length, 2);
   assert.doesNotMatch(get('hotfix-assets/apply-v6570-lease-session-verification.js'), /const guard = \/if\\\\s/);
   assert.match(server, /recovery-gated/);
