@@ -192,6 +192,12 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --prefix .sbc-isolated-runtime --ignore-scripts --no-audit --no-fund
+      - name: Verify signed Twilio dialing callbacks and owner-only read-only launch diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check .sbc-isolated-runtime/scripts/v6619-launch-security-test.cjs
+          node .sbc-isolated-runtime/scripts/v6619-launch-security-test.cjs | tee .sbc-isolated-reports/signed-voice-launch-gate.json
       - name: Smoke test actual HTTP boot with no credentials or network
         shell: bash
         run: |
