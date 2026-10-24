@@ -248,8 +248,9 @@ jobs:
           MYSQL_PASSWORD: disposable_user_ci_only
         run: |
           set -euo pipefail
-          node --check scripts/v6618-real-mysql-lease-disconnect.test.cjs
-          node scripts/v6618-real-mysql-lease-disconnect.test.cjs | tee .sbc-isolated-reports/real-mysql-writer-lease.json
+          cp scripts/v6618-real-mysql-lease-disconnect.test.cjs .sbc-isolated-runtime/scripts/
+          node --check .sbc-isolated-runtime/scripts/v6618-real-mysql-lease-disconnect.test.cjs
+          node .sbc-isolated-runtime/scripts/v6618-real-mysql-lease-disconnect.test.cjs | tee .sbc-isolated-reports/real-mysql-writer-lease.json
       - name: Render real Payments page with missing and unsafe Square links
         shell: bash
         env:
