@@ -11,6 +11,7 @@ on:
       - 'scripts/v6608-real-mysql-crm-gate.cjs'
       - 'scripts/v6610-lead-workspace-browser.test.cjs'
       - 'scripts/v6612-navigation-geometry-browser.test.cjs'
+      - 'scripts/v6613-payment-renderer.test.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -105,9 +106,31 @@ jobs:
             node:22-bookworm-slim node /work/repo/scripts/offline-compile-release.cjs
           node - <<'NODE'
           const r=require('./.sbc-isolated-reports/offline-compile-manifest.json');
-          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==59||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
+          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==62||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
           console.log('PATCHES',r.steps.length,'SERVER_SHA256',r.server_sha256,'HTTP_LINE',r.http_listen[0].line,'MYSQL_LINE',r.mysql_init[0].line);
           NODE
+      - name: Verify caller notes, terminal states and tenant isolation in actual call-log handlers
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
+            node:22-bookworm-slim node /work/target/scripts/v6614-voice-call-log-integrity-test.cjs
+      - name: Prove MySQL-backed call-log truthfulness and serialization of simultaneous saves
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
+            node:22-bookworm-slim node /work/target/scripts/v6615-call-log-durable-test.cjs
       - name: Prove CRM tenant isolation against synthetic cross-tenant records
         shell: bash
         run: |
@@ -189,6 +212,14 @@ jobs:
           cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
           node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
           node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
+      - name: Render real Payments page with missing and unsafe Square links
+        shell: bash
+        env:
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node --check scripts/v6613-payment-renderer.test.cjs
+          node scripts/v6613-payment-renderer.test.cjs | tee .sbc-isolated-reports/payment-renderer.json
       - name: Test reconstructed Lead Workspace in real Chromium with synthetic API
         shell: bash
         env:
