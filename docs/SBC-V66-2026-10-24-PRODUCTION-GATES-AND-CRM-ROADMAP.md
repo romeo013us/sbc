@@ -19,7 +19,7 @@ Stabilize a focused CRM/revenue operating system **before** adding features. SBC
 4. **P0** Square signed webhook, idempotent event receipt, payment status confirmation against a test order and fulfillment gating. No live charge performed.
 5. **P0** Current independent backup and successful isolated restore/rollback rehearsal; historical record counts alone are insufficient.
 6. **P0** Verify owner/rep RBAC, tenant isolation and DNC/opt-in evidence for outbound calling/SMS. No automated cold SMS without consent.
-7. **P1** Legacy /api/customers create/edit/delete paths in the frozen baseline need a focused audit for tenant-scoped lookup, mass assignment, and fail-open save acknowledgments; the v6606 direct-MySQL PATCH path is better hardened. Do not announce blanket integrity of all old paths.
+7. **P1** V6620 now tenant-scopes legacy customer duplicate lookup, owner edit, account notes, single delete and bulk delete, and blocks arbitrary-field edits. **Still unresolved:** legacy `saveData()` can silently fall back to a local file after a MySQL write error, potentially claiming a successful CRM save. Legacy quotes/orders and other routes still require their own tenant/durability audit. The v6606 transactional SQL PATCH remains the preferred lead-editor path.
 8. **P1** Authenticated 21-route end-to-end desktop/mobile browser audit and links/actions coverage using nonproduction credentials.
 9. **P2** Revenue reporting should separate all customer rows, qualified sales leads, sales pipeline, paid orders, recurring hosting renewals, and actual cash collected.
 10. **Deferred** Office Box improvements and lead imports occur after core systems pass; customer data must not be overwritten or fabricated.
