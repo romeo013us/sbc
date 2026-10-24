@@ -1,5 +1,24 @@
 /* SBC_V6612_NAV_GEOMETRY: fix the relative rail / fixed-margin collision. */
 :root{--sbc-nav-expanded:260px;--sbc-nav-collapsed:64px;--sbc-nav-width:var(--sbc-nav-expanded)}
+body.sbc-nav-rail-ready .sidebar .sbc-nav-rail-controls{
+ display:flex!important;align-items:center!important;gap:6px!important;padding:8px 7px!important;
+ min-height:42px!important;box-sizing:border-box!important;color:inherit!important;
+}
+body.sbc-nav-rail-ready .sidebar .sbc-nav-rail-title{
+ font-size:11px!important;font-weight:800!important;letter-spacing:.09em!important;
+ white-space:nowrap!important;overflow:hidden!important;flex:1 1 auto!important;
+}
+body.sbc-nav-rail-ready .sidebar .sbc-nav-rail-toggle{
+ display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px!important;
+ width:30px!important;min-width:30px!important;height:30px!important;
+ border:1px solid currentColor!important;border-radius:8px!important;
+ background:transparent!important;color:inherit!important;cursor:pointer!important;
+ font:700 17px/1 system-ui!important;
+}
+body.sbc-nav-rail-ready .sidebar nav{min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
+body.sbc-nav-rail-ready .sidebar .sidebar-bottom{flex-shrink:0}
+body.sbc-nav-rail-ready #app.app>.main #content{min-width:0!important;max-width:100%!important}
+
 html.sbc-nav-collapsed{--sbc-nav-width:var(--sbc-nav-collapsed)}
 @media(min-width:851px){
  body.sbc-nav-rail-ready #app.app > aside.sidebar[data-sbc-nav-rail="true"]{
