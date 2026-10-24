@@ -38,6 +38,11 @@ jobs:
         run: npm run test:all
       - name: Verify explicit schema-change opt-in
         run: node scripts/v6621-explicit-ddl-optin.test.cjs
+      - name: Check incident audit and background-worker regression
+        run: |
+          node --test ops/read-only-db-audit.test.js
+          node hotfix-assets/v65134-tenant-rejection-guard-test.js
+          node scripts/v6622-observable-background-gates.test.cjs
       - name: Gate summary
         if: always()
         run: |
