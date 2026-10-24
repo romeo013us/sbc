@@ -20,7 +20,7 @@ try {
     assert.match(html,/sbcGodTierBroadcastMount/);
     assert.match(html,/sbc-v6602-ten-brain-compact/);
     assert.match(html,/SBC_V6602_LAYOUT_CONTAINMENT/);
-    assert.match(html,/<\\/body>/);
+    assert.ok(html.includes('</body>'));
   }
   assert.throws(()=>patch.apply(root),/no supported HTML entrypoint found or patch already applied/);
   console.log('SBC V6602 LAYOUT CONTAINMENT TEST PASS');
