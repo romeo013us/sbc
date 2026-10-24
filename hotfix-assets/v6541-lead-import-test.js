@@ -10,6 +10,11 @@ try{
  assert.equal(result.version,'65.1.41');assert.equal(pkg.version,'65.1.41');assert.equal(lock.packages[''].version,'65.1.41');
  assert(server.includes("app.post('/api/crm/leads/import',auth,ownerOnly"));assert(server.includes('SBC_RUNTIME_READ_ONLY||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady'));
  assert(server.includes("SHOW COLUMNS FROM sbc_customers LIKE 'tenant_id'"));assert(server.includes('dryRun'));assert(server.includes('await conn.rollback()'));assert(server.includes('tenant_id,business_name,contact_name,phone,email'));
+ const importRoute=server.slice(server.indexOf("app.post('/api/crm/leads/import'"),server.indexOf("const startOperationalRuntime=async()=>{"));
+ assert(importRoute.includes('for(const r of normalized)'),'serial duplicate-check execution verified');
+ assert(importRoute.includes('await conn.query("SELECT id,business_name,phone,email FROM sbc_customers'),'duplicate checks use the held transaction connection');
+ assert(importRoute.includes('await conn.rollback()'),'failed imports roll back before connection release');
+ assert.equal(importRoute.includes('Promise.all(normalized.map'),false,'import route must not fan out duplicate-check queries');
  assert(html.includes('/sbc-lead-import-v6541.js?v=65.1.41-lead-import'));assert(ui.includes('Preview import'));assert(ui.includes('Duplicate'));assert(ui.includes('No records were written'));
  for(const f of ['server.js','public/sbc-lead-import-v6541.js'])cp.execFileSync(process.execPath,['--check',path.join(temp,f)]);
  console.log('V65.1.41 Lead Import tests: PASS — authenticated route, tenant-scoped duplicate checks, read-only preview, recovery/writer gates, rollback, and UI syntax.');

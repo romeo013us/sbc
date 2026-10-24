@@ -32,3 +32,12 @@ body{background-color:var(--sbc-matrix-obsidian);color:#f0f2f5;font-family:-appl
 #app .content .dashboard-card:hover,#app .content .telemetry-panel:hover,#app .content .pipeline-card:hover{border-color:rgba(0,149,255,.4);transform:translateY(-2px)}
 #app .content .alert-priority-high,#app .content .critical-telemetry,#app .content .status-indicator-orange{border-top:3px solid var(--sbc-matrix-orange);color:#ff8c33}
 @media(prefers-reduced-motion:reduce){#app .content .dashboard-card,#app .content .telemetry-panel,#app .content .pipeline-card{transition:none!important}}
+
+
+/* SBC_V6603_SIDEBAR_COLLAPSE: scoped flex shrink and content track containment. */
+#app.app.sbc-nav-collapsed>.sidebar{width:64px!important;min-width:64px!important;max-width:64px!important;flex:0 0 64px!important;overflow-x:hidden!important}
+#app.app.sbc-nav-collapsed>.sidebar span:not(:first-child){display:none!important}
+#app.app.sbc-nav-collapsed>.sidebar .nav-label,#app.app.sbc-nav-collapsed>.sidebar .sidebar-label,#app.app.sbc-nav-collapsed>.sidebar .section-title,#app.app.sbc-nav-collapsed>.sidebar .nav-text{display:none!important}
+#app.app>.main{flex:1 1 0!important;min-width:0!important;width:0!important;max-width:100%!important}
+#app.app>.main>.content,#app.app>.main .content{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+#app.app .content .dashboard-grid,#app.app .content .metrics-grid,#app.app .content .stat-grid,#app.app .content .kpi-grid,#app.app .content .dashboard-cards,#app.app .content .home-grid,#app.app .content .cards-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))!important;min-width:0!important}
