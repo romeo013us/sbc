@@ -142,6 +142,17 @@ jobs:
           set -euo pipefail
           node --check scripts/v6616-integrated-release-gate.cjs
           node scripts/v6616-integrated-release-gate.cjs | tee .sbc-isolated-reports/integrated-release-gate.json
+      - name: Simulate published MySQL inactivity disconnect and safe lease retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
+            node:22-bookworm-slim node /work/target/scripts/v6617-writer-lease-heartbeat-test.cjs
       - name: Prove CRM tenant isolation against synthetic cross-tenant records
         shell: bash
         run: |
