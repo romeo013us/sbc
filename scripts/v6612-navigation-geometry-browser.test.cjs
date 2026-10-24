@@ -75,7 +75,8 @@ function pass(name,truth){assert.ok(truth,name);checks.push(name)}
   await page.waitForTimeout(280);
   m=await metrics();
   pass('mobile hamburger opens overlay without moving workspace',m.open&&Math.abs(m.sidebar.left)<3&&Math.abs(m.main.left)<3);
-  await page.locator('#content').click();
+  // Click in the uncovered workspace area to the right of the 280px drawer.
+  await page.mouse.click(385,220);
   await page.waitForTimeout(280);
   m=await metrics();
   pass('mobile outside click closes drawer',!m.open&&m.sidebar.right<=3);
