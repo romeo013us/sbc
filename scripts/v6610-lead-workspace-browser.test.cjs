@@ -63,7 +63,7 @@ const server=http.createServer((req,res)=>{
   await edit.click();
   await page.locator('#sbc-v6606-editor').waitFor({state:'visible'});
   // The guarded editor intentionally keeps fields disabled during the async GET.
-  await page.waitForFunction(()=>{const field=document.querySelector('#sbc-v6606-editor [name=notes]');return field&&!field.disabled;});
+  await page.waitForFunction(()=>{const field=document.querySelector('#sbc-v6606-editor [name=notes]');return field&&!field.disabled;},null,{timeout:10000});
   assert.equal(await page.locator('#sbc-v6606-editor [name=notes]').inputValue(),'Previous verified note');
   await page.locator('#sbc-v6606-editor [name=notes]').fill('Attempted stale update');
   await page.locator('#sbc-v6606-edit-form button[type=submit]').click();
@@ -72,6 +72,8 @@ const server=http.createServer((req,res)=>{
   assert.equal(seen.patch[0].revision,revision,'browser omitted authenticated read revision');
   await page.locator('#sbc-v6606-cancel').click();
   await edit.click();
+  // Immediate reopen must survive the previous dialog's asynchronous close event.
+  await page.waitForFunction(()=>{const field=document.querySelector('#sbc-v6606-editor [name=notes]');return field&&!field.disabled;},null,{timeout:10000});
   await page.locator('#sbc-v6606-editor [name=notes]').fill('Committed CI note');
   await page.locator('#sbc-v6606-edit-form button[type=submit]').click();
   await page.waitForFunction(()=>!document.getElementById('sbc-v6606-editor').open);
