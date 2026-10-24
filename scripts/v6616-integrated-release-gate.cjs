@@ -8,7 +8,7 @@ const server=read('server.js'),app=read('public/app.js'),browser=read('browser_p
 const checks=[];
 function test(name,fn){fn();checks.push(name)}
 const pkg=JSON.parse(read('package.json'));
-test('compiled runtime version and identity',{[Symbol.toPrimitive]:()=>''}&&()=>{assert.equal(pkg.name,'sbc-business-command-center');assert.ok(pkg.version)});
+test('compiled runtime version and identity',()=>{assert.equal(pkg.name,'sbc-business-command-center');assert.ok(pkg.version)});
 test('safe Square checkout guard in both entrypoints',()=>{for(const [tag,s] of [['public',app],['browser',browser]]){assert.ok(s.includes('SBC_V6613_SAFE_SQUARE_LINKS'),tag);assert.ok(s.includes("checkoutLinks[x[0]]"),tag);}});
 test('voice identity isolation in reconstructed server',()=>{assert.ok(server.includes('SBC_V6614_VOICE_CALL_LOG_INTEGRITY'));assert.equal((server.match(/terminal\.has\(status\)/g)||[]).length>=2,true);});
 test('strict MySQL voice readback is present',()=>{assert.ok(server.includes('SBC_V6615_CALL_LOG_MYSQL_DURABILITY'));assert.ok(server.includes('JSON_CONTAINS(payload,JSON_OBJECT('));assert.ok(server.includes('VOICE_LOG_NOT_DURABLE'))});
