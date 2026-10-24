@@ -15,6 +15,8 @@ assert.equal(installTenantRejectionGuard(fakeProcess, logger), false);
 fakeProcess.on('unhandledRejection', reason => { throw new Error('fatal handler invoked: ' + reason.message); });
 assert.doesNotThrow(() => fakeProcess.emit('unhandledRejection', Object.assign(new Error('TENANT_CONTEXT_REQUIRED'), { code: 'TENANT_CONTEXT_REQUIRED' }), Promise.resolve()));
 assert.equal(logs.length, 1);
+assert.equal(fakeProcess.SBC_TENANT_REJECTION_STATS.rejected,1);
+assert.match(fakeProcess.SBC_TENANT_REJECTION_STATS.lastRejectedAt,/^20/);
 assert.match(logs[0], /failed closed/);
 assert.throws(() => fakeProcess.emit('unhandledRejection', new Error('database unavailable'), Promise.resolve()), /fatal handler invoked/);
 console.log('[SBC V65.1.34 TENANT REJECTION GUARD TEST] PASS');
