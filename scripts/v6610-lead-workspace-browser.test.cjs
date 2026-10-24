@@ -62,6 +62,8 @@ const server=http.createServer((req,res)=>{
   const edit=page.locator('[data-sbc-lead-edit-id="'+leadId+'"]');
   await edit.click();
   await page.locator('#sbc-v6606-editor').waitFor({state:'visible'});
+  // The guarded editor intentionally keeps fields disabled during the async GET.
+  await page.waitForFunction(()=>{const field=document.querySelector('#sbc-v6606-editor [name=notes]');return field&&!field.disabled;});
   assert.equal(await page.locator('#sbc-v6606-editor [name=notes]').inputValue(),'Previous verified note');
   await page.locator('#sbc-v6606-editor [name=notes]').fill('Attempted stale update');
   await page.locator('#sbc-v6606-edit-form button[type=submit]').click();
