@@ -9,6 +9,8 @@ on:
       - 'scripts/offline-child-guard.test.cjs'
       - 'scripts/offline-readonly-smoke-client.cjs'
       - 'scripts/v6608-real-mysql-crm-gate.cjs'
+      - 'scripts/v6610-lead-workspace-browser.test.cjs'
+      - 'scripts/v6612-navigation-geometry-browser.test.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -103,7 +105,7 @@ jobs:
             node:22-bookworm-slim node /work/repo/scripts/offline-compile-release.cjs
           node - <<'NODE'
           const r=require('./.sbc-isolated-reports/offline-compile-manifest.json');
-          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==56||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
+          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==59||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
           console.log('PATCHES',r.steps.length,'SERVER_SHA256',r.server_sha256,'HTTP_LINE',r.http_listen[0].line,'MYSQL_LINE',r.mysql_init[0].line);
           NODE
       - name: Prove CRM tenant isolation against synthetic cross-tenant records
@@ -187,12 +189,34 @@ jobs:
           cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
           node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
           node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
+      - name: Test reconstructed Lead Workspace in real Chromium with synthetic API
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          npm install --prefix .sbc-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+          ./.sbc-browser/node_modules/.bin/playwright install --with-deps chromium
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json
+      - name: Verify desktop and mobile navigation geometry in Chromium
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 90s node scripts/v6612-navigation-geometry-browser.test.cjs | tee .sbc-isolated-reports/navigation-geometry.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release
-          rsync -a --exclude='.git' --exclude='.sbc-isolated-runtime' --exclude='.sbc-isolated-reports' --exclude='release' --exclude='node_modules' ./ release/
+          rsync -a --exclude='.git' --exclude='.sbc-browser' --exclude='.sbc-isolated-runtime' --exclude='.sbc-isolated-reports' --exclude='release' --exclude='node_modules' ./ release/
           rsync -a .sbc-twilio-sdk/ release/.sbc-twilio-sdk/
           test -s release/.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js
           cd release
