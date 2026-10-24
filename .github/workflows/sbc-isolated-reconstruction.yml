@@ -120,6 +120,17 @@ jobs:
             -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
             -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
             node:22-bookworm-slim node /work/target/scripts/v6614-voice-call-log-integrity-test.cjs
+      - name: Prove MySQL-backed call-log truthfulness and serialization of simultaneous saves
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
+            node:22-bookworm-slim node /work/target/scripts/v6615-call-log-durable-test.cjs
       - name: Prove CRM tenant isolation against synthetic cross-tenant records
         shell: bash
         run: |
