@@ -14,7 +14,7 @@ try{
  assert(importRoute.includes('for(const r of normalized)'),'serial duplicate-check execution verified');
  assert(importRoute.includes('await conn.query("SELECT id,business_name,phone,email FROM sbc_customers'),'duplicate checks use the held transaction connection');
  assert(importRoute.includes('await conn.rollback()'),'failed imports roll back before connection release');
- assert.equal(/Promise\\.all\\s*\\(\\s*normalized\\.map/.test(importRoute),false,'import route must not fan out duplicate-check queries');
+ assert.equal(importRoute.includes('Promise.all(normalized.map'),false,'import route must not fan out duplicate-check queries');
  assert(html.includes('/sbc-lead-import-v6541.js?v=65.1.41-lead-import'));assert(ui.includes('Preview import'));assert(ui.includes('Duplicate'));assert(ui.includes('No records were written'));
  for(const f of ['server.js','public/sbc-lead-import-v6541.js'])cp.execFileSync(process.execPath,['--check',path.join(temp,f)]);
  console.log('V65.1.41 Lead Import tests: PASS — authenticated route, tenant-scoped duplicate checks, read-only preview, recovery/writer gates, rollback, and UI syntax.');
