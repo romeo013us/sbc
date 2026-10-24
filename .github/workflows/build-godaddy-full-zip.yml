@@ -10,6 +10,14 @@ on:
       - 'hotfix-assets/**'
       - 'enterprise/**'
       - 'scripts/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-godaddy-full-zip.yml'
+      - 'hotfix-assets/apply-v6556-twilio-voice-sdk.js'
+      - 'bootstrap.js'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,11 +38,31 @@ jobs:
           node --check bootstrap.js
           node hotfix-assets/v6600-release-layout-test.js
           node scripts/query-guard-cleanup-regression.test.js
+      - name: Cache real pinned browser Voice SDK for offline GoDaddy startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix .sbc-twilio-sdk --no-save --ignore-scripts --no-audit --no-fund '@twilio/voice-sdk@2.18.5'
+          node - <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const base='.sbc-twilio-sdk/node_modules/@twilio/voice-sdk';
+          const p=JSON.parse(fs.readFileSync(base+'/package.json','utf8'));
+          const file=base+'/dist/twilio.min.js';
+          if(p.version!=='2.18.5'||fs.statSync(file).size<100000)throw Error('Invalid local Twilio browser SDK');
+          const got=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          const expected='35d3cb1b22e309f9884724a89250aecd2de4f1556ad7b67a7bc5e06c73dcb74a';
+          if(got!==expected)throw Error('Twilio SDK version-pinned SHA-256 mismatch');
+          console.log('PINNED_SDK_VERIFIED',p.version,got);
+          NODE
       - name: Assemble repository and GoDaddy deployment package
         run: |
           set -euo pipefail
           mkdir -p dist/SBC-V66.0.0-GoDaddy-FULL-BUILD
           rsync -a --exclude='.git' --exclude='node_modules' --exclude='dist' ./ dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/
+          # rsync excludes node_modules globally; restore the exact pinned browser SDK.
+          mkdir -p dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/.sbc-twilio-sdk/node_modules/@twilio
+          cp -a .sbc-twilio-sdk/node_modules/@twilio/voice-sdk dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/.sbc-twilio-sdk/node_modules/@twilio/
+          test -s dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js
           test -f dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/bootstrap.js
           test -f dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/package.json
           node -e "const p=require('./dist/SBC-V66.0.0-GoDaddy-FULL-BUILD/package.json');if(p.version!=='66.0.0')process.exit(2)"
@@ -46,9 +74,15 @@ jobs:
           unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'package-lock.json'
           unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'bootstrap.js'
           unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip'
+          unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx '.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/package.json'
+          unzip -Z1 SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | grep -qx '.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js'
+          unzip -p SBC-V66.0.0-GoDaddy-FULL-BUILD.zip '.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js' | sha256sum | grep -q '^35d3cb1b22e309f9884724a89250aecd2de4f1556ad7b67a7bc5e06c73dcb74a '
+          sha256sum SBC-V66.0.0-GoDaddy-FULL-BUILD.zip | tee SBC-V66.0.0-GoDaddy-FULL-BUILD.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: SBC-V66.0.0-GoDaddy-FULL-BUILD
-          path: dist/SBC-V66.0.0-GoDaddy-FULL-BUILD.zip
+          path: |
+            dist/SBC-V66.0.0-GoDaddy-FULL-BUILD.zip
+            dist/SBC-V66.0.0-GoDaddy-FULL-BUILD.sha256
           if-no-files-found: error
           retention-days: 14
