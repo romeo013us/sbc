@@ -9,6 +9,7 @@ on:
       - 'scripts/offline-child-guard.test.cjs'
       - 'scripts/offline-readonly-smoke-client.cjs'
       - 'scripts/v6608-real-mysql-crm-gate.cjs'
+      - 'scripts/v6610-lead-workspace-browser.test.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -187,12 +188,24 @@ jobs:
           cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
           node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
           node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
+      - name: Test reconstructed Lead Workspace in real Chromium with synthetic API
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          npm install --prefix .sbc-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+          ./.sbc-browser/node_modules/.bin/playwright install --with-deps chromium
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release
-          rsync -a --exclude='.git' --exclude='.sbc-isolated-runtime' --exclude='.sbc-isolated-reports' --exclude='release' --exclude='node_modules' ./ release/
+          rsync -a --exclude='.git' --exclude='.sbc-browser' --exclude='.sbc-isolated-runtime' --exclude='.sbc-isolated-reports' --exclude='release' --exclude='node_modules' ./ release/
           rsync -a .sbc-twilio-sdk/ release/.sbc-twilio-sdk/
           test -s release/.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js
           cd release
