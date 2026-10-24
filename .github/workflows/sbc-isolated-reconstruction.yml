@@ -10,6 +10,7 @@ on:
       - 'scripts/offline-readonly-smoke-client.cjs'
       - 'scripts/v6608-real-mysql-crm-gate.cjs'
       - 'scripts/v6610-lead-workspace-browser.test.cjs'
+      - 'scripts/v6612-navigation-geometry-browser.test.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -200,6 +201,16 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json
+      - name: Verify desktop and mobile navigation geometry in Chromium
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 90s node scripts/v6612-navigation-geometry-browser.test.cjs | tee .sbc-isolated-reports/navigation-geometry.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
