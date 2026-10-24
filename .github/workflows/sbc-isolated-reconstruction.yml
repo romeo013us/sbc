@@ -8,6 +8,7 @@ on:
       - 'scripts/offline-child-guard.cjs'
       - 'scripts/offline-child-guard.test.cjs'
       - 'scripts/offline-readonly-smoke-client.cjs'
+      - 'scripts/v6608-real-mysql-crm-gate.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -21,6 +22,21 @@ jobs:
   offline-reconstruct:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: disposable_root_ci_only
+          MYSQL_DATABASE: sbc_ci_disposable
+          MYSQL_USER: sbc_ci
+          MYSQL_PASSWORD: disposable_user_ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,7 +103,7 @@ jobs:
             node:22-bookworm-slim node /work/repo/scripts/offline-compile-release.cjs
           node - <<'NODE'
           const r=require('./.sbc-isolated-reports/offline-compile-manifest.json');
-          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==55||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
+          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==56||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
           console.log('PATCHES',r.steps.length,'SERVER_SHA256',r.server_sha256,'HTTP_LINE',r.http_listen[0].line,'MYSQL_LINE',r.mysql_init[0].line);
           NODE
       - name: Prove CRM tenant isolation against synthetic cross-tenant records
@@ -112,6 +128,17 @@ jobs:
             -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
             -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
             node:22-bookworm-slim node /work/target/scripts/v6606-crm-edits-test.js
+      - name: Check stale-write protection for simultaneous CRM editors
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
+            node:22-bookworm-slim node /work/target/scripts/v6607-lead-revision-test.js
       - name: Install locked runtime dependencies for disposable smoke test
         shell: bash
         run: |
@@ -144,6 +171,22 @@ jobs:
               trap "kill $server_pid 2>/dev/null || true" EXIT
               node /work/repo/scripts/offline-readonly-smoke-client.cjs
             '
+      - name: Exercise production CRM handlers against disposable MySQL 8
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_MYSQL_CI_DISPOSABLE: 'yes'
+          SBC_RUNTIME_ROLE: readonly
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: '3306'
+          MYSQL_DATABASE: sbc_ci_disposable
+          MYSQL_USER: sbc_ci
+          MYSQL_PASSWORD: disposable_user_ci_only
+        run: |
+          set -euo pipefail
+          cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
+          node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
+          node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
