@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '66.0.0';
-const HOTFIX_PATCH_ID = 'v6614-voice-call-log-integrity';
+const HOTFIX_PATCH_ID = 'v6615-call-log-mysql-durability';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -329,6 +329,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6612-nav-geometry.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6613-safe-payment-links.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6614-voice-call-log-integrity.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6615-call-log-durable.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
