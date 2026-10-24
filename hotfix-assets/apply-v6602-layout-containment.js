@@ -84,8 +84,8 @@ function apply(root) {
     if(!fs.existsSync(file))continue;
     let html=fs.readFileSync(file,'utf8');
     if(html.includes(MARKER))continue;
-    if(/<\\/body>/i.test(html))html=html.replace(/<\\/body>/i,SCRIPT+'\\n</body>');
-    else if(/<\\/html>/i.test(html))html=html.replace(/<\\/html>/i,SCRIPT+'\\n</html>');
+    if(/<\/body>/i.test(html))html=html.replace(/<\/body>/i,SCRIPT+'\n</body>');
+    else if(/<\/html>/i.test(html))html=html.replace(/<\/html>/i,SCRIPT+'\n</html>');
     else throw new Error(MARKER+': no body/html close tag in '+rel);
     fs.writeFileSync(file,html);
     changed.push(rel);
