@@ -2,7 +2,19 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const MARKER='SBC_V6603_POLLING_LAYOUT_LOCK_GUARD';
-const CSS=`<style id="sbc-v6603-revenue-brain-layout">\n/* SBC_V6603_POLLING_LAYOUT_LOCK_GUARD */\n/* Revenue and ten-brain surfaces belong at the end of the workspace, never beside the nav rail. */\n#app>.main .content>#sbcConsultativeRevenueMount,#app>.main .content>#sbcGodTierBroadcastMount{display:block!important;position:relative!important;inset:auto!important;float:none!important;clear:both!important;order:100!important;flex:0 1 auto!important;width:100%!important;min-width:0!important;max-width:100%!important;margin:18px 0 0!important;box-sizing:border-box!important}\n#app .sbc-godtier-broadcast{width:100%!important;max-width:100%!important;min-width:0!important;padding:12px!important;box-sizing:border-box!important}\n#app .sbc-godtier-broadcast-head{gap:10px!important;align-items:center!important}\n#app .sbc-godtier-broadcast-title{font-size:clamp(14px,1.4vw,19px)!important;line-height:1.25!important}\n#app .sbc-godtier-broadcast-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr))!important;gap:8px!important}\n#app .sbc-godtier-broadcast-metric{min-width:0!important;padding:9px!important}\n#app .sbc-brain-strip{display:flex!important;flex-wrap:wrap!important;gap:5px!important;margin-top:8px!important}\n#app .sbc-brain-chip{font-size:10px!important;line-height:1.25!important;padding:4px 7px!important;max-width:100%!important;overflow-wrap:anywhere!important}\n@media(max-width:760px){#app>.main .content>#sbcConsultativeRevenueMount,#app>.main .content>#sbcGodTierBroadcastMount{margin-top:12px!important}#app .sbc-godtier-broadcast{padding:9px!important}}\n</style>`;
+const CSS=`<style id="sbc-v6603-revenue-brain-layout">
+/* SBC_V6603_POLLING_LAYOUT_LOCK_GUARD */
+/* Revenue and ten-brain surfaces belong at the end of the workspace, never beside the nav rail. */
+#app>.main .content>#sbcConsultativeRevenueMount,#app>.main .content>#sbcGodTierBroadcastMount{display:block!important;position:relative!important;inset:auto!important;float:none!important;clear:both!important;order:100!important;flex:0 1 auto!important;width:100%!important;min-width:0!important;max-width:100%!important;margin:18px 0 0!important;box-sizing:border-box!important}
+#app .sbc-godtier-broadcast{width:100%!important;max-width:100%!important;min-width:0!important;padding:12px!important;box-sizing:border-box!important}
+#app .sbc-godtier-broadcast-head{gap:10px!important;align-items:center!important}
+#app .sbc-godtier-broadcast-title{font-size:clamp(14px,1.4vw,19px)!important;line-height:1.25!important}
+#app .sbc-godtier-broadcast-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr))!important;gap:8px!important}
+#app .sbc-godtier-broadcast-metric{min-width:0!important;padding:9px!important}
+#app .sbc-brain-strip{display:flex!important;flex-wrap:wrap!important;gap:5px!important;margin-top:8px!important}
+#app .sbc-brain-chip{font-size:10px!important;line-height:1.25!important;padding:4px 7px!important;max-width:100%!important;overflow-wrap:anywhere!important}
+@media(max-width:760px){#app>.main .content>#sbcConsultativeRevenueMount,#app>.main .content>#sbcGodTierBroadcastMount{margin-top:12px!important}#app .sbc-godtier-broadcast{padding:9px!important}}
+</style>`;
 function once(s,from,to,label){const n=s.split(from).length-1;if(n!==1)throw new Error(MARKER+': expected exactly one '+label+' anchor, found '+n);return s.replace(from,to)}
 function patchText(file,fn){if(!fs.existsSync(file))return false;const old=fs.readFileSync(file,'utf8');const next=fn(old);if(next===old)return false;fs.writeFileSync(file,next);return true}
 function apply(root){
