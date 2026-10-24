@@ -36,7 +36,11 @@ function pass(name,truth){assert.ok(truth,name);checks.push(name)}
   browser=await playwright.chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   const page=await browser.newPage({viewport:{width:1366,height:850}});
   page.setDefaultTimeout(9000);
+  page.on('pageerror',e=>console.error('NAV_TEST_PAGE_ERROR',e.message));
+  page.on('console',m=>{if(m.type()==='error')console.error('NAV_TEST_CONSOLE_ERROR',m.text());});
+  page.on('response',r=>{if(!r.ok())console.error('NAV_TEST_HTTP',r.status(),r.url());});
   await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'load'});
+  console.log('NAV_FIXTURE_DIAGNOSTIC',JSON.stringify(await page.evaluate(()=>({aside:!!document.querySelector('.sidebar'),app:!!document.querySelector('#app.app'),navScripts:[...document.scripts].map(s=>s.src),loaded:Boolean(document.body.classList.contains('sbc-nav-rail-ready')),sidebarOuter:document.querySelector('.sidebar')?.outerHTML.slice(0,240),htmlClass:document.documentElement.className,bodyClass:document.body.className}))));
   await page.locator('.sbc-nav-rail-toggle').waitFor();
   const metrics=()=>page.evaluate(()=>{
    const aside=document.querySelector('#app > .sidebar'),main=document.querySelector('#app > .main');
