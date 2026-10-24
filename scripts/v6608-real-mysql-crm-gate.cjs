@@ -65,6 +65,30 @@ async function main(){
   yes('other tenant database row unchanged',foreign[0].notes==='Original notes',checks);
   r=response();await withTenant(()=>edit(req('lead_a',{tenantId:2,revision:token}),r));
   yes('arbitrary update field denied',r.code===400,checks);
+  // Run two editors against the same locked SQL row. Exactly one may commit.
+  let refreshed=response();await withTenant(()=>get(req('lead_a'),refreshed));
+  const revision=refreshed.body?.data?.revision;
+  assert.match(revision,/^[a-f0-9]{64}$/);
+  const first=response(),second=response();
+  await Promise.all([
+   withTenant(()=>edit(req('lead_a',{notes:'Concurrent editor one',revision}),first)),
+   withTenant(()=>edit(req('lead_a',{notes:'Concurrent editor two',revision}),second))
+  ]);
+  yes('simultaneous edits: one succeeds, one gets 409',
+    [first.code,second.code].sort().join(',')==='200,409',checks);
+  const [won]=await db.query('SELECT notes FROM sbc_customers WHERE id=?',['lead_a']);
+  yes('concurrent loser cannot overwrite winning edit',
+    ['Concurrent editor one','Concurrent editor two'].includes(won[0].notes),checks);
+  // A missing audit ledger must abort the edit transaction, never commit an unaudited change.
+  const current=response();await withTenant(()=>get(req('lead_a'),current));
+  const freshRevision=current.body?.data?.revision;
+  const preservedNote=won[0].notes;
+  await db.query('DROP TABLE sbc_activities');
+  const attempted=response();
+  await withTenant(()=>edit(req('lead_a',{notes:'MUST ROLL BACK WITHOUT AUDIT',revision:freshRevision}),attempted));
+  yes('MySQL audit write failure rejects edit',attempted.code===503,checks);
+  const [afterFailure]=await db.query('SELECT notes FROM sbc_customers WHERE id=?',['lead_a']);
+  yes('SQL transaction really rolled back after audit failure',afterFailure[0].notes===preservedNote,checks);
   console.log(JSON.stringify({status:'PASS_REAL_MYSQL_8',source:'Original sbc database.sql DDL + explicit historic tenant and assignment ALTERs',database:'disposable',checks},null,2));
  }finally{await db.end()}
 }
