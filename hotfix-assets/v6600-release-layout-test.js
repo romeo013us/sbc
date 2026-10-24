@@ -7,6 +7,9 @@ const cockpitCss=fs.readFileSync(path.join(__dirname,'sbc-v6601-reference-cockpi
 assert.ok(cockpitCss.includes('SBC_V6600_OBSIDIAN_MATRIX'),'scoped obsidian matrix must be present');
 assert.ok(cockpitCss.includes('#app .content .dashboard-card'),'dashboard card layout verified');
 assert.ok(cockpitCss.includes('#app>.sidebar{background-color:#12141c;'),'sidebar treatment must target the existing app shell');
+assert.ok(cockpitCss.includes('sbc-nav-collapsed'),'collapse support verified');
+assert.ok(cockpitCss.includes('flex:0 0 64px!important'),'collapsed sidebar width is explicitly constrained');
+assert.ok(cockpitCss.includes('minmax(min(100%,240px),1fr)'),'dashboard grid uses fluid responsive tracks');
 assert.match(cockpitCss,/border-top:\s*3px solid var\(--sbc-matrix-blue\)/,'accent anchor rule verified; allow harmless CSS whitespace');
 assert.ok(cockpitCss.includes('#app .content .alert-priority-high'),'orange alert accent must be scoped to application content');
 assert.equal(cockpitCss.includes('main,.main-viewport,#sbc-main-viewport'),false,'do not apply broad viewport height overrides');
