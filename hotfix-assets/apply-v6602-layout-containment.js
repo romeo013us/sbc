@@ -6,6 +6,7 @@ const SCRIPT = `<style id="sbc-v6602-layout-containment-css">
 /* Contain late-mounted revenue modules so they cannot become competing root flex columns. */
 #app>#sbcConsultativeRevenueMount,#app>#sbcGodTierBroadcastMount{display:block!important;position:relative!important;inset:auto!important;flex:0 1 auto!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow-wrap:anywhere!important;order:90!important}
 #app>.main>#sbcConsultativeRevenueMount,#app>.main>#sbcGodTierBroadcastMount{flex:0 1 auto!important;width:100%!important;min-width:0!important;max-width:100%!important;margin:18px 0 0!important}
+#app .content>#sbcConsultativeRevenueMount,#app .content>#sbcGodTierBroadcastMount{display:block!important;position:relative!important;inset:auto!important;flex:0 1 auto!important;width:100%!important;min-width:0!important;max-width:100%!important;margin:18px 0 0!important;box-sizing:border-box!important}
 #app .sbc-v6602-ten-brain-compact{display:block!important;position:relative!important;inset:auto!important;float:none!important;clear:both!important;width:min(100%,760px)!important;max-width:760px!important;min-width:0!important;margin:28px auto 0!important;padding:12px!important;box-sizing:border-box!important;overflow-wrap:anywhere!important;transform:none!important}
 #app .sbc-v6602-ten-brain-compact>*{min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
 #app .sbc-v6602-ten-brain-compact h1,#app .sbc-v6602-ten-brain-compact h2,#app .sbc-v6602-ten-brain-compact h3{font-size:clamp(14px,1.6vw,19px)!important;line-height:1.25!important}
@@ -54,11 +55,8 @@ const SCRIPT = `<style id="sbc-v6602-layout-containment-css">
     // Reject broad containers that would relocate the entire workspace.
     if(target===app||target===main||target.classList.contains('content')||target.classList.contains('topbar'))return;
     var content=contentFor(main);
-    if(!content||target===content||content.contains(target)) {
-      target.classList.add('sbc-v6602-ten-brain-compact');
-      target.dataset.sbcV6602BrainMoved='true';
-      return;
-    }
+    if(!content||target===content)return;
+    // appendChild also moves an existing child to the bottom without cloning it or losing handlers.
     content.appendChild(target);
     target.classList.add('sbc-v6602-ten-brain-compact');
     if(target.dataset)target.dataset.sbcV6602BrainMoved='true';
