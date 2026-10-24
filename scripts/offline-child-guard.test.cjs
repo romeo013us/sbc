@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const cp=require('node:child_process');
+const path=require('node:path');
+const target=path.resolve(process.env.SBC_COMPILER_TARGET||'/work/target');
+process.env.SBC_COMPILER_SANDBOX_CONFIRMED='1';
+process.env.SBC_COMPILER_TARGET=target;
+const {allowed}=require('./offline-child-guard.cjs');
+assert.equal(allowed(process.execPath,['--check',target+'/server.js']),true);
+assert.equal(allowed('npm',['install','twilio']),false);
+assert.equal(allowed(process.execPath,['--check','/etc/passwd']),false);
+assert.equal(allowed(process.execPath,['--check',target+'/server.js','--eval','evil']),false);
+assert.equal(allowed(process.execPath,[target+'/scripts/release-bump.js','65.1.21']),true);
+assert.throws(()=>cp.spawnSync('npm',['install']),/OFFLINE_CHILD_PROCESS_DENIED/);
+assert.throws(()=>cp.execSync('echo hi'),/OFFLINE_CHILD_PROCESS_DENIED/);
+console.log('offline-child-guard.test.cjs: 7 checks PASS');
