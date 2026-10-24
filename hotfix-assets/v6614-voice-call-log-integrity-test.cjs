@@ -10,6 +10,7 @@ const line=(needle)=>{
 };
 const getSource=line("app.get('/api/voice/logs',auth,");
 const postSource=line("app.post('/api/voice/log',auth,");
+const serialPrelude=code.split(/\r?\n/).find(x=>x.startsWith('let sbcVoiceLogCommitTailV6615='))||'';
 const app={
   handlers:new Map(),
   get(p,...args){this.handlers.set('GET '+p,args.at(-1))},
@@ -25,9 +26,17 @@ const db={
  callLogs:[]
 };
 const counters={saved:0,audited:0,activities:0};
+let mysqlProofAvailable=true;
+const mysqlPool={async query(sql,params){
+ assert.match(sql,/SELECT JSON_CONTAINS\(/);
+ assert.equal((sql.match(/\?/g)||[]).length,5);
+ assert.equal(params.length,5);
+ const valid=mysqlProofAvailable && db.callLogs.some(log=>log.id===params[0]&&Number(log.tenantId)===Number(params[1])&&log.status===params[2]&&log.notes===params[3]&&log.outcome===params[4]);
+ return [[{confirmed:valid?1:0}],[]];
+}};
 let serial=0;
 const load=new Function('app','auth','db','requireRequestTenant','now','id',
- 'normalizeDialNumber','saveData','audit','addActivity',getSource+'\n'+postSource);
+ 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool',serialPrelude+'\n'+getSource+'\n'+postSource);
 load(app,()=>{},db,
  req=>{if(!Number.isInteger(req.authTenant)||req.authTenant<1)throw Error('AUTHENTICATED_TENANT_REQUIRED');return req.authTenant},
  ()=>new Date('2026-10-24T14:05:09.000Z').toISOString(),
@@ -35,7 +44,8 @@ load(app,()=>{},db,
  value=>String(value||''),
  async()=>{counters.saved++},
  ()=>{counters.audited++},
- ()=>{counters.activities++}
+ ()=>{counters.activities++},
+ mysqlPool
 );
 const post=app.handlers.get('POST /api/voice/log');
 const get=app.handlers.get('GET /api/voice/logs');
