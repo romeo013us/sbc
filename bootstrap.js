@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '66.0.0';
-const HOTFIX_PATCH_ID = 'v6605-crm-tenant-barrier';
+const HOTFIX_PATCH_ID = 'v6606-crm-edit-workflow';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -322,6 +322,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6602-layout-containment.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6603-polling-layout-lock-guard.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6605-crm-tenant-barrier.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6606-crm-edits.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
