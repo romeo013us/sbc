@@ -41,9 +41,9 @@ const SCRIPT = `<style id="sbc-v6602-layout-containment-css">
       var el=candidates[i];
       if(el.dataset&&el.dataset.sbcV6602BrainMoved==='true')continue;
       var t=textOf(el);
-      if(!t||t.length>9000||!/ten[- ]brain|10[- ]brain|10 brains|ten brains|v56134/i.test(t))continue;
-      // Prefer a compact, named module container over broad ancestors containing the whole page.
       var cls=String(el.className&&el.className.baseVal||el.className||'')+' '+String(el.id||'');
+      if((!t||t.length>9000||!/ten[- ]brain|10[- ]brain|10 brains|ten brains|v56134/i.test(t))&&!/ten[- ]brain|10[- ]brain|v56134/i.test(cls))continue;
+      // Prefer a compact, named module container over broad ancestors containing the whole page.
       var named=/brain|intelligence|cognitive|multi.?agent/i.test(cls);
       var childMatch=el.querySelector('h1,h2,h3,h4,[role="heading"]');
       if(named||childMatch)hits.push({el:el,score:(named?5:0)+(childMatch?2:0)+Math.max(0,1000-t.length)/1000});
