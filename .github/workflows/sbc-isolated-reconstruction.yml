@@ -199,6 +199,12 @@ jobs:
           set -euo pipefail
           node --check .sbc-isolated-runtime/scripts/v6619-launch-security-test.cjs
           node .sbc-isolated-runtime/scripts/v6619-launch-security-test.cjs | tee .sbc-isolated-reports/signed-voice-launch-gate.json
+      - name: Verify immutable tenant scope and field whitelist on legacy CRM endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check .sbc-isolated-runtime/scripts/v6620-legacy-crm-tenant-guard-test.cjs
+          node .sbc-isolated-runtime/scripts/v6620-legacy-crm-tenant-guard-test.cjs | tee .sbc-isolated-reports/legacy-crm-tenant-guard.json
       - name: Smoke test actual HTTP boot with no credentials or network
         shell: bash
         run: |
