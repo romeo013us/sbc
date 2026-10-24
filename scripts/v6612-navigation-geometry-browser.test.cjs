@@ -49,7 +49,9 @@ function pass(name,truth){assert.ok(truth,name);checks.push(name)}
     asidePosition:getComputedStyle(aside).position,docWidth:document.documentElement.scrollWidth,viewport:innerWidth,
     asideTransform:getComputedStyle(aside).transform,open:aside.classList.contains('open')};
   });
+  await page.waitForTimeout(300); // allow sidebar/main width transition to finish before geometry assertions
   let m=await metrics();
+  console.log('NAV_DESKTOP_MEASURE',JSON.stringify(m));
   pass('desktop fixed sidebar, no dead-space gap',m.asidePosition==='fixed'&&Math.abs(m.sidebar.left)<2&&Math.abs(m.main.left-m.sidebar.right)<3);
   pass('desktop workspace fills remaining width',Math.abs(m.main.right-m.viewport)<4&&m.docWidth<=m.viewport+3);
   pass('desktop nav items expose accessible names',await page.locator('.sidebar nav button[data-view]:not([aria-label])').count()===0);
