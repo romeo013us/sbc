@@ -10,7 +10,8 @@ const delay=ms=>new Promise(done=>setTimeout(done,ms));
 const report={mode:'readonly-no-credentials',checks:[],status:'INCOMPLETE'};
 async function request(p,method='GET'){
  const resp=await fetch(base+p,{method,headers:method==='POST'?{'content-type':'application/json'}:{},body:method==='POST'?'{}':undefined,signal:AbortSignal.timeout(3000)});
- return {path:p,method,status:resp.status,body:(await resp.text()).slice(0,1200)};
+ const content=await resp.text();
+ return {path:p,method,status:resp.status,bytes:Buffer.byteLength(content),body:content.slice(0,300)};
 }
 async function run(){
  let up=false,last='unreachable';
@@ -23,6 +24,10 @@ async function run(){
  for(const p of ['/healthz','/readyz','/api/health']){
   const r=await request(p);report.checks.push(r);
   if(r.status!==200)throw Error('HEALTH CHECK FAILED: '+p+' '+r.status);
+ }
+ for(const [asset,minBytes] of [['/',1000],['/app.js',10000],['/vendor/sbc-twilio-voice-sdk-2.18.5.min.js',100000]]){
+  const r=await request(asset);report.checks.push(r);
+  if(r.status!==200||r.bytes<minBytes)throw Error('STATIC ASSET FAILED: '+asset+' '+r.status+' '+r.bytes);
  }
  const unauth=await request('/api/money-machine-2/appointment','POST');report.checks.push(unauth);
  if(![401,403,423].includes(unauth.status))throw Error('WRITE WAS NOT BLOCKED BY AUTH OR RECOVERY GUARD: '+unauth.status);
