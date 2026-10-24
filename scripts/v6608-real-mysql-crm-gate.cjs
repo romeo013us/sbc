@@ -21,6 +21,13 @@ async function main(){
   await db.query('ALTER TABLE sbc_customers ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1');
   await db.query("ALTER TABLE sbc_customers ADD COLUMN assigned_to VARCHAR(80) NOT NULL DEFAULT ''");
   await db.query('ALTER TABLE sbc_activities ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1');
+  // Lead-creation columns are added by SBC's later CRM schema migrations.
+  await db.query("ALTER TABLE sbc_customers ADD COLUMN website VARCHAR(500) NOT NULL DEFAULT ''");
+  await db.query("ALTER TABLE sbc_customers ADD COLUMN address VARCHAR(500) NOT NULL DEFAULT ''");
+  await db.query("ALTER TABLE sbc_customers ADD COLUMN industry VARCHAR(120) NOT NULL DEFAULT ''");
+  await db.query('ALTER TABLE sbc_customers ADD COLUMN deal_value DECIMAL(12,2) NOT NULL DEFAULT 0.00');
+  await db.query("ALTER TABLE sbc_customers ADD COLUMN website_status VARCHAR(120) NOT NULL DEFAULT ''");
+  await db.query('ALTER TABLE sbc_customers ADD COLUMN lead_intelligence_json LONGTEXT NULL');
   const [pre]=await db.query('SELECT COUNT(*) count FROM sbc_customers');
   assert.equal(Number(pre[0].count),0,'Refusing nonempty test database');
   for(const [id,tenant] of [['lead_a',1],['lead_b',2]]){
@@ -37,7 +44,8 @@ async function main(){
   registerReads(app,{auth:()=>{},getContext:ctx});
   registerEdits(app,{auth:()=>{},getContext:ctx});
   const get=found.get('GET /api/v6519/crm/leads/:id'),edit=found.get('PATCH /api/v6606/crm/leads/:id');
-  assert.ok(get&&edit,'Required real routes absent');
+  const create=found.get('POST /api/v65110/crm/leads');
+  assert.ok(get&&edit&&create,'Required real routes absent');
   const req=(id,body,tenant=1)=>({params:{id},body,tenantId:tenant,user:{tenantId:tenant,role:'owner',username:'owner'}});
   const withTenant=fn=>runWithTenantContext({tenantId:1,actorId:'ci-owner',role:'owner'},fn);
   let r=response();await withTenant(()=>get(req('lead_a'),r));
@@ -79,6 +87,35 @@ async function main(){
   const [won]=await db.query('SELECT notes FROM sbc_customers WHERE id=?',['lead_a']);
   yes('concurrent loser cannot overwrite winning edit',
     ['Concurrent editor one','Concurrent editor two'].includes(won[0].notes),checks);
+  // New-lead creation must be tenant-authenticated and duplicate-safe under real concurrency.
+  const newLead={businessName:'SBC CI Duplicate Test LLC',contactName:'Taylor',phone:'3055558877',email:'ci-duplicate@example.org',website:'https://example.org',notes:'CI only'};
+  const createReq=(tenant=1)=>({body:{...newLead},tenantId:tenant,user:{role:'owner',tenantId:tenant,username:'owner'}});
+  const firstNew=response(),secondNew=response();
+  await Promise.all([
+   withTenant(()=>create(createReq(1),firstNew)),
+   withTenant(()=>create(createReq(1),secondNew))
+  ]);
+  yes('simultaneous identical creations: exactly one committed',
+    [firstNew.code,secondNew.code].sort().join(',')==='201,409',checks);
+  const [oneCreated]=await db.query('SELECT COUNT(*) total FROM sbc_customers WHERE tenant_id=? AND business_name=?',[1,newLead.businessName]);
+  yes('exactly one duplicate lead exists in tenant A',Number(oneCreated[0].total)===1,checks);
+  const [createEvents]=await db.query('SELECT COUNT(*) total FROM sbc_activities WHERE tenant_id=? AND activity_type=?',[1,'lead_created']);
+  yes('only successful creation has durable activity event',Number(createEvents[0].total)===1,checks);
+  const [lockState]=await db.query('SELECT IS_FREE_LOCK(?) AS available',['sbc_crm_create_tenant_1']);
+  yes('MySQL lead-create mutex released after simultaneous requests',Number(lockState[0].available)===1,checks);
+  const outside=response();await runWithTenantContext({tenantId:2,actorId:'ci-tenant-2',role:'owner'},()=>create(createReq(2),outside));
+  yes('different tenant may own independently named lead',outside.code===201&&outside.body?.tenantId===2,checks);
+  const [twoCreated]=await db.query('SELECT COUNT(*) total FROM sbc_customers WHERE tenant_id=? AND business_name=?',[2,newLead.businessName]);
+  yes('cross-tenant duplicate check does not prevent valid tenant B lead',Number(twoCreated[0].total)===1,checks);
+  const mismatch=response();await withTenant(()=>create(createReq(2),mismatch));
+  yes('session/ALS tenant mismatch fails closed on create',mismatch.code===403,checks);
+  const noTenant=response();await create(createReq(1),noTenant);
+  yes('missing authenticated tenant context fails closed on create',noTenant.code===403,checks);
+  recoveryRequired=true;
+  const held=response();await withTenant(()=>create({...createReq(1),body:{...newLead,businessName:'Recovery must block'}},held));
+  yes('recovery guard denies new lead creation',held.code===423,checks);
+  recoveryRequired=false;
+
   // A missing audit ledger must abort the edit transaction, never commit an unaudited change.
   const current=response();await withTenant(()=>get(req('lead_a'),current));
   const freshRevision=current.body?.data?.revision;
