@@ -11,6 +11,7 @@ on:
       - 'scripts/v6608-real-mysql-crm-gate.cjs'
       - 'scripts/v6610-lead-workspace-browser.test.cjs'
       - 'scripts/v6612-navigation-geometry-browser.test.cjs'
+      - 'scripts/v6613-payment-renderer.test.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -189,6 +190,14 @@ jobs:
           cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
           node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
           node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
+      - name: Render real Payments page with missing and unsafe Square links
+        shell: bash
+        env:
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node --check scripts/v6613-payment-renderer.test.cjs
+          node scripts/v6613-payment-renderer.test.cjs | tee .sbc-isolated-reports/payment-renderer.json
       - name: Test reconstructed Lead Workspace in real Chromium with synthetic API
         shell: bash
         env:
