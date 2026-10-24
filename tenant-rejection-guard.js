@@ -28,7 +28,8 @@ function installTenantRejectionGuard(proc = process, logger = console) {
         if (reason && typeof reason === 'object') {
           if (!logged.has(reason)) {
             logged.add(reason);
-            logger.error('[SBC TENANT CONTEXT GUARD] Tenant-dependent background operation rejected without tenant context; operation failed closed. No tenantless action was authorized. Stack:', reason.stack || String(reason));
+            const stackLine = String(reason.stack || reason).split(/\\r?
+/).slice(0, 7).join(' | ').slice(0, 1200);\n            logger.error('[SBC TENANT CONTEXT GUARD] Tenant-dependent background operation rejected without tenant context; operation failed closed. No tenantless action was authorized. Stack:', stackLine);
           }
         } else {
           logger.error('[SBC TENANT CONTEXT GUARD] Tenant-dependent background operation rejected without tenant context; operation failed closed:', String(reason));
