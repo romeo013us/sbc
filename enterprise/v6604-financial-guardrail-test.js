@@ -7,7 +7,7 @@ const { enforceFinancialGuardrail, toCents } = require('./v6604-financial-guardr
   assert.equal(toCents('9999.99'), 999999);
   let audited = 0;
   const base = {
-    transaction: { tenantId: 'tenant-a', amount: 10000, currency: 'USD', action: 'transfer', nonce: 'n-1' },
+    transaction: { tenantId: 'tenant-a', amount: 10000, currency: 'USD', action: 'transfer', nonce: 'n-1', ownerAuthorization: { challengeId: 'test-challenge', signature: 'test-signature' } },
     authenticatedActor: { id: 'owner-1', role: 'OWNER', tenantId: 'tenant-a' },
     writeAuditEvent: async event => { audited++; assert.equal(event.reason, 'OWNER_AUTHORIZATION_REQUIRED'); }
   };
