@@ -36,7 +36,13 @@ function apply(root) {
     let guardCount = 0;
     server = server.replace(guard, (_match, row, leaseId) => {
       guardCount += 1;
-      return "if(Number(" + row + "&&" + row + ".sessionId)!==" + leaseId + ")throw Object.assign(new Error('writer lease session identity changed'),{code:'SBC_WRITER_LEASE_SESSION_CHANGED'});if(Number(" + row + "&&" + row + ".owner)!==" + leaseId + ")throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_WRITER_LEASE_OWNERSHIP_CHANGED'});";
+      // Only the dedicated lease connection may compare CONNECTION_ID() to
+      // the saved lease session ID. A pooled write connection is intentionally
+      // a different MySQL session; it checks advisory-lock ownership only.
+      const sessionCheck = row === 'r'
+        ? "if(Number(" + row + "&&" + row + ".sessionId)!==" + leaseId + ")throw Object.assign(new Error('writer lease session identity changed'),{code:'SBC_WRITER_LEASE_SESSION_CHANGED'});"
+        : '';
+      return sessionCheck + "if(Number(" + row + "&&" + row + ".owner)!==" + leaseId + ")throw Object.assign(new Error('writer lease ownership changed'),{code:'SBC_WRITER_LEASE_OWNERSHIP_CHANGED'});";
     });
     const lockQueryCount = (server.match(/IS_USED_LOCK\s*\(\s*\?\s*\)\s+(?:AS\s+)?owner/gi) || []).length;
     const sessionQueryCount = (server.match(/CONNECTION_ID\s*\(\s*\)\s+AS\s+sessionId/gi) || []).length;
@@ -44,7 +50,7 @@ function apply(root) {
       const nearby = (server.match(/.{0,80}IS_USED_LOCK.{0,140}/g) || []).slice(0, 4).join(' | ');
       throw new Error(MARKER + ': no lease ownership guards found; lock queries=' + lockQueryCount + '; nearby=' + (nearby || '<none>'));
     }
-    if (lockQueryCount !== guardCount || sessionQueryCount < guardCount) {
+    if (lockQueryCount !== guardCount || sessionQueryCount < 1) {
       throw new Error(MARKER + ': query/guard/session counts mismatch: queries=' + lockQueryCount + ', guards=' + guardCount + ', sessionQueries=' + sessionQueryCount);
     }
     server = server.replace(
@@ -75,6 +81,6 @@ function apply(root) {
   fs.mkdirSync(assets, { recursive: true });
   fs.copyFileSync(__filename, path.join(assets, 'apply-v6570-lease-session-verification.js'));
   fs.copyFileSync(path.join(__dirname, 'v6570-lease-session-verification-test.js'), path.join(assets, 'v6570-lease-session-verification-test.js'));
-  return { marker: MARKER, version: TO, sameSessionConnectionIdChecked: true, advisoryLockOwnerChecked: true, recoveryGateChanged: false, tenantIsolationChanged: false };
+  return { marker: MARKER, version: TO, sameSessionConnectionIdChecked: true, pooledWriteChecksLeaseOwnerOnly: true, advisoryLockOwnerChecked: true, recoveryGateChanged: false, tenantIsolationChanged: false };
 }
 module.exports = { apply, MARKER, FROM, TO };
