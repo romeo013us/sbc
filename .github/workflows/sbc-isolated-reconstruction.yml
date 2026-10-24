@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/offline-compile-release.cjs'
+      - 'docs/SBC-V66-2026-10-24-PRODUCTION-GATES-AND-CRM-ROADMAP.md'
       - 'scripts/offline-child-guard.cjs'
       - 'scripts/offline-child-guard.test.cjs'
       - 'scripts/offline-readonly-smoke-client.cjs'
