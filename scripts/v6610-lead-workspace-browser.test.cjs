@@ -51,6 +51,8 @@ const server=http.createServer((req,res)=>{
  try{
   browser=await playwright.chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   const page=await browser.newPage({viewport:{width:390,height:844},acceptDownloads:true});
+  page.setDefaultTimeout(12000);
+  page.setDefaultNavigationTimeout(15000);
   await page.route('**/*',route=>{
    const u=new URL(route.request().url());
    if(u.hostname!=='127.0.0.1'||Number(u.port)!==port){seen.externalRequests.push(u.origin);return route.abort();}
@@ -84,7 +86,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#slw-form button[type=submit]').click();
   await page.getByText(/Recovery lock is active. Lead retained in browser staging only/i).waitFor();
   assert.equal(seen.create.length,1);
-  const dl=page.waitForEvent('download');
+  const dl=page.waitForEvent('download',{timeout:12000});
   await page.locator('#slw-export').click();
   const download=await dl;
   assert.ok(download.suggestedFilename().endsWith('.csv'),'locked stage CSV download missing');
