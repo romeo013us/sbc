@@ -1,0 +1,59 @@
+/* SBC_V6612_NAV_GEOMETRY: fix the relative rail / fixed-margin collision. */
+:root{--sbc-nav-expanded:260px;--sbc-nav-collapsed:64px;--sbc-nav-width:var(--sbc-nav-expanded)}
+html.sbc-nav-collapsed{--sbc-nav-width:var(--sbc-nav-collapsed)}
+@media(min-width:851px){
+ body.sbc-nav-rail-ready #app.app > aside.sidebar[data-sbc-nav-rail="true"]{
+  position:fixed!important;inset:0 auto 0 0!important;left:0!important;top:0!important;
+  width:var(--sbc-nav-width)!important;min-width:var(--sbc-nav-width)!important;max-width:var(--sbc-nav-width)!important;
+  transform:none!important;z-index:30!important;overflow-x:hidden!important;overflow-y:hidden!important;
+ }
+ body.sbc-nav-rail-ready #app.app > .main{
+  margin-left:var(--sbc-nav-width)!important;
+  width:calc(100% - var(--sbc-nav-width))!important;max-width:none!important;min-width:0!important;
+  box-sizing:border-box!important;transition:margin-left 180ms ease,width 180ms ease;
+ }
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar nav button[data-view]{
+  font-size:0!important;gap:0!important;padding-inline:8px!important;
+  justify-content:center!important;white-space:nowrap!important;
+ }
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar nav button[data-view]>span:first-child{
+  font-size:18px!important;line-height:1.25!important;width:24px!important;min-width:24px!important;
+  flex:0 0 24px!important;display:inline-flex!important;justify-content:center!important;
+ }
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar .brand>div,
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar .sidebar-group-label,
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar .sidebar-bottom>a{display:none!important}
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar .brand{
+  justify-content:center!important;padding:5px 0 12px!important;
+ }
+ html.sbc-nav-collapsed body.sbc-nav-rail-ready .sidebar .brand-logo{width:38px!important;height:38px!important}
+}
+@media(max-width:850px){
+ body.sbc-nav-rail-ready #app.app > .main{
+  margin-left:0!important;width:100%!important;max-width:100%!important;min-width:0!important;
+ }
+ body.sbc-nav-rail-ready #app.app > aside.sidebar[data-sbc-nav-rail="true"]{
+  position:fixed!important;left:0!important;right:auto!important;top:0!important;bottom:0!important;
+  inset:0 auto 0 0!important;width:min(82vw,280px)!important;min-width:0!important;max-width:min(82vw,280px)!important;
+  flex:none!important;transform:translateX(-105%)!important;z-index:1000!important;
+  pointer-events:none!important;overflow-x:hidden!important;overflow-y:hidden!important;
+  transition:transform 180ms ease!important;
+ }
+ body.sbc-nav-rail-ready #app.app > aside.sidebar[data-sbc-nav-rail="true"].open{
+  transform:translateX(0)!important;pointer-events:auto!important;
+ }
+ body.sbc-nav-rail-ready .sidebar nav button[data-view]{
+  font-size:14px!important;justify-content:flex-start!important;gap:10px!important;
+ }
+ body.sbc-nav-rail-ready .sidebar nav button[data-view]>span:first-child{font-size:18px!important}
+ body.sbc-nav-rail-ready .sidebar .brand>div,
+ body.sbc-nav-rail-ready .sidebar .sidebar-group-label,
+ body.sbc-nav-rail-ready .sidebar .sidebar-bottom>a{display:initial!important}
+ body.sbc-nav-rail-ready .sidebar .sbc-nav-rail-toggle{display:none!important}
+ body.sbc-nav-rail-ready .sidebar nav{overflow-y:auto!important;min-height:0!important}
+ body.sbc-nav-rail-ready #mobileMenu{display:inline-flex!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body.sbc-nav-rail-ready #app.app > aside.sidebar[data-sbc-nav-rail="true"],
+ body.sbc-nav-rail-ready #app.app > .main{transition:none!important}
+}
