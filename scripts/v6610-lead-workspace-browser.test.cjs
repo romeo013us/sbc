@@ -87,7 +87,7 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(seen.externalRequests,[]);
   console.log(JSON.stringify({
    status:'PASS_SYNTHETIC_BROWSER_UI',
-   assetSource:'actual 57-patch compiled public JS',
+   assetSource:'actual compiled public JS from the current CI patch manifest',
    scope:'synthetic responses, no live auth, no network providers',
    checks:['list and edit buttons','prefill','revision sent','409 keeps editor open','durable save refreshes list','423 stages rather than claiming DB write','CSV export','mobile viewport controls','no external requests']
   },null,2));
