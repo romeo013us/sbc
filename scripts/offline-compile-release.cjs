@@ -20,7 +20,7 @@ const start=launcher.indexOf('function launch()');
 const end=launcher.indexOf('\ntry {\n  if (process.argv.includes',start);
 if(start<0||end<0)throw Error('REFUSE: launcher boundary unexpected');
 const matches=[...launcher.slice(start,end).matchAll(/require\(path\.join\(__dirname, 'hotfix-assets', '([^']+)'\)\)\.apply\(runtimeDir\)/g)];
-if(matches.length!==56)throw Error('REFUSE: unexpected patch count '+matches.length);
+if(matches.length!==57)throw Error('REFUSE: unexpected patch count '+matches.length);
 const patches=['apply-v65116-hotfix.js',...matches.map(m=>'hotfix-assets/'+m[1])];
 for(const rel of patches)if(rel.includes('..')||path.isAbsolute(rel)||!fs.existsSync(path.join(repo,rel)))throw Error('REFUSE: bad patch '+rel);
 fs.mkdirSync(reports,{recursive:true});
