@@ -16,6 +16,13 @@ function fakeDb() {
         'sbc_idempotency_keys', 'sbc_request_idempotency',
         'sbc_checkout_event_ledger', 'sbc_checkout_webhook_inbox'
       ].map(table_name => ({ table_name }))];
+      if (sql.includes('information_schema.columns') && sql.includes("table_name = 'sbc_orders'")) return [[
+        {column_name:'created_at'},{column_name:'source'},{column_name:'status'},{column_name:'idempotency_key'}
+      ]];
+      if (sql.includes('DATE_FORMAT(created_at')) return [[{hour_bucket:'2026-10-24 19:00',row_count:76}]];
+      if (sql.includes('FROM sbc_orders GROUP BY source')) return [[{group_name:'automation',row_count:76}]];
+      if (sql.includes('FROM sbc_orders GROUP BY status')) return [[{group_name:'draft',row_count:76}]];
+      if (sql.includes('duplicate_order_keys')) return [[{duplicate_groups:0}]];
       if (sql.includes('information_schema.columns') && sql.includes("column_name = 'tenant_id'")) return [[
         { table_name: 'sbc_customers' }, { table_name: 'sbc_orders' }, { table_name: 'sbc_renewals' }
       ]];
@@ -40,6 +47,9 @@ test('audit returns aggregate report and issues only SELECT statements', async (
   assert.equal(report.table_counts.sbc_customers, 7);
   assert.equal(report.tenant_distribution.sbc_customers[0].tenant_id, '1');
   assert.equal(report.duplicate_idempotency_key_groups, 0);
+  assert.equal(report.order_incident.hourly[0].count,76);
+  assert.equal(report.order_incident.source[0].value,'automation');
+  assert.equal(report.order_incident.duplicate_idempotency_groups,0);
   assert.equal(report.safety.data_changed, false);
   assert.ok(db.calls.every(call => /^SELECT\b/i.test(call.sql.trim())), 'every query must be SELECT-only');
 });

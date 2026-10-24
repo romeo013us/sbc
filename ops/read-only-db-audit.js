@@ -52,7 +52,7 @@ async function auditDatabase(db) {
       continue;
     }
     // Identifiers come only from the fixed allowlist above.
-    const [countRows] = await db.query(`SELECT COUNT(*) AS row_count FROM \`${table}\``);
+    const [countRows] = await db.query(`SELECT COUNT(*) AS row_count FROM ${table}`);
     results.table_counts[table] = Number(countRows?.[0]?.row_count ?? 0);
   }
 
@@ -68,7 +68,7 @@ async function auditDatabase(db) {
         results.warnings.push(`No tenant_id column found: ${table}`);
         continue;
       }
-      const [rows] = await db.query(`SELECT CAST(tenant_id AS CHAR) AS tenant_id, COUNT(*) AS row_count FROM \`${table}\` GROUP BY tenant_id ORDER BY tenant_id`);
+      const [rows] = await db.query(`SELECT CAST(tenant_id AS CHAR) AS tenant_id, COUNT(*) AS row_count FROM ${table} GROUP BY tenant_id ORDER BY tenant_id`);
       results.tenant_distribution[table] = rows.map(row => ({
         tenant_id: row.tenant_id === null ? null : String(row.tenant_id),
         row_count: Number(row.row_count)
@@ -88,7 +88,7 @@ async function auditDatabase(db) {
         results.warnings.push(`No status column found: ${table}`);
         continue;
       }
-      const [rows] = await db.query(`SELECT CAST(status AS CHAR) AS state, COUNT(*) AS row_count FROM \`${table}\` GROUP BY status ORDER BY state`);
+      const [rows] = await db.query(`SELECT CAST(status AS CHAR) AS state, COUNT(*) AS row_count FROM ${table} GROUP BY status ORDER BY state`);
       results.status_distribution[table] = rows.map(row => ({
         state: row.state === null ? null : String(row.state),
         row_count: Number(row.row_count)
@@ -107,6 +107,32 @@ async function auditDatabase(db) {
       results.duplicate_idempotency_key_groups = Number(duplicates?.[0]?.duplicate_groups ?? 0);
     } else {
       results.warnings.push('No idempotency_key column found: sbc_checkout_event_ledger');
+    }
+  }
+
+
+  // V66 incident evidence: aggregate orders by timestamp and origin, never return customer/order rows.
+  // Only identifiers discovered in information_schema and the literal allowlist are interpolated.
+  results.order_incident = { hourly: [], source: [], status: [], duplicate_idempotency_groups: null, warnings: [] };
+  if (present.has('sbc_orders')) {
+    const allowed=['created_at','createdAt','created_on','source','status','idempotency_key'];
+    const [orderColumns] = await db.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sbc_orders' AND column_name IN (${allowed.map(() => '?').join(', ')})`, allowed);
+    const available=new Set((orderColumns||[]).map(v=>String(v.column_name)));
+    const stamp=['created_at','createdAt','created_on'].find(key=>available.has(key));
+    if (stamp) {
+      const [hourly] = await db.query(
+        `SELECT DATE_FORMAT(${stamp}, '%Y-%m-%d %H:00') AS hour_bucket, COUNT(*) AS row_count FROM sbc_orders WHERE ${stamp} >= NOW() - INTERVAL 72 HOUR GROUP BY hour_bucket ORDER BY hour_bucket DESC LIMIT 72`);
+      results.order_incident.hourly=(hourly||[]).map(row=>({hour:row.hour_bucket===null?null:String(row.hour_bucket),count:Number(row.row_count)}));
+    } else results.order_incident.warnings.push('No known creation timestamp column on sbc_orders; cannot establish when rows were created.');
+    for(const key of ['source','status']){
+      if(!available.has(key)){results.order_incident.warnings.push('No '+key+' column on sbc_orders');continue;}
+      const [groups] = await db.query(`SELECT CAST(${key} AS CHAR) AS group_name, COUNT(*) AS row_count FROM sbc_orders GROUP BY ${key} ORDER BY row_count DESC LIMIT 50`);
+      results.order_incident[key]=(groups||[]).map(row=>({value:row.group_name===null?null:String(row.group_name).slice(0,80),count:Number(row.row_count)}));
+    }
+    if(available.has('idempotency_key')){
+      const [groups]=await db.query('SELECT COUNT(*) AS duplicate_groups FROM (SELECT idempotency_key FROM sbc_orders WHERE idempotency_key IS NOT NULL GROUP BY idempotency_key HAVING COUNT(*) > 1) AS duplicate_order_keys');
+      results.order_incident.duplicate_idempotency_groups=Number(groups?.[0]?.duplicate_groups??0);
     }
   }
 
