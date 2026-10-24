@@ -31,6 +31,10 @@ async function run(){
  }
  const unauth=await request('/api/money-machine-2/appointment','POST');report.checks.push(unauth);
  if(![401,403,423].includes(unauth.status))throw Error('WRITE WAS NOT BLOCKED BY AUTH OR RECOVERY GUARD: '+unauth.status);
+ const unsignedVoice=await request('/api/voice/twiml','POST');report.checks.push(unsignedVoice);
+ if(![403,415,423,503].includes(unsignedVoice.status))throw Error('PUBLIC_TWIML_MUST_FAIL_CLOSED_WITHOUT_SIGNING_CONFIG '+unsignedVoice.status);
+ const ownerGate=await request('/api/owner/launch-gates');report.checks.push(ownerGate);
+ if(![401,403].includes(ownerGate.status))throw Error('OWNER_LAUNCH_GATE_MUST_REQUIRE_AUTHENTICATION '+ownerGate.status);
  report.status='PASS_READONLY_HTTP_SMOKE';
 }
 run().catch(e=>{report.status='FAIL';report.error=String(e.stack||e);process.exitCode=2}).finally(()=>{
