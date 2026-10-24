@@ -8,6 +8,7 @@ on:
       - 'scripts/offline-child-guard.cjs'
       - 'scripts/offline-child-guard.test.cjs'
       - 'scripts/offline-readonly-smoke-client.cjs'
+      - 'scripts/v6608-real-mysql-crm-gate.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -21,6 +22,21 @@ jobs:
   offline-reconstruct:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: disposable_root_ci_only
+          MYSQL_DATABASE: sbc_ci_disposable
+          MYSQL_USER: sbc_ci
+          MYSQL_PASSWORD: disposable_user_ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -155,6 +171,22 @@ jobs:
               trap "kill $server_pid 2>/dev/null || true" EXIT
               node /work/repo/scripts/offline-readonly-smoke-client.cjs
             '
+      - name: Exercise production CRM handlers against disposable MySQL 8
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_MYSQL_CI_DISPOSABLE: 'yes'
+          SBC_RUNTIME_ROLE: readonly
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: '3306'
+          MYSQL_DATABASE: sbc_ci_disposable
+          MYSQL_USER: sbc_ci
+          MYSQL_PASSWORD: disposable_user_ci_only
+        run: |
+          set -euo pipefail
+          cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
+          node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
+          node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
