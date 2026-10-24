@@ -32,49 +32,53 @@ function apply(root) {
     "const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');\nconst {revisionOfLead}=require('../enterprise/crm-revision-v6607.cjs');\n// " + MARKER,
     'write dependency');
   write = once(write,
-    "if(Object.keys(input).some(key=>!Object.hasOwn(FIELDS,key)))",
-    "if(Object.keys(input).some(key=>key!=='revision'&&!Object.hasOwn(FIELDS,key)))",
-    'allowed body keys');
+    "const keys=Object.keys(body);\n   if(!keys.length)throw Object.assign(new Error('EMPTY_EDIT'),{code:'EMPTY_EDIT'});",
+    "const keys=Object.keys(body).filter(key=>key!=='revision');\n   if(typeof body.revision!=='string'||!(/^[a-f0-9]{64}$/).test(body.revision))throw Object.assign(new Error('LEAD_REVISION_REQUIRED'),{code:'LEAD_REVISION_REQUIRED'});\n   if(!keys.length)throw Object.assign(new Error('EMPTY_EDIT'),{code:'EMPTY_EDIT'});",
+    'require revisions and preserve approved keys');
   write = once(write,
-    "if(!Object.keys(input).length)throw Object.assign(new Error('EMPTY_EDIT'),{code:'EMPTY_EDIT'});",
-    "const suppliedRevision=input.revision;\n   if(typeof suppliedRevision!=='string'||!(/^[a-f0-9]{64}$/).test(suppliedRevision))throw Object.assign(new Error('LEAD_REVISION_REQUIRED'),{code:'LEAD_REVISION_REQUIRED'});\n   if(!Object.keys(input).some(key=>Object.hasOwn(FIELDS,key)))throw Object.assign(new Error('EMPTY_EDIT'),{code:'EMPTY_EDIT'});",
-    'required revision');
+    "const [matched]=await conn.query('SELECT id,assigned_to FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);",
+    "const [matched]=await conn.query('SELECT id,assigned_to,contact_name,phone,email,status,notes,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);",
+    'read full locked lead');
   write = once(write,
-    "const [matching]=await conn.query('SELECT id,assigned_to FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);",
-    "const [matching]=await conn.query('SELECT id,assigned_to,contact_name,phone,email,status,notes,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);",
-    'locked lead snapshot');
+    "const actor=String(req.user?.username||req.user?.name||'').trim();",
+    "if(revisionOfLead(matched[0])!==req.body.revision){\n    await conn.rollback();tx=false;return deny(res,409,'LEAD_STALE_REVISION');\n   }\n   const actor=String(req.user?.username||req.user?.name||'').trim();",
+    'reject stale form before mutation');
   write = once(write,
-    "if(role==='caller'&&(!actor||String(matching[0].assigned_to||'').trim()!==actor)){",
-    "if(revisionOfLead(matching[0])!==req.body.revision){\n    await conn.rollback();transaction=false;return res.status(409).json({ok:false,code:'LEAD_STALE_REVISION',message:'Lead changed since you opened it. Reload before saving; no change was made.'});\n   }\n   if(role==='caller'&&(!actor||String(matching[0].assigned_to||'').trim()!==actor)){",
-    'check revision under lock');
-  write = once(write,
-    "if(!Array.isArray(verified)||verified.length!==1||Number(verified[0].tenant_id)!==tenant)throw Object.assign(new Error('LEAD_EDIT_READBACK_FAILED'),{code:'LEAD_EDIT_READBACK_FAILED'});",
-    "if(!Array.isArray(verified)||verified.length!==1||Number(verified[0].tenant_id)!==tenant)throw Object.assign(new Error('LEAD_EDIT_READBACK_FAILED'),{code:'LEAD_EDIT_READBACK_FAILED'});\n   for(const edit of edits){if(String(verified[0][edit.column]??'')!==edit.value)throw Object.assign(new Error('LEAD_EDIT_READBACK_MISMATCH'),{code:'LEAD_EDIT_READBACK_MISMATCH'});}",
-    'verify all written values');
+    "if(!Array.isArray(verified)||verified.length!==1||Number(verified[0].tenant_id)!==tenant)\n    throw Error('LEAD_EDIT_READBACK_FAILED');",
+    "if(!Array.isArray(verified)||verified.length!==1||Number(verified[0].tenant_id)!==tenant)\n    throw Error('LEAD_EDIT_READBACK_FAILED');\n   for(const edit of edits){if(String(verified[0][edit.column]??'')!==edit.value)throw Error('LEAD_EDIT_READBACK_MISMATCH');}",
+    'confirm durable fields');
   write = once(write,
     "data:verified[0],updatedFields:edits.map(x=>x.key)",
     "data:{...verified[0],revision:revisionOfLead(verified[0])},updatedFields:edits.map(x=>x.key)",
     'return updated revision');
   ui = once(ui,
     "let activeId=null;",
-    "let activeId=null,activeRevision=null;\n  dialog.addEventListener('close',()=>{activeId=null;activeRevision=null});",
-    'editor state');
+    "let activeId=null,activeRevision=null;",
+    'editor revision variable');
   ui = once(ui,
-    "event.preventDefault();activeId=button.dataset.sbcLeadEditId;",
-    "event.preventDefault();activeId=button.dataset.sbcLeadEditId;activeRevision=null;",
-    'reset revision on open');
+    "dlg.addEventListener('close',()=>{activeId=null});",
+    "dlg.addEventListener('close',()=>{activeId=null;activeRevision=null});",
+    'clear revision on close');
   ui = once(ui,
-    "if(String(row.id)!==activeId)throw new Error('CRM_IDENTITY_MISMATCH');",
-    "if(String(row.id)!==activeId)throw new Error('CRM_IDENTITY_MISMATCH');\n    if(typeof row.revision!=='string'||!(/^[a-f0-9]{64}$/).test(row.revision))throw new Error('CRM_REVISION_MISSING');\n    activeRevision=row.revision;",
-    'store current revision');
+    "activeId=button.dataset.sbcLeadEditId;",
+    "activeId=button.dataset.sbcLeadEditId;activeRevision=null;",
+    'clear revision on new record');
   ui = once(ui,
-    "const data=Object.fromEntries(new FormData(form).entries());",
-    "const data=Object.fromEntries(new FormData(form).entries());\n    if(!activeRevision)throw new Error('CRM_REVISION_MISSING');\n    data.revision=activeRevision;",
+    "if(activeId!==requestedId||String(data.data.id)!==requestedId)throw Error('CRM_IDENTITY_MISMATCH');",
+    "if(activeId!==requestedId||String(data.data.id)!==requestedId)throw Error('CRM_IDENTITY_MISMATCH');\n    if(typeof data.data.revision!=='string'||!(/^[a-f0-9]{64}$/).test(data.data.revision))throw Error('CRM_REVISION_MISSING');\n    activeRevision=data.data.revision;",
+    'require server revision on load');
+  ui = once(ui,
+    "const response=await fetch('/api/v6606/crm/leads/'+encodeURIComponent(activeId),{",
+    "if(!activeRevision)throw Error('CRM_REVISION_MISSING');\n    const response=await fetch('/api/v6606/crm/leads/'+encodeURIComponent(activeId),{",
+    'deny saves without revision');
+  ui = once(ui,
+    "body:JSON.stringify(Object.fromEntries(new FormData(form).entries()))",
+    "body:JSON.stringify({...Object.fromEntries(new FormData(form).entries()),revision:activeRevision})",
     'send revision');
   ui = once(ui,
-    "if(reply.status===423)throw new Error('RECOVERY_LOCK_ACTIVE — changes were not saved.');",
-    "if(reply.status===423)throw new Error('RECOVERY_LOCK_ACTIVE — changes were not saved.');\n     if(reply.status===409)throw new Error('This lead was changed elsewhere. Close and reopen it to refresh; no newer notes were overwritten.');",
-    'conflict message');
+    "if(!response.ok||!result.ok||result.durable!==true)throw Error(response.status===423?'RECOVERY_LOCK_ACTIVE — record was not saved.':result.code||'SAVE_FAILED');",
+    "if(!response.ok||!result.ok||result.durable!==true)throw Error(response.status===423?'RECOVERY_LOCK_ACTIVE — record was not saved.':response.status===409?'This lead changed elsewhere. Close and reopen to refresh; newer notes have not been overwritten.':result.code||'SAVE_FAILED');",
+    'stale-save message');
   // All anchors validated before touching reconstructed runtime.
   const revision = path.join(root,'enterprise/crm-revision-v6607.cjs');
   const test = path.join(root,'scripts/v6607-lead-revision-test.js');
