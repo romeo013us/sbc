@@ -30,8 +30,7 @@ function apply(root){
   "await saveData();res.status(isNew?201:200).json({ok:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt})",
   "await saveData();"+
   "if(!mysqlPool)throw Object.assign(new Error('VOICE_LOG_MYSQL_NOT_AVAILABLE'),{code:'VOICE_LOG_NOT_DURABLE'});"+
-  "const [durabilityRows]=await mysqlPool.query("+
-  "'SELECT JSON_CONTAINS(payload,JSON_OBJECT(\\'id\\',?,\\'tenantId\\',?,\\'status\\',?,\\'notes\\',?,\\'outcome\\',?),\\'$.callLogs\\') AS confirmed FROM sbc_workspace WHERE id=1',"+
+  "const [durabilityRows]=await mysqlPool.query("+JSON.stringify("SELECT JSON_CONTAINS(payload,JSON_OBJECT('id',?,'tenantId',?,'status',?,'notes',?,'outcome',?),'$.callLogs') AS confirmed FROM sbc_workspace WHERE id=1")+","+
   "[log.id,Number(tenantId),log.status,log.notes,log.outcome]);"+
   "if(Number(durabilityRows?.[0]?.confirmed)!==1)throw Object.assign(new Error('VOICE_LOG_MYSQL_NOT_DURABLE'),{code:'VOICE_LOG_NOT_DURABLE'});"+
   "res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt})",
