@@ -19,7 +19,7 @@ function apply(root){
   'dialog state');
  s=once(s,
   "dlg.addEventListener('close',()=>{activeId=null;activeRevision=null});",
-  "dlg.addEventListener('close',()=>{openSequence++;activeId=null;activeRevision=null;});",
+  "dlg.addEventListener('close',()=>{if(!dlg.open){openSequence++;activeId=null;activeRevision=null;}});",
   'invalidate pending requests on close');
  s=once(s,
   "activeId=button.dataset.sbcLeadEditId;activeRevision=null;",
