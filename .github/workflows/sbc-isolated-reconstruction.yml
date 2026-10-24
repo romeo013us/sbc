@@ -13,6 +13,7 @@ on:
       - 'scripts/v6612-navigation-geometry-browser.test.cjs'
       - 'scripts/v6613-payment-renderer.test.cjs'
       - 'scripts/v6616-integrated-release-gate.cjs'
+      - 'scripts/v6618-real-mysql-lease-disconnect.test.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -234,6 +235,22 @@ jobs:
           cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
           node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
           node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
+      - name: Verify writer advisory lease survives MySQL socket turnover without concurrent owner
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_MYSQL_CI_DISPOSABLE: 'yes'
+          SBC_RUNTIME_ROLE: readonly
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: '3306'
+          MYSQL_DATABASE: sbc_ci_disposable
+          MYSQL_USER: sbc_ci
+          MYSQL_PASSWORD: disposable_user_ci_only
+        run: |
+          set -euo pipefail
+          cp scripts/v6618-real-mysql-lease-disconnect.test.cjs .sbc-isolated-runtime/scripts/
+          node --check .sbc-isolated-runtime/scripts/v6618-real-mysql-lease-disconnect.test.cjs
+          node .sbc-isolated-runtime/scripts/v6618-real-mysql-lease-disconnect.test.cjs | tee .sbc-isolated-reports/real-mysql-writer-lease.json
       - name: Render real Payments page with missing and unsafe Square links
         shell: bash
         env:
