@@ -25,7 +25,7 @@ async function run(){
   if(r.status!==200)throw Error('HEALTH CHECK FAILED: '+p+' '+r.status);
  }
  const unauth=await request('/api/money-machine-2/appointment','POST');report.checks.push(unauth);
- if(![401,403].includes(unauth.status))throw Error('UNAUTHENTICATED WRITE NOT DENIED: '+unauth.status);
+ if(![401,403,423].includes(unauth.status))throw Error('WRITE WAS NOT BLOCKED BY AUTH OR RECOVERY GUARD: '+unauth.status);
  report.status='PASS_READONLY_HTTP_SMOKE';
 }
 run().catch(e=>{report.status='FAIL';report.error=String(e.stack||e);process.exitCode=2}).finally(()=>{
