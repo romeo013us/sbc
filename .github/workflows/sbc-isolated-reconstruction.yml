@@ -1,0 +1,112 @@
+name: SBC Offline Reconstruction Evidence Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/offline-compile-release.cjs'
+      - 'scripts/offline-child-guard.cjs'
+      - 'scripts/offline-child-guard.test.cjs'
+      - '.github/workflows/sbc-isolated-reconstruction.yml'
+      - 'bootstrap.js'
+      - 'hotfix-assets/**'
+      - 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source checkpoint and compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor bf6bd505e65bb6920ea5b2b80aff3040ae69060a HEAD
+          echo 'a3241c86ab59c9242f06552ed8055b67b08daab006f96027f1cc43ed600ec159  SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip' | sha256sum -c -
+          node --check scripts/offline-compile-release.cjs
+          node --check scripts/offline-child-guard.cjs
+          node scripts/offline-child-guard.test.cjs
+      - name: Pre-fetch exact Twilio browser SDK (network permitted only here)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix .sbc-twilio-sdk --no-save --ignore-scripts --no-audit --no-fund '@twilio/voice-sdk@2.18.5'
+          node - <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const p=require('./.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/package.json');
+          const file='.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js';
+          if(p.version!=='2.18.5'||fs.statSync(file).size<100000)throw Error('Real pinned SDK not installed');
+          console.log('REAL_TWILIO_SDK_SHA256='+crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'));
+          NODE
+      - name: Extract frozen baseline safely into disposable directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import zipfile,pathlib,stat
+          dst=pathlib.Path('.sbc-isolated-runtime');dst.mkdir(exist_ok=False)
+          z=zipfile.ZipFile('SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip')
+          if len(z.infolist())>4000 or sum(f.file_size for f in z.infolist())>200000000:raise SystemExit('Unsafe archive size')
+          for f in z.infolist():
+              name=pathlib.PurePosixPath(f.filename)
+              if name.is_absolute() or '..' in name.parts or stat.S_IFMT(f.external_attr>>16)==stat.S_IFLNK:raise SystemExit('Unsafe entry '+f.filename)
+              if f.is_dir(): (dst/name).mkdir(parents=True,exist_ok=True)
+              else:
+                  (dst/name).parent.mkdir(parents=True,exist_ok=True)
+                  (dst/name).write_bytes(z.read(f))
+          PY
+          mkdir .sbc-isolated-reports
+      - name: Execute actual patch sequence in network-disabled container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull node:22-bookworm-slim
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -e SBC_COMPILER_REPO=/work/repo \
+            -e SBC_COMPILER_TARGET=/work/target \
+            -e SBC_COMPILER_REPORTS=/work/reports \
+            -e NODE_OPTIONS='--require=/work/repo/scripts/offline-child-guard.cjs' \
+            -v "$PWD:/work/repo:ro" \
+            -v "$PWD/.sbc-isolated-runtime:/work/target:rw" \
+            -v "$PWD/.sbc-isolated-reports:/work/reports:rw" \
+            node:22-bookworm-slim node /work/repo/scripts/offline-compile-release.cjs
+          node - <<'NODE'
+          const r=require('./.sbc-isolated-reports/offline-compile-manifest.json');
+          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==53||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
+          console.log('PATCHES',r.steps.length,'SERVER_SHA256',r.server_sha256,'HTTP_LINE',r.http_listen[0].line,'MYSQL_LINE',r.mysql_init[0].line);
+          NODE
+      - name: Create source candidate with authentic cached SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          rsync -a --exclude='.git' --exclude='.sbc-isolated-runtime' --exclude='.sbc-isolated-reports' --exclude='release' --exclude='node_modules' ./ release/
+          rsync -a .sbc-twilio-sdk/ release/.sbc-twilio-sdk/
+          test -s release/.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js
+          cd release
+          zip -qr ../SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip .
+          cd ..
+          sha256sum SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip > .sbc-isolated-reports/archive.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SBC-P0-EVIDENCE-AND-CANDIDATE
+          path: |
+            .sbc-isolated-reports/
+            SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip
+          if-no-files-found: warn
+          retention-days: 14
