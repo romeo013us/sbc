@@ -12,6 +12,7 @@ on:
       - 'scripts/v6610-lead-workspace-browser.test.cjs'
       - 'scripts/v6612-navigation-geometry-browser.test.cjs'
       - 'scripts/v6613-payment-renderer.test.cjs'
+      - 'scripts/v6616-integrated-release-gate.cjs'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
       - 'bootstrap.js'
       - 'hotfix-assets/**'
@@ -131,6 +132,16 @@ jobs:
             -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
             -v "$PWD/.sbc-isolated-runtime:/work/target:ro" \
             node:22-bookworm-slim node /work/target/scripts/v6615-call-log-durable-test.cjs
+      - name: Validate integrated Payments plus Twilio production-source composition
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node --check scripts/v6616-integrated-release-gate.cjs
+          node scripts/v6616-integrated-release-gate.cjs | tee .sbc-isolated-reports/integrated-release-gate.json
       - name: Prove CRM tenant isolation against synthetic cross-tenant records
         shell: bash
         run: |
