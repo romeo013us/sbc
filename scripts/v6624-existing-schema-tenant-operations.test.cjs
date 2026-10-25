@@ -28,6 +28,8 @@ try {
  ].join('\n'));
  put('enterprise/v56134-ten-brain.js',"  if(action==='CREATE_CHECKOUT'){\n    try{");
  put('enterprise/v56135-kim-mission-controller.js',[
+  "function createController(",
+  "    if(state.running)return {ok:true,skipped:true,reason:'cycle_already_running'};",
   "  async function cycle({limit=MAX_BATCH,reason='scheduled'}={}){",
   "      const candidates=(db?.customers||[]).filter(eligible).filter(c=>!recentMission(c)).slice(0,cap);",
   "      const autonomousOutbound=String(process.env.SBC_KIM_MISSION_AUTONOMOUS_OUTBOUND||'false').toLowerCase()==='true';",
