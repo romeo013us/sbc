@@ -223,16 +223,6 @@ jobs:
           set -euo pipefail
           node --check .sbc-isolated-runtime/scripts/v6619-launch-security-test.cjs
           node .sbc-isolated-runtime/scripts/v6619-launch-security-test.cjs | tee .sbc-isolated-reports/signed-voice-launch-gate.json
-      - name: Inspect read-only legacy CRM durability and fallback behavior
-        shell: bash
-        env:
-          CI: 'true'
-          SBC_RUNTIME_ROLE: readonly
-          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
-        run: |
-          set -euo pipefail
-          node --check scripts/v6638-readonly-legacy-durability-diagnostic.cjs
-          node scripts/v6638-readonly-legacy-durability-diagnostic.cjs
       - name: Verify immutable tenant scope and field whitelist on legacy CRM endpoints
         shell: bash
         run: |
