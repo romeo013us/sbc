@@ -19,6 +19,7 @@ try {
   "  async function reconcilePaidOrders(limit=MAX_BATCH){",
   "    const paid=(db?.orders||[]).filter(o=>/PAID|COMPLETED/i.test(String(o?.paymentStatus||o?.status||''))"
  ].join('\n'));
+ put('routes/v56135-kim-mission.js',"const customer=typeof getCustomer==='function'?getCustomer(req.body?.leadId):null;const out=await c.runMission(customer,req.body?.interactionData||{},req.body?.options||{});\nconst result=await getController().cycle({limit:req.body?.limit||20,reason:req.body?.reason||'manual'});");
  const result=apply(tmp);
  assert.equal(result.ddlWritesAllowed,false);
  assert.equal(result.autonomousEvaluationsCanCreateCheckout,false);
@@ -29,6 +30,7 @@ try {
  assert.match(s,/!sbcWriterLeaseReady/);
  assert.match(fs.readFileSync(path.join(tmp,'enterprise/v56134-ten-brain.js'),'utf8'),/CHECKOUT_REVIEW_REQUIRED/);
  assert.match(fs.readFileSync(path.join(tmp,'enterprise/v56135-kim-mission-controller.js'),'utf8'),/tenantId= null|tenantId=null/);
+ assert.match(fs.readFileSync(path.join(tmp,'routes/v56135-kim-mission.js'),'utf8'),/global\.__SBC_REQUIRE_TENANT\(req\)/);
  assert.throws(()=>apply(tmp),/duplicate patch/);
  console.log('SBC V6624 tenant autonomy / DDL independence test PASS');
 }finally{fs.rmSync(tmp,{recursive:true,force:true})}
