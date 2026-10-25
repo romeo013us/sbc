@@ -116,9 +116,16 @@ jobs:
             node:22-bookworm-slim node /work/repo/scripts/offline-compile-release.cjs
           node - <<'NODE'
           const r=require('./.sbc-isolated-reports/offline-compile-manifest.json');
-          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==78||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
+          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==79||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
           console.log('PATCHES',r.steps.length,'SERVER_SHA256',r.server_sha256,'HTTP_LINE',r.http_listen[0].line,'MYSQL_LINE',r.mysql_init[0].line);
           NODE
+      - name: Audit all compiled source files, routes and static cache invariants
+        shell: bash
+        env:
+          SBC_AUDIT_ALL_JS: '1'
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM 180s node scripts/v6634-full-artifact-static-audit.cjs .sbc-isolated-runtime | tee .sbc-isolated-reports/v6634-full-static-audit.json
       - name: Verify caller notes, terminal states and tenant isolation in actual call-log handlers
         shell: bash
         run: |
