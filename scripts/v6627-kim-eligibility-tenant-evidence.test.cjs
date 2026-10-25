@@ -31,7 +31,12 @@ try{
  "    const evaluation=await tenBrain.evaluate({customer,tenantId:customer.tenantId||1,interactionData});",
  "}"
  ].join('\n');
- const server="MYSQL_RECOVERY_REQUIRED SBC_RUNTIME_WRITER_LEASE_REQUIRED\nconsole.log(JSON.stringify({tenantCustomers:result?.tenantCustomers||0,qualifiedWarmHot:result?.qualifiedWarmHot||0}));";
+ const server=[
+ 'MYSQL_RECOVERY_REQUIRED SBC_RUNTIME_WRITER_LEASE_REQUIRED',
+ "app.get('/api/owner/lead-readiness',auth,ownerOnly,(req,res)=>{",
+ "    res.json({ok:true,version:BUILD_VERSION,recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),...result,note:'Record verification is not proof of consent or identity. This endpoint never promotes, contacts or changes leads.'});",
+ "console.log(JSON.stringify({tenantCustomers:result?.tenantCustomers||0,qualifiedWarmHot:result?.qualifiedWarmHot||0}));"
+ ].join('\n');
  put('enterprise/v56135-kim-mission-controller.js',kim);put('server.js',server);
  const result=apply(root);
  assert.equal(result.verifiedSubstringRemoved,true);
@@ -40,6 +45,11 @@ try{
  assert.doesNotMatch(output,/customer\.tenantId\|\|1/);
  assert.match(output,/Number\.isSafeInteger\(Number\(customer\.tenantId\)\)/);
  assert.match(output,/unresolvedTenantRecords/);
+ const patchedServer=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ assert.match(patchedServer,/SELECT COUNT\(\*\) AS row_count FROM sbc_customers WHERE tenant_id=\?/);
+ assert.match(patchedServer,/tenantHydrationDelta/);
+ assert.match(patchedServer,/lead-readiness',auth,ownerOnly,async/);
+
  const runtime=vm.runInNewContext(output.replace(/async function runMission[\s\S]*$/,''),{});
  assert.equal(runtime,undefined);
  const env={};vm.createContext(env);vm.runInContext(output.replace(/async function runMission[\s\S]*$/,''),env);
