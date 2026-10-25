@@ -73,6 +73,23 @@ function apply(root){
  "const out=await SBC_KIM_MISSION.cycle({limit:20,reason:'kim-mission-autopilot'});",
  "const tenantId=Number(process.env.SBC_AUTOMATION_TENANT_ID);if(!Number.isSafeInteger(tenantId)||tenantId<1||!sbcWriterLeaseReady||MYSQL_RECOVERY_REQUIRED)return;const out=await SBC_KIM_MISSION.cycle({limit:20,reason:'kim-mission-autopilot',tenantId});",
  'pass tenant to Kim cycle');
+
+ // Scope every automatic outreach query before it can select or verify a lead.
+ server=once(server,"async function verifyRevenueLeadPool({limit=250}={}){","async function verifyRevenueLeadPool({limit=250,tenantId=null}={}){",'verification context');
+ server=once(server,"const candidates=(db.customers||[]).filter(revenueVerificationCandidate).filter(c=>{","const candidates=(db.customers||[]).filter(c=>tenantId===null||Number(c?.tenantId)===Number(tenantId)).filter(revenueVerificationCandidate).filter(c=>{",'verification tenant filter');
+ server=once(server,"async function processRevenueFollowups(){","async function processRevenueFollowups({tenantId=null}={}){",'followup context');
+ server=once(server,"const rows=(db.customers||[]).filter(c=>{\n    if(isSbcSyntheticTestRecord(c))return false;","const rows=(db.customers||[]).filter(c=>{\n    if(tenantId!==null&&Number(c?.tenantId)!==Number(tenantId))return false;\n    if(isSbcSyntheticTestRecord(c))return false;",'followup tenant filter');
+ server=once(server,"async function runRevenueFirstPlay({limit=10,reason='press-play'}={}){","async function runRevenueFirstPlay({limit=10,reason='press-play',tenantId=null}={}){",'sales-play tenant context');
+ server=once(server,"const verification=await verifyRevenueLeadPool({limit:250});","const verification=await verifyRevenueLeadPool({limit:250,tenantId});",'tenant verifier call');
+ server=once(server,"const leads=(db.customers||[]).filter(c=>!isSbcSyntheticTestRecord(c)&&['ROUTED_EMAIL','ROUTED_SMS','ROUTED_HUMAN_CALL'].includes(routeRevenueLead(c).route))","const leads=(db.customers||[]).filter(c=>tenantId===null||Number(c?.tenantId)===Number(tenantId)).filter(c=>!isSbcSyntheticTestRecord(c)&&['ROUTED_EMAIL','ROUTED_SMS','ROUTED_HUMAN_CALL'].includes(routeRevenueLead(c).route))",'sales-play tenant selection');
+ server=once(server,"try{ checkout=await REVENUE_SUPERVISOR.createCheckoutForCustomer(c,c.sbcRevenueOfferPackageId); }","try{ /* "+MARKER+": No checkout/order created merely by contacting a lead; confirmed purchase intent requires the separately governed checkout workflow. */ }",'prevent unconsented first-touch orders');
+ server=once(server,"const followups=await processRevenueFollowups();","const tenantId=Number(process.env.SBC_AUTOMATION_TENANT_ID);if(!Number.isSafeInteger(tenantId)||tenantId<1||!sbcWriterLeaseReady||MYSQL_RECOVERY_REQUIRED)return;const followups=await processRevenueFollowups({tenantId});",'scheduled outreach tenant');
+ server=once(server,"const out=await runRevenueFirstPlay({limit,reason:'revenue-autopilot'});","const out=await runRevenueFirstPlay({limit,reason:'revenue-autopilot',tenantId});",'scheduled play scoped');
+ server=once(server,
+ "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && false; /* SBC_V6623_SAFE_AUTOMATION_QUARANTINE: hold unattended outreach until tenant-scoped review */",
+ "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && Number.isSafeInteger(Number(process.env.SBC_AUTOMATION_TENANT_ID)) && Number(process.env.SBC_AUTOMATION_TENANT_ID)>0; /* "+MARKER+": tenant-scoped explicit outbound opt-in */",
+ 'controlled outreach opt-in');
+
  for(const invariant of ['SBC_RUNTIME_WRITER_LEASE_REQUIRED','SBC_V6539_SAFE_NO_DDL_STARTUP','MYSQL_RECOVERY_REQUIRED','function sbcMayAutoEnableDdl(){return false;}'])if(!server.includes(invariant))throw Error(MARKER+': missing invariant '+invariant);
  fs.writeFileSync(serverFile,server);fs.writeFileSync(brainFile,brain);fs.writeFileSync(kimFile,kim);fs.writeFileSync(kimRoutesFile,kimRoutes);
  return {marker:MARKER,ddlWritesAllowed:false,autonomousEvaluationsCanCreateCheckout:false,singleTenantBusinessAdvisory:true,kimRequiresTenantAndOptIn:true};
