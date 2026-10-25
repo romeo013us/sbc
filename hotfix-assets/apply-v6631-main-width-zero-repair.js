@@ -14,7 +14,9 @@ function apply(root){
   css=css.replace(re,'#app.app>.main{flex:1 1 auto!important;min-width:0!important;width:auto!important;max-width:100%!important}');
   // The fixed rail geometry wins after hydration; this base rule must never set main width to zero.
   css+='\n/* '+MARKER+': main width must not collapse before the navigation rail initializes. */\n';
-  if(/#app\.app>\.main\{[^}]*width:0!important/.test(css))throw Error(MARKER+': remaining collapsed main width in '+rel);
+  const residual=/#app\.app>\.main\{[^}]*width:0!important/g;
+  css=css.replace(residual,block=>block.replace(/width:0!important/g,'width:auto!important'));
+  if(residual.test(css))throw Error(MARKER+': remaining collapsed main width in '+rel);
   fs.writeFileSync(file,css);
  }
  return {marker:MARKER,changed:rels,liveDataUnchanged:true,previewWrites:false,navRailPreserved:true};
