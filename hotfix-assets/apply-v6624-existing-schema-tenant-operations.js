@@ -77,13 +77,19 @@ function apply(root){
  // Scope every automatic outreach query before it can select or verify a lead.
  server=once(server,"async function verifyRevenueLeadPool({limit=250}={}){","async function verifyRevenueLeadPool({limit=250,tenantId=null}={}){",'verification context');
  server=once(server,"const candidates=(db.customers||[]).filter(revenueVerificationCandidate).filter(c=>{","const candidates=(db.customers||[]).filter(c=>tenantId===null||Number(c?.tenantId)===Number(tenantId)).filter(revenueVerificationCandidate).filter(c=>{",'verification tenant filter');
+ server=once(server,
+  "function startRevenueAutopilotSupervisor(){ try {\n  const run=async()=>{\n    try{\n      if(db.fantastic4?.autonomous?.paused)return;\n      const tenantId=1;",
+  "function startRevenueAutopilotSupervisor(){ try {\n  const run=async()=>{\n    try{\n      if(db.fantastic4?.autonomous?.paused)return;\n      const tenantId=Number(process.env.SBC_AUTOMATION_TENANT_ID);if(!Number.isSafeInteger(tenantId)||tenantId<1)return;",
+  'prevent supervisor tenant-one fallback');
  server=once(server,"async function processRevenueFollowups(){","async function processRevenueFollowups({tenantId=null}={}){",'followup context');
  server=once(server,"const rows=(db.customers||[]).filter(c=>{\n    if(isSbcSyntheticTestRecord(c))return false;","const rows=(db.customers||[]).filter(c=>{\n    if(tenantId!==null&&Number(c?.tenantId)!==Number(tenantId))return false;\n    if(isSbcSyntheticTestRecord(c))return false;",'followup tenant filter');
  server=once(server,"async function runRevenueFirstPlay({limit=10,reason='press-play'}={}){","async function runRevenueFirstPlay({limit=10,reason='press-play',tenantId=null}={}){",'sales-play tenant context');
  server=once(server,"const verification=await verifyRevenueLeadPool({limit:250});","const verification=await verifyRevenueLeadPool({limit:250,tenantId});",'tenant verifier call');
  server=once(server,"const leads=(db.customers||[]).filter(c=>!isSbcSyntheticTestRecord(c)&&['ROUTED_EMAIL','ROUTED_SMS','ROUTED_HUMAN_CALL'].includes(routeRevenueLead(c).route))","const leads=(db.customers||[]).filter(c=>tenantId===null||Number(c?.tenantId)===Number(tenantId)).filter(c=>!isSbcSyntheticTestRecord(c)&&['ROUTED_EMAIL','ROUTED_SMS','ROUTED_HUMAN_CALL'].includes(routeRevenueLead(c).route))",'sales-play tenant selection');
  server=once(server,"try{ checkout=await REVENUE_SUPERVISOR.createCheckoutForCustomer(c,c.sbcRevenueOfferPackageId); }","try{ /* "+MARKER+": No checkout/order created merely by contacting a lead; confirmed purchase intent requires the separately governed checkout workflow. */ }",'prevent unconsented first-touch orders');
- server=once(server,"const followups=await processRevenueFollowups();","const tenantId=Number(process.env.SBC_AUTOMATION_TENANT_ID);if(!Number.isSafeInteger(tenantId)||tenantId<1||!sbcWriterLeaseReady||MYSQL_RECOVERY_REQUIRED)return;const followups=await processRevenueFollowups({tenantId});",'scheduled outreach tenant');
+ const followupCalls=server.split("const followups=await processRevenueFollowups();");
+ if(followupCalls.length!==3)throw Error(MARKER+': expected exactly two revenue followup call sites, found '+(followupCalls.length-1));
+ server=followupCalls[0]+"const followups=await processRevenueFollowups({tenantId});"+followupCalls[1]+"const tenantId=Number(process.env.SBC_AUTOMATION_TENANT_ID);if(!Number.isSafeInteger(tenantId)||tenantId<1||!sbcWriterLeaseReady||MYSQL_RECOVERY_REQUIRED)return;const followups=await processRevenueFollowups({tenantId});"+followupCalls[2];
  server=once(server,"const out=await runRevenueFirstPlay({limit,reason:'revenue-autopilot'});","const out=await runRevenueFirstPlay({limit,reason:'revenue-autopilot',tenantId});",'scheduled play scoped');
  server=once(server,
  "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && false; /* SBC_V6623_SAFE_AUTOMATION_QUARANTINE: hold unattended outreach until tenant-scoped review */",
