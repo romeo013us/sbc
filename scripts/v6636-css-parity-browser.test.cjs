@@ -19,7 +19,7 @@ const server=http.createServer((req,res)=>{
  res.writeHead(200,{'content-type':'text/css','cache-control':'no-store'});res.end(fs.readFileSync(filename));
 });
 const fake=(css)=>['<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">',
- css.map(src=>'<link rel="stylesheet" href="/'+src.replace(/^\\//,'')+'">').join(''),
+ css.map(src=>'<link rel="stylesheet" href="/'+(src.startsWith('/')?src.slice(1):src)+'">').join(''),
  '</head><body><div id="app" class="app">',
  '<aside class="sidebar"><div class="sidebar-inner"><nav><button>Home</button></nav></div></aside>',
  '<main class="main"><header class="topbar">SBC Command Center</header>',
