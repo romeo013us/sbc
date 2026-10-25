@@ -59,6 +59,8 @@ jobs:
         run: node scripts/v6628-kim-canonical-db-rebind.test.cjs
       - name: Verify CSV import HTTP 200 JSON contract
         run: node scripts/v6629-import-http200-contract.test.cjs
+      - name: Refuse duplicate legacy CSV importer route
+        run: node scripts/v6630-disable-shadowed-legacy-import.test.cjs
       - name: Gate summary
         if: always()
         run: |
