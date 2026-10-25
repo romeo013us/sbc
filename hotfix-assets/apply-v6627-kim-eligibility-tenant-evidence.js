@@ -36,6 +36,18 @@ function apply(root){
   "  return {ok:true,advisoryOnly:true,tenantId:scopedId,tenantCustomers:all.length,",
   "  return {ok:true,advisoryOnly:true,tenantId:scopedId,tenantCustomers:all.length,tenantWarmHot:warmHot.length,unresolvedTenantRecords,",
   'emit aggregate tenant reconciliation counts');
+
+ // Compare owner-visible, tenant-scoped hydrated CRM counts to canonical SQL,
+ // rather than guessing who owns records with missing in-memory tenant metadata.
+ server=once(server,
+  "app.get('/api/owner/lead-readiness',auth,ownerOnly,(req,res)=>{",
+  "app.get('/api/owner/lead-readiness',auth,ownerOnly,async(req,res)=>{",
+  'owner readiness async read-only SQL reconciliation');
+ server=once(server,
+  "    res.json({ok:true,version:BUILD_VERSION,recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),...result,note:'Record verification is not proof of consent or identity. This endpoint never promotes, contacts or changes leads.'});",
+  "    let sqlTenantRecords=null,sqlEvidence='unavailable';try{if(mysqlPool){const [rows]=await mysqlPool.query('SELECT COUNT(*) AS row_count FROM sbc_customers WHERE tenant_id=?',[tenantId]);sqlTenantRecords=Number(rows?.[0]?.row_count??0);sqlEvidence='SELECT_ONLY';}}catch(_){sqlEvidence='query_unavailable';}res.json({ok:true,version:BUILD_VERSION,recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),...result,sqlTenantRecords,sqlEvidence,tenantHydrationDelta:sqlTenantRecords===null?null:sqlTenantRecords-result.totalTenantRecords,note:'Read-only authoritative tenant count; discrepancies require investigation. No record was reassigned, contacted, or changed.'});",
+  'compare MySQL tenant row count with in-memory tenant-scoped customers');
+
  const old="tenantCustomers:result?.tenantCustomers||0,qualifiedWarmHot:result?.qualifiedWarmHot||0";
  const newer="tenantCustomers:result?.tenantCustomers||0,tenantWarmHot:result?.tenantWarmHot||0,unresolvedTenantRecords:result?.unresolvedTenantRecords||0,qualifiedWarmHot:result?.qualifiedWarmHot||0";
  server=once(server,old,newer,'Kim advisory aggregate report');
