@@ -1,6 +1,13 @@
 name: SBC Offline Reconstruction Evidence Gate
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'bootstrap.js'
+      - 'hotfix-assets/**'
+      - 'scripts/offline-compile-release.cjs'
+      - '.github/workflows/sbc-isolated-reconstruction.yml'
   pull_request:
     branches: [main]
     paths:
