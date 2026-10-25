@@ -311,6 +311,16 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 60s node scripts/v6626-delayed-layout-browser.test.cjs | tee .sbc-isolated-reports/delayed-layout-browser.json
+      - name: Verify 10-second deferred production dashboard does not collapse to 12 narrow columns
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 75s node scripts/v6633-ten-second-dashboard-browser.test.cjs | tee .sbc-isolated-reports/ten-second-grid.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
