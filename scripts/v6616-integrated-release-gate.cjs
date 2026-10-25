@@ -15,6 +15,6 @@ test('strict MySQL voice readback is present',()=>{assert.ok(server.includes('SB
 test('voice call activity and auth routes still available',()=>{for(const p of ["/api/voice/logs","/api/voice/log","/api/voice/token"]){assert.ok(server.includes(p),p)}});
 test('browser uses the pinned local Twilio browser SDK',()=>{assert.ok(app.includes('/vendor/sbc-twilio-voice-sdk-2.18.5.min.js'));assert.ok(fs.statSync(path.join(root,'public/vendor/sbc-twilio-voice-sdk-2.18.5.min.js')).size>100000)});
 test('recovery/writer guard intact',()=>{for(const marker of ['MYSQL_RECOVERY_REQUIRED','SBC_RUNTIME_WRITER_LEASE_REQUIRED'])assert.ok(server.includes(marker),marker)});
-test('baseline lead editor and nav release guards remain',()=>{assert.ok(app.includes('SBC_V6613_SAFE_SQUARE_LINKS'));assert.ok(read('public/index.html').includes('sbc-nav-geometry-v6612.css'));assert.ok(fs.existsSync(path.join(root,'public/sbc-lead-edit-v6606.js')))});
+test('baseline lead editor and nav release guards remain',()=>{assert.ok(app.includes('SBC_V6613_SAFE_SQUARE_LINKS'));assert.ok(read('public/index.html').includes('sbc-nav-geometry-v6612.css')||/\/\* source \/sbc-nav-geometry-v6612\.css \*\//.test(read('public/'+(read('public/index.html').match(/href="\/(sbc-v6636-styles\.[a-f0-9]{16}\.css)"/)||[])[1])));assert.ok(fs.existsSync(path.join(root,'public/sbc-lead-edit-v6606.js')))});
 const release={status:'PASS_RELEASE_COMPOSITION',checks,commit:process.env.GITHUB_SHA||'unset',source:'offline reconstructed runtime',productionCertified:false};
 console.log(JSON.stringify(release,null,2));
