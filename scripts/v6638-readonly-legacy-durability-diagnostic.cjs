@@ -11,7 +11,7 @@ for(let i=0;i<lines.length;i++){
   hits.push({line:i+1,source:lines.slice(Math.max(0,i-2),Math.min(lines.length,i+38)).map((v,j)=>String(Math.max(0,i-2)+j+1).padStart(5)+' '+v).join('\n')});
  }
 }
-for(const [n,anchor] of ["create","app.post('/api/customers'"],["edit","app.put('/api/customers/:id'"],["notes","app.post('/api/customers/:id/account-notes'"],["single-delete","app.delete('/api/customers/:id'"],["bulk-delete","app.post('/api/customers/bulk-delete'"]]){
+for(const [n,anchor] of [["create","app.post('/api/customers'"],["edit","app.put('/api/customers/:id'"],["notes","app.post('/api/customers/:id/account-notes'"],["single-delete","app.delete('/api/customers/:id'"],["bulk-delete","app.post('/api/customers/bulk-delete'"]]){
  const i=lines.findIndex(x=>x.includes(anchor));
  if(i>=0)hits.push({route:n,line:i+1,source:lines.slice(i,Math.min(lines.length,i+40)).map((v,j)=>String(i+j+1).padStart(5)+' '+v).join('\n')});
 }
