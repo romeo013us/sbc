@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '66.0.0';
-const HOTFIX_PATCH_ID = 'v6634-versioned-asset-cache-fix';
+const HOTFIX_PATCH_ID = 'v6635-public-checkout-preflight-safety';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -347,6 +347,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6632-remove-floating-lead-import.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6633-deferred-dashboard-grid-collapse.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6634-versioned-asset-cache-fix.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6635-public-checkout-preflight-safety.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
