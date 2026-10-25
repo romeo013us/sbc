@@ -30,6 +30,7 @@ function apply(root){
  part(1,s=>{
   s=once(s,"const c=db.customers.find(x=>x.id===req.params.id);",
    "const c=db.customers.find(x=>x.id===req.params.id&&V6620_LEGACY_CRM.owns(x,requireRequestTenant(req)));",'edit customer tenant scope');
+  s=once(s,"const dup=leadDuplicateMatches(candidate,c.id);","const dup=leadDuplicateMatches(candidate,c.id).filter(m=>V6620_LEGACY_CRM.owns(m.customer,requireRequestTenant(req)));",'edit duplicate tenant isolation');
   s=once(s,"Object.assign(c,req.body||{},{id:c.id,updatedAt:now()});",
    "const unsafe=V6620_LEGACY_CRM.validatePatch(req.body);if(unsafe)return res.status(400).json({ok:false,error:unsafe});Object.assign(c,req.body,{id:c.id,tenantId:c.tenantId,updatedAt:now()});",
    'edit whitelist and immutable tenancy');
