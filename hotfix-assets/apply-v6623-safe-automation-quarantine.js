@@ -15,11 +15,11 @@ function apply(root){
    'unattended six-phase engine');
  server=once(server,
    "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'true').toLowerCase()!=='false';",
-   "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && false; // "+MARKER+": hold unattended outreach until tenant-scoped review",
+   "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && false; /* "+MARKER+": hold unattended outreach until tenant-scoped review */",
    'outreach worker default');
  server=once(server,
    "    const kimMissionEnabled=String(process.env.SBC_KIM_AUTONOMOUS_ROUTINE||'true').toLowerCase()!=='false';",
-   "    const kimMissionEnabled=false; // "+MARKER+": hold unattended mission cycle pending tenant scope review",
+   "    const kimMissionEnabled=false; /* "+MARKER+": hold unattended mission cycle pending tenant scope review */",
    'Kim autonomous worker');
  server=once(server,
    'startMissionControl(); startEliteCloserSupervisor(); startEliteHardeningSupervisor(); startRevenueAutopilotSupervisor(); startRevenueGrowthSupervisor(); startGrowthLedger();',
@@ -27,7 +27,7 @@ function apply(root){
    'unscoped sales supervisors');
  server=once(server,
    "if(String(process.env.SBC_GOD_TIER_REVENUE_ENABLED||'true').toLowerCase()==='false')return;",
-   "if(String(process.env.SBC_GOD_TIER_REVENUE_ENABLED||'false').toLowerCase()!=='true')return; // "+MARKER+": explicit opt-in only",
+   "if(String(process.env.SBC_GOD_TIER_REVENUE_ENABLED||'false').toLowerCase()!=='true')return; /* "+MARKER+": explicit opt-in only */",
    'God Tier reconciliation default');
  engine=once(engine,
    'async function phase4(c){if(c.autopilotCheckoutUrl)return {ok:true,existing:true,url:c.autopilotCheckoutUrl};',
