@@ -45,6 +45,8 @@ jobs:
           node scripts/v6622-observable-background-gates.test.cjs
       - name: Guard against unattended order creation and unscoped revenue workers
         run: node scripts/v6623-safe-automation-quarantine.test.cjs
+      - name: Verify existing-schema tenant advisory and AI checkout intent guard
+        run: node scripts/v6624-existing-schema-tenant-operations.test.cjs
       - name: Gate summary
         if: always()
         run: |

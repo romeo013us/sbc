@@ -15,7 +15,7 @@ const RELEASE_ZIP = path.join(__dirname, 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BL
 const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '66.0.0';
-const HOTFIX_PATCH_ID = 'v6623-safe-automation-quarantine';
+const HOTFIX_PATCH_ID = 'v6624-existing-schema-tenant-operations';
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -336,6 +336,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6621-explicit-ddl-optin.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6622-observable-background-gates.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6623-safe-automation-quarantine.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6624-existing-schema-tenant-operations.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
