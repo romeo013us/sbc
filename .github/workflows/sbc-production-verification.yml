@@ -73,6 +73,8 @@ jobs:
         run: node scripts/v6635-public-checkout-preflight-safety.test.cjs
       - name: Verify canonical stylesheet bundling and browser mirror
         run: node scripts/v6636-canonical-css-bundle.test.cjs
+      - name: Enforce evidence-based Company SaaS Build scorecard logic
+        run: node scripts/sbc-strict-95-release-scorecard.test.cjs
       - name: Gate summary
         if: always()
         run: |
