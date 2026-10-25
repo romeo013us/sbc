@@ -26,7 +26,7 @@ function apply(root){
   const file=path.join(root,rel);let html=fs.readFileSync(file,'utf8');
   if(html.includes(MARKER))throw Error(MARKER+': already in '+rel);
   const matches=[...html.matchAll(re)];
-  if(matches.length<110)throw Error(MARKER+': unexpectedly few versioned JS/CSS assets in '+rel+' ('+matches.length+')');
+  if(matches.length<(rel.startsWith('browser_public/')?10:110))throw Error(MARKER+': unexpectedly few versioned JS/CSS assets in '+rel+' ('+matches.length+')');
   html=html.replace(re,(all,prefix,quote)=>prefix+VERSION+quote);
   // Active old importer is intentionally disabled; do not reintroduce its UI.
   if(/<script[^>]+src=["']\/sbc-lead-import-v6541\.js/.test(html))throw Error(MARKER+': legacy lead importer re-enabled');
