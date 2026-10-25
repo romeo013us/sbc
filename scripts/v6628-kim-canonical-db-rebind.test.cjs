@@ -12,6 +12,7 @@ try{
  put('enterprise/v56135-kim-mission-controller.js',[
   "'use strict';",
   "const VERSION='TEST';",
+  "const MAX_BATCH=20;",
   "function sbcAdvisoryScreen(db,tenantId){return {tenantId,total:db.customers.length}}",
   "function createController({db,saveData,audit,other}={}){",
   "  const state={version:VERSION,lastCycleAt:'',running:false};",
