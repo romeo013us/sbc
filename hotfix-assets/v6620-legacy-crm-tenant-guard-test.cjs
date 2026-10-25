@@ -34,6 +34,7 @@ const parts=routes.map((r,i)=>{const a=server.indexOf(r),b=i+1<routes.length?ser
 test('Create duplicate scan excludes other tenant',parts[0].includes('V6620_LEGACY_CRM.owns(m.customer,requireRequestTenant(req))'));
 test('Owner edits explicitly validate immutable fields',parts[1].includes('V6620_LEGACY_CRM.validatePatch(req.body)'));
 test('Owner customer lookup checks tenant',parts[1].includes('V6620_LEGACY_CRM.owns(x,requireRequestTenant(req))'));
+test('Owner edit duplicate responses never disclose another tenant',parts[1].includes('leadDuplicateMatches(candidate,c.id).filter(m=>V6620_LEGACY_CRM.owns(m.customer,requireRequestTenant(req)))'));
 test('Account note lookup checks tenant',parts[2].includes('V6620_LEGACY_CRM.owns(x,requireRequestTenant(req))'));
 test('Single delete lookup checks tenant',parts[3].includes('V6620_LEGACY_CRM.owns(x,requireRequestTenant(req))'));
 test('Bulk delete selection checks tenant',parts[4].includes('V6620_LEGACY_CRM.owns(c,tenantId)'));
