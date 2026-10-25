@@ -328,6 +328,16 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 75s node scripts/v6633-ten-second-dashboard-browser.test.cjs | tee .sbc-isolated-reports/ten-second-grid.json
+      - name: Compare canonical CSS bundle against all 67 original styles in Chromium
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
