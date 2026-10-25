@@ -7,6 +7,19 @@ try {
  put('server.js',[
   'SBC_RUNTIME_WRITER_LEASE_REQUIRED SBC_V6539_SAFE_NO_DDL_STARTUP MYSQL_RECOVERY_REQUIRED',
   'function sbcMayAutoEnableDdl(){return false;}',
+
+  "async function verifyRevenueLeadPool({limit=250}={}){",
+  "const candidates=(db.customers||[]).filter(revenueVerificationCandidate).filter(c=>{",
+  "async function processRevenueFollowups(){",
+  "const rows=(db.customers||[]).filter(c=>{\n    if(isSbcSyntheticTestRecord(c))return false;",
+  "async function runRevenueFirstPlay({limit=10,reason='press-play'}={}){",
+  "const verification=await verifyRevenueLeadPool({limit:250});",
+  "const leads=(db.customers||[]).filter(c=>!isSbcSyntheticTestRecord(c)&&['ROUTED_EMAIL','ROUTED_SMS','ROUTED_HUMAN_CALL'].includes(routeRevenueLead(c).route))",
+  "try{ checkout=await REVENUE_SUPERVISOR.createCheckoutForCustomer(c,c.sbcRevenueOfferPackageId); }",
+  "const followups=await processRevenueFollowups();",
+  "const out=await runRevenueFirstPlay({limit,reason:'revenue-autopilot'});",
+  "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && false; /* SBC_V6623_SAFE_AUTOMATION_QUARANTINE: hold unattended outreach until tenant-scoped review */",
+
   "initMysql().then(async()=>{if(SBC_RUNTIME_READ_ONLY || !SBC_DDL_ENABLED || !MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED || !sbcWriterLeaseReady){console.warn('[SBC_V6539_SAFE_NO_DDL_STARTUP] startup workers held: DDL opt-in absent, read-only runtime, recovery not evaluated/required, or exclusive writer lease unavailable.');return;}",
   "    const kimMissionEnabled=false; /* SBC_V6623_SAFE_AUTOMATION_QUARANTINE: hold unattended mission cycle pending tenant scope review */",
   "const out=await SBC_KIM_MISSION.cycle({limit:20,reason:'kim-mission-autopilot'});"
@@ -28,6 +41,8 @@ try {
  assert.match(s,/SELECT DISTINCT tenant_id/);
  assert.match(s,/sbcStartExistingSchemaAdvisory/);
  assert.match(s,/SBC_AUTOMATION_TENANT_ID/);
+ assert.match(s,/existing-schema-autopilot/);
+ assert.doesNotMatch(s,/try\{ checkout=await REVENUE_SUPERVISOR\.createCheckoutForCustomer/);
  assert.match(s,/!sbcWriterLeaseReady/);
  assert.match(fs.readFileSync(path.join(tmp,'enterprise/v56134-ten-brain.js'),'utf8'),/CHECKOUT_REVIEW_REQUIRED/);
  assert.match(fs.readFileSync(path.join(tmp,'enterprise/v56135-kim-mission-controller.js'),'utf8'),/tenantId= null|tenantId=null/);
