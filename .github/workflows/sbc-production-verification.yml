@@ -43,6 +43,8 @@ jobs:
           node --test ops/read-only-db-audit.test.js
           node hotfix-assets/v65134-tenant-rejection-guard-test.js
           node scripts/v6622-observable-background-gates.test.cjs
+      - name: Guard against unattended order creation and unscoped revenue workers
+        run: node scripts/v6623-safe-automation-quarantine.test.cjs
       - name: Gate summary
         if: always()
         run: |
