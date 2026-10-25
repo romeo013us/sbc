@@ -16,6 +16,8 @@ try {
   "const verification=await verifyRevenueLeadPool({limit:250});",
   "const leads=(db.customers||[]).filter(c=>!isSbcSyntheticTestRecord(c)&&['ROUTED_EMAIL','ROUTED_SMS','ROUTED_HUMAN_CALL'].includes(routeRevenueLead(c).route))",
   "try{ checkout=await REVENUE_SUPERVISOR.createCheckoutForCustomer(c,c.sbcRevenueOfferPackageId); }",
+  "function startRevenueAutopilotSupervisor(){ try {\n  const run=async()=>{\n    try{\n      if(db.fantastic4?.autonomous?.paused)return;\n      const tenantId=1;",
+  "const followups=await processRevenueFollowups();",
   "const followups=await processRevenueFollowups();",
   "const out=await runRevenueFirstPlay({limit,reason:'revenue-autopilot'});",
   "  const revenueAutopilotEnabled=String(process.env.SBC_REVENUE_AUTOPILOT_ENABLED||'false').toLowerCase()==='true' && false; /* SBC_V6623_SAFE_AUTOMATION_QUARANTINE: hold unattended outreach until tenant-scoped review */",
