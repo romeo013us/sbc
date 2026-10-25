@@ -67,6 +67,7 @@ jobs:
           node --check scripts/offline-child-guard.cjs
           node scripts/offline-child-guard.test.cjs
           node scripts/manifest-identity-validator.test.js
+          node scripts/runtime-build-fingerprint.test.cjs
       - name: Pre-fetch exact Twilio browser SDK (network permitted only here)
         shell: bash
         run: |
