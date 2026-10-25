@@ -63,6 +63,8 @@ jobs:
         run: node scripts/v6630-disable-shadowed-legacy-import.test.cjs
       - name: Verify main dashboard cannot collapse to zero width
         run: node scripts/v6631-main-width-zero-repair.test.cjs
+      - name: Verify removed floating CSV upload controls
+        run: node scripts/v6632-remove-floating-lead-import.test.cjs
       - name: Gate summary
         if: always()
         run: |
