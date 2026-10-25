@@ -55,6 +55,8 @@ jobs:
         run: node scripts/v6626-post-load-layout-single-owner.test.cjs
       - name: Verify Kim explicitly rejects unverified prospects and missing tenants
         run: node scripts/v6627-kim-eligibility-tenant-evidence.test.cjs
+      - name: Verify Kim uses hydrated CRM and rejects stale customer rows
+        run: node scripts/v6628-kim-canonical-db-rebind.test.cjs
       - name: Gate summary
         if: always()
         run: |
