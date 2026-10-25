@@ -16,6 +16,7 @@ const EXPECTED_NAME = 'sbc-business-command-center';
 const SOURCE_VERSION = '65.1.13';
 const EXPECTED_VERSION = '66.0.0';
 const HOTFIX_PATCH_ID = 'v6637-network-only-no-offline-mutation-replay';
+const { buildFingerprint, markerMatches } = require('./scripts/runtime-build-fingerprint.cjs');
 const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function crc32(buf) {
@@ -252,16 +253,22 @@ function launch() {
   if (!fs.existsSync(RELEASE_ZIP)) throw new Error(`Required SBC source ZIP missing: ${path.basename(RELEASE_ZIP)}`);
   const bytes = fs.readFileSync(RELEASE_ZIP);
   const sourceHash = crypto.createHash('sha256').update(bytes).digest('hex');
+  const buildFingerprintHash = buildFingerprint(__dirname);
+  const runtimeIdentity = { sourceHash, version: EXPECTED_VERSION, patchId: HOTFIX_PATCH_ID, buildFingerprint: buildFingerprintHash };
   const runtimeDir = path.join(__dirname, `.sbc-runtime-v${EXPECTED_VERSION}-${sourceHash.slice(0, 12)}`);
   const marker = path.join(runtimeDir, '.sbc-bootstrap-ready.json');
   let validRuntime = false;
   try {
     const m = JSON.parse(fs.readFileSync(marker, 'utf8'));
-    validRuntime = m.sourceHash === sourceHash && m.version === EXPECTED_VERSION && m.patchId === HOTFIX_PATCH_ID && fs.existsSync(path.join(runtimeDir, 'server.js'));
-    if (validRuntime) verifyExtracted(runtimeDir, EXPECTED_VERSION);
+    validRuntime = markerMatches(m, runtimeIdentity) && fs.existsSync(path.join(runtimeDir, 'server.js'));
+    if (validRuntime) {
+      verifyExtracted(runtimeDir, EXPECTED_VERSION);
+      loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
+    }
   } catch { validRuntime = false; }
   const persistState = require(path.join(__dirname, 'persistent-state.js')).persistState;
   if (!validRuntime) {
+    console.log('[SBC ROOT BOOTSTRAP] Runtime cache stale or incomplete; rebuilding from checked source while preserving persistent data.');
     // V65.1.19: adopt any live state BEFORE the folder is deleted, so a rebuild can never wipe it.
     if (fs.existsSync(runtimeDir)) persistState(__dirname, runtimeDir, { reused: true });
     fs.rmSync(runtimeDir, { recursive: true, force: true });
@@ -353,7 +360,7 @@ function launch() {
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
-    fs.writeFileSync(marker, JSON.stringify({ sourceHash, version: pkg.version, patchId: HOTFIX_PATCH_ID, readyAt: new Date().toISOString() }, null, 2));
+    fs.writeFileSync(marker, JSON.stringify({ ...runtimeIdentity, version: pkg.version, readyAt: new Date().toISOString() }, null, 2));
   }
   // V65.1.19: data/ and backups/ live in one permanent folder outside every hashed runtime folder.
   persistState(__dirname, runtimeDir, { reused: validRuntime });

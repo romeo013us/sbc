@@ -32,6 +32,7 @@ jobs:
       - name: Check bootstrap and navigation patch syntax
         run: |
           node --check bootstrap.js
+          node scripts/runtime-build-fingerprint.test.cjs
           node --check hotfix-assets/apply-v6600-release-layout.js
           node --check hotfix-assets/apply-v6574-draggable-nav-rail.js
           node --check hotfix-assets/v6574-draggable-nav-rail.js
