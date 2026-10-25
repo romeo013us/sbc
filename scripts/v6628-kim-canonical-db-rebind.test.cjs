@@ -13,6 +13,8 @@ try{
   "'use strict';",
   "const VERSION='TEST';",
   "const MAX_BATCH=20;",
+  "function eligible(){return true}",
+  "function recentMission(){return false}",
   "function sbcAdvisoryScreen(db,tenantId){return {tenantId,total:db.customers.length}}",
   "function createController({db,saveData,audit,other}={}){",
   "  const state={version:VERSION,lastCycleAt:'',running:false};",
