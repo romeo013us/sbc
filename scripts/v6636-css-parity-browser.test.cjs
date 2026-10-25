@@ -13,7 +13,7 @@ if(original.length<60||original.length>90)throw Error('INVALID_ORIGINAL_CSS_COUN
 if(fs.readFileSync(path.join(mirror,'index.html'),'utf8')!==html)throw Error('SECONDARY_BROWSER_ENTRYPOINT_DIFFERS');
 const server=http.createServer((req,res)=>{
  const name=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname.slice(1));
- if(!/^[a-zA-Z0-9/_-]+\.css$/.test(name)){res.writeHead(404);return res.end('not found')}
+ if(!/^[a-zA-Z0-9/_.-]+\.css$/.test(name)){res.writeHead(404);return res.end('not found')}
  const filename=path.join(pub,name);
  if(!filename.startsWith(pub+path.sep)||!fs.existsSync(filename)){res.writeHead(404);return res.end('missing CSS '+name)}
  res.writeHead(200,{'content-type':'text/css','cache-control':'no-store'});res.end(fs.readFileSync(filename));
