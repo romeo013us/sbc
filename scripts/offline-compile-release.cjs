@@ -74,6 +74,11 @@ try{
   result.steps.push({number:i+1,patch:rel,marker:value?.marker||null,status:'PASSED'});
  }
  new vm.Script(fs.readFileSync(target+'/server.js','utf8'),{filename:'server.js'});
+ // Match the GoDaddy *startup* sequence, not just bootstrap --verify: V6636
+ // removes the original nav <link>, so the final reconstructed asset manifest
+ // must be audited after every patch, including bundling.
+ require(path.join(repo,'scripts/manifest-identity-validator.js')).audit(target, '66.0.0');
+ result.postbundle_manifest_checked=true;
  result.status='PASSED_PATCH_AND_SYNTAX_ONLY';
  save();
  if(result.manifest_error||result.http_listen?.length!==1||result.mysql_init?.length!==1||result.http_listen[0].line>=result.mysql_init[0].line){
