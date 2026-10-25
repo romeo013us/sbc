@@ -34,10 +34,17 @@ const parts=routes.map((r,i)=>{const a=server.indexOf(r),b=i+1<routes.length?ser
 test('Create duplicate scan excludes other tenant',parts[0].includes('V6620_LEGACY_CRM.owns(m.customer,requireRequestTenant(req))'));
 test('Owner edits explicitly validate immutable fields',parts[1].includes('V6620_LEGACY_CRM.validatePatch(req.body)'));
 test('Owner customer lookup checks tenant',parts[1].includes('V6620_LEGACY_CRM.owns(x,requireRequestTenant(req))'));
+test('Owner edit duplicate responses never disclose another tenant',parts[1].includes('leadDuplicateMatches(candidate,c.id).filter(m=>V6620_LEGACY_CRM.owns(m.customer,requireRequestTenant(req)))'));
 test('Account note lookup checks tenant',parts[2].includes('V6620_LEGACY_CRM.owns(x,requireRequestTenant(req))'));
 test('Single delete lookup checks tenant',parts[3].includes('V6620_LEGACY_CRM.owns(x,requireRequestTenant(req))'));
 test('Bulk delete selection checks tenant',parts[4].includes('V6620_LEGACY_CRM.owns(c,tenantId)'));
 test('Bulk delete removal checks tenant',parts[4].includes('!(ids.includes(String(c.id))&&V6620_LEGACY_CRM.owns(c,tenantId))'));
 test('Existing secure direct-MySQL CRM patch route retained',server.includes("require('./routes/crm-edits-v6606')"));
 test('Recovery gate remains intact',server.includes('MYSQL_RECOVERY_REQUIRED')&&server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'));
-console.log(JSON.stringify({status:'PASS_V6620_LEGACY_CRM_TENANT_SAFETY',checks,productionCertified:false,knownLimitation:'legacy saveData error propagation requires further audit'}));
+test('MySQL save failure never silently reports successful persistence',server.includes("throw failed;")&&server.includes("MYSQL_RELATIONAL_COMMIT_FAILED"));
+test('Unsafe local JSON fallback removed from relational failure path',!server.includes('preserving local backup instead of crashing:'));
+for(let i=0;i<5;i++){
+ test('Legacy CRM mutation '+i+' requires live MySQL writer',parts[i].includes('CRM_RELATIONAL_WRITER_UNAVAILABLE'));
+ test('Legacy CRM mutation '+i+' responds with a non-success HTTP status on DB failure',parts[i].includes("status(503).json({ok:false,error:'CRM_RELATIONAL_COMMIT_FAILED'"));
+}
+console.log(JSON.stringify({status:'PASS_V6620_LEGACY_CRM_TENANT_SAFETY',checks,productionCertified:false,knownLimitation:'live GoDaddy write, rollback and stale in-memory state still require operator verification'}));
