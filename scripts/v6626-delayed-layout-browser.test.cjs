@@ -48,9 +48,14 @@ const server=http.createServer((req,res)=>{
     navPresent:!!document.querySelector('#app>.sidebar nav button[data-view="dashboard"]'),
     originalPresent:content.contains(document.getElementById('originalDashboardCard'))};
   });
+  // Wait for the navigation controller's initial 180 ms CSS transition.
+  // Comparing pre-hydration geometry against settled layout is not a valid drift test.
+  await page.waitForFunction(()=>document.body.classList.contains('sbc-nav-rail-ready')&&document.querySelector('#app>.sidebar')?.dataset.sbcNavRailReady==='true');
+  await page.waitForTimeout(350);
   const first=await measure();
   await page.waitForTimeout(3500);
   const final=await measure();
+  console.log('SBC_V6626_LAYOUT_MEASURE',JSON.stringify({first,final}));
   assert.equal(errors.length,0,'no layout JavaScript errors: '+errors.join(' | '));
   assert.equal(final.mountA,'content','consultative card remains in main content');
   assert.equal(final.mountB,'content','revenue card remains in main content');

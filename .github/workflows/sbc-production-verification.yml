@@ -53,6 +53,8 @@ jobs:
         run: node scripts/v6625-lead-readiness-truth.test.cjs
       - name: Verify no delayed DOM reparenting or width rewriting
         run: node scripts/v6626-post-load-layout-single-owner.test.cjs
+      - name: Verify Kim explicitly rejects unverified prospects and missing tenants
+        run: node scripts/v6627-kim-eligibility-tenant-evidence.test.cjs
       - name: Gate summary
         if: always()
         run: |
