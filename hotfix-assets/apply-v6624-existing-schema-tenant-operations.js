@@ -6,8 +6,10 @@ function apply(root){
  const serverFile=path.join(root,'server.js');
  const brainFile=path.join(root,'enterprise/v56134-ten-brain.js');
  const kimFile=path.join(root,'enterprise/v56135-kim-mission-controller.js');
+ const kimRoutesFile=path.join(root,'routes/v56135-kim-mission.js');
  let server=fs.readFileSync(serverFile,'utf8'),brain=fs.readFileSync(brainFile,'utf8'),kim=fs.readFileSync(kimFile,'utf8');
- if(server.includes(MARKER)||brain.includes(MARKER)||kim.includes(MARKER))throw Error(MARKER+': duplicate patch');
+ let kimRoutes=fs.readFileSync(kimRoutesFile,'utf8');
+ if(server.includes(MARKER)||brain.includes(MARKER)||kim.includes(MARKER)||kimRoutes.includes(MARKER))throw Error(MARKER+': duplicate patch');
  // An intelligence evaluation never makes an order or Square checkout. Only an expressly dispatched,
  // consented purchase can reach the existing checkout pathway.
  brain=once(brain,
@@ -35,6 +37,16 @@ function apply(root){
   "    const paid=(db?.orders||[]).filter(o=>/PAID|COMPLETED/i.test(String(o?.paymentStatus||o?.status||''))",
   "    const paid=(db?.orders||[]).filter(o=>tenantId===null||Number(o?.tenantId)===Number(tenantId)).filter(o=>/PAID|COMPLETED/i.test(String(o?.paymentStatus||o?.status||''))",
   'Kim paid order tenant filter');
+
+ // Manual Kim routes also resolve tenant from the authenticated request; never use unscoped lead IDs.
+ kimRoutes=once(kimRoutes,
+  "const customer=typeof getCustomer==='function'?getCustomer(req.body?.leadId):null;const out=await c.runMission(customer,req.body?.interactionData||{},req.body?.options||{});",
+  "const tenantId=global.__SBC_REQUIRE_TENANT(req);const customer=typeof getCustomer==='function'?getCustomer(req.body?.leadId):null;if(!customer||Number(customer.tenantId)!==Number(tenantId))throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED'});const out=await c.runMission(customer,req.body?.interactionData||{},req.body?.options||{});",
+  'manual Kim lead tenant validation');
+ kimRoutes=once(kimRoutes,
+  "reason:req.body?.reason||",
+  "tenantId:global.__SBC_REQUIRE_TENANT(req),reason:req.body?.reason||",
+  'manual Kim cycle tenant argument');
  // Safe single-tenant advisory startup uses only existing tables and runtime state. It never
  // runs migrations, enables DDL, sends outreach, or creates a checkout.
  const anchor="initMysql().then(async()=>{";
@@ -54,7 +66,7 @@ function apply(root){
  "const tenantId=Number(process.env.SBC_AUTOMATION_TENANT_ID);if(!Number.isSafeInteger(tenantId)||tenantId<1||!sbcWriterLeaseReady||MYSQL_RECOVERY_REQUIRED)return;const out=await SBC_KIM_MISSION.cycle({limit:20,reason:'kim-mission-autopilot',tenantId});",
  'pass tenant to Kim cycle');
  for(const invariant of ['SBC_RUNTIME_WRITER_LEASE_REQUIRED','SBC_V6539_SAFE_NO_DDL_STARTUP','MYSQL_RECOVERY_REQUIRED','function sbcMayAutoEnableDdl(){return false;}'])if(!server.includes(invariant))throw Error(MARKER+': missing invariant '+invariant);
- fs.writeFileSync(serverFile,server);fs.writeFileSync(brainFile,brain);fs.writeFileSync(kimFile,kim);
+ fs.writeFileSync(serverFile,server);fs.writeFileSync(brainFile,brain);fs.writeFileSync(kimFile,kim);fs.writeFileSync(kimRoutesFile,kimRoutes);
  return {marker:MARKER,ddlWritesAllowed:false,autonomousEvaluationsCanCreateCheckout:false,singleTenantBusinessAdvisory:true,kimRequiresTenantAndOptIn:true};
 }
 module.exports={apply,MARKER};
