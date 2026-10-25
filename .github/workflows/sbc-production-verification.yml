@@ -67,6 +67,8 @@ jobs:
         run: node scripts/v6632-remove-floating-lead-import.test.cjs
       - name: Verify late dashboard grid collapse regression
         run: node scripts/v6633-deferred-dashboard-grid-collapse.test.cjs
+      - name: Verify immutable cache policy and all static URL revisions
+        run: node scripts/v6634-versioned-asset-cache-fix.test.cjs
       - name: Gate summary
         if: always()
         run: |
