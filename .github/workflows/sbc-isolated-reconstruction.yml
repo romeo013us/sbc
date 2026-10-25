@@ -301,6 +301,16 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 90s node scripts/v6612-navigation-geometry-browser.test.cjs | tee .sbc-isolated-reports/navigation-geometry.json
+      - name: Verify dashboard remains stable after 3.5 seconds of deferred mounts
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 60s node scripts/v6626-delayed-layout-browser.test.cjs | tee .sbc-isolated-reports/delayed-layout-browser.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
