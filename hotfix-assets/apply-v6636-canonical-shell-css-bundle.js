@@ -5,7 +5,7 @@ function apply(root){
  const pub=path.join(root,'public'),mirror=path.join(root,'browser_public'),entry=path.join(pub,'index.html');
  if(!fs.existsSync(entry)||!fs.existsSync(mirror))throw Error(MARKER+': missing public/browser_public');
  let html=fs.readFileSync(entry,'utf8');
- if(html.includes(MARKER))throw Error(MARKER+': patch already applied');
+ if(html.includes('id="sbc-v6636-canonical-styles"'))throw Error(MARKER+': already applied');
  const tag=/<link\b[^>]*\brel=(["'])stylesheet\1[^>]*>/gi;
  const tags=[...html.matchAll(tag)];
  if(tags.length<60||tags.length>90)throw Error(MARKER+': unexpected stylesheet count '+tags.length);
