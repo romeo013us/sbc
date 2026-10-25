@@ -71,6 +71,8 @@ jobs:
         run: node scripts/v6634-versioned-asset-cache-fix.test.cjs
       - name: Verify Square checkout preflight and ambiguous payment-link handling
         run: node scripts/v6635-public-checkout-preflight-safety.test.cjs
+      - name: Verify canonical stylesheet bundling and browser mirror
+        run: node scripts/v6636-canonical-css-bundle.test.cjs
       - name: Gate summary
         if: always()
         run: |
