@@ -116,9 +116,14 @@ jobs:
             node:22-bookworm-slim node /work/repo/scripts/offline-compile-release.cjs
           node - <<'NODE'
           const r=require('./.sbc-isolated-reports/offline-compile-manifest.json');
-          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==80||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
+          if(r.status!=='PASSED_PATCH_AND_SYNTAX_ONLY'||r.steps.length!==81||r.http_listen?.length!==1||r.mysql_init?.length!==1||r.http_listen[0].line>=r.mysql_init[0].line||!r.sdk_bundle_sha256)throw Error('P0 evidence gate failed');
           console.log('PATCHES',r.steps.length,'SERVER_SHA256',r.server_sha256,'HTTP_LINE',r.http_listen[0].line,'MYSQL_LINE',r.mysql_init[0].line);
           NODE
+      - name: Enforce frozen frontend bundle and static-asset budgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v6636-frontend-freeze-budget.cjs .sbc-isolated-runtime | tee .sbc-isolated-reports/v6636-frontend-budget.json
       - name: Audit all compiled source files, routes and static cache invariants
         shell: bash
         env:
@@ -328,6 +333,16 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 75s node scripts/v6633-ten-second-dashboard-browser.test.cjs | tee .sbc-isolated-reports/ten-second-grid.json
+      - name: Compare canonical CSS bundle against all 67 original styles in Chromium
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
