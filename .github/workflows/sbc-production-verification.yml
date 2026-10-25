@@ -57,6 +57,8 @@ jobs:
         run: node scripts/v6627-kim-eligibility-tenant-evidence.test.cjs
       - name: Verify Kim uses hydrated CRM and rejects stale customer rows
         run: node scripts/v6628-kim-canonical-db-rebind.test.cjs
+      - name: Verify CSV import HTTP 200 JSON contract
+        run: node scripts/v6629-import-http200-contract.test.cjs
       - name: Gate summary
         if: always()
         run: |
