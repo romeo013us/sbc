@@ -15,6 +15,7 @@ try {
  put('enterprise/v56135-kim-mission-controller.js',[
   "  async function cycle({limit=MAX_BATCH,reason='scheduled'}={}){",
   "      const candidates=(db?.customers||[]).filter(eligible).filter(c=>!recentMission(c)).slice(0,cap);",
+  "      const autonomousOutbound=String(process.env.SBC_KIM_MISSION_AUTONOMOUS_OUTBOUND||'false').toLowerCase()==='true';",
   "      const fulfillment=await reconcilePaidOrders(cap);",
   "  async function reconcilePaidOrders(limit=MAX_BATCH){",
   "    const paid=(db?.orders||[]).filter(o=>/PAID|COMPLETED/i.test(String(o?.paymentStatus||o?.status||''))"
