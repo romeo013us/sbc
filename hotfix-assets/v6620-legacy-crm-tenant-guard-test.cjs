@@ -40,4 +40,10 @@ test('Bulk delete selection checks tenant',parts[4].includes('V6620_LEGACY_CRM.o
 test('Bulk delete removal checks tenant',parts[4].includes('!(ids.includes(String(c.id))&&V6620_LEGACY_CRM.owns(c,tenantId))'));
 test('Existing secure direct-MySQL CRM patch route retained',server.includes("require('./routes/crm-edits-v6606')"));
 test('Recovery gate remains intact',server.includes('MYSQL_RECOVERY_REQUIRED')&&server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'));
-console.log(JSON.stringify({status:'PASS_V6620_LEGACY_CRM_TENANT_SAFETY',checks,productionCertified:false,knownLimitation:'legacy saveData error propagation requires further audit'}));
+test('MySQL save failure never silently reports successful persistence',server.includes("throw failed;")&&server.includes("MYSQL_RELATIONAL_COMMIT_FAILED"));
+test('Unsafe local JSON fallback removed from relational failure path',!server.includes('preserving local backup instead of crashing:'));
+for(let i=0;i<5;i++){
+ test('Legacy CRM mutation '+i+' requires live MySQL writer',parts[i].includes('CRM_RELATIONAL_WRITER_UNAVAILABLE'));
+ test('Legacy CRM mutation '+i+' responds with a non-success HTTP status on DB failure',parts[i].includes("status(503).json({ok:false,error:'CRM_RELATIONAL_COMMIT_FAILED'"));
+}
+console.log(JSON.stringify({status:'PASS_V6620_LEGACY_CRM_TENANT_SAFETY',checks,productionCertified:false,knownLimitation:'live GoDaddy write, rollback and stale in-memory state still require operator verification'}));
