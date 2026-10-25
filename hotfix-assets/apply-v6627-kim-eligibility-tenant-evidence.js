@@ -16,10 +16,13 @@ function apply(root){
   "  return (verification.includes('verified')||verification==='passed'||c.verified===true) && (temp==='warm'||temp==='hot');",
   "  return strictVerified(c) && (temp==='warm'||temp==='hot'); // "+MARKER+": 'unverified' must never count as verified",
   'unsafe substring verification');
- kim=once(kim,
-  "tenantId:customer.tenantId||1,interactionData",
-  "tenantId:Number(customer.tenantId),interactionData",
-  'remove implicit tenant-one Kim mission fallback');
+ const legacyTenantFallback="tenantId:customer.tenantId||1,interactionData";
+ if(kim.includes(legacyTenantFallback)){
+  kim=once(kim,legacyTenantFallback,"tenantId:Number(customer.tenantId),interactionData",'remove implicit tenant-one Kim mission fallback');
+ }
+ // Earlier hardening patches may already have replaced the legacy expression.
+ // The mandatory pre-mutation tenant check below remains authoritative in either case.
+ if(kim.includes(legacyTenantFallback))throw Error(MARKER+': legacy tenant fallback remains');
  kim=once(kim,
   "    if(!customer)throw new Error('Customer is required.');",
   "    if(!customer)throw new Error('Customer is required.');\n    if(!Number.isSafeInteger(Number(customer.tenantId))||Number(customer.tenantId)<1)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED'});",
