@@ -96,6 +96,8 @@ function apply(root){
   changed.push(...masterInteractions.changed);
   const scopedRevenue=require('./apply-v6648-tenant-revenue-scope.js').apply(root);
   changed.push(...scopedRevenue.files);
+  const durableOwnerActions=require('./apply-v6649-durable-owner-actions.js').apply(root);
+  changed.push(...durableOwnerActions.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
