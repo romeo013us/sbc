@@ -413,6 +413,7 @@ jobs:
         run: |
           set -euo pipefail
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6651-fulfillment-evidence-consistency.test.cjs | tee .sbc-isolated-reports/v6651-paid-fulfillment-gate.log
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6652-manual-payment-proof.test.cjs | tee .sbc-isolated-reports/v6652-no-phantom-manual-payment.log
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:
