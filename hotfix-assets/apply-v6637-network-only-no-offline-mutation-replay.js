@@ -114,6 +114,8 @@ function apply(root){
   changed.push(...inboundTruth.files);
   const portalSessions=require('./apply-v6661-portal-session-security.js').apply(root);
   changed.push(...portalSessions.files);
+  const clientHub=require('./apply-v6662-client-hub-boundaries.js').apply(root);
+  changed.push(...clientHub.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
