@@ -84,6 +84,8 @@ function apply(root){
   changed.push(...fulfillment.files);
   const mission=require('./apply-v6642-kim-mission-financial-governance.js').apply(root);
   changed.push(...mission.files);
+  const kevin=require('./apply-v6643-kevin-durable-owner-veto.js').apply(root);
+  changed.push(...kevin.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
