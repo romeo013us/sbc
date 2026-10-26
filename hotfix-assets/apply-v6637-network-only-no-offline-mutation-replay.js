@@ -88,6 +88,8 @@ function apply(root){
   changed.push(...kevin.files);
   const fairness=require('./apply-v6644-fair-owner-hold-batches.js').apply(root);
   changed.push(...fairness.files);
+  const checkout=require('./apply-v6645-square-payment-proof-and-readiness.js').apply(root);
+  changed.push(...checkout.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
