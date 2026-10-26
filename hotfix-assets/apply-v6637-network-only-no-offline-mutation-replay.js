@@ -55,6 +55,23 @@ function apply(root){
    fs.writeFileSync(p,after);changed.push(rel);
   }
  }
+ // V6638: install compact 10-Brain and accessible Kim header launcher after V6636 CSS bundling.
+ const v6638='sbc-v6638-compact-brains-kim.js';
+ const source=path.join(__dirname,v6638);
+ if(!fs.existsSync(source))throw Error(MARKER+': missing V6638 canonical browser helper');
+ const js=fs.readFileSync(source,'utf8');
+ new (require('node:vm').Script)(js,{filename:v6638});
+ for(const dir of ['public','browser_public']){
+  fs.copyFileSync(source,path.join(root,dir,v6638));
+  const entry=path.join(root,dir,'index.html');
+  let html=fs.readFileSync(entry,'utf8');
+  if(!html.includes('/'+v6638)){
+   if(!html.includes('</body>'))throw Error(MARKER+': missing HTML body end in '+dir);
+   html=html.replace('</body>','<script defer src="/'+v6638+'?v=66.38"></script>\\n</body>');
+   fs.writeFileSync(entry,html);
+  }
+  changed.push(dir+'/'+v6638,dir+'/index.html');
+ }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
  tenantSecurityUnchanged:true,crmWrites:false,ledgerMutations:false};
