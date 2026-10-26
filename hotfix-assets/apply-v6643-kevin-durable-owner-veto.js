@@ -58,6 +58,10 @@ function apply(root){
  "  async stageYellow({ tenantId, proposalId, type, payload, idempotencyKey }) {\n"+
  "    if(this.config.governance?.ownerVetoActive)return {status:'FROZEN',reason:'OWNER_VETO'};\n",
  'direct stage guard');
+ c=replace(c,
+ "module.exports={startKevinV6422, startKevinV641:startKevinV6422, startKevinV63:startKevinV6422, deterministicIdempotencyKey, HardenedControlPlane};",
+ "module.exports={startKevinV6422, startKevinV641:startKevinV6422, startKevinV63:startKevinV6422, deterministicIdempotencyKey, HardenedControlPlane, sbcV6643SummarizeDb:summarizeDb};",
+ 'expose pure financial summary for audited regression');
  new vm.Script(c,{filename:rel});
  new vm.Script(fs.readFileSync(helper,'utf8'),{filename:'owner-veto-store.cjs'});
  fs.copyFileSync(helper,installed);
