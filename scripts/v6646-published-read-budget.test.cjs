@@ -11,7 +11,7 @@ assert.match(code,/connectionLimit:2,maxIdle:2,idleTimeout:Math\.max\(20000/);
 assert.match(code,/queueLimit:10/);
 const {createReadBudget,routeGroup}=require(path.join(root,'enterprise/v6646-published-read-budget.cjs'));
 assert.equal(routeGroup('/api/crm/customer/72?foo=secret'),'/api/crm/customer/:id');
-assert.doesNotMatch(routeGroup('/api/crm/customer/72?token=ALICE_PRIVATE'),'ALICE_PRIVATE');
+assert.doesNotMatch(routeGroup('/api/crm/customer/72?token=ALICE_PRIVATE'),/ALICE_PRIVATE/);
 let ms=1000,seq=0;const tasks=new Map();
 const fakeTimers={set(fn,delay){const id=++seq;tasks.set(id,{fn,delay});return id},clear(id){tasks.delete(id)}};
 function req(path,method='GET'){return {method,path,originalUrl:path+'?secret=DO_NOT_RETURN'};}
