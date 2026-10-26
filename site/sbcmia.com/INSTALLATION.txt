@@ -1,0 +1,26 @@
+SBC V66.60 — SBCMIA.COM INDEX.PHP INSTALLATION
+===========================================
+What this ZIP contains:
+  index.php   Complete updated website file, preserving your existing design.
+  SBC_V66_60_WEBSITE_SETUP.txt   These instructions.
+
+IMPORTANT: BACK UP YOUR OLD INDEX.PHP BEFORE UPLOADING THE NEW ONE.
+
+1. Install the matching V66.60 Command Center release from GitHub main to GoDaddy Preview, test startup, then follow your normal owner-approved Published deployment.
+2. Generate one independent random bridge key, e.g. from a trusted PHP CLI:
+   php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
+   Keep the value secret; do not put it into ChatGPT, GitHub or index.php.
+3. Put that SAME key on both hosts:
+   - Command Center Published: SBC_WEBSITE_BRIDGE_KEY environment secret
+   - sbcmia.com PHP host: SBC_WEBSITE_BRIDGE_KEY environment secret, OR a text file named sbc-website-bridge.key in the PARENT directory of public_html, outside the webroot. File permission 0600.
+4. Upload only index.php into the sbcmia.com website's public_html, replacing the prior index.php. Do not upload it to the Command Center Node project.
+5. Verify the home page still looks correct on mobile and desktop. Verify an explicitly authorized site account signup and one legitimate quote inquiry, then confirm the CRM lead appears in tenant 1. Do not submit fake inquiries or live financial charges against customer data to test.
+6. If it fails, restore your original index.php and check whether the PHP host supports cURL, and whether the same bridge key is installed on both servers.
+
+Strict rules:
+- Do not edit the GoDaddy reseller storefront at sbcwebsites.com.
+- Office Box remains on hold.
+- Do not turn off recovery locks, MySQL tenant guards or writer lease protections.
+- Standalone public Square payment links remain separate from automatic SBC verified-order creation; human reconciliation is required until integrated and tested.
+- If the key is not configured, the website will show normally but customer registration and automatic CRM intake will remain fail-closed. Email fallback depends on the hosting mail service.
+- This is not certification of real collected revenue, customer delivery or end-to-end live acceptance.
