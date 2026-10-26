@@ -44,6 +44,13 @@ jobs:
           node scripts/v6640-payment-evidence-and-square-preflight.test.cjs
           if test -e SBC-V66-PREBUILT-RUNTIME.zip || test -e SBC-V66-PREBUILT-RUNTIME.json; then
             node -e "if(!require('./scripts/prebuilt-runtime.cjs').readManifest(process.cwd()))process.exit(1)"
+            # Verify the EXACT compiled artifact entering the GoDaddy ZIP, not just root source tests.
+            verify_dir="$(mktemp -d)"
+            trap 'rm -rf "$verify_dir"' EXIT
+            unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$verify_dir"
+            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6640-compiled-payment-truth.test.cjs
+            rm -rf "$verify_dir"
+            trap - EXIT
           fi
           node hotfix-assets/v6600-release-layout-test.js
           node scripts/query-guard-cleanup-regression.test.js
