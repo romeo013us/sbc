@@ -55,17 +55,16 @@ function durableLine(line,label){
  if(!line.includes('(req,res)=>')||!line.includes('try{')||!line.includes('saveData();'))throw Error(MARKER+': unexpected route '+label);
  line=line.replace('(req,res)=>','async(req,res)=>');
  line=line.replace('try{','let sbcPrior=null;try{SBC_V6649_REQUIRE_WRITER();sbcPrior=structuredClone(db.fantastic4);');
- line=line.replace(/(?<!await )saveData();/g,'await saveData();');
- line=line.replace(/catch(e){/g,'catch(e){if(sbcPrior){for(const key of Object.keys(db.fantastic4))delete db.fantastic4[key];Object.assign(db.fantastic4,sbcPrior);}');
- line=line.replace(/res.status(400).json({ok:false,error:e.message})/g,
+ line=line.replace(/(?<!await )saveData\(\);/g,'await saveData();');
+ line=line.replace('catch(e){','catch(e){if(sbcPrior){for(const key of Object.keys(db.fantastic4))delete db.fantastic4[key];Object.assign(db.fantastic4,sbcPrior);}');
+ line=line.replace('res.status(400).json({ok:false,error:e.message})',
   'res.status(SBC_V6649_ERROR_STATUS(e)).json({ok:false,error:SBC_V6649_SAFE_ERROR(e)})');
  return line;
 }
 function patchServer(src){
  if(src.includes(MARKER))throw Error(MARKER+': duplicate');
  src=once(src,"app.get('/api/fantastic4/summary',auth,(req,res)=>res.json({ok:true,...F4.summary(db.fantastic4,process.env)}));",
-  writerPrelude()+"
-app.get('/api/fantastic4/summary',auth,(req,res)=>res.json({ok:true,...F4.summary(db.fantastic4,process.env)}));",
+  writerPrelude()+"\napp.get('/api/fantastic4/summary',auth,(req,res)=>res.json({ok:true,...F4.summary(db.fantastic4,process.env)}));",
   'durable writer preflight');
  src=replaceLine(src,"app.post('/api/fantastic4/approval'",()=>approval);
  src=replaceLine(src,"app.post('/api/fantastic4/production-activate'",()=>activate);
