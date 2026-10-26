@@ -397,6 +397,14 @@ jobs:
         run: |
           set -euo pipefail
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6648-revenue-tenant-isolation.test.cjs | tee .sbc-isolated-reports/v6648-revenue-tenant-evidence.log
+      - name: Prove owner approval and autonomous controls await committed MySQL writes
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6649-owner-action-persistence.test.cjs | tee .sbc-isolated-reports/v6649-durable-owner-evidence.log
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:
