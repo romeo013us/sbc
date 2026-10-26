@@ -67,9 +67,10 @@ function apply(root){
   fs.copyFileSync(source,path.join(root,dir,v6638));
   const entry=path.join(root,dir,'index.html');
   let html=fs.readFileSync(entry,'utf8');
-  if(!html.includes('/'+v6638)){
+  if(!html.includes('id="sbc-v6638-inline-ui"')){
    if(!html.includes('</body>'))throw Error(MARKER+': missing HTML body end in '+dir);
-   html=html.replace('</body>','<script defer src="/'+v6638+'?v=66.38"></script>\\n</body>');
+   if(js.includes('</script'))throw Error(MARKER+': invalid browser helper HTML tag');
+   html=html.replace('</body>','<script id="sbc-v6638-inline-ui">'+js+'</script>\n</body>');
    fs.writeFileSync(entry,html);
   }
   changed.push(dir+'/'+v6638,dir+'/index.html');
