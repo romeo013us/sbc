@@ -53,6 +53,7 @@ jobs:
             SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6640-compiled-payment-truth.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6641-fulfillment-payment-gate.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6642-kim-mission-financial-governance.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6643-kevin-durable-owner-veto.test.cjs
             rm -rf "$verify_dir"
             trap - EXIT
           fi
