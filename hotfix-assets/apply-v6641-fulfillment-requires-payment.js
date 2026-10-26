@@ -35,6 +35,15 @@ function apply(root){
  ].join('\n'), 'protect pre-existing unverified state');
  m=swap(m,'function sync(orders=[]){for(const o of orders){if(paid(o))ensureOrder(o);}',
   'function sync(orders=[]){for(const o of orders){if(paid(o)||state.orders[String(o.id)])ensureOrder(o);}', 'synchronize existing unpaid state');
+ // Direct module callers must also fail closed, not only Express route handlers.
+ const xAnchor="const x=state.orders[String(orderId)];if(!x)throw Error('Fulfillment order not found.');";
+ for(const fn of ['advance','addAsset','addProof','approveProof','preflight','stageVendor','markVendorReady','submitVendor','shipping','deliver','notify','reconcile']){
+   const start=m.indexOf('function '+fn+'(');
+   if(start<0)throw Error(MARKER+': absent fulfillment mutator '+fn);
+   const anchorAt=m.indexOf(xAnchor,start);
+   if(anchorAt<start||anchorAt>start+200)throw Error(MARKER+': mutator identity changed '+fn);
+   m=m.slice(0,anchorAt+xAnchor.length)+"if(!x.checklist.payment)throw Error('PAYMENT_EVIDENCE_REQUIRED');"+m.slice(anchorAt+xAnchor.length);
+ }
  s=swap(s,'function v400Orders(){return Array.isArray(db.orders)?db.orders:[];}',
   "const V400_PAYMENT_EVIDENCE=require('./enterprise/v6640-payment-evidence.cjs');\nfunction v400Orders(){return Array.isArray(db.orders)?db.orders:[];}",'server payment classifier import');
  s=swap(s,
