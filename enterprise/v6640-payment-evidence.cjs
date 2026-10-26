@@ -15,7 +15,10 @@ function confirmedPaid(o){
  return SETTLED.has(square);
 }
 function unverifiedFulfillment(o){
- return Boolean(o&&!confirmedPaid(o)&&/^(PAID|COMPLETED|FULFILLED|DELIVERED)$/i.test(String(o.status||'')));
+ if(!o||confirmedPaid(o))return false;
+ const p=norm(o.paymentStatus),s=norm(o.squarePaymentStatus||o.metadata?.squarePaymentStatus||o.parsed?.squarePaymentStatus);
+ if(NEGATIVE.has(p)||NEGATIVE.has(s))return false;
+ return /^(PAID|COMPLETED|FULFILLED|DELIVERED)$/i.test(String(o.status||''));
 }
 function snapshot(orders=[],isTest=()=>false){
  const rows=Array.isArray(orders)?orders.filter(o=>!isTest(o)):[];
