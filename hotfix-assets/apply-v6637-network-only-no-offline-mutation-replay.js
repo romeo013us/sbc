@@ -108,6 +108,8 @@ function apply(root){
   changed.push(...revenueTruth.files);
   const squareCompletion=require('./apply-v6659-square-completion-consistency.js').apply(root);
   changed.push(...squareCompletion.files);
+  const siteBridge=require('./apply-v6660-website-integrity.js').apply(root);
+  changed.push(...siteBridge.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
