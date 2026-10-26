@@ -90,6 +90,10 @@ jobs:
           node scripts/v6656-acceptance-reconciliation.cjs --input docs/v6656-empty-evidence.json > /tmp/sbc-v6656-evidence.json
           node -e "const x=require('/tmp/sbc-v6656-evidence.json'); if(x.status!=='NOT_CERTIFIED_INDEPENDENT_REVIEW_REQUIRED'||!x.blockers.length)process.exit(1)"
 
+      - name: Compile V66.57 Square tenant and provider-proof guards
+        run: |
+          node --check hotfix-assets/apply-v6657-square-tenant-boundaries.js
+          node --check scripts/v6657-square-tenant-boundaries.test.cjs
       - name: Verify V6648 fail-closed revenue scope patch and tests compile
         run: |
           node --check hotfix-assets/apply-v6648-tenant-revenue-scope.js
