@@ -100,6 +100,8 @@ function apply(root){
   changed.push(...durableOwnerActions.files);
   const fulfillmentEvidence=require('./apply-v6651-fulfillment-evidence-consistency.js').apply(root);
   changed.push(...fulfillmentEvidence.files);
+  const proof=require('./apply-v6652-manual-payment-proof.js').apply(root);
+  changed.push(...proof.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
