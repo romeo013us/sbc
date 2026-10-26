@@ -4,27 +4,16 @@ name: Build GoDaddy Full ZIP
 # Final V6643 release: package only the source-matched, restart-tested Kevin veto runtime.
 # Release packaging includes compiled Kim V6642 financial, tenant and save-failure regression gate.
 # Release gate: package only the prebuilt V66 runtime that passed the V6641 fulfillment test.
+# A source-only commit must first pass SBC Offline Reconstruction Evidence Gate.
+# That gate commits a fresh, source-fingerprinted runtime to main. Only then
+# should this workflow run. Otherwise every source PR produces a predictable
+# stale prebuilt failure before the verified runtime can be published.
 on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-godaddy-full-zip.yml'
-      - 'bootstrap.js'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'hotfix-assets/**'
-      - 'enterprise/**'
       - 'SBC-V66-PREBUILT-RUNTIME.zip'
       - 'SBC-V66-PREBUILT-RUNTIME.json'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/build-godaddy-full-zip.yml'
-      - 'hotfix-assets/apply-v6556-twilio-voice-sdk.js'
-      - 'bootstrap.js'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -42,27 +31,39 @@ jobs:
           node-version: 22
       - name: Verify release identity and build
         run: |
+          set -euo pipefail
           node --check bootstrap.js
           node --check scripts/prebuilt-runtime.cjs
           node scripts/prebuilt-runtime.test.cjs
           node scripts/v6639-published-read-poll-guard.test.cjs
           node scripts/v6640-payment-evidence-and-square-preflight.test.cjs
-          if test -e SBC-V66-PREBUILT-RUNTIME.zip || test -e SBC-V66-PREBUILT-RUNTIME.json; then
-            node -e "if(!require('./scripts/prebuilt-runtime.cjs').readManifest(process.cwd()))process.exit(1)"
-            # Verify the EXACT compiled artifact entering the GoDaddy ZIP, not just root source tests.
-            verify_dir="$(mktemp -d)"
-            trap 'rm -rf "$verify_dir"' EXIT
-            unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$verify_dir"
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6640-compiled-payment-truth.test.cjs
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6641-fulfillment-payment-gate.test.cjs
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6642-kim-mission-financial-governance.test.cjs
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6643-kevin-durable-owner-veto.test.cjs
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6644-owner-hold-fair-batch.test.cjs
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6645-square-checkout-safety.test.cjs
-            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6646-published-read-budget.test.cjs
-            rm -rf "$verify_dir"
-            trap - EXIT
-          fi
+          node scripts/sbc-strict-95-release-scorecard.test.cjs
+          # This job never ships the legacy fallback on its own: source-only
+          # changes are reconstructed separately and must publish BOTH files.
+          test -s SBC-V66-PREBUILT-RUNTIME.zip
+          test -s SBC-V66-PREBUILT-RUNTIME.json
+          node - <<'NODE'
+          const {readManifest}=require('./scripts/prebuilt-runtime.cjs');
+          const result=readManifest(process.cwd());
+          if(!result || result.manifest.generatedBy!=='isolated-github-ci')
+            throw Error('GoDaddy archive needs verified isolated CI receipt');
+          console.log('[SBC FINAL PACKAGE] MATCHED SOURCE',result.manifest.sourceFingerprint,
+            'SOURCE COMMIT',result.manifest.sourceCommit);
+          NODE
+          # These tests operate on the exact extracted runtime being shipped,
+          # not merely on source patch scripts.
+          verify_dir="$(mktemp -d)"
+          trap 'rm -rf "$verify_dir"' EXIT
+          unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$verify_dir"
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6640-compiled-payment-truth.test.cjs
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6641-fulfillment-payment-gate.test.cjs
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6642-kim-mission-financial-governance.test.cjs
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6643-kevin-durable-owner-veto.test.cjs
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6644-owner-hold-fair-batch.test.cjs
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6645-square-checkout-safety.test.cjs
+          SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6646-published-read-budget.test.cjs
+          rm -rf "$verify_dir"
+          trap - EXIT
           node hotfix-assets/v6600-release-layout-test.js
           node scripts/query-guard-cleanup-regression.test.js
       - name: Cache real pinned browser Voice SDK for offline GoDaddy startup
