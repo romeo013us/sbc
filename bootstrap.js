@@ -248,8 +248,27 @@ function ensureRootRuntimeDependencies() {
   console.log('[SBC DEPENDENCY PREFLIGHT] PASS: locked repair verified Day.js UTC plugin.');
 }
 
+function launchPreparedRuntime(runtimeDir, reused) {
+  // Persistent data remains outside the checked/generated release folder.
+  require(path.join(__dirname, 'persistent-state.js')).persistState(__dirname, runtimeDir, { reused });
+  process.chdir(runtimeDir);
+  const sbcBootId = Date.now().toString(36) + '-' + process.pid + '-' + crypto.randomBytes(4).toString('hex');
+  process.env.SBC_BOOT_ID = sbcBootId;
+  console.log(`[SBC BOOT CORRELATION] boot_id=${sbcBootId} pid=${process.pid} port=${process.env.PORT || '<absent>'} role_env=${String(process.env.SBC_RUNTIME_ROLE || '<absent>')}`);
+  console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from verified runtime.`);
+  console.log(require(path.join(__dirname, 'runtime-env-beacon.js')).buildBeaconLine(process.env, os.hostname()));
+  require(path.join(__dirname, 'tenant-rejection-guard.js')).installTenantRejectionGuard(process, console);
+  require(path.join(runtimeDir, 'server.js'));
+}
+
 function launch() {
   ensureRootRuntimeDependencies();
+  const prebuilt = require('./scripts/prebuilt-runtime.cjs').prepare(__dirname, {
+    extractZip, verifyExtracted, verifyPatchedSyntax, loadManifestValidator,
+    persistState: require(path.join(__dirname, 'persistent-state.js')).persistState
+  });
+  if (prebuilt) return launchPreparedRuntime(prebuilt.runtimeDir, prebuilt.reused);
+  console.warn('[SBC PREBUILT] Artifact not yet published; legacy runtime assembly fallback active.');
   if (!fs.existsSync(RELEASE_ZIP)) throw new Error(`Required SBC source ZIP missing: ${path.basename(RELEASE_ZIP)}`);
   const bytes = fs.readFileSync(RELEASE_ZIP);
   const sourceHash = crypto.createHash('sha256').update(bytes).digest('hex');
@@ -362,18 +381,7 @@ function launch() {
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
     fs.writeFileSync(marker, JSON.stringify({ ...runtimeIdentity, version: pkg.version, readyAt: new Date().toISOString() }, null, 2));
   }
-  // V65.1.19: data/ and backups/ live in one permanent folder outside every hashed runtime folder.
-  persistState(__dirname, runtimeDir, { reused: validRuntime });
-  process.chdir(runtimeDir);
-  // Correlate role, writer-lease, recovery, and worker decisions to this process instance.
-  const sbcBootId = Date.now().toString(36) + '-' + process.pid + '-' + crypto.randomBytes(4).toString('hex');
-  process.env.SBC_BOOT_ID = sbcBootId;
-  console.log(`[SBC BOOT CORRELATION] boot_id=${sbcBootId} pid=${process.pid} port=${process.env.PORT || '<absent>'} role_env=${String(process.env.SBC_RUNTIME_ROLE || '<absent>')}`);
-  console.log(`[SBC ROOT BOOTSTRAP] Launching SBC ${EXPECTED_VERSION} from checked source bundle.`);
-  console.log(require(path.join(__dirname, 'runtime-env-beacon.js')).buildBeaconLine(process.env, os.hostname()));
-  // V65.1.34: fail closed on tenantless background rejections without masking other fatal errors.
-  require(path.join(__dirname, 'tenant-rejection-guard.js')).installTenantRejectionGuard(process, console);
-  require(path.join(runtimeDir, 'server.js'));
+  launchPreparedRuntime(runtimeDir, validRuntime);
 }
 
 try {
