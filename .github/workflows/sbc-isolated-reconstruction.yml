@@ -74,6 +74,7 @@ jobs:
           node scripts/prebuilt-runtime.test.cjs
           node scripts/v6638-compact-brains-kim.test.cjs
           node scripts/v6639-published-read-poll-guard.test.cjs
+          node scripts/v6640-payment-evidence-and-square-preflight.test.cjs
       - name: Pre-fetch exact Twilio browser SDK (network permitted only here)
         shell: bash
         run: |
