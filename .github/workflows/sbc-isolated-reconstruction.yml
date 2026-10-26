@@ -378,6 +378,17 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 90s node scripts/v6638-browser-boot-failsafe.test.cjs | tee .sbc-isolated-reports/v6638-shell-boot.json
+      - name: Master interaction click audit in Chromium — desktop + mobile
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6647-master-interaction-census.cjs | tee .sbc-isolated-reports/v6647-all-controls-census.json
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 90s node scripts/v6647-master-interaction-browser.test.cjs | tee .sbc-isolated-reports/v6647-interaction-browser.json
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:

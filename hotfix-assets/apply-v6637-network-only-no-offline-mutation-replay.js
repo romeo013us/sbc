@@ -92,6 +92,8 @@ function apply(root){
   changed.push(...checkout.files);
   const published=require('./apply-v6646-published-read-budget.js').apply(root);
   changed.push(...published.files);
+  const masterInteractions=require('./apply-v6647-master-interaction-audit.js').apply(root);
+  changed.push(...masterInteractions.changed);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
