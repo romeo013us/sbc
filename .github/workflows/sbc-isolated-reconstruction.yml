@@ -332,6 +332,22 @@ jobs:
           cp scripts/v6608-real-mysql-crm-gate.cjs .sbc-isolated-runtime/scripts/
           node --check .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs
           node .sbc-isolated-runtime/scripts/v6608-real-mysql-crm-gate.cjs | tee .sbc-isolated-reports/real-mysql-crm-gate.json
+      - name: Rehearse synthetic backup and restore against disposable MySQL 8
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_MYSQL_CI_DISPOSABLE: 'yes'
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: '3306'
+          MYSQL_DATABASE: sbc_ci_disposable
+          MYSQL_USER: sbc_ci
+          MYSQL_PASSWORD: disposable_user_ci_only
+        run: |
+          set -euo pipefail
+          cp scripts/v6656-disposable-restore.test.cjs .sbc-isolated-runtime/scripts/
+          node .sbc-isolated-runtime/scripts/v6656-disposable-restore.test.cjs | tee .sbc-isolated-reports/v6656-synthetic-restore.json
+          node scripts/v6656-acceptance-reconciliation.test.cjs | tee .sbc-isolated-reports/v6656-reconcile-regression.txt
+
       - name: Verify writer advisory lease survives MySQL socket turnover without concurrent owner
         shell: bash
         env:
@@ -365,7 +381,9 @@ jobs:
           set -euo pipefail
           # Browser installation itself also needs a hard budget, not just tests.
           timeout --signal=TERM --kill-after=15s 240s npm install --prefix .sbc-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
-          timeout --signal=TERM --kill-after=15s 300s ./.sbc-browser/node_modules/.bin/playwright install --with-deps chromium
+          # Runner OS packages are preinstalled; avoid slow apt downloads from Ubuntu mirrors.
+          # The actual Chromium executable and every subsequent UI test remain mandatory.
+          timeout --signal=TERM --kill-after=15s 240s ./.sbc-browser/node_modules/.bin/playwright install chromium
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM --kill-after=15s 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json

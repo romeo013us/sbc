@@ -39,6 +39,9 @@ jobs:
           node scripts/v6639-published-read-poll-guard.test.cjs
           node scripts/v6640-payment-evidence-and-square-preflight.test.cjs
           node scripts/sbc-strict-95-release-scorecard.test.cjs
+          node scripts/sbc-v6655-strict-95-evidence.test.cjs
+          node scripts/v6656-disposable-restore.test.cjs --contract-test
+          node scripts/v6656-acceptance-reconciliation.test.cjs
           # This job never ships the legacy fallback on its own: source-only
           # changes are reconstructed separately and must publish BOTH files.
           test -s SBC-V66-PREBUILT-RUNTIME.zip
