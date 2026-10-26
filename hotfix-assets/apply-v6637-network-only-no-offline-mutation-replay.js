@@ -75,6 +75,10 @@ function apply(root){
   }
   changed.push(dir+'/'+v6638,dir+'/index.html');
  }
+ if(entrypoints.length===2){
+  const perf=require('./apply-v6639-published-read-poll-guard.js').apply(root);
+  changed.push(...perf.changed);
+ }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
  tenantSecurityUnchanged:true,crmWrites:false,ledgerMutations:false};
