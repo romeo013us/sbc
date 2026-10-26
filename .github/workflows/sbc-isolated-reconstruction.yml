@@ -314,6 +314,16 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json
+      - name: Verify real SBC shell never hangs on CRM 503 or blocked browser storage
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
+          SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM 90s node scripts/v6638-browser-boot-failsafe.test.cjs | tee .sbc-isolated-reports/v6638-shell-boot.json
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:
