@@ -467,10 +467,46 @@ jobs:
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'server.js'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'public/index.html'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'browser_public/index.html'
-          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Eq '^(data/|backups/|node_modules/|.env)'; then
+          catalog_check_dir="$(mktemp -d)"
+          unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$catalog_check_dir"
+          SBC_RUNTIME_ROOT="$catalog_check_dir" node scripts/v6653-prebuilt-catalog-boot.test.cjs
+          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Eq '^(backups/|node_modules/|.env)'; then
             echo 'Unsafe runtime or customer data included in release archive' >&2
             exit 1
           fi
+      - name: Smoke test the actual packaged ZIP in credential-free isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="$(mktemp -d)"
+          unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$package_dir"
+          # Existing disposable dependency install is shared read-only. The
+          # runtime under test is the exact extracted shipping archive.
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --pids-limit 128 --memory 2g \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,noexec,size=64m \
+            -e SBC_COMPILER_SANDBOX_CONFIRMED=1 \
+            -e SBC_COMPILER_TARGET=/work/package \
+            -e SBC_COMPILER_REPORTS=/work/reports \
+            -e SBC_RUNTIME_ROLE=readonly \
+            -e ENABLE_DDL=false \
+            -e SBC_KIM_AUTONOMOUS_MODE=off \
+            -e NODE_ENV=test \
+            -e PORT=18777 \
+            -e NODE_PATH=/work/modules \
+            -e NODE_OPTIONS='--require=/work/repo/scripts/offline-child-guard.cjs' \
+            -v "$PWD:/work/repo:ro" \
+            -v "$PWD/.sbc-isolated-runtime/node_modules:/work/modules:ro" \
+            -v "$package_dir:/work/package:rw" \
+            -v "$PWD/.sbc-isolated-reports:/work/reports:rw" \
+            node:22-bookworm-slim bash -euc '
+              cd /work/package
+              node server.js > /work/reports/readonly-packaged-server.log 2>&1 &
+              server_pid=$!
+              trap "kill $server_pid 2>/dev/null || true" EXIT
+              node /work/repo/scripts/offline-readonly-smoke-client.cjs
+            '
       - uses: actions/upload-artifact@v4
         with:
           name: SBC-VERIFIED-PREBUILT-RUNTIME
