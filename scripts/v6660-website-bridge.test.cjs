@@ -35,6 +35,7 @@ for(const route of ['/api/portal/login','/api/portal/register'])
 const app=fs.readFileSync(path.join(root,'server.js'),'utf8');
 new vm.Script(app,{filename:'server.js'});
 assert.match(app,/SBC_V6660_WEBSITE_BRIDGE_TENANT_SECURITY/);
+assert.match(app,/app\.post\('\/api\/web-lead',express\.json\(\{limit:'64kb',verify:/,'early website route must parse and capture exact JSON body');
 assert.match(app,/let tenantId;try\{tenantId=sbcVerifiedWebsiteTenant\(req\)\}/);
 assert.match(app,/let websiteTenant;try\{websiteTenant=sbcVerifiedWebsiteTenant\(req\)\}/);
 assert.match(app,/An SBC customer record exists/);
