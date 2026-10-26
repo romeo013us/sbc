@@ -41,6 +41,7 @@ jobs:
           node --check scripts/prebuilt-runtime.cjs
           node scripts/prebuilt-runtime.test.cjs
           node scripts/v6639-published-read-poll-guard.test.cjs
+          node scripts/v6640-payment-evidence-and-square-preflight.test.cjs
           if test -e SBC-V66-PREBUILT-RUNTIME.zip || test -e SBC-V66-PREBUILT-RUNTIME.json; then
             node -e "if(!require('./scripts/prebuilt-runtime.cjs').readManifest(process.cwd()))process.exit(1)"
           fi
