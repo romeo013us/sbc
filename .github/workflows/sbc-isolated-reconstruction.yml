@@ -137,6 +137,13 @@ jobs:
           node --check scripts/v6640-compiled-payment-truth.test.cjs
           node scripts/v6640-compiled-payment-truth.test.cjs
 
+      - name: Assert unpaid orders cannot enter or alter fulfillment
+        shell: bash
+        env:
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node scripts/v6641-fulfillment-payment-gate.test.cjs
       - name: Enforce frozen frontend bundle and static-asset budgets
         shell: bash
         run: |
