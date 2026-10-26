@@ -61,7 +61,9 @@ function apply(root){
  if(!fs.existsSync(source))throw Error(MARKER+': missing V6638 canonical browser helper');
  const js=fs.readFileSync(source,'utf8');
  new (require('node:vm').Script)(js,{filename:v6638});
- for(const dir of ['public','browser_public']){
+ const entrypoints=['public','browser_public'].filter(dir=>fs.existsSync(path.join(root,dir,'index.html')));
+ if(entrypoints.length===1)throw Error(MARKER+': inconsistent public entrypoints for V6638');
+ for(const dir of entrypoints){
   fs.copyFileSync(source,path.join(root,dir,v6638));
   const entry=path.join(root,dir,'index.html');
   let html=fs.readFileSync(entry,'utf8');
