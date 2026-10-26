@@ -10,7 +10,6 @@ on:
       - 'package-lock.json'
       - 'hotfix-assets/**'
       - 'enterprise/**'
-      - 'scripts/**'
       - 'SBC-V66-PREBUILT-RUNTIME.zip'
       - 'SBC-V66-PREBUILT-RUNTIME.json'
   pull_request:
@@ -41,6 +40,7 @@ jobs:
           node --check bootstrap.js
           node --check scripts/prebuilt-runtime.cjs
           node scripts/prebuilt-runtime.test.cjs
+          node scripts/v6639-published-read-poll-guard.test.cjs
           if test -e SBC-V66-PREBUILT-RUNTIME.zip || test -e SBC-V66-PREBUILT-RUNTIME.json; then
             node -e "if(!require('./scripts/prebuilt-runtime.cjs').readManifest(process.cwd()))process.exit(1)"
           fi
