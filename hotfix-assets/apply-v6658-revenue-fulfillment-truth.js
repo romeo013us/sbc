@@ -43,7 +43,7 @@ function patchBrain(s){
  "truth:'Square settlement metadata recorded by SBC, not proof of deposited cash; status-only orders excluded.'",'brain truth');
  return s;
 }
-function patchBroadcast(s){return once(s,'<small>PAID REVENUE</small>','<small>SQUARE-BACKED ORDER VALUE*</small>','honest KPI label')}
+function patchBroadcast(s){return once(s,'<small>PAID REVENUE</small>','<small>SQUARE-BACKED VALUE</small>','honest KPI label')}
 function apply(root){
  const pairs=[['enterprise/v6640-payment-evidence.cjs',patchEvidence],['server.js',patchServer],
   ['enterprise/v56134-god-tier-revenue.js',patchRevenue],['enterprise/v56134-ten-brain.js',patchBrain],
