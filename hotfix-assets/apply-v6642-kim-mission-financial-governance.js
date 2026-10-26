@@ -70,9 +70,29 @@ function apply(root){
  "        emit('kim_fulfillment_recovery','Kim could not start fulfillment and preserved the order for recovery.',{orderId:order.id,error:e.message});\n      }\n    }",
  "        emit('kim_fulfillment_recovery','Kim could not start fulfillment and preserved the order for recovery.',{orderId:order.id,error:e.message});\n      }finally{fulfillmentInFlight.delete(oid);}\n    }",
  'release fulfillment lock on failure');
+
+ s=change(s,
+ "function overview(){try{refreshCanonicalDb()}catch(_){/* read-only boot may hydrate later */}return",
+ "function overview(tenantId){const tenant=__sbcRequireTenantId(tenantId);try{refreshCanonicalDb()}catch(_){/* read-only boot may hydrate later */}"+
+ "const scopedCustomers=(db?.customers||[]).filter(c=>Number(c?.tenantId)===tenant);"+
+ "const scopedOrders=(db?.orders||[]).filter(o=>Number(o?.tenantId)===tenant);"+
+ "const visibleCustomerIds=new Set(scopedCustomers.map(c=>String(c.id)));"+
+ "const visibleOrderIds=new Set(scopedOrders.map(o=>String(o.id)));return",
+ 'require tenant on Kim mission overview');
+ s=change(s,"metrics:safeMetric(db),recentEvents:state.events.slice(0,20),missions:(db?.customers||[]).filter(c=>c?.sbcKimMission)",
+  "metrics:safeMetric({orders:scopedOrders}),recentEvents:state.events.filter(e=>Number(e.meta?.tenantId)===tenant||"+
+  "(e.meta?.customerId&&visibleCustomerIds.has(String(e.meta.customerId)))||"+
+  "(e.meta?.orderId&&visibleOrderIds.has(String(e.meta.orderId)))).slice(0,20),missions:scopedCustomers.filter(c=>c?.sbcKimMission)",
+ 'isolate Kim mission metrics, events, and progress');
+ const routesFile=path.join(root,'routes/v56135-kim-mission.js');
+ if(!fs.existsSync(routesFile))throw Error(MARKER+': Kim API routes missing');
+ let routes=fs.readFileSync(routesFile,'utf8');
+ routes=change(routes,'getController().overview()',
+ 'getController().overview(global.__SBC_REQUIRE_TENANT(req))','authenticated tenant scoping of overview route');
+ new vm.Script(routes,{filename:'routes/v56135-kim-mission.js'});
  new vm.Script(s,{filename:'v56135-kim-mission-controller.js'});
- fs.writeFileSync(file,s);
- return {marker:MARKER,files:['enterprise/v56135-kim-mission-controller.js'],
+ fs.writeFileSync(file,s);fs.writeFileSync(routesFile,routes);
+ return {marker:MARKER,files:['enterprise/v56135-kim-mission-controller.js','routes/v56135-kim-mission.js'],
   noProviderCall:true,noSchemaChange:true,strictTenant:true,ownerClearance:true,durableSaveFailClosed:true};
 }
 module.exports={apply,MARKER,change};
