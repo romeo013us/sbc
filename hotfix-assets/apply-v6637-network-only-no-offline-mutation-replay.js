@@ -80,6 +80,8 @@ function apply(root){
   changed.push(...perf.changed);
   const payments=require('./apply-v6640-payment-evidence-and-square-preflight.js').apply(root);
   changed.push(...payments.files);
+  const fulfillment=require('./apply-v6641-fulfillment-requires-payment.js').apply(root);
+  changed.push(...fulfillment.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
