@@ -144,6 +144,13 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/v6641-fulfillment-payment-gate.test.cjs
+      - name: Exercise compiled Kim mission tenant, payment and persistence fail-closed gates
+        shell: bash
+        env:
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node scripts/v6642-kim-mission-financial-governance.test.cjs
       - name: Enforce frozen frontend bundle and static-asset budgets
         shell: bash
         run: |
