@@ -110,6 +110,10 @@ function apply(root){
   changed.push(...squareCompletion.files);
   const siteBridge=require('./apply-v6660-website-integrity.js').apply(root);
   changed.push(...siteBridge.files);
+  const inboundTruth=require('./apply-v6661-inbound-truth.js').apply(root);
+  changed.push(...inboundTruth.files);
+  const portalSessions=require('./apply-v6661-portal-session-security.js').apply(root);
+  changed.push(...portalSessions.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
