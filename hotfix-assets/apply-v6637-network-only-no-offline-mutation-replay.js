@@ -82,6 +82,8 @@ function apply(root){
   changed.push(...payments.files);
   const fulfillment=require('./apply-v6641-fulfillment-requires-payment.js').apply(root);
   changed.push(...fulfillment.files);
+  const mission=require('./apply-v6642-kim-mission-financial-governance.js').apply(root);
+  changed.push(...mission.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
