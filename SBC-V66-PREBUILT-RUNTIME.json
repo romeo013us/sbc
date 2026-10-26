@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "version": "66.0.0",
+  "archive": "SBC-V66-PREBUILT-RUNTIME.zip",
+  "archiveSha256": "9c13c3ade8c8dd426356e5a3da66cc3deba3a3e8d6a3e1989295d3546d88faf9",
+  "sourceFingerprint": "4f8d6304210dc438c25046f3284f368bf260f51c2479f16fee9bacdb42eeacb8",
+  "sourceCommit": "420d0a634f33ac1f5d11a50c3f5eead08bab90a7",
+  "generatedBy": "isolated-github-ci"
+}
