@@ -75,6 +75,11 @@ jobs:
         run: node scripts/v6636-canonical-css-bundle.test.cjs
       - name: Enforce evidence-based Company SaaS Build scorecard logic
         run: node scripts/sbc-strict-95-release-scorecard.test.cjs
+      - name: Verify V6648 fail-closed revenue scope patch and tests compile
+        run: |
+          node --check hotfix-assets/apply-v6648-tenant-revenue-scope.js
+          node --check enterprise/v6648-revenue-tenant.cjs
+          node --check scripts/v6648-revenue-tenant-isolation.test.cjs
       - name: Verify offline mutation and cached authenticated page safeguards
         run: node scripts/v6637-network-only-no-offline-mutation-replay.test.cjs
       - name: Gate summary
