@@ -118,6 +118,8 @@ function apply(root){
   changed.push(...clientHub.files);
   const godkimTenant=require('./apply-v6662-godkim-tenant-order-gate.js').apply(root);
   changed.push(...godkimTenant.files);
+  const leadOperationsTenant=require('./apply-v6662-tenant-scoped-lead-operations.js').apply(root);
+  changed.push(...leadOperationsTenant.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
