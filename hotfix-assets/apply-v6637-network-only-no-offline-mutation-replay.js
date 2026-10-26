@@ -86,6 +86,8 @@ function apply(root){
   changed.push(...mission.files);
   const kevin=require('./apply-v6643-kevin-durable-owner-veto.js').apply(root);
   changed.push(...kevin.files);
+  const fairness=require('./apply-v6644-fair-owner-hold-batches.js').apply(root);
+  changed.push(...fairness.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
