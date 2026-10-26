@@ -195,7 +195,7 @@ jobs:
           SBC_AUDIT_ALL_JS: '1'
         run: |
           set -euo pipefail
-          timeout --signal=TERM 180s node scripts/v6634-full-artifact-static-audit.cjs .sbc-isolated-runtime | tee .sbc-isolated-reports/v6634-full-static-audit.json
+          timeout --signal=TERM --kill-after=15s 180s node scripts/v6634-full-artifact-static-audit.cjs .sbc-isolated-runtime | tee .sbc-isolated-reports/v6634-full-static-audit.json
       - name: Verify caller notes, terminal states and tenant isolation in actual call-log handlers
         shell: bash
         run: |
@@ -367,7 +367,7 @@ jobs:
           ./.sbc-browser/node_modules/.bin/playwright install --with-deps chromium
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json
+          timeout --signal=TERM --kill-after=15s 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json
       - name: Verify real SBC shell never hangs on CRM 503 or blocked browser storage
         shell: bash
         env:
@@ -377,7 +377,7 @@ jobs:
           set -euo pipefail
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 90s node scripts/v6638-browser-boot-failsafe.test.cjs | tee .sbc-isolated-reports/v6638-shell-boot.json
+          timeout --signal=TERM --kill-after=15s 90s node scripts/v6638-browser-boot-failsafe.test.cjs | tee .sbc-isolated-reports/v6638-shell-boot.json
       - name: Master interaction click audit in Chromium — desktop + mobile
         shell: bash
         env:
@@ -388,7 +388,7 @@ jobs:
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6647-master-interaction-census.cjs | tee .sbc-isolated-reports/v6647-all-controls-census.json
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 90s node scripts/v6647-master-interaction-browser.test.cjs | tee .sbc-isolated-reports/v6647-interaction-browser.json
+          timeout --signal=TERM --kill-after=15s 90s node scripts/v6647-master-interaction-browser.test.cjs | tee .sbc-isolated-reports/v6647-interaction-browser.json
       - name: Prove Revenue PLAY, lead verification and growth automation cannot select another tenant
         shell: bash
         env:
@@ -414,7 +414,7 @@ jobs:
           set -euo pipefail
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 90s node scripts/v6612-navigation-geometry-browser.test.cjs | tee .sbc-isolated-reports/navigation-geometry.json
+          timeout --signal=TERM --kill-after=15s 90s node scripts/v6612-navigation-geometry-browser.test.cjs | tee .sbc-isolated-reports/navigation-geometry.json
       - name: Verify dashboard remains stable after 3.5 seconds of deferred mounts
         shell: bash
         env:
@@ -424,7 +424,7 @@ jobs:
           set -euo pipefail
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 60s node scripts/v6626-delayed-layout-browser.test.cjs | tee .sbc-isolated-reports/delayed-layout-browser.json
+          timeout --signal=TERM --kill-after=15s 60s node scripts/v6626-delayed-layout-browser.test.cjs | tee .sbc-isolated-reports/delayed-layout-browser.json
       - name: Verify 10-second deferred production dashboard does not collapse to 12 narrow columns
         shell: bash
         env:
@@ -434,7 +434,7 @@ jobs:
           set -euo pipefail
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 75s node scripts/v6633-ten-second-dashboard-browser.test.cjs | tee .sbc-isolated-reports/ten-second-grid.json
+          timeout --signal=TERM --kill-after=15s 75s node scripts/v6633-ten-second-dashboard-browser.test.cjs | tee .sbc-isolated-reports/ten-second-grid.json
       - name: Compare canonical CSS bundle against all 67 original styles in Chromium
         shell: bash
         env:
@@ -444,7 +444,7 @@ jobs:
           set -euo pipefail
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
-          timeout --signal=TERM 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
+          timeout --signal=TERM --kill-after=15s 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
       - name: Package verified prebuilt runtime after full isolated acceptance
         shell: bash
         env:
