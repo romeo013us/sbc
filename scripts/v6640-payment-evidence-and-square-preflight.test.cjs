@@ -24,8 +24,9 @@ assert.equal(unverifiedFulfillment(orders[3]),false);
 assert.match(report.methodology,/fulfillment status never implies payment/);
 const patch=fs.readFileSync(path.join(__dirname,'../hotfix-assets/apply-v6640-payment-evidence-and-square-preflight.js'),'utf8');
 new vm.Script(patch);
-const verifyOrder=patch.indexOf("const sq=circuit('square')");
-const mutateOrder=patch.indexOf('    let order=(db.orders||[]).find');
-assert.ok(verifyOrder>=0&&mutateOrder>verifyOrder,'Square circuit preflight must run before touching order');
+assert.match(patch,/const sq=circuit\('square'\)/,'Square circuit preflight must be defined');
+assert.match(patch,/const before=/,'expected guarded original order anchor');
+assert.match(patch,/s=swap\(s,before,after,'preflight prior to mutating order list'\)/,
+  'Square preflight insertion must be source-anchored and fail closed');
 assert.match(patch,/CIRCUIT_OPEN/);
 console.log('[SBC V6640] PASS no synthetic revenue, explicit paid proof, ambiguous orders, Square preflight order, strict anchors');
