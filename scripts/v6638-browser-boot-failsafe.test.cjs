@@ -49,7 +49,7 @@ const server=http.createServer((req,res)=>{
    const page=await context.newPage();
    page.setDefaultTimeout(12000);
    const unexpected=[];
-   page.on('pageerror',e=>console.error('[SBC SHELL PAGE ERROR]',String(e.message||e).slice(0,360)));
+   page.on('pageerror',e=>console.error('[SBC SHELL PAGE ERROR]',String(e.stack||e.message||e).slice(0,1200)));
    page.on('console',m=>{if(m.type()==='error')console.error('[SBC SHELL CONSOLE]',m.text().slice(0,240))});
    page.on('requestfailed',r=>{
     if(r.url().startsWith(origin)&&r.url().endsWith('/app.js'))unexpected.push('app.js failed to load');
