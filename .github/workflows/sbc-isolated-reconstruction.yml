@@ -363,8 +363,9 @@ jobs:
           SBC_RUNTIME_ROLE: readonly
         run: |
           set -euo pipefail
-          npm install --prefix .sbc-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
-          ./.sbc-browser/node_modules/.bin/playwright install --with-deps chromium
+          # Browser installation itself also needs a hard budget, not just tests.
+          timeout --signal=TERM --kill-after=15s 240s npm install --prefix .sbc-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+          timeout --signal=TERM --kill-after=15s 300s ./.sbc-browser/node_modules/.bin/playwright install --with-deps chromium
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM --kill-after=15s 120s node scripts/v6610-lead-workspace-browser.test.cjs | tee .sbc-isolated-reports/lead-workspace-browser.json

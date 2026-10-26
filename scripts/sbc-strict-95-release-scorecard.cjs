@@ -48,10 +48,11 @@ function evaluate(doc){
  const sha=String(doc?.commit||'');
  const sourceBound=/^[a-f0-9]{40}$/i.test(sha);
  const p0Pass=p0.every(x=>x.verified);
- const status=allPass&&p0Pass&&sourceBound?'ELIGIBLE_FOR_OWNER_FINAL_REVIEW':'NO_GO';
+ // The legacy scorecard cannot validate provider truth. It must never authorize release.
+ const status=allPass&&p0Pass&&sourceBound?'LEGACY_CLAIMS_REQUIRE_INDEPENDENT_REVIEW':'NO_GO';
  return {protocol:RELEASE,commit:sourceBound?sha:null,status,minimumPerDimension:95,
    allCriticalGatesPassing:p0Pass,sections,p0,
-   note:'Evidence claims need independent owner/provider verification. CI tests alone never certify Company, SaaS or live Production. No live payments, contacts or data changes are performed.'};
+   note:'LEGACY SCORECARD ONLY. A brief evidence string does not verify a 95 grade. Use scripts/sbc-v6655-strict-95-evidence.cjs; no legacy outcome authorizes certification, Office Box or deployment.'};
 }
 if(require.main===module){
  const args=process.argv.slice(2);
@@ -61,6 +62,7 @@ if(require.main===module){
  if(filename){source=JSON.parse(fs.readFileSync(path.resolve(filename),'utf8'));}
  const result=evaluate(source);
  console.log(JSON.stringify(result,null,2));
- if(args.includes('--require-95')&&result.status!=='ELIGIBLE_FOR_OWNER_FINAL_REVIEW')process.exitCode=2;
+ // A legacy string-only report never grants certification, even if all boxes are filled.
+ if(args.includes('--require-95'))process.exitCode=2;
 }
 module.exports={evaluate,domains,mustPass,RELEASE};

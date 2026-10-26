@@ -75,6 +75,13 @@ jobs:
         run: node scripts/v6636-canonical-css-bundle.test.cjs
       - name: Enforce evidence-based Company SaaS Build scorecard logic
         run: node scripts/sbc-strict-95-release-scorecard.test.cjs
+      - name: Enforce V66.55 per-subsystem 95 evidence gate (no invented scores)
+        run: |
+          node --check scripts/sbc-v6655-strict-95-evidence.cjs
+          node scripts/sbc-v6655-strict-95-evidence.test.cjs
+          node scripts/sbc-v6655-strict-95-evidence.cjs > /tmp/sbc-95-no-evidence.json
+          node -e "const r=require('/tmp/sbc-95-no-evidence.json'); if(r.status!=='NO_GO'||r.officeBoxAuthorized!==false) process.exit(1)"
+
       - name: Verify V6648 fail-closed revenue scope patch and tests compile
         run: |
           node --check hotfix-assets/apply-v6648-tenant-revenue-scope.js
