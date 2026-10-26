@@ -9,8 +9,8 @@ function styles(){if(document.getElementById(ID))return;var s=document.createEle
 function brains(){var p=document.getElementById('sbcAgentOSPanel');if(!p)return;if(!p.dataset.sbcCompact)p.dataset.sbcCompact='1';
 var h=p.querySelector('.sbc-agent-os-head');if(!h)return;
 var b=h.querySelector('.sbc-agent-collapse');if(!b){b=document.createElement('button');b.type='button';b.className='sbc-agent-collapse';h.appendChild(b)}
-var g=p.querySelector('.sbc-agent-brains-grid');if(g)g.id='sbc-agent-brains-grid';
-var collapsed=p.dataset.sbcCompact==='1';b.textContent=collapsed?'Expand 10 Brains':'Collapse 10 Brains';b.setAttribute('aria-expanded',String(!collapsed));b.setAttribute('aria-controls','sbc-agent-brains-grid')}
+var g=p.querySelector('.sbc-agent-brains-grid');if(g&&g.id!=='sbc-agent-brains-grid')g.id='sbc-agent-brains-grid';
+var collapsed=p.dataset.sbcCompact==='1';var label=collapsed?'Expand 10 Brains':'Collapse 10 Brains';if(b.textContent!==label)b.textContent=label;b.setAttribute('aria-expanded',String(!collapsed));b.setAttribute('aria-controls','sbc-agent-brains-grid')}
 function kim(){var fn=window.sbcKimCanonical&&window.sbcKimCanonical.open||window.openSbcAI;if(typeof fn==='function')fn()}
 function launcher(){var t=document.querySelector('#app .topbar');if(!t||document.getElementById('sbc-kim-header-launch'))return;
 var b=document.createElement('button');b.id='sbc-kim-header-launch';b.type='button';b.textContent='✦ Open Kim';b.setAttribute('aria-label','Open Kim AI Chief of Staff chat');b.addEventListener('click',kim);t.appendChild(b)}
