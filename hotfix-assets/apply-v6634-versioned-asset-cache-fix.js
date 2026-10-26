@@ -44,6 +44,8 @@ function apply(root){
  // indefinite session / CRM bootstrap loading state; no writer/security changes.
  for(const rel of ['public/app.js','browser_public/app.js']){
   const file=path.join(root,rel);
+  // Minimal asset-cache regression fixtures do not contain the app shell.
+  if(!fs.existsSync(file))continue;
   let app=fs.readFileSync(file,'utf8');
   app=once(app,
    "function sbcTheme(){return localStorage.getItem('sbc-theme')||'light'}",
@@ -61,10 +63,13 @@ function apply(root){
    "state.data=await api('/api/bootstrap');",
    "state.data=await api('/api/bootstrap',{timeoutMs:18000});",
    rel+' bounded initial CRM bootstrap read');
-  app=once(app,
-   "const rp=await api('/api/owner/recovery/leads');",
-   "const rp=await api('/api/owner/recovery/leads',{timeoutMs:10000});",
-   rel+' bounded read-only recovery projection');
+  if(app.includes("const rp=await api('/api/owner/recovery/leads');"))
+   app=once(app,
+    "const rp=await api('/api/owner/recovery/leads');",
+    "const rp=await api('/api/owner/recovery/leads',{timeoutMs:10000});",
+    rel+' bounded read-only recovery projection');
+  else if(rel==='public/app.js')
+   throw Error(MARKER+': production recovery projection anchor missing');
   app=once(app,
    "$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await load();",
    "$('#login').classList.add('hidden');$('#app').classList.remove('hidden');const startupContent=$('#content');if(startupContent)startupContent.textContent='Loading SBC account data…';await load();",
