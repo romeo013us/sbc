@@ -49,17 +49,6 @@ const fixture=`<!doctype html><html><head><meta name="viewport" content="width=d
 </body></html>`;
 (async()=>{
  let browser;
- const server=http.createServer((req,res)=>{
-  const p=new URL(req.url,'http://127.0.0.1').pathname;
-  if(p==='/'){res.writeHead(200,{'content-type':'text/html','cache-control':'no-store'});return res.end(fixture);}
-  if(p==='/fantastic4-launch-os.js'){
-   const dir=req.headers['x-sbc-runtime-dir']==='browser_public'?'browser_public':'public';
-   res.writeHead(200,{'content-type':'application/javascript','cache-control':'no-store'});
-   return res.end(fs.readFileSync(path.join(root,dir,p.slice(1))));
-  }
-  res.writeHead(404);res.end('NOT_FOUND');
- });
- await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   browser=await playwright.chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   for(const viewport of [{width:1366,height:800},{width:390,height:844}]){
@@ -67,7 +56,11 @@ const fixture=`<!doctype html><html><head><meta name="viewport" content="width=d
    const page=await context.newPage();const errors=[],dialogs=[];
    page.on('pageerror',e=>errors.push(e.message));
    page.on('dialog',async d=>{dialogs.push(d.message());await d.accept();});
-   await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'load'});
+   // Network-free synthetic fixture, no local ports and no live API traffic.
+   const bare=fixture.slice(0,fixture.indexOf('<script src="/fantastic4-launch-os.js"'))+'</body></html>';
+   await page.setContent(bare,{waitUntil:'load'});
+   await page.addScriptTag({content:fs.readFileSync(path.join(root,viewport.width===390?'browser_public':'public','fantastic4-launch-os.js'),'utf8')});
+   await page.evaluate(()=>window.fantastic4LaunchView().then(html=>{document.getElementById('content').innerHTML=html;}));
    await page.locator('#f4RevenueActionStatus').waitFor();
    assert.equal(await page.locator('button[data-sbc-action="revenue-verify"]').count(),1);
    const missing=await page.evaluate(()=>[...document.querySelectorAll('button[onclick]')].filter(b=>{
@@ -97,5 +90,5 @@ const fixture=`<!doctype html><html><head><meta name="viewport" content="width=d
    await context.close();
   }
   console.log(JSON.stringify({status:'PASS_MASTER_INTERACTION_BROWSER',scope:'Fantastic4 and guardian revenue controls; synthetic API only',checks:calls},null,2));
- }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
+ }finally{await browser?.close();}
 })().catch(e=>{console.error('MASTER_INTERACTION_BROWSER_FAILED',e.stack||e);process.exitCode=1});
