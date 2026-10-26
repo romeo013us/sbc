@@ -165,6 +165,13 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/v6644-owner-hold-fair-batch.test.cjs
+      - name: Verify compiled Square idempotency, captured payments and read-only owner diagnosis
+        shell: bash
+        env:
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node scripts/v6645-square-checkout-safety.test.cjs
       - name: Enforce frozen frontend bundle and static-asset budgets
         shell: bash
         run: |
