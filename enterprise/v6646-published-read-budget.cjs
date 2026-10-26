@@ -38,6 +38,14 @@ function createReadBudget({role='readonly',timeoutMs=12000,slowMs=2500,clock=()=
    res.setHeader('Cache-Control','no-store');
    res.status(504).json({ok:false,code:'SBC_PUBLISHED_READ_TIMEOUT',retryable:true,
      error:'Dashboard read exceeded the response deadline. No changes were made.'});
+   // The legacy async GET handler may finish after the deadline. Suppress late
+   // writes on this completed response to prevent ERR_HTTP_HEADERS_SENT
+   // from crashing the Published process. Do NOT abort or cancel any DB work.
+   const noFurtherWrite=()=>res;
+   for(const name of ['json','send','sendStatus','redirect','setHeader','writeHead','end']){
+     if(typeof res[name]==='function')res[name]=noFurtherWrite;
+   }
+   if(typeof res.write==='function')res.write=()=>false;
   },limit);
   timer?.unref?.();
   next();
