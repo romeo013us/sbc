@@ -10,19 +10,21 @@ const S=require(path.join(root,'enterprise/revenue-autopilot-supervisor-v552.js'
 const records=[
  {id:'workflow-done-unpaid',status:'Completed',paymentStatus:'Pending',price:199},
  {id:'fulfillment-done-unpaid',status:'Fulfilled',paymentStatus:'Pending',price:349},
- {id:'paid-in-Square',status:'Pending',paymentStatus:'Pending',metadata:{squarePaymentStatus:'COMPLETED'},price:99},
+ {id:'paid-in-Square',status:'Pending',paymentStatus:'Pending',metadata:{squareOrderId:'sq-order-99',squarePaymentId:'sq-payment-99',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-10-26T19:00:00Z'},price:99},
  {id:'paid-in-CRM',status:'Pending',paymentStatus:'Paid',price:599},
  {id:'refunded',status:'Completed',paymentStatus:'REFUNDED',price:699},
  {id:'system-test',status:'Paid',paymentStatus:'Paid',price:1,testMode:true}
 ];
 const db={customers:[{id:'prospect',tenantId:1}],orders:records,fulfillmentJobs:[]};
 const t=T.snapshot({db}),g=G.snapshot(db);
-assert.equal(t.metrics.paidOrders,2,'10-brain must not count completed-but-unpaid');
-assert.equal(g.metrics.paidOrders,2,'God-Tier must match 10-brain confirmed paid');
+assert.equal(t.metrics.paidOrders,1,'10-brain must only count Square-backed settlement records');
+assert.equal(g.metrics.paidOrders,1,'God-Tier must match 10-brain Square-backed classification');
 assert.equal(t.metrics.unverifiedFulfillmentOrders,2);
 assert.equal(g.metrics.unverifiedFulfillmentOrders,2);
-assert.equal(t.metrics.recognizedRevenue,698);
-assert.equal(g.metrics.recognizedPaidRevenue,698);
+assert.equal(t.metrics.recognizedRevenue,99);
+assert.equal(g.metrics.recognizedPaidRevenue,99);
+assert.equal(E.providerCapturedSquare(records[2]),true);
+assert.equal(E.providerCapturedSquare(records[3]),false,'legacy status-only Paid is not Square evidence');
 assert.equal(E.confirmedPaid(records[0]),false);
 assert.equal(G.needsReconciliation(records[0],[]),false,'unpaid order must never be sent for fulfillment');
 assert.equal(G.needsReconciliation(records[2],[]),true,'confirmed paid order may be reconciled');
