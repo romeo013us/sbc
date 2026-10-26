@@ -441,6 +441,7 @@ jobs:
           for pass in 1 2 3; do
             echo "SBC V66.62 compiled customer-hub production gate PASS $pass/3"
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6662-client-hub-release-safety.test.cjs | tee ".sbc-isolated-reports/v6662-compiled-pass-$pass.log"
+            SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6662-godkim-tenant-order.test.cjs | tee ".sbc-isolated-reports/v6662-godkim-tenant-pass-$pass.log"
           done
       - name: Triple-pass real Chromium customer-hub security and customer-data rendering
         shell: bash
