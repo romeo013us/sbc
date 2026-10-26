@@ -49,6 +49,7 @@ jobs:
             trap 'rm -rf "$verify_dir"' EXIT
             unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$verify_dir"
             SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6640-compiled-payment-truth.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6641-fulfillment-payment-gate.test.cjs
             rm -rf "$verify_dir"
             trap - EXIT
           fi
