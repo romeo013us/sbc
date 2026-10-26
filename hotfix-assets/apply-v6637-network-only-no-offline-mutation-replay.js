@@ -90,6 +90,8 @@ function apply(root){
   changed.push(...fairness.files);
   const checkout=require('./apply-v6645-square-payment-proof-and-readiness.js').apply(root);
   changed.push(...checkout.files);
+  const published=require('./apply-v6646-published-read-budget.js').apply(root);
+  changed.push(...published.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
