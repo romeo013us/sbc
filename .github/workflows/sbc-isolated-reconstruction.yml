@@ -405,6 +405,14 @@ jobs:
         run: |
           set -euo pipefail
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6649-owner-action-persistence.test.cjs | tee .sbc-isolated-reports/v6649-durable-owner-evidence.log
+      - name: Prove all fulfillment routes and vendor dispatch block unpaid or cross-tenant orders
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6651-fulfillment-evidence-consistency.test.cjs | tee .sbc-isolated-reports/v6651-paid-fulfillment-gate.log
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:
