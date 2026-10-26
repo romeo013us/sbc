@@ -78,6 +78,8 @@ function apply(root){
  if(entrypoints.length===2){
   const perf=require('./apply-v6639-published-read-poll-guard.js').apply(root);
   changed.push(...perf.changed);
+  const payments=require('./apply-v6640-payment-evidence-and-square-preflight.js').apply(root);
+  changed.push(...payments.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
