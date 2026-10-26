@@ -158,6 +158,13 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/v6643-kevin-durable-owner-veto.test.cjs
+      - name: Prove 27 owner holds cannot starve eligible paid orders in compiled controllers
+        shell: bash
+        env:
+          SBC_RUNTIME_ROOT: .sbc-isolated-runtime
+        run: |
+          set -euo pipefail
+          node scripts/v6644-owner-hold-fair-batch.test.cjs
       - name: Enforce frozen frontend bundle and static-asset budgets
         shell: bash
         run: |
