@@ -13,7 +13,7 @@ function patchServer(s){
  s=once(s,before,after,'guard before financial mutation');
  s=once(s,
   "  if(!rec){rec={id:id('sqpay'),sbcOrderId:order.id",
-  "  // Refuse out-of-order PENDING/FAILED/CANCELED events that could undo recorded capture.\n  if(status!=='COMPLETED' && SBC_V6659_SQUARE_PROOF.persistedCompletion(orderParsed(order),{id:squarePaymentId,order_id:squareOrderId}))\n    return {ignored:true,reason:'STALE_NONCOMPLETED_EVENT_AFTER_CAPTURE',orderId:order.id};\n  if(!rec){rec={id:id('sqpay'),sbcOrderId:order.id",
+  "  // Refuse out-of-order PENDING/FAILED/CANCELED events that could undo recorded capture.\n  if(status!=='COMPLETED' && SBC_V6659_SQUARE_PROOF.storedOrderCapture(orderParsed(order)))\n    return {ignored:true,reason:'STALE_NONCOMPLETED_EVENT_AFTER_CAPTURE',orderId:order.id};\n  if(!rec){rec={id:id('sqpay'),sbcOrderId:order.id",
   'no post-capture status downgrades');
  s=once(s,
   "    const alreadyPaid=String(order.paymentStatus||'').toUpperCase()==='PAID' || String(orderParsed(order).squarePaymentStatus||'').toUpperCase()==='PAID';",
