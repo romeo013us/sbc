@@ -94,6 +94,8 @@ function apply(root){
   changed.push(...published.files);
   const masterInteractions=require('./apply-v6647-master-interaction-audit.js').apply(root);
   changed.push(...masterInteractions.changed);
+  const scopedRevenue=require('./apply-v6648-tenant-revenue-scope.js').apply(root);
+  changed.push(...scopedRevenue.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,
