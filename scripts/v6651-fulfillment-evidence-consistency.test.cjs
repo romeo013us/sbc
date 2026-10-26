@@ -17,7 +17,7 @@ function section(a,b){const i=server.indexOf(a),j=server.indexOf(b,i+a.length);a
 const ctx={require:p=>{assert.equal(p,'./enterprise/v6640-payment-evidence.cjs');return proof;},Number,Object,Error};
 vm.runInNewContext(section('function SBC_V6651_REQUIRE_PAID(','function fulfillmentItemsForOrder(')+'\nthis.guard=SBC_V6651_REQUIRE_PAID;',ctx);
 const guard=ctx.guard;
-const paid={id:'paid',tenantId:7,paymentStatus:'PAID',status:'Pending'};
+const paid={id:'paid',tenantId:7,paymentStatus:'PAID',status:'Pending',parsed:{squareOrderId:'sq-verified',squarePaymentId:'sq-payment',squarePaymentStatus:'PAID',squarePaymentCompletedAt:'2026-10-26T12:00:00Z'}};
 const fake={id:'fake',tenantId:7,paymentStatus:'PENDING',status:'Paid'};
 const refund={id:'refund',tenantId:7,paymentStatus:'REFUNDED',status:'Paid'};
 for(const o of [fake,refund,{id:'legacy',tenantId:7,status:'Paid'},null])assert.throws(()=>guard(o,7),/PAYMENT_EVIDENCE_REQUIRED|TENANT_CONTEXT_REQUIRED/);

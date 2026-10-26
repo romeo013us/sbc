@@ -10,19 +10,20 @@ for(const [name,code] of [[missionPath,missionCode],[revenuePath,revenueCode]]){
  new vm.Script(code,{filename:name});
 }
 const {createController}=require(missionPath),G=require(revenuePath);
+const fakeSquareReceipt=id=>({squareOrderId:'sq-'+id,squarePaymentId:'pay-'+id,squarePaymentStatus:'PAID',squarePaymentCompletedAt:'2026-10-26T16:00:00Z'});
 const holds=Array.from({length:27},(_,i)=>({
- id:'hold-'+i,tenantId:7,status:'Pending',paymentStatus:'Paid',price:10000,
+ id:'hold-'+i,tenantId:7,status:'Pending',paymentStatus:'Paid',price:10000,parsed:fakeSquareReceipt('hold-'+i),
  metadata:{ownerApprovalRequired:true}
 }));
 const safe=Array.from({length:3},(_,i)=>({
- id:'small-'+i,tenantId:7,status:'Pending',paymentStatus:'Paid',price:199
+ id:'small-'+i,tenantId:7,status:'Pending',paymentStatus:'Paid',price:199,parsed:fakeSquareReceipt('small-'+i)
 }));
 const other=[
- {id:'other-tenant',tenantId:8,status:'Pending',paymentStatus:'Paid',price:199},
+ {id:'other-tenant',tenantId:8,status:'Pending',paymentStatus:'Paid',price:199,parsed:fakeSquareReceipt('other-tenant')},
  {id:'unpaid-but-completed',tenantId:7,status:'Completed',paymentStatus:'Pending',price:199},
  {id:'refunded',tenantId:7,status:'Completed',paymentStatus:'REFUNDED',price:199},
  {id:'system-test',tenantId:7,status:'Pending',paymentStatus:'Paid',price:1,testMode:true},
- {id:'already-has-durable-job',tenantId:7,status:'Pending',paymentStatus:'Paid',price:199}
+ {id:'already-has-durable-job',tenantId:7,status:'Pending',paymentStatus:'Paid',price:199,parsed:fakeSquareReceipt('already-has-durable-job')}
 ];
 async function testKim(){
  const orders=[...holds.map(x=>({...x})),...safe.map(x=>({...x})),...other.map(x=>({...x}))];

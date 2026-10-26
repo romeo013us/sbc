@@ -104,6 +104,8 @@ function apply(root){
   changed.push(...proof.files);
   const squareTenant=require('./apply-v6657-square-tenant-boundaries.js').apply(root);
   changed.push(...squareTenant.files);
+  const revenueTruth=require('./apply-v6658-revenue-fulfillment-truth.js').apply(root);
+  changed.push(...revenueTruth.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,

@@ -434,6 +434,7 @@ jobs:
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6651-fulfillment-evidence-consistency.test.cjs | tee .sbc-isolated-reports/v6651-paid-fulfillment-gate.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6652-manual-payment-proof.test.cjs | tee .sbc-isolated-reports/v6652-no-phantom-manual-payment.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6657-square-tenant-boundaries.test.cjs | tee .sbc-isolated-reports/v6657-square-tenant-evidence.log
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6658-revenue-fulfillment-truth.test.cjs | tee .sbc-isolated-reports/v6658-revenue-evidence.log
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:
@@ -548,6 +549,21 @@ jobs:
           zip -qr ../SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip .
           cd ..
           sha256sum SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip > .sbc-isolated-reports/archive.sha256
+          # User-facing complete GoDaddy ZIP: no need to reconstruct it from logs or source.
+          cp SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip SBC-GoDaddy-COMPLETE.zip
+          sha256sum SBC-GoDaddy-COMPLETE.zip > SBC-GoDaddy-COMPLETE.sha256
+          unzip -tqq SBC-GoDaddy-COMPLETE.zip
+          unzip -Z1 SBC-GoDaddy-COMPLETE.zip | grep -qx 'bootstrap.js'
+          unzip -Z1 SBC-GoDaddy-COMPLETE.zip | grep -qx 'SBC-V66-PREBUILT-RUNTIME.zip'
+          unzip -Z1 SBC-GoDaddy-COMPLETE.zip | grep -qx 'SBC-V66-PREBUILT-RUNTIME.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SBC-GoDaddy-Complete-Download
+          path: |
+            SBC-GoDaddy-COMPLETE.zip
+            SBC-GoDaddy-COMPLETE.sha256
+          retention-days: 90
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
