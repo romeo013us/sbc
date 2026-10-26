@@ -80,6 +80,10 @@ function orderStatus(o){return JSON.parse(o.notes).squarePaymentStatus}
  assert.equal(stale.ignored,true,'out-of-order PENDING event must not undo paid capture');
  assert.equal(first.order.paymentStatus,'Paid');
  assert.equal(first.metrics.saves,2,'late event cannot trigger a save');
+ const lateDifferent=await first.run({...originalPayment,id:'pm-late-other',status:'PENDING'});
+ assert.equal(lateDifferent.ignored,true,'different pending tender cannot roll back completed order');
+ assert.equal(first.order.paymentStatus,'Paid');
+ assert.equal(first.metrics.saves,2);
  const different=await first.run({...originalPayment,id:'pm-different'});
  assert.equal(different.code,'SQUARE_DIFFERENT_CAPTURE_REQUIRES_RECONCILIATION');
  assert.equal(first.metrics.automation,1);
