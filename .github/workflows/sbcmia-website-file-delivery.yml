@@ -1,0 +1,50 @@
+name: SBCMIA Website Index Download
+
+on:
+  push:
+    branches:
+      - delivery/v6660-sbcmia-direct-download
+    paths:
+      - site/sbcmia.com/**
+      - .github/workflows/sbcmia-website-file-delivery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the exact customer-site PHP from approved V66.60 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "de0ed47ce19588a2a534339559fdf08b3614eb59a9f24b977c25dd715a103d46  site/sbcmia.com/index.php" | sha256sum -c -
+          test "$(wc -c < site/sbcmia.com/index.php)" -eq 214475
+          if command -v php >/dev/null; then php -l site/sbcmia.com/index.php; fi
+      - name: Package standalone website index and installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          out=Path('SBCMIA-index-php-V66.60.zip')
+          with ZipFile(out,'w',ZIP_DEFLATED) as z:
+              z.write('site/sbcmia.com/index.php','index.php')
+              z.write('site/sbcmia.com/INSTALLATION.txt','INSTALLATION.txt')
+          with ZipFile(out) as z:
+              assert z.testzip() is None
+              assert 'index.php' in z.namelist()
+          PY
+          sha256sum SBCMIA-index-php-V66.60.zip > SBCMIA-index-php-V66.60.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SBCMIA-index-php-V66.60-Download
+          path: |
+            SBCMIA-index-php-V66.60.zip
+            SBCMIA-index-php-V66.60.sha256
+          retention-days: 90
+          if-no-files-found: error
