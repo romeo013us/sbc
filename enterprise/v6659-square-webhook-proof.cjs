@@ -35,4 +35,10 @@ function persistedCompletion(parsed,payment){
  return !!str(p.id)&&str(x.squarePaymentId)===str(p.id)&&!!str(p.order_id)&&str(x.squareOrderId)===str(p.order_id)
   &&norm(x.squarePaymentStatus)==='PAID'&&!!str(x.squarePaymentCompletedAt);
 }
-module.exports={validateCompleted,persistedCompletion};
+// An old PENDING/FAILED event for another tender must not undo a recorded capture.
+function storedOrderCapture(parsed){
+ const x=parsed&&typeof parsed==='object'?parsed:{};
+ return !!str(x.squareOrderId)&&!!str(x.squarePaymentId)&&
+   norm(x.squarePaymentStatus)==='PAID'&&!!str(x.squarePaymentCompletedAt);
+}
+module.exports={validateCompleted,persistedCompletion,storedOrderCapture};
