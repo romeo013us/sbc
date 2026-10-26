@@ -77,6 +77,7 @@ jobs:
           SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6659-square-completion-consistency.test.cjs
           SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6660-website-bridge.test.cjs
           SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6661-inbound-and-portal-auth.test.cjs
+          for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6662-client-hub-release-safety.test.cjs; done
           rm -rf "$verify_dir"
           trap - EXIT
           node hotfix-assets/v6600-release-layout-test.js
