@@ -12,6 +12,9 @@ function patchServer(s){
   "const SBC_V6660_BRIDGE=require('./enterprise/v6660-website-bridge.cjs');\n"+
   "function sbcVerifiedWebsiteTenant(req){const v=SBC_V6660_BRIDGE.verify(req,{key:process.env.SBC_WEBSITE_BRIDGE_KEY});if(!v.ok)throw Object.assign(Error(v.code),{code:v.code,status:403});const m=V569_PRODUCTION_EXPANSION.tenantFromHost(v.host);if(!m.ok)throw Object.assign(Error('SITE_BRIDGE_TENANT_UNMAPPED'),{code:'SITE_BRIDGE_TENANT_UNMAPPED',status:403});return Number(m.tenantId);}\n"+
   'function requireMappedRequestTenant(req){','register signed website helper');
+ s=once(s,"app.post('/api/web-lead',async(req,res)=>{",
+  "app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}),async(req,res)=>{",
+  'parse raw JSON before early public lead route');
  s=once(s,
   "  const tenantResolution=V569_PRODUCTION_EXPANSION.tenantFromHost(req?.headers?.host||req?.hostname||'');\n  if(!tenantResolution?.ok)return res.status(403).json({ok:false,error:'This website host is not mapped to an SBC tenant.'});\n  const tenantId=Number(tenantResolution.tenantId);",
   "  let tenantId;try{tenantId=sbcVerifiedWebsiteTenant(req)}catch(e){return res.status(403).json({ok:false,code:e.code||'SITE_BRIDGE_UNAUTHORIZED'});}",
