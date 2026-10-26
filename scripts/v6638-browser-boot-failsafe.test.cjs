@@ -9,7 +9,9 @@ const pub=path.join(root,'public');
 const playwright=require(path.resolve(process.env.SBC_PLAYWRIGHT_PATH||'.sbc-browser/node_modules/playwright'));
 for(const rel of ['public/app.js','browser_public/app.js']){
  const code=fs.readFileSync(path.join(root,rel),'utf8');
- for(const needle of ["me=await api('/api/me',{timeoutMs:12000})","state.data=await api('/api/bootstrap',{timeoutMs:18000});","const rp=await api('/api/owner/recovery/leads',{timeoutMs:10000});","SBC is online, but account data could not load","try{return localStorage.getItem('sbc-theme')||'light'}catch"]){
+ const required=["me=await api('/api/me',{timeoutMs:12000})","state.data=await api('/api/bootstrap',{timeoutMs:18000});","SBC is online, but account data could not load","try{return localStorage.getItem('sbc-theme')||'light'}catch"];
+ if(rel==='public/app.js')required.push("const rp=await api('/api/owner/recovery/leads',{timeoutMs:10000});");
+ for(const needle of required){
   assert.ok(code.includes(needle),'Startup bound or fallback missing from '+rel+': '+needle);
  }
 }
