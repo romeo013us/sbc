@@ -26,6 +26,7 @@ const server=http.createServer((req,res)=>{
   res.end(type==='application/json'?JSON.stringify(body):body);
  };
  if(pathname==='/api/me'){
+  console.log('[SBC MOCK SESSION]',JSON.stringify({authenticated,method:req.method,path:pathname}));
   return authenticated?response(200,{ok:true,configured:true,authenticated:true,user:{id:'synthetic-owner',username:'owner',name:'CI Owner',role:'owner'}})
    :response(401,{error:'Authentication required.'});
  }
@@ -48,6 +49,8 @@ const server=http.createServer((req,res)=>{
    const page=await context.newPage();
    page.setDefaultTimeout(12000);
    const unexpected=[];
+   page.on('pageerror',e=>console.error('[SBC SHELL PAGE ERROR]',String(e.message||e).slice(0,360)));
+   page.on('console',m=>{if(m.type()==='error')console.error('[SBC SHELL CONSOLE]',m.text().slice(0,240))});
    page.on('requestfailed',r=>{
     if(r.url().startsWith(origin)&&r.url().endsWith('/app.js'))unexpected.push('app.js failed to load');
    });
