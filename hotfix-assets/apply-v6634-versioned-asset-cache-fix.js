@@ -40,6 +40,63 @@ function apply(root){
   sw=sw.replace(cache,"const CACHE='sbc-static-v66-34-content-revalidated'");
   fs.writeFileSync(file,sw);changed.push(rel);
  }
+ // Legacy Master Control Theme overwrites window.applySbcTheme and runs its
+ // own DOMContentLoaded handler. A denied Storage API crashes its boot handler
+ // and then the main app boot before the account session can initialize.
+ for(const rel of ['public/sbc-master-control-theme-v56-25-3.js','browser_public/sbc-master-control-theme-v56-25-3.js']){
+  const file=path.join(root,rel);
+  if(!fs.existsSync(file))continue;
+  let theme=fs.readFileSync(file,'utf8');
+  theme=once(theme,
+   "function theme(){return localStorage.getItem(KEY)||'light'}",
+   "function theme(){try{return localStorage.getItem(KEY)||'light'}catch{return 'light'}}",
+   rel+' legacy theme storage-safe read');
+  theme=once(theme,
+   "document.body.dataset.theme=t;\n    localStorage.setItem(KEY,t);",
+   "document.body.dataset.theme=t;\n    try{localStorage.setItem(KEY,t)}catch{};",
+   rel+' legacy theme storage-safe write');
+  fs.writeFileSync(file,theme);changed.push(rel);
+ }
+ // SBC_V6638_VISIBLE_BROWSER_BOOT: never strand GoDaddy's app on an
+ // indefinite session / CRM bootstrap loading state; no writer/security changes.
+ for(const rel of ['public/app.js','browser_public/app.js']){
+  const file=path.join(root,rel);
+  // Minimal asset-cache regression fixtures do not contain the app shell.
+  if(!fs.existsSync(file))continue;
+  let app=fs.readFileSync(file,'utf8');
+  app=once(app,
+   "function sbcTheme(){return localStorage.getItem('sbc-theme')||'light'}",
+   "function sbcTheme(){try{return localStorage.getItem('sbc-theme')||'light'}catch{return 'light'}}",
+   rel+' storage-safe startup theme');
+  app=once(app,
+   "document.body.dataset.theme=t;localStorage.setItem('sbc-theme',t);",
+   "document.body.dataset.theme=t;try{localStorage.setItem('sbc-theme',t)}catch{};",
+   rel+' storage-safe theme persistence');
+  app=once(app,
+   "me=await api('/api/me')",
+   "me=await api('/api/me',{timeoutMs:12000})",
+   rel+' bounded initial authentication probe');
+  app=once(app,
+   "state.data=await api('/api/bootstrap');",
+   "state.data=await api('/api/bootstrap',{timeoutMs:18000});",
+   rel+' bounded initial CRM bootstrap read');
+  if(app.includes("const rp=await api('/api/owner/recovery/leads');"))
+   app=once(app,
+    "const rp=await api('/api/owner/recovery/leads');",
+    "const rp=await api('/api/owner/recovery/leads',{timeoutMs:10000});",
+    rel+' bounded read-only recovery projection');
+  else if(rel==='public/app.js')
+   throw Error(MARKER+': production recovery projection anchor missing');
+  app=once(app,
+   "$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await load();",
+   "$('#login').classList.add('hidden');$('#app').classList.remove('hidden');const startupContent=$('#content');if(startupContent)startupContent.textContent='Loading SBC account data…';await load();",
+   rel+' visible authenticated bootstrap');
+  const from="    if(login) login.classList.remove('hidden');\n    if(app) app.classList.add('hidden');\n    if(err) err.textContent='SBC could not start. Refresh once. If this message remains, the deployment needs repair.';";
+  const to="    // The server is online and the user is authenticated, but the CRM read\n    // failed. Never hide the whole workspace or permit unverified data writes.\n    if(state.me && app && !app.classList.contains('hidden')){\n      const content=document.getElementById('content');\n      if(content){\n        const section=document.createElement('section');section.className='card section';section.setAttribute('role','alert');\n        const head=document.createElement('h2');head.textContent='SBC is online, but account data could not load';\n        const detail=document.createElement('p');detail.textContent='No customer data was changed. Check the connection or session, then retry. CRM and payment actions remain unavailable until data loads.';\n        const why=document.createElement('p');why.className='mini';why.textContent=String(e&&e.message||'Startup data request failed').slice(0,220);\n        const retry=document.createElement('button');retry.type='button';retry.className='btn primary';retry.textContent='Retry account data';\n        retry.addEventListener('click',()=>{retry.disabled=true;boot().catch(err=>console.error('[SBC BOOT RETRY]',err))});\n        section.append(head,detail,why,retry);content.replaceChildren(section);\n      }\n      return;\n    }\n    if(login) login.classList.remove('hidden');\n    if(app) app.classList.add('hidden');\n    if(err) err.textContent='SBC could not validate your session. '+String(e&&e.message||'Request failed').slice(0,160)+' — Retry sign-in or refresh.';";
+  app=once(app,from,to,rel+' visible bounded boot failure');
+  fs.writeFileSync(file,app);
+  changed.push(rel);
+ }
  return {marker:MARKER,changed,immutableOnlyForContentHashedFilenames:true,priorStaleAssetUrlsInvalidated:true,legacyUIRemainsDisabled:true,crmWrites:false,tenantProtectionUnchanged:true};
 }
 module.exports={apply,MARKER,VERSION};
