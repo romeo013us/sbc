@@ -102,6 +102,8 @@ function apply(root){
   changed.push(...fulfillmentEvidence.files);
   const proof=require('./apply-v6652-manual-payment-proof.js').apply(root);
   changed.push(...proof.files);
+  const squareTenant=require('./apply-v6657-square-tenant-boundaries.js').apply(root);
+  changed.push(...squareTenant.files);
  }
  return {marker:MARKER,changed,automaticMutationReplayDisabled:true,authenticatedHtmlCacheDisabled:true,
  historicalOfflineQueuePreserved:true,publicWritesBlockedWhenOffline:true,

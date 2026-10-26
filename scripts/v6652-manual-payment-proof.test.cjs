@@ -9,7 +9,7 @@ const manual={status:'Paid',paymentStatus:'Paid',price:349,notes:'{"manualPaymen
 assert.equal(E.confirmedPaid(manual),false);
 assert.equal(E.unverifiedFulfillment(manual),true);
 assert.equal(E.confirmedPaid({status:'Paid',paymentStatus:'Paid',notes:'{"manualPaymentConfirmation":true}'}),false);
-assert.equal(E.confirmedPaid({...manual,notes:'{"manualPaymentEvidence":true,"squarePaymentStatus":"PAID","squarePaymentId":"captured-123"}'}),true);
+assert.equal(E.confirmedPaid({...manual,notes:'{"manualPaymentEvidence":true,"squareOrderId":"sq-order-123","squarePaymentStatus":"PAID","squarePaymentId":"captured-123","squarePaymentCompletedAt":"2026-10-26T17:00:00.000Z"}'}),true);
 assert.equal(E.confirmedPaid({paymentStatus:'Refunded'}),false);
 assert.equal(E.confirmedPaid({paymentStatus:'Paid'}),true);
 function between(a,b){const start=server.indexOf(a),end=server.indexOf(b,start+a.length);assert.ok(start>=0&&end>start,a);return server.slice(start,end)}
