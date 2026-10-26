@@ -40,6 +40,23 @@ function apply(root){
   sw=sw.replace(cache,"const CACHE='sbc-static-v66-34-content-revalidated'");
   fs.writeFileSync(file,sw);changed.push(rel);
  }
+ // Legacy Master Control Theme overwrites window.applySbcTheme and runs its
+ // own DOMContentLoaded handler. A denied Storage API crashes its boot handler
+ // and then the main app boot before the account session can initialize.
+ for(const rel of ['public/sbc-master-control-theme-v56-25-3.js','browser_public/sbc-master-control-theme-v56-25-3.js']){
+  const file=path.join(root,rel);
+  if(!fs.existsSync(file))continue;
+  let theme=fs.readFileSync(file,'utf8');
+  theme=once(theme,
+   "function theme(){return localStorage.getItem(KEY)||'light'}",
+   "function theme(){try{return localStorage.getItem(KEY)||'light'}catch{return 'light'}}",
+   rel+' legacy theme storage-safe read');
+  theme=once(theme,
+   "document.body.dataset.theme=t;\n    localStorage.setItem(KEY,t);",
+   "document.body.dataset.theme=t;\n    try{localStorage.setItem(KEY,t)}catch{};",
+   rel+' legacy theme storage-safe write');
+  fs.writeFileSync(file,theme);changed.push(rel);
+ }
  // SBC_V6638_VISIBLE_BROWSER_BOOT: never strand GoDaddy's app on an
  // indefinite session / CRM bootstrap loading state; no writer/security changes.
  for(const rel of ['public/app.js','browser_public/app.js']){
