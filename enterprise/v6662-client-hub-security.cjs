@@ -3,7 +3,7 @@ const crypto=require('node:crypto');
 // Legacy client link: 24 random bytes represented as exact hexadecimal, never executable HTML.
 const TOKEN=/^[a-f0-9]{48}$/i;
 function validToken(value){return typeof value==='string'&&TOKEN.test(value);}
-const STYLE='body{font-family:Inter,Arial,sans-serif;background:#f8fafc;margin:0;color:#0f172a}.wrap{max-width:900px;margin:40px auto;padding:20px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 8px 30px rgba(15,23,42,.06)}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700}.step{padding:10px;border-bottom:1px solid #eef2f7}.done{color:#15803d}.logo{max-width:180px}.muted{color:#475569}';
+const STYLE='body{font-family:Inter,Arial,sans-serif;background:#f8fafc;margin:0;color:#0f172a}.wrap{box-sizing:border-box;width:100%;max-width:900px;margin:40px auto;padding:20px;min-width:0}.card{box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 8px 30px rgba(15,23,42,.06)}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700}.step{padding:10px;border-bottom:1px solid #eef2f7}.done{color:#15803d}.logo{max-width:180px}.muted{color:#475569}';
 function clientRuntime(token){
  'use strict';
  const root=document.getElementById('app');
