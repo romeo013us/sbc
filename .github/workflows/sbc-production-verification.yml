@@ -82,6 +82,14 @@ jobs:
           node scripts/sbc-v6655-strict-95-evidence.cjs > /tmp/sbc-95-no-evidence.json
           node -e "const r=require('/tmp/sbc-95-no-evidence.json'); if(r.status!=='NO_GO'||r.officeBoxAuthorized!==false) process.exit(1)"
 
+      - name: Verify V66.56 read-only three-track reconciliation and deny non-CI restore
+        run: |
+          node --check scripts/v6656-disposable-restore.test.cjs
+          node scripts/v6656-disposable-restore.test.cjs --contract-test
+          node scripts/v6656-acceptance-reconciliation.test.cjs
+          node scripts/v6656-acceptance-reconciliation.cjs --input docs/v6656-empty-evidence.json > /tmp/sbc-v6656-evidence.json
+          node -e "const x=require('/tmp/sbc-v6656-evidence.json'); if(x.status!=='NOT_CERTIFIED_INDEPENDENT_REVIEW_REQUIRED'||!x.blockers.length)process.exit(1)"
+
       - name: Verify V6648 fail-closed revenue scope patch and tests compile
         run: |
           node --check hotfix-assets/apply-v6648-tenant-revenue-scope.js
