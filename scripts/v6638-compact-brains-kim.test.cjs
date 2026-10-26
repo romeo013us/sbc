@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const ui=fs.readFileSync(path.join(__dirname,'../hotfix-assets/sbc-v6638-compact-brains-kim.js'),'utf8');
+const patch=fs.readFileSync(path.join(__dirname,'../hotfix-assets/apply-v6637-network-only-no-offline-mutation-replay.js'),'utf8');
+new vm.Script(ui);new vm.Script(patch);
+assert.match(ui,/data-sbc-compact/);assert.match(ui,/Expand 10 Brains/);
+assert.match(ui,/Collapse 10 Brains/);assert.match(ui,/aria-expanded/);
+assert.match(ui,/sbcKimCanonical/);assert.match(ui,/openSbcAI/);
+assert.match(ui,/sbc-kim-header-launch/);assert.match(ui,/MutationObserver/);
+assert.match(ui,/if\(b.textContent!==label\)/,'no self-triggered observer loop');
+assert.match(patch,/sbc-v6638-compact-brains-kim\.js/);
+assert.match(patch,/new \(require\('node:vm'\)\.Script\)\(js/);
+assert.match(patch,/for\(const dir of \['public','browser_public'\]\)/);
+console.log('[SBC V6638] PASS: toggle, accessibility, canonical Kim hook, mirrored entrypoints, final compilation order');

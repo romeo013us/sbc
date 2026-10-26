@@ -72,6 +72,7 @@ jobs:
           node scripts/manifest-identity-validator.test.js
           node scripts/runtime-build-fingerprint.test.cjs
           node scripts/prebuilt-runtime.test.cjs
+          node scripts/v6638-compact-brains-kim.test.cjs
       - name: Pre-fetch exact Twilio browser SDK (network permitted only here)
         shell: bash
         run: |
