@@ -61,6 +61,16 @@ const server=http.createServer((req,res)=>{
    });
    await page.goto(origin+'/',{waitUntil:'domcontentloaded',timeout:20000});
    if(withSession){
+    await page.waitForTimeout(1600);
+    const info=await page.evaluate(()=>({
+      loginClass:document.querySelector('#login')?.className,
+      appClass:document.querySelector('#app')?.className,
+      content:document.querySelector('#content')?.innerText?.slice(0,400),
+      loginError:document.querySelector('#loginError')?.innerText,
+      stateMe:typeof state==='object'?state.me:null,
+      hasBoot:typeof boot==='function'
+    }));
+    console.log('[SBC SHELL DEBUG]',JSON.stringify(info),'seen API calls',JSON.stringify(requests.filter(p=>p.startsWith('/api/')).slice(-35)));
     await page.getByRole('heading',{name:'SBC is online, but account data could not load'}).waitFor({timeout:12000});
     assert.equal(await page.locator('#app').isVisible(),true,'authenticated shell must be visible');
     assert.equal(await page.locator('#login').isVisible(),false,'authenticated shell must not show sign-in');
