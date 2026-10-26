@@ -6,12 +6,15 @@ on:
     paths:
       - 'bootstrap.js'
       - 'hotfix-assets/**'
-      - 'scripts/offline-compile-release.cjs'
+      - 'scripts/**'
+      - 'enterprise/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/sbc-isolated-reconstruction.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'scripts/offline-compile-release.cjs'
+      - 'scripts/**'
       - 'docs/SBC-V66-2026-10-24-PRODUCTION-GATES-AND-CRM-ROADMAP.md'
       - 'scripts/offline-child-guard.cjs'
       - 'scripts/offline-child-guard.test.cjs'
@@ -68,6 +71,7 @@ jobs:
           node scripts/offline-child-guard.test.cjs
           node scripts/manifest-identity-validator.test.js
           node scripts/runtime-build-fingerprint.test.cjs
+          node scripts/prebuilt-runtime.test.cjs
       - name: Pre-fetch exact Twilio browser SDK (network permitted only here)
         shell: bash
         run: |
@@ -350,6 +354,32 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
+      - name: Package verified prebuilt runtime after full isolated acceptance
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_PREBUILT_ISOLATED: '1'
+        run: |
+          set -euo pipefail
+          node --check scripts/prebuilt-runtime.cjs
+          node --check scripts/package-prebuilt-runtime.cjs
+          node scripts/package-prebuilt-runtime.cjs
+          unzip -t SBC-V66-PREBUILT-RUNTIME.zip
+          unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'server.js'
+          unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'public/index.html'
+          unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'browser_public/index.html'
+          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Eq '^(data/|backups/|node_modules/|.env)'; then
+            echo 'Unsafe runtime or customer data included in release archive' >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SBC-VERIFIED-PREBUILT-RUNTIME
+          path: |
+            SBC-V66-PREBUILT-RUNTIME.zip
+            SBC-V66-PREBUILT-RUNTIME.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Create source candidate with authentic cached SDK
         shell: bash
         run: |
@@ -372,3 +402,48 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           include-hidden-files: true
+
+  publish-prebuilt-to-main:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [offline-reconstruct]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: SBC-VERIFIED-PREBUILT-RUNTIME
+          path: .
+      - name: Validate source identity and archive before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "require('./scripts/prebuilt-runtime.cjs').readManifest(process.cwd()) || process.exit(9)"
+          git fetch origin main
+          if test "$(git rev-parse origin/main)" != "$GITHUB_SHA"; then
+            echo 'New main commit exists; refuse to publish stale generated source.'
+            exit 1
+          fi
+      - name: Commit fully tested prebuilt release to GoDaddy main source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f SBC-V66-PREBUILT-RUNTIME.zip SBC-V66-PREBUILT-RUNTIME.json
+          if git diff --cached --quiet; then
+            echo "Verified release already matches source"
+            exit 0
+          fi
+          git commit -m "build: ship fully tested prebuilt V66 runtime for GoDaddy"
+          git push origin HEAD:main
