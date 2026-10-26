@@ -33,6 +33,7 @@ jobs:
         run: |
           node --check bootstrap.js
           node scripts/v6638-compact-brains-kim.test.cjs
+          node scripts/v6639-published-read-poll-guard.test.cjs
           node scripts/prebuilt-runtime.test.cjs
           node scripts/runtime-build-fingerprint.test.cjs
           node --check hotfix-assets/apply-v6600-release-layout.js
