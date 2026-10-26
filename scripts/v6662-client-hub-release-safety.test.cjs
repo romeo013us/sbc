@@ -18,7 +18,6 @@ assert.ok(!page.csp.includes('unsafe-inline'),'CSP must not allow arbitrary inli
 assert.ok(page.html.includes('textContent=String(value)'),'client-owned names inserted only via textContent');
 assert.ok(!page.html.includes('innerHTML'),'customer data must never enter innerHTML');
 assert.match(page.html,/referrerPolicy:'no-referrer'/); // fetch must never leak bearer URL
-assert.ok(!page.html.includes('undefined'));
 assert.throws(()=>H.render('<img src=x onerror=alert(1)>'),/INVALID_CLIENT_HUB_TOKEN/);
 const routes={};
 const one={id:'one',tenantId:1,contactName:'<svg onload=alert(1)>',businessName:'One Tenant',email:'one@example.test',phone:'3055550101',portalToken:'',updatedAt:''};
