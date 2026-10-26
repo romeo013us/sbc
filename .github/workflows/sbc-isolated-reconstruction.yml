@@ -467,7 +467,9 @@ jobs:
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'server.js'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'public/index.html'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'browser_public/index.html'
-          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Eq '^(data/|backups/|node_modules/|.env)'; then
+          unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d .sbc-verified-catalogs
+          SBC_RUNTIME_ROOT=.sbc-verified-catalogs node scripts/v6653-prebuilt-catalog-boot.test.cjs
+          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Eq '^(backups/|node_modules/|.env)'; then
             echo 'Unsafe runtime or customer data included in release archive' >&2
             exit 1
           fi
