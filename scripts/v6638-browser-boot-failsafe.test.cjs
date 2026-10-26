@@ -15,6 +15,13 @@ for(const rel of ['public/app.js','browser_public/app.js']){
   assert.ok(code.includes(needle),'Startup bound or fallback missing from '+rel+': '+needle);
  }
 }
+for(const rel of ['public/sbc-master-control-theme-v56-25-3.js','browser_public/sbc-master-control-theme-v56-25-3.js']){
+ const src=fs.readFileSync(path.join(root,rel),'utf8');
+ assert.ok(src.includes("function theme(){try{return localStorage.getItem(KEY)||'light'}catch{return 'light'}}"),
+  'Master Control Theme must not crash startup when Storage is restricted: '+rel);
+ assert.ok(src.includes("try{localStorage.setItem(KEY,t)}catch{};"),
+  'Master Control Theme must not crash on restricted Storage writes: '+rel);
+}
 let authenticated=false;
 const requests=[];
 const server=http.createServer((req,res)=>{
