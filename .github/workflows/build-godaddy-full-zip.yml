@@ -1,4 +1,5 @@
 name: Build GoDaddy Full ZIP
+# Final V6643 release: package only the source-matched, restart-tested Kevin veto runtime.
 # Release packaging includes compiled Kim V6642 financial, tenant and save-failure regression gate.
 # Release gate: package only the prebuilt V66 runtime that passed the V6641 fulfillment test.
 on:
