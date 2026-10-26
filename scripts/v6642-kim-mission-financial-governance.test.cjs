@@ -29,8 +29,11 @@ const {createController}=require(missionFile);
   tenBrain:{BRAINS:['PROSPECT_BRAIN'],evaluate:async()=>({version:'test',action:'CONTINUE_CONVERSATION',nodes:[]})},
   logger:{warn:()=>{}}
  });
- const overview=controller.overview();
- assert.equal(overview.metrics.paidOrders,4,'paid orders exclude system tests, refunds, and workflow-only statuses');
+ const overview=controller.overview(7);
+ assert.throws(()=>controller.overview(),/TENANT_CONTEXT_REQUIRED/,'tenantless overview must fail closed');
+ assert.equal(overview.missions.length,0);
+ assert.equal(overview.metrics.paidOrders,3,'no cross-tenant paid revenue exposed');
+ assert.equal(overview.metrics.recognizedRevenue,10548,'Kim revenue includes only confirmed payments from tenant 7');
  const first=await controller.reconcilePaidOrders(20,7);
  assert.equal(first.processed,2,'only owner hold and legitimate single paid order should be considered');
  assert.equal(first.results.find(x=>x.orderId==='needs-owner-clearance').status,'OWNER_CLEARANCE_REQUIRED');
