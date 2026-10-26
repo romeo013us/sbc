@@ -1,4 +1,5 @@
 name: Build GoDaddy Full ZIP
+# Release gate: package only the prebuilt V66 runtime that passed the V6641 fulfillment test.
 on:
   push:
     branches: [main]
