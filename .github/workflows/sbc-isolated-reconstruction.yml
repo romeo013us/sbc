@@ -73,6 +73,7 @@ jobs:
           node scripts/runtime-build-fingerprint.test.cjs
           node scripts/prebuilt-runtime.test.cjs
           node scripts/v6638-compact-brains-kim.test.cjs
+          node scripts/v6639-published-read-poll-guard.test.cjs
       - name: Pre-fetch exact Twilio browser SDK (network permitted only here)
         shell: bash
         run: |
