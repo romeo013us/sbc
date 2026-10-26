@@ -17,7 +17,7 @@ assert.match(page.csp,/script-src 'nonce-/);
 assert.ok(!page.csp.includes('unsafe-inline'),'CSP must not allow arbitrary inline scripts');
 assert.ok(page.html.includes('textContent=String(value)'),'client-owned names inserted only via textContent');
 assert.ok(!page.html.includes('innerHTML'),'customer data must never enter innerHTML');
-assert.match(page.html,/Referrer/); // script sets referrerPolicy for fetch
+assert.match(page.html,/referrerPolicy:'no-referrer'/); // fetch must never leak bearer URL
 assert.ok(!page.html.includes('undefined'));
 assert.throws(()=>H.render('<img src=x onerror=alert(1)>'),/INVALID_CLIENT_HUB_TOKEN/);
 const routes={};
