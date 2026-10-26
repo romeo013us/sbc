@@ -31,7 +31,7 @@ const brainSnapshot=brain.snapshot({db});
 assert.equal(brainSnapshot.metrics.paidOrders,1);
 assert.equal(brainSnapshot.metrics.recognizedRevenue,199);
 assert.equal(read('public/god-tier-broadcast-v56-13-4.js'),read('browser_public/god-tier-broadcast-v56-13-4.js'));
-assert.match(read('public/god-tier-broadcast-v56-13-4.js'),/SQUARE-BACKED ORDER VALUE/);
+assert.match(read('public/god-tier-broadcast-v56-13-4.js'),/SQUARE-BACKED VALUE/);
 const s=read('server.js');
 assert.match(s,/SBC_V6658_PROVENANCE_REVENUE_FULFILLMENT/);
 const a=s.indexOf('function SBC_V6651_REQUIRE_PAID('),b=s.indexOf('function fulfillmentItemsForOrder(',a);
