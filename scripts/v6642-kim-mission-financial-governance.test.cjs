@@ -11,13 +11,13 @@ const {createController}=require(missionFile);
 (async()=>{
  const orders=[
   {id:'fake-fulfillment',tenantId:7,status:'Completed',paymentStatus:'Pending',price:999},
-  {id:'wrong-tenant',tenantId:8,status:'Pending',paymentStatus:'Paid',price:55},
+  {id:'wrong-tenant',tenantId:8,status:'Pending',paymentStatus:'Paid',price:55,parsed:{squareOrderId:'sq-wrong-tenant',squarePaymentId:'pay-wrong-tenant',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-10-26T16:00:00Z'}},
   {id:'system-test',tenantId:7,status:'Pending',paymentStatus:'Paid',price:1,testMode:true},
   {id:'sbc-test',tenantId:7,status:'Pending',paymentStatus:'Paid',price:1,sbcTest:true},
   {id:'refunded',tenantId:7,status:'Completed',paymentStatus:'REFUNDED',price:99},
-  {id:'already-fulfilled',tenantId:7,status:'Pending',paymentStatus:'Paid',price:199},
-  {id:'needs-owner-clearance',tenantId:7,status:'Pending',paymentStatus:'Paid',price:10000},
-  {id:'valid-paid',tenantId:7,status:'Pending',paymentStatus:'Paid',price:349},
+  {id:'already-fulfilled',tenantId:7,status:'Pending',paymentStatus:'Paid',price:199,parsed:{squareOrderId:'sq-already-fulfilled',squarePaymentId:'pay-already-fulfilled',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-10-26T16:00:00Z'}},
+  {id:'needs-owner-clearance',tenantId:7,status:'Pending',paymentStatus:'Paid',price:10000,parsed:{squareOrderId:'sq-needs-owner-clearance',squarePaymentId:'pay-needs-owner-clearance',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-10-26T16:00:00Z'}},
+  {id:'valid-paid',tenantId:7,status:'Pending',paymentStatus:'Paid',price:349,parsed:{squareOrderId:'sq-valid-paid',squarePaymentId:'pay-valid-paid',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-10-26T16:00:00Z'}},
   {id:'done-status-only',tenantId:7,status:'Fulfilled',paymentStatus:'Pending',price:500}
  ];
  const customers=[{id:'prospect-1',tenantId:7,businessName:'Example',status:'lead'}];
