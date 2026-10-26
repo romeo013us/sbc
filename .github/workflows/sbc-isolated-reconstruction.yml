@@ -435,6 +435,7 @@ jobs:
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6652-manual-payment-proof.test.cjs | tee .sbc-isolated-reports/v6652-no-phantom-manual-payment.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6657-square-tenant-boundaries.test.cjs | tee .sbc-isolated-reports/v6657-square-tenant-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6658-revenue-fulfillment-truth.test.cjs | tee .sbc-isolated-reports/v6658-revenue-evidence.log
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6659-square-completion-consistency.test.cjs | tee .sbc-isolated-reports/v6659-square-payment-replay-evidence.log
       - name: Verify desktop and mobile navigation geometry in Chromium
         shell: bash
         env:
