@@ -78,7 +78,9 @@ function apply(root){
  "    environment:squareEnvironment(),apiVersion:SQUARE_API_VERSION",
  "  }):{reachable:false,code:'NOT_CONFIGURED'};",
  "  const ready=configured&&provider.reachable&&webhookConfigured&&writerReady&&!ownerPaused;",
- "  res.json({ok:true,ready,provider,environment:squareEnvironment(),configured,webhookConfigured,",
+ "  // SBC_V6665_SQUARE_READINESS_TRIAGE: preflight only, never money movement.",
+ "  const triage=require('./enterprise/v6665-square-readiness.cjs').assess({configured,provider,webhookConfigured,writerReady,ownerPaused,environment:squareEnvironment()});",
+ "  res.json({ok:true,ready,preflightReady:ready,productionCertified:false,triage,provider,environment:squareEnvironment(),configured,webhookConfigured,",
  "    writerReady,ownerPaused,",
  "    verification:'READ_ONLY_LOCATION_PROBE_NO_CHARGES_NO_WEBHOOK_EVENT',",
  "    limitations:'A live test purchase and signed Square webhook remain necessary for production certification.'});",
@@ -88,6 +90,9 @@ function apply(root){
  new vm.Script(s,{filename:'server.js'});
  new vm.Script(fs.readFileSync(original,'utf8'),{filename:'v6645-square-checkout-safety.cjs'});
  fs.copyFileSync(original,helper);
+ const triageSource=path.join(__dirname,'../enterprise/v6665-square-readiness.cjs');
+ if(!fs.existsSync(triageSource))throw Error(MARKER+': V66.65 Square triage helper missing');
+ fs.copyFileSync(triageSource,path.join(root,'enterprise/v6665-square-readiness.cjs'));
  fs.writeFileSync(file,s);
  return {marker:MARKER,files:['server.js','enterprise/v6645-square-checkout-safety.cjs'],
    stableIdempotency:true,onlyConfirmedPaymentSetsPaid:true,readOnlyProviderProbe:true,
