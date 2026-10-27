@@ -42,6 +42,33 @@ function patchGuardian(src,rel){
  for(const [from,to] of Object.entries(actions)){
   src=once(src,'onclick="'+from+'"','onclick="'+to+'"','guardian button '+from+' '+rel);
  }
+ // V66.69: late Production Control responses must not overwrite a newer screen.
+ // Guard asynchronous HTML injection and status refresh by navigation generation
+ // and by ownership of the original placeholder node.
+ src=once(src,
+  '  const originalNavigate=window.sbcNavigate;',
+  '  let sbcCriticalNavigationEpoch=0;\n  const originalNavigate=window.sbcNavigate;',
+  'navigation generation counter '+rel);
+ src=once(src,
+  '  function setView(v){\n    if(!window.state||!content())return false;',
+  '  function setView(v){\n    if(!window.state||!content())return false;\n    const renderEpoch=++sbcCriticalNavigationEpoch;',
+  'capture generation per critical view '+rel);
+ src=once(src,
+  '      content().innerHTML=productionFallback();',
+  '      const renderHost=content();renderHost.innerHTML=productionFallback();',
+  'capture placeholder owner '+rel);
+ src=once(src,
+  'if(html && typeof html===\'string\' && /<section|<div/i.test(html) && !/Unexpected token|<!doctype|Section temporarily unavailable|RENDER ERROR/i.test(html)){ content().innerHTML=html; }',
+  'if(renderEpoch===sbcCriticalNavigationEpoch && window.state?.view===v && content()===renderHost && renderHost.querySelector(\'#sbcProductionCriticalSurface\') && html && typeof html===\'string\' && /<section|<div/i.test(html) && !/Unexpected token|<!doctype|Section temporarily unavailable|RENDER ERROR/i.test(html)){ renderHost.innerHTML=html; }',
+  'discard late production HTML after navigation '+rel);
+ src=once(src,
+  '        try{window.f4RevenueRefresh?.();}catch(e){}',
+  '        try{if(renderEpoch===sbcCriticalNavigationEpoch && window.state?.view===v && content()===renderHost)window.f4RevenueRefresh?.();}catch(e){}',
+  'suppress stale revenue status refresh '+rel);
+ src=once(src,
+  '    return typeof originalNavigate===\'function\'?originalNavigate(v):false;',
+  '    sbcCriticalNavigationEpoch++;\n    return typeof originalNavigate===\'function\'?originalNavigate(v):false;',
+  'invalidate old critical render on normal navigation '+rel);
  src='// '+MARKER+' guardian fallback buttons report unavailable actions instead of doing nothing.\n'+src;
  new vm.Script(src,{filename:rel});return src;
 }
