@@ -81,7 +81,15 @@ async function invoke(user,url,method){
  assert(html.includes('sbc-demo-mode')&&html.includes('SAMPLE DATA ONLY'),'demo screen must be clearly labeled');
  assert(app.includes("state.me?.role!=='demo')setTimeout(loadProductionControlDashboard"),'demo must not fetch live owner production controls');
  assert(app.includes('style="display:none!important"'),'demo must not offer dashboard write buttons');
- assert(server.includes("if(req.user.role==='demo'){const d=demoBootstrapData()"),'buyer sample data must remain synthetic');
+ assert(server.includes("if(req.user.role==='demo'){const d=sbcV6676DemoBootstrapData()"),'demo bootstrap must call explicit synthetic dataset');
+ const synthStart=server.indexOf('function sbcV6676DemoBootstrapData(){');
+ const synthEnd=server.indexOf("\napp.get('/api/bootstrap',auth,async",synthStart);
+ assert(synthStart>0&&synthEnd>synthStart,'demo data producer must exist before authentication bootstrap');
+ const generated=vm.runInNewContext(server.slice(synthStart,synthEnd)+'\nsbcV6676DemoBootstrapData()',{},{timeout:1500});
+ assert(generated.customers.length>=3,'demo workspace needs illustrative sample customers');
+ assert(generated.quotes.length>0&&generated.orders.length>0&&generated.activities.length>0,'demo pipeline should visibly populate');
+ assert(generated.customers.every(x=>x.demo===true&&Number(x.tenantId)===-1&&String(x.email).endsWith('.invalid')),'buyer demo data must be fictional and uncontactable');
+ assert(!server.includes('const d=demoBootstrapData();return res.json({settings:'),'missing legacy demo function must not be invoked');
  new vm.Script(app,{filename:'app.js'});
  console.log('[SBC V6676] PASS isolated Lorna workspace, demo buyer surface and browser syntax');
 })().catch(e=>{console.error(e);process.exitCode=1});
