@@ -46,7 +46,17 @@ function apply(root){
  " res.json(out);",
  "});",
  ].join('\n')+'\n';
- s=once(s,endpoint,readOnly+endpoint,'owner launch gates');
+ const voicePreflight=[
+  '// SBC_V6664_VOICE_OWNER_PREFLIGHT: read-only and owner-authenticated; no Twilio calls or tokens generated.',
+  "const SBC_V6664_VOICE_PREFLIGHT=require('./enterprise/v6664-voice-preflight.cjs');",
+  "app.get('/api/owner/voice-preflight',auth,ownerOnly,(req,res)=>{",
+  " res.setHeader('Cache-Control','no-store');",
+  " res.setHeader('Referrer-Policy','no-referrer');",
+  " try{return res.json(SBC_V6664_VOICE_PREFLIGHT.inspect({env:process.env,signatureTokenPresent:Boolean(sbcTwilioWebhookTokenV6619())}));}",
+  " catch(_){return res.status(503).json({ok:false,code:'VOICE_PREFLIGHT_UNAVAILABLE'});}",
+  '});'
+ ].join('\n')+'\n';
+ s=once(s,endpoint,voicePreflight+readOnly+endpoint,'owner voice preflight and launch gates');
  const readyAnchor="recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),writeProtection:Boolean(MYSQL_RECOVERY_REQUIRED)";
  s=once(s,readyAnchor,readyAnchor+",writePrerequisitesReported:Boolean(!SBC_RUNTIME_READ_ONLY&&sbcWriterLeaseReady&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&mysqlOk)",'clear write vs read-only status');
  if(!s.includes(MARKER)||!s.includes("app.post('/api/voice/twiml',sbcSignedTwimlV6619"))throw Error(MARKER+': patch verification failed');
@@ -54,6 +64,9 @@ function apply(root){
  const source=path.join(__dirname,'v6619-signed-twilio-voice-webhook.js');
  const target=path.join(root,'enterprise','v6619-signed-twilio-webhook.js');
  fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(source,target);
+ const voiceSource=path.join(__dirname,'../enterprise/v6664-voice-preflight.cjs');
+ if(!fs.existsSync(voiceSource))throw Error(MARKER+': V66.64 voice preflight helper missing');
+ fs.copyFileSync(voiceSource,path.join(root,'enterprise','v6664-voice-preflight.cjs'));
  const test=path.join(__dirname,'v6619-launch-security-test.cjs');
  if(!fs.existsSync(test))throw Error(MARKER+': regression test missing');
  fs.mkdirSync(path.join(root,'scripts'),{recursive:true});fs.copyFileSync(test,path.join(root,'scripts','v6619-launch-security-test.cjs'));
