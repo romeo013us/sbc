@@ -8876,6 +8876,14 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
  finally{if(conn)conn.release();}
 });
 
+app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly,(req,res)=>{
+ const batch=require('node:path').join(__dirname,'hotfix-assets','sbc-leads-oct-26-27-2026-31.csv');
+ if(!require('node:fs').existsSync(batch))return res.status(404).json({ok:false,code:'SBC_PACKAGED_BATCH_MISSING',error:'The verified 31-lead batch is not present in this runtime. No records were changed.'});
+ res.setHeader('Cache-Control','private, no-store');
+ res.setHeader('X-Content-Type-Options','nosniff');
+ res.setHeader('Content-Disposition','attachment; filename="sbc-leads-oct-26-27-2026-31.csv"');
+ res.type('text/csv').send(require('node:fs').readFileSync(batch,'utf8'));
+});
 app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{
  res.setHeader('Cache-Control','private, no-store');
  res.setHeader('X-Content-Type-Options','nosniff');

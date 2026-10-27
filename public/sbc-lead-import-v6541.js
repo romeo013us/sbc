@@ -111,6 +111,20 @@ masterBtn.addEventListener('click',async()=>{
 });
 byId('sbc-lead-import-x').addEventListener('click',close);byId('sbc-lead-import-close').addEventListener('click',close);overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
 fileInput.addEventListener('change',async()=>{rows=[];preview=null;previewBtn.disabled=true;commitBtn.disabled=true;byId('sbc-lead-import-summary').innerHTML='';byId('sbc-lead-import-tablewrap').hidden=true;const file=fileInput.files&&fileInput.files[0];if(!file)return;if(!/\.csv$/i.test(file.name)){setStatus('Please select a .csv file.','error');return;}try{rows=parseCsv(await file.text());if(rows.length>500)throw new Error('This file contains '+rows.length+' rows. Split it into batches of 500 or fewer.');const invalid=rows.map((r,i)=>!r.business_name?i+1:null).filter(v=>v!==null);if(invalid.length)throw new Error('Business name is missing on data row(s): '+invalid.join(', '));previewBtn.disabled=false;setStatus(rows.length+' leads loaded from '+file.name+'. Select Preview import to check duplicates.','');}catch(e){setStatus(e.message||'Unable to read CSV.','error');}});
+// SBC_V6671_PACKAGED_BATCH_LOAD: input preparation ONLY; no automatic database writes.
+// This function is called by the authenticated owner page after fetching the protected CSV.
+window.sbcOwnerLoadPackagedLeadCsv=function(csvText){
+ const staged=parseCsv(String(csvText||''));
+ if(staged.length!==31)throw new Error('Packaged batch must contain exactly 31 leads; found '+staged.length+'. No records changed.');
+ if(staged.some(r=>!r.business_name))throw new Error('A packaged lead is missing its business name. No records changed.');
+ rows=staged;preview=null;fileInput.value='';
+ previewBtn.disabled=false;commitBtn.disabled=true;
+ byId('sbc-lead-import-summary').innerHTML='';
+ byId('sbc-lead-import-tablewrap').hidden=true;
+ overlay.classList.add('open');
+ setStatus('31 packaged leads loaded. Select Preview import to check your existing CRM for duplicates; then approve Import new leads to save.','');
+ return {total:rows.length,dryRun:true};
+};
 previewBtn.addEventListener('click',async()=>{previewBtn.disabled=true;commitBtn.disabled=true;setStatus('Checking the CRM for duplicates. Preview is read-only…','');try{preview=await request({dryRun:true,rows});renderResults(preview);setStatus(preview.message||'Preview complete. No records were written.',Number(preview.ready||0)?'ok':'');commitBtn.disabled=Number(preview.ready||0)===0;}catch(e){setStatus(e.message+' No records were written.','error');}finally{previewBtn.disabled=!rows.length;}});
 commitBtn.addEventListener('click',async()=>{if(!preview||!preview.ready)return;if(!window.confirm('Import '+preview.ready+' new lead(s) into the current SBC tenant? Duplicates will be skipped.'))return;commitBtn.disabled=true;previewBtn.disabled=true;setStatus('Importing leads. Please keep this window open…','');try{const result=await request({mode:'import',dryRun:false,rows});renderResults(result);if(result.dryRun!==false){setStatus('The server returned preview mode instead of committing records. No records were written. Refresh the Command Center and retry. If it repeats, save the error and check the import API response.','error');preview=result;commitBtn.disabled=Number(result.ready||0)===0;return;}if(!Number.isFinite(Number(result.imported))){setStatus('The server did not confirm how many records were saved. Do not retry until the import status is checked.','error');preview=null;commitBtn.disabled=true;return;}if(Number(result.imported)===0){setStatus(result.message||'No new records were written. Review the duplicate results before trying again.','error');preview=null;commitBtn.disabled=true;return;}setStatus(result.message||('Import complete: '+result.imported+' lead(s) saved.'),'ok');preview=result;commitBtn.disabled=true;}catch(e){setStatus(e.message,'error');commitBtn.disabled=false;}finally{previewBtn.disabled=!rows.length;}});
 })();
