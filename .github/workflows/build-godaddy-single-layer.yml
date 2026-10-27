@@ -55,6 +55,8 @@ jobs:
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx package.json
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx server.js
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx sbc-godaddy-flat-entrypoint.cjs
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx bootstrap.js
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx SBC-FLAT-RELEASE-IDENTITY.json
           if unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -E '(^|/)node_modules/|\.zip$|^\.env($|\.)|^\.github/|^\.git/'; then
             echo 'Forbidden dependency, nested archive, CI workflow or secret in GoDaddy flat ZIP'; exit 1
           fi
@@ -66,6 +68,7 @@ jobs:
           unzip -q dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip -d "$verify_dir"
           node --check "$verify_dir/server.js"
           node --check "$verify_dir/sbc-godaddy-flat-entrypoint.cjs"
+          node --check "$verify_dir/bootstrap.js"
           for pass in 1 2 3; do
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6669-critical-navigation-race.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6645-square-checkout-safety.test.cjs
@@ -76,6 +79,7 @@ jobs:
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6667-private-owner-import.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6671-owner-packaged-lead-batch.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6672-published-dashboard-null-catalog.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6673-godaddy-startup-parity.test.cjs
           done
       - uses: actions/upload-artifact@v4
         with:
