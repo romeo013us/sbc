@@ -47,6 +47,6 @@ assert(server.includes("app.post('/api/crm/leads/import',auth,ownerOnly,async(re
 assert(server.includes("code:'SBC_IMPORT_WRITE_LOCKED'"));
 assert(server.includes('requireRequestTenant(req)'));
 assert(server.includes('MYSQL_RECOVERY_REQUIRED')&&server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'));
-assert(server.includes('SBC_V6632_REMOVE_FLOATING_LEAD_IMPORT'));
+assert(html.includes('SBC_V6632_REMOVE_FLOATING_LEAD_IMPORT'),'existing no-floating-import CSS must remain in main dashboard');
 assert(!html.includes('/sbc-lead-import-v6541.js'),'main dashboard must not re-add the floating importer');
 console.log('[SBC V66.67] PASS owner-only standalone import, existing tenant/transaction/write gates, no automatic imports or public contact CSV');
