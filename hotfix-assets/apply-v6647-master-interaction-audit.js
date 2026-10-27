@@ -96,6 +96,16 @@ function patchCatalogBootstrap(src,rel){
  new vm.Script(src,{filename:rel});
  return src;
 }
+// SBC_V6674_OWNER_IMPORT_ENTRY: visible owner-only dashboard route.
+// Floating import stays hidden; the authenticated owner route handles the batch.
+const OWNER_IMPORT_MARKER='SBC_V6674_OWNER_IMPORT_ENTRY';
+function patchOwnerImportEntry(src,rel){
+ if(src.includes(OWNER_IMPORT_MARKER))throw Error(OWNER_IMPORT_MARKER+': duplicate '+rel);
+ src=once(src,"<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button><button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>","<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button>${state.me?.role==='owner'?'<a class=\"btn ghost\" href=\"/owner/lead-import\" data-sbc-owner-lead-import=\"true\">Import 31 Leads</a>':''}<button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>",'owner dashboard import link '+rel);
+ src='// '+OWNER_IMPORT_MARKER+'\n'+src;
+ new vm.Script(src,{filename:rel});
+ return src;
+}
 function apply(root){
  const changed=[];
  for(const dir of ['public','browser_public']){
@@ -107,8 +117,8 @@ function apply(root){
   }
   const rel=dir+'/app.js',app=path.join(root,rel);
   if(!fs.existsSync(app))throw Error(MARKER+': missing '+rel);
-  fs.writeFileSync(app,patchCatalogBootstrap(fs.readFileSync(app,'utf8'),rel));changed.push(rel);
+  fs.writeFileSync(app,patchOwnerImportEntry(patchCatalogBootstrap(fs.readFileSync(app,'utf8'),rel),rel));changed.push(rel);
  }
  return {marker:MARKER,changed,interactionOnly:true,providerCalls:false,databaseChanges:false,financialChanges:false,securityGuardsChanged:false};
 }
-module.exports={apply,MARKER,patchRevenue,patchGuardian,patchCatalogBootstrap,CATALOG_MARKER};
+module.exports={apply,MARKER,patchRevenue,patchGuardian,patchCatalogBootstrap,CATALOG_MARKER,patchOwnerImportEntry,OWNER_IMPORT_MARKER};
