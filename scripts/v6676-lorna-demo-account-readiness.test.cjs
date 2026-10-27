@@ -19,6 +19,8 @@ const L=(p,m='GET',uid='lorna-1')=>roleFns.sbcLornaAllowedRequest({path:p,method
 assert(L('/api/me')&&L('/api/bootstrap')&&L('/api/catalog'),'real employee login must load initial workspace and catalog');
 assert(L('/api/v9/bootstrap')&&L('/api/v9/lead-verification')&&L('/api/workforce/leads'),'researcher training/verification and lead submission must be reachable');
 assert(L('/api/workforce/leads','POST')&&L('/api/v10/leads/submit','POST'),'legitimate research submission must be allowed');
+assert(L('/api/workforce/lead-draft','PUT')&&L('/api/workforce/lead-draft','DELETE')&&L('/api/workforce/leads/sample-id','PUT'),'lead researchers need draft editing and assigned-lead corrections');
+assert(!L('/api/quotes','POST')&&!L('/api/owner/recovery/census','GET'),'employee cannot mutate quote or inspect owner diagnostics');
 assert(!L('/api/owner/recovery/census')&&!L('/api/communications/status')&&!L('/api/crm/leads/import','POST'),'Lorna cannot see owner/financial routes or use owner CSV importer');
 assert(!L('/api/bootstrap','POST'),'bootstrap is read-only');
 // Exercise production response branch, including another tenant's records.
