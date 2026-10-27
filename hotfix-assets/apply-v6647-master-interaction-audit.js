@@ -153,6 +153,8 @@ function apply(root){
   fs.writeFileSync(app,patchOwnerImportEntry(patchCatalogBootstrap(fs.readFileSync(app,'utf8'),rel),rel));changed.push(rel);
  }
  changed.push(...patchRc90Contrast(root));
- return {marker:MARKER,changed,interactionOnly:true,providerCalls:false,databaseChanges:false,financialChanges:false,securityGuardsChanged:false};
+ const authRepair=require('./apply-v6676-role-login-demo.js').apply(root);
+ changed.push(...authRepair.changed);
+ return {marker:MARKER,changed,interactionOnly:false,roleAuthorizationHardened:true,providerCalls:false,databaseChanges:false,financialChanges:false,writerRecoveryControlsPreserved:true};
 }
 module.exports={apply,MARKER,patchRevenue,patchGuardian,patchCatalogBootstrap,CATALOG_MARKER,patchOwnerImportEntry,OWNER_IMPORT_MARKER,patchRc90Contrast,RC90_CONTRAST_MARKER};
