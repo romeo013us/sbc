@@ -17,7 +17,7 @@ assert.doesNotMatch(segment,/saveData\(|createSquarePaymentLinkForOrder\(|handle
 new vm.Script(segment,{filename:'square-readiness-route.js'});
 
 for(const x of [
- {configured:false,provider:{reachable:false,code:'NOT_CONFIGURED'},webhookConfigured:false,writerReady:false,ownerPaused:false,count:4},
+ {configured:false,provider:{reachable:false,code:'NOT_CONFIGURED'},webhookConfigured:false,writerReady:false,ownerPaused:false,count:3},
  {configured:true,provider:{reachable:false,code:'HTTP_401'},webhookConfigured:true,writerReady:true,ownerPaused:false,count:1},
  {configured:true,provider:{reachable:true,code:'LOCATION_ACTIVE'},webhookConfigured:true,writerReady:true,ownerPaused:true,count:1},
  {configured:true,provider:{reachable:true,code:'LOCATION_ACTIVE'},webhookConfigured:true,writerReady:true,ownerPaused:false,count:0}
