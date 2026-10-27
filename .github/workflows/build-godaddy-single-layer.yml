@@ -104,7 +104,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sha256sum -c dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip.sha256 --status
+          (cd dist && sha256sum -c SBC-GoDaddy-SINGLE-LAYER-APP.zip.sha256 --status)
           python3 -m zipfile -t dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip
           # Do not deploy a stale build if main advanced while tests were running.
           HEAD_NOW="$(git ls-remote origin refs/heads/main | cut -f1)"
