@@ -2,8 +2,8 @@
   "schema": 1,
   "version": "66.0.0",
   "archive": "SBC-V66-PREBUILT-RUNTIME.zip",
-  "archiveSha256": "d52f61787614490539bad141668122eb6721823c8c7811a035e388bd83676882",
-  "sourceFingerprint": "a75a724c0c0257b5d43be0fd9743e07f08d57d67dad9da474cc3ef16eb950c12",
-  "sourceCommit": "f8562e5dd21ac6980ee19413e288ffab1e6b17b7",
+  "archiveSha256": "b8e4776047a4f4f431ea08887e86dc1349287283e830af09eb6fc89876503a0a",
+  "sourceFingerprint": "cfbfe040b46a5ec6c7e2d855200d382f50eb92066422076b903079ba871a8dc6",
+  "sourceCommit": "06567f8e6bebf09a473dcdce8ecaa969852132c1",
   "generatedBy": "isolated-github-ci"
 }
