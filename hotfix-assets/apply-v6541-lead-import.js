@@ -51,6 +51,18 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
  const anchor='const startOperationalRuntime=async()=>{',i=server.indexOf(anchor);if(i<0||server.indexOf(anchor,i+anchor.length)!==-1)throw new Error(MARKER+': expected one operational runtime startup anchor');
  // SBC_V6667_PRIVATE_OWNER_CSV_IMPORT: owner route, no PII in public GitHub or automatic imports.
  const ownerImportHtml="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>SBC · Owner Lead Import</title></head><body><main><h1>SBC · Private Lead Import</h1><p id=\"sbc-import-page-status\">Preparing owner-only CSV review. No leads are imported automatically.</p><p><a href=\"/\">Return to Command Center</a></p><p>Verification, consent, and Do Not Call screening remain required before outreach.</p></main><script src=\"/sbc-lead-import-v6541.js?v=66.67-owner\"></script><script src=\"/sbc-v6667-private-owner-import.js?v=66.67-owner\"></script></body></html>";
+ // SBC_V6671_PACKAGED_LEADS_OWNER_READ: CSV from the verified deployment package.
+ // Read-only route; still requires authenticated owner. NEVER inserts on GET.
+ const ownerBatchReadRoute=[
+  "app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly,(req,res)=>{",
+  " const batch=require('node:path').join(__dirname,'hotfix-assets','sbc-leads-oct-26-27-2026-31.csv');",
+  " if(!require('node:fs').existsSync(batch))return res.status(404).json({ok:false,code:'SBC_PACKAGED_BATCH_MISSING',error:'The verified 31-lead batch is not present in this runtime. No records were changed.'});",
+  " res.setHeader('Cache-Control','private, no-store');",
+  " res.setHeader('X-Content-Type-Options','nosniff');",
+  " res.setHeader('Content-Disposition','attachment; filename=\"sbc-leads-oct-26-27-2026-31.csv\"');",
+  " res.type('text/csv').send(require('node:fs').readFileSync(batch,'utf8'));",
+  "});"
+ ].join('\n');
  const ownerImportRoute=[
   "app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{",
   " res.setHeader('Cache-Control','private, no-store');",
@@ -60,7 +72,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
   ' res.type(\'html\').send('+JSON.stringify(ownerImportHtml)+');',
   "});"
  ].join('\n');
- server=server.slice(0,i)+route+'\n'+ownerImportRoute+'\n'+server.slice(i);write(root,'server.js',server);
+ server=server.slice(0,i)+route+'\n'+ownerBatchReadRoute+'\n'+ownerImportRoute+'\n'+server.slice(i);write(root,'server.js',server);
  }
  const pub=path.join(root,'public'),source=path.join(__dirname,'lead-import-v6541.js');
  if(!fs.existsSync(source))throw new Error(MARKER+': missing lead-import-v6541.js');
