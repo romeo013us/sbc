@@ -70,7 +70,7 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
 <script id="sbc-lorna-least-privilege-ui">
 (function(){
  'use strict';
- var role='',redirected=false,readInFlight=false,originalFetch=window.fetch.bind(window);
+ var role='',redirected=false,readInFlight=false,lastReadAt=0,readCooldownMs=15000,originalFetch=window.fetch.bind(window);
  var allowed=new Set(['acquisition','training','timeclock']);
  var restrictedSelectors='.global-search,#globalSearch,#storageLabel,.status-dot,.office-box-link,.sidebar-bottom a,.sidebar-group-label';
  function isResearcher(r){return ['lead_researcher','lead_generator','researcher','prospector'].includes(String(r||'').toLowerCase());}
@@ -78,9 +78,12 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
   if(!el)return;
   if(hide){
    if(!el.hasAttribute('data-sbc-lorna-managed')){el.setAttribute('data-sbc-lorna-managed','1');el.setAttribute('data-sbc-lorna-was-hidden',el.hidden?'1':'0');}
-   el.hidden=true;el.setAttribute('aria-hidden','true');el.setAttribute('tabindex','-1');
+   if(!el.hidden)el.hidden=true;
+   if(el.getAttribute('aria-hidden')!=='true')el.setAttribute('aria-hidden','true');
+   if(el.getAttribute('tabindex')!=='-1')el.setAttribute('tabindex','-1');
   }else if(el.hasAttribute('data-sbc-lorna-managed')){
-   el.hidden=el.getAttribute('data-sbc-lorna-was-hidden')==='1';
+   var previouslyHidden=el.getAttribute('data-sbc-lorna-was-hidden')==='1';
+   if(el.hidden!==previouslyHidden)el.hidden=previouslyHidden;
    el.removeAttribute('aria-hidden');el.removeAttribute('tabindex');el.removeAttribute('data-sbc-lorna-managed');el.removeAttribute('data-sbc-lorna-was-hidden');
   }
  }
@@ -101,8 +104,11 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
   role=String(u&&(u.role||(u.user&&u.user.role))||'').toLowerCase();
   apply();
  }
- function readMe(){
+ function readMe(force){
   if(readInFlight)return;
+  var now=Date.now();
+  if(!force&&now-lastReadAt<readCooldownMs)return;
+  lastReadAt=now;
   readInFlight=true;
   originalFetch('/api/me',{credentials:'same-origin',cache:'no-store',headers:{'Accept':'application/json'}}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d)resolve(d);else{role='';apply();}}).catch(function(){role='';apply();}).finally(function(){readInFlight=false;});
  }
@@ -110,7 +116,7 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
   var url=typeof input==='string'?input:(input&&input.url)||'';
   return originalFetch(input,init).then(function(response){
    if(/\/api\/me(?:[?#]|$)/.test(url)){response.clone().json().then(resolve).catch(function(){});}
-   if(/\/api\/login(?:[?#]|$)/.test(url)&&response.ok){role='';readMe();}
+   if(/\/api\/login(?:[?#]|$)/.test(url)&&response.ok){role='';lastReadAt=0;readMe(true);}
    if(/\/api\/logout(?:[?#]|$)/.test(url)&&response.ok){role='';redirected=false;apply();}
    return response;
   });
