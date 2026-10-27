@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "0c6152e7aae7ad7aed33dd99d66f9f691ed57cd2",
-  "sourceFingerprint": "571db994e28fa617fca729071dcc9b65a75caf0dfcbdab81cac6d4eee2f1cf82",
-  "serverSha256": "75549413e4fdc11a06c92c57e55cb66b407335b10806fb3b23aff3f20193dfac"
+  "sourceCommit": "1f2c59c66de85a676c4520b2cb70a3b7955f453d",
+  "sourceFingerprint": "82722c75f31e883ba4607ef0366f7ca655d68318be7a34c407bda1834aa09128",
+  "serverSha256": "fb53a3ab539d02c8ad3cae1b7827045d29d26c50a49f3dbdb625741009a8185b"
 }

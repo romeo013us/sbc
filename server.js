@@ -1,3 +1,4 @@
+// SBC_V6676_ROLE_LOGIN_AND_DEMO
 // SBC_V6521_ATOMIC_WEBHOOK_RECOVERY
 // SBC_V6520_STRICT_TENANT_HARDENING
 function __sbcRequireTenantId(value){const n=Number(value);if(!Number.isSafeInteger(n)||n<=0)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED',status:403});return n;}
@@ -312,18 +313,18 @@ function sbcLornaAllowedRequest(req,user){
  const p=String(req.path||''),m=String(req.method||'GET').toUpperCase();
  if(!p.startsWith('/api/'))return !/^\/(?:office-box|ops-center|admin|settings|system-console|commercial-console)(?:\/|$)/i.test(p);
  if((p==='/api/login'||p==='/api/logout')&&['POST','GET'].includes(m))return true;
- if(p==='/api/me'||p==='/api/release-identity')return m==='GET';
+ if(['/api/me','/api/release-identity','/api/bootstrap','/api/catalog'].includes(p))return m==='GET';
  if(p==='/api/v9/bootstrap')return m==='GET';
  if(p==='/api/v9/lead-verification')return m==='GET';
  if(/^\/api\/v9\/lead-verification\/[^/]+$/.test(p))return m==='POST';
  if(p==='/api/v9/time/clock')return m==='POST';
  if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
- if(p==='/api/workforce/lead-draft')return m==='GET';
+ if(p==='/api/workforce/lead-draft')return ['GET','PUT','DELETE'].includes(m);
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
- if(/^\/api\/workforce\/leads\/[^/]+$/.test(p))return m==='GET';
+ if(/^\/api\/workforce\/leads\/[^/]+$/.test(p))return ['GET','PUT'].includes(m);
  if(p==='/api/v10/leads/submit')return m==='POST';
- if(p==='/api/crm/leads/import')return m==='POST';
+ // Researchers use /api/workforce/leads; owner CSV import stays owner-only.
  if(p==='/api/training')return m==='GET';
  if(/^\/api\/training\/courses\/[^/]+$/.test(p))return m==='GET';
  if(/^\/api\/training\/history\/[^/]+$/.test(p)&&m==='GET'){
@@ -343,7 +344,7 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
  if(isApi&&['/api/login','/api/release-identity'].includes(p))return next();
  try{
   const user=await sessionUser(req);
-  if(!user||!sbcLornaRole(user))return next();
+  req._sbcRoleIdentity=user;if(!user||!sbcLornaRole(user))return next();
   if(sbcLornaAllowedRequest(req,user))return next();
   res.setHeader('Cache-Control','no-store');
   return res.status(403).json({ok:false,code:'LORNA_LEAST_PRIVILEGE_DENIED',error:'This page or API is outside the Lead Researcher role.'});
@@ -353,6 +354,22 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
  }
 });
 
+// SBC_V6676_DEMO_VIEWER_API: server-enforced allowlist, not a cosmetic CSS restriction.
+function sbcDemoViewerAllowed(method,route){
+ const p=String(route||'').split('?')[0],m=String(method||'GET').toUpperCase();
+ if(m==='POST'&&p==='/api/logout')return true;
+ return m==='GET'&&['/api/me','/api/bootstrap','/api/catalog','/api/release-identity'].includes(p);
+}
+app.use(async function sbcDemoViewerGate(req,res,next){
+ const p=String(req.path||'');if(!p.startsWith('/api/')||p==='/api/login')return next();
+ try{
+  const user=Object.hasOwn(req,'_sbcRoleIdentity')?req._sbcRoleIdentity:await sessionUser(req);
+  if(!user||String(user.role||'')!=='demo')return next();
+  if(sbcDemoViewerAllowed(req.method,p))return next();
+  res.setHeader('Cache-Control','private, no-store');
+  return res.status(403).json({ok:false,code:'SBC_DEMO_READ_ONLY',error:'Demo mode uses sample data only. Sign in as the owner to perform business operations.'});
+ }catch(e){return res.status(503).json({ok:false,code:'DEMO_AUTH_UNAVAILABLE',error:'Demo permissions could not be verified safely.'});}
+});
 app.get('/api/gateways/readiness',auth,(req,res)=>{res.json({ok:true,...gatewayReadiness(),note:'Secrets are never returned.'}); });
 app.get('/api/gateways/public-readiness',(req,res)=>{
   if(String(process.env.SBC_ZERO_TRUST_ENFORCE||'true')==='true')return res.status(404).json({error:'Public gateway discovery disabled.'});
@@ -4509,7 +4526,23 @@ app.post('/api/autonomy/control/resume',auth,ownerOnly,async(req,res)=>{try{if(M
 app.post('/api/autonomy/control/sweep',auth,ownerOnly,async(req,res)=>{try{if(MYSQL_RECOVERY_REQUIRED)return res.status(423).json({ok:false,error:'MYSQL_RECOVERY_REQUIRED',readOnly:true});const result=SBC_AUTONOMY.sweep(db,db);await saveData();res.json({ok:true,version:BUILD_VERSION,result});}catch(e){res.status(400).json({ok:false,error:e.message});}});
 app.get('/api/autonomy/control/simulate',auth,ownerOnly,async(req,res)=>res.json({ok:true,version:BUILD_VERSION,simulation:SBC_AUTONOMY.simulate()}));
 
-app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no-store');let recovery=null;let recoveryProjection=[];if(req.user.role==='demo'){const d=demoBootstrapData();return res.json({settings:{businessName:'Successful By Choice',tagline:'Digital & Print Solutions',slogan:'Because Why Not?',phone:'305-496-1065',email:'demo@example.com',city:'Miami, Florida',website:'https://sbcmia.com',websites:'https://sbcwebsites.com',office:'DEMO MODE'},customers:d.customers,activities:d.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:d.callReports,storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},quotes:d.quotes,orders:d.orders,renewals:d.renewals,appointments:d.appointments,sequences:d.sequences,sequenceEnrollments:d.sequenceEnrollments,emailTemplates:d.emailTemplates,tasks:d.tasks,portalAccounts:d.portalAccounts,portalMessages:d.portalMessages,hotWebLeads:[],ecosystem:{webLeadBridge:true,squareWebhook:false,customerIntake:true,orderPipelines:{digital:{orders:1,value:699},print:{orders:0,value:0}}},opsSummary:{role:'demo',permissions:SBC_ROLE_PERMISSIONS.demo||[]}});}if(req.user.role==='owner'&&!MYSQL_RECOVERY_REQUIRED){ensureCoreTeamProfiles();}
+// SBC_V6676_SYNTHETIC_DEMO: fictional non-billable sample data only.
+function sbcV6676DemoBootstrapData(){
+ const createdAt='2026-10-01T14:00:00.000Z';
+ const customers=[
+  {id:'sbc_demo_lead_1',tenantId:-1,businessName:'Harbor Glow Studio (Demo)',contactName:'Sample Contact',phone:'555-0100',email:'hello@example.invalid',status:'Lead',source:'Synthetic Demo',industry:'Wellness',websiteStatus:'No Website',dealValue:349,createdAt,demo:true},
+  {id:'sbc_demo_lead_2',tenantId:-1,businessName:'Cypress Creative Works (Demo)',contactName:'Demo Representative',phone:'555-0101',email:'info@example.invalid',status:'Qualified',source:'Synthetic Demo',industry:'Professional Services',dealValue:699,createdAt,demo:true},
+  {id:'sbc_demo_customer_3',tenantId:-1,businessName:'Summit Community Print (Demo)',contactName:'Demo Buyer',phone:'555-0102',email:'sales@example.invalid',status:'Customer',source:'Synthetic Demo',industry:'Retail',dealValue:199,createdAt,demo:true}
+ ];
+ const quotes=[{id:'demo_quote_1',quoteNumber:'SBC-DEMO-001',customerId:'sbc_demo_lead_2',customerName:'Cypress Creative Works (Demo)',status:'Sent',total:699,items:[{name:'SBC Complete Business Launch',qty:1,unitPrice:699}],createdAt,demo:true}];
+ const orders=[{id:'demo_order_1',customerId:'sbc_demo_customer_3',customerName:'Summit Community Print (Demo)',status:'In Production',product:'Demo Business Cards',total:199,createdAt,demo:true}];
+ const renewals=[{id:'demo_renew_1',customerId:'sbc_demo_customer_3',customerName:'Summit Community Print (Demo)',status:'Upcoming',amount:49,dueDate:'2026-11-15',demo:true}];
+ const activities=[{id:'demo_act_1',type:'customer',message:'Demo prospect qualified',createdAt,meta:{customerId:'sbc_demo_lead_2'},demo:true},
+  {id:'demo_act_2',type:'quote',message:'Demo proposal created — no real email sent',createdAt,meta:{customerId:'sbc_demo_lead_2'},demo:true}];
+ return {customers,quotes,orders,renewals,activities,appointments:[],sequences:[],sequenceEnrollments:[],
+  emailTemplates:[],tasks:[],callReports:[],portalAccounts:[],portalMessages:[]};
+}
+app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no-store');let recovery=null;let recoveryProjection=[];if(req.user.role==='demo'){const d=sbcV6676DemoBootstrapData();return res.json({settings:{businessName:'Successful By Choice',tagline:'Digital & Print Solutions',slogan:'Because Why Not?',phone:'305-496-1065',email:'demo@example.com',city:'Miami, Florida',website:'https://sbcmia.com',websites:'https://sbcwebsites.com',office:'DEMO MODE'},customers:d.customers,activities:d.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:d.callReports,storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},quotes:d.quotes,orders:d.orders,renewals:d.renewals,appointments:d.appointments,sequences:d.sequences,sequenceEnrollments:d.sequenceEnrollments,emailTemplates:d.emailTemplates,tasks:d.tasks,portalAccounts:d.portalAccounts,portalMessages:d.portalMessages,hotWebLeads:[],ecosystem:{webLeadBridge:true,squareWebhook:false,customerIntake:true,orderPipelines:{digital:{orders:1,value:699},print:{orders:0,value:0}}},opsSummary:{role:'demo',permissions:SBC_ROLE_PERMISSIONS.demo||[]}});}if(req.user.role==='owner'&&!MYSQL_RECOVERY_REQUIRED){ensureCoreTeamProfiles();}
   if(MYSQL_RECOVERY_REQUIRED){
     recovery={required:true,version:BUILD_VERSION,reason:'Authoritative MySQL recovery/reconciliation is required. No startup mutation pipeline is running.',counts:{},identity:{},migrations:{},verifiedBaseline:{customers:VERIFIED_PRE_CORRUPTION_CRM_COUNT,activeLeads:VERIFIED_PRE_CORRUPTION_ACTIVE_LEADS},relationalCore:0,restoredVerifiedLeads:Number((db.customers||[]).filter(c=>c?.leadIntelligence?.recoverySource==='sbc_lead_mesh').length),localCoreCount:(db.customers||[]).length+(db.quotes||[]).length+(db.orders||[]).length+(db.renewals||[]).length};
     try{
@@ -4540,6 +4573,30 @@ app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no
     }catch(e){recovery.diagnosticError=String(e?.message||e);}
   }
   const projectedCustomers=db.customers; // Authoritative CRM only. Recovery candidates are exposed separately and remain read-only.
+  // SBC_V6676_LORNA_BOOT: provide a minimal, tenant-scoped bootstrap for the regular login.
+  if(sbcLornaRole(req.user)){
+   const tenantId=Number(requireRequestTenant(req)),userId=String(req.user.id);
+   const allowed=c=>Number(c.tenantId)===tenantId &&
+    !['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(String(c.status||'Lead').toLowerCase()) &&
+    (!c.assignedTo||String(c.assignedTo)===userId) &&
+    (String(c.verificationStatus||'')!=='Sales Ready'||String(c.assignedTo)===userId);
+   const customers=(db.customers||[]).filter(allowed).map(c=>({
+    id:c.id,tenantId,businessName:c.businessName||'',contactName:c.contactName||'',phone:c.phone||'',email:c.email||'',
+    website:c.website||'',websiteStatus:c.websiteStatus||'',industry:c.industry||'',city:c.city||'',
+    status:c.status||'Lead',source:c.source||'',notes:c.notes||'',verificationStatus:c.verificationStatus||'',
+    leadTemperature:c.leadTemperature||'',assignedTo:c.assignedTo||'',researcherId:c.researcherId||'',
+    createdAt:c.createdAt||null,updatedAt:c.updatedAt||null
+   }));
+   const visible=new Set(customers.map(c=>String(c.id)));
+   res.setHeader('Cache-Control','private, no-store');
+   return res.json({version:BUILD_VERSION,storage:storageMode,user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},
+    settings:{businessName:db.settings.businessName,tagline:db.settings.tagline,slogan:db.settings.slogan},
+    customers,activities:(db.activities||[]).filter(a=>visible.has(String(a.meta?.customerId||''))).slice(0,50),
+    catalog:CATALOG,recovery:{required:Boolean(MYSQL_RECOVERY_REQUIRED)},
+    quotes:[],orders:[],renewals:[],appointments:[],sequences:[],sequenceEnrollments:[],
+    callReports:[],callScripts:{},emailTemplates:[],messageTemplates:[],tasks:[],portalAccounts:[],portalMessages:[],
+    hotWebLeads:[],opsSummary:{role:'lead_researcher',permissions:['research','verify','submit']}});
+  }
   const base={settings:{businessName:db.settings.businessName,tagline:db.settings.tagline,slogan:db.settings.slogan,phone:db.settings.phone,email:db.settings.email,city:db.settings.city,website:db.settings.website,websites:db.settings.websites,office:db.settings.office},customers:projectedCustomers,activities:db.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:db.callReports||[],storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},square:{configured:squareConfigured(),webhookConfigured:squareWebhookConfigured(),environment:squareEnvironment(),pendingPayments:squarePaymentRecords().filter(x=>x.status==='PENDING').length},hotWebLeads:(projectedCustomers||[]).filter(c=>c.webLead&&!['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(c.status||''))&&(req.user.role==='owner'||req.user.role==='manager'||!c.assignedTo||String(c.assignedTo)===String(req.user.id))).slice(0,25),ecosystem:{webLeadBridge:true,squareWebhook:squareWebhookConfigured(),customerIntake:true,orderPipelines:ecosystemOrderSplit(db.orders||[])},opsSummary:{role:req.user.role,permissions:SBC_ROLE_PERMISSIONS[req.user.role]||[],pipeline:opsOverview(req).pipeline,quality:opsOverview(req).counts.quality,duplicates:opsOverview(req).counts.duplicates}};if(req.user.role==='owner')Object.assign(base,{settings:db.settings,quotes:db.quotes,orders:db.orders,renewals:db.renewals,appointments:db.appointments,sequences:db.sequences,sequenceEnrollments:db.sequenceEnrollments,emailTemplates:db.emailTemplates,messageTemplates:db.messageTemplates,tasks:db.tasks,megaOps:megaData(),users:(db.users||[]).map(u=>({id:u.id,username:u.username,name:u.name,email:u.email||u.profile?.email||'',role:u.role,active:u.active!==false,expiresAt:u.expiresAt||'',createdAt:u.createdAt})),auditLog:db.auditLog||[]});else{base.customers=(req.user.role==='lead_researcher'||isLornaLeadAccount(req.user))?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id||String(c.researcherId||'')===String(req.user.id)):db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id);base.activities=(db.activities||[]).filter(a=>base.customers.some(c=>c.id===a.meta?.customerId)).slice(0,100);base.callReports=(db.callReports||[]).filter(r=>r.callerId===req.user.id||r.status==='Pending');base.orders=(db.orders||[]).filter(o=>!o.salesRepId||o.salesRepId===req.user.id||req.user.role==='fulfillment');}res.json(base)});
 
 app.get('/api/owner/recovery/projection',auth,ownerOnly,async(req,res)=>{
@@ -5772,7 +5829,7 @@ app.get('/api/v9/bootstrap',auth,async(req,res)=>{
   // A GET must remain side-effect free while the authoritative MySQL recovery gate is active.
   if(!recoveryReadOnly) (db.customers||[]).forEach(normalizeLeadQuality);
   const v=v9data(), role=req.user.role, isOwnerRole=role==='owner', manager=role==='manager', caller=role==='caller', researcher=sbcLornaRole(req.user), fulfillment=role==='fulfillment';
-  const customers=caller?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id):researcher?db.customers.filter(c=>{const status=String(c?.status||'Lead').trim().toLowerCase();const assignedTo=String(c?.assignedTo||'');const mine=!assignedTo||assignedTo===String(req.user.id);const active=!(['customer','lost','do not call','dnc','closed','duplicate'].includes(status));const notSalesReady=String(c?.verificationStatus||'')!=='Sales Ready';return active&&mine&&(notSalesReady||assignedTo===String(req.user.id));}):fulfillment?db.customers.filter(c=>['Customer','Qualified','Proposal'].includes(c.status)||c.fulfillmentOwner===req.user.id):db.customers;
+  const customers=caller?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id):researcher?db.customers.filter(c=>{if(Number(c?.tenantId)!==Number(requireRequestTenant(req)))return false;const status=String(c?.status||'Lead').trim().toLowerCase();const assignedTo=String(c?.assignedTo||'');const mine=!assignedTo||assignedTo===String(req.user.id);const active=!(['customer','lost','do not call','dnc','closed','duplicate'].includes(status));const notSalesReady=String(c?.verificationStatus||'')!=='Sales Ready';return active&&mine&&(notSalesReady||assignedTo===String(req.user.id));}):fulfillment?db.customers.filter(c=>['Customer','Qualified','Proposal'].includes(c.status)||c.fulfillmentOwner===req.user.id):db.customers;
   const orders=fulfillment?db.orders.filter(o=>!o.fulfillmentOwner||o.fulfillmentOwner===req.user.id):isOwnerRole||manager?db.orders:[];
   const quotes=isOwnerRole||manager||caller?db.quotes:[];
   const trainingDb=recoveryReadOnly?{...db,settings:{...(db.settings||{}),trainingCenterV2:db.settings?.trainingCenterV2?JSON.parse(JSON.stringify(db.settings.trainingCenterV2)):undefined},users:Array.isArray(db.users)?db.users:[]}:db;
@@ -5872,14 +5929,14 @@ app.post('/api/v9/assign-batch',auth,async(req,res)=>{if(!['owner','manager'].in
 app.get('/api/v9/lead-verification',auth,(req,res)=>{
   if(!['owner','manager','lead_researcher'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
   const all=(db.customers||[]).map(normalizeLeadQuality);
-  const mine=sbcLornaRole(req.user)?all.filter(c=>{const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');return !['customer','lost','do not call','dnc','closed','duplicate'].includes(status)&&(!assigned||assigned===String(req.user.id))&&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));}):all;
+  const mine=sbcLornaRole(req.user)?all.filter(c=>{if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return false;const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');return !['customer','lost','do not call','dnc','closed','duplicate'].includes(status)&&(!assigned||assigned===String(req.user.id))&&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));}):all;
   const stats={total:mine.length,hot:mine.filter(c=>c.leadTemperature==='Hot').length,warm:mine.filter(c=>c.leadTemperature==='Warm').length,cold:mine.filter(c=>c.leadTemperature==='Cold').length,needsVerification:mine.filter(c=>['Needs Verification','Owner Review'].includes(c.verificationStatus)).length,salesReady:mine.filter(c=>c.verificationStatus==='Sales Ready').length};
   res.json({stats,leads:mine.slice(0,1000),users:['owner','manager'].includes(req.user.role)?(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role})):[]});
 });
-app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
+app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED||!sbcWriterLeaseReady)return res.status(423).json({error:'CRM writer/recovery gate unavailable. No lead updated.'});
   const allowed=['owner','manager','lead_researcher']; if(!allowed.includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
   const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)); if(!c)return res.status(404).json({error:'Lead not found.'});
-  const b=req.body||{};
+  if(sbcLornaRole(req.user)){const tid=Number(requireRequestTenant(req)),uid=String(req.user.id),assigned=String(c.assignedTo||''),status=String(c.status||'Lead').toLowerCase();if(Number(c.tenantId)!==tid||['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(status)||(assigned&&assigned!==uid)||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==uid))return res.status(403).json({error:'Lead is outside your permitted research queue.'});}const b=req.body||{};
   for(const k of ['businessName','contactName','phone','email','website','industry','city','zip','notes','source','verificationSource']) if(b[k]!==undefined)c[k]=String(b[k]||'');
   if(req.user.role==='lead_researcher'&&b.assignedTo!==undefined&&String(b.assignedTo)!==String(req.user.id))return res.status(403).json({error:'Researchers may verify and submit leads, but only owner/manager may reassign them.'});
   if(['owner','manager'].includes(req.user.role)&&b.assignedTo!==undefined){const uid=String(b.assignedTo||'');const u=uid?(db.users||[]).find(x=>x.id===uid&&x.active!==false&&['lead_researcher','caller'].includes(x.role)):null;if(uid&&!u)return res.status(400).json({error:'Select an active lead researcher or sales manager/caller.'});c.assignedTo=uid;c.assignedToName=u?.name||'';}
@@ -5960,7 +6017,7 @@ app.put('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(!canEditResearchLead(req.user))return res.status(403).json({error:'Lead editing access required.'});
   const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));
   if(!c)return res.status(404).json({error:'Lead not found.'});
-  const b=req.body||{};
+  if(sbcLornaRole(req.user)){const tid=Number(requireRequestTenant(req)),uid=String(req.user.id),assigned=String(c.assignedTo||''),status=String(c.status||'Lead').toLowerCase();if(Number(c.tenantId)!==tid||['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(status)||(assigned&&assigned!==uid)||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==uid))return res.status(403).json({error:'Lead is outside your permitted research queue.'});}const b=req.body||{};
   const first=(...v)=>v.map(x=>String(x??'').trim()).find(Boolean)||'';
   for(const k of ['businessName','contactName','phone','email','website','industry','websiteStatus','source','notes','address']){
     if(b[k]!==undefined)c[k]=String(b[k]).slice(0,k==='notes'?5000:500);
@@ -5978,7 +6035,7 @@ app.put('/api/workforce/leads/:id',auth,async(req,res)=>{
 });
 app.get('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(!canEditResearchLead(req.user))return res.status(403).json({error:'Lead access denied.'});
-  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));if(!c)return res.status(404).json({error:'Lead not found.'});if(sbcLornaRole(req.user)&&req.user.role!=='owner'&&req.user.role!=='manager'){const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(['customer','lost','do not call','dnc','closed','duplicate'].includes(status)||(assigned&&assigned!==String(req.user.id))||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==String(req.user.id))){return res.status(403).json({error:'This lead is outside your assigned research queue.'});}}
+  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));if(!c)return res.status(404).json({error:'Lead not found.'});if(sbcLornaRole(req.user)&&req.user.role!=='owner'&&req.user.role!=='manager'){const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return res.status(403).json({error:'Lead is outside your tenant research queue.'});if(['customer','lost','do not call','dnc','closed','duplicate'].includes(status)||(assigned&&assigned!==String(req.user.id))||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==String(req.user.id))){return res.status(403).json({error:'This lead is outside your assigned research queue.'});}}
   res.json({ok:true,lead:{...c,leadIntelligence:leadIntel(c)}});
 });
 
