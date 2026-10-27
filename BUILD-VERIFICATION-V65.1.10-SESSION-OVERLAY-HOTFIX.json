@@ -1,0 +1,21 @@
+{
+  "version": "65.1.10",
+  "release_name": "SESSION-OVERLAY-SIGNOUT-ACCESS-HOTFIX",
+  "candidate_only": true,
+  "changes": [
+    "sbcShowLogin closes body-level lead workspace modal before displaying login panel",
+    "lead workspace launcher hidden while session is rejected",
+    "client freshness token and index asset cache-busters updated"
+  ],
+  "validation": {
+    "node_check_public_app_js": "PASS",
+    "session_overlay_signout_hotfix_test": "PASS 3/3",
+    "test_all": "PASS",
+    "predeploy_open_gate": "PASS; JavaScript syntax audit 530 files; static secret scan passed",
+    "live_godaddy_deployment": "NOT VERIFIED",
+    "live_mysql_write_test": "NOT RUN",
+    "recovery_lock": "PRESERVED"
+  },
+  "distribution_file_count": 927,
+  "sha256_manifest": "CLEAN-DISTRIBUTION-MANIFEST.sha256"
+}

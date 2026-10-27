@@ -1,0 +1,14 @@
+const fs=require('fs');
+const assert=require('assert');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+assert.strictEqual(pkg.version,require('../config/release-identity.js').RELEASE_VERSION);
+const commercial=fs.readFileSync('public/sbc-commercial-os-v602.js','utf8');
+assert(commercial.includes('textContent=\'🤖 Ask Kim\''));
+assert(commercial.includes('className=\'sbc-commercial-trigger sbc-ask-kim-trigger\''));
+assert(commercial.includes('window.openSbcAI'));
+assert(!commercial.includes("textContent='📈 Commercial HQ'"));
+const v322=fs.readFileSync('public/v32-2-upgrade.js','utf8');
+assert(v322.includes('🤖 Ask Kim'));
+const index=fs.readFileSync('public/index.html','utf8');
+assert(index.includes('v='+require('../config/release-identity.js').RELEASE_VERSION));
+console.log('V64.2.25 ASK KIM UI TEST: PASS');

@@ -1,0 +1,10 @@
+'use strict';
+const R=require('../enterprise/v56134-ten-brain');
+const CONSULTATIVE=require('../enterprise/v56135-consultative-revenue-engine');
+module.exports=function registerV56134TenBrain(app,{auth,ownerOnly,getContext,closer,revenueSupervisor,dispatchCall,createConsultativeCheckout,globalIntelligence}={}){
+  const ctx=()=>getContext();
+  app.get('/api/v56134/ten-brain/overview',auth,(req,res)=>{try{res.json({ok:true,...R.snapshot(ctx())})}catch(e){res.status(500).json({ok:false,error:'10-brain overview unavailable.'})}});
+  app.post('/api/v56134/ten-brain/evaluate',auth,async(req,res)=>{try{const c=ctx();const lead=(c.db?.customers||[]).find(x=>String(x.id)===String(req.body?.leadId));if(!lead)return res.status(404).json({ok:false,error:'Lead not found.'});const out=await R.evaluate({customer:lead,leadId:lead.id,closer:closer||global.__SBC_REVENUE_CLOSER,revenueSupervisor:revenueSupervisor||global.__SBC_REVENUE_SUPERVISOR,db:c.db,catalog:c.catalog,tenantId:global.__SBC_REQUIRE_TENANT(req),interactionData:req.body?.interactionData||{},mode:'evaluate',consultativeEngine:CONSULTATIVE,createConsultativeCheckout,globalIntelligence:globalIntelligence?.()||null});res.json(out)}catch(e){res.status(400).json({ok:false,error:e.message})}});
+  app.post('/api/v56134/ten-brain/dispatch',auth,ownerOnly,async(req,res)=>{try{const c=ctx();const lead=(c.db?.customers||[]).find(x=>String(x.id)===String(req.body?.leadId));if(!lead)return res.status(404).json({ok:false,error:'Lead not found.'});const out=await R.evaluate({customer:lead,leadId:lead.id,closer:closer||global.__SBC_REVENUE_CLOSER,revenueSupervisor:revenueSupervisor||global.__SBC_REVENUE_SUPERVISOR,db:c.db,catalog:c.catalog,tenantId:global.__SBC_REQUIRE_TENANT(req),interactionData:req.body?.interactionData||{},mode:'dispatch',dispatchCall,consultativeEngine:CONSULTATIVE,createConsultativeCheckout,globalIntelligence:globalIntelligence?.()||null});res.json(out)}catch(e){res.status(400).json({ok:false,error:e.message})}});
+};
+module.exports._test=R;

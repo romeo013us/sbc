@@ -1,0 +1,8 @@
+/* V55.12.0 — single-owner interaction layer */
+html,body{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a{touch-action:manipulation}
+.sbc-ai-float{position:fixed;z-index:61000;right:14px;bottom:max(14px,env(safe-area-inset-bottom));touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.sbc-ai-float:active{cursor:grabbing}
+.sbc-kim-dock{z-index:60000;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}
+.sbc-kim-dock.hidden{display:none!important}
+@media(max-width:650px){.sbc-kim-dock{right:auto!important;bottom:auto!important;width:calc(100vw - 16px)!important;height:min(76vh,620px)!important;max-height:calc(100vh - 16px)!important}.sbc-ai-float{max-width:132px!important}}

@@ -1,0 +1,19 @@
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime / local state
+node_modules/
+runtime-spool/
+logs/
+*.log
+*.pid
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

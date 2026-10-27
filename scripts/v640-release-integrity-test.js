@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('assert');const fs=require('fs');const path=require('path');
+const root=path.resolve(__dirname,'..');
+const pkg=require(path.join(root,'package.json'));
+assert(pkg.version===require('../config/release-identity.js').RELEASE_VERSION); assert.equal(pkg.scripts.start,'node server.js'); assert.equal(pkg.engines.node,'22.x');
+for(const f of ['enterprise/sbc-enterprise-control-plane-v640.js','public/sbc-god-tier.html','config/sbc-v640-enterprise.json','scripts/v640-enterprise-control-plane-test.js']) assert(fs.existsSync(path.join(root,f)),`missing ${f}`);
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+assert(server.includes('sbc-enterprise-control-plane-v640'));
+const cp=fs.readFileSync(path.join(root,'enterprise/sbc-enterprise-control-plane-v640.js'),'utf8');
+assert(cp.includes('/api/v640/control-plane/status'));
+assert(server.includes('SBC_V640.start()'));
+const cfg=JSON.parse(fs.readFileSync(path.join(root,'config/sbc-v640-enterprise.json'),'utf8'));
+assert.equal(cfg.governance.newGoDaddySecrets,false);assert.equal(cfg.governance.unrestrictedProductionMutation,false);
+console.log('V64 release integrity: PASS');

@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+const pkg=require(path.join(root,'package.json'));
+const release=require(path.join(root,'config/release-identity.js'));
+assert.equal(pkg.version, require('../package.json').version);
+assert.equal(release.RELEASE_VERSION,pkg.version);
+assert.match(server,/blocked\.code=safety\.error[\s\S]*blocked\.recoveryGuard=true[\s\S]*REFUSING CRM SHRINK/,'persistence safety rejection carries a stable code and caller diagnostic');
+assert.match(server,/if\(recoveryBlocked\)[\s\S]*storageMode='mysql-recovery-required'[\s\S]*throw e;/,'safety rejection propagates and cannot be treated as a successful save');
+assert.match(server,/if\(recoveryBlocked\)[\s\S]*?throw e;[\s\S]*?console\.error\('SBC MySQL write failed after retries; preserving local backup instead of crashing:'/,'recovery rejection exits before local fallback snapshot serialization');
+console.log('V65.1.26 recovery-write failure propagation: 4/4 PASS');

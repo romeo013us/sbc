@@ -1,0 +1,37 @@
+{
+  "name": "SBC OS V65.1.8 Tenant Repository Isolation Sandbox",
+  "builtAtUtc": "2026-10-09T17:13:00Z",
+  "checks": {
+    "release_identity": "65.1.8",
+    "npm_run_test_all": "PASS",
+    "predeploy_open_gate": "PASS (40 checks; JavaScript syntax audit checked 609 files, zero failures)",
+    "ui_recovery_regression": "PASS (19/19)",
+    "training_enterprise_regression": "PASS (9/9)",
+    "buyer_demo_regression": "PASS (5/5)",
+    "enterprise_safety_modules": "PASS",
+    "read_only_reconciliation_test": "PASS",
+    "recovery_isolation": "PASS (21 checks)",
+    "tenant_repository_isolation": "PASS (7 checks; concurrent tenants; mock pool; 3 parameterized reads)",
+    "docker_sandbox_execution": "NOT RUN; Docker executable unavailable in build environment",
+    "live_godaddy_deployment": "NOT PERFORMED",
+    "live_mysql_staging": "NOT PERFORMED",
+    "live_payment_fulfillment_e2e": "NOT PERFORMED"
+  },
+  "reconciliation": {
+    "readOnly": true,
+    "sbc_customers_rows_parsed": 243,
+    "sbc_lead_mesh_rows_parsed": 243,
+    "historical_csv_candidate_rows": 64,
+    "proposed_five_email_identities_found": 0,
+    "authoritative_248_row_baseline": "NOT ESTABLISHED",
+    "recovery_sql_generated": false
+  },
+  "safetyNotes": [
+    "Production recovery lock remains engaged.",
+    "No customer records were inserted, deleted, or restored.",
+    "Tenant repository is an additive read-only module and is not wired into every existing SQL call site.",
+    "The Docker sandbox uses no network and a mock SQL pool; it does not prove live database isolation.",
+    "No GoDaddy deployment or production database mutation was performed.",
+    "No additional GoDaddy secret slots are required."
+  ]
+}

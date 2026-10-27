@@ -1,0 +1,390 @@
+===== scripts/acquisition-engine-test.js =====
+PASS lead scoring
+PASS no invented contact
+PASS sms opt-out language
+PASS summary
+EXIT:0
+===== scripts/big3-production-audit.js =====
+{"ok":true,"test":"big3-production-audit","checks":8,"version":"1.0.0","industry":"Insurance Adjusting"}
+EXIT:0
+===== scripts/functional-wiring-smoke.js =====
+FAIL frontend versioned assets
+PASS bottom-right Kim float removed
+FAIL client cache guard updated
+PASS service worker cache version updated
+FAIL Lorna Save Lead wiring
+PASS Lorna save has durable central CRM write + verification
+PASS Training buttons wired to real API actions
+Functional wiring smoke complete.
+EXIT:0
+===== scripts/kim-detailed-ops-test.js =====
+{"suite":"kim-detailed-operations-reporting","status":"PASS","checks":6}
+EXIT:0
+===== scripts/kim-production-open-test.js =====
+{
+  "suite": "kim-production-open-gate",
+  "status": "PASS",
+  "gateOk": false,
+  "blockers": 1,
+  "productionBlockers": 10
+}
+EXIT:0
+===== scripts/kim-steward-test.js =====
+{"suite":"kim-system-steward","status":"PASS","checks":["scan","snapshot","apply","syntax-validation","verify","rollback","secret-block"]}
+EXIT:0
+===== scripts/kim-v563-hardening-test.js =====
+{"suite":"kim-v563-hardening","status":"PASS","checks":["version","live_observability","schema_integrity","square_preflight","test_phone_omission","acquisition_sms_consent","detailed_reporting"]}
+EXIT:0
+===== scripts/latency-smoke.js =====
+node:fs:442
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/mnt/data/audit55/training-smoke.html'
+    at Object.readFileSync (node:fs:442:20)
+    at Object.<anonymous> (/mnt/data/audit55/scripts/latency-smoke.js:7:15)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/mnt/data/audit55/training-smoke.html'
+}
+
+Node.js v22.16.0
+EXIT:0
+===== scripts/lorna-lead-sync-regression.js =====
+{"status":"PASS","test":"lorna-lead-sync-regression","checks":10}
+EXIT:0
+===== scripts/lorna-onboarding-training-smoke.js =====
+{"status":"PASS","lornaTrainingVisible":true,"assigned":3,"available":0}
+EXIT:0
+===== scripts/mobile-war-test.js =====
+PASS viewport 
+FAIL mobile stylesheet loaded 
+FAIL mobile controller loaded last 
+FAIL Kim launcher exists 
+FAIL Kim dock exists 
+PASS Kim launcher pointer drag 
+PASS Kim position persistence 
+PASS Kim viewport clamp 
+PASS mobile touch target rules 
+PASS mobile form zoom protection 
+PASS mobile sidebar behavior 
+PASS horizontal table safety 
+PASS canonical nav gate retained 
+PASS open-ready does not intercept clicks 
+PASS Kim safe viewport 
+FAIL hidden Kim surfaces protected 
+PASS chaos detector catches missing CSS 
+PASS chaos detector catches missing JS 
+FAIL restored CSS contract 
+FAIL restored JS contract 
+{"status":"FAIL","pass":13,"fail":7,"warn":0,"version":"55.11.3"}
+EXIT:0
+===== scripts/navigation-router-smoke.js =====
+SBC V55.8.6 navigation router smoke: PASS
+EXIT:0
+===== scripts/obfuscate-production.js =====
+javascript-obfuscator is not installed. Run npm install first.
+EXIT:0
+===== scripts/observability-steward-test.js =====
+{"suite":"observability-steward","status":"PASS","checks":["trace-id","span-id","w3c-traceparent","structured-event"]}
+EXIT:0
+===== scripts/open-readiness.js =====
+    },
+    {
+      "name": "API:/api/v9/time/status",
+      "detail": "route reference present"
+    },
+    {
+      "name": "API:/api/ai/status",
+      "detail": "route reference present"
+    },
+    {
+      "name": "primary navigation",
+      "detail": "15 primary views declared"
+    },
+    {
+      "name": "final gate ordering",
+      "detail": "app.js owns navigation; interaction controller is non-intercepting"
+    }
+  ],
+  "warnings": [
+    {
+      "name": "stale test assets",
+      "detail": "scripts/super-test.js"
+    }
+  ],
+  "failures": [
+    {
+      "name": "VERSION",
+      "detail": "VERSION must be 55.11.4"
+    },
+    {
+      "name": "package version",
+      "detail": "55.21.0"
+    },
+    {
+      "name": "server build version",
+      "detail": "BUILD_VERSION is not 55.11.4"
+    }
+  ],
+  "generatedAt": "2026-10-02T21:56:57.562Z"
+}
+EXIT:0
+===== scripts/platform-architecture-test.js =====
+{
+  "suite": "platform-architecture",
+  "status": "PASS",
+  "checks": [
+    "topology",
+    "boundary-policy",
+    "office-box-capabilities",
+    "provisioning-contract"
+  ]
+}
+EXIT:0
+===== scripts/resilience-check.js =====
+{
+  "suite": "resilience-readiness",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "database.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "enterprise/secret-consolidator.js",
+      "status": "PASS"
+    },
+    {
+      "name": "enterprise/kim-system-steward-v1.js",
+      "status": "PASS"
+    },
+    {
+      "name": "backup_evidence_policy",
+      "status": "PASS",
+      "detail": "Runtime reports EVIDENCE_REQUIRED until an owner records verified backup evidence."
+    },
+    {
+      "name": "dr_evidence_policy",
+      "status": "PASS",
+      "detail": "Runtime reports EVIDENCE_REQUIRED until an owner records a controlled DR test."
+    }
+  ]
+}
+EXIT:0
+===== scripts/revenue-play-queue-regression.js =====
+Revenue PLAY queue regression: PASS
+EXIT:0
+===== scripts/secret-audit.js =====
+{
+  "suite": "secret-audit",
+  "status": "PASS",
+  "count": 0
+}
+EXIT:0
+===== scripts/secret-value-audit.js =====
+{
+  "ok": true,
+  "scannedVariables": 3,
+  "duplicateValueGroups": 0,
+  "duplicates": [],
+  "note": "Fingerprints only. Secret values are never printed."
+}
+EXIT:0
+===== scripts/security-check.js =====
+SBC security static checks passed: request data SQL guard clear; no hardcoded target credentials; boundary files present.
+EXIT:0
+===== scripts/startup-data-integrity-test.js =====
+{
+  "suite": "startup-data-integrity",
+  "status": "PASS",
+  "files": 13
+}
+EXIT:0
+===== scripts/super-test.js =====
+      "status": "PASS"
+    },
+    {
+      "name": "system_test_quarantine",
+      "status": "PASS"
+    },
+    {
+      "name": "revenue_email_templates",
+      "status": "PASS"
+    },
+    {
+      "name": "kim_tts_config",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_enrichment",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_enrichment_batch",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist_run",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist_review",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist_auto_queue",
+      "status": "PASS"
+    }
+  ]
+}
+EXIT:0
+===== scripts/training-v2-smoke.js =====
+{
+  "status": "PASS",
+  "schema": 2,
+  "courses": 7,
+  "employeeAssigned": 3,
+  "attempts": 2,
+  "failedRetained": true,
+  "passedRetained": true,
+  "archivedRetained": true
+}
+EXIT:0
+===== scripts/turnkey-readiness.js =====
+      "ok": true,
+      "detail": "legacy training endpoints not referenced by active training UI"
+    },
+    {
+      "name": "steward allowlist updated",
+      "ok": true,
+      "detail": "legacy training files not repairable through steward allowlist"
+    },
+    {
+      "name": "PM2 portability config",
+      "ok": true,
+      "detail": "single-process optional PM2 config without hard-coded host port"
+    },
+    {
+      "name": "syntax:server.js",
+      "ok": true,
+      "detail": "node --check PASS"
+    },
+    {
+      "name": "syntax:enterprise/training-system-v2.js",
+      "ok": true,
+      "detail": "node --check PASS"
+    },
+    {
+      "name": "syntax:public/app.js",
+      "ok": true,
+      "detail": "node --check PASS"
+    },
+    {
+      "name": "syntax:public/v9.js",
+      "ok": true,
+      "detail": "node --check PASS"
+    },
+    {
+      "name": "syntax:public/v10.js",
+      "ok": true,
+      "detail": "node --check PASS"
+    }
+  ]
+}
+EXIT:0
+===== scripts/v329-enterprise-smoke.js =====
+{"ok":true,"capabilities":50,"summary":{"version":"32.9.0","capabilities":50,"providers":1,"leadBatches":1,"leads":2,"verificationQueue":0,"opportunities":1,"notifications":1,"documents":1,"workers":1,"auditEntries":5}}
+EXIT:0
+===== scripts/v47-final-readiness.js =====
+      "stderr": "",
+      "exitCode": 0
+    },
+    {
+      "name": "secret-audit",
+      "ok": true,
+      "stdout": "{\n  \"suite\": \"secret-audit\",\n  \"status\": \"PASS\",\n  \"count\": 0\n}\n",
+      "stderr": "",
+      "exitCode": 0
+    },
+    {
+      "name": "federation",
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"productionLinks\": [\n    [\n      \"workforceRoleManager\",\n      \"masterSessionStore\"\n    ]\n  ],\n  \"fixtureCircularCaseDetected\": true,\n  \"failures\": []\n}\n",
+      "stderr": "",
+      "exitCode": 0
+    },
+    {
+      "name": "turnkey-readiness",
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"version\": \"55.21.0\",\n  \"passed\": 18,\n  \"failed\": 0,\n  \"checks\": [\n    {\n      \"name\": \"package version\",\n      \"ok\": true,\n      \"detail\": \"55.21.0\"\n    },\n    {\n      \"name\": \"native start\",\n      \"ok\": true,\n      \"detail\": \"node server.js\"\n    },\n    {\n      \"name\": \"server build version\",\n      \"ok\": true,\n      \"detail\": \"55.21.0\"\n    },\n    {\n      \"name\": \"training V2 module\",\n      \"ok\": true,\n      \"detail\": \"durable versioned training engine present\"\n    },\n    {\n      \"name\": \"durable training state\",\n      \"ok\": true,\n      \"detail\": \"student/course state is not process-local\"\n    },\n    {\n      \"name\": \"training history\",\n      \"ok\": true,\n      \"detail\": \"attempts, reviews, certifications, events and sessions retained\"\n    },\n    {\n      \"name\": \"training version/archive\",\n      \"ok\": true,\n      \"detail\": \"old/new versions remain manageable\"\n    },\n    {\n      \"name\": \"training API\",\n      \"ok\": true,\n      \"detail\": \"canonical /api/training routes present\"\n    },\n    {\n      \"name\": \"training frontend\",\n      \"ok\": true,\n      \"detail\": \"canonical SBC Academy frontend + single-owner app renderer with no competing runtime navigation layer present\"\n    },\n    {\n      \"name\": \"legacy training runtime removed\",\n      \"ok\": true,\n      \"detail\": \"old runtime files absent from deploy tree\"\n    },\n    {\n      \"name\": \"old training endpoints removed\",\n      \"ok\": true,\n      \"detail\": \"legacy training endpoints not referenced by active training UI\"\n    },\n    {\n      \"name\": \"steward allowlist updated\",\n      \"ok\": true,\n      \"detail\": \"legacy training files not repairable through steward allowlist\"\n    },\n    {\n      \"name\": \"PM2 portability config\",\n      \"ok\": true,\n      \"detail\": \"single-process optional PM2 config without hard-coded host port\"\n    },\n    {\n      \"name\": \"syntax:server.js\",\n      \"ok\": true,\n      \"detail\": \"node --check PASS\"\n    },\n    {\n      \"name\": \"syntax:enterprise/training-system-v2.js\",\n      \"ok\": true,\n      \"detail\": \"node --check PASS\"\n    },\n    {\n      \"name\": \"syntax:public/app.js\",\n      \"ok\": true,\n      \"detail\": \"node --check PASS\"\n    },\n    {\n      \"name\": \"syntax:public/v9.js\",\n      \"ok\": true,\n      \"detail\": \"node --check PASS\"\n    },\n    {\n      \"name\": \"syntax:public/v10.js\",\n      \"ok\": true,\n      \"detail\": \"node --check PASS\"\n    }\n  ]\n}\n",
+      "stderr": "",
+      "exitCode": 0
+    },
+    {
+      "name": "v47-war-test",
+      "ok": false,
+      "stdout": "",
+      "stderr": "node:internal/modules/cjs/loader:1404\n  throw err;\n  ^\n\nError: Cannot find module '/mnt/data/audit55/scripts/v47-war-test.js'\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)\n    at Function._load (node:internal/modules/cjs/loader:1211:37)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.16.0\n",
+      "exitCode": 1
+    },
+    {
+      "name": "godkim-fabric-v2",
+      "ok": false,
+      "stdout": "",
+      "stderr": "node:internal/modules/cjs/loader:1404\n  throw err;\n  ^\n\nError: Cannot find module '/mnt/data/audit55/scripts/godkim-fabric-v2-test.js'\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)\n    at Function._load (node:internal/modules/cjs/loader:1211:37)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.16.0\n",
+      "exitCode": 1
+    }
+  ]
+}
+EXIT:0
+===== scripts/v55-19-persistence-regression.js =====
+{"status":"PASS","test":"v55-19-persistence-regression","checks":11}
+EXIT:0
+===== scripts/v55122-two-fix-test.js =====
+/mnt/data/audit55/scripts/v55122-two-fix-test.js:8
+if(!index.includes('/kim-dock-v49.js?v=55.12.2')) throw new Error('Kim V49 controller is not loaded.');
+                                                  ^
+
+Error: Kim V49 controller is not loaded.
+    at Object.<anonymous> (/mnt/data/audit55/scripts/v55122-two-fix-test.js:8:57)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.16.0
+EXIT:0
+===== scripts/validate-federation.js =====
+{
+  "ok": true,
+  "productionLinks": [
+    [
+      "workforceRoleManager",
+      "masterSessionStore"
+    ]
+  ],
+  "fixtureCircularCaseDetected": true,
+  "failures": []
+}
+EXIT:0
+===== scripts/workforce-lead-access-regression.js =====
+{"status":"PASS","test":"workforce-lead-access-regression","checks":5}
+EXIT:0

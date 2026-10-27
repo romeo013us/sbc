@@ -1,0 +1,9 @@
+/* SBC V65.1.64 — stable dashboard layout. No database or financial behavior changes. */
+#sbcSalesOperatingModelV6563{display:block!important;grid-column:1/-1!important;justify-self:stretch!important;width:100%!important;min-width:0!important;max-width:1600px!important;flex:0 0 100%!important;box-sizing:border-box!important}
+#sbcSalesOperatingModelV6563 *{box-sizing:border-box}
+#sbcSalesOperatingModelV6563 .sbc63-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;width:100%!important;min-width:0!important}
+#sbcSalesOperatingModelV6563 .sbc63-head,#sbcSalesOperatingModelV6563 .sbc63-rule{width:100%!important;min-width:0!important}
+#sbcSalesOperatingModelV6563 .sbc63-lane{min-width:0!important;overflow-wrap:anywhere}
+@media(max-width:1050px){#sbcSalesOperatingModelV6563 .sbc63-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:600px){#sbcSalesOperatingModelV6563 .sbc63-grid{grid-template-columns:minmax(0,1fr)!important}}
+@media(prefers-reduced-motion:reduce){#sbcSalesOperatingModelV6563 *{animation:none!important;transition:none!important}}

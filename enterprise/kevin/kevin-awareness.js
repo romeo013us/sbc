@@ -1,0 +1,1 @@
+export class KevinAwareness {constructor(worldModel,eventBus){this.worldModel=worldModel;this.eventBus=eventBus;} async synthesizeBusinessState(){for(const e of this.eventBus.snapshot())this.worldModel.ingest(e);return this.worldModel.synthesize();}}

@@ -1,0 +1,83 @@
+[
+  {
+    "viewport": "desktop",
+    "metrics": {
+      "title": "file:///mnt/data/war_test/browser_public/index.html",
+      "theme": null,
+      "buttons": 0,
+      "links": 0,
+      "inputs": 0,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "body": "\u201cfile\u201d links are blocked\n\nYour organization doesn\u2019t allow you to view this site"
+    },
+    "themeClicked": false,
+    "kim": {
+      "launcher": false,
+      "opened": false,
+      "input": false,
+      "enter": false,
+      "shiftEnter": false
+    },
+    "visibleElementCount": 9,
+    "consoleErrors": [],
+    "pageErrors": [
+      "goto:Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at file:///mnt/data/war_test/browser_public/index.html\nCall log:\n  - navigating to \"file:///mnt/data/war_test/browser_public/index.html\", waiting until \"domcontentloaded\"\n"
+    ],
+    "failedRequests": []
+  },
+  {
+    "viewport": "laptop",
+    "metrics": {
+      "title": "file:///mnt/data/war_test/browser_public/index.html",
+      "theme": null,
+      "buttons": 0,
+      "links": 0,
+      "inputs": 0,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "body": "\u201cfile\u201d links are blocked\n\nYour organization doesn\u2019t allow you to view this site"
+    },
+    "themeClicked": false,
+    "kim": {
+      "launcher": false,
+      "opened": false,
+      "input": false,
+      "enter": false,
+      "shiftEnter": false
+    },
+    "visibleElementCount": 9,
+    "consoleErrors": [],
+    "pageErrors": [
+      "goto:Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at file:///mnt/data/war_test/browser_public/index.html\nCall log:\n  - navigating to \"file:///mnt/data/war_test/browser_public/index.html\", waiting until \"domcontentloaded\"\n"
+    ],
+    "failedRequests": []
+  },
+  {
+    "viewport": "mobile",
+    "metrics": {
+      "title": "file:///mnt/data/war_test/browser_public/index.html",
+      "theme": null,
+      "buttons": 0,
+      "links": 0,
+      "inputs": 0,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "body": "\u201cfile\u201d links are blocked\n\nYour organization doesn\u2019t allow you to view this site"
+    },
+    "themeClicked": false,
+    "kim": {
+      "launcher": false,
+      "opened": false,
+      "input": false,
+      "enter": false,
+      "shiftEnter": false
+    },
+    "visibleElementCount": 10,
+    "consoleErrors": [],
+    "pageErrors": [
+      "goto:Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at file:///mnt/data/war_test/browser_public/index.html\nCall log:\n  - navigating to \"file:///mnt/data/war_test/browser_public/index.html\", waiting until \"domcontentloaded\"\n"
+    ],
+    "failedRequests": []
+  }
+]

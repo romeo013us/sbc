@@ -1,0 +1,12 @@
+Options -Indexes -ExecCGI
+
+# Allow the public static application assets to be served, while denying direct
+# access to dotfiles, source/config files, and server-side artifacts.
+<FilesMatch "^(?:\.|.*\.(?:env|ini|log|sql|sqlite|db|bak|old|orig|sh|pem|key|crt|conf|config|jsonl))$">
+  Require all denied
+</FilesMatch>
+
+# Never expose source maps or package metadata from the static root.
+<FilesMatch "^(?:package\.json|package-lock\.json|composer\.json|tsconfig\.json|webpack\.config\.js|vite\.config\.js)$">
+  Require all denied
+</FilesMatch>

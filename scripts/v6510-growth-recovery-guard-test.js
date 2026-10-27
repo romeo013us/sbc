@@ -1,0 +1,26 @@
+'use strict';
+const assert=require('node:assert/strict');
+const growthOS=require('../enterprise/sbc-growth-os-v650');
+const growthHardening=require('../enterprise/v56240-autonomous-growth-hardening');
+(async()=>{
+ let queries=0;
+ const mysqlPool={query:async()=>{queries++;throw new Error('Unexpected query while recovery-locked')}};
+ growthOS.configure({mysqlPool,recoveryRequired:()=>true});
+ const a=await growthOS.status(1);
+ assert.equal(a.recoveryRequired,true,'Growth OS status must disclose recovery lock');
+ assert.equal(a.readOnly,true,'Growth OS status must be read-only');
+ assert.equal(queries,0,'Growth OS status must not query/create tables in recovery');
+ assert.equal(growthOS.start(),false,'Growth OS scheduler must not start during recovery');
+ await assert.rejects(()=>growthOS.run(1),/MYSQL_RECOVERY_REQUIRED/);
+ assert.equal(queries,0,'Growth OS run must not touch MySQL in recovery');
+ const c=growthHardening.createController({db:{customers:[]},mysqlPool,recoveryRequired:()=>true});
+ const b=await c.status(1);
+ assert.equal(b.recoveryRequired,true,'Growth hardening status must disclose recovery lock');
+ assert.equal(b.readOnly,true,'Growth hardening status must be read-only');
+ assert.equal(queries,0,'Growth hardening status must not create tables or queue records');
+ assert.equal(c.start(),false,'Growth hardening scheduler must not start during recovery');
+ await assert.rejects(()=>c.run(),/MYSQL_RECOVERY_REQUIRED/);
+ assert.equal(queries,0,'Growth hardening run must not touch MySQL in recovery');
+ console.log('SBC V65.1.3 growth recovery guard: PASS');
+ console.log('checks=read-only-status,no-table-creation,no-queue-write,no-background-scheduler,run-rejected');
+})().catch(e=>{console.error(e);process.exit(1)});

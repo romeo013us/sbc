@@ -1,0 +1,9 @@
+(()=>{
+  const q=s=>document.querySelector(s);
+  async function api(url,opts={}){const r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});const j=await r.json().catch(()=>({error:'Invalid response'}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j;}
+  async function refresh(){try{const j=await api('/api/evolution/proposals');const list=q('#evo-list');list.innerHTML='';(j.proposals||[]).forEach(p=>{const el=document.createElement('article');el.className='evo-card';el.innerHTML=`<div class="evo-row"><b>${esc(p.plan?.blueprint||'Capability')}</b><span class="risk ${String(p.risk||'MEDIUM').toLowerCase()}">${esc(p.risk||'MEDIUM')}</span></div><div>${esc(p.intent_text||p.intent||'')}</div><small>${esc(p.stage||'STAGED')} · ${esc(p.proposal_id||p.proposalId||'')}</small><pre>${esc(JSON.stringify({artifacts:p.plan?.artifacts||[],governance:p.plan?.governance||'',security:p.security||{}},null,2))}</pre></article>`;list.appendChild(el);});}catch(e){q('#evo-list').innerHTML=`<div class="evo-error">${esc(e.message)}</div>`;}}
+  async function stage(){const intent=q('#evo-intent').value.trim();if(!intent)return; q('#evo-status').textContent='Observing → diagnosing → designing → staging…';try{const j=await api('/api/evolution/stage',{method:'POST',body:JSON.stringify({intent})});q('#evo-status').textContent=`STAGED ${j.proposal?.proposalId||j.proposal_id||''} · production deployment remains blocked until approval.`;await refresh();}catch(e){q('#evo-status').textContent=e.message;}}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  window.SBCEvolution={stage,refresh};
+  document.addEventListener('DOMContentLoaded',refresh);
+})();

@@ -1,0 +1,27 @@
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const testRoot = path.join(os.tmpdir(), 'sbc-notification-test-' + process.pid);
+fs.rmSync(testRoot, { recursive: true, force: true });
+const { SBCUnattendedNotifications, validEmail, validE164 } = require('../enterprise/sbc-unattended-notifications-v6504.cjs');
+let emailSent = null, smsSent = null;
+const fakePool = { async query(sql) { if (sql.includes('sbc_customers')) return [[{n:243}]]; if (sql.includes('sbc_quotes')) return [[{n:0}]]; if (sql.includes('sbc_orders')) return [[{n:0}]]; if (sql.includes('sbc_renewals')) return [[{n:0}]]; if (sql.includes('sbc_activities')) return [[{n:7}]]; throw new Error('unexpected query'); } };
+const env = { SBC_SMTP_HOST:'smtp.example.test', SBC_SMTP_USER:'brief@example.test', SBC_SMTP_PASS:'test-only', SBC_MAIL_FROM:'brief@example.test', SBC_OWNER_EMAIL:'romeo@example.test', TWILIO_ACCOUNT_SID:'AC123', TWILIO_AUTH_TOKEN:'test-only', TWILIO_PHONE_NUMBER:'+15555550123', SBC_OWNER_PHONE:'+15555550124' };
+const notifier = new SBCUnattendedNotifications({ env, getPool:()=>fakePool, getDb:()=>({users:[]}), getRecoveryRequired:()=>true, rootDir:testRoot, logger:{warn(){},info(){}}, nodemailer:{createTransport(){return {async sendMail(m){emailSent=m;return {messageId:'test-message',accepted:[m.to]}}}}}, twilioFactory:()=>({messages:{async create(m){smsSent=m;return {sid:'SM-test',status:'queued'}}}}) });
+(async()=>{
+ assert.strictEqual(validEmail('owner@example.com'),true); assert.strictEqual(validEmail('bad-email'),false);
+ assert.strictEqual(validE164('+15555550123'),true); assert.strictEqual(validE164('3055550123'),false);
+ const status=notifier.status(); assert.strictEqual(status.channels.email.configured,true); assert.strictEqual(status.channels.sms.configured,true); assert.strictEqual(status.recoveryRequired,true);
+ const brief=await notifier.sendBriefing(); assert.strictEqual(brief.ok,true); assert.strictEqual(brief.report.metrics.customers,243); assert.strictEqual(brief.report.metrics.activitiesLast24Hours,7); assert.strictEqual(brief.report.recoveryRequired,true); assert(emailSent.text.includes('RECOVERY_LOCKED')||emailSent.subject.includes('RECOVERY LOCKED'));
+ const sms=await notifier.sendCriticalAlert('test-event','Recovery lock active'); assert.strictEqual(sms.ok,true); assert.strictEqual(smsSent.to,'+15555550124'); assert(smsSent.body.includes('SBC CRITICAL ALERT'));
+ const dedupe=await notifier.sendCriticalAlert('test-event','Recovery lock active again'); assert.strictEqual(dedupe.deduplicated,true);
+ const destinationOnly=new SBCUnattendedNotifications({env:{},getPool:()=>null,getDb:()=>({users:[]}),getRecoveryRequired:()=>true,rootDir:path.join(testRoot,'destination-only'),logger:{warn(){},info(){}}});
+ const saved=destinationOnly.updateDestinations({email:'executive@example.test',phone:'+15555550199'}); assert.strictEqual(saved.emailConfigured,true); assert.strictEqual(saved.phoneConfigured,true); assert.strictEqual(destinationOnly.status().channels.email.recipientConfigured,true); assert.strictEqual(destinationOnly.status().channels.sms.recipientConfigured,true); assert(!JSON.stringify(destinationOnly.status()).includes('executive@example.test'));
+ const blockedNotifier=new SBCUnattendedNotifications({env:{},getPool:()=>null,getDb:()=>({}),getRecoveryRequired:()=>true,rootDir:path.join(testRoot,'empty'),logger:{warn(){},info(){}}});
+ const blocked=await blockedNotifier.sendBriefing(); assert.strictEqual(blocked.skipped,true); assert.strictEqual(blocked.reason,'OWNER_EMAIL_NOT_CONFIGURED');
+ console.log('V65.1.26 UNATTENDED NOTIFICATIONS TEST: PASS');
+ console.log('read_only_metrics=PASS email_mock=PASS sms_mock=PASS recovery_state_included=PASS alert_dedupe=PASS missing_configuration_fails_closed=PASS');
+ fs.rmSync(testRoot, { recursive: true, force: true });
+})().catch(e=>{console.error(e);process.exit(1)});

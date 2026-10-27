@@ -1,0 +1,212 @@
+/* SBC V56.13.1 — Light Mode Accessibility & Contrast Layer
+ * Purpose: preserve the existing cinematic dark/nav/hero language while making
+ * light mode a complete, readable parallel theme. No dark-theme rules changed.
+ */
+body[data-theme="light"]{
+  --bg:#f3f6fa;
+  --panel:#ffffff;
+  --panel-2:#f7f9fc;
+  --text:#17283a;
+  --ink:#17283a;
+  --muted:#5e7184;
+  --line:#cbd7e3;
+  --border:#cbd7e3;
+  --input:#ffffff;
+  --blue:#0b74d1;
+  --blue2:#0758a2;
+  --orange:#d96f0b;
+  --green:#14744f;
+  --red:#b52d3a;
+  --shadow:0 10px 28px rgba(16,32,51,.09);
+  color:var(--text)!important;
+  background:#f3f6fa!important;
+}
+body[data-theme="light"] .main,
+body[data-theme="light"] .content{color:var(--text)}
+body[data-theme="light"] .topbar{
+  background:rgba(247,249,252,.96)!important;
+  border-bottom-color:#cbd7e3!important;
+  color:var(--text)!important;
+}
+body[data-theme="light"] .topbar h1,
+body[data-theme="light"] h1,
+body[data-theme="light"] h2,
+body[data-theme="light"] h3,
+body[data-theme="light"] h4,
+body[data-theme="light"] h5,
+body[data-theme="light"] strong,
+body[data-theme="light"] b,
+body[data-theme="light"] .title,
+body[data-theme="light"] .label{color:#17283a}
+body[data-theme="light"] .card,
+body[data-theme="light"] .stat,
+body[data-theme="light"] .modal-card,
+body[data-theme="light"] .modal-head,
+body[data-theme="light"] .list-card,
+body[data-theme="light"] .sbc-phone-system-card,
+body[data-theme="light"] .sbc-dynamic-queue,
+body[data-theme="light"] .sbc-kpi-card{
+  background:#fff!important;
+  color:#17283a!important;
+  border-color:#cbd7e3!important;
+  box-shadow:var(--shadow)!important;
+}
+body[data-theme="light"] .card-head{
+  background:#fbfcfe!important;
+  color:#17283a!important;
+  border-bottom-color:#cbd7e3!important;
+}
+body[data-theme="light"] .card-body{color:#24384c}
+body[data-theme="light"] .mini,
+body[data-theme="light"] .meta,
+body[data-theme="light"] .sub,
+body[data-theme="light"] small,
+body[data-theme="light"] .muted,
+body[data-theme="light"] .empty,
+body[data-theme="light"] .description,
+body[data-theme="light"] .help-text{color:#5e7184!important}
+body[data-theme="light"] .eyebrow{color:#075fae}
+body[data-theme="light"] .global-search,
+body[data-theme="light"] .icon-btn,
+body[data-theme="light"] .btn,
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea{
+  background:#fff!important;
+  color:#17283a!important;
+  border-color:#c3d0dd!important;
+}
+body[data-theme="light"] .global-search input{background:transparent!important;color:#17283a!important}
+body[data-theme="light"] input::placeholder,
+body[data-theme="light"] textarea::placeholder{color:#718397!important;opacity:1}
+body[data-theme="light"] input:focus,
+body[data-theme="light"] select:focus,
+body[data-theme="light"] textarea:focus{
+  border-color:#5aa4df!important;
+  box-shadow:0 0 0 3px rgba(11,116,209,.12)!important;
+}
+body[data-theme="light"] .btn{box-shadow:0 2px 6px rgba(16,32,51,.05)}
+body[data-theme="light"] .btn.primary{background:#0b74d1!important;color:#fff!important;border-color:#0b74d1!important}
+body[data-theme="light"] .btn.orange{background:#d96f0b!important;color:#fff!important;border-color:#d96f0b!important}
+body[data-theme="light"] .btn.ghost{background:#eef5fb!important;color:#17466d!important;border-color:#b8cee1!important}
+body[data-theme="light"] .btn.danger{background:#fff5f6!important;color:#a52a36!important;border-color:#e7b9bf!important}
+body[data-theme="light"] .table th{
+  background:#eef3f7!important;
+  color:#41586d!important;
+  border-color:#cbd7e3!important;
+}
+body[data-theme="light"] .table td{color:#24384c!important;border-color:#d5dfe8!important}
+body[data-theme="light"] .table tr:hover td{background:#f5f9fc!important}
+body[data-theme="light"] .table a,
+body[data-theme="light"] a{color:#075fae}
+body[data-theme="light"] .pipe,
+body[data-theme="light"] .quote-line,
+body[data-theme="light"] .ai-cap-grid>div,
+body[data-theme="light"] .sales-builder-package,
+body[data-theme="light"] .sales-service-row,
+body[data-theme="light"] .sales-cart-row,
+body[data-theme="light"] .sbc-product,
+body[data-theme="light"] .queue-rule,
+body[data-theme="light"] .sbc-checkout-box,
+body[data-theme="light"] .sales-checklist div{
+  background:#f8fafc!important;
+  color:#24384c!important;
+  border-color:#cbd7e3!important;
+}
+body[data-theme="light"] .sbc-product strong,
+body[data-theme="light"] .sbc-cart-main strong,
+body[data-theme="light"] .sales-service-row strong,
+body[data-theme="light"] .sales-builder-package h3{color:#17283a!important}
+body[data-theme="light"] .sbc-product span,
+body[data-theme="light"] .sbc-cart-main span,
+body[data-theme="light"] .sales-service-row span{color:#607489!important}
+body[data-theme="light"] .form-grid label,
+body[data-theme="light"] .quote-line label{color:#40566a!important}
+body[data-theme="light"] .badge{border:1px solid rgba(23,40,58,.08)}
+body[data-theme="light"] .badge.blue{background:#e4f1fb!important;color:#075fae!important}
+body[data-theme="light"] .badge.green{background:#e4f5ed!important;color:#116b48!important}
+body[data-theme="light"] .badge.orange{background:#fff0df!important;color:#a9570a!important}
+body[data-theme="light"] .badge.red{background:#fdebed!important;color:#a52a36!important}
+body[data-theme="light"] .badge.purple{background:#f0eafd!important;color:#64409d!important}
+body[data-theme="light"] .progress{background:#dfe7ee!important}
+body[data-theme="light"] .activity-icon{background:#e6f2fb!important;color:#075fae!important}
+body[data-theme="light"] .activity-row{border-color:#d5dfe8!important}
+body[data-theme="light"] .modal-backdrop{background:rgba(4,15,28,.52)!important}
+body[data-theme="light"] .toast{background:#102235!important;color:#fff!important}
+
+/* Keep the intentionally cinematic dark surfaces intact in light mode. */
+body[data-theme="light"] .sidebar,
+body[data-theme="light"] .hero,
+body[data-theme="light"] .login-screen,
+body[data-theme="light"] .sbc-ai-page-hero,
+body[data-theme="light"] .sales-builder-head{
+  color:#fff!important;
+}
+body[data-theme="light"] .hero h2,
+body[data-theme="light"] .hero p,
+body[data-theme="light"] .sbc-ai-page-hero h2,
+body[data-theme="light"] .sbc-ai-page-hero p,
+body[data-theme="light"] .sales-builder-head h2,
+body[data-theme="light"] .sales-builder-head p{color:#fff!important}
+
+/* Legacy modules frequently use dark literal surfaces. Normalize them only in light mode. */
+body[data-theme="light"] [class*="-card"],
+body[data-theme="light"] [class*="-panel"],
+body[data-theme="light"] [class*="-box"]{
+  color:#24384c;
+}
+body[data-theme="light"] .v42-kpi,
+body[data-theme="light"] .kim38-card,
+body[data-theme="light"] .kim38-select,
+body[data-theme="light"] .kim38-input,
+body[data-theme="light"] .v21-stage{
+  background:#fff!important;
+  color:#24384c!important;
+  border-color:#cbd7e3!important;
+}
+body[data-theme="light"] .kim38-card h3,
+body[data-theme="light"] .v21-stage strong,
+body[data-theme="light"] .v21-stage span{color:#17283a!important}
+body[data-theme="light"] pre,
+body[data-theme="light"] code{
+  background:#eef3f7!important;
+  color:#24384c!important;
+  border-color:#cbd7e3!important;
+}
+body[data-theme="light"] .sbc-ai-dock,
+body[data-theme="light"] .sbc-kim-dock{
+  background:#fff!important;
+  color:#17283a!important;
+  border-color:#cbd7e3!important;
+  box-shadow:0 24px 70px rgba(16,32,51,.20)!important;
+}
+body[data-theme="light"] .sbc-ai-messages,
+body[data-theme="light"] .sbc-kim-messages{background:#f5f8fb!important;color:#24384c!important}
+body[data-theme="light"] .sbc-ai-msg.assistant .sbc-ai-bubble,
+body[data-theme="light"] .sbc-kim-msg.assistant .sbc-kim-bubble{background:#fff!important;color:#24384c!important;border-color:#cbd7e3!important}
+body[data-theme="light"] .sbc-ai-status,
+body[data-theme="light"] .sbc-kim-context{background:#eef3f7!important;color:#53697d!important}
+body[data-theme="light"] .sbc-ai-input,
+body[data-theme="light"] .sbc-ai-actions,
+body[data-theme="light"] .sbc-kim-tools,
+body[data-theme="light"] .sbc-kim-composer{border-color:#cbd7e3!important}
+body[data-theme="light"] .sbc-ai-input textarea,
+body[data-theme="light"] .sbc-kim-composer textarea{background:#fff!important;color:#17283a!important}
+
+/* Status/metric text that was historically too pale on white surfaces. */
+body[data-theme="light"] .success,
+body[data-theme="light"] .ok,
+body[data-theme="light"] .healthy{color:#126b48!important}
+body[data-theme="light"] .warning,
+body[data-theme="light"] .warn{color:#99530a!important}
+body[data-theme="light"] .error,
+body[data-theme="light"] .danger-text{color:#a52a36!important}
+
+/* Prevent inherited white text from old dark-mode components from disappearing. */
+body[data-theme="light"] .card:not(.hero) .text-white,
+body[data-theme="light"] .stat .text-white,
+body[data-theme="light"] .panel .text-white{color:#17283a!important}
+
+@media(max-width:900px){
+  body[data-theme="light"] .topbar{background:rgba(247,249,252,.98)!important}
+}

@@ -1,0 +1,7 @@
+'use strict';
+const RAILS=require('../enterprise/v566-scale-revenue-rails');
+const TIER1=require('../enterprise/v562-tier1-architecture');
+module.exports=function registerDropzone(app,{auth,getContext}){
+  app.post('/api/v566/dropzone/file-strap/preview',auth,async(req,res)=>{try{const tenant=RAILS.tenantIdForRequest(req);res.json(RAILS.dropzonePreview({filename:req.body?.filename,contentBase64:req.body?.contentBase64,tenantId:tenant}));}catch(e){res.status(400).json({ok:false,error:e.message});}});
+  app.post('/api/v566/dropzone/file-strap/ingest',auth,async(req,res)=>{try{const tenant=RAILS.tenantIdForRequest(req);const name=String(req.body?.filename||'dropzone.csv');const bytes=Buffer.from(String(req.body?.contentBase64||''),'base64');if(!bytes.length)throw new Error('contentBase64 is required.');if(bytes.length>RAILS.MAX_FILE_BYTES)throw new Error('Dropzone file exceeds the 25MB processing limit.');const key=TIER1.idempotencyKey('v566-dropzone',{tenant,name,sha256:require('crypto').createHash('sha256').update(bytes).digest('hex')});const worker=await TIER1.spawnWorker({workerPath:require('path').join(__dirname,'..','workers','tier1-bulk-ingest.js'),payload:{csvBase64:bytes.toString('base64'),filename:name,tenantId:tenant,source:req.body?.source||'Lorna'},timeoutMs:120000});res.status(202).json({ok:true,version:RAILS.VERSION,tenantId:tenant,idempotencyKey:key,worker});}catch(e){res.status(400).json({ok:false,error:e.message});}});
+};

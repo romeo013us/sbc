@@ -1,0 +1,4 @@
+export class ExecutionFabric {constructor(governance){this.governance=governance;this.receipts=[];}
+ authorize(action,ctx){const g=this.governance.check(action,ctx);if(!g.allowed)return g;return {allowed:true,reason:'authorized',receiptId:crypto.randomUUID(),rollback:{strategy:action.rollbackStrategy||'restore-known-good'},verification:action.verification||'post-action health check'};}
+ async execute(action,ctx){const auth=this.authorize(action,ctx);if(!auth.allowed||ctx.dryRun)return {...auth,status:ctx.dryRun?'SIMULATED':'REJECTED'};const started=Date.now();try{const result=await (ctx.executor||(()=>({ok:true})))();const receipt={...auth,status:'EXECUTED',durationMs:Date.now()-started,result};this.receipts.push(receipt);return receipt;}catch(error){const receipt={...auth,status:'FAILED',error:String(error)};this.receipts.push(receipt);return receipt;}}
+}

@@ -1,0 +1,12 @@
+{
+  "release": "64.2.17",
+  "type": "kevin-adapter-compatibility-hotfix",
+  "base": "64.2.16",
+  "databaseWrites": "row-level-upsert-only",
+  "bulkDeleteRewrite": false,
+  "partialShrinkProtection": true,
+  "optimisticEpoch": true,
+  "kevinAdapterCompatibility": true,
+  "financialMutations": "unchanged-blocked-by-governor",
+  "liveMySqlIntegrationTest": false
+}

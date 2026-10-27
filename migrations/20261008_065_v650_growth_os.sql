@@ -1,0 +1,3 @@
+-- SBC OS V65.0.0 Growth OS
+-- Runtime also self-provisions these tables for GoDaddy portability.
+-- No new secrets are required.

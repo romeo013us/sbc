@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('fs');const path=require('path');const assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let passed=0;const check=(name,fn)=>{try{fn();passed++;console.log('PASS '+name)}catch(e){console.error('FAIL '+name+' :: '+e.message);process.exitCode=1}};
+const app=read('public/app.js'), html=read('public/index.html'), revenue=read('public/v56140-90day-revenue-command.js'), unattended=read('public/sbc-unattended-v6431.js'), autonomy=read('public/sbc-autonomy-control-v6430.js'), growthUi=read('public/v56240-growth-hardening.js'), legacyV10=read('public/v10.js'), enterprise=read('public/v32-9-enterprise.js'), server=read('server.js'), route=read('routes/v56140-90day-revenue-command.js'), growthCore=read('enterprise/sbc-growth-os-v650.js'), growthHardening=read('enterprise/v56240-autonomous-growth-hardening.js');
+check('release identity matches the current package',()=>assert.equal(require(path.join(root,'config/release-identity.js')).RELEASE_VERSION,JSON.parse(read('package.json')).version));
+check('main shell uses current release identity',()=>{assert.match(html,/V65\.1\.26 · DEMO STUDIO/);assert.match(html,/app\.js\?v=65\.1\.26-demo-studio/)});
+check('shared API helper handles HTML instead of JSON',()=>{assert.match(app,/returned HTML instead of JSON/);assert.match(app,/Recovery lock active/);assert.match(app,/window\.api=api/)});
+check('90-day revenue uses shared API and robust JSON fallback',()=>{assert.match(revenue,/window\.api\('\/api\/v56140\/revenue-command\/overview'/);assert.match(revenue,/recoveryRequired/);assert.match(revenue,/window\.sbc90Play/)});
+check('90-day write buttons disable while recovery is active',()=>{assert.match(revenue,/recovery\?'disabled title=\\?"Recovery lock active/);assert.match(revenue,/Revenue PLAY remains suspended/)});
+check('unattended page displays read-only lead mesh census',()=>{assert.match(unattended,/preservedLeadMesh/);assert.match(unattended,/Current MySQL Customer Rows/)});
+check('autonomy mutation controls visibly respect recovery lock',()=>{assert.match(autonomy,/data-ac=\\?"sweep\\?"[^>]*\$\{rec\?'disabled/)});
+check('enterprise sync never auto-promotes recovery projection',()=>{assert.match(enterprise,/RECOVERY LOCK ACTIVE/);assert.doesNotMatch(enterprise,/RESTORE-VERIFIED-LEADS/)});
+check('server recovery projection is not mislabeled as verified',()=>{assert.match(server,/verifiedOrSalesReady:0,ownerVerifiedRecoveryLeads:0,preservedLeadMeshCandidates:mapped\.length/)});
+check('full unverified lead-mesh promotion is disabled',()=>{assert.match(server,/Full unverified lead-mesh promotion is disabled/);assert.doesNotMatch(server,/RESTORE-ALL-LEAD-MESH-243/);assert.doesNotMatch(legacyV10,/RESTORE-ALL-LEAD-MESH-243/);assert.match(legacyV10,/leadMeshIds:selected/);assert.match(legacyV10,/status\?\.recoveryRequired/)});
+check('unattended endpoint includes read-only MySQL census',()=>{assert.match(server,/app\.get\('\/api\/owner\/unattended\/status'[\s\S]*?recoveryCensus/)});
+check('90-day endpoint returns recovery census and gate',()=>{assert.match(route,/recoveryRequired:Boolean\(c\.recoveryRequired\),recoveryCensus/)});
+check('recovery leads have read-only details action',()=>{assert.match(app,/openRecoveryLeadReadOnly/);assert.match(app,/No outreach or edits during recovery/)});
+check('no direct live recovery unlock added',()=>{assert.match(server,/MYSQL_RECOVERY_REQUIRED=true/);assert.doesNotMatch(server,/MYSQL_RECOVERY_REQUIRED=false; storageMode='mysql-relational'; await readRelational\(\);[^\n]*RESTORE-ALL/)});
+check('recovery startup skips lead restoration and growth cycle',()=>{const start=server.indexOf('initMysql().then(async()=>');const locked=server.indexOf('if(MYSQL_RECOVERY_REQUIRED){',start);const end=server.indexOf('return;}',locked);const block=server.slice(locked,end);assert(block.includes('lead restoration skipped'));assert(!block.includes('restoreLeadMeshToAuthoritativeCRM()'));assert(!block.includes('SBC_GROWTH_OS_V650.run('));assert(!block.includes('SBC_GROWTH_OS_V650.start()'));});
+check('growth OS refuses table creation and run during recovery',()=>{assert.match(growthCore,/async function tables\(\)\{assertWritable\(\)/);assert.match(growthCore,/async function run\(tenantId=1\)\{assertWritable\(\)/);assert.match(growthCore,/if\(recoveryLocked\(\)\)return \{ok:true,version:VERSION,recoveryRequired:true,readOnly:true/);});
+check('growth hardening status is read-only under recovery',()=>{assert.match(growthHardening,/async function tables\(\)\{assertWritable\(\)/);assert.match(growthHardening,/if\(recoveryLocked\(\)\)return \{ok:true,version:VERSION,recoveryRequired:true,readOnly:true/);assert.match(growthHardening,/function start\(\)\{if\(timer\|\|recoveryLocked\(\)\)return false/);});
+check('growth UI disables run button and preserves error feedback',()=>{assert.match(growthUi,/disabled title=\"Recovery lock active\"/);assert.match(growthUi,/document\.getElementById\('v56240Retry'\)/);assert.match(growthUi,/Recovery lock active\. No growth cycle was started/);});
+check('unattended status handles HTML response and uses shared API',()=>{assert.match(unattended,/window\.api\(path/);assert.match(unattended,/returned invalid JSON|sign-in page/);});
+console.log(`\nSBC V65.1.24 UI/Recovery static checks: ${passed}/19 passed`);
+if(process.exitCode)process.exit(process.exitCode);

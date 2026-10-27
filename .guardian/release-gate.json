@@ -1,0 +1,511 @@
+{
+  "ok": true,
+  "version": "56.9.0",
+  "generatedAt": "2026-10-06T09:45:15.748Z",
+  "passed": 6,
+  "total": 6,
+  "checks": [
+    {
+      "name": "Guardian module load",
+      "ok": true,
+      "detail": "Loaded enterprise/sbc-system-guardian.js"
+    },
+    {
+      "name": "Protected policy",
+      "ok": true,
+      "detail": "NEVER_AUTO_DELETE"
+    },
+    {
+      "name": "No protected candidate quarantine",
+      "ok": true,
+      "detail": "Protected components excluded from cleanup candidates."
+    },
+    {
+      "name": "Server route registry",
+      "ok": true,
+      "detail": "817 routes discovered."
+    },
+    {
+      "name": "Hash manifest coverage",
+      "ok": true,
+      "detail": "705 files hashed."
+    },
+    {
+      "name": "No duplicate protected hashes required",
+      "ok": true,
+      "detail": "114 duplicate hash groups detected for review."
+    }
+  ],
+  "summary": {
+    "generatedAt": "2026-10-06T09:45:15.740Z",
+    "root": "/mnt/data/v58work/cc/command-center",
+    "version": "56.9.0",
+    "filesScanned": 705,
+    "bytesScanned": 6441092,
+    "classifications": {
+      "REVIEW": 280,
+      "LEGACY": 32,
+      "UNREFERENCED": 1,
+      "PROTECTED": 184,
+      "ARCHIVE_SUPPORT": 19,
+      "ACTIVE": 55,
+      "TOOLING": 134
+    },
+    "protectedCount": 184,
+    "routeCount": 817,
+    "duplicateRouteCount": 2,
+    "duplicateFileGroups": 114
+  },
+  "candidates": [
+    {
+      "file": "public/ask-kim-nextgen-v56-13-4.css",
+      "class": "LEGACY",
+      "bytes": 12861,
+      "sha256": "16ebcd204c81dacf08fa6dbfe2bf000c6ada23f483db8537d55da602d29eab02",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/ask-kim-nextgen-v56-13-4.js",
+      "class": "LEGACY",
+      "bytes": 11935,
+      "sha256": "abaf745a5b821d34032f06b341dc2724715978bebddb14455d4a46df85cdf55e",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/v55.12.7-visual-polish.css",
+      "class": "LEGACY",
+      "bytes": 6729,
+      "sha256": "60578cfbb3c8f648ece497fd9f4e50f67d83acf75b4158e86105c28d02efac83",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/v55.12.7-visual-polish.css",
+      "class": "LEGACY",
+      "bytes": 6729,
+      "sha256": "60578cfbb3c8f648ece497fd9f4e50f67d83acf75b4158e86105c28d02efac83",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/kim-dock-v48.7.js",
+      "class": "LEGACY",
+      "bytes": 5254,
+      "sha256": "c760926be6bc4b2fe588e197ee8d584eb8fcb0556a3e3d798e5a19e27a1e4408",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/kim-dock-v48.7.js",
+      "class": "LEGACY",
+      "bytes": 5254,
+      "sha256": "c760926be6bc4b2fe588e197ee8d584eb8fcb0556a3e3d798e5a19e27a1e4408",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "V56.4.0-BUILD-MANIFEST.json",
+      "class": "LEGACY",
+      "bytes": 4044,
+      "sha256": "87f2acfd96445014d1d96dd7312d23dee2b98aca30037a606686068033b40a05",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/v36-kim-command.js",
+      "class": "LEGACY",
+      "bytes": 3483,
+      "sha256": "5d48cfed8574948f057246993caf17f381bfb10e893f90e9e1ae61b25cf1c088",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/v36-kim-command.js",
+      "class": "LEGACY",
+      "bytes": 3483,
+      "sha256": "5d48cfed8574948f057246993caf17f381bfb10e893f90e9e1ae61b25cf1c088",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/v43-kim-automation.js",
+      "class": "LEGACY",
+      "bytes": 2753,
+      "sha256": "fa5c1e9f8a1e4c2b3fb7843959a66f0e48143a0b27827470e38fd53dc80d1f09",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/v43-kim-automation.js",
+      "class": "LEGACY",
+      "bytes": 2753,
+      "sha256": "fa5c1e9f8a1e4c2b3fb7843959a66f0e48143a0b27827470e38fd53dc80d1f09",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/supernova-demo.html",
+      "class": "LEGACY",
+      "bytes": 2657,
+      "sha256": "2d74a00bd9f2c2df45f48fa2afaef36964bd0022a3c06d3051debd1a887f7b51",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/supernova-demo.html",
+      "class": "LEGACY",
+      "bytes": 2657,
+      "sha256": "2d74a00bd9f2c2df45f48fa2afaef36964bd0022a3c06d3051debd1a887f7b51",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "V56.5.0-BUILD-MANIFEST.json",
+      "class": "LEGACY",
+      "bytes": 2212,
+      "sha256": "0a4fe530dfe4ee803492bcb4128a9e6e0d6fc9d55f01dbb9b73aed66c42ed7fb",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "super-test-v55174.json",
+      "class": "LEGACY",
+      "bytes": 2035,
+      "sha256": "fa142fa22c372db79da19524d8d5337bae44e039ba3889235c8bd03da624e47e",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "RELEASE-MANIFEST-V56.12.2.json",
+      "class": "LEGACY",
+      "bytes": 1547,
+      "sha256": "5a81cc3888fc220876dd9adc14d140883a8b945d8c3ccfa35179fec94cb02b61",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "V56.7.0-9.9-RELEASE-CERTIFICATE.json",
+      "class": "LEGACY",
+      "bytes": 938,
+      "sha256": "c60085d94188de6e54bb7f6a22fc3486482805bcd0f728788ff31eb8b7e6e7d6",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "V56.7.0-9.9-BUILD-MANIFEST.json",
+      "class": "LEGACY",
+      "bytes": 861,
+      "sha256": "8301b69917b21876ef1b0941a8a55d73c81c8da2ed601e9e140c034cad421dfa",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "V56.1.0-BUILD-MANIFEST.json",
+      "class": "LEGACY",
+      "bytes": 836,
+      "sha256": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/v43-kim-automation.css",
+      "class": "LEGACY",
+      "bytes": 812,
+      "sha256": "065dc7021a24d094d51443d2ee80965bb30db452353b5858ccb086504a39c2b6",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/v43-kim-automation.css",
+      "class": "LEGACY",
+      "bytes": 812,
+      "sha256": "065dc7021a24d094d51443d2ee80965bb30db452353b5858ccb086504a39c2b6",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "resilience-v55174.json",
+      "class": "LEGACY",
+      "bytes": 666,
+      "sha256": "ed073a3471e5619e2007716f55e06e8c644cfe6e9ba9601e3fba9c3b1f98b89e",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/v36-kim-command.css",
+      "class": "LEGACY",
+      "bytes": 631,
+      "sha256": "1ff85c4ded1d9cefa1badf5d9075addf7dbc588b180af02afbe55c9bfd549aca",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/v36-kim-command.css",
+      "class": "LEGACY",
+      "bytes": 631,
+      "sha256": "1ff85c4ded1d9cefa1badf5d9075addf7dbc588b180af02afbe55c9bfd549aca",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "V56.7.3-FINAL-RELEASE-MANIFEST.json",
+      "class": "LEGACY",
+      "bytes": 624,
+      "sha256": "b67aebfed5d661a26011466bcff9d9c437b735fbc3f08ebbb069e6504ac6dcd0",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "RELEASE-MANIFEST-V56.20.0.json",
+      "class": "LEGACY",
+      "bytes": 619,
+      "sha256": "19429b96347e333d712d99d674dca307c75d87a4aa78c64de213a094e6d534f7",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "RELEASE-MANIFEST-V56.21.0.json",
+      "class": "LEGACY",
+      "bytes": 464,
+      "sha256": "e27f41ac1fb749f0a94381726f8a858048b0ecfc8e15575c4f9ab05f4497b4ca",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "RELEASE-MANIFEST-V56.19.0.json",
+      "class": "LEGACY",
+      "bytes": 443,
+      "sha256": "4f38461cd8fe84f4cfa1ca695de2d68147f65c14e707cbbd91d2c98fdfb8f619",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "RELEASE-MANIFEST-V56.25.0.json",
+      "class": "LEGACY",
+      "bytes": 417,
+      "sha256": "545ca496a3b956c7c9023fc368138a878b6c6afffd0c72cf9406b4b22c4286eb",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "BUILD-VERIFICATION-V56.13.1-REVENUE-LOOP.json",
+      "class": "LEGACY",
+      "bytes": 358,
+      "sha256": "e8c029593f6a0e05831b5ee275afa030b85f116f46ad7395de306817a8f0518d",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/kim-dock-v48.6.js",
+      "class": "LEGACY",
+      "bytes": 222,
+      "sha256": "f11c964415744c6ca4e487b7d4af5426ab4559126afcc76a8ae02ba3bef46dbc",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "public/kim-dock-v48.6.js",
+      "class": "LEGACY",
+      "bytes": 222,
+      "sha256": "f11c964415744c6ca4e487b7d4af5426ab4559126afcc76a8ae02ba3bef46dbc",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "test.html",
+      "class": "REVIEW",
+      "bytes": 598680,
+      "sha256": "599fb6455f101ea61a4699fab56d2ab8f21d0ecab4da0e7cbf95653af03e6877",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 0
+    },
+    {
+      "file": "browser_public/app.js",
+      "class": "REVIEW",
+      "bytes": 258313,
+      "sha256": "07a99dc0244bdcda2151a0d68c3c13e998b14cb79e9bb16a2374ed9b23735b7a",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 67
+    },
+    {
+      "file": "data/kim-automation-os-v430.json",
+      "class": "REVIEW",
+      "bytes": 151955,
+      "sha256": "10606e4e52f213da452d51514815c493731644d96b6509ef335202112d9caead",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    },
+    {
+      "file": "data/v335-marketing-os.json",
+      "class": "REVIEW",
+      "bytes": 113930,
+      "sha256": "6a40a98cbb44f064c42c6aaf61a99c91e61a051ca31e74ad8d29fd347b7deafd",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    },
+    {
+      "file": "browser_public/styles.css",
+      "class": "REVIEW",
+      "bytes": 91596,
+      "sha256": "783552364a5ee6312b0001303136c1dfd8865d94d2f7791b1a706f03981ac87f",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 7
+    },
+    {
+      "file": "browser_public/v9.js",
+      "class": "REVIEW",
+      "bytes": 62821,
+      "sha256": "bfd2c91cc76eaf75afb5e9b4bc1d34b3dede4da21c1a6c75f5d7cbdb0c98a2a0",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 15
+    },
+    {
+      "file": "public/v9.js",
+      "class": "REVIEW",
+      "bytes": 62821,
+      "sha256": "bfd2c91cc76eaf75afb5e9b4bc1d34b3dede4da21c1a6c75f5d7cbdb0c98a2a0",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 15
+    },
+    {
+      "file": "data/v340-fulfillment-infrastructure.json",
+      "class": "REVIEW",
+      "bytes": 62756,
+      "sha256": "14d43a6bbf76d345c77e0b1afba934ee6c13a26828c1e1a479938fe2fa6499e8",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    },
+    {
+      "file": "public/v10.js",
+      "class": "REVIEW",
+      "bytes": 49176,
+      "sha256": "8533c4a661ac63b2834bb009f9e7d28481a242c3f6816c7d4fb483f81fdab0dc",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 11
+    },
+    {
+      "file": "data/v4341-kim-resilience-control.json",
+      "class": "REVIEW",
+      "bytes": 48505,
+      "sha256": "283821af395ff26e6f012d87586e72850f9fb6731e7cca6797570e13301bb2e1",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    },
+    {
+      "file": "data/kim-operations-backbone-v410.json",
+      "class": "REVIEW",
+      "bytes": 45603,
+      "sha256": "0e7ba3b5a2ec2042ab7a24ee4d1e5e6d32ae02d471297c556d5c05200e4d27ad",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    },
+    {
+      "file": "browser_public/v10.js",
+      "class": "REVIEW",
+      "bytes": 45099,
+      "sha256": "d76855dd47d8ecac635ff003733649862a40679045f6d7a3471ad2f779766dd1",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 11
+    },
+    {
+      "file": "data/kim-enterprise-80-v420.json",
+      "class": "REVIEW",
+      "bytes": 40574,
+      "sha256": "402f11d3f34f316b454610fecdec206339062c49765879c9d6510ffcc6c0114f",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    },
+    {
+      "file": "browser_public/mega.js",
+      "class": "REVIEW",
+      "bytes": 40466,
+      "sha256": "104ae106a90cc43f29ff38c545fe305d381ec37bd10e31c7f6f593074f38c939",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 4
+    },
+    {
+      "file": "public/mega.js",
+      "class": "REVIEW",
+      "bytes": 40466,
+      "sha256": "104ae106a90cc43f29ff38c545fe305d381ec37bd10e31c7f6f593074f38c939",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 4
+    },
+    {
+      "file": "browser_public/v56-flow.js",
+      "class": "REVIEW",
+      "bytes": 35475,
+      "sha256": "daf9ef3ab3d912be056220f3631d323537fca0d149aa04403bdb76b9390346ed",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 19
+    },
+    {
+      "file": "public/v56-flow.js",
+      "class": "REVIEW",
+      "bytes": 35475,
+      "sha256": "daf9ef3ab3d912be056220f3631d323537fca0d149aa04403bdb76b9390346ed",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 19
+    },
+    {
+      "file": "data/v434-resilience-suite.json",
+      "class": "REVIEW",
+      "bytes": 27823,
+      "sha256": "6db1b8ab64eacb3f56a8b3380468dd073fe7930576ccb61b06485b41aead671b",
+      "importedBy": 0,
+      "assetReferencedBy": 0,
+      "dynamicReferenceCount": 3
+    }
+  ]
+}

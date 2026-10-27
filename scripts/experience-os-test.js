@@ -1,0 +1,23 @@
+'use strict';
+const fs=require('fs');
+const path=require('path');
+const mod=require('../enterprise/sbc-experience-os-v603');
+const checks=[];
+function check(name,ok,detail=''){checks.push({name,ok,detail});if(!ok) console.error('FAIL',name,detail);}
+check('version',mod.VERSION.startsWith('60.3.0-'));
+check('governance-stages',JSON.stringify(mod.GOVERNANCE_STAGES)==='["OBSERVE","DIAGNOSE","RECOMMEND","APPROVE","EXECUTE","VERIFY","ROLLBACK"]');
+const h=mod.computeHealth({adoption:90,engagement:90,payment:100,blockers:0});
+check('health-score',h.score===93,'expected 93');
+check('health-risk',mod.computeHealth({adoption:20,engagement:20,payment:50,blockers:2}).status==='AT_RISK');
+const source=fs.readFileSync(path.join(__dirname,'..','server.js'),'utf8');
+check('server-version',source.includes('BUILD_VERSION = RELEASE_VERSION'));
+check('experience-module',source.includes("sbc-experience-os-v603"));
+check('customer360-route',source.includes('/api/experience/customer-360/:tenantId'));
+check('snapshot-route',source.includes('/api/experience/snapshot/:tenantId'));
+check('work-queue-route',source.includes('/api/experience/work-queue'));
+check('kim-governance-route',source.includes('/api/experience/kim/govern'));
+check('no-self-mutation',!source.includes('uncaughtException -> self-mutation'));
+const migration=fs.readFileSync(path.join(__dirname,'..','migrations','20261007_003_v603_experience_os.sql'),'utf8');
+for(const t of ['sbc_experience_profiles','sbc_customer_timeline','sbc_role_work_queue','sbc_logical_cells','sbc_kim_governance']) check(`migration:${t}`,migration.includes(t));
+console.log(JSON.stringify({ok:checks.every(x=>x.ok),version:mod.VERSION,checks},null,2));
+process.exit(checks.every(x=>x.ok)?0:1);

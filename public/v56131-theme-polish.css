@@ -1,0 +1,245 @@
+/* SBC V56.13.1 — Unified Theme & Contrast Polish
+ * One semantic color layer for light/dark surfaces. No business logic changes.
+ */
+:root{
+  --sbc-focus:#0b74d1;
+  --sbc-focus-ring:rgba(11,116,209,.24);
+}
+
+/* LIGHT MODE: clean white surfaces, dark readable text, restrained borders. */
+body[data-theme="light"]{
+  --bg:#f4f7fb;
+  --panel:#ffffff;
+  --panel-2:#f7f9fc;
+  --text:#17283a;
+  --ink:#17283a;
+  --muted:#5b6f82;
+  --line:#c8d4df;
+  --border:#c8d4df;
+  --input:#ffffff;
+  --blue:#0b74d1;
+  --blue2:#0758a2;
+  --orange:#c85f08;
+  --green:#126b48;
+  --red:#a52a36;
+  background:var(--bg)!important;
+  color:var(--text)!important;
+}
+body[data-theme="light"] .main,
+body[data-theme="light"] .content{background:var(--bg)!important;color:var(--text)!important}
+body[data-theme="light"] .topbar{background:rgba(244,247,251,.97)!important;border-color:var(--line)!important;color:var(--text)!important}
+body[data-theme="light"] .card,
+body[data-theme="light"] .stat,
+body[data-theme="light"] .modal-card,
+body[data-theme="light"] .modal-head,
+body[data-theme="light"] .sbc-phone-system-card,
+body[data-theme="light"] .sbc-dynamic-queue,
+body[data-theme="light"] .sbc-kpi-card{background:#fff!important;color:var(--text)!important;border-color:var(--line)!important}
+body[data-theme="light"] .card-head{background:#f8fafc!important;color:var(--text)!important;border-color:var(--line)!important}
+body[data-theme="light"] .card-body{color:#24384c!important}
+body[data-theme="light"] p,
+body[data-theme="light"] li,
+body[data-theme="light"] td,
+body[data-theme="light"] .description{color:#30465b}
+body[data-theme="light"] .mini,
+body[data-theme="light"] .meta,
+body[data-theme="light"] .sub,
+body[data-theme="light"] small,
+body[data-theme="light"] .muted,
+body[data-theme="light"] .empty,
+body[data-theme="light"] .help-text{color:#5b6f82!important}
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea,
+body[data-theme="light"] .global-search,
+body[data-theme="light"] .icon-btn,
+body[data-theme="light"] .btn{background:#fff!important;color:var(--text)!important;border-color:#bdccd9!important}
+body[data-theme="light"] input::placeholder,
+body[data-theme="light"] textarea::placeholder{color:#718397!important;opacity:1}
+body[data-theme="light"] input:focus,
+body[data-theme="light"] select:focus,
+body[data-theme="light"] textarea:focus{border-color:#4d9cda!important;box-shadow:0 0 0 3px var(--sbc-focus-ring)!important}
+body[data-theme="light"] .btn.primary{background:#0b74d1!important;color:#fff!important;border-color:#0b74d1!important}
+body[data-theme="light"] .btn.orange{background:#c85f08!important;color:#fff!important;border-color:#c85f08!important}
+body[data-theme="light"] .btn.ghost{background:#edf5fb!important;color:#17466d!important;border-color:#b8cfe1!important}
+body[data-theme="light"] .table th{background:#eaf0f5!important;color:#304b61!important;border-color:#c8d4df!important}
+body[data-theme="light"] .table td{background:#fff!important;color:#24384c!important;border-color:#d3dde6!important}
+body[data-theme="light"] .table tr:hover td{background:#f3f8fc!important}
+body[data-theme="light"] .pipe,
+body[data-theme="light"] .quote-line,
+body[data-theme="light"] .ai-cap-grid>div,
+body[data-theme="light"] .sales-builder-package,
+body[data-theme="light"] .sales-service-row,
+body[data-theme="light"] .sales-cart-row,
+body[data-theme="light"] .sbc-product,
+body[data-theme="light"] .queue-rule,
+body[data-theme="light"] .sbc-checkout-box,
+body[data-theme="light"] .sales-checklist div{background:#f8fafc!important;color:#24384c!important;border-color:#c8d4df!important}
+body[data-theme="light"] .pipe strong,
+body[data-theme="light"] .sales-service-row strong,
+body[data-theme="light"] .sales-builder-package h3,
+body[data-theme="light"] .sbc-product strong{color:#17283a!important}
+body[data-theme="light"] .sales-service-row span,
+body[data-theme="light"] .sbc-product span{color:#5b6f82!important}
+body[data-theme="light"] .badge.blue{background:#e2f0fb!important;color:#075fae!important}
+body[data-theme="light"] .badge.green{background:#e2f4eb!important;color:#126b48!important}
+body[data-theme="light"] .badge.orange{background:#fff0df!important;color:#99530a!important}
+body[data-theme="light"] .badge.red{background:#fdebed!important;color:#a52a36!important}
+body[data-theme="light"] .badge.purple{background:#f0eafd!important;color:#64409d!important}
+body[data-theme="light"] .progress{background:#dce6ee!important}
+body[data-theme="light"] .activity-icon{background:#e4f1fa!important;color:#075fae!important}
+body[data-theme="light"] a{color:#075fae}
+
+/* Preserve intentionally dark branded surfaces in light mode. */
+body[data-theme="light"] .sidebar,
+body[data-theme="light"] .hero,
+body[data-theme="light"] .login-screen,
+body[data-theme="light"] .onboard-hero,
+body[data-theme="light"] .sbc-policy-hero,
+body[data-theme="light"] .mkt-hero,
+body[data-theme="light"] .kim-voice-card,
+body[data-theme="light"] .sbc-ai-page-hero,
+body[data-theme="light"] .sales-builder-head{color:#fff!important}
+body[data-theme="light"] .hero p,
+body[data-theme="light"] .onboard-hero p,
+body[data-theme="light"] .sbc-policy-hero p,
+body[data-theme="light"] .mkt-hero p,
+body[data-theme="light"] .kim-voice-card p,
+body[data-theme="light"] .sbc-ai-page-hero p,
+body[data-theme="light"] .sales-builder-head p{color:#d8e6f2!important}
+
+/* DARK MODE: remove muddy near-black-on-near-black combinations. */
+body[data-theme="dark"]{
+  --bg:#07121f;
+  --panel:#0e1c2b;
+  --panel-2:#12283b;
+  --text:#f4f8fc;
+  --ink:#f4f8fc;
+  --muted:#b7c7d6;
+  --line:#30475b;
+  --border:#30475b;
+  --input:#111f2e;
+  --blue:#2b8cff;
+  --blue2:#62b0ff;
+  --orange:#f59a3d;
+  --green:#4fd19a;
+  --red:#ff7b88;
+  background:var(--bg)!important;
+  color:var(--text)!important;
+}
+body[data-theme="dark"] .main,
+body[data-theme="dark"] .content{background:var(--bg)!important;color:var(--text)!important}
+body[data-theme="dark"] .topbar{background:#0b1724!important;border-color:#30475b!important;color:var(--text)!important}
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .stat,
+body[data-theme="dark"] .modal-card,
+body[data-theme="dark"] .modal-head,
+body[data-theme="dark"] .sbc-phone-system-card,
+body[data-theme="dark"] .sbc-dynamic-queue,
+body[data-theme="dark"] .sbc-kpi-card{background:#0e1c2b!important;color:var(--text)!important;border-color:#30475b!important}
+body[data-theme="dark"] .card-head{background:#0e1c2b!important;color:var(--text)!important;border-color:#30475b!important}
+body[data-theme="dark"] .card-body{color:#e8f1f7!important}
+body[data-theme="dark"] p,
+body[data-theme="dark"] li,
+body[data-theme="dark"] td,
+body[data-theme="dark"] .description{color:#d9e5ee}
+body[data-theme="dark"] .mini,
+body[data-theme="dark"] .meta,
+body[data-theme="dark"] .sub,
+body[data-theme="dark"] small,
+body[data-theme="dark"] .muted,
+body[data-theme="dark"] .empty,
+body[data-theme="dark"] .help-text{color:#aebfce!important}
+body[data-theme="dark"] input,
+body[data-theme="dark"] select,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] .global-search,
+body[data-theme="dark"] .icon-btn,
+body[data-theme="dark"] .btn{background:#111f2e!important;color:#f4f8fc!important;border-color:#3a5269!important}
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder{color:#91a6b9!important;opacity:1}
+body[data-theme="dark"] input:focus,
+body[data-theme="dark"] select:focus,
+body[data-theme="dark"] textarea:focus{border-color:#62b0ff!important;box-shadow:0 0 0 3px rgba(43,140,255,.25)!important}
+body[data-theme="dark"] .btn.primary{background:#187bd8!important;color:#fff!important;border-color:#187bd8!important}
+body[data-theme="dark"] .btn.orange{background:#d97916!important;color:#fff!important;border-color:#d97916!important}
+body[data-theme="dark"] .table th{background:#091725!important;color:#d5e3ee!important;border-color:#30475b!important}
+body[data-theme="dark"] .table td{background:#0e1c2b!important;color:#e8f1f7!important;border-color:#30475b!important}
+body[data-theme="dark"] .table tr:hover td{background:#132a3e!important}
+body[data-theme="dark"] .pipe,
+body[data-theme="dark"] .quote-line,
+body[data-theme="dark"] .ai-cap-grid>div,
+body[data-theme="dark"] .sales-builder-package,
+body[data-theme="dark"] .sales-service-row,
+body[data-theme="dark"] .sales-cart-row,
+body[data-theme="dark"] .sbc-product,
+body[data-theme="dark"] .queue-rule,
+body[data-theme="dark"] .sbc-checkout-box,
+body[data-theme="dark"] .sales-checklist div{background:#102334!important;color:#edf4fa!important;border-color:#30475b!important}
+body[data-theme="dark"] .sales-group-title{color:#c4d4e1!important}
+body[data-theme="dark"] .sales-service-row span,
+body[data-theme="dark"] .sbc-product span{color:#aebfce!important}
+body[data-theme="dark"] .badge{border-color:#3a5269!important}
+body[data-theme="dark"] .badge.blue{background:#0d3150!important;color:#8ac6ff!important}
+body[data-theme="dark"] .badge.green{background:#0d3528!important;color:#79e0b1!important}
+body[data-theme="dark"] .badge.orange{background:#3a2918!important;color:#ffc477!important}
+body[data-theme="dark"] .badge.red{background:#3a1c21!important;color:#ff9ca5!important}
+body[data-theme="dark"] .badge.purple{background:#2a203d!important;color:#c4a5ef!important}
+body[data-theme="dark"] .progress{background:#203346!important}
+body[data-theme="dark"] a{color:#8bc9f7}
+
+/* Legacy modules: keep their cards readable without flattening branded hero sections. */
+body[data-theme="light"] .v340-card,
+body[data-theme="light"] .v351-card,
+body[data-theme="light"] .kim360-card,
+body[data-theme="light"] .kim38-card,
+body[data-theme="light"] .v42-kpi,
+body[data-theme="light"] .v21-stage,
+body[data-theme="light"] .list-card{background:#fff!important;color:#24384c!important;border-color:#c8d4df!important}
+body[data-theme="light"] .kim38-select,
+body[data-theme="light"] .kim38-input{background:#fff!important;color:#17283a!important;border-color:#bdccd9!important}
+body[data-theme="light"] .kim38-card h3,
+body[data-theme="light"] .v21-stage strong{color:#17283a!important}
+body[data-theme="light"] .kim38-small,
+body[data-theme="light"] .kim360-muted,
+body[data-theme="light"] .v340-muted,
+body[data-theme="light"] .v351-muted{color:#5b6f82!important}
+body[data-theme="dark"] .v340-card,
+body[data-theme="dark"] .v351-card,
+body[data-theme="dark"] .kim360-card,
+body[data-theme="dark"] .kim38-card,
+body[data-theme="dark"] .v42-kpi,
+body[data-theme="dark"] .v21-stage,
+body[data-theme="dark"] .list-card{background:#0e1c2b!important;color:#e8f1f7!important;border-color:#30475b!important}
+body[data-theme="dark"] .kim38-select,
+body[data-theme="dark"] .kim38-input{background:#111f2e!important;color:#f4f8fc!important;border-color:#3a5269!important}
+body[data-theme="dark"] .kim38-small,
+body[data-theme="dark"] .kim360-muted,
+body[data-theme="dark"] .v340-muted,
+body[data-theme="dark"] .v351-muted{color:#aebfce!important}
+
+/* Kim dock: the chat area must visually separate header, messages and composer. */
+body[data-theme="light"] .sbc-kim-dock,
+body[data-theme="light"] .sbc-ai-dock{background:#fff!important;color:#17283a!important;border-color:#c8d4df!important}
+body[data-theme="light"] .sbc-kim-messages,
+body[data-theme="light"] .sbc-ai-messages{background:#f3f7fa!important;color:#24384c!important}
+body[data-theme="light"] .sbc-kim-msg.assistant .sbc-kim-bubble,
+body[data-theme="light"] .sbc-ai-msg.assistant .sbc-ai-bubble{background:#fff!important;color:#24384c!important;border-color:#c8d4df!important}
+body[data-theme="light"] .sbc-kim-context,
+body[data-theme="light"] .sbc-ai-status{background:#eaf0f5!important;color:#526a7f!important}
+body[data-theme="light"] .sbc-kim-composer textarea,
+body[data-theme="light"] .sbc-ai-input textarea{background:#fff!important;color:#17283a!important;border-color:#bdccd9!important}
+body[data-theme="dark"] .sbc-kim-dock,
+body[data-theme="dark"] .sbc-ai-dock{background:#0b1724!important;color:#f4f8fc!important;border-color:#35536c!important}
+body[data-theme="dark"] .sbc-kim-messages,
+body[data-theme="dark"] .sbc-ai-messages{background:#081522!important;color:#e8f1f7!important}
+body[data-theme="dark"] .sbc-kim-msg.assistant .sbc-kim-bubble,
+body[data-theme="dark"] .sbc-ai-msg.assistant .sbc-ai-bubble{background:#102235!important;color:#eaf2fb!important;border-color:#35536c!important}
+body[data-theme="dark"] .sbc-kim-context,
+body[data-theme="dark"] .sbc-ai-status{background:#0a1725!important;color:#aebfce!important}
+body[data-theme="dark"] .sbc-kim-composer textarea,
+body[data-theme="dark"] .sbc-ai-input textarea{background:#111f2e!important;color:#f4f8fc!important;border-color:#3a5269!important}
+
+/* Focus visibility is consistent in both themes. */
+body[data-theme="light"] :focus-visible,
+body[data-theme="dark"] :focus-visible{outline:3px solid var(--sbc-focus)!important;outline-offset:2px}

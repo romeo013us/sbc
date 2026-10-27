@@ -1,0 +1,5 @@
+/* SBC Training Read Aloud — isolated V55.12.4 styles */
+.sbc-training-read-aloud{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:12px 14px;border:1px solid #2b5b78;border-radius:12px;background:linear-gradient(180deg,#0b2234,#0a1b29);box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.sbc-training-read-aloud-copy{display:flex;align-items:center;gap:10px;min-width:0}.sbc-training-read-aloud-copy strong{font-size:14px}.sbc-training-read-aloud-copy span{font-size:12px;opacity:.78}.sbc-training-read-aloud-actions{display:flex;gap:7px;flex-wrap:wrap}.sbc-training-read-aloud-actions .btn{min-height:34px;padding:7px 11px}
+.sbc-training-read-aloud button:disabled{opacity:.5;cursor:not-allowed}
+@media (max-width:700px){.sbc-training-read-aloud{align-items:flex-start;flex-direction:column}.sbc-training-read-aloud-actions{width:100%}.sbc-training-read-aloud-actions .btn{flex:1}}

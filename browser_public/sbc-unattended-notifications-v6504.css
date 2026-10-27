@@ -1,0 +1,27 @@
+#sbcUnattendedNotificationsMount{margin:18px 0 26px;font-family:Inter,Arial,sans-serif;color:var(--text,#eaf4ff)}
+#sbcUnattendedNotificationsMount .sun-card{border:1px solid rgba(73,153,225,.34);border-radius:16px;background:linear-gradient(135deg,rgba(8,27,46,.97),rgba(10,21,35,.98));box-shadow:0 12px 30px rgba(0,0,0,.14);overflow:hidden}
+#sbcUnattendedNotificationsMount .sun-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:18px 20px;border-bottom:1px solid rgba(116,166,210,.17)}
+#sbcUnattendedNotificationsMount .sun-title{font-weight:800;font-size:17px;color:#f4f9ff}
+#sbcUnattendedNotificationsMount .sun-sub{font-size:12px;color:#a9c1d8;margin-top:4px}
+#sbcUnattendedNotificationsMount .sun-state{font-size:11px;font-weight:800;letter-spacing:.5px;padding:7px 10px;border-radius:999px;background:rgba(245,158,11,.14);color:#ffd58a;border:1px solid rgba(245,158,11,.32)}
+#sbcUnattendedNotificationsMount .sun-state.ready{background:rgba(34,197,94,.12);color:#9af0bc;border-color:rgba(34,197,94,.3)}
+#sbcUnattendedNotificationsMount .sun-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px 20px}
+#sbcUnattendedNotificationsMount .sun-metric{padding:13px;border:1px solid rgba(116,166,210,.18);border-radius:12px;background:rgba(15,43,66,.55);min-width:0}
+#sbcUnattendedNotificationsMount .sun-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#a6bfd7;font-weight:700}
+#sbcUnattendedNotificationsMount .sun-value{font-size:14px;font-weight:800;color:#f5f9ff;margin-top:7px;overflow-wrap:anywhere}
+#sbcUnattendedNotificationsMount .sun-actions{display:flex;gap:9px;flex-wrap:wrap;padding:0 20px 16px}
+#sbcUnattendedNotificationsMount .sun-btn{border:1px solid #287fc0;background:#0b4773;color:#f4faff;border-radius:9px;padding:10px 13px;font-size:12px;font-weight:800;cursor:pointer}
+#sbcUnattendedNotificationsMount .sun-btn.secondary{background:#10283d;border-color:#31516a}
+#sbcUnattendedNotificationsMount .sun-btn:disabled{opacity:.4;cursor:not-allowed}
+#sbcUnattendedNotificationsMount .sun-note{font-size:12px;color:#a9c1d8;padding:0 20px 17px;line-height:1.5}
+#sbcUnattendedNotificationsMount .sun-note.error{color:#ffb9b9}
+@media(max-width:720px){#sbcUnattendedNotificationsMount .sun-grid{grid-template-columns:1fr}#sbcUnattendedNotificationsMount .sun-head{align-items:flex-start}}
+
+#sbcUnattendedNotificationsMount .sun-config{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:0 20px 15px}
+#sbcUnattendedNotificationsMount .sun-config label{display:flex;flex-direction:column;gap:5px;min-width:210px;flex:1;color:#b5cce0;font-size:11px;font-weight:700}
+#sbcUnattendedNotificationsMount .sun-config input{width:100%;box-sizing:border-box;border:1px solid #31516a;border-radius:8px;background:#071522;color:#f4faff;padding:10px 11px;font-size:12px;outline:none}
+#sbcUnattendedNotificationsMount .sun-config input:focus{border-color:#3999e8;box-shadow:0 0 0 2px rgba(57,153,232,.18)}
+
+#sbcUnattendedNotificationsMount .sun-recovery-note{margin:0 20px 15px;padding:12px 14px;border-radius:10px;display:grid;gap:8px;border:1px solid rgba(245,158,11,.35);background:rgba(112,70,7,.16);color:#ffe3ad;font-size:12px}
+#sbcUnattendedNotificationsMount .sun-recovery-note.clear{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:#b8f5ce}
+#sbcUnattendedNotificationsMount .sun-recovery-result{white-space:pre-wrap;overflow-wrap:anywhere;color:#d7e7f7;line-height:1.5}

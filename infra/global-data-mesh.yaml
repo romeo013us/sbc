@@ -1,0 +1,6 @@
+version: 1
+mode: provider-managed
+primary_region: ${SBC_REGION:-us-east-1}
+secondary_regions: []
+conflict_resolution: deterministic-register-foundation
+production_replication: explicit-provider-required

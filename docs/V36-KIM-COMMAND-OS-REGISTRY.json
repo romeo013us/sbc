@@ -1,0 +1,369 @@
+{
+  "version": "36.0.0",
+  "purpose": "Kim autonomous operations controller",
+  "capabilities": [
+    {
+      "id": 151,
+      "name": "executive-command-center",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 152,
+      "name": "daily-executive-brief",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 153,
+      "name": "priority-engine",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 154,
+      "name": "exception-detection",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 155,
+      "name": "exception-triage",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 156,
+      "name": "decision-journal",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 157,
+      "name": "action-approval-queue",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 158,
+      "name": "business-health-score",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 159,
+      "name": "customer-health-monitor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 160,
+      "name": "customer-360-orchestrator",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 161,
+      "name": "sales-pipeline-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 162,
+      "name": "lead-funnel-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 163,
+      "name": "marketing-pulse-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 164,
+      "name": "fulfillment-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 165,
+      "name": "vendor-routing-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 166,
+      "name": "payment-reconciliation-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 167,
+      "name": "receivables-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 168,
+      "name": "margin-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 169,
+      "name": "expense-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 170,
+      "name": "commission-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 171,
+      "name": "renewal-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 172,
+      "name": "sla-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 173,
+      "name": "followup-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 174,
+      "name": "queue-balancer",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 175,
+      "name": "task-delegation",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 176,
+      "name": "workforce-coaching",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 177,
+      "name": "workforce-capacity-planner",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 178,
+      "name": "training-readiness",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 179,
+      "name": "knowledge-base-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 180,
+      "name": "communication-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 181,
+      "name": "consent-suppression-guard",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 182,
+      "name": "notary-workflow-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 183,
+      "name": "notary-record-readiness",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 184,
+      "name": "asset-vault-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 185,
+      "name": "document-integrity-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 186,
+      "name": "data-quality-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 187,
+      "name": "lead-dedupe-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 188,
+      "name": "integration-health-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 189,
+      "name": "provider-failover-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 190,
+      "name": "api-cost-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 191,
+      "name": "database-health-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 192,
+      "name": "backup-verification-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 193,
+      "name": "deployment-readiness-supervisor",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 194,
+      "name": "configuration-drift-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 195,
+      "name": "security-posture-watch",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 196,
+      "name": "incident-command",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 197,
+      "name": "business-continuity-controller",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 198,
+      "name": "recovery-readiness",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 199,
+      "name": "operational-scorecard",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    },
+    {
+      "id": 200,
+      "name": "kim-self-check",
+      "status": "ACTIVE",
+      "autonomous": true,
+      "ownerGateRequired": false
+    }
+  ],
+  "ownerProtectedActions": [
+    "change-owner-security",
+    "change-kim-authority",
+    "change-pricing",
+    "approve-refund",
+    "alter-payment-status",
+    "rotate-production-secret",
+    "permanent-delete",
+    "destructive-database-operation",
+    "activate-unverified-provider",
+    "publish-unreviewed-external-campaign",
+    "perform-notarial-act"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "SBC Business Command Center",
+  "short_name": "SBC Command Center",
+  "description": "Successful By Choice private business operating system.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#0b74d1",
+  "icons": [{"src":"/assets/sbc-logo.jpg","sizes":"160x160","type":"image/jpeg"}]
+}

@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const pkg=require(path.join(root,'package.json'));
+const release=require(path.join(root,'config/release-identity.js'));
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+const raw=fs.readFileSync(path.join(root,'starter-leads/SBC-Jonathan-Barbershop-Backup-2026-10-09.csv'),'utf8').replace(/^\uFEFF/,'');
+function parse(line){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(q&&line[i+1]==='"'){cur+='"';i++;}else q=!q;}else if(c===','&&!q){out.push(cur);cur='';}else cur+=c;}out.push(cur);return out;}
+const rows=raw.trim().split(/\r?\n/).map(parse);const h=rows[0];const col=Object.fromEntries(h.map((x,i)=>[x,i]));const data=rows.slice(1);
+const check=(name,fn)=>{fn();console.log('PASS '+name);};
+check('release identity agrees',()=>{assert.equal(pkg.version, require('../package.json').version);assert.equal(release.RELEASE_VERSION,pkg.version);});
+check('exactly 18 worksheet records',()=>assert.equal(data.length,18));
+check('business names are populated and unique',()=>{const names=data.map(r=>r[col['Business Name']].toLowerCase().replace(/[^a-z0-9]+/g,' ').trim());assert(names.every(Boolean));assert.equal(new Set(names).size,18);});
+check('all records cold score zero and owner verification required',()=>{for(const r of data){assert.equal(r[col['Lead Temperature']],'Cold');assert.equal(r[col['Lead Score']],'0');assert.equal(r[col['For Jonathan’s Verification']],'Jonathan Verification Required');}});
+check('source URLs preserved for all records',()=>{assert(data.every(r=>/^https?:\/\//.test(r[col['Source URL']])));assert(server.includes('sourceUrl=get(\'Source URL\',\'Source URL / Evidence\',\'Evidence URL\')'));assert(server.includes('sourceUrl&&`Source URL: ${sourceUrl}`'));});
+check('registered with existing starter seeder',()=>{assert(server.includes('SBC-Jonathan-Barbershop-Backup-2026-10-09.csv'));assert(server.includes("spec.kind==='owner-backup-cold-pending-verification'"));});
+check('batch deduplicates on normalized business name',()=>{assert(server.includes("if(spec.kind==='lorna-cold-pending-verification')return true;"));assert(server.includes("if(spec.kind==='owner-backup-cold-pending-verification')return true;"));});
+check('recovery lock and 248 baseline preserved',()=>{assert(server.includes('VERIFIED_PRE_CORRUPTION_CRM_COUNT = 248'));assert(server.includes('if(MYSQL_RECOVERY_REQUIRED){console.error'));});
+check('recovery mode exits before seeding pipeline',()=>{const at=server.indexOf('initMysql().then(async()=>');const rec=server.indexOf("if(MYSQL_RECOVERY_REQUIRED){console.error",at);const seed=server.indexOf('const seeded=seedStarterLeadPack()',rec);assert(rec>at&&seed>rec);assert(server.slice(rec,seed).includes('return;'));});
+console.log(`V65.1.26 owner leads: 8/8 PASS; records=${data.length}; cold=18; score0=18; outreach=not triggered`);

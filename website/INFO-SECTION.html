@@ -1,0 +1,28 @@
+<section id="sbc-info" class="sbc-info-section" aria-labelledby="sbc-info-title">
+  <div class="sbc-info-wrap">
+    <p class="eyebrow">SUCCESSFUL BY CHOICE • INFO</p>
+    <h2 id="sbc-info-title">Everything your business needs to know about SBC.</h2>
+    <p class="sbc-info-lead">SBC connects business visibility, sales, customers, communications, fulfillment, recurring services and business operations in one system.</p>
+    <div class="sbc-info-grid">
+      <article><b>🎯 What SBC does</b><p>One operating system for sales, customers, communications, fulfillment, workforce operations and business intelligence.</p></article>
+      <article><b>💰 Money flow</b><p>Leads → opportunities → quotes/orders → payments → fulfillment → follow-up → renewals.</p></article>
+      <article><b>📞 Sales workflow</b><p>Research → verify → call → document → quote/order → follow up → fulfill → renew.</p></article>
+      <article><b>📦 Fulfillment</b><p>Collect customer information, route work and keep production details connected to the order.</p></article>
+      <article><b>🤖 Kim + automation</b><p>Kim helps explain, diagnose and perform permitted operational actions while protected controls stay protected.</p></article>
+      <article><b>🔐 Security</b><p>Role-aware access keeps owner controls, employee workflows and customer-facing functions separated.</p></article>
+    </div>
+      <article class="sbc-revenue-growth-card" data-sbc-revenue-growth="1"><b>🚀 Revenue Growth Engine</b><p>Automatically ranks lead quality, freshness, intent, next-best-action, offer fit, follow-up timing, win-back and expansion opportunities while feeding observed outcomes back into the sales system.</p><div class="sbc-revenue-growth-metrics" aria-live="polite"><span>Qualified: <strong data-rg-qualified>—</strong></span><span>Sales: <strong data-rg-sales>—</strong></span><span>Revenue: <strong data-rg-revenue>—</strong></span><span>Revenue / conversation: <strong data-rg-rpc>—</strong></span></div></article>
+      <article class="sbc-revenue-growth-card perfect-ten-ledger" data-sbc-v56130-ledger="1"><b>⚡ CLOSER TELEMETRY</b><p>Live outcome metrics from recorded SBC sales events. No vendor claims are treated as proof.</p><div class="sbc-revenue-growth-metrics" aria-live="polite"><span>Revenue / AI hour: <strong data-rg-rph>—</strong></span><span>Objection win rate: <strong data-rg-owr>—</strong></span><span>Close rate: <strong data-rg-close>—</strong></span><span>AI hours: <strong data-rg-hours>—</strong></span></div></article>
+  </div>
+</section>
+
+<script>
+(()=>{
+  const root=document.querySelector('[data-sbc-revenue-growth="1"]'); if(!root)return;
+  fetch('/api/v56122/revenue-growth/dashboard',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(x=>{const m=x?.metrics||{};
+    const set=(sel,v)=>{const el=root.querySelector(sel);if(el)el.textContent=v;};
+    set('[data-rg-qualified]',m.qualified??'—'); set('[data-rg-sales]',m.sales??'—'); set('[data-rg-revenue]',m.revenue!=null?'$'+Number(m.revenue).toFixed(2):'—'); set('[data-rg-rpc]',m.revenuePerConversation!=null?'$'+Number(m.revenuePerConversation).toFixed(2):'—');
+    const set2=(sel,v)=>{const el=document.querySelector('[data-sbc-v56130-ledger=\"1\"] '+sel);if(el)el.textContent=v;}; set2('[data-rg-rph]',m.revenuePerAIHour!=null?'$'+Number(m.revenuePerAIHour).toFixed(2):'—'); set2('[data-rg-owr]',m.objectionWinRate!=null?(Number(m.objectionWinRate)*100).toFixed(1)+'%':'—'); set2('[data-rg-close]',m.closeRate!=null?(Number(m.closeRate)*100).toFixed(1)+'%':'—'); set2('[data-rg-hours]',m.aiHours!=null?Number(m.aiHours).toFixed(2):'—');
+  }).catch(()=>{});
+})();
+</script>

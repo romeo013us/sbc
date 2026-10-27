@@ -1,0 +1,11 @@
+(function(){
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  window.kimDeepOpsView=async function(){
+    try{
+      const r=await api('/api/kim/deep-ops/summary');
+      const caps=r.exclusiveCapabilities||[];
+      return `<div class="card section"><div class="card-body"><div class="eyebrow">KIM DEEP OPERATIONS</div><h2>👑 Kim Deep Operations Fabric</h2><p class="mini">15 uncommon control-plane capabilities layered onto Kim's existing operating system. External vendor execution remains fail-closed until credentials, contracts and explicit live flags are verified.</p><div class="kim-deep-note"><strong>Truth rule:</strong> database transactions cannot magically undo an external card charge or vendor submission. Kim uses idempotency, compensation workflows and owner/review gates instead.</div><div class="actions" style="margin-top:14px"><button class="btn primary" id="kimDeepSandbox">Run 30-capability sandbox</button><span class="badge green">Catalog ${esc(r.catalogCount)} capabilities</span></div></div></div><div class="kim-deep-grid">${caps.map(x=>`<div class="kim-deep-card"><span class="kim-deep-pill">${esc(x[0])}</span><h3>${esc(x[1])}</h3><p><strong>${esc(x[2])}</strong></p><p>${esc(x[3])}</p></div>`).join('')}</div><div id="kimDeepResult"></div>`;
+    }catch(e){return `<div class="card section"><div class="card-body"><h2>Kim Deep Operations</h2><p>Unable to load: ${esc(e.message||e)}</p></div></div>`}
+  };
+  document.addEventListener('click',async e=>{if(e.target.id!=='kimDeepSandbox')return;const out=document.getElementById('kimDeepResult');if(out)out.innerHTML='<div class="card section"><div class="card-body">Running deterministic sandbox…</div></div>';try{const r=await api('/api/kim/deep-ops/sandbox',{method:'POST',body:{}});if(out)out.innerHTML=`<div class="card section"><div class="card-body"><h3>✅ Sandbox complete</h3><p class="mini">Mutations: ${r.mutations} · Live vendors touched: ${r.liveVendorsTouched} · Live payments touched: ${r.livePaymentsTouched}</p><pre style="white-space:pre-wrap;max-height:420px;overflow:auto">${esc(JSON.stringify(r.results,null,2))}</pre></div></div>`;}catch(err){if(out)out.innerHTML=`<div class="card section"><div class="card-body">Sandbox failed: ${esc(err.message||err)}</div></div>`;}});
+})();

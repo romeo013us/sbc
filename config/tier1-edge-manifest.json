@@ -1,0 +1,12 @@
+{
+  "version": "56.2.0",
+  "mode": "manifest-only",
+  "provider": "GoDaddy-compatible",
+  "purpose": "Future reverse-proxy/whitelabel domain routing",
+  "rules": [
+    {"match":"exact-host", "cacheKey":"tenant-host:v1:{host}", "ttlSeconds":300, "source":"tenant-config"},
+    {"match":"tenant-route", "cacheKey":"tenant-route:v1:{tenantId}:{path}", "ttlSeconds":60, "source":"tenant-routing"}
+  ],
+  "hotReload": "disabled-on-GoDaddy; use application restart/deployment",
+  "security": "Never derive tenant identity from unverified client headers; resolve host-to-tenant through authoritative storage."
+}

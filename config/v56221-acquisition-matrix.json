@@ -1,0 +1,35 @@
+{
+  "version": "56.22.1",
+  "purpose": "Curated starter matrix for SBC local discovery; expand only with useful, non-thin assets.",
+  "cities": [
+    "Miami",
+    "Hialeah",
+    "North Miami",
+    "Miami Gardens",
+    "Doral",
+    "Aventura",
+    "Fort Lauderdale",
+    "Hollywood"
+  ],
+  "industries": [
+    "barbers",
+    "beauty salons",
+    "plumbers",
+    "electricians",
+    "cleaning companies",
+    "landscaping companies",
+    "auto repair shops",
+    "contractors",
+    "real estate agents",
+    "tax professionals",
+    "accounting firms",
+    "insurance agencies"
+  ],
+  "intents": [
+    "business website hosting",
+    "business email",
+    "local SEO",
+    "website security",
+    "managed WordPress hosting"
+  ]
+}

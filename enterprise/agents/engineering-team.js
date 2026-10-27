@@ -1,0 +1,1 @@
+export class EngineeringTeam {constructor(){this.roles=['architect','coder','tester','security','reviewer','release'];} plan(gap){return this.roles.map(role=>({role,task:`${role} review for ${gap}`,bounded:true}));} approve(plan){return plan.every(x=>x.bounded)&&plan.length===this.roles.length;}}

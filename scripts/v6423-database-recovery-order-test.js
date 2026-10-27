@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('fs');const path=require('path');
+const root=path.resolve(__dirname,'..');
+const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
+const schema=s.indexOf('await ensureEnterpriseSchema(); await runSchemaMigrations()');
+const partial=s.indexOf('REFUSING PARTIAL-DATABASE ACTIVATION');
+const empty=s.indexOf('REFUSING EMPTY-DATABASE MIGRATION');
+const diag=s.indexOf("app.get('/api/owner/recovery/status'");
+const ok= schema>=0 && schema<partial && schema<empty && diag>=0;
+console.log(JSON.stringify({ok, schema, partial, empty, diag, assertions:{migrationBeforeRecovery:schema<partial&&schema<empty, recoveryEndpoint:diag>=0}},null,2));
+process.exit(ok?0:1);

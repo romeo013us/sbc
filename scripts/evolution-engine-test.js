@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('assert');
+const {createPlan,inferBlueprint,securityScan,createEngine}=require('../enterprise/sbc-evolution-engine-v605');
+(async()=>{
+  const plan=createPlan({intent:'Kim, prioritize today\'s call list by who has not been contacted in 48 hours.'});
+  assert.equal(plan.blueprint,'call-queue');
+  assert.equal(plan.productionWrite,'blocked_until_approval');
+  assert.equal(plan.dbRequired,true);
+  assert.equal(plan.apiRequired,true);
+  assert.equal(plan.uiRequired,true);
+  assert.equal(inferBlueprint('show me the fulfillment queue').id,'fulfillment-workflow');
+  assert.equal(securityScan('SELECT * FROM leads').ok,true);
+  assert.equal(securityScan('DROP TABLE customers').ok,false);
+  const e=createEngine({getPool:()=>null});
+  const staged=await e.stage({tenantId:1,intent:'Prioritize my call list for today.'});
+  assert.equal(staged.stage,'STAGED');
+  assert.equal(staged.approvalRequired,true);
+  assert.equal(staged.diff.mode,'sandbox-only');
+  console.log('SBC EVOLUTION ENGINE TEST: PASS');
+})();

@@ -1,0 +1,111 @@
+{
+  "suite": "sbc-v55.17.1-super-test",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "file:server.js",
+      "status": "PASS"
+    },
+    {
+      "name": "file:package.json",
+      "status": "PASS"
+    },
+    {
+      "name": "file:database.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "file:public/index.html",
+      "status": "PASS"
+    },
+    {
+      "name": "file:public/app.js",
+      "status": "PASS"
+    },
+    {
+      "name": "file:public/styles.css",
+      "status": "PASS"
+    },
+    {
+      "name": "file:enterprise/kim-system-steward-v1.js",
+      "status": "PASS"
+    },
+    {
+      "name": "file:enterprise/lead-assist-engine.js",
+      "status": "PASS"
+    },
+    {
+      "name": "syntax:server.js",
+      "status": "PASS"
+    },
+    {
+      "name": "syntax:public/app.js",
+      "status": "PASS"
+    },
+    {
+      "name": "syntax:enterprise/kim-system-steward-v1.js",
+      "status": "PASS"
+    },
+    {
+      "name": "syntax:enterprise/lead-assist-engine.js",
+      "status": "PASS"
+    },
+    {
+      "name": "package_version",
+      "status": "FAIL",
+      "detail": "55.17.4"
+    },
+    {
+      "name": "kim_tts",
+      "status": "PASS"
+    },
+    {
+      "name": "kim_context",
+      "status": "PASS"
+    },
+    {
+      "name": "message_templates",
+      "status": "PASS"
+    },
+    {
+      "name": "resilience",
+      "status": "PASS"
+    },
+    {
+      "name": "system_test_quarantine",
+      "status": "PASS"
+    },
+    {
+      "name": "revenue_email_templates",
+      "status": "PASS"
+    },
+    {
+      "name": "kim_tts_config",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_enrichment",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_enrichment_batch",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist_run",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist_review",
+      "status": "PASS"
+    },
+    {
+      "name": "lead_assist_auto_queue",
+      "status": "PASS"
+    }
+  ]
+}

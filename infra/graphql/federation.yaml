@@ -1,0 +1,24 @@
+version: 2
+mode: opt-in
+endpoint_env: SBC_GRAPHQL_FEDERATION_URL
+public_surface: false
+authentication_required: true
+queryCache:
+  enabled: true
+  ttlSecondsEnv: SBC_GRAPHQL_CACHE_TTL_SECONDS
+  maxEntriesEnv: SBC_GRAPHQL_CACHE_MAX_ENTRIES
+  varyBy: [tenant, userRole, queryHash, variablesHash]
+  neverCacheMutations: true
+  neverCacheErrors: true
+  staleWhileRevalidateSeconds: 5
+validation:
+  circularReferencePolicy: reject
+  maxDepth: 12
+  maxComplexity: 250
+  introspection: authenticated-only
+entityLinks:
+  - workforceRoleManager -> masterSessionStore
+validationFixtures:
+  circularReference:
+    - workforceRoleManager -> masterSessionStore
+    - masterSessionStore -> workforceRoleManager

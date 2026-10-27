@@ -1,0 +1,12 @@
+SBC BUSINESS COMMAND CENTER
+Release: 60.4.1
+Track: RUNTIME-INTEGRITY-STATE-KERNEL
+Entrypoint: server.js
+Node: 22.x
+MySQL interface: mysql2/promise
+Callback-style mysql2 connection listener: REMOVED
+Release identity endpoint: /api/release-identity
+62.2.0 source literal: NONE
+JavaScript files: 417
+JSON parse failures: 0
+Generated: 2026-10-07T05:48:18Z

@@ -1,0 +1,13 @@
+{
+  "release": "56.19.0",
+  "name": "SBC Business Command Center",
+  "codename": "EXTENSIBLE-CAPABILITY-FABRIC",
+  "foundation": "56.18.0",
+  "capabilities": ["CORE_SAAS","SEO_SYNDICATION","OPEN_FACADE","ADVANCED_INTELLIGENCE","DEMO_BUILDER","OFFICE_BOX"],
+  "sftpWatcher": true,
+  "secretsAdded": 0,
+  "paymentAuthority": "Square",
+  "entitlementAuthority": "MySQL",
+  "ownerApprovalThresholdUsd": 10000,
+  "status": "BUILT_TEST_VALIDATED"
+}

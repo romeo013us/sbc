@@ -1,0 +1,372 @@
+{
+  "version": "37.0.0",
+  "range": "201-260",
+  "mode": "guarded-autonomous-operations",
+  "capabilities": [
+    {
+      "id": 201,
+      "name": "business-pulse-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 202,
+      "name": "anomaly-detection-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 203,
+      "name": "root-cause-analyzer",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 204,
+      "name": "impact-analyzer",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 205,
+      "name": "action-recommendation-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 206,
+      "name": "auto-remediation-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 207,
+      "name": "confidence-scoring-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 208,
+      "name": "decision-escalation-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 209,
+      "name": "pattern-learning-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 210,
+      "name": "business-memory-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 211,
+      "name": "workflow-trigger-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 212,
+      "name": "workflow-dependency-resolver",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 213,
+      "name": "workflow-timeout-manager",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 214,
+      "name": "workflow-retry-controller",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 215,
+      "name": "workflow-compensation-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 216,
+      "name": "workflow-parallelizer",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 217,
+      "name": "workflow-priority-manager",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 218,
+      "name": "workflow-completion-verifier",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 219,
+      "name": "workflow-handoff-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 220,
+      "name": "workflow-replay-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 221,
+      "name": "revenue-opportunity-detector",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 222,
+      "name": "quote-followup-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 223,
+      "name": "payment-failure-recovery",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 224,
+      "name": "payment-confirmation-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 225,
+      "name": "unpaid-order-watch",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 226,
+      "name": "margin-protection-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 227,
+      "name": "vendor-cost-monitor",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 228,
+      "name": "commission-audit-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 229,
+      "name": "revenue-reconciliation-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 230,
+      "name": "cash-flow-alert-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 231,
+      "name": "work-assignment-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 232,
+      "name": "workload-balancer",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 233,
+      "name": "idle-queue-detector",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 234,
+      "name": "missed-task-detector",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 235,
+      "name": "followup-accountability-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 236,
+      "name": "sales-coaching-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 237,
+      "name": "lead-quality-coaching",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 238,
+      "name": "training-assignment-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 239,
+      "name": "workforce-capacity-forecast",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 240,
+      "name": "shift-task-readiness-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 241,
+      "name": "customer-communication-trigger",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 242,
+      "name": "customer-response-monitor",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 243,
+      "name": "customer-followup-scheduler",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 244,
+      "name": "customer-silence-detector",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 245,
+      "name": "customer-escalation-detector",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 246,
+      "name": "communication-routing-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 247,
+      "name": "message-delivery-monitor",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 248,
+      "name": "customer-milestone-automation",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 249,
+      "name": "customer-experience-recovery-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 250,
+      "name": "customer-next-step-engine",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 251,
+      "name": "vendor-connection-orchestrator",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 252,
+      "name": "production-payload-validator",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 253,
+      "name": "vendor-quote-comparator",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 254,
+      "name": "vendor-order-reconciliation",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 255,
+      "name": "lead-mesh-intake",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 256,
+      "name": "lead-intelligence-worker",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 257,
+      "name": "opportunity-trigger",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 258,
+      "name": "sandbox-generator",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 259,
+      "name": "automation-safety-gate",
+      "status": "ACTIVE",
+      "autonomous": true
+    },
+    {
+      "id": 260,
+      "name": "kim-mission-controller",
+      "status": "ACTIVE",
+      "autonomous": true
+    }
+  ],
+  "provider_policy": {
+    "four_over_four": "credential+documented endpoint contract+verification required",
+    "vistaprint": "authorized reseller access+documented endpoint contract+verification required"
+  },
+  "protected_actions": "Owner-gated; no autonomous override."
+}

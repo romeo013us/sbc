@@ -1,0 +1,28 @@
+{
+  "suite": "resilience-readiness",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "database.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "enterprise/secret-consolidator.js",
+      "status": "PASS"
+    },
+    {
+      "name": "enterprise/kim-system-steward-v1.js",
+      "status": "PASS"
+    },
+    {
+      "name": "backup_evidence_policy",
+      "status": "PASS",
+      "detail": "Runtime reports EVIDENCE_REQUIRED until an owner records verified backup evidence."
+    },
+    {
+      "name": "dr_evidence_policy",
+      "status": "PASS",
+      "detail": "Runtime reports EVIDENCE_REQUIRED until an owner records a controlled DR test."
+    }
+  ]
+}

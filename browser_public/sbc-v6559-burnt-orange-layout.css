@@ -1,0 +1,14 @@
+/* SBC V65.1.59: burnt-orange dark panels and orange text on blue light-theme sections */
+body[data-theme="dark"] .card,body[data-theme="dark"] .stat,body[data-theme="dark"] .list-card,body[data-theme="dark"] .detail-box,body[data-theme="dark"] .install-tip,body[data-theme="dark"] .table-wrap,body[data-theme="dark"] .modal-card,body[data-theme="dark"] .sbc-product,body[data-theme="dark"] .sales-builder-package,body[data-theme="dark"] .dashboard-section,body[data-theme="dark"] .workspace-panel,body[data-theme="dark"] .office-box-section,body[data-theme="dark"] .card-body{background:#B84E17!important;color:#FFF4EB!important;border-color:#E27A3D!important}
+body[data-theme="dark"] .card h1,body[data-theme="dark"] .card h2,body[data-theme="dark"] .card h3,body[data-theme="dark"] .card h4,body[data-theme="dark"] .card p,body[data-theme="dark"] .card label,body[data-theme="dark"] .card strong,body[data-theme="dark"] .card b,body[data-theme="dark"] .stat .value,body[data-theme="dark"] .list-card,body[data-theme="dark"] .detail-box,body[data-theme="dark"] .table-wrap,body[data-theme="dark"] .card-body,body[data-theme="dark"] .card td{color:#FFF4EB!important}
+body[data-theme="dark"] .card-head,body[data-theme="dark"] .modal-head,body[data-theme="dark"] th{background:#963B0C!important;color:#FFF4EB!important;border-color:#E27A3D!important}
+body[data-theme="dark"] .card input,body[data-theme="dark"] .card select,body[data-theme="dark"] .card textarea{background:#5F260B!important;color:#FFF4EB!important;border-color:#EFA071!important}
+body[data-theme="light"] .hero,body[data-theme="light"] .topbar,body[data-theme="light"] .sidebar,body[data-theme="light"] .card-head,body[data-theme="light"] .modal-head,body[data-theme="light"] th,body[data-theme="light"] .nav-item.active,body[data-theme="light"] .sbc-build-version,body[data-theme="light"] .btn.primary,body[data-theme="light"] .primary{color:#F47721!important}
+body[data-theme="light"] .hero h1,body[data-theme="light"] .hero h2,body[data-theme="light"] .hero h3,body[data-theme="light"] .hero p,body[data-theme="light"] .hero strong,body[data-theme="light"] .topbar h1,body[data-theme="light"] .topbar h2,body[data-theme="light"] .sidebar .nav-item.active{color:#F47721!important}
+.sbc-v6559-reorderable{position:relative!important;cursor:grab!important}
+.sbc-v6559-reorderable:focus-visible{outline:2px solid #F47721!important;outline-offset:3px}
+.sbc-v6559-reorderable.sbc-v6559-dragging{opacity:.45!important}
+.sbc-v6559-reorderable.sbc-v6559-drop-target{outline:2px dashed #F47721!important;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.sbc-v6559-reorderable{transition:none!important}}
+
+body[data-theme="light"] .hero *,body[data-theme="light"] .topbar *,body[data-theme="light"] .sidebar *,body[data-theme="light"] .card-head *,body[data-theme="light"] .modal-head *,body[data-theme="light"] th *,body[data-theme="light"] .nav-item.active *{color:#F47721!important}

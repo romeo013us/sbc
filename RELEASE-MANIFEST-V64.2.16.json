@@ -1,0 +1,10 @@
+{
+  "release": "64.2.16",
+  "type": "atomic-persistence",
+  "base": "64.2.15",
+  "databaseWrites": "row-level-upsert-only",
+  "bulkDeleteRewrite": false,
+  "partialShrinkProtection": true,
+  "optimisticEpoch": true,
+  "financialMutations": "unchanged-blocked-by-governor"
+}

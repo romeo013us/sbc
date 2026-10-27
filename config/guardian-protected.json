@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "policy": "NEVER_AUTO_DELETE",
+  "protected": [
+    "server.js",
+    "package.json",
+    "package-lock.json",
+    "enterprise/*",
+    "config/*",
+    "workers/*",
+    "scripts/*release*",
+    "scripts/*security*",
+    "scripts/*secret*"
+  ],
+  "notes": [
+    "Protected means Guardian will not quarantine automatically.",
+    "A file can be reviewed for retirement without being removable.",
+    "Production rollback is performed by deploying a known-good release artifact, not by mutating live files in place."
+  ]
+}

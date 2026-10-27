@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('assert');
+const fs=require('fs');
+const path=require('path');
+const M=require('../enterprise/sbc-enterprise-control-plane-v640');
+const pkg=require('../package.json');
+assert(pkg.version===require('../config/release-identity.js').RELEASE_VERSION);
+const s={leads:[{temperature:'warm'},{temperature:'hot'},{temperature:'cold'}],customers:[{}],quotes:[{}],orders:[{status:'paid',total:100,grossProfit:60}],fulfillmentJobs:[],actions:[]};
+const twin=M.makeTwin(M.summarizeDb(s));
+assert(twin.business.warmLeads===1 && twin.business.hotLeads===1);
+const pred=M.predict(twin.business,30); assert(pred.confidence>0);
+const sim=M.simulate(twin.business,{leadGrowthPct:10}); assert(sim.outputs.modeledLeads>=3);
+const board=M.council(twin.business,pred); assert(board.priority);
+const plan=M.engineeringPlan('test change'); assert(plan.stages.includes('SECURITY_REVIEW')); assert(plan.productionMutation.includes('BLOCKED'));
+assert.equal(M.financialGuard({type:'refund',amount:1}).decision,'HUMAN_APPROVAL_REQUIRED');
+assert.equal(M.financialGuard({type:'read_only',amount:1}).decision,'BOUNDED_AUTOMATION_ALLOWED');
+console.log('V64 Enterprise Control Plane: PASS');

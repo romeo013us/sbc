@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kevin Overmind — SBC V64.2</title>
+<style>
+body{margin:0;background:#07111f;color:#eaf2ff;font:15px system-ui}.wrap{max-width:1200px;margin:24px auto;padding:24px}.card{background:#0d1b2d;border:1px solid #21415f;border-radius:16px;padding:18px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.ok{font-size:22px;font-weight:700}.tabs{display:flex;gap:8px;margin:12px 0}.tab{background:#10243a;color:#dbeafe;border:1px solid #285070;border-radius:10px;padding:9px 13px;cursor:pointer}.tab.active{outline:2px solid #4aa3ff}.panel{display:none}.panel.active{display:block}.diff{border-left:3px solid #4aa3ff;padding:10px 14px;margin:10px 0;background:#081727}.diff code{white-space:pre-wrap;display:block;color:#d6e8ff}.route{font-weight:700}.panic{padding:12px 16px;border:1px solid #ff6b6b;background:#3b1212;color:#fff;border-radius:10px;cursor:pointer}pre{white-space:pre-wrap;word-break:break-word}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>🧠 KEVIN OVERMIND</h1>
+<div class="card"><div class="ok">● V64.2 GOD-TIER SOVEREIGN INTELLIGENCE</div><div>World model · prediction · simulation · council · red team · governed execution · memory</div></div>
+<div class="grid">
+<div class="card"><b>HARDENED CONTROL PLANE</b><pre id="hardening">Loading…</pre></div>
+<div class="card"><b>CAPITAL INTELLIGENCE</b><pre id="capital">Loading…</pre></div>
+<div class="card"><b>WORLD MODEL</b><pre id="world">Loading…</pre></div><div class="card"><b>PREDICTION</b><pre id="prediction">Loading…</pre></div><div class="card"><b>GOVERNANCE</b><pre id="gov">Romeo: Sovereign Owner</pre></div></div>
+<div class="tabs"><button class="tab active" data-tab="brief">Executive Brief</button><button class="tab" data-tab="diff">Engineering Diff Tree</button><button class="tab" data-tab="memory">Experience Ledger</button></div>
+<section id="brief" class="panel active card"><b>EXECUTIVE AWARENESS</b><pre id="briefText">Kevin intelligence layer ready.</pre></section>
+<section id="diff" class="panel card"><b>LIVE STAGED / EXECUTED CHANGES</b><div id="diffTree">No engineering changes reported yet.</div></section>
+<section id="memory" class="panel card"><b>APPEND-ONLY EXPERIENCE JOURNAL</b><pre id="memoryText">Hash-chained operational memory is enabled.</pre></section>
+<button class="panic" id="panic">👑 ROMEO ABSOLUTE OVERRIDE</button>
+</div>
+<script>
+for(const b of document.querySelectorAll('.tab'))b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active')};
+function renderDiff(items){const el=document.getElementById('diffTree');if(!items?.length){el.textContent='No engineering changes reported yet.';return;}el.innerHTML=items.map(x=>`<div class="diff"><div><b>${x.actionType}</b> — <span class="route">${x.route}</span></div><div>Authority: ${x.authority}</div><div>Simulation: ${JSON.stringify(x.simulation)}</div><div>Red Team: ${JSON.stringify(x.adversarial)}</div><div>Execution: ${JSON.stringify(x.execution)}</div>${x.stagedChange?`<code>${escapeHtml(JSON.stringify(x.stagedChange,null,2))}</code>`:''}</div>`).join('')}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+window.KEVIN_COCKPIT={renderDiff};
+async function loadHardenedCockpit(){
+  try{
+    const s=await fetch('/api/kevin/hardened/status',{credentials:'same-origin'}).then(r=>r.json());
+    document.getElementById('hardening').textContent=JSON.stringify({
+      singleFlight:s.singleFlight,
+      ownerVeto:s.ownerVeto,
+      financialMutations:s.financialMutations,
+      credentialMutations:s.credentialMutations,
+      unrestrictedProductionMutations:s.unrestrictedProductionMutations,
+      verifier:s.lastIndependentVerification,
+      metrics:s.metrics
+    },null,2);
+    const f=await fetch('/api/kevin/capital-forecast',{credentials:'same-origin'}).then(r=>r.json());
+    document.getElementById('capital').textContent=JSON.stringify(f.forecast||{status:'No forecast staged yet'},null,2);
+  }catch(e){document.getElementById('hardening').textContent='Protected endpoint unavailable: '+e.message;}
+}
+loadHardenedCockpit();
+</script></body></html>

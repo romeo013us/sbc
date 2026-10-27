@@ -1,0 +1,38 @@
+{
+  "release": "64.0.0",
+  "name": "SBC OS God Tier Enterprise Control Plane",
+  "productModel": "ONE SYSTEM",
+  "base": "SBC V63 integrated production Command Center",
+  "entrypoint": "server.js",
+  "start": "node server.js",
+  "node": "22.x",
+  "newSecretsRequired": false,
+  "governance": {
+    "owner": "Romeo",
+    "chiefExecutiveIntelligence": "Kevin",
+    "operationalOverseer": "Kim",
+    "leadInput": "Lorna",
+    "ownerVeto": true,
+    "unrestrictedProductionMutation": false,
+    "autonomousFinancialMutation": false
+  },
+  "capabilities": [
+    "digital-twin",
+    "prediction-engine",
+    "simulation-war-room",
+    "ai-board-of-directors",
+    "autonomous-engineering-governance",
+    "unified-event-fabric-integration",
+    "financial-intelligence-guard",
+    "continuous-resilience-view",
+    "executive-operating-loop",
+    "unified-sbc-os-control-plane"
+  ],
+  "cockpit": "/sbc-god-tier",
+  "apiPrefix": "/api/v640",
+  "validation": {
+    "releaseIntegrity": "PASS",
+    "controlPlaneUnitTest": "PASS",
+    "javascriptSyntax": "PASS — 453 files checked"
+  }
+}

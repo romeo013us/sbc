@@ -1,0 +1,21 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const pkg=require(path.join(root,'package.json'));
+const release=require(path.join(root,'config/release-identity.js'));
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+const guard=require(path.join(root,'enterprise/recovery/recovery-write-guard.cjs'));
+const kevin=fs.readFileSync(path.join(root,'enterprise/kevin/kevin-runtime.cjs'),'utf8');
+const checks=[];
+function check(name,fn){fn();checks.push(name);console.log('PASS '+name);}
+check('package and release identity agree',()=>{assert.equal(pkg.version, require('../package.json').version);assert.equal(release.RELEASE_VERSION,pkg.version);});
+check('write gate fails closed before recovery evaluation',()=>{let evaluated=false,locked=false;const g=guard.createRecoveryWriteGuard({isRecoveryRequired:()=>!evaluated||locked});let next=false,status=200;g({method:'POST',path:'/api/customers'},{status(n){status=n;return this;},json(){return this;}},()=>{next=true;});assert.equal(status,423);assert.equal(next,false);});
+check('write gate permits login while locked',()=>{const g=guard.createRecoveryWriteGuard({isRecoveryRequired:()=>true});let next=false;g({method:'POST',path:'/api/login'},{status(){return this;},json(){}},()=>{next=true;});assert.equal(next,true);});
+check('startup middleware includes recovery-evaluation state',()=>assert(server.includes('isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED')));
+check('expected recovery rejection is classified',()=>{assert.equal(guard.isExpectedRecoveryRejection(new Error('MYSQL_RECOVERY_REQUIRED')),true);assert.equal(guard.isExpectedRecoveryRejection(new Error('ECONNRESET')),false);});
+check('expected rejection does not take fatal shutdown branch',()=>{assert(server.includes('if (isExpectedRecoveryRejection(reason))'));assert(server.includes('process.exit(1)'));});
+check('Kevin runtime status matches its signature',()=>assert(kevin.includes("version:'64.2.28', signature:'KEVIN_V64.2.28_HARDENED_SOVEREIGN_RUNTIME'")));
+check('recovery baseline remains unchanged',()=>assert(server.includes('VERIFIED_PRE_CORRUPTION_CRM_COUNT')));
+console.log(`V65.1.26 recovery gate: ${checks.length}/${checks.length} PASS`);

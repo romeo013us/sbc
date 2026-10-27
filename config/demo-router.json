@@ -1,0 +1,12 @@
+{
+  "version": "47.0.0",
+  "mode": "metadata-router",
+  "description": "Safe routing map for disposable prospect demonstrations. The router selects a blueprint and worker policy; it never grants credential access.",
+  "routes": [
+    {"id":"default","match":"*","blueprint":"general-business","worker":"demo-builder","retentionHours":24,"maxOutputBytes":1048576},
+    {"id":"web-hosting","match":"hosting|website|web","blueprint":"web-presence","worker":"demo-builder","retentionHours":24,"maxOutputBytes":1048576},
+    {"id":"professional-services","match":"law|accounting|consulting|insurance","blueprint":"professional-services","worker":"demo-builder","retentionHours":24,"maxOutputBytes":1048576},
+    {"id":"home-services","match":"roofing|plumbing|hvac|landscaping|pressure washing|cleaning","blueprint":"home-services","worker":"demo-builder","retentionHours":24,"maxOutputBytes":1048576}
+  ],
+  "security": {"credentialAccess":false,"filesystemBoundary":"workspace-only","externalExecution":"fail-closed","maxConcurrentBuilds":2}
+}

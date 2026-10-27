@@ -1,0 +1,28 @@
+{
+  "release": "65.0.3",
+  "name": "LORNA-BATCH-INGEST-RECOVERY-SAFE",
+  "created_utc": "2026-10-09",
+  "change": "Adds 29 Lorna barbershop prospects to the controlled startup lead seeder; cold and pending owner verification.",
+  "live_database_modified": false,
+  "recovery_threshold_changed": false,
+  "outreach_triggered": false,
+  "verification": {
+    "batch_test": "pass",
+    "data_recovery_guard_test": "pass",
+    "recovery_growth_test": "pass",
+    "runtime_integrity_test": "pass",
+    "mysql_lifecycle_test": "pass",
+    "database_recovery_order_test": "pass"
+  },
+  "files": {
+    "package.json": "de2298f5a00ce6ee922dc76af7dad1d2e620189abb1646bfb0d20b546375b209",
+    "config/release-identity.js": "b0873789f4ae1aaa9bd22ae05a3b6953b2a649ce30f6fbe5d56220bac6682e91",
+    "server.js": "15387826d29e9a1ded4eeead06d8b3108d8e04cc910578c9af41ab93300f0989",
+    "public/index.html": "7dfc335cc8b96e1c8509086f24782bdf56732d27639fa5688e725db9c4bf9a03",
+    "public/app.js": "b80bbc45867964cc787c5bbd05ebe011e6d77d48e43d69a995e3769366ccf731",
+    "public/v56251-ui-finalize.js": "95bb18116136e1d350d678a5602d55f08130dca67ec8a1c686af510ae105fec8",
+    "starter-leads/SBC-Lorna-Barbershop-Batch-2026-10-09.csv": "1555a74e40f531eaff2323331c97f5b6689e8132aa35f5ca0231aa065692570a",
+    "starter-leads/LORNA-BARBERSHOP-BATCH-2026-10-09-MANIFEST.json": "0e89845b6c5289728637a5af491d19c878099a85a7f6a9f8039fff5fae427373",
+    "scripts/v6503-lorna-batch-test.js": "98193971d08e3b8d2310b5b079686ab4706212f902051f5affd6f81238a84212"
+  }
+}

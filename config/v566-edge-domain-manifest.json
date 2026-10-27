@@ -1,0 +1,15 @@
+{
+  "version": "56.6.0",
+  "mode": "manifest-only",
+  "platform": "GoDaddy/cPanel",
+  "immutable": true,
+  "cacheKey": "tenant-host-v2:{host}",
+  "authoritativeMap": "existing-tenant-host-map",
+  "rules": [
+    {"match":"exact-host","action":"resolve-authoritative-tenant"},
+    {"match":"unknown-host","action":"fail-closed"},
+    {"match":"tenant-route","action":"cache-by-host-and-tenant"}
+  ],
+  "futureEdgeTarget": "Nginx/managed-edge-compatible",
+  "note": "This file defines the edge contract. It does not claim Nginx is active on GoDaddy/cPanel."
+}

@@ -1,0 +1,12 @@
+# SBC V56.13.1 — FUTURE EDGE TEMPLATE ONLY.
+# GoDaddy cPanel does not execute this file as its reverse proxy configuration.
+# Use only on an operator-controlled Nginx edge in front of the application.
+upstream sbc_app {
+    server 127.0.0.1:3000 max_fails=2 fail_timeout=3s;
+    keepalive 32;
+}
+proxy_connect_timeout 1500ms;
+proxy_send_timeout 1500ms;
+proxy_read_timeout 1500ms;
+proxy_next_upstream error timeout http_502 http_503 http_504;
+proxy_next_upstream_tries 2;

@@ -1,0 +1,18 @@
+{
+  "release":"56.20.0",
+  "name":"SBC Business Command Center",
+  "codename":"CUSTOMER-REVENUE-PROOF-ENGINE",
+  "foundation":"56.19.0",
+  "focus":["MARKET_VALIDATION","COMMERCIAL_READINESS","OFFICE_BOX_ACTIVATION"],
+  "capabilities":["CORE_SAAS","SEO_SYNDICATION","OPEN_FACADE","ADVANCED_INTELLIGENCE","DEMO_BUILDER","OFFICE_BOX"],
+  "revenueProof":true,
+  "sftpWatcher":true,
+  "funnelTelemetry":true,
+  "unitEconomicsLedger":true,
+  "activationHealth":true,
+  "secretsAdded":0,
+  "paymentAuthority":"Square",
+  "entitlementAuthority":"MySQL",
+  "ownerApprovalThresholdUsd":10000,
+  "status":"BUILT_TEST_VALIDATED"
+}

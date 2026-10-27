@@ -1,0 +1,20 @@
+SBC V65.1.8 — Polling Hotfix Notes
+
+Scope
+- Prevent overlapping requests in the Cinematic Revenue Operations events poller.
+- Back off after HTTP 429 and 5xx responses; honor Retry-After when supplied.
+- Pause cinematic polling while the browser tab is hidden and resume on visibility.
+- Remove the notification widget's network request from mount/render, deduplicate status fetches, and reduce automatic status polling to once per minute.
+- Cache-bust only the two modified frontend JavaScript assets.
+
+Safety
+- No database schema/data/migration files were changed.
+- No API rate limiter, authentication, authorization, owner approval, or recovery guard was disabled.
+- No production deployment was performed.
+
+Validation performed locally
+- Node syntax checks for modified JavaScript assets.
+- 12 polling-hotfix assertions passed.
+- Existing unattended-notifications service test passed.
+- Existing recovery write-gate test passed (12/12).
+- The inherited v6505 notification UI test suite has a stale release identity assertion (expects 65.1.0 while config/release-identity.js says 65.1.8); it fails on that assertion before completing. No release identity was changed as part of this focused fix.

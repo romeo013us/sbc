@@ -1,0 +1,905 @@
+{
+  "version": "43.3.0",
+  "items": [
+    {
+      "id": "smooth-1",
+      "name": "One-Click Daily Command Brief",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-2",
+      "name": "Auto-Repair Queue Triage",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-3",
+      "name": "Slow-Request Heatmap",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-4",
+      "name": "Broken-Button Sentinel",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-5",
+      "name": "Login Journey Guard",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-6",
+      "name": "Session Continuity Monitor",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-7",
+      "name": "Lead Aging Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-8",
+      "name": "Duplicate Lead Preview",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-9",
+      "name": "Stale Task Sweep",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-10",
+      "name": "Follow-Up Gap Detector",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-11",
+      "name": "Quote Expiration Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-12",
+      "name": "Renewal Risk Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-13",
+      "name": "Payment Reconciliation Queue",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-14",
+      "name": "Order Handoff Checklist",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-15",
+      "name": "Fulfillment Bottleneck Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-16",
+      "name": "Vendor Latency Watch",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-17",
+      "name": "Customer Escalation Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-18",
+      "name": "Communication Promise Tracker",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-19",
+      "name": "SLA Countdown Board",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-20",
+      "name": "Meeting Prep Brief",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-21",
+      "name": "Employee Readiness Meter",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-22",
+      "name": "Training Gap Detector",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-23",
+      "name": "New-Hire Day Plan",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-24",
+      "name": "Role Permission Drift Check",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-25",
+      "name": "Team Workload Balancer",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-26",
+      "name": "Unassigned Work Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-27",
+      "name": "Daily Data Hygiene Sweep",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-28",
+      "name": "Missing Field Detector",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-29",
+      "name": "Contactability Score",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-30",
+      "name": "Lead Source Integrity Check",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-31",
+      "name": "Pipeline Stuck Detector",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-32",
+      "name": "Opportunity Next-Step Guard",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-33",
+      "name": "Customer Record Completeness",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-34",
+      "name": "Order Data Completeness",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-35",
+      "name": "Price Book Consistency Check",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-36",
+      "name": "Catalog Change Diff",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-37",
+      "name": "Webhook Health Board",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-38",
+      "name": "Integration Credential Readiness",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-39",
+      "name": "Background Worker Watch",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-40",
+      "name": "Database Write Queue Watch",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-41",
+      "name": "Cache Freshness Monitor",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-42",
+      "name": "Frontend Version Sentinel",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-43",
+      "name": "Search Quality Monitor",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-44",
+      "name": "Notification Delivery Watch",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-45",
+      "name": "Task Dependency Map",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-46",
+      "name": "Calendar Conflict Radar",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-47",
+      "name": "End-of-Day Closeout",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-48",
+      "name": "Morning Launch Checklist",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-49",
+      "name": "Kim Handoff Queue",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "smooth-50",
+      "name": "Owner Exception Queue",
+      "group": "smooth",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-1",
+      "name": "Lead-to-Customer Handoff Graph",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-2",
+      "name": "Quote-to-Payment Bridge",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-3",
+      "name": "Payment-to-Fulfillment Bridge",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-4",
+      "name": "Customer-to-Website Context Link",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-5",
+      "name": "CRM-to-Communications Timeline",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-6",
+      "name": "CRM-to-Calendar Context",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-7",
+      "name": "CRM-to-Training Context",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-8",
+      "name": "Lead-to-Marketing Attribution",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-9",
+      "name": "Order-to-Vendor Trace",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-10",
+      "name": "Vendor-to-Customer Tracking",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-11",
+      "name": "Website-Demo-to-CRM Capture",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-12",
+      "name": "Form-to-Lead Qualification",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-13",
+      "name": "Call-to-CRM Auto-Note",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-14",
+      "name": "SMS-to-Account Timeline",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-15",
+      "name": "Email-to-Account Timeline",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-16",
+      "name": "Task-to-Opportunity Link",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-17",
+      "name": "Renewal-to-Original-Order Link",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-18",
+      "name": "Support-to-Account Health",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-19",
+      "name": "Refund-to-Audit Trail",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-20",
+      "name": "Commission-to-Cash Ledger",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-21",
+      "name": "Employee-to-Workload Map",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-22",
+      "name": "Employee-to-Training Map",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-23",
+      "name": "Employee-to-Lead Ownership",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-24",
+      "name": "Kim-to-Exception Escalation",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-25",
+      "name": "Kim-to-Fulfillment Queue",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-26",
+      "name": "Kim-to-Sales Queue",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-27",
+      "name": "Kim-to-Customer Health",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-28",
+      "name": "Kim-to-Website Health",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-29",
+      "name": "Kim-to-Marketing Queue",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-30",
+      "name": "Kim-to-Payment Readiness",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-31",
+      "name": "Vendor Failover Decision Graph",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-32",
+      "name": "Integration Dependency Map",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-33",
+      "name": "Cross-Module Event Timeline",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-34",
+      "name": "Unified Customer 360 Snapshot",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-35",
+      "name": "Unified Business 360 Snapshot",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-36",
+      "name": "Opportunity Journey Replay",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-37",
+      "name": "Customer Journey Replay",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-38",
+      "name": "Order Journey Replay",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-39",
+      "name": "Revenue Journey Replay",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-40",
+      "name": "Lead Source-to-Revenue Chain",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-41",
+      "name": "Campaign-to-Deal Chain",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-42",
+      "name": "Deal-to-Service Chain",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-43",
+      "name": "Service-to-Renewal Chain",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-44",
+      "name": "Issue-to-Resolution Chain",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-45",
+      "name": "Training-to-Production Clearance",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-46",
+      "name": "Onboarding-to-First-Deal Chain",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-47",
+      "name": "Office-to-Team Capacity Map",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-48",
+      "name": "SBC-to-Partner Service Router",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-49",
+      "name": "Payment Processing Partner Handoff",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "connected-50",
+      "name": "Executive Exception Escalation Bus",
+      "group": "connected",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-1",
+      "name": "Kim Mission Control",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-2",
+      "name": "Business Digital Twin",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-3",
+      "name": "Customer Memory Capsule",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-4",
+      "name": "Deal War Room",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-5",
+      "name": "Lead Autopsy Studio",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-6",
+      "name": "Revenue Leak Detector",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-7",
+      "name": "Invisible Work Detector",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-8",
+      "name": "Promise Ledger",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-9",
+      "name": "Trust Recovery Planner",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-10",
+      "name": "Customer Momentum Score",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-11",
+      "name": "Relationship Temperature Map",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-12",
+      "name": "Opportunity Gravity Map",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-13",
+      "name": "Decision Replay Engine",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-14",
+      "name": "What-Changed-While-You-Were-Gone",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-15",
+      "name": "Next-Morning CEO Brief",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-16",
+      "name": "Zero-Surprise Fulfillment Mode",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-17",
+      "name": "Silent Failure Detector",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-18",
+      "name": "Counterfactual Deal Simulator",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-19",
+      "name": "Margin Protection Copilot",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-20",
+      "name": "Service Bundle Composer",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-21",
+      "name": "Business Launch Blueprint",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-22",
+      "name": "One-Conversation Account Builder",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-23",
+      "name": "Instant Client Health Report",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-24",
+      "name": "Customer Churn Storyline",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-25",
+      "name": "Revenue Concentration Radar",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-26",
+      "name": "Referral Opportunity Miner",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-27",
+      "name": "Expansion Moment Detector",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-28",
+      "name": "Dormant Customer Revival Map",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-29",
+      "name": "Lost-Deal Learning Loop",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-30",
+      "name": "Sales Rep Coaching Mirror",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-31",
+      "name": "Call Quality Fingerprint",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-32",
+      "name": "Lead Research Confidence Meter",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-33",
+      "name": "Human-vs-AI Work Router",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-34",
+      "name": "Kim Confidence Gate",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-35",
+      "name": "Safe Action Preview",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-36",
+      "name": "Recovery Point Planner",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-37",
+      "name": "Reversible Change Journal",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-38",
+      "name": "Operational Time Machine",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-39",
+      "name": "Process Bottleneck Storyboard",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-40",
+      "name": "Business Promise Scorecard",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-41",
+      "name": "Executive Risk Constellation",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-42",
+      "name": "SBC Opportunity Genome",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-43",
+      "name": "Customer Value Trajectory",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-44",
+      "name": "Partner Fit Matrix",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-45",
+      "name": "Payment Processing Readiness Map",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-46",
+      "name": "Offer Collision Detector",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-47",
+      "name": "Service Profitability Lens",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-48",
+      "name": "Workflow Friction Score",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-49",
+      "name": "Competitive Differentiation Vault",
+      "group": "standout",
+      "status": "guarded"
+    },
+    {
+      "id": "standout-50",
+      "name": "SBC Signature Operating Blueprint",
+      "group": "standout",
+      "status": "guarded"
+    }
+  ]
+}

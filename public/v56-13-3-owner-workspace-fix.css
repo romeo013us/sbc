@@ -1,0 +1,18 @@
+/* SBC V56.13.3 — Owner Workspace visual corrections */
+.sbc-secondary-hidden{display:none!important}
+.sbc-tier1-nav{order:-10;background:linear-gradient(90deg,rgba(11,116,209,.12),rgba(0,188,212,.05));border:1px solid rgba(127,193,244,.08)}
+.sbc-tier1-nav:hover{background:linear-gradient(90deg,rgba(11,116,209,.28),rgba(0,188,212,.12))}
+.sbc-owner-quick-rail{margin:16px 0;padding:18px;border:1px solid rgba(11,116,209,.18);border-radius:18px;background:linear-gradient(135deg,rgba(11,116,209,.06),rgba(242,139,37,.035));box-shadow:0 10px 30px rgba(16,32,51,.05)}
+.sbc-owner-quick-head h3{margin:4px 0 3px;font-size:17px}.sbc-owner-quick-head p{margin:0;color:var(--muted);font-size:10px}
+.sbc-owner-quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.sbc-owner-quick{display:flex;align-items:center;gap:11px;text-align:left;padding:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:14px;cursor:pointer;min-height:72px}.sbc-owner-quick:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(16,32,51,.08)}
+.sbc-owner-quick.primary{border-color:rgba(11,116,209,.42);box-shadow:inset 0 0 0 1px rgba(11,116,209,.08)}.sbc-owner-quick>span{font-size:22px}.sbc-owner-quick strong{display:block;font-size:11px}.sbc-owner-quick small{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.35}
+.sbc-visual-pipeline-card{border:1px solid rgba(11,116,209,.35)!important;box-shadow:0 14px 34px rgba(11,116,209,.08)!important}
+.sbc-visual-pipeline-card .card-head{background:linear-gradient(90deg,rgba(11,116,209,.12),transparent);border-bottom:1px solid rgba(11,116,209,.18)}
+.sbc-visual-pipeline-card .card-head h2{font-weight:950}.sbc-pipeline-badge{background:#0b74d1!important;border-color:#0b74d1!important;color:#fff!important;letter-spacing:.4px}
+/* Dark mode: preserve contrast on the pipeline title/header instead of inheriting light-theme text. */
+body.dark .sbc-visual-pipeline-card,body[data-theme="dark"] .sbc-visual-pipeline-card,.dark .sbc-visual-pipeline-card{border-color:rgba(78,190,255,.55)!important;background:#0d1722!important}.dark .sbc-visual-pipeline-card .card-head h2,body.dark .sbc-visual-pipeline-card .card-head h2,body[data-theme="dark"] .sbc-visual-pipeline-card .card-head h2{color:#f3f7fb!important}.dark .sbc-visual-pipeline-card .card-head{background:linear-gradient(90deg,rgba(11,116,209,.25),transparent)}
+@media(max-width:1000px){.sbc-owner-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.sbc-owner-quick-grid{grid-template-columns:1fr}}
+
+/* Money Radar is retired as a standalone owner surface; Revenue PLAY / Next Best Action remain the execution path. */
+.v56-auto-card:has(#v56AutoMoney){display:none!important}

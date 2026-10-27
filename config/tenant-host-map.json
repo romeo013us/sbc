@@ -1,0 +1,13 @@
+{
+  "example-client.sbcwebsites.com": {
+    "tenantId": 1001,
+    "customerId": "",
+    "plan": "starter",
+    "brand": {
+      "businessName": "Example Client",
+      "primaryColor": "#0B63CE",
+      "accentColor": "#F97316",
+      "template": "print-reseller"
+    }
+  }
+}

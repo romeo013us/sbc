@@ -1,0 +1,26 @@
+{
+  "name": "SBC OS V65.1.6 Enterprise Safety & Reconciliation",
+  "builtAtUtc": "2026-10-09T16:46:21.036999+00:00",
+  "checks": {
+    "release_identity": "65.1.6",
+    "npm_test_all": "PASS",
+    "recovery_isolation": "PASS (21 checks)",
+    "enterprise_safety_modules": "PASS (tenant context, audit hash, fail-closed mismatch handling, tenant-scoped fulfillment)",
+    "predeploy_gate": "PASS (40 checks)",
+    "buyer_demo_regression": "PASS (5/5)",
+    "ui_recovery_regression": "PASS (19/19)",
+    "training_enterprise_regression": "PASS (9/9)",
+    "javascript_syntax": "PASS (598 JavaScript files)",
+    "lead_reconciliation": "READ-ONLY; packaged schema-only database.sql has no row data; no recovery SQL generated",
+    "live_deployment": "NOT PERFORMED",
+    "live_database_reconciliation": "NOT PERFORMED",
+    "payment_fulfillment_e2e": "NOT PERFORMED"
+  },
+  "safetyNotes": [
+    "Recovery lock remains enabled.",
+    "No customer records were inserted, deleted, or restored.",
+    "New migration is metadata-reconciled to tolerate partial DDL runs.",
+    "Tenant AsyncLocalStorage context is wired into authenticated requests; every SQL statement is not yet automatically tenant-filtered.",
+    "The 5-record discrepancy remains unresolved."
+  ]
+}

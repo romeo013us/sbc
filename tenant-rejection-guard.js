@@ -1,0 +1,47 @@
+'use strict';
+
+// V65.1.34: tenantless background work must fail closed without taking down
+// the HTTP process. Preserve the existing fail-fast handler for every other error.
+const MARKER = 'SBC_V65134_TENANT_REJECTION_GUARD';
+
+function isMissingTenantContext(reason) {
+  const code = reason && typeof reason === 'object' ? String(reason.code || '') : '';
+  const message = reason && typeof reason === 'object' ? String(reason.message || '') : String(reason || '');
+  return code === 'TENANT_CONTEXT_REQUIRED' || /\bTENANT_CONTEXT_REQUIRED\b/.test(message);
+}
+
+function installTenantRejectionGuard(proc = process, logger = console) {
+  if (proc[MARKER]) return false;
+  const originalOn = proc.on;
+  const logged = new WeakSet();
+  // Read-only in-process counters help the authenticated launch gate detect failed jobs.
+  const counters = { rejected: 0, lastRejectedAt: null };
+  Object.defineProperty(proc, 'SBC_TENANT_REJECTION_STATS', { value: counters, enumerable: false });
+  proc.on = function sbcGuardedOn(eventName, listener) {
+    if (eventName !== 'unhandledRejection' || typeof listener !== 'function') {
+      return originalOn.call(this, eventName, listener);
+    }
+    const wrapped = function sbcTenantContextFailClosed(reason, promise) {
+      if (isMissingTenantContext(reason)) {
+        counters.rejected += 1;
+        counters.lastRejectedAt = new Date().toISOString();
+        if (reason && typeof reason === 'object') {
+          if (!logged.has(reason)) {
+            logged.add(reason);
+            const stackLine = String(reason.stack || reason).split(/\r?\n/).slice(0, 7).join(' | ').slice(0, 1200);
+            logger.error('[SBC TENANT CONTEXT GUARD] Tenant-dependent background operation rejected without tenant context; operation failed closed. No tenantless action was authorized. Stack:', stackLine);
+          }
+        } else {
+          logger.error('[SBC TENANT CONTEXT GUARD] Tenant-dependent background operation rejected without tenant context; operation failed closed:', String(reason));
+        }
+        return;
+      }
+      return listener.call(this, reason, promise);
+    };
+    return originalOn.call(this, eventName, wrapped);
+  };
+  Object.defineProperty(proc, MARKER, { value: true, configurable: false, enumerable: false });
+  return true;
+}
+
+module.exports = { installTenantRejectionGuard, isMissingTenantContext, MARKER };

@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "buildVersion": "56.4.0",
+  "baseline": "56.3.0",
+  "release": "SBC System Guardian V1 \u2014 defensive integrity, dependency audit, quarantine and release protection",
+  "changedFiles": [
+    {
+      "file": "RELEASE-NOTES-V56.4.0-GUARDIAN.md",
+      "sha256": "add6322f5fa19a751529642422cf8203604604ac9b347999e2892cf0263ff7b0",
+      "bytes": 1619
+    },
+    {
+      "file": "SYSTEM-GUARDIAN-V1.md",
+      "sha256": "f39dbe085b484c9697b9c80fe154e88487c5fa0238134387992091c958ce684b",
+      "bytes": 3237
+    },
+    {
+      "file": "config/guardian-protected.json",
+      "sha256": "aff2e08a3ca14dec6732ea7c7bcd79641ba51f2db98bd7659326cc25514a5c54",
+      "bytes": 544
+    },
+    {
+      "file": "enterprise/sbc-system-guardian.js",
+      "sha256": "51df40822b4e3be41d0e127fd7e314af81c7bc43ed07da07a8b76dc930f47711",
+      "bytes": 14336
+    },
+    {
+      "file": "public/v564-guardian.css",
+      "sha256": "85e3501ce139681c1b6b74ec8b05062a79eefada3acea21922f52dc0726afecb",
+      "bytes": 2140
+    },
+    {
+      "file": "public/v564-guardian.js",
+      "sha256": "4da811946577a07a560b3222a4bd631eb1f021445411cb65b4ded6cf6734fd3a",
+      "bytes": 4669
+    },
+    {
+      "file": "scripts/guardian-audit.js",
+      "sha256": "8661f14b256c130c389669ca549d43590543a5c041893dfe33a275276150d6d4",
+      "bytes": 728
+    },
+    {
+      "file": "scripts/guardian-cleanup-report.js",
+      "sha256": "428b00ff4a8e65b98bdca60e6b970dbe6fe6e777d1f782c0caabf584ef99e195",
+      "bytes": 1423
+    },
+    {
+      "file": "scripts/guardian-quarantine.js",
+      "sha256": "453e280169c5819b8bf2ac7931ba9d046ac84336d7069079890cefcbaa6a7f4c",
+      "bytes": 1076
+    },
+    {
+      "file": "scripts/guardian-release-gate.js",
+      "sha256": "ef7b7a90918803cf6a648e71a67fed108fa23d23a1d55cae39c8172d21a6cfe3",
+      "bytes": 1562
+    },
+    {
+      "file": "scripts/guardian-snapshot.js",
+      "sha256": "e60b487a0a5baf125368281a9c9124fd38f40d0032b63f23e0f1887dea1d6139",
+      "bytes": 615
+    },
+    {
+      "file": "scripts/guardian-system-test.js",
+      "sha256": "8d8915fc1ea7a54dfbd88cc27f4863ca301e1aaf14ec18665d8d7ec1f66f69bb",
+      "bytes": 2208
+    },
+    {
+      "file": "VERSION",
+      "sha256": "b76b1ff04a2c28b85c05d44fd386d141463e4f198ec1c9626d09e7cd3e9f1bfe",
+      "bytes": 7
+    },
+    {
+      "file": "package.json",
+      "sha256": "82820b81cf26b73df92bf41ed587fe472828bdc3818604baa04ffd989cec6235",
+      "bytes": 3044
+    },
+    {
+      "file": "public/index.html",
+      "sha256": "aa38d88666345ef086eef8e0befad3b0ff2512b310f5e7a5dcc02307b9fee635",
+      "bytes": 12017
+    },
+    {
+      "file": "scripts/v562-release-test.js",
+      "sha256": "2e7eb8b1dd7f998c5fd917182063c178b736b21cebc1d85ddeaa583e6231059b",
+      "bytes": 3839
+    },
+    {
+      "file": "scripts/v563-maturity-test.js",
+      "sha256": "9fa8e3fc150e1da677d448e502ff185cea7cf218836da8f666cb7ce0493935ad",
+      "bytes": 5639
+    },
+    {
+      "file": "scripts/v563-release-gate.js",
+      "sha256": "ac63c22172d021b0cd05cb961747784de286d9a8506349de6aa424ef1b6b2da8",
+      "bytes": 2313
+    },
+    {
+      "file": "server.js",
+      "sha256": "18794ac71e8be301bf4b50f4f9fffd5e7de6a7584da8cd9d9ffb6f5b203e5fa9",
+      "bytes": 930711
+    }
+  ],
+  "testResults": {
+    "guardianSystem": "14/14 PASS",
+    "guardianRelease": "6/6 PASS",
+    "secretAudit": "0 findings PASS",
+    "platformArchitecture": "PASS",
+    "startupDataIntegrity": "PASS",
+    "kimSteward": "PASS",
+    "v563Maturity": "23/23 PASS",
+    "v563Release": "20/20 PASS",
+    "marketingControls": "21/21 PASS",
+    "v562Release": "34/34 PASS",
+    "v562Next": "9/9 PASS",
+    "v562Consolidation": "17/17 PASS",
+    "tier1": "20/20 PASS"
+  },
+  "runtimeNote": "Local sandbox does not contain installed production Node dependencies; GoDaddy production smoke test remains the final runtime verification gate.",
+  "safetyNote": "Guardian never auto-deletes. Runtime quarantine requires owner confirmation. Existing Kim Steward remains the recovery/rollback mechanism."
+}

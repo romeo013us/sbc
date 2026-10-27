@@ -1,0 +1,9 @@
+/* V55.12.3 — Kim interaction isolation */
+#sbcAiDock.sbc-kim-dock{position:fixed!important;z-index:2147483000!important;pointer-events:auto!important;isolation:isolate!important;touch-action:auto!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important}
+#sbcAiDock.sbc-kim-dock *{pointer-events:auto!important}
+#sbcAiDock.sbc-kim-dock .sbc-kim-topbar{cursor:move!important;touch-action:none!important}
+#sbcAiDock.sbc-kim-dock .sbc-kim-topbar button{cursor:pointer!important}
+#sbcAiDock.sbc-kim-dock #sbcAiInput{pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important;cursor:text!important;touch-action:auto!important;position:relative!important;z-index:2147483001!important}
+#sbcAiDock.sbc-kim-dock #sbcAiSend,#sbcAiDock.sbc-kim-dock #sbcKimClose{pointer-events:auto!important;cursor:pointer!important;position:relative!important;z-index:2147483002!important}
+#sbcAiDock.sbc-kim-dock .sbc-kim-resize-grip{pointer-events:auto!important;cursor:nwse-resize!important;touch-action:none!important;z-index:2147483003!important}
+@media(max-width:650px){#sbcAiDock.sbc-kim-dock{width:calc(100vw - 16px)!important;height:min(76vh,620px)!important;right:auto!important;bottom:auto!important}}

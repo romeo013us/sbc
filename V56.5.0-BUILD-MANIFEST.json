@@ -1,0 +1,51 @@
+{
+  "release": "SBC Business Command Center V56.5.0",
+  "version": "56.5.0",
+  "base": "V56.4.0 System Guardian",
+  "generatedAt": "2026-10-04T01:53:00Z",
+  "architecture": "additive operational hardening overlay",
+  "tests": {
+    "v565_operational_hardening": "18/18 PASS",
+    "v565_release_gate": "8/8 PASS",
+    "guardian_system": "14/14 PASS",
+    "guardian_release_gate": "6/6 PASS",
+    "tier1": "20/20 PASS",
+    "next_architecture": "9/9 PASS",
+    "consolidation": "17/17 PASS",
+    "marketing_controls": "21/21 PASS",
+    "v563_maturity": "23/23 PASS",
+    "v563_release_gate": "20/20 PASS",
+    "platform_architecture": "PASS",
+    "startup_data_integrity": "PASS",
+    "kim_steward": "PASS",
+    "secret_audit": "0 findings"
+  },
+  "guardian_snapshot": {
+    "filesScanned": 292,
+    "routes": 786,
+    "protected": 116,
+    "duplicateRouteGroups": 1,
+    "duplicateFileGroups": 0,
+    "highConfidenceUnreferenced": 1
+  },
+  "safety": {
+    "autoDelete": false,
+    "newSecrets": false,
+    "liveVendorSubmission": false,
+    "fabricatedCarrierAttestation": false,
+    "godaddyHotReloadClaim": false
+  },
+  "sha256": {
+    "VERSION": "f809b1689024e8b502f3a7f1854b49c8ce1b9efce872300e8c740e4b7edeedc7",
+    "package.json": "6861e830dd5f735a4ef9295fa507169bc9a1b2c32ee68efff023fabf74e5875e",
+    "package-lock.json": "f3a7b25c5e4fbb76e7aa5a392005071eec3ab7cd30feddc8bc8a5058c96f3851",
+    "server.js": "a2e6d4b3a47065e1f09adba3615dd31685fa4374612f7e15e5649d60dfcd8ded",
+    "enterprise/sbc-system-guardian.js": "51df40822b4e3be41d0e127fd7e314af81c7bc43ed07da07a8b76dc930f47711",
+    "enterprise/v565-operational-hardening.js": "69bfd533676225ba64620479a6ba07055f5eb83742e0a93cf7e07f3f2ec1bda5",
+    "public/index.html": "969bc18c69291bea2aa09a85872b89e6cf347fd7d23b89758184fcf0e0d5ecd7",
+    "public/v564-guardian.js": "a0c0f78baf46e261e6348bb371732a8705e30569f2ff5891f2d93095c5c9ab9c",
+    "public/v565-operational.js": "2cf9b70a9ed94473d2d2e94aefc65fb7d471fb8222fd5cc08a3056a3ea90d457",
+    "V56.5-OPERATIONAL-HARDENING.md": "dd259fad48f5f3dd8838c728ff508077c2f9316eb7bb105ee7ea42c4d5b899b0",
+    "RELEASE-NOTES-V56.5.0.md": "037bf50ab746fce20dfd036af6a5746898820272ff1afa5fd614c577d6f45384"
+  }
+}

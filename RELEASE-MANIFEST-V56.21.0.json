@@ -1,0 +1,14 @@
+{
+  "release":"56.21.0",
+  "name":"SBC Business Command Center",
+  "codename":"COMMERCIAL-READINESS-LIVE-REVENUE",
+  "foundation":"56.20.0",
+  "focus":["COMMERCIAL_READINESS","UNIT_ECONOMICS","LIVE_REVENUE_MEASUREMENT"],
+  "canonicalMonthlyPackages":[99,199,349,599],
+  "officeBoxMonthlyPlans":[49,99,149,199],
+  "mysqlAuthoritative":true,
+  "secretsAdded":0,
+  "paymentAuthority":"Square",
+  "ownerApprovalThresholdUsd":10000,
+  "status":"BUILT_TEST_VALIDATED"
+}

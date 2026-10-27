@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('assert');
+const U=require('../enterprise/unattended-operations-v6431');
+let r=U.gate({db:{customers:[]},recoveryRequired:true,providerHealth:{}});
+assert.equal(r.ready,false); assert(r.blockers.includes('NO_AUTHORITATIVE_CRM_LEADS')); assert(r.blockers.includes('MYSQL_RECOVERY_REQUIRED'));
+r=U.gate({db:{customers:[{id:'1'}]},recoveryRequired:false,providerHealth:{square:'OK',twilio:'OK',godaddy:'OK'}});
+assert.equal(r.ready,true); assert.equal(r.mode,'UNATTENDED_READY');
+assert.equal(U.policy('refund').allowed,false); assert.equal(U.policy('lead_qualification').allowed,true);
+const sim=U.simulate21Day({startingLeads:100,dailyNewLeads:10,dailyOutreach:25,conversionRate:.02,avgOrderValue:349});
+assert.equal(sim.days,21); assert.equal(sim.model,'simulation_only_not_forecast');
+assert.equal(U.idempotencyKey('x',{a:1}),U.idempotencyKey('x',{a:1}));
+console.log('V64.3.1 UNATTENDED OPERATIONS TEST: PASS');

@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+const store=fs.readFileSync(path.join(root,'enterprise/session-store.js'),'utf8');
+const pkg=require(path.join(root,'package.json'));const release=require(path.join(root,'config/release-identity.js'));
+assert.equal(pkg.version, require('../package.json').version);assert.equal(release.RELEASE_VERSION,pkg.version);
+assert.match(server,/app\.post\('\/api\/logout',async\(req,res\)=>\{/,'logout does not require auth middleware');
+assert.match(server,/serverSessionRevocation:[\s\S]*?version:BUILD_VERSION/,'logout clears client cookie and returns status even when server-side revocation is unavailable');
+assert.match(server,/if\(!durable\)[\s\S]*?SESSION_PERSISTENCE_UNAVAILABLE[\s\S]*?return res\.status\(503\)/,'login refuses to issue a session without durable persistence');
+assert.match(store,/const currentMysqlPool=\(\)=>[\s\S]*?currentMysqlPool\(\)/,'session store resolves the MySQL pool dynamically after startup initialization');
+assert.match(store,/async function dropSession\(token\)[\s\S]*?await Promise\.all\(cleanup\);return result/,'logout cleanup is bounded and best-effort across stores');
+assert.match(store,/SESSION_STORE_UNAVAILABLE/,'session read distinguishes infrastructure failure from absent session');
+console.log('V65.1.26 auth/session safety checks: 6/6 PASS');

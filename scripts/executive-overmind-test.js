@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('assert');
+const O=require('../enterprise/sbc-executive-overmind-v610');
+const context={runRate:7000,targetRunRate:10000,pipeline:50000,collected:12000,leads:238,hotLeads:27,warmLeads:211,paymentConversionPct:42,churnPct:3,capacityPct:90,recoverySafe:false};
+const bad=O.evaluateOwnerProposal({action:'spend $2000 on increasing lead volume',amount:2000,expectedValue:900,reversible:true},context);
+assert.equal(bad.disagree,true); assert.equal(bad.decision,'REJECT_OR_REDIRECT'); assert.ok(bad.bestAlternative); assert.ok(bad.bestAlternative.expectedValue>900);
+const good=O.evaluateOwnerProposal({action:'reactivate high intent leads',amount:0,expectedValue:1000,reversible:true},context);
+assert.equal(good.disagree,false); assert.equal(good.decision,'ACCEPT');
+const blocked=O.evaluateOwnerProposal({action:'change owner access',amount:0,reversible:false},context);
+assert.equal(blocked.authority,O.AUTHORITY.OWNER_SIGNATURE); assert.equal(blocked.disagree,true);
+const recovery=O.evaluateOwnerProposal({action:'improve checkout',amount:0,reversible:true}, {...context,recoverySafe:true});
+assert.equal(recovery.disagree,true); assert.ok(recovery.objections.some(x=>x.includes('recovery-safe')));
+const mandate=O.formulateExecutiveMandate(context); assert.equal(mandate.identity,O.IDENTITY); assert.ok(mandate.directives.length);
+console.log('SBC EXECUTIVE OVERMIND TEST: PASS');

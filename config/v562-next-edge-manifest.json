@@ -1,0 +1,18 @@
+{
+  "version": "56.2.0",
+  "mode": "manifest-only",
+  "provider": "GoDaddy-compatible",
+  "purpose": "Authoritative tenant-host routing and future reverse-proxy cache partitioning",
+  "tenantIdentity": "authoritative-storage-only",
+  "cacheKeys": {
+    "host": "tenant-host:v1:{host}",
+    "route": "tenant-route:v1:{tenantId}:{path}"
+  },
+  "hotReload": "disabled-on-GoDaddy; application restart/deployment required",
+  "liveProxy": false,
+  "notes": [
+    "No Nginx runtime is claimed by this application manifest.",
+    "Tenant identity must never be derived from an unverified client header.",
+    "Provider fulfillment remains gated by official endpoint and credential configuration."
+  ]
+}

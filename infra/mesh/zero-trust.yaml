@@ -1,0 +1,25 @@
+apiVersion: security.sbc/v1
+kind: ZeroTrustPolicy
+metadata:
+  name: sbc-default-deny
+spec:
+  enforcement: enabled
+  defaultAction: DENY
+  publicNetworkSurface: disabled-by-default
+  requireMutualTLS: true
+  authorizeByServiceIdentity: true
+  explicitIngress:
+    - /
+    - /api/login
+    - /api/portal/*
+    - /api/webhooks/square
+    - /api/webhooks/4over4
+    - /api/webhooks/vistaprint
+  serviceEgress:
+    - mysql
+    - redis
+    - twilio
+    - square
+    - godaddy
+    - 4over4
+    - vistaprint

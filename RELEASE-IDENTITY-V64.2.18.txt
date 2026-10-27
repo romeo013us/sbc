@@ -1,0 +1,1 @@
+SBC OS V64.2.18\nActive release: 64.2.18\nKevin integration: SBCAdapter + SbcPersistenceAdapter\nRecovery mode remains fail-closed until authoritative CRM restore.\n

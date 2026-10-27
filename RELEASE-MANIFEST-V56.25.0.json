@@ -1,0 +1,17 @@
+{
+  "version": "56.25.0",
+  "name": "SBC Autonomous Lead Factory",
+  "base": "56.24.2 Release Identity Fix",
+  "integrations": [
+    "Apollo organization search",
+    "Clay webhook enrichment",
+    "existing encrypted provider credential vault"
+  ],
+  "governance": {
+    "ownerOnlyConfig": true,
+    "dailyApolloPages": 10,
+    "dailyClayRows": 250,
+    "outboundAutomation": false,
+    "newGoDaddySecrets": 0
+  }
+}

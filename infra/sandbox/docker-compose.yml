@@ -1,0 +1,17 @@
+services:
+  tenant-isolation-tests:
+    build:
+      context: ../..
+      dockerfile: infra/sandbox/Dockerfile
+    image: sbc-tenant-isolation-tests:65.1.10
+    container_name: sbc-tenant-isolation-tests
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.50
+    tmpfs:
+      - /tmp:size=8m,noexec,nosuid,nodev
+    restart: "no"

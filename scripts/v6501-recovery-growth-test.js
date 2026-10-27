@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('fs');const assert=require('assert');
+const pkg=require('../package.json');const release=require('../config/release-identity');
+const server=fs.readFileSync('server.js','utf8');const growth=fs.readFileSync('enterprise/sbc-growth-os-v650.js','utf8');
+const ui=fs.readFileSync('public/v56251-ui-finalize.js','utf8');
+assert.strictEqual(pkg.version,release.RELEASE_VERSION,'package and release identity must match');
+assert.strictEqual(release.RELEASE_VERSION,pkg.version,'runtime release identity must match package');
+assert(server.includes('restoreLeadMeshToAuthoritativeCRM()'),'idempotent lead recovery function must remain wired');
+assert(server.includes('SBC_GROWTH_OS_V650.configure({mysqlPool,sqlDateTime,recoveryRequired:()=>Boolean(MYSQL_RECOVERY_REQUIRED)})'),'growth OS must configure in recovery mode');
+assert(server.includes('read-only recovery mode: CRM promotion, growth table creation, campaign staging, and background timers are all suspended.') && server.includes('lead restoration skipped; growth staging skipped; no CRM or growth rows were changed by startup.') && growth.includes('function assertWritable(){if(recoveryLocked())throw new Error(\'MYSQL_RECOVERY_REQUIRED:'),'recovery-mode boundaries must be explicit and enforced by runtime guards');
+assert(growth.includes("autoPaidAds:false")||growth.includes('auto_paid_ads TINYINT NOT NULL DEFAULT 0'),'paid ads must default off');
+assert(growth.includes("status:'STAGED'")&&growth.includes('CONNECTOR_DISPATCH_ADAPTER_NOT_IMPLEMENTED'),'content must remain staged until actual publisher dispatch exists');
+assert(!growth.includes("SET status='PUBLISHED'"),'must not claim published without provider receipt');
+assert(ui.includes('V65.1.26'),'visible UI release identity must be updated');
+console.log('V65.1.26 RECOVERY + GROWTH TEST: PASS');
+console.log('release_identity=PASS lead_restore_wired=PASS recovery_safe_staging=PASS no_fake_publish=PASS paid_ads_default_off=PASS ui_identity=PASS');

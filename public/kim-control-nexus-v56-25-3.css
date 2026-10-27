@@ -1,0 +1,13 @@
+/* SBC V56.25.3 — independent Kim launch controls */
+#sbcKimTopButton{position:relative!important;z-index:2147483005!important;pointer-events:auto!important}
+#sbcKimBottomButton{position:fixed!important;left:24px!important;bottom:24px!important;z-index:2147483640!important;display:flex!important;align-items:center!important;gap:9px!important;height:54px!important;padding:7px 12px 7px 8px!important;border:1px solid rgba(82,210,255,.42)!important;border-radius:18px!important;background:linear-gradient(135deg,rgba(4,13,25,.97),rgba(9,31,51,.96))!important;color:#eaf7ff!important;box-shadow:0 18px 55px rgba(0,0,0,.42),0 0 30px rgba(50,188,255,.12)!important;cursor:pointer!important;user-select:none!important;-webkit-user-select:none!important;pointer-events:auto!important;font:inherit!important}
+#sbcKimBottomButton:hover{transform:translateY(-2px);box-shadow:0 22px 60px rgba(0,0,0,.48),0 0 38px rgba(50,188,255,.2)!important}
+.sbc-kim-bottom-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#fff,rgba(78,217,255,.8) 18%,rgba(25,99,180,.3) 58%,transparent 72%);box-shadow:0 0 25px rgba(76,213,255,.35)}
+#sbcKimBottomButton small{display:block;color:#ff9a55;text-align:left;font:900 7px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em}
+#sbcKimBottomButton strong{display:block;margin-top:2px;text-align:left;font:800 9px Inter,ui-sans-serif,system-ui,sans-serif}
+.sbc-kim-bottom-arrow{color:#69dfff;margin-left:4px}
+@media(max-width:650px){#sbcKimBottomButton{left:12px!important;bottom:12px!important;height:48px!important;padding:5px 9px 5px 6px!important}.sbc-kim-bottom-orb{width:34px;height:34px}.sbc-kim-bottom-arrow{display:none}}
+
+/* V56.25.5 — hard hidden state: background systems never make the Kim UI visible. */
+#sbcAiDock[hidden],#sbcAiDock.hidden{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+#sbcAiDock:not([hidden]):not(.hidden){visibility:visible;opacity:1;pointer-events:auto}

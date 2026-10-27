@@ -1,0 +1,17 @@
+{
+  "release": "65.1.10",
+  "test_all": "PASS",
+  "predeploy_open_gate": "PASS",
+  "predeploy_javascript_files_checked": 523,
+  "lead_workspace_checks": "9/9 PASS",
+  "tenant_repository_isolation": "7 checks PASS",
+  "polling_hotfix": "12/12 PASS",
+  "recovery_safe_training": "9/9 PASS",
+  "buyer_demo_stability": "5/5 PASS",
+  "lead_write_test": "Fake MySQL transaction simulation only; recovery lock path returns 423 before DB access",
+  "live_godaddy_verified": false,
+  "production_database_accessed": false,
+  "production_database_changed": false,
+  "recovery_lock_disabled": false,
+  "production_deployed": false
+}

@@ -1,0 +1,21 @@
+{
+  "version": "56.7.3",
+  "release": "FINAL-KIM-CONTROL-NEXUS-FIX",
+  "base": "56.7.2",
+  "rollback": "56.7.2",
+  "purpose": "Restore Kim dock root and harden Kim control against DOM remounts without changing the Netflix-style shell.",
+  "validation": {
+    "kim_final_polish": "10/10 PASS",
+    "hotfix": "7/7 PASS",
+    "nine_nine": "25/25 PASS",
+    "full_v56_release_gate": "51/51 PASS",
+    "secret_audit": "0 findings",
+    "guardian": "14/14 + 6/6 PASS"
+  },
+  "safety": {
+    "new_secrets": false,
+    "new_square_transaction": false,
+    "invented_provider_endpoint": false,
+    "destructive_cleanup": false
+  }
+}

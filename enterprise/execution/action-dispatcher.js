@@ -1,0 +1,1 @@
+export class ActionDispatcher {constructor(kevin){this.kevin=kevin;}async dispatch(action){return this.kevin.fabric.execute(action,{dryRun:this.kevin.config.execution.dryRunDefault,executor:()=>this.kevin.adapter.dispatch(action)});}}

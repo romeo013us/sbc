@@ -1,0 +1,19 @@
+/* SBC V56.7.3 — Netflix-style control polish. */
+.sbc-kim-top-action{
+  width:auto!important;
+  min-width:76px!important;
+  padding:0 12px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  font-weight:900!important;
+  border-color:rgba(11,116,209,.22)!important;
+  background:linear-gradient(135deg,#ffffff,#eef7ff)!important;
+  color:#0b5f9f!important;
+  box-shadow:0 4px 14px rgba(11,116,209,.08)!important;
+}
+.sbc-kim-top-action:hover{border-color:#0b74d1!important;box-shadow:0 7px 20px rgba(11,116,209,.16)!important;transform:translateY(-1px)}
+.sbc-kim-top-action:focus-visible{outline:3px solid rgba(11,116,209,.18)!important;outline-offset:2px}
+body[data-theme="dark"] .sbc-kim-top-action{background:linear-gradient(135deg,#102436,#0b2a42)!important;color:#bfe5ff!important;border-color:#315a75!important}
+@media(max-width:650px){.sbc-kim-top-action{min-width:42px!important;width:42px!important;padding:0!important}.sbc-kim-top-action span{display:none!important}}

@@ -1,0 +1,5 @@
+SBC OS V65.0.7
+Release: RECOVERY-WRITE-GATE-AND-REJECTION-SAFETY
+Base: V65.0.6 source package
+Safety: MySQL recovery guard remains active; no baseline changes; no startup seed/write; no outreach; no financial mutations.
+Validation: see scripts/v6507-recovery-write-gate-test.js and npm run test:v6507-recovery-write-gate.

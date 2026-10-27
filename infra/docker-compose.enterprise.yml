@@ -1,0 +1,17 @@
+services:
+  sbc:
+    build: ..
+    environment:
+      SBC_ORCHESTRATION: compose
+      SBC_ZERO_TRUST_MODE: ready
+      SBC_CHAOS_ENABLED: "false"
+      SBC_REDIS_URL: redis://redis:6379
+      SBC_AMQP_URL: amqp://rabbitmq:5672
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    depends_on: [redis, rabbitmq]
+  redis:
+    image: redis:7-alpine
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+  otel-collector:
+    image: otel/opentelemetry-collector:latest

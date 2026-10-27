@@ -1,0 +1,13 @@
+'use strict';
+const MI=require('../enterprise/money-intelligence-engine-v580');
+module.exports=function registerV580(app,{auth,ownerOnly,getContext}){
+ const guard=(req,res)=>{if(req.user?.role!=='owner'){res.status(403).json({ok:false,error:'Owner access required.'});return false;}return true;};
+ app.get('/api/v580/money-intelligence/overview',auth,(req,res)=>{try{const c=getContext(), db=c.db||{};const opp=MI.opportunityHunter(db);const top=MI.moneyNow(opp,10);const revenue=top.reduce((n,x)=>n+Number(x.prediction?.expectedRevenue||0),0);res.json({ok:true,version:MI.VERSION,opportunities:top,summary:{eligible:opp.length,expectedRevenue:Number(revenue.toFixed(2))},ceo:MI.ceoBrief({moneyNow:top,pipeline:revenue,score:Math.min(100,50+Math.round(top.length*2))})});}catch(e){res.status(503).json({ok:false,error:e.message});}});
+ app.post('/api/v580/money-intelligence/make-money-now',auth,ownerOnly,(req,res)=>{try{const c=getContext(),opp=MI.opportunityHunter(c.db||{}),top=MI.moneyNow(opp,req.body?.limit||10);res.status(202).json({ok:true,version:MI.VERSION,mode:'MAKE_MONEY_NOW',actions:top});}catch(e){res.status(400).json({ok:false,error:e.message});}});
+ app.post('/api/v580/money-intelligence/predict',auth,ownerOnly,(req,res)=>{try{res.json({ok:true,...MI.revenuePrediction(req.body||{})});}catch(e){res.status(400).json({ok:false,error:e.message});}});
+ app.post('/api/v580/money-intelligence/ai-budget',auth,ownerOnly,(req,res)=>{res.json({ok:true,...MI.aiBudgetDecision(req.body||{})});});
+ app.post('/api/v580/money-intelligence/scheduler',auth,ownerOnly,(req,res)=>{res.json({ok:true,...MI.adaptiveScheduler(req.body||{})});});
+ app.post('/api/v580/money-intelligence/anomalies',auth,ownerOnly,(req,res)=>{res.json({ok:true,...MI.anomalyDetect(req.body?.metrics||{},req.body?.baseline||{})});});
+ app.post('/api/v580/money-intelligence/sequence-optimize',auth,ownerOnly,(req,res)=>{res.json({ok:true,results:MI.sequenceOptimizer(req.body?.events||[])});});
+ app.post('/api/v580/money-intelligence/command',auth,ownerOnly,(req,res)=>{try{const intent=MI.commandIntent(req.body?.command||'');const c=getContext();if(intent==='MONEY_NOW'){const opp=MI.moneyNow(MI.opportunityHunter(c.db||{}),10);return res.json({ok:true,intent,actions:opp,ceo:MI.ceoBrief({moneyNow:opp})});}if(intent==='ANOMALIES')return res.json({ok:true,intent,...MI.anomalyDetect(req.body?.metrics||{},req.body?.baseline||{})});return res.json({ok:true,intent,message:'Command recognized. Use the dedicated Money Intelligence endpoint for execution.'});}catch(e){res.status(400).json({ok:false,error:e.message});}});
+};

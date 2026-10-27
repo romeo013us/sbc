@@ -1,0 +1,9 @@
+'use strict';
+function register(app,{auth,ownerOnly,getFabric}={}){
+  app.get('/api/v56135/bios/overview',auth,(req,res)=>{try{const f=getFabric?.();if(!f)return res.status(503).json({ok:false,error:'BI-OS fabric initializing.'});res.json({ok:true,...f.snapshot()});}catch(e){res.status(500).json({ok:false,error:'BI-OS overview unavailable.'});}});
+  app.post('/api/v56135/bios/retrieve',auth,(req,res)=>{try{const f=getFabric?.();if(!f)return res.status(503).json({ok:false,error:'BI-OS fabric initializing.'});res.json({ok:true,data:f.retrieve({customer:req.body?.customer||{},needs:req.body?.needs||[],text:req.body?.text||'',industry:req.body?.industry})});}catch(e){res.status(400).json({ok:false,error:'BI-OS retrieval failed.'});}});
+  app.post('/api/v56135/bios/recommend',auth,(req,res)=>{try{const f=getFabric?.();if(!f)return res.status(503).json({ok:false,error:'BI-OS fabric initializing.'});res.json({ok:true,data:f.recommend({customer:req.body?.customer||{},needs:req.body?.needs||[],text:req.body?.text||'',industry:req.body?.industry})});}catch(e){res.status(400).json({ok:false,error:'BI-OS recommendation failed.'});}});
+  app.post('/api/v56135/bios/refresh',auth,ownerOnly,async(req,res)=>{try{const f=getFabric?.();if(!f)return res.status(503).json({ok:false,error:'BI-OS fabric initializing.'});const db=await f.refreshFromDatabase({tenantId:1});res.json({ok:true,db,...f.snapshot()});}catch(e){res.status(500).json({ok:false,error:'BI-OS refresh failed.'});}});
+  app.post('/api/v56135/bios/sync-catalog',auth,ownerOnly,async(req,res)=>{try{const f=getFabric?.();if(!f)return res.status(503).json({ok:false,error:'BI-OS fabric initializing.'});const result=await f.seedCatalogToDatabase();res.json({ok:true,...result});}catch(e){res.status(500).json({ok:false,error:'Catalog sync failed.'});}});
+}
+module.exports=register;

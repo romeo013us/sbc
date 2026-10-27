@@ -1,0 +1,7 @@
+'use strict';
+(function(){
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function get(u){const r=await fetch(u,{credentials:'same-origin'});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
+
+window.sbcV350KimActivation=async function(){try{const [p,l]=await Promise.all([get('/api/kim/v350/providers'),get('/api/kim/v350/leads?limit=250')]);return `<div class="card section"><div class="eyebrow">KIM ACTIVATION FABRIC V35.0</div><h2>🔌 Provider + B2B Data Mesh</h2><div class="v350-provider-grid">${Object.entries(p.providers||{}).map(([k,v])=>`<div class="v350-provider"><strong>${esc(k)}</strong><span class="badge">${esc(v.status)}</span><small>Credential: ${v.credentialConfigured?'configured':'missing'} · Endpoint: ${v.endpointConfigured?'configured':'missing'}</small></div>`).join('')}</div><h3>🎯 Lead Mesh — ${esc(l.rows?.length||0)} visible records</h3><div class="v350-table-wrap"><table><thead><tr><th>Business</th><th>Email</th><th>Phone</th><th>Industry</th><th>Status</th></tr></thead><tbody>${(l.rows||[]).slice(0,250).map(r=>`<tr><td>${esc(r.business_name)}</td><td>${esc(r.email)}</td><td>${esc(r.phone)}</td><td>${esc(r.industry)}</td><td>${esc(r.status)}</td></tr>`).join('')}</tbody></table></div></div>`}catch(e){return `<div class="card section"><div class="card-body">Unable to load activation fabric: ${esc(e.message)}</div></div>`}};
+})();

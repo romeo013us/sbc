@@ -1,0 +1,35 @@
+{
+  "version": "64.1.0",
+  "identity": "SBC OS — ONE SYSTEM",
+  "roles": {
+    "owner": "Romeo",
+    "chiefExecutiveIntelligence": "Kevin",
+    "operationalOverseer": "Kim",
+    "leadInput": "Lorna"
+  },
+  "objective": "Maximize sustainable collected gross profit while protecting customer trust, system integrity, and owner sovereignty.",
+  "humanInvolvementTargetPct": 5,
+  "governance": {
+    "ownerVeto": true,
+    "ownerOverride": true,
+    "ownerShutdown": true,
+    "credentialModificationByAutonomy": false,
+    "unrestrictedProductionMutation": false,
+    "selfApproval": false,
+    "newGoDaddySecrets": false
+  },
+  "execution": {
+    "defaultMode": "GOVERNED",
+    "financialHighRiskRequiresOwnerApproval": true,
+    "financialThresholdUsd": 10000,
+    "engineeringPipeline": ["OBSERVE","ARCHITECT","IMPLEMENT","UNIT_TEST","SECURITY_REVIEW","INTEGRATION_TEST","SIMULATE","STAGE","CANARY","VERIFY","ROLLBACK_READY","LEARN"]
+  },
+  "forecasting": {
+    "defaultHorizonDays": 30,
+    "minimumEvidenceLabel": "ESTIMATE_UNTIL_VALIDATED"
+  },
+  "resilience": {
+    "cycleMsDefault": 900000,
+    "noNewExternalCredentialRequirement": true
+  }
+}

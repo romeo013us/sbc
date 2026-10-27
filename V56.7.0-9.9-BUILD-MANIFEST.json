@@ -1,0 +1,15 @@
+{
+  "version": "56.7.0",
+  "baseline": "56.6.0",
+  "purpose": "9.9 production hardening",
+  "files": {
+    "VERSION": "be0e7351a92f4fbe228c3acc205e331ea7dffbf5f4cd04eae0f82af7587a12ea",
+    "package.json": "5929aed6661fe766b07c3f9a21e81083aaa0ec2b223c8358852ddaa26619e59c",
+    "package-lock.json": "348f81aeda5dc2ca19aabe6d1e743333b6bd9267fcbbfb3453806976114f33f2",
+    "server.js": "9057265405a86d222fc2ebc686c6d32d01099041770bfc917be9ce8876aad4c2",
+    "enterprise/v567-nine-nine.js": "c858b47800a29ae9329249e2ad09bf7fae63294c06eb3a486da3c20bf16d13d0",
+    "routes/v567.js": "4a00c52458446c969cd59a3ae04217ecad31ea7b56ac88a483cea4ffc182eca7",
+    "scripts/v567-nine-nine-test.js": "2ef6549ec18b4cae77594635972619f0b75f545a72c7caa8c9e3956b18906998",
+    "RELEASE-NOTES-V56.7.0-9.9.md": "f7155ad176b939809085e7d6da625c0e300799e3749d40bcaf3f1abb60b288e9"
+  }
+}

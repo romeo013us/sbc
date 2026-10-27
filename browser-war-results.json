@@ -1,0 +1,9 @@
+{
+  "status": "NOT_COMPLETED_ENVIRONMENT_BLOCKED",
+  "version": "65.1.8",
+  "reason": "Browser test environment blocked navigation to http://127.0.0.1:8765/index.html with ERR_BLOCKED_BY_ADMINISTRATOR.",
+  "browserWarPass": false,
+  "productFailureConfirmed": false,
+  "liveDeploymentVerified": false,
+  "see": "AUDIT-REPORT-V65.1.8-POLLING-HOTFIX.md"
+}

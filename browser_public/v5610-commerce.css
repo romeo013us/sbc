@@ -1,0 +1,45 @@
+/* V56.10 Whitelabel Commerce Fabric — executive cockpit */
+.v5610-shell{display:flex;flex-direction:column;gap:18px;max-width:1600px;margin:0 auto;padding:2px 0 50px}
+.v5610-hero{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:28px;background:radial-gradient(circle at 88% 12%,rgba(0,229,255,.16),transparent 30%),linear-gradient(135deg,#101c2b,#070b11);box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.v5610-hero-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:end}.v5610-kicker{font-size:10px;letter-spacing:2px;font-weight:900;color:#62d9ff}.v5610-hero h1{font-size:clamp(34px,4.5vw,62px);line-height:.98;margin:8px 0 12px}.v5610-hero p{max-width:760px;color:#aab6c7;line-height:1.6;margin:0}.v5610-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.v5610-btn{border:1px solid rgba(255,255,255,.1);background:#121b27;color:#fff;border-radius:11px;padding:10px 14px;font-weight:850;cursor:pointer}.v5610-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.v5610-btn.primary{background:linear-gradient(135deg,#168fff,#00bfe9);border-color:transparent}.v5610-btn.warn{background:linear-gradient(135deg,#d96f18,#ff9b35);border-color:transparent}.v5610-btn.ghost{background:transparent}
+.v5610-hero-metric{border:1px solid rgba(0,229,255,.18);border-radius:18px;padding:18px;background:rgba(0,0,0,.18)}.v5610-hero-metric span{display:block;color:#8994a6;font-size:10px;font-weight:900;letter-spacing:1.3px}.v5610-hero-metric strong{display:block;font-size:38px;margin:5px 0}.v5610-hero-metric small{color:#aab6c7}
+.v5610-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.v5610-kpi{border:1px solid rgba(255,255,255,.08);background:#0b1119;border-radius:16px;padding:15px}.v5610-kpi label{display:block;color:#8994a6;font-size:9px;font-weight:900;letter-spacing:1.2px}.v5610-kpi strong{display:block;font-size:25px;margin-top:6px}.v5610-kpi small{color:#8994a6}
+.v5610-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.v5610-panel{border:1px solid rgba(255,255,255,.08);background:#0b1119;border-radius:18px;overflow:hidden}.v5610-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.06)}.v5610-head h2{margin:0;font-size:17px}.v5610-head p{margin:3px 0 0;color:#8994a6;font-size:11px}.v5610-body{padding:14px 18px}
+.v5610-list{display:flex;flex-direction:column;gap:8px}.v5610-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.06);border-radius:13px;background:#0e1621}.v5610-row-main{min-width:0}.v5610-row-main strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v5610-row-main small{display:block;color:#8994a6;margin-top:3px}.v5610-row button{flex:0 0 auto}.v5610-badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:900;letter-spacing:.6px;background:#151d29;color:#aeb9c8}.v5610-badge.good{background:rgba(53,226,138,.1);color:#62efab}.v5610-badge.warn{background:rgba(255,155,53,.1);color:#ffb264}.v5610-badge.red{background:rgba(255,95,112,.1);color:#ff8795}.v5610-badge.blue{background:rgba(40,169,255,.1);color:#67d8ff}
+.v5610-owner-row{cursor:pointer;border-color:rgba(255,155,53,.14)}.v5610-owner-row:hover{border-color:rgba(255,155,53,.4);transform:translateY(-1px)}.v5610-owner-row .review{color:#ffb264;font-weight:900;font-size:11px}
+.v5610-rail{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 8px}.v5610-card{min-width:230px;flex:0 0 230px;border:1px solid rgba(255,255,255,.07);border-radius:15px;padding:14px;background:linear-gradient(180deg,#101824,#0b1118);cursor:pointer}.v5610-card:hover{border-color:rgba(0,229,255,.3);transform:translateY(-2px)}.v5610-card h3{font-size:14px;margin:10px 0 6px}.v5610-card p{font-size:11px;color:#8994a6;line-height:1.45;margin:0}.v5610-card .value{font-size:22px;font-weight:900;margin-top:10px}
+.v5610-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.v5610-node{padding:14px 10px;text-align:center;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:#0e1621}.v5610-node strong{display:block;font-size:20px}.v5610-node span{display:block;color:#8994a6;font-size:9px;font-weight:900;letter-spacing:1px;margin-top:4px}
+.v5610-footer{color:#667285;font-size:10px;display:flex;justify-content:space-between;gap:10px;padding:4px 2px}
+.v5610-overlay{position:fixed;inset:0;z-index:10120;background:rgba(0,0,0,.58);display:none;align-items:flex-start;justify-content:center;padding:9vh 18px}.v5610-overlay.open{display:flex}.v5610-dialog{width:min(650px,96vw);background:#080d14;border:1px solid rgba(255,255,255,.1);border-radius:20px;box-shadow:0 30px 100px rgba(0,0,0,.75);overflow:hidden}.v5610-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:17px 20px;border-bottom:1px solid rgba(255,255,255,.06)}.v5610-dialog-head h2{margin:0;font-size:18px}.v5610-dialog-body{padding:20px}.v5610-dialog pre{white-space:pre-wrap;word-break:break-word;background:#05090e;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px;color:#b9c5d5;font-size:11px;max-height:300px;overflow:auto}
+body.v56-flow-mode .v5610-shell{color:#f5f7fb}
+@media(max-width:980px){.v5610-hero-grid,.v5610-grid{grid-template-columns:1fr}.v5610-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v5610-flow{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.v5610-kpis,.v5610-flow{grid-template-columns:1fr 1fr}.v5610-hero{padding:22px}.v5610-hero h1{font-size:36px}.v5610-footer{flex-direction:column}}
+
+
+/* V56.10 Cinematic V2 — hardware-accelerated module rails */
+.command-center-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;background:#040406;padding:2rem;min-height:100vh;box-sizing:border-box}
+.dashboard-module-card{background:#09090e;border:1px solid rgba(255,255,255,.03);border-radius:4px;padding:1.75rem;opacity:1;transform:translateY(0);will-change:transform,opacity,order;transition:opacity .4s ease,border-color .3s ease,transform .6s cubic-bezier(.16,1,.3,1)}
+.v5610-shell .v5610-panel,.v5610-shell .v5610-hero,.v5610-shell .v5610-kpi{will-change:transform,opacity}
+.lane-shimmer-active{position:relative;overflow:hidden}
+.lane-shimmer-active::after{content:'';position:absolute;top:0;left:-150%;width:60%;height:100%;pointer-events:none;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.025),rgba(255,255,255,0));animation:netflixPreloader 2s cubic-bezier(.25,1,.5,1) infinite}
+@keyframes netflixPreloader{0%{left:-150%}100%{left:150%}}
+.v5610-shell .v5610-owner-row:focus-visible,.v5610-shell .v5610-btn:focus-visible,.v5610-shell .v5610-card:focus-visible{outline:2px solid #62d9ff;outline-offset:2px}
+.v5610-kim-analyzing{border-color:rgba(245,158,11,.28)!important;box-shadow:0 0 15px rgba(245,158,11,.05)}
+.v5610-kim-alert{border-color:rgba(239,68,68,.45)!important;box-shadow:0 0 20px rgba(239,68,68,.07)}
+@media(prefers-reduced-motion:reduce){.lane-shimmer-active::after{animation:none}.dashboard-module-card,.v5610-shell .v5610-panel{transition:none!important}}
+
+
+/* V56.10.2 — restrained ambient Kim reaction */
+.sbc-kim-velocity-pulse body,.sbc-kim-velocity-pulse .sbc-kim-dock{animation:sbcVelocityGlow .7s ease-in-out 2}
+.sbc-kim-velocity-alert body,.sbc-kim-velocity-alert .sbc-kim-dock{animation:sbcVelocityAlert .45s ease-in-out 3}
+@keyframes sbcVelocityGlow{50%{box-shadow:inset 0 0 0 2px rgba(0,229,255,.12)}}
+@keyframes sbcVelocityAlert{50%{box-shadow:inset 0 0 0 2px rgba(255,155,53,.28)}}
+@media(prefers-reduced-motion:reduce){.sbc-kim-velocity-pulse body,.sbc-kim-velocity-alert body,.sbc-kim-velocity-pulse .sbc-kim-dock,.sbc-kim-velocity-alert .sbc-kim-dock{animation:none}}
+
+/* V56.11 Revenue Closer — revenue-outcome cockpit */
+.v5611-revenue-panel{background:linear-gradient(135deg,#0b1119,#0a1520)}
+.v5611-revenue-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.v5611-revenue-grid>div{border:1px solid rgba(98,217,255,.09);border-radius:13px;padding:13px;background:#0e1621}
+.v5611-revenue-grid span{display:block;color:#8994a6;font-size:9px;font-weight:900;letter-spacing:1px}
+.v5611-revenue-grid strong{display:block;font-size:24px;margin-top:6px}
+@media(max-width:720px){.v5611-revenue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -1,0 +1,29 @@
+{
+  "release": "V32.8.0",
+  "name": "KIM LIVE PROVIDER + DATA MESH FOUNDATION",
+  "providers": {
+    "4over4": {
+      "adapter": "four_over_four",
+      "credential_ref": "SBC_4OVER4_CREDENTIALS",
+      "live_activation": "requires verified account/API/FTP details and provider authorization"
+    },
+    "vistaprint": {
+      "adapter": "vistaprint_reseller",
+      "credential_ref": "SBC_VISTAPRINT_CREDENTIALS",
+      "live_activation": "requires verified reseller authorization and supported integration path"
+    }
+  },
+  "rules": [
+    "Never store plaintext credentials in source, database seed files, CSVs, logs, or AI prompts.",
+    "All outbound vendor requests require idempotency keys, audit events, timeout/retry policy, and response validation.",
+    "A provider may be marked LIVE only after a successful authenticated sandbox/test transaction or provider-confirmed production handshake.",
+    "Do not invent undocumented vendor endpoints. 4OVER4 states API/FTP integration is evaluated case-by-case for high-volume resellers; VistaPrint requires authorized reseller use for third-party resale workflows."
+  ],
+  "data_mesh": {
+    "source": "starter-leads/SBC-250-Verified-Lead-Prospects.csv",
+    "ingestion": "streaming/staged import",
+    "dedupe": "email+phone+domain+normalized business name",
+    "verification": "queue-based",
+    "audit": "immutable import batch ledger"
+  }
+}

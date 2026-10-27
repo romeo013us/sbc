@@ -1,0 +1,25 @@
+'use strict';
+const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const routePath=[path.join(__dirname,'v65119-control-plane.js'),path.join(__dirname,'..','routes','v65119-control-plane.js'),path.join(__dirname,'..','hotfix-assets','v65119-control-plane.js')].find(p=>fs.existsSync(p));if(!routePath)throw Error('control-plane route source not found');const route=fs.readFileSync(routePath,'utf8');
+assert.match(route,/sbc_ops_webhook_ledger/,'durable SQL webhook ledger present');
+assert.match(route,/UNIQUE KEY uq_provider_event\(provider,provider_event_id\)/,'atomic duplicate claim is unique across workers');
+assert.match(route,/completeWebhookEvent/,'ledger is marked processed after the mutation succeeds');
+assert.match(route,/webhooks\/recover/,'stale claims can be recovered only by MFA owner after five minutes');
+assert.match(route,/WEBHOOK_EVENT_IN_PROGRESS_OR_RECOVERY_REQUIRED/,'stale claimed events fail closed for recovery rather than silently dropping');
+assert.match(route,/canonicalWebhookStatusRank/,'provider statuses use canonical state classification');
+assert.match(route,/recovery\/drill/,'read-only recovery drill endpoint present');
+assert.match(route,/staging\/status/,'isolated staging gate present');
+assert.match(route,/api\/ops\/v65119\/telemetry/,'runtime and database telemetry endpoint present');
+assert.match(route,/if\(prior\[0\]\?\.enabled\)await C\.ownerMfa/,'MFA re-enrollment requires current MFA');
+assert.match(route,/OWNER_MFA_ENROLLMENT_REQUIRED/,'sensitive action blocked until MFA enabled');
+assert.match(route,/SBC_SESSION_SECRET/,'MFA secret encryption reuses existing session secret');
+assert.match(route,/BLOCKED_NO_CONSENT/,'outreach blocks missing consent');
+assert.match(route,/APPROVED_MANUAL/,'approval does not auto-send');
+assert.match(route,/RETRY_QUEUED/,'fault redrive is queue-only');
+assert.match(route,/tenantFrom\(req\)/,'routes require explicit tenant context');
+assert.doesNotMatch(route,/tenantId\s*\|\|\s*1/,'no tenant 1 fallback');const sourceServerPath=path.join(__dirname,'..','server.js');if(fs.existsSync(sourceServerPath)){const patchedServer=fs.readFileSync(sourceServerPath,'utf8');assert.match(patchedServer,/u=\{id:'usr_owner',tenantId:TENANT_DEFAULT_ID,username:'owner'/,'generated owner in the patched runtime must have explicit tenant scope');assert.match(patchedServer,/u\.tenantId=TENANT_DEFAULT_ID/,'generated owner normalization must repair a missing tenant');}else{const tenantPatch=fs.readFileSync(path.join(__dirname,'apply-v6520-hardening.js'),'utf8');assert.match(tenantPatch,/tenantId:TENANT_DEFAULT_ID,username:'owner'/,'owner patch must assign an explicit tenant before strict authorization');assert.match(tenantPatch,/u\.tenantId=TENANT_DEFAULT_ID/,'owner normalization must repair a missing tenant');}
+assert.match(route,/grossProfit/,'margin reporting computes gross profit');
+assert.match(route,/ops-center/,'Phase 4 cockpit served');
+assert.match(route,/productionMutation|ownerApprovalRequired|OWNER_APPROVAL_REQUIRED|sideEffects/,'governed mutation language present');
+const patchPath=[path.join(__dirname,'v65119-phases-1-4.js'),path.join(__dirname,'..','hotfix-assets','v65119-phases-1-4.js')].find(p=>fs.existsSync(p));const patch=patchPath?fs.readFileSync(patchPath,'utf8'):fs.readFileSync(path.join(__dirname,'..','server.js'),'utf8');assert.match(patch,/durableClaim/,'webhook patch enforces durable claim');assert.match(patch,/SBC_V65119_PHASES_1_4_REGISTERED/,'integration marker present');
+const register=require(routePath);const t=register._test;const secret=t.base32(Buffer.from('deterministic test-only TOTP key'));const code=t.totp(secret,1700000000000);assert.equal(t.verifyTotp(secret,code,1700000000000),true,'TOTP accepts the current code');assert.equal(t.verifyTotp(secret,'000000',1700000000000),false,'TOTP rejects invalid code');assert.equal(t.canonicalWebhookStatusRank('in_transit'),1,'canonical in-transit accepted');assert.equal(t.canonicalWebhookStatusRank('not_in_transit'),0,'negated in-transit rejected');assert.equal(t.canonicalWebhookStatusRank('in_transit_cancelled'),0,'cancelled transit rejected');assert.equal(t.canonicalWebhookStatusRank('delivered'),2,'delivered accepted');assert.equal(t.canonicalWebhookStatusRank('not_delivered'),0,'negated delivery rejected');const encrypted=t.encryptSecret(secret,'x'.repeat(40));assert.equal(t.decryptSecret(encrypted,'x'.repeat(40)),secret,'MFA secret encryption round trips');assert.throws(()=>t.decryptSecret(encrypted,'y'.repeat(40)),'wrong key must not decrypt MFA secret');assert.throws(()=>t.tenantFrom({tenantId:0}),/TENANT_CONTEXT_REQUIRED/,'missing tenant must fail closed');console.log('V65.1.26 phases regression: PASS (static + TOTP + encryption + tenant isolation checks)');

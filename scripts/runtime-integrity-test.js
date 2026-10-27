@@ -1,0 +1,28 @@
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname,'..');
+const server = fs.readFileSync(path.join(root,'server.js'),'utf8');
+const pool = fs.readFileSync(path.join(root,'config','mysql-pool.js'),'utf8');
+const pkg = JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
+const release = require('../config/release-identity');
+const checks = [];
+function check(name, ok, detail=''){ checks.push({name,ok,detail}); }
+check('package-version', pkg.version === release.RELEASE_VERSION, pkg.version);
+check('authoritative-release', release.RELEASE_VERSION === pkg.version, release.RELEASE_VERSION);
+check('server-uses-authoritative-release', /BUILD_VERSION\s*=\s*RELEASE_VERSION/.test(server));
+check('server-no-callback-mysql-connection-hook', !/mysqlPool\.on\(['"]connection['"]/.test(server));
+check('promise-driver', /require\(['"]mysql2\/promise['"]\)/.test(server) && /require\(['"]mysql2\/promise['"]\)/.test(pool));
+check('pool-keeps-promise-query-interface', /createPool\(/.test(pool) && !/mysql2['"]\)/.test(pool));
+check('no-v62-2-0-literal', !/62\.2\.0/.test(server));
+check('release-endpoint', /\/api\/release-identity/.test(server));
+check('livez-endpoint', /\/livez/.test(server));
+check('readyz-endpoint', /\/readyz/.test(server));
+check('crm-create-blocked-during-recovery', /app\.post\('\/api\/customers',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
+check('crm-update-blocked-during-recovery', /app\.put\('\/api\/customers\/:id',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
+check('crm-account-notes-blocked-during-recovery', /app\.post\('\/api\/customers\/:id\/account-notes',auth,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
+check('crm-delete-blocked-during-recovery', /app\.delete\('\/api\/customers\/:id',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
+check('crm-bulk-delete-blocked-during-recovery', /app\.post\('\/api\/customers\/bulk-delete',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
+const ok = checks.every(x=>x.ok);
+console.log(JSON.stringify({ok,version:release.RELEASE_VERSION,checks},null,2));
+process.exit(ok?0:1);

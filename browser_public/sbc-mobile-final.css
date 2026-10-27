@@ -1,0 +1,73 @@
+/* SBC V55.11.2 — Mobile-first final polish.
+   Responsive presentation only: no business-state or API changes. */
+html,body{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,input,select,textarea{touch-action:manipulation}
+button,.btn,.nav-item,.icon-btn{min-height:40px}
+.table-wrap{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.card,.hero,.stat,.section{min-width:0}
+@media(max-width:850px){
+  .sidebar{z-index:70000;width:min(310px,88vw);box-shadow:18px 0 50px rgba(0,0,0,.28)}
+  .sidebar.open:after{content:"";position:fixed;inset:0 0 0 100%;background:rgba(0,0,0,.28);z-index:-1;pointer-events:none}
+  .main{width:100%;min-width:0}
+  .topbar{min-height:64px;padding:10px 12px;gap:8px}
+  .topbar h1{font-size:19px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48vw}
+  .top-actions{flex:0 0 auto}
+  .top-actions .icon-btn{min-width:40px;padding:0 9px}
+  #sbcKimTopButton{font-size:0}
+  #sbcKimTopButton:after{content:'👑';font-size:17px}
+  .content{padding:14px 12px 76px;width:100%;max-width:none}
+  .hero{display:block;padding:20px;border-radius:16px}
+  .hero h2{font-size:22px;line-height:1.1}
+  .hero-actions,.actions,.toolbar,.top-actions{max-width:100%}
+  .hero-actions .btn,.actions .btn{flex:1 1 150px;min-height:44px}
+  .grid,.grid.two,.grid.three,.form-grid{min-width:0}
+  .stats{gap:10px;margin-top:12px}
+  .stat{padding:14px;min-width:0}
+  .stat .value{font-size:20px}
+  .card-head{padding:13px 14px;align-items:flex-start}
+  .card-head h2{line-height:1.3}
+  .card-body{padding:14px}
+  .toolbar{align-items:stretch}
+  .toolbar input,.toolbar select,.toolbar .btn{min-height:42px;max-width:100%;width:100%}
+  .table{min-width:680px}
+  .table th,.table td{padding:11px 12px}
+  .modal-card{width:calc(100vw - 20px);max-width:none;margin:10px auto;max-height:calc(100dvh - 20px);border-radius:15px}
+  .modal-card #modalBody{padding:14px}
+}
+@media(max-width:600px){
+  .topbar{position:sticky;top:0}
+  .topbar>div:first-child{min-width:0;flex:1}
+  .top-actions{gap:4px}
+  .top-actions #storageLabel,.top-actions .status-dot{display:none}
+  #sbcThemeToggle{font-size:0}
+  #sbcThemeToggle:after{content:'☾';font-size:17px}
+  .content{padding:10px 10px 82px}
+  .hero{padding:17px;border-radius:14px}
+  .hero h2{font-size:20px}
+  .hero p{font-size:11px;line-height:1.55}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .stat{padding:12px}
+  .stat .label{font-size:8px}
+  .stat .value{font-size:18px}
+  .btn{min-height:44px;padding:10px 12px}
+  .nav-item{min-height:46px;padding:12px 14px}
+  input,select,textarea{font-size:16px!important}
+  .form-grid label{gap:7px}
+  .quote-line{grid-template-columns:1fr}
+  .quote-line .btn{width:100%}
+  .pipeline{grid-template-columns:1fr 1fr}
+  .list-card{align-items:flex-start;flex-direction:column}
+  .list-card .actions{width:100%;justify-content:stretch;margin-top:4px}
+  .list-card .actions .btn{flex:1}
+  .sbc-ai-float{min-width:0!important;width:auto!important;max-width:132px!important;right:10px;bottom:max(10px,env(safe-area-inset-bottom))!important}
+}
+@media(max-width:420px){
+  .topbar h1{max-width:42vw;font-size:17px}
+  .top-actions .icon-btn{min-width:38px;padding:0 7px}
+  .stats{grid-template-columns:1fr 1fr}
+  .pipeline{grid-template-columns:1fr}
+  .hero-actions .btn,.actions .btn{flex-basis:100%}
+}
+@media(hover:none) and (pointer:coarse){
+  .btn:hover,.nav-item:hover,.sbc-kim-composer button:hover{transform:none;box-shadow:none}
+}

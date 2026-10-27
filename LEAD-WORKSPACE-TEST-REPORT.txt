@@ -1,0 +1,30 @@
+SBC V65.1.10 Lead Workspace + Historical Regression Integration — Local Test Report
+Date: 2026-10-10
+Base: V65.1.8 polling hotfix + lead workspace candidate; compared against V55.8.20, V55.8.22, V55.10.0, V55.10.2, V55.17.9, V55.18.1, V55.18.3, and V55.18.5.
+
+Changes:
+- Fixed route registration nesting in routes/crm.js so lead list/detail and direct-write routes register at application startup.
+- Added /api/v65110/crm/leads, using authenticated tenant context, role checks, prepared statements, transaction handling, duplicate checks, post-insert verification, and an activity record.
+- The write route fails closed if recovery is required or if the recovery predicate is absent. The global recovery write guard remains active and runs before routes.
+- The workspace tries the guarded save; when blocked or unable to confirm, it retains the lead in browser-session staging and supports CSV export.
+- Direct lead persistence does not invoke the broad snapshot saveData() writer.
+- Preserved V65.1.8 polling protections and added current renderer regression assertions rather than blindly restoring the older renderer reset.
+- Release identity is V65.1.10; cache-busting and regression assertions aligned.
+
+Tests:
+- npm run test:all: PASS (exit 0).
+- npm run predeploy:open-gate: PASS; 523 JavaScript files checked, zero syntax failures.
+- V65.1.10 lead integration: PASS; 5 CRM routes registered at startup, write blocked before DB access while recovery active, fake transaction success path committed and verified.
+- Lead workspace regression: 9/9 PASS.
+- Tenant repository isolation: 7 checks PASS.
+- Polling hotfix: 12/12 PASS.
+- Recovery-safe training/enterprise regression: 9/9 PASS.
+- Buyer-demo stability regression: 5/5 PASS.
+- Release integrity manifest regenerated and checked by test suite.
+- ZIP integrity: to be checked after packaging.
+
+Limits:
+- The successful write-path test uses a fake MySQL connection, not a live database.
+- No production MySQL connection, insert, delete, restore, schema migration, or recovery unlock was performed.
+- No GoDaddy deployment or live browser/API verification was performed.
+- Production/Preview share MySQL; do not deploy until authoritative recovery and rollback plan are verified.

@@ -1,0 +1,48 @@
+{
+  "version": "63.0.0",
+  "objective": "Maximize sustainable collected gross profit",
+  "owner": "Romeo",
+  "autonomyLevel": 4,
+  "humanInvolvementTargetPct": 5,
+  "execution": {
+    "dryRunDefault": true,
+    "requireSimulationForRisky": true,
+    "requireVerification": true,
+    "allowIrreversibleWithoutOwner": false
+  },
+  "governance": {
+    "ownerVetoActive": false,
+    "credentialModification": false,
+    "unrestrictedProductionMutation": false,
+    "selfPromotion": false,
+    "selfEscalation": false
+  },
+  "memory": {
+    "path": "data/evolution/kevin-experience-memory.jsonl",
+    "appendOnly": true,
+    "integrity": "sha256-hash-chain"
+  },
+  "telemetry": {
+    "maxEventsPerCycle": 500
+  },
+  "prediction": {
+    "horizons": [
+      "24h",
+      "7d",
+      "30d",
+      "90d"
+    ]
+  },
+  "agents": {
+    "minimumConsensus": 0.67
+  },
+  "heartbeat": {
+    "defaultIntervalMs": 900000,
+    "mode": "event-aware-governed"
+  },
+  "cockpit": {
+    "engineeringDiffTree": true,
+    "experienceLedger": true,
+    "macroExecutiveBrief": true
+  }
+}

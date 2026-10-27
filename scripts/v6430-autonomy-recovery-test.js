@@ -1,0 +1,15 @@
+'use strict';
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.join(__dirname,'..');
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+const app=fs.readFileSync(path.join(root,'public','app.js'),'utf8');
+const ui=fs.readFileSync(path.join(root,'public','sbc-autonomy-control-v6430.js'),'utf8');
+const mod=require(path.join(root,'enterprise','sbc-autonomy-control-v6430.js'));
+assert(server.includes("/api/owner/recovery/leads"),'recovery lead projection endpoint missing');
+assert(server.includes('MYSQL_RECOVERY_EVALUATED=true'),'recovery evaluation latch missing');
+assert(server.includes("if(typeof MYSQL_RECOVERY_EVALUATED!=='undefined' && !MYSQL_RECOVERY_EVALUATED) return"),'pre-evaluation workforce write guard missing');
+assert(app.includes("api('/api/owner/recovery/leads')"),'client recovery fallback missing');
+assert(ui.includes('/api/autonomy/control/status'),'autonomy UI status bridge missing');
+const x=mod.simulate();assert(x.cases===10000,'10k simulation missing');assert(x.protectedBoundaryIntact,'protected action boundary failed');
+const store={};mod.setMode(store,'AUTONOMOUS');mod.enqueue(store,'lead_qualification',{key:'lead:1',leadId:'1'});const r=mod.process(store);assert(r.processed===1,'safe job did not process');mod.enqueue(store,'refund',{key:'refund:1'},'CRITICAL');const r2=mod.process(store);assert(r2.exceptions>=1,'protected action did not escalate');
+console.log('V64.3.0 autonomy/recovery test PASS');

@@ -1,0 +1,334 @@
+{
+  "release": "V32.8.0",
+  "capabilities": [
+    {
+      "id": 101,
+      "name": "Provider Credential Health Monitor",
+      "key": "provider_credential_health_monitor",
+      "status": "activation-gated"
+    },
+    {
+      "id": 102,
+      "name": "Vendor Contract/Capability Registry",
+      "key": "vendor_contract_capability_registry",
+      "status": "planned"
+    },
+    {
+      "id": 103,
+      "name": "Provider Sandbox Transaction Harness",
+      "key": "provider_sandbox_transaction_harness",
+      "status": "planned"
+    },
+    {
+      "id": 104,
+      "name": "Vendor Quote Snapshot Cache",
+      "key": "vendor_quote_snapshot_cache",
+      "status": "planned"
+    },
+    {
+      "id": 105,
+      "name": "Vendor Catalog Normalization",
+      "key": "vendor_catalog_normalization",
+      "status": "planned"
+    },
+    {
+      "id": 106,
+      "name": "Vendor Product Specification Mapper",
+      "key": "vendor_product_specification_mapper",
+      "status": "planned"
+    },
+    {
+      "id": 107,
+      "name": "Vendor Webhook Signature Validator",
+      "key": "vendor_webhook_signature_validator",
+      "status": "planned"
+    },
+    {
+      "id": 108,
+      "name": "Vendor Rate-Limit Governor",
+      "key": "vendor_rate_limit_governor",
+      "status": "planned"
+    },
+    {
+      "id": 109,
+      "name": "Vendor Circuit Breaker",
+      "key": "vendor_circuit_breaker",
+      "status": "planned"
+    },
+    {
+      "id": 110,
+      "name": "Vendor Reconciliation Center",
+      "key": "vendor_reconciliation_center",
+      "status": "planned"
+    },
+    {
+      "id": 111,
+      "name": "Lead Import Watcher",
+      "key": "lead_import_watcher",
+      "status": "planned"
+    },
+    {
+      "id": 112,
+      "name": "Lead Import Batch Ledger",
+      "key": "lead_import_batch_ledger",
+      "status": "planned"
+    },
+    {
+      "id": 113,
+      "name": "Lead Schema Validator",
+      "key": "lead_schema_validator",
+      "status": "planned"
+    },
+    {
+      "id": 114,
+      "name": "Lead Deduplication Graph",
+      "key": "lead_deduplication_graph",
+      "status": "planned"
+    },
+    {
+      "id": 115,
+      "name": "Lead Domain Normalizer",
+      "key": "lead_domain_normalizer",
+      "status": "planned"
+    },
+    {
+      "id": 116,
+      "name": "Lead Contact Confidence Model",
+      "key": "lead_contact_confidence_model",
+      "status": "planned"
+    },
+    {
+      "id": 117,
+      "name": "Lead Verification Queue",
+      "key": "lead_verification_queue",
+      "status": "planned"
+    },
+    {
+      "id": 118,
+      "name": "Lead Suppression List",
+      "key": "lead_suppression_list",
+      "status": "planned"
+    },
+    {
+      "id": 119,
+      "name": "Lead Source Attribution",
+      "key": "lead_source_attribution",
+      "status": "planned"
+    },
+    {
+      "id": 120,
+      "name": "Lead Import Rollback",
+      "key": "lead_import_rollback",
+      "status": "planned"
+    },
+    {
+      "id": 121,
+      "name": "Opportunity Auto-Creation Rules",
+      "key": "opportunity_auto_creation_rules",
+      "status": "planned"
+    },
+    {
+      "id": 122,
+      "name": "Sales Activity SLA",
+      "key": "sales_activity_sla",
+      "status": "planned"
+    },
+    {
+      "id": 123,
+      "name": "Next-Best-Action Queue",
+      "key": "next_best_action_queue",
+      "status": "planned"
+    },
+    {
+      "id": 124,
+      "name": "Quote Expiration Monitor",
+      "key": "quote_expiration_monitor",
+      "status": "planned"
+    },
+    {
+      "id": 125,
+      "name": "Proposal Version Control",
+      "key": "proposal_version_control",
+      "status": "planned"
+    },
+    {
+      "id": 126,
+      "name": "Contract Renewal Calendar",
+      "key": "contract_renewal_calendar",
+      "status": "planned"
+    },
+    {
+      "id": 127,
+      "name": "Sales Forecast Commit/Best-Case Separation",
+      "key": "sales_forecast_commit_best_case_separation",
+      "status": "planned"
+    },
+    {
+      "id": 128,
+      "name": "Lost-Deal Reason Taxonomy",
+      "key": "lost_deal_reason_taxonomy",
+      "status": "planned"
+    },
+    {
+      "id": 129,
+      "name": "Customer Onboarding Checklist",
+      "key": "customer_onboarding_checklist",
+      "status": "planned"
+    },
+    {
+      "id": 130,
+      "name": "Customer Handoff Package",
+      "key": "customer_handoff_package",
+      "status": "planned"
+    },
+    {
+      "id": 131,
+      "name": "Universal Notification Router",
+      "key": "universal_notification_router",
+      "status": "planned"
+    },
+    {
+      "id": 132,
+      "name": "Notification Preference Center",
+      "key": "notification_preference_center",
+      "status": "planned"
+    },
+    {
+      "id": 133,
+      "name": "Message Delivery Receipts",
+      "key": "message_delivery_receipts",
+      "status": "planned"
+    },
+    {
+      "id": 134,
+      "name": "Email/SMS Template Versioning",
+      "key": "email_sms_template_versioning",
+      "status": "planned"
+    },
+    {
+      "id": 135,
+      "name": "Communication Consent Ledger",
+      "key": "communication_consent_ledger",
+      "status": "planned"
+    },
+    {
+      "id": 136,
+      "name": "Document Generation Queue",
+      "key": "document_generation_queue",
+      "status": "planned"
+    },
+    {
+      "id": 137,
+      "name": "Document Integrity Hashing",
+      "key": "document_integrity_hashing",
+      "status": "planned"
+    },
+    {
+      "id": 138,
+      "name": "Secure Download Expiration",
+      "key": "secure_download_expiration",
+      "status": "planned"
+    },
+    {
+      "id": 139,
+      "name": "System Dependency Blast-Radius Analyzer",
+      "key": "system_dependency_blast_radius_analyzer",
+      "status": "planned"
+    },
+    {
+      "id": 140,
+      "name": "Maintenance Window Manager",
+      "key": "maintenance_window_manager",
+      "status": "planned"
+    },
+    {
+      "id": 141,
+      "name": "Worker Heartbeat Registry",
+      "key": "worker_heartbeat_registry",
+      "status": "planned"
+    },
+    {
+      "id": 142,
+      "name": "Worker Job Lease Recovery",
+      "key": "worker_job_lease_recovery",
+      "status": "planned"
+    },
+    {
+      "id": 143,
+      "name": "Queue Backpressure Controller",
+      "key": "queue_backpressure_controller",
+      "status": "planned"
+    },
+    {
+      "id": 144,
+      "name": "Rate-Limit Budget Dashboard",
+      "key": "rate_limit_budget_dashboard",
+      "status": "planned"
+    },
+    {
+      "id": 145,
+      "name": "API Cost Meter",
+      "key": "api_cost_meter",
+      "status": "planned"
+    },
+    {
+      "id": 146,
+      "name": "Data Retention Policy Engine",
+      "key": "data_retention_policy_engine",
+      "status": "planned"
+    },
+    {
+      "id": 147,
+      "name": "PII Redaction Pipeline",
+      "key": "pii_redaction_pipeline",
+      "status": "planned"
+    },
+    {
+      "id": 148,
+      "name": "Export Access Ledger",
+      "key": "export_access_ledger",
+      "status": "planned"
+    },
+    {
+      "id": 149,
+      "name": "Operational Runbook Library",
+      "key": "operational_runbook_library",
+      "status": "planned"
+    },
+    {
+      "id": 150,
+      "name": "Kim Training/Skill Verification Matrix",
+      "key": "kim_training_skill_verification_matrix",
+      "status": "planned"
+    }
+  ],
+  "provider_activation": {
+    "release": "V32.8.0",
+    "name": "KIM LIVE PROVIDER + DATA MESH FOUNDATION",
+    "providers": {
+      "4over4": {
+        "adapter": "four_over_four",
+        "credential_ref": "SBC_4OVER4_CREDENTIALS",
+        "live_activation": "requires verified account/API/FTP details and provider authorization"
+      },
+      "vistaprint": {
+        "adapter": "vistaprint_reseller",
+        "credential_ref": "SBC_VISTAPRINT_CREDENTIALS",
+        "live_activation": "requires verified reseller authorization and supported integration path"
+      }
+    },
+    "rules": [
+      "Never store plaintext credentials in source, database seed files, CSVs, logs, or AI prompts.",
+      "All outbound vendor requests require idempotency keys, audit events, timeout/retry policy, and response validation.",
+      "A provider may be marked LIVE only after a successful authenticated sandbox/test transaction or provider-confirmed production handshake.",
+      "Do not invent undocumented vendor endpoints. 4OVER4 states API/FTP integration is evaluated case-by-case for high-volume resellers; VistaPrint requires authorized reseller use for third-party resale workflows."
+    ],
+    "data_mesh": {
+      "source": "starter-leads/SBC-250-Verified-Lead-Prospects.csv",
+      "ingestion": "streaming/staged import",
+      "dedupe": "email+phone+domain+normalized business name",
+      "verification": "queue-based",
+      "audit": "immutable import batch ledger"
+    }
+  }
+}
