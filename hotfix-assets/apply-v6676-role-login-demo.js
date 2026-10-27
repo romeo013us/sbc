@@ -16,6 +16,8 @@ function patchServer(s){
  s=once(s,"app.get('/api/gateways/readiness',auth,",DEMO_GATE+"\napp.get('/api/gateways/readiness',auth,",'pre-route demo deny-by-default');
  s=once(s,"app.get('/api/bootstrap',auth,async(req,res)=>{",SYNTHETIC_DEMO+"\napp.get('/api/bootstrap',auth,async(req,res)=>{",'install explicit fictional demo data before login bootstrap');
  s=once(s,'const d=demoBootstrapData();return res.json({settings:', 'const d=sbcV6676DemoBootstrapData();return res.json({settings:', 'remove missing demo bootstrap function');
+ s=once(s,"researcher?db.customers.filter(c=>{const status=String(c?.status||'Lead').trim().toLowerCase();",
+  "researcher?db.customers.filter(c=>{if(Number(c?.tenantId)!==Number(requireRequestTenant(req)))return false;const status=String(c?.status||'Lead').trim().toLowerCase();",'workforce V9 bootstrap tenant isolation');
  s=once(s,'  const projectedCustomers=db.customers; // Authoritative CRM only. Recovery candidates are exposed separately and remain read-only.',
    '  const projectedCustomers=db.customers; // Authoritative CRM only. Recovery candidates are exposed separately and remain read-only.\n'+LORNA_BOOT, 'isolated researcher bootstrap');
  const anchor="app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{";
