@@ -48,8 +48,8 @@ jobs:
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx package.json
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx server.js
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx sbc-godaddy-flat-entrypoint.cjs
-          if unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -E '(^|/)node_modules/|\.zip$|^\.env($|\.)'; then
-            echo 'Forbidden dependency, nested archive or secret in GoDaddy flat ZIP'; exit 1
+          if unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -E '(^|/)node_modules/|\.zip$|^\.env($|\.)|^\.github/|^\.git/'; then
+            echo 'Forbidden dependency, nested archive, CI workflow or secret in GoDaddy flat ZIP'; exit 1
           fi
       - name: Triple-check actual packaged browser, revenue and CRM gates
         run: |

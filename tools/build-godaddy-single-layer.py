@@ -60,6 +60,10 @@ with zipfile.ZipFile(io.BytesIO(raw)) as src:
             continue
         if name.startswith("/") or "\\" in name or ".." in name.split("/"):
             fail("unsafe compiled ZIP path " + name)
+        # Compiled application archives may include legacy CI workflow files.
+        # They are not runtime inputs and must never be published to a deploy branch.
+        if name.startswith(".github/"):
+            continue
         if name in files:
             fail("duplicate compiled entry " + name)
         if ((info.external_attr >> 16) & 0o170000) == 0o120000:
