@@ -208,6 +208,7 @@ jobs:
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6672-published-dashboard-null-catalog.test.cjs
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6674-owner-import-discoverability.test.cjs
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6675-90day-contrast.test.cjs
+            SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6676-lorna-demo-account-readiness.test.cjs
           done
       - name: Triple-pass public checkout pre-write Square availability
         shell: bash

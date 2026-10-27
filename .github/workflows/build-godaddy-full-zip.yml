@@ -84,6 +84,7 @@ jobs:
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6672-published-dashboard-null-catalog.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6674-owner-import-discoverability.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6675-90day-contrast.test.cjs; done
+          for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6676-lorna-demo-account-readiness.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6666-public-checkout-no-ghost.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6665-square-readiness.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6664-voice-preflight.test.cjs; done
