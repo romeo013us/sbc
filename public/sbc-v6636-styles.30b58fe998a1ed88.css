@@ -2171,3 +2171,91 @@ body{background-color:var(--sbc-matrix-obsidian);color:#f0f2f5;font-family:-appl
 }
 @media(max-width:760px){#app.app .main #content:has(> #sbcProductionControlDashboard){display:block!important}}
 
+
+/* SBC_V6675_RC90_CONTRAST: 90-day command is legible in both themes.
+   Override legacy global strong/b/h3 dark text rules only inside rc90. */
+body[data-theme="dark"] .rc90-wrap {
+ --rc90-surface:#101d2d;--rc90-inset:#17283c;--rc90-ink:#f2f7ff;
+ --rc90-muted:#b9c9da;--rc90-border:#37506a;
+ color:var(--rc90-ink)!important;
+}
+body[data-theme="dark"] .rc90-wrap .rc90-stat,
+body[data-theme="dark"] .rc90-wrap .rc90-panel,
+body[data-theme="dark"] .rc90-wrap .rc90-hero-badge {
+ background:var(--rc90-surface)!important;border-color:var(--rc90-border)!important;
+ color:var(--rc90-ink)!important;
+}
+body[data-theme="dark"] .rc90-wrap .rc90-ai-list>div,
+body[data-theme="dark"] .rc90-wrap .rc90-math>div,
+body[data-theme="dark"] .rc90-wrap .rc90-offer,
+body[data-theme="dark"] .rc90-wrap .rc90-funnel>div {
+ background:var(--rc90-inset)!important;color:var(--rc90-ink)!important;
+}
+body[data-theme="dark"] .rc90-wrap .rc90-stat .rc90-value,
+body[data-theme="dark"] .rc90-wrap .rc90-funnel b,
+body[data-theme="dark"] .rc90-wrap .rc90-math b,
+body[data-theme="dark"] .rc90-wrap .rc90-offer b,
+body[data-theme="dark"] .rc90-wrap .rc90-offer strong,
+body[data-theme="dark"] .rc90-wrap .rc90-ai-list b,
+body[data-theme="dark"] .rc90-wrap .rc90-ai-list span,
+body[data-theme="dark"] .rc90-wrap .rc90-panel h3,
+body[data-theme="dark"] .rc90-wrap .rc90-hero-badge strong,
+body[data-theme="dark"] .rc90-wrap .rc90-action>div {
+ color:var(--rc90-ink)!important;
+}
+body[data-theme="dark"] .rc90-wrap .rc90-label,
+body[data-theme="dark"] .rc90-wrap .rc90-sub,
+body[data-theme="dark"] .rc90-wrap .rc90-panel-head span:not(.rc90-chip),
+body[data-theme="dark"] .rc90-wrap .rc90-funnel span,
+body[data-theme="dark"] .rc90-wrap .rc90-offer span,
+body[data-theme="dark"] .rc90-wrap .rc90-math span,
+body[data-theme="dark"] .rc90-wrap .rc90-hero-badge span,
+body[data-theme="dark"] .rc90-wrap .rc90-note,
+body[data-theme="dark"] .rc90-wrap .rc90-footer {
+ color:var(--rc90-muted)!important;
+}
+body[data-theme="light"] .rc90-wrap {
+ --rc90-surface:#ffffff;--rc90-inset:#f0f5fb;--rc90-ink:#17283a;
+ --rc90-muted:#475569;--rc90-border:#c7d5e5;
+ color:var(--rc90-ink)!important;
+}
+body[data-theme="light"] .rc90-wrap .rc90-stat,
+body[data-theme="light"] .rc90-wrap .rc90-panel,
+body[data-theme="light"] .rc90-wrap .rc90-hero-badge {
+ background:var(--rc90-surface)!important;border-color:var(--rc90-border)!important;
+ color:var(--rc90-ink)!important;
+}
+body[data-theme="light"] .rc90-wrap .rc90-ai-list>div,
+body[data-theme="light"] .rc90-wrap .rc90-math>div,
+body[data-theme="light"] .rc90-wrap .rc90-offer,
+body[data-theme="light"] .rc90-wrap .rc90-funnel>div {
+ background:var(--rc90-inset)!important;color:var(--rc90-ink)!important;
+}
+body[data-theme="light"] .rc90-wrap .rc90-stat .rc90-value,
+body[data-theme="light"] .rc90-wrap .rc90-funnel b,
+body[data-theme="light"] .rc90-wrap .rc90-math b,
+body[data-theme="light"] .rc90-wrap .rc90-offer b,
+body[data-theme="light"] .rc90-wrap .rc90-offer strong,
+body[data-theme="light"] .rc90-wrap .rc90-ai-list b,
+body[data-theme="light"] .rc90-wrap .rc90-ai-list span,
+body[data-theme="light"] .rc90-wrap .rc90-panel h3,
+body[data-theme="light"] .rc90-wrap .rc90-hero-badge strong,
+body[data-theme="light"] .rc90-wrap .rc90-action>div {
+ color:var(--rc90-ink)!important;
+}
+body[data-theme="light"] .rc90-wrap .rc90-label,
+body[data-theme="light"] .rc90-wrap .rc90-sub,
+body[data-theme="light"] .rc90-wrap .rc90-panel-head span:not(.rc90-chip),
+body[data-theme="light"] .rc90-wrap .rc90-funnel span,
+body[data-theme="light"] .rc90-wrap .rc90-offer span,
+body[data-theme="light"] .rc90-wrap .rc90-math span,
+body[data-theme="light"] .rc90-wrap .rc90-hero-badge span,
+body[data-theme="light"] .rc90-wrap .rc90-note,
+body[data-theme="light"] .rc90-wrap .rc90-footer {
+ color:var(--rc90-muted)!important;
+}
+.rc90-wrap .rc90-chip{background:#dcecff!important;color:#174ea6!important}
+.rc90-wrap .rc90-chip.good{background:#d8f5e6!important;color:#0b653c!important}
+.rc90-wrap .rc90-action>span{background:#dcecff!important;color:#174ea6!important}
+.rc90-wrap .rc90-buttons .btn:focus-visible{outline:3px solid #f28c28;outline-offset:3px}
+
