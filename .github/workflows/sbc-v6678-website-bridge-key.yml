@@ -1,0 +1,30 @@
+name: SBC Website Bridge Private-Key Safety
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'enterprise/v6660-website-bridge.cjs'
+      - 'scripts/v6678-website-bridge-key.test.cjs'
+      - '.github/workflows/sbc-v6678-website-bridge-key.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'enterprise/v6660-website-bridge.cjs'
+      - 'scripts/v6678-website-bridge-key.test.cjs'
+      - '.github/workflows/sbc-v6678-website-bridge-key.yml'
+permissions:
+  contents: read
+jobs:
+  private-bridge-key-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse actual source and regression test
+        run: |
+          node --check enterprise/v6660-website-bridge.cjs
+          node --check scripts/v6678-website-bridge-key.test.cjs
+          node scripts/v6678-website-bridge-key.test.cjs
