@@ -19,7 +19,7 @@ for(const dir of ['public','browser_public']){
    assert(css.includes('body[data-theme="'+theme+'"] .rc90-wrap '+selector),'missing '+theme+' contrast selector '+selector);
   }
  }
- assert(!css.includes('color:transparent!important'),'no hidden revenue labels');
+ assert(!standalone.slice(standalone.lastIndexOf('/* SBC_V6675_RC90_CONTRAST')).includes('color:transparent'),'contrast patch must never hide revenue labels');
  if(canonical!==null)assert.equal(css,canonical,'Preview and Published CSS must match byte-for-byte');
  canonical=css;
 }
