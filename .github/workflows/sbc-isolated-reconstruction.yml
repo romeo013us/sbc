@@ -206,6 +206,8 @@ jobs:
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6667-private-owner-import.test.cjs
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6671-owner-packaged-lead-batch.test.cjs
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6672-published-dashboard-null-catalog.test.cjs
+            SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6674-owner-import-discoverability.test.cjs
+            SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6675-90day-contrast.test.cjs
           done
       - name: Triple-pass public checkout pre-write Square availability
         shell: bash
@@ -533,6 +535,8 @@ jobs:
           SBC_BROWSER_ASSET_ROOT="$PWD/.sbc-isolated-runtime" \
           SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM --kill-after=15s 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM --kill-after=15s 90s node scripts/v6675-90day-contrast-browser.test.cjs | tee .sbc-isolated-reports/v6675-revenue-contrast-browser.json
       - name: Package verified prebuilt runtime after full isolated acceptance
         shell: bash
         env:

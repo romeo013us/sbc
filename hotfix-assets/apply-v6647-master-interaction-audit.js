@@ -96,6 +96,49 @@ function patchCatalogBootstrap(src,rel){
  new vm.Script(src,{filename:rel});
  return src;
 }
+// SBC_V6674_OWNER_IMPORT_ENTRY: visible owner-only dashboard route.
+// Floating import stays hidden; the authenticated owner route handles the batch.
+const OWNER_IMPORT_MARKER='SBC_V6674_OWNER_IMPORT_ENTRY';
+function patchOwnerImportEntry(src,rel){
+ if(src.includes(OWNER_IMPORT_MARKER))throw Error(OWNER_IMPORT_MARKER+': duplicate '+rel);
+ src=once(src,"<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button><button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>","<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button>${state.me?.role==='owner'?'<a class=\"btn ghost\" href=\"/owner/lead-import\" data-sbc-owner-lead-import=\"true\">Import 31 Leads</a>':''}<button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>",'owner dashboard import link '+rel);
+ src='// '+OWNER_IMPORT_MARKER+'\n'+src;
+ new vm.Script(src,{filename:rel});
+ return src;
+}
+// SBC V66.75: post-bundle 90-day revenue contrast repair, mirrored across entrypoints.
+const RC90_CONTRAST_MARKER='SBC_V6675_RC90_CONTRAST';
+const RC90_CONTRAST_CSS="/* SBC_V6675_RC90_CONTRAST: 90-day command is legible in both themes.\n   Override legacy global strong/b/h3 dark text rules only inside rc90. */\nbody[data-theme=\"dark\"] .rc90-wrap {\n --rc90-surface:#101d2d;--rc90-inset:#17283c;--rc90-ink:#f2f7ff;\n --rc90-muted:#b9c9da;--rc90-border:#37506a;\n color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-stat,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-panel,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-hero-badge {\n background:var(--rc90-surface)!important;border-color:var(--rc90-border)!important;\n color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-ai-list>div,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-math>div,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-offer,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-funnel>div {\n background:var(--rc90-inset)!important;color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-stat .rc90-value,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-funnel b,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-math b,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-offer b,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-offer strong,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-ai-list b,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-ai-list span,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-panel h3,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-hero-badge strong,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-action>div {\n color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-label,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-sub,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-panel-head span:not(.rc90-chip),\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-funnel span,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-offer span,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-math span,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-hero-badge span,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-note,\nbody[data-theme=\"dark\"] .rc90-wrap .rc90-footer {\n color:var(--rc90-muted)!important;\n}\nbody[data-theme=\"light\"] .rc90-wrap {\n --rc90-surface:#ffffff;--rc90-inset:#f0f5fb;--rc90-ink:#17283a;\n --rc90-muted:#475569;--rc90-border:#c7d5e5;\n color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"light\"] .rc90-wrap .rc90-stat,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-panel,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-hero-badge {\n background:var(--rc90-surface)!important;border-color:var(--rc90-border)!important;\n color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"light\"] .rc90-wrap .rc90-ai-list>div,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-math>div,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-offer,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-funnel>div {\n background:var(--rc90-inset)!important;color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"light\"] .rc90-wrap .rc90-stat .rc90-value,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-funnel b,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-math b,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-offer b,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-offer strong,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-ai-list b,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-ai-list span,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-panel h3,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-hero-badge strong,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-action>div {\n color:var(--rc90-ink)!important;\n}\nbody[data-theme=\"light\"] .rc90-wrap .rc90-label,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-sub,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-panel-head span:not(.rc90-chip),\nbody[data-theme=\"light\"] .rc90-wrap .rc90-funnel span,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-offer span,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-math span,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-hero-badge span,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-note,\nbody[data-theme=\"light\"] .rc90-wrap .rc90-footer {\n color:var(--rc90-muted)!important;\n}\n.rc90-wrap .rc90-chip{background:#dcecff!important;color:#174ea6!important}\n.rc90-wrap .rc90-chip.good{background:#d8f5e6!important;color:#0b653c!important}\n.rc90-wrap .rc90-action>span{background:#dcecff!important;color:#174ea6!important}\n.rc90-wrap .rc90-buttons .btn:focus-visible{outline:3px solid #f28c28;outline-offset:3px}\n";
+function patchRc90Contrast(root){
+ const crypto=require('node:crypto');
+ const changed=[];
+ for(const dir of ['public','browser_public']){
+  const htmlPath=path.join(root,dir,'index.html');
+  const html=fs.readFileSync(htmlPath,'utf8');
+  const m=html.match(/<link\b[^>]*id="sbc-v6636-canonical-styles"[^>]*href="\/(sbc-v6636-styles\.[a-f0-9]{16}\.css)"/);
+  if(!m)throw Error(RC90_CONTRAST_MARKER+': missing canonical CSS bundle in '+dir);
+  const oldBundle=m[1],oldFile=path.join(root,dir,oldBundle);
+  const original=fs.readFileSync(oldFile,'utf8');
+  if(original.includes(RC90_CONTRAST_MARKER))throw Error(RC90_CONTRAST_MARKER+': duplicate '+oldFile);
+  const updated=original+'\n'+RC90_CONTRAST_CSS+'\n';
+  const digest=crypto.createHash('sha256').update(updated).digest('hex');
+  const newBundle='sbc-v6636-styles.'+digest.slice(0,16)+'.css';
+  if(newBundle===oldBundle)throw Error(RC90_CONTRAST_MARKER+': unchanged bundle hash');
+  fs.writeFileSync(path.join(root,dir,newBundle),updated);
+  fs.unlinkSync(oldFile);
+  const previousHash=html.match(/data-sbc-v6636="([a-f0-9]{64})"/);
+  if(!previousHash)throw Error(RC90_CONTRAST_MARKER+': missing CSS bundle receipt');
+  const updatedHtml=html.replace('/'+oldBundle,'/'+newBundle).replace('data-sbc-v6636="'+previousHash[1]+'"','data-sbc-v6636="'+digest+'"');
+  fs.writeFileSync(htmlPath,updatedHtml);
+  changed.push(dir+'/'+newBundle,dir+'/index.html');
+  const standalone=path.join(root,dir,'v56140-90day-revenue-command.css');
+  const standaloneCss=fs.readFileSync(standalone,'utf8');
+  if(standaloneCss.includes(RC90_CONTRAST_MARKER))throw Error(RC90_CONTRAST_MARKER+': duplicate '+standalone);
+  fs.writeFileSync(standalone,standaloneCss+'\n'+RC90_CONTRAST_CSS+'\n');
+  changed.push(dir+'/v56140-90day-revenue-command.css');
+ }
+ return changed;
+}
 function apply(root){
  const changed=[];
  for(const dir of ['public','browser_public']){
@@ -107,8 +150,9 @@ function apply(root){
   }
   const rel=dir+'/app.js',app=path.join(root,rel);
   if(!fs.existsSync(app))throw Error(MARKER+': missing '+rel);
-  fs.writeFileSync(app,patchCatalogBootstrap(fs.readFileSync(app,'utf8'),rel));changed.push(rel);
+  fs.writeFileSync(app,patchOwnerImportEntry(patchCatalogBootstrap(fs.readFileSync(app,'utf8'),rel),rel));changed.push(rel);
  }
+ changed.push(...patchRc90Contrast(root));
  return {marker:MARKER,changed,interactionOnly:true,providerCalls:false,databaseChanges:false,financialChanges:false,securityGuardsChanged:false};
 }
-module.exports={apply,MARKER,patchRevenue,patchGuardian,patchCatalogBootstrap,CATALOG_MARKER};
+module.exports={apply,MARKER,patchRevenue,patchGuardian,patchCatalogBootstrap,CATALOG_MARKER,patchOwnerImportEntry,OWNER_IMPORT_MARKER,patchRc90Contrast,RC90_CONTRAST_MARKER};
