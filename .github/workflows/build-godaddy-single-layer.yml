@@ -17,10 +17,17 @@ on:
       - 'SBC-V66-PREBUILT-RUNTIME.zip'
       - 'SBC-V66-PREBUILT-RUNTIME.json'
   workflow_dispatch:
+  workflow_run:
+    workflows: ['SBC Offline Reconstruction Evidence Gate']
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
 jobs:
   single-layer:
+    # A GitHub Actions push of the pinned prebuilt runtime does not fire a new push
+    # workflow. Completion of the trusted source reconstruction closes that gap.
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
