@@ -72,6 +72,30 @@ function patchGuardian(src,rel){
  src='// '+MARKER+' guardian fallback buttons report unavailable actions instead of doing nothing.\n'+src;
  new vm.Script(src,{filename:rel});return src;
 }
+// SBC_V6672_CATALOG_BOOTSTRAP_TRUTH: do not render from a null catalog during
+// Published bootstrap or advertise unverified external provider readiness.
+const CATALOG_MARKER='SBC_V6672_CATALOG_BOOTSTRAP_TRUTH';
+function patchCatalogBootstrap(src,rel){
+ if(src.includes(CATALOG_MARKER))throw Error(CATALOG_MARKER+': already applied '+rel);
+ src=once(src,
+  'catalog:null,trainingCourse:null',
+  'catalog:{packages:[],services:[]},trainingCourse:null',
+  'safe initial catalog '+rel);
+ const target='state.catalog.packages.map(';
+ const count=src.split(target).length-1;
+ if(count!==3)throw Error(CATALOG_MARKER+': catalog .map count '+count+' '+rel);
+ src=src.split(target).join('(Array.isArray(state.catalog?.packages)?state.catalog.packages:[]).map(');
+ const statuses=[
+  ['<div class="label">SQUARE</div><div class="value">READY</div>',
+   '<div class="label">SQUARE</div><div class="value">VERIFY</div>'],
+  ['<div class="label">TWILIO</div><div class="value">READY</div>',
+   '<div class="label">TWILIO</div><div class="value">VERIFY</div>']
+ ];
+ for(const [oldText,newText] of statuses)src=once(src,oldText,newText,'provider status not presumed '+rel);
+ src='// '+CATALOG_MARKER+'\\n'+src;
+ new vm.Script(src,{filename:rel});
+ return src;
+}
 function apply(root){
  const changed=[];
  for(const dir of ['public','browser_public']){
@@ -81,7 +105,10 @@ function apply(root){
    const after=fn(fs.readFileSync(source,'utf8'),rel);
    fs.writeFileSync(source,after);changed.push(rel);
   }
+  const rel=dir+'/app.js',app=path.join(root,rel);
+  if(!fs.existsSync(app))throw Error(MARKER+': missing '+rel);
+  fs.writeFileSync(app,patchCatalogBootstrap(fs.readFileSync(app,'utf8'),rel));changed.push(rel);
  }
  return {marker:MARKER,changed,interactionOnly:true,providerCalls:false,databaseChanges:false,financialChanges:false,securityGuardsChanged:false};
 }
-module.exports={apply,MARKER,patchRevenue,patchGuardian};
+module.exports={apply,MARKER,patchRevenue,patchGuardian,patchCatalogBootstrap,CATALOG_MARKER};
