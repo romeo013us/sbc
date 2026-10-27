@@ -1,6 +1,17 @@
 'use strict';
 // V66.64: side-effect-free Twilio callback preflight. Never return secret values.
-const {acceptedOrigins}=require('./v6619-signed-twilio-webhook.js');
+function acceptedOrigins(values){
+  const origins=[];
+  for(const candidate of values||[]){
+    if(!candidate)continue;
+    try{
+      const url=new URL(String(candidate));
+      if(url.protocol!=='https:'||url.username||url.password)continue;
+      if(!origins.includes(url.origin))origins.push(url.origin);
+    }catch{}
+  }
+  return origins;
+}
 
 function inspect({env={},signatureTokenPresent=false,checkedAt=null}={}){
   const origins=acceptedOrigins([env.SBC_PUBLIC_URL,env.SBC_APP_URL]);
