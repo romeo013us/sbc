@@ -1,0 +1,52 @@
+'use strict';
+// SBC V66.67: exact compiled runtime owner import page and zero-automatic-write regression.
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(process.env.SBC_RUNTIME_ROOT||'.sbc-isolated-runtime');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const server=read('server.js'),html=read('public/index.html'),entry=read('public/sbc-v6667-private-owner-import.js'),importer=read('public/sbc-lead-import-v6541.js');
+const anchor="app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{";
+const at=server.indexOf(anchor),end=server.indexOf('\n});',at);
+assert(at>=0&&end>at,'owner-only import route must be present');
+assert.equal(server.indexOf(anchor,at+1),-1,'duplicate import route');
+const route=server.slice(at,end+4);
+assert.match(route,/Cache-Control.*no-store/);
+assert.match(route,/Content-Security-Policy/);
+assert.match(route,/frame-ancestors 'none'/);
+assert.doesNotMatch(route,/mysqlPool|db\.customers|await saveData|INSERT INTO|createCustomer|sendTwilio/,'GET must be read-only');
+new vm.Script(route,{filename:'owner-import-route.js'});
+let called=null;
+const auth={},ownerOnly={};
+const sandbox={app:{get:(uri,a,b,handler)=>{called={uri,a,b,handler}}},auth,ownerOnly};
+vm.runInNewContext(route,sandbox,{timeout:2000});
+assert.equal(called.uri,'/owner/lead-import');
+assert.equal(called.a,auth);
+assert.equal(called.b,ownerOnly);
+const headers={};let served='',type='';
+called.handler({},{
+ setHeader:(k,v)=>{headers[k]=v;},
+ type:v=>{type=v;return {send:v=>{served=v;return v}}}
+});
+assert.equal(type,'html');
+assert(headers['Cache-Control'].includes('no-store'));
+assert.equal(headers['Referrer-Policy'],'no-referrer');
+assert(served.includes('<meta name="robots" content="noindex,nofollow">'));
+assert(served.includes('/sbc-lead-import-v6541.js?v=66.67-owner'));
+assert(served.includes('/sbc-v6667-private-owner-import.js?v=66.67-owner'));
+assert(served.includes('Verification, consent, and Do Not Call screening'));
+assert.equal(served.includes('handyvipllc@gmail.com'),false,'no user prospect data may enter public source HTML');
+assert(entry.includes("launcher.style.display='none'"));
+assert(entry.includes("launcher.click()"));
+assert(entry.includes("window.location.assign('/')"));
+assert(importer.includes("fetch('/api/crm/leads/import'")||importer.includes("const url='/api/crm/leads/import'"));
+assert(importer.includes("dryRun:true,rows"));
+assert(importer.includes("dryRun:false,rows"));
+assert(importer.includes("window.confirm"));
+assert(importer.includes('rows.length>500'));
+assert(server.includes("app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{"));
+assert(server.includes("code:'SBC_IMPORT_WRITE_LOCKED'"));
+assert(server.includes('requireRequestTenant(req)'));
+assert(server.includes('MYSQL_RECOVERY_REQUIRED')&&server.includes('SBC_RUNTIME_WRITER_LEASE_REQUIRED'));
+assert(server.includes('SBC_V6632_REMOVE_FLOATING_LEAD_IMPORT'));
+assert(!html.includes('/sbc-lead-import-v6541.js'),'main dashboard must not re-add the floating importer');
+console.log('[SBC V66.67] PASS owner-only standalone import, existing tenant/transaction/write gates, no automatic imports or public contact CSV');
