@@ -45,6 +45,7 @@ assert(invalid.blockers.some(x=>x.code==='PUBLIC_HTTPS_CALLBACK_ORIGIN_MISSING')
 for(const rel of ['public/app.js','browser_public/app.js']){
   const body=fs.readFileSync(path.join(root,rel),'utf8');
   assert(body.includes('VOICE CALLBACK CONFIG INCOMPLETE'),rel+' missing callback warning');
+  assert(body.includes("st.configured&&st.webhookSignatureReady!==false?'green':'orange'"),rel+' misconfigured callback must show amber, not green');
   assert(body.includes('st.webhookSignatureReady!==false&&c.phone'),rel+' calling button must refuse known callback misconfiguration');
   assert(body.includes('/api/owner/voice-preflight'),rel+' must direct owner to endpoint');
 }
