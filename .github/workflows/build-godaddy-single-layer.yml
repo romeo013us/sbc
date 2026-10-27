@@ -10,6 +10,10 @@ on:
     paths:
       - '.github/workflows/build-godaddy-single-layer.yml'
       - 'tools/build-godaddy-single-layer.py'
+      - 'persistent-state.js'
+      - 'tenant-rejection-guard.js'
+      - 'runtime-env-beacon.js'
+      - 'hotfix-assets/sbc-leads-oct-26-27-2026-31.csv'
       - 'SBC-V66-PREBUILT-RUNTIME.zip'
       - 'SBC-V66-PREBUILT-RUNTIME.json'
   workflow_dispatch:
@@ -72,3 +76,81 @@ jobs:
             dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip.sha256
           if-no-files-found: error
           retention-days: 30
+
+  publish-godaddy-branch:
+    # Do not replace production; make a clean Git branch for GoDaddy GitHub Connect.
+    # Runs only after the flat ZIP was successfully built and regression-tested.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: single-layer
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: sbc-godaddy-deployment-branch
+      cancel-in-progress: false
+    steps:
+      - name: Check out source with permission to publish a separate branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Download the independently tested flat app artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SBC-GoDaddy-SINGLE-LAYER-APP
+          path: dist
+      - name: Publish only validated flat application to godaddy-deploy branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum -c dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip.sha256 --status
+          python3 -m zipfile -t dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip
+          # Do not deploy a stale build if main advanced while tests were running.
+          HEAD_NOW="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [[ "$HEAD_NOW" != "$GITHUB_SHA" ]]; then
+            echo "[SBC DEPLOY BRANCH] main advanced; refusing stale branch update"
+            exit 0
+          fi
+          worktree="$(mktemp -d)"
+          if git ls-remote --exit-code --heads origin refs/heads/godaddy-deploy >/dev/null; then
+            git fetch --no-tags --depth=1 origin refs/heads/godaddy-deploy:refs/remotes/origin/godaddy-deploy
+            git worktree add -b sbc-flat-publish "$worktree" refs/remotes/origin/godaddy-deploy
+          else
+            git worktree add --detach "$worktree" HEAD
+            git -C "$worktree" switch --orphan sbc-flat-publish
+          fi
+          # The deploy branch is a checked-out app, not the source, nested ZIP or
+          # Actions workflow. Deleting here touches ONLY this disposable worktree.
+          find "$worktree" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf -- {} +
+          unzip -q dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip -d "$worktree"
+          python3 - "$worktree" <<'PY'
+          import hashlib, json, pathlib, sys, zipfile
+          root=pathlib.Path(sys.argv[1])
+          archive=pathlib.Path("dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip")
+          manifest=json.loads(pathlib.Path("SBC-V66-PREBUILT-RUNTIME.json").read_text())
+          with zipfile.ZipFile(archive) as package:
+              names=package.namelist()
+              forbidden=[n for n in names if n.startswith((".git/",".github/")) or "/node_modules/" in n or n.startswith("node_modules/") or n.lower().endswith((".zip",".tar",".tgz",".env"))]
+              if forbidden: raise SystemExit("Refusing unsafe GitHub deploy branch members: "+repr(forbidden[:5]))
+              assert "package.json" in names and "sbc-godaddy-flat-entrypoint.cjs" in names
+          receipt={"sourceCommit":manifest["sourceCommit"],
+              "sourceFingerprint":manifest["sourceFingerprint"],
+              "artifactSha256":hashlib.sha256(archive.read_bytes()).hexdigest(),
+              "buildBranch":"main","deployBranch":"godaddy-deploy",
+              "createdBy":"SBC GoDaddy Single-Layer ZIP GitHub Actions"}
+          (root/"SBC-DEPLOY-RECEIPT.json").write_text(json.dumps(receipt,indent=2)+"\n")
+          print("[SBC DEPLOY BRANCH] validated source",receipt["sourceCommit"])
+          PY
+          git -C "$worktree" config user.name "github-actions[bot]"
+          git -C "$worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$worktree" add -A
+          if git -C "$worktree" diff --cached --quiet; then
+            echo "[SBC DEPLOY BRANCH] already matches verified artifact"
+            exit 0
+          fi
+          git -C "$worktree" commit -m "deploy: source-matched SBC GoDaddy flat runtime ($GITHUB_SHA)"
+          # The branch receives only a verified clean application commit.
+          # Never push to main; never alter GoDaddy Published automatically.
+          git -C "$worktree" push origin HEAD:refs/heads/godaddy-deploy
+          echo "[SBC DEPLOY BRANCH] SUCCESS: godaddy-deploy now contains flat GoDaddy app"
