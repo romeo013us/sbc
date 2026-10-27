@@ -1,0 +1,74 @@
+name: SBC GoDaddy Single-Layer ZIP
+# V66.70: GoDaddy direct-upload artifact only. Does not deploy or modify a live DB.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/build-godaddy-single-layer.yml'
+      - 'tools/build-godaddy-single-layer.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-godaddy-single-layer.yml'
+      - 'tools/build-godaddy-single-layer.py'
+      - 'SBC-V66-PREBUILT-RUNTIME.zip'
+      - 'SBC-V66-PREBUILT-RUNTIME.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  single-layer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify verified runtime receipt and source identity
+        run: |
+          set -euo pipefail
+          node scripts/prebuilt-runtime.test.cjs
+          node - <<'NODE'
+          const {readManifest}=require('./scripts/prebuilt-runtime.cjs');
+          const x=readManifest(process.cwd());
+          if (!x || x.manifest.generatedBy!=='isolated-github-ci') throw Error('release not isolated CI verified');
+          console.log('[SBC FLAT] pinned source',x.manifest.sourceCommit,x.manifest.sourceFingerprint);
+          NODE
+      - name: Assemble one-level GoDaddy application with safe startup bridge
+        run: |
+          set -euo pipefail
+          python3 tools/build-godaddy-single-layer.py
+          cd dist
+          sha256sum -c SBC-GoDaddy-SINGLE-LAYER-APP.zip.sha256
+          python3 -m zipfile -t SBC-GoDaddy-SINGLE-LAYER-APP.zip
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx package.json
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx server.js
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx sbc-godaddy-flat-entrypoint.cjs
+          if unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -E '(^|/)node_modules/|\.zip$|^\.env($|\.)'; then
+            echo 'Forbidden dependency, nested archive or secret in GoDaddy flat ZIP'; exit 1
+          fi
+      - name: Triple-check actual packaged browser, revenue and CRM gates
+        run: |
+          set -euo pipefail
+          verify_dir="$(mktemp -d)"
+          trap 'rm -rf "$verify_dir"' EXIT
+          unzip -q dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip -d "$verify_dir"
+          node --check "$verify_dir/server.js"
+          node --check "$verify_dir/sbc-godaddy-flat-entrypoint.cjs"
+          for pass in 1 2 3; do
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6669-critical-navigation-race.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6645-square-checkout-safety.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6648-revenue-tenant-isolation.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6664-voice-preflight.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6665-square-readiness.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6666-public-checkout-no-ghost.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6667-private-owner-import.test.cjs
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SBC-GoDaddy-SINGLE-LAYER-APP
+          path: |
+            dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip
+            dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
