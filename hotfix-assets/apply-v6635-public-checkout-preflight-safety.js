@@ -20,6 +20,12 @@ function apply(root){
    "    if(SBC_RUNTIME_READ_ONLY||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)return res.status(423).json({ok:false,code:'CHECKOUT_WRITER_LOCKED',error:'Checkout is temporarily unavailable. No customer or order was created.'});",
    "    if(RUNTIME_GATE.blocked('NEW_CHECKOUTS'))return res.status(423).json({ok:false,code:'CHECKOUT_OWNER_PAUSED',error:'Owner has paused new checkouts. No customer or order was created.'});",
    "    if(!squareConfigured())return res.status(503).json({ok:false,code:'SQUARE_NOT_CONFIGURED',error:'Secure checkout is not yet configured. No customer or order was created.'});",
+   "    // SBC_V6666_PUBLIC_SQUARE_ZERO_GHOST_PREFLIGHT: bounded cached GET; no customer/order until Square location is healthy.",
+   "    if(!squareWebhookConfigured())return res.status(503).json({ok:false,code:'SQUARE_WEBHOOK_NOT_CONFIGURED',error:'Secure checkout cannot confirm its payment webhook. No customer or order was created.'});",
+   "    let squareLocationProbe;",
+   "    try{squareLocationProbe=await SBC_SQUARE_LOCATION_PROBE({token:process.env.SQUARE_ACCESS_TOKEN,locationId:process.env.SQUARE_LOCATION_ID,environment:squareEnvironment(),apiVersion:SQUARE_API_VERSION});}",
+   "    catch(_){return res.status(503).json({ok:false,code:'SQUARE_PREFLIGHT_UNAVAILABLE',error:'Secure checkout temporarily unavailable. No customer or order was created.'});}",
+   "    if(!squareLocationProbe?.reachable)return res.status(503).json({ok:false,code:'SQUARE_PREFLIGHT_UNAVAILABLE',error:'Square location could not be verified. No customer or order was created.'});",
    "    const c="
   ].join('\n'),
   'pre-insert guarded financial preflight');
