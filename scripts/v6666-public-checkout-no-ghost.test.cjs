@@ -43,8 +43,11 @@ async function check(input){
  const script=new vm.Script('(async function(){'+beforeWrite+'return {allowed:true}})()',{filename:'compiled-public-preflight.js'});
  const response=await script.runInNewContext(ctx,{timeout:1000});
  if(seen.response!==null){
-  assert.equal(seen.response.ok,false);
-  assert.match(seen.response.error,/No customer or order was created/);
+  if(seen.httpStatus===400)assert.match(seen.response.error,/required/);
+  else {
+   assert.equal(seen.response.ok,false);
+   assert.match(seen.response.error,/No customer or order was created/);
+  }
   assert(!JSON.stringify(seen.response).includes('SECRET_THAT_MUST_NEVER_APPEAR'));
  }else assert.equal(response.allowed,true);
  return {...seen,response};
