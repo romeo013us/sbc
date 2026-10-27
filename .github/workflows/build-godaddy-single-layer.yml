@@ -79,6 +79,7 @@ jobs:
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6667-private-owner-import.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6671-owner-packaged-lead-batch.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6672-published-dashboard-null-catalog.test.cjs
+            SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6674-owner-import-discoverability.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6673-godaddy-startup-parity.test.cjs
           done
       - uses: actions/upload-artifact@v4
