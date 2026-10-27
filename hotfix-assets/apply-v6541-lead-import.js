@@ -49,11 +49,25 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
 });
 `;
  const anchor='const startOperationalRuntime=async()=>{',i=server.indexOf(anchor);if(i<0||server.indexOf(anchor,i+anchor.length)!==-1)throw new Error(MARKER+': expected one operational runtime startup anchor');
- server=server.slice(0,i)+route+'\n'+server.slice(i);write(root,'server.js',server);
+ // SBC_V6667_PRIVATE_OWNER_CSV_IMPORT: owner route, no PII in public GitHub or automatic imports.
+ const ownerImportHtml="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>SBC · Owner Lead Import</title></head><body><main><h1>SBC · Private Lead Import</h1><p id=\"sbc-import-page-status\">Preparing owner-only CSV review. No leads are imported automatically.</p><p><a href=\"/\">Return to Command Center</a></p><p>Verification, consent, and Do Not Call screening remain required before outreach.</p></main><script src=\"/sbc-lead-import-v6541.js?v=66.67-owner\"></script><script src=\"/sbc-v6667-private-owner-import.js?v=66.67-owner\"></script></body></html>";
+ const ownerImportRoute=[
+  "app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{",
+  " res.setHeader('Cache-Control','private, no-store');",
+  " res.setHeader('X-Content-Type-Options','nosniff');",
+  " res.setHeader('Referrer-Policy','no-referrer');",
+  " res.setHeader('Content-Security-Policy',\"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\");",
+  ' res.type(\'html\').send('+JSON.stringify(ownerImportHtml)+');',
+  "});"
+ ].join('\n');
+ server=server.slice(0,i)+route+'\n'+ownerImportRoute+'\n'+server.slice(i);write(root,'server.js',server);
  }
  const pub=path.join(root,'public'),source=path.join(__dirname,'lead-import-v6541.js');
  if(!fs.existsSync(source))throw new Error(MARKER+': missing lead-import-v6541.js');
  fs.copyFileSync(source,path.join(pub,'sbc-lead-import-v6541.js'));
+ const ownerEntry=path.join(__dirname,'sbc-v6667-private-owner-import.js');
+ if(!fs.existsSync(ownerEntry))throw Error(MARKER+': owner import initializer missing');
+ fs.copyFileSync(ownerEntry,path.join(pub,'sbc-v6667-private-owner-import.js'));
  let html=read(root,'public/index.html');
  if(!html.includes('/sbc-lead-import-v6541.js'))html=once(html,'</body>','<script src="/sbc-lead-import-v6541.js?v=65.1.41-lead-import"></script>\n</body>','lead import screen script');
  html=html.replace(/V65\.1\.39/g,'V65.1.41').replace(/65\.1\.39/g,'65.1.41');write(root,'public/index.html',html);
