@@ -22,7 +22,26 @@ ENTRY = """'use strict';
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const root = __dirname;
+// Verified identity is generated from the same isolated CI runtime used by this build.
+const release = require('./SBC-FLAT-RELEASE-IDENTITY.json');
+if(release.schema!==1||! /^[a-f0-9]{40}$/.test(release.sourceCommit||'')||
+   ! /^[a-f0-9]{64}$/.test(release.sourceFingerprint||'')||
+   ! /^[a-f0-9]{64}$/.test(release.serverSha256||'')) {
+  throw Error('[SBC DEPLOY IDENTITY] invalid pinned release identity');
+}
+const serverSha = crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'server.js'))).digest('hex');
+if(serverSha!==release.serverSha256)throw Error('[SBC DEPLOY IDENTITY] packaged server has changed since verification');
+const receiptPath = path.join(root,'SBC-DEPLOY-RECEIPT.json');
+const hasReceipt = fs.existsSync(receiptPath);
+if(hasReceipt){
+ const receipt=JSON.parse(fs.readFileSync(receiptPath,'utf8'));
+ if(receipt.sourceCommit!==release.sourceCommit||receipt.sourceFingerprint!==release.sourceFingerprint){
+  throw Error('[SBC DEPLOY IDENTITY] GitHub deployment receipt does not match running server');
+ }
+}
+console.log('[SBC DEPLOY IDENTITY] entry=flat source_commit='+release.sourceCommit+' source_fingerprint='+release.sourceFingerprint+' receipt='+(hasReceipt?'VERIFIED':'ZIP_INSTALL'));
 const {persistState} = require('./persistent-state.js');
 const state = persistState(root, root, {reused:false});
 if (state.ephemeral) throw Error('SBC flat runtime rejects ephemeral customer state');
@@ -32,6 +51,13 @@ console.log('[SBC FLAT STARTUP] boot_id='+bootId+' port='+(process.env.PORT||'<a
 console.log(require('./runtime-env-beacon.js').buildBeaconLine(process.env,os.hostname()));
 require('./tenant-rejection-guard.js').installTenantRejectionGuard(process,console);
 require(path.join(root,'server.js'));
+"""
+BOOTSTRAP_COMPAT = """'use strict';
+// SBC V66.73 GoDaddy backwards-compatible startup only.
+// If GoDaddy preserved a legacy `node bootstrap.js` command, launch the same
+// verified flat runtime rather than a second compiler or database writer.
+console.log('[SBC DEPLOY STARTUP COMPAT] legacy bootstrap.js -> verified flat entrypoint');
+require('./sbc-godaddy-flat-entrypoint.cjs');
 """
 
 def sha(data):
@@ -84,6 +110,19 @@ pkg["main"] = "sbc-godaddy-flat-entrypoint.cjs"
 pkg["scripts"]["start"] = "node sbc-godaddy-flat-entrypoint.cjs"
 files["package.json"] = (json.dumps(pkg,indent=2) + "\n").encode()
 files["sbc-godaddy-flat-entrypoint.cjs"] = ENTRY.encode()
+# The artifact is safe under npm start and any previously persisted
+# GoDaddy `node bootstrap.js` serve command. Never compile a second runtime.
+if "bootstrap.js" in files: fail("compiled runtime conflicts with GoDaddy compatibility launcher")
+files["bootstrap.js"] = BOOTSTRAP_COMPAT.encode()
+identity = {
+    "schema":1,
+    "version":manifest["version"],
+    "sourceCommit":manifest["sourceCommit"],
+    "sourceFingerprint":manifest["sourceFingerprint"],
+    "serverSha256":original_server_hash
+}
+if "SBC-FLAT-RELEASE-IDENTITY.json" in files: fail("compiled release identity path collision")
+files["SBC-FLAT-RELEASE-IDENTITY.json"] = (json.dumps(identity,indent=2)+"\n").encode()
 for name in ("persistent-state.js", "tenant-rejection-guard.js", "runtime-env-beacon.js"):
     if name in files: fail("launcher path conflict "+name)
     files[name] = (ROOT/name).read_bytes()
@@ -104,6 +143,10 @@ with zipfile.ZipFile(DEST) as check:
         fail("unexpected generated ZIP inventory")
     if sha(check.read("server.js")) != original_server_hash:
         fail("compiled server modified by packaging")
+    if check.read("bootstrap.js") != BOOTSTRAP_COMPAT.encode():
+        fail("legacy startup compatibility launcher changed")
+    if json.loads(check.read("SBC-FLAT-RELEASE-IDENTITY.json")) != identity:
+        fail("release identity not pinned to compiled source")
     if len([n for n in check.namelist() if n.startswith("data/")]) != 5:
         fail("not exactly five approved seed catalog files")
 (DEST.parent/(DEST.name+".sha256")).write_text(sha(DEST.read_bytes())+"  "+DEST.name+"\n")
