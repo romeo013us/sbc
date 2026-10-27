@@ -10,6 +10,7 @@ const marker='async function startSbcBusinessCall(customerId){';
 const endMarker='\nfunction normalizeClientPhone';
 
 async function exercise(source,which){
+  assert(source.includes('TWILIO CONFIGURED · CALL TEST PENDING'),which+': configured credentials must not claim a verified working phone');
   const start=source.indexOf(marker);
   assert(start>=0,which+': live dialer start function missing');
   const end=source.indexOf(endMarker,start);
