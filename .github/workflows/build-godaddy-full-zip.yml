@@ -80,6 +80,7 @@ jobs:
           SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6660-website-bridge.test.cjs
           SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6661-inbound-and-portal-auth.test.cjs
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6667-private-owner-import.test.cjs; done
+          for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6671-owner-packaged-lead-batch.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6666-public-checkout-no-ghost.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6665-square-readiness.test.cjs; done
           for pass in 1 2 3; do SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT="$verify_dir" node scripts/v6664-voice-preflight.test.cjs; done
