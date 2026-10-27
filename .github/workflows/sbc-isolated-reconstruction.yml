@@ -204,6 +204,7 @@ jobs:
           set -euo pipefail
           for pass in 1 2 3; do
             SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6667-private-owner-import.test.cjs
+            SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6671-owner-packaged-lead-batch.test.cjs
           done
       - name: Triple-pass public checkout pre-write Square availability
         shell: bash
