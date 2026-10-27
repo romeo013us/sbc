@@ -135,6 +135,7 @@ jobs:
           SBC_RUNTIME_ROOT: .sbc-isolated-runtime
         run: |
           set -euo pipefail
+          node scripts/v6669-critical-navigation-race.test.cjs
           node --check scripts/v6640-compiled-payment-truth.test.cjs
           node scripts/v6640-compiled-payment-truth.test.cjs
 
