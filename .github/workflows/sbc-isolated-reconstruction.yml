@@ -196,6 +196,13 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=15s 180s node scripts/v6634-full-artifact-static-audit.cjs .sbc-isolated-runtime | tee .sbc-isolated-reports/v6634-full-static-audit.json
+      - name: Triple-pass owner-only private lead import page and existing CRM gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pass in 1 2 3; do
+            SBC_AUDIT_PASS="$pass" SBC_RUNTIME_ROOT=.sbc-isolated-runtime node scripts/v6667-private-owner-import.test.cjs
+          done
       - name: Triple-pass public checkout pre-write Square availability
         shell: bash
         run: |
