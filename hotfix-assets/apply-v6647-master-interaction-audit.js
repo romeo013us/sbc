@@ -92,7 +92,7 @@ function patchCatalogBootstrap(src,rel){
    '<div class="label">TWILIO</div><div class="value">VERIFY</div>']
  ];
  for(const [oldText,newText] of statuses)src=once(src,oldText,newText,'provider status not presumed '+rel);
- src='// '+CATALOG_MARKER+'\\n'+src;
+ src='// '+CATALOG_MARKER+'\n'+src;
  new vm.Script(src,{filename:rel});
  return src;
 }
