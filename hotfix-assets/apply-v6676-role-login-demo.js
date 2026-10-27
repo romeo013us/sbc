@@ -9,6 +9,8 @@ const SYNTHETIC_DEMO="// SBC_V6676_SYNTHETIC_DEMO: fictional non-billable sample
 function patchServer(s){
  if(s.includes(MARKER))throw Error(MARKER+': duplicate server patch');
  s=once(s,"if(p==='/api/me'||p==='/api/release-identity')return m==='GET';","if(['/api/me','/api/release-identity','/api/bootstrap','/api/catalog'].includes(p))return m==='GET';",'Lorna regular bootstrap access');
+ s=once(s," if(p==='/api/workforce/lead-draft')return m==='GET';"," if(p==='/api/workforce/lead-draft')return ['GET','PUT','DELETE'].includes(m);",'self-only research drafts');
+ s=once(s," if(/^\\/api\\/workforce\\/leads\\/[^/]+$/.test(p))return m==='GET';"," if(/^\\/api\\/workforce\\/leads\\/[^/]+$/.test(p))return ['GET','PUT'].includes(m);",'research lead edits');
  s=once(s," if(p==='/api/crm/leads/import')return m==='POST';"," // Researchers use /api/workforce/leads; owner CSV import stays owner-only.",'remove misleading research CSV permission');
  s=once(s,"if(!user||!sbcLornaRole(user))return next();","req._sbcRoleIdentity=user;if(!user||!sbcLornaRole(user))return next();",'share authenticated session with demo gate');
  s=once(s,"app.get('/api/gateways/readiness',auth,",DEMO_GATE+"\napp.get('/api/gateways/readiness',auth,",'pre-route demo deny-by-default');
@@ -25,6 +27,24 @@ function patchServer(s){
  const leadGuard="if(sbcLornaRole(req.user)){const tid=Number(requireRequestTenant(req)),uid=String(req.user.id),assigned=String(c.assignedTo||''),status=String(c.status||'Lead').toLowerCase();if(Number(c.tenantId)!==tid||['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(status)||(assigned&&assigned!==uid)||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==uid))return res.status(403).json({error:'Lead is outside your permitted research queue.'});}";
  route=once(route,'const b=req.body||{};',leadGuard+'const b=req.body||{};','verification authorization before field writes');
  s=s.slice(0,i)+route+s.slice(j);
+ function patchSpecificRoute(first,last,from,to,label){
+  const a=s.indexOf(first),b=s.indexOf(last,a+first.length);
+  if(a<0||b<=a)throw Error(MARKER+': '+label+' boundaries missing');
+  const revised=once(s.slice(a,b),from,to,label);s=s.slice(0,a)+revised+s.slice(b);
+ }
+ patchSpecificRoute("app.put('/api/workforce/leads/:id',auth,async(req,res)=>{",
+  "app.get('/api/workforce/leads/:id',auth,async(req,res)=>{",
+  'const b=req.body||{};',leadGuard+'const b=req.body||{};','research edit tenant and assignment authorization');
+ patchSpecificRoute("app.get('/api/v9/lead-verification',auth,(req,res)=>{",
+  "app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{",
+  'const mine=sbcLornaRole(req.user)?all.filter(c=>{',
+  'const mine=sbcLornaRole(req.user)?all.filter(c=>{if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return false;',
+  'research verification list tenant isolation');
+ patchSpecificRoute("app.get('/api/workforce/leads/:id',auth,async(req,res)=>{",
+  "app.post('/api/v10/leads/submit',auth,async(req,res)=>{",
+  "const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');",
+  "const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return res.status(403).json({error:'Lead is outside your tenant research queue.'});",
+  'direct research record tenant isolation');
  s='// '+MARKER+'\n'+s;
  new vm.Script(s,{filename:'server.js'});return s;
 }
