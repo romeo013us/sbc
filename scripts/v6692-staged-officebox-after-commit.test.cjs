@@ -10,7 +10,7 @@ const original=fs.readFileSync(path.join(root,'server.js'),'utf8');
 const patched=patchServer(original);
 assert(patched.includes(MARKER));
 assert.throws(()=>patchServer(patched),/previously patched/,'a patch may not run twice');
-assert.throws(()=>patchServer(original.replace('try{const handoff=await sendBig3OfficeBoxHandoff(order','try{const handoff=await sendUnknownOfficeBoxHandoff(order'),/expected exactly one legacy paid handoff/);
+assert.throws(()=>patchServer(original.replace('try{const handoff=await sendBig3OfficeBoxHandoff(order','try{const handoff=await sendUnknownOfficeBoxHandoff(order')),/expected exactly one legacy paid handoff/);
 const start=patched.indexOf("async function handleSquarePaymentEvent(event,baseOverride=''){");
 const end=patched.indexOf('\nconst PAYMENT_LINKS =',start);
 const handler=patched.slice(start,end);
