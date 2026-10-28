@@ -3,6 +3,8 @@
 const assert=require('node:assert/strict');
 const mysql=require('mysql2/promise');
 const {loadCommittedOfficeBoxPayment}=require('../ecosystem/office-box-committed-readback.cjs');
+const {enqueueVerifiedCommittedOfficeBox}=require('../ecosystem/office-box-committed-enqueue.cjs');
+const {createOutbox}=require('../ecosystem/office-box-outbox.cjs');
 if(process.env.FANTASTIC4_DISPOSABLE_MYSQL!=='1'||!/_ci$|_test$/.test(process.env.MYSQL_DATABASE||'')){
  console.error('REFUSE_OFFICE_BOX_MYSQL_NON_CI');process.exit(3);
 }
@@ -49,6 +51,49 @@ if(process.env.FANTASTIC4_DISPOSABLE_MYSQL!=='1'||!/_ci$|_test$/.test(process.en
   assert.equal(proof.event.payload.plan,'business');
   assert.equal(proof.event.payload.ownerEmail,email);
   assert.equal(proof.event.payload.paymentReference,payId);
+  // The first queued event must be backed by a FRESH server-side Square
+  // GET, a current writer lease and the same committed MySQL capture.
+  let writerLeaseHeld=true,providerLookups=0;
+  const writerAuthority=async()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld});
+  const outbox=createOutbox({pool,enabled:true,publishedWriter:true,writerAuthority,
+   receiverOrigin:'https://officebox-ci.example.test',
+   secret:'office-box-disposable-reconciliation-secret-2026-long-enough',
+   transport:async()=>{throw Error('DISPATCH_MUST_NOT_RUN')}});
+  const provider=async({paymentId})=>{
+   providerLookups++;assert.equal(paymentId,payId);
+   return {source:'SQUARE_PAYMENT_PROVIDER_GET',status:'COMPLETED',
+    settled:true,refunded:false,disputed:false,paymentId:payId,
+    squareOrderId:sqOrder,locationId:'ci_location',currency:'USD',
+    amountCents:34900,verifiedAt:new Date().toISOString()};
+  };
+  const enqueueRequest={...req,outbox,enabled:true,publishedWriter:true,
+   writerAuthority,verifyLiveSettlement:provider};
+  await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox({...enqueueRequest,enabled:false}),
+   /OFFICE_BOX_PAYMENT_RECONCILIATION_DISABLED/);
+  let queued=await enqueueVerifiedCommittedOfficeBox(enqueueRequest);
+  assert.equal(queued.created,true);assert.equal(queued.state,'PENDING_DISPATCH');
+  assert.equal(providerLookups,1);
+  const [[persistedEvent]]=await pool.execute(
+   'SELECT status,event_type,order_id,customer_id FROM sbc_office_box_outbox WHERE event_id=?',[queued.eventId]);
+  assert.equal(persistedEvent.status,'PENDING');
+  assert.equal(persistedEvent.event_type,'customer.subscription.paid');
+  assert.equal(persistedEvent.order_id,orderId);
+  assert.equal(persistedEvent.customer_id,custId);
+  queued=await enqueueVerifiedCommittedOfficeBox(enqueueRequest);
+  assert.equal(queued.created,false,'same Square capture must not create a second event');
+  writerLeaseHeld=false;
+  await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox(enqueueRequest),
+   /OFFICE_BOX_PUBLISHED_WRITER_REVOKED/);
+  writerLeaseHeld=true;
+  await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox({
+   ...enqueueRequest,verifyLiveSettlement:async()=>({...await provider({paymentId:payId}),refunded:true})}),
+   /OFFICE_BOX_FRESH_SQUARE_SETTLEMENT_REQUIRED/);
+  await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox({
+   ...enqueueRequest,verifyLiveSettlement:async()=>({...await provider({paymentId:payId}),
+    verifiedAt:'2020-01-01T00:00:00Z'})}),
+   /OFFICE_BOX_FRESH_SQUARE_SETTLEMENT_REQUIRED/);
+  assert.equal((await pool.execute('SELECT COUNT(*) AS n FROM sbc_office_box_outbox WHERE event_id=?',
+   [queued.eventId]))[0][0].n,1,'one durable queued event only');
   const [[orderBefore]]=await pool.query('SELECT status,notes FROM sbc_orders WHERE id=?',[orderId]);
   // A caller-provided in-memory flag cannot replace database evidence.
   await assert.rejects(()=>loadCommittedOfficeBoxPayment({...req,tenantId:8}),/OFFICE_BOX_COMMITTED_ORDER_MISSING/);
