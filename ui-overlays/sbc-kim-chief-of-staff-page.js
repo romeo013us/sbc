@@ -55,7 +55,7 @@
   document.body.appendChild(root);return root;
  }
  function show(){addStyle();previousFocus=document.activeElement;const root=ensure();root.hidden=false;document.body.classList.add('sbc-kim-page-open');root.querySelector('.sbc-kim-close')?.focus()}
- function hide(){const root=document.getElementById(MODAL_ID);if(!root||root.hidden)return;root.hidden=true;document.body.classList.remove('sbc-kim-page-open');try{previousFocus?.focus()}catch{}}
+ function hide(){const root=document.getElementById(MODAL_ID);if(!root||root.hidden)return;root.hidden=true;document.body.classList.remove('sbc-kim-page-open');if(document.body.classList.contains('kim-voice-active')){try{window.stopKimVoice?.()}catch{}}try{previousFocus?.focus()}catch{}}
  function openChat(){hide();const open=window.sbcKimCanonical?.open||window.openSbcAI;if(typeof open==='function')open();else alert('Kim chat is still loading. Please open Intelligence and retry.')}
  function startVoice(){if(typeof window.startKimVoice==='function'){window.startKimVoice()}else alert('Voice is not configured on this Command Center runtime. Text chat remains available.')}
  function nav(){const host=document.querySelector('button[data-view="kimcenter"]');if(!host||document.getElementById(BUTTON_ID))return;const b=mk('button',host.className,'👑 Ask Kim');b.id=BUTTON_ID;b.type='button';b.removeAttribute('data-view');b.setAttribute('aria-label','Open Kim AI Chief of Staff page');b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();show()});host.insertAdjacentElement('afterend',b)}
