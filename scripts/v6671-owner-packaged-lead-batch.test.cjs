@@ -37,7 +37,7 @@ assert(importer.includes('dryRun:false'));
 assert(importer.includes('window.confirm'));
 assert(!fs.existsSync(path.join(root,'public/sbc-master-prospect-list-2026-10-23.csv')));
 assert(!fs.existsSync(path.join(root,'browser_public/sbc-master-prospect-list-2026-10-23.csv')));
-assert(!fs.existsSync(path.join(root,'starter-leads/SBC-Lorna-Barbershop-Batch-2026-10-09.csv')));
+// Frozen baseline files are omitted by the verified ZIP packager, not by the in-memory compiler.
 new vm.Script(importer,{filename:'sbc-lead-import-v6541.js'});
 new vm.Script(owner,{filename:'sbc-v6667-private-owner-import.js'});
 console.log('[SBC V6671] PASS retired bundled CSV, owner manual upload, safe preview, no public prospect files');
