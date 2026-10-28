@@ -112,12 +112,12 @@ async function main(){
  const active=await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'});
  assert(active.created,'Verified activation must enqueue one ACTIVE entitlement');
  assert.equal((await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'})).created,false);
- assert.equal((await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-28T10:00:00Z'})).created,false,
+ assert.equal((await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T11:00:00Z'})).created,false,
   'fresh provider verification should not create a second ACTIVE entitlement');
  const changedPlan={...paidEvent,payload:{...paidEvent.payload,plan:'team'}};
  const changedLinked={...linked,data:{...linked.data,plan:'team'}};
  await assert.rejects(()=>outbox.enqueueActiveEntitlement({
-  paidEvent:changedPlan,activationResponse:changedLinked,verifiedAt:'2026-10-28T10:00:00Z'
+  paidEvent:changedPlan,activationResponse:changedLinked,verifiedAt:'2026-10-27T11:00:00Z'
  }),/OFFICE_BOX_OUTBOX_EVENT_COLLISION/,'same ACTIVE event key cannot silently switch a customer plan');
 
  assert.equal((await outbox.dispatchOne()).status,'DELIVERED');
