@@ -99,6 +99,28 @@ async function main(){
  assert.equal(delivered.status,'DELIVERED');
  assert.equal(rows.get(queued.eventId).attempts,1);
  assert.equal(await outbox.dispatchOne().then(x=>x.status),'EMPTY');
+ // Exact Office Box receiver contract for successful authenticated replay.
+ // The already-committed event may be repeated after an uncertain network ACK.
+ const replayCapture={...proof,order:{...order,id:'sbc_order_replay_501'},
+  paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_replay_501'}};
+ let receivedDuplicateCount=0;
+ const exactDuplicateReceiver=createOutbox({...options,transport:async(url,request)=>{
+  receivedDuplicateCount++;
+  assert.equal(url,'https://office.example.test/api/sbc/handoff');
+  assert.equal(request.redirect,'error');
+  const body=JSON.parse(request.body);
+  return {status:200,json:async()=>({ok:true,data:{
+   accepted:true,duplicate:true,correlationId:body.correlationId,status:'READY_FOR_ACTIVATION'
+  }})};
+ }});
+ const replayQueued=await exactDuplicateReceiver.enqueue(replayCapture);
+ const replayDelivered=await exactDuplicateReceiver.dispatchOne();
+ assert.equal(replayDelivered.status,'DELIVERED',
+  'exact correlated duplicate ACK from Office Box is an accepted delivery');
+ assert.equal(replayDelivered.eventId,replayQueued.eventId);
+ assert.equal(receivedDuplicateCount,1);
+ assert.equal(rows.get(replayQueued.eventId).status,'DELIVERED');
+
  assert.equal(sent[0].url,'https://office.example.test/api/sbc/handoff');
  const signed=sent[0].options;
  const timestamp=signed.headers['x-sbc-timestamp'];
