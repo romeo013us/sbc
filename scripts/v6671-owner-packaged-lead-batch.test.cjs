@@ -8,13 +8,13 @@ const server=read('server.js'),main=read('public/index.html'),
       importer=read('public/sbc-lead-import-v6541.js'),
       owner=read('public/sbc-v6667-private-owner-import.js');
 const marker="app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly,(req,res)=>{";
-const pos=server.indexOf(marker),end=server.indexOf('\\n});',pos);
+const pos=server.indexOf(marker),end=server.indexOf('\n});',pos);
 assert(pos>=0&&end>pos&&server.indexOf(marker,pos+1)===-1,'owner-only retired endpoint must be unique');
 const route=server.slice(pos,end+4);
 assert.match(route,/Cache-Control.*no-store/);
 assert.match(route,/SBC_PRIVATE_CSV_UPLOAD_REQUIRED/);
-assert.match(route,/status\\(410\\)/,'retired endpoint must not serve prospect CSV');
-assert.doesNotMatch(route,/readFileSync|sendFile|text\\/csv|INSERT|UPDATE|DELETE|saveData|mysqlPool/);
+assert.match(route,/status\(410\)/,'retired endpoint must not serve prospect CSV');
+assert.doesNotMatch(route,/readFileSync|sendFile|text\/csv|INSERT|UPDATE|DELETE|saveData|mysqlPool/);
 const routes=[];
 const auth={},ownerOnly={};
 vm.runInNewContext(route,{app:{get:(name,a,b,handler)=>routes.push({name,a,b,handler})},auth,ownerOnly},{timeout:2000});
