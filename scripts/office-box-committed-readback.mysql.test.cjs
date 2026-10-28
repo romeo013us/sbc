@@ -110,6 +110,21 @@ if(process.env.FANTASTIC4_DISPOSABLE_MYSQL!=='1'||!/_ci$|_test$/.test(process.en
   await pool.execute('UPDATE sbc_workspace SET payload=? WHERE id=1',[JSON.stringify({squarePayments:[]})]);
   await assert.rejects(()=>loadCommittedOfficeBoxPayment(req),/OFFICE_BOX_COMMITTED_CAPTURE_AMBIGUOUS_OR_MISSING/);
   await pool.execute('UPDATE sbc_workspace SET payload=? WHERE id=1',[JSON.stringify({squarePayments:payments})]);
+  // The actual MySQL readback must refuse multi-seat, unknown and cross-tenant records.
+  for(const lineItems of [
+   [{sku:'OFFICE_BOX_BUSINESS',quantity:2}],
+   [{sku:'OFFICE_BOX_BUSINESS',quantity:1},{sku:'OFFICE_BOX_ENTERPRISE',quantity:1}],
+  ]){
+   await pool.execute('UPDATE sbc_orders SET notes=? WHERE id=?',
+    [JSON.stringify({...notes,items:lineItems}),orderId]);
+   await assert.rejects(()=>loadCommittedOfficeBoxPayment(req),
+    /OFFICE_BOX_APPROVED_ONE_SEAT_PLAN_REQUIRED|OFFICE_BOX_EXACTLY_ONE_PURCHASED_SKU_REQUIRED/);
+  }
+  await pool.execute('UPDATE sbc_orders SET notes=? WHERE id=?',[JSON.stringify(notes),orderId]);
+  await pool.execute('UPDATE sbc_workspace SET payload=? WHERE id=1',
+   [JSON.stringify({squarePayments:[{...payments[0],tenantId:8}]})]);
+  await assert.rejects(()=>loadCommittedOfficeBoxPayment(req),/OFFICE_BOX_COMMITTED_CAPTURE_TENANT_MISMATCH/);
+  await pool.execute('UPDATE sbc_workspace SET payload=? WHERE id=1',[JSON.stringify({squarePayments:payments})]);
   proof=await loadCommittedOfficeBoxPayment(req);
   assert.equal(proof.event.payload.orderId,orderId);
   const [[after]]=await pool.query('SELECT status,notes FROM sbc_orders WHERE id=?',[orderId]);

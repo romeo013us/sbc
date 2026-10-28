@@ -20,9 +20,15 @@ function exactMoney(v){const amount=Number(v);return Number.isFinite(amount)&&am
 function purchasedOfficeBoxSku(notes){
  const items=notes?.items;
  if(!Array.isArray(items)||items.length===0||items.length>100)reject('OFFICE_BOX_TRUSTED_LINE_ITEMS_REQUIRED');
- const matches=items.map(item=>text(item?.sku)).filter(x=>/^OFFICE_BOX_(STARTER|BUSINESS|PROFESSIONAL|TEAM)$/.test(x));
- if(matches.length!==1)reject('OFFICE_BOX_EXACTLY_ONE_PURCHASED_SKU_REQUIRED');
- const sku=matches[0],plan=sku.substring('OFFICE_BOX_'.length).toLowerCase();
+ // An unknown OFFICE_BOX_* line is still an Office Box purchase attempt.
+ // Do not silently ignore it when a supported SKU is also present.
+ const lines=items.filter(item=>/^OFFICE_BOX(?:_|$)/i.test(text(item?.sku)));
+ if(lines.length!==1)reject('OFFICE_BOX_EXACTLY_ONE_PURCHASED_SKU_REQUIRED');
+ const line=lines[0],sku=text(line?.sku);
+ if(!/^OFFICE_BOX_(STARTER|BUSINESS|PROFESSIONAL|TEAM)$/.test(sku)||
+    (line.quantity!==1&&line.quantity!=='1'))
+  reject('OFFICE_BOX_APPROVED_ONE_SEAT_PLAN_REQUIRED');
+ const plan=sku.substring('OFFICE_BOX_'.length).toLowerCase();
  if(!SUPPORTED_PLANS.has(plan)||notes.officeBoxSku&&text(notes.officeBoxSku)!==sku)
   reject('OFFICE_BOX_SKU_CONFLICT');
  return {sku,plan};
@@ -74,6 +80,8 @@ async function loadCommittedOfficeBoxPayment({pool,orderId,tenantId,payment,expe
    text(rec?.squareOrderId)===text(payment.order_id));
   if(matching.length!==1)reject('OFFICE_BOX_COMMITTED_CAPTURE_AMBIGUOUS_OR_MISSING');
   const rec=matching[0];
+  if(rec.tenantId!==undefined && String(rec.tenantId)!==String(tenantId))
+   reject('OFFICE_BOX_COMMITTED_CAPTURE_TENANT_MISMATCH');
   if(String(rec.status||'').toUpperCase()!=='PAID'||
      exactMoney(rec.amount)!==price||
      text(rec.currency).toUpperCase()!=='USD'||
