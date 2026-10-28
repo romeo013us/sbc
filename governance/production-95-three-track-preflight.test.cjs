@@ -37,7 +37,7 @@ for(const [message,reason] of [
  assert.equal(failed.status,'NO_GO');assert.equal(failed.release.reason,reason);
  assert.equal(failed.deploymentAuthorized,false);
 }
-const now=new Date('2026-10-28T12:00:00Z').toISOString();
+const now=new Date().toISOString();
 const claims={commit:sourceCommit,build:{},saas:{},company:{}};
 for(const [track,items] of Object.entries(RUBRIC)){
  for(const item of items){
