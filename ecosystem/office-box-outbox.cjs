@@ -6,8 +6,8 @@
  */
 const crypto=require('node:crypto');
 const {buildPaidHandoff,signPaidHandoff}=require('../enterprise/office-box-paid-handoff.cjs');
+const {makeActiveEntitlement,signActiveEntitlement}=require('./office-box-activation-client.cjs');
 const TABLE='sbc_office_box_outbox';
-const receipt=value=>/^[A-Za-z0-9._:-]{8,96}$/.test(String(value||''));
 const errorCode=error=>{
  const s=String(error?.code||error?.name||'DELIVERY_REJECTED').toUpperCase().replace(/[^A-Z0-9_]/g,'').slice(0,48);
  return s||'DELIVERY_REJECTED';
@@ -29,14 +29,22 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
   if(typeof secret!=='string'||secret.length<32||typeof transport!=='function')throw Error('OFFICE_BOX_DISPATCH_CREDENTIALS_REQUIRED');
   return validateTarget(receiverOrigin);
  }
- async function enqueue(verifiedPayment){
-  if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');
-  const event=buildPaidHandoff(verifiedPayment);
+ async function writeEvent(event,eventId,orderId,customerId,eventType){
   const [r]=await pool.execute(`INSERT IGNORE INTO ${TABLE}
    (event_id,order_id,customer_id,event_type,payload_json,status,attempts,next_attempt_at,created_at,updated_at)
    VALUES (?,?,?,?,?,'PENDING',0,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())`,
-   [event.correlationId,event.payload.orderId,event.customerId,event.eventType,JSON.stringify(event)]);
-  return {eventId:event.correlationId,created:Number(r?.affectedRows||0)===1};
+   [eventId,orderId,customerId,eventType,JSON.stringify(event)]);
+  return {eventId,created:Number(r?.affectedRows||0)===1};
+ }
+ async function enqueue(verifiedPayment){
+  if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');
+  const event=buildPaidHandoff(verifiedPayment);
+  return writeEvent(event,event.correlationId,event.payload.orderId,event.customerId,event.eventType);
+ }
+ async function enqueueActiveEntitlement({paidEvent,activationResponse,verifiedAt}={}){
+  if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');
+  const event=makeActiveEntitlement({paidEvent,activationResponse,verifiedAt});
+  return writeEvent(event,event.eventId,event.orderId,event.customerId,event.schema);
  }
  async function claim(){
   const cx=await pool.getConnection();
@@ -63,18 +71,20 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
   let success=false,status=null,code='UNKNOWN';
   try{
    const event=typeof row.payload_json==='string'?JSON.parse(row.payload_json):row.payload_json;
-   if(!event||event.correlationId!==row.event_id||event.eventType!=='customer.subscription.paid')
+   const handoff=event?.eventType==='customer.subscription.paid'&&event.correlationId===row.event_id;
+   const entitlement=event?.schema==='sbc.office-box.entitlement.v1'&&event.status==='ACTIVE'&&event.eventId===row.event_id;
+   if(!handoff&&!entitlement)
     throw Object.assign(Error('INVALID_QUEUE_PAYLOAD'),{code:'INVALID_QUEUE_PAYLOAD'});
-   const signed=signPaidHandoff(event,secret);
+   const signed=handoff?signPaidHandoff(event,secret):signActiveEntitlement(event,secret);
    const response=await transport(origin+signed.path,{
     method:'POST',headers:signed.headers,body:signed.body,signal:AbortSignal.timeout(Math.min((leaseSeconds-5)*1000,30000))
    });
    status=response?.status||null;
    if(status!==200)throw Object.assign(Error('REMOTE_REJECTED'),{code:'OFFICE_BOX_RESPONSE_NOT_ACCEPTED'});
    const json=await response.json();
-   const ack=json?.data;
-   if(json?.ok!==true||ack?.accepted!==true||
-      (ack.correlationId&&ack.correlationId!==row.event_id))
+   const ack=handoff?json?.data:json;
+   if(json?.ok!==true||!(ack?.accepted===true||ack?.duplicate===true)||
+      (handoff&&ack.correlationId&&ack.correlationId!==row.event_id))
     throw Object.assign(Error('REMOTE_ACK_INVALID'),{code:'OFFICE_BOX_ACK_MISMATCH'});
    success=true;
   }catch(e){code=errorCode(e)}
@@ -95,6 +105,6 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
   if(result?.affectedRows!==1)throw Error('OFFICE_BOX_OUTBOX_LEASE_LOST');
   return {status:dead?'DEAD':'RETRY_SCHEDULED',eventId:row.event_id,attempts:row.attempts,reason:code};
  }
- return {enqueue,dispatchOne};
+ return {enqueue,enqueueActiveEntitlement,dispatchOne};
 }
 module.exports={createOutbox,validateTarget};
