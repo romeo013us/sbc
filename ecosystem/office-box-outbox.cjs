@@ -5,6 +5,7 @@
  * Call dispatchOne ONLY from the approved Published single-writer scheduler.
  */
 const crypto=require('node:crypto');
+const net=require('node:net');
 const {buildPaidHandoff,signPaidHandoff}=require('../enterprise/office-box-paid-handoff.cjs');
 const {makeActiveEntitlement,signActiveEntitlement}=require('./office-box-activation-client.cjs');
 const TABLE='sbc_office_box_outbox';
@@ -13,9 +14,10 @@ const errorCode=error=>{
  return s||'DELIVERY_REJECTED';
 };
 function validateTarget(value){
- const u=new URL(value);
+ const u=new URL(value),host=u.hostname.replace(/^\[|\]$/g,'');
  if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash||u.pathname!=='/'||
-    u.hostname==='localhost'||u.hostname.endsWith('.localhost'))
+    net.isIP(host)||host==='localhost'||host.endsWith('.localhost')||
+    host.endsWith('.internal')||host.endsWith('.local')||host.endsWith('.lan'))
   throw Error('OFFICE_BOX_HTTPS_ORIGIN_REQUIRED');
  return u.origin;
 }
@@ -93,14 +95,16 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
     throw Object.assign(Error('INVALID_QUEUE_PAYLOAD'),{code:'INVALID_QUEUE_PAYLOAD'});
    const signed=handoff?signPaidHandoff(event,secret):signActiveEntitlement(event,secret);
    const response=await transport(origin+signed.path,{
-    method:'POST',headers:signed.headers,body:signed.body,signal:AbortSignal.timeout(Math.min((leaseSeconds-5)*1000,30000))
+    method:'POST',headers:signed.headers,body:signed.body,redirect:'error',cache:'no-store',signal:AbortSignal.timeout(Math.min((leaseSeconds-5)*1000,30000))
    });
    status=response?.status||null;
    if(status!==200)throw Object.assign(Error('REMOTE_REJECTED'),{code:'OFFICE_BOX_RESPONSE_NOT_ACCEPTED'});
    const json=await response.json();
    const ack=handoff?json?.data:json;
    if(json?.ok!==true||!(ack?.accepted===true||ack?.duplicate===true)||
-      (handoff&&ack.correlationId&&ack.correlationId!==row.event_id))
+      (handoff&&ack?.accepted===true&&ack.correlationId!==row.event_id)||
+      (handoff&&ack?.duplicate===true&&ack.correlationId&&ack.correlationId!==row.event_id)||
+      (entitlement&&ack?.accepted===true&&ack.status!==event.status))
     throw Object.assign(Error('REMOTE_ACK_INVALID'),{code:'OFFICE_BOX_ACK_MISMATCH'});
    success=true;
   }catch(e){code=errorCode(e)}
