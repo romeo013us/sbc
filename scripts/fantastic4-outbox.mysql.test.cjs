@@ -31,7 +31,7 @@ async function main(){
    if(rejectOnce){rejectOnce=false;return {status:503,json:async()=>({ok:false})}}
    return {status:200,json:async()=>url.endsWith('/api/sbc/handoff')
      ?{ok:true,data:{accepted:true,correlationId:event.correlationId}}
-     :{ok:true,accepted:true,status:'ACTIVE'}};
+     :{ok:true,accepted:true,eventId:event.eventId,status:event.status,plan:event.plan}};
   };
   let writerLeaseHeld=true;
   const writerAuthority=async()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld});
