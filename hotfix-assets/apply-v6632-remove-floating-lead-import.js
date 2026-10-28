@@ -26,7 +26,9 @@ function apply(root){
   sw=sw.replace(re,"const CACHE='sbc-static-v66-32-no-floating-import'");
   fs.writeFileSync(p,sw);changes.push(rel);
  }
- // Prospect CSVs must never be bundled into public runtime assets.\n // The authenticated manual CSV importer remains available.\n const index=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+ // Prospect CSVs must never be bundled into public runtime assets.
+ // The authenticated manual CSV importer remains available.
+ const index=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
  if(index.includes('/sbc-lead-import-v6541.js'))throw Error(MARKER+': legacy modal still launches');
  return {marker:MARKER,changed:changes,legacyFloatingImportDisabled:true,masterLeadsPreserved:false,manualOwnerCsvUpload:true,crmWrites:false,autoImport:false,recoveryGatesUnchanged:true};
 }
