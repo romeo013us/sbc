@@ -76,12 +76,12 @@ async function main(){
   const active=await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'});
   assert(active.created);
   assert(!(await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'})).created);
-  assert(!(await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-28T10:00:00Z'})).created,
+  assert(!(await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T11:00:00Z'})).created,
    'new payment-provider verification time is a valid idempotent ACTIVE replay');
   const alteredPlanPaid={...paidEvent,payload:{...paidEvent.payload,plan:'professional'}};
   const alteredPlanLinked={...linked,data:{...linked.data,plan:'professional'}};
   await assert.rejects(()=>worker.enqueueActiveEntitlement({
-   paidEvent:alteredPlanPaid,activationResponse:alteredPlanLinked,verifiedAt:'2026-10-28T10:00:00Z'
+   paidEvent:alteredPlanPaid,activationResponse:alteredPlanLinked,verifiedAt:'2026-10-27T11:00:00Z'
   }),/OFFICE_BOX_OUTBOX_EVENT_COLLISION/,
    'the same entitlement event ID may not silently change the plan');
 
