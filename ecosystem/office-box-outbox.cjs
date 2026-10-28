@@ -19,7 +19,7 @@ function validateTarget(value){
   throw Error('OFFICE_BOX_HTTPS_ORIGIN_REQUIRED');
  return u.origin;
 }
-function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=false,transport=globalThis.fetch,leaseSeconds=90,maxAttempts=6}={}){
+function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=false,writerAuthority=null,transport=globalThis.fetch,leaseSeconds=90,maxAttempts=6}={}){
  if(!pool||typeof pool.getConnection!=='function'||typeof pool.execute!=='function')throw Error('OFFICE_BOX_PERSISTENT_MYSQL_REQUIRED');
  if(!Number.isSafeInteger(leaseSeconds)||leaseSeconds<15||leaseSeconds>300||
    !Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>20)throw Error('OFFICE_BOX_RETRY_POLICY_INVALID');
@@ -28,6 +28,16 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
   if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');
   if(typeof secret!=='string'||secret.length<32||typeof transport!=='function')throw Error('OFFICE_BOX_DISPATCH_CREDENTIALS_REQUIRED');
   return validateTarget(receiverOrigin);
+ }
+ // A startup-time publishedWriter=true flag is NOT a current lease.
+ // The Published runtime must supply a live, authoritative recovery/lease
+ // inspector; undefined/false/stale answers always block a write or send.
+ async function requireLiveAuthority(){
+  if(typeof writerAuthority!=='function')throw Error('OFFICE_BOX_LIVE_WRITER_FENCE_REQUIRED');
+  let state;
+  try{state=await writerAuthority()}catch{throw Error('OFFICE_BOX_LIVE_WRITER_AUTHORITY_UNAVAILABLE')}
+  if(!state||state.publishedWriter!==true||state.recoveryVerified!==true||state.writerLeaseHeld!==true)
+   throw Error('OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED');
  }
  async function writeEvent(event,eventId,orderId,customerId,eventType){
   const [r]=await pool.execute(`INSERT IGNORE INTO ${TABLE}
@@ -38,11 +48,13 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
  }
  async function enqueue(verifiedPayment){
   if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');
+  await requireLiveAuthority();
   const event=buildPaidHandoff(verifiedPayment);
   return writeEvent(event,event.correlationId,event.payload.orderId,event.customerId,event.eventType);
  }
  async function enqueueActiveEntitlement({paidEvent,activationResponse,verifiedAt}={}){
   if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');
+  await requireLiveAuthority();
   const event=makeActiveEntitlement({paidEvent,activationResponse,verifiedAt});
   return writeEvent(event,event.eventId,event.orderId,event.customerId,event.schema);
  }
@@ -66,8 +78,12 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
  }
  async function dispatchOne(){
   const origin=permit();
+  await requireLiveAuthority(); // before claiming a durable job
   const row=await claim();
   if(!row)return {status:'EMPTY'};
+  // A lease or recovery-state transition may occur while claiming.
+  // Fail closed before network I/O; row is reclaimed after its DB lease expires.
+  await requireLiveAuthority();
   let success=false,status=null,code='UNKNOWN';
   try{
    const event=typeof row.payload_json==='string'?JSON.parse(row.payload_json):row.payload_json;
