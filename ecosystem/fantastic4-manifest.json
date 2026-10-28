@@ -1,0 +1,109 @@
+{
+  "schema": "sbc.fantastic4.integration.v1",
+  "revision": "2026-10-27",
+  "releasePolicy": "FAIL_CLOSED_UNTIL_PROVEN",
+  "ownerOfRecord": "Successful By Choice LLC",
+  "systems": {
+    "commandCenter": {
+      "repository": "romeo013us/sbc",
+      "role": "AUTHORITY_FOR_CRM_ORDERS_SETTLEMENT_AND_FULFILLMENT",
+      "writes": "owner-approved single writer"
+    },
+    "officeBox": {
+      "repository": "romeo013us/sbc-office-box",
+      "role": "AUTHORITY_FOR_CUSTOMER_WORKSPACE_AND_ENTITLEMENTS",
+      "writes": "tenant-scoped persistent transactions"
+    },
+    "mainSite": {
+      "origin": "https://sbcmia.com",
+      "role": "BRAND_LEADS_SERVICE_INTAKE"
+    },
+    "reseller": {
+      "origin": "https://sbcwebsites.com",
+      "role": "GODADDY_RESELLER_CATALOG_AND_CHECKOUT"
+    }
+  },
+  "identities": {
+    "crmCustomerId": "Command Center authoritative server-generated customer ID",
+    "orderId": "Command Center authoritative paid order ID",
+    "tenantId": "Office Box server-generated and persistently linked tenant ID",
+    "email": "verified contact, never sole authority for account claim",
+    "source": "server-verified referral or checkout attribution"
+  },
+  "commercial": {
+    "mainSiteSetupPackagesUSD": [
+      99,
+      199,
+      349,
+      699
+    ],
+    "officeBoxPlans": [
+      "starter",
+      "business",
+      "professional",
+      "team"
+    ],
+    "officeBoxSkus": [
+      "OFFICE_BOX_STARTER",
+      "OFFICE_BOX_BUSINESS",
+      "OFFICE_BOX_PROFESSIONAL",
+      "OFFICE_BOX_TEAM"
+    ],
+    "revenueSourceOfTruth": "persisted provider-confirmed settlement plus reconciled order",
+    "checkoutRedirectIsPaid": false,
+    "allowUnrelatedPurchaseToProvisionOfficeBox": false,
+    "allowSyntheticProductionPayments": false
+  },
+  "states": {
+    "order": [
+      "LEAD",
+      "QUOTED",
+      "CHECKOUT_STARTED",
+      "PAYMENT_VERIFIED",
+      "FULFILLMENT_PENDING",
+      "FULFILLED",
+      "REFUNDED",
+      "CANCELED"
+    ],
+    "officeBox": [
+      "NOT_PURCHASED",
+      "PAID_HANDOFF_QUEUED",
+      "INVITATION_PENDING",
+      "PENDING_BILLING_SYNC",
+      "ACTIVE",
+      "PAST_DUE",
+      "CANCELED",
+      "EXPIRED"
+    ],
+    "workspaceWriteStates": [
+      "ACTIVE"
+    ]
+  },
+  "events": {
+    "paidHandoff": "customer.subscription.paid",
+    "entitlementSchema": "sbc.office-box.entitlement.v1",
+    "paidHandoffReceiver": "/api/sbc/handoff",
+    "entitlementReceiver": "/api/sbc/entitlements",
+    "signature": "HMAC_SHA256_TIMESTAMP_RAW_BODY",
+    "idempotency": "persistent unique event key",
+    "delivery": "durable single-writer outbox with bounded retries required before live enablement"
+  },
+  "roleBoundary": {
+    "owner": "full authorized operations with financial owner-veto",
+    "leadResearcher": "assigned lead research, verification, training, time clock only",
+    "demo": "synthetic non-billable data; read-only; owner-enabled credentials",
+    "customer": "own verified data and tenant only"
+  },
+  "goLiveRequirements": [
+    "runtimeFingerprintAndRollback",
+    "recoveryAndMySqlBackupRestore",
+    "publishedOwnerAndLornaAndDemoRoleChecks",
+    "sitePoliciesAndSmsConsent",
+    "websiteLeadAndAccountBridge",
+    "resellerPurchaseReconciliation",
+    "durableSquareToOfficeBoxDispatch",
+    "paidActivationEntitlementAndCancellation",
+    "crossTenantSecurity",
+    "mobileCheckoutAndCustomerExperience"
+  ]
+}
