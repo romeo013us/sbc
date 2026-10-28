@@ -84,7 +84,7 @@ function patchServer(source){
  if(typeof SOURCE!=='string'||!SOURCE.includes("app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,"))
   throw Error(MARKER+': launch QA source unavailable');
  patched=patched.replace(QA_ANCHOR,SOURCE+'\n'+QA_ANCHOR);
- if(patched.indexOf('const sbcLaunchQaExplicitPurchase')>patched.indexOf('SBC_COMMERCIAL.provisionTenant('))
+ if(handler.indexOf('const sbcLaunchQaExplicitPurchase')>handler.indexOf('SBC_COMMERCIAL.provisionTenant('))
   throw Error(MARKER+': launch QA quarantine not installed before external effects');
  new vm.Script(patched,{filename:'server.js'});
  return patched;
