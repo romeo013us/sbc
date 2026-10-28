@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');const crypto=require('node:crypto');
 const {buildPaidHandoff,signPaidHandoff}=require('../enterprise/office-box-paid-handoff.cjs');
-const order={id:'sbc_order_100',price:349,paymentStatus:'PAID',officeBoxSku:'OFFICE_BOX_BUSINESS'};
+const order={id:'sbc_order_100',price:349,paymentStatus:'PAID',officeBoxSku:'OFFICE_BOX_BUSINESS',customerId:'sbc_customer_100',customerEmail:'owner@fixture.invalid'};
 const payment={id:'square_payment_100',order_id:'square_order_100',location_id:'square_location_100',status:'COMPLETED',amount_money:{amount:34900,currency:'USD'}};
 const parsed={squareOrderId:'square_order_100',squarePaymentId:'square_payment_100',squarePaymentStatus:'PAID',squarePaymentCompletedAt:'2026-10-27T10:00:00.000Z'};
 const paymentRecord={sbcOrderId:order.id,squareOrderId:payment.order_id,squarePaymentId:payment.id,status:'PAID'};
@@ -22,7 +22,9 @@ for(const change of [
  x=>({...x,order:{...x.order,officeBoxSku:'WEBSITE_BUNDLE'}}),
  x=>({...x,order:{...x.order,isTest:true}}),
  x=>({...x,paymentRecord:{...x.paymentRecord,squarePaymentId:'another-tender'}}),
- x=>({...x,customer:{...x.customer,ownerEmail:'not-an-email'}})
+ x=>({...x,customer:{...x.customer,ownerEmail:'not-an-email'}}),
+ x=>({...x,customer:{...x.customer,ownerEmail:'other@fixture.invalid'}}),
+ x=>({...x,order:{...x.order,customerId:'another-customer'}})
 ])assert.throws(()=>buildPaidHandoff(change(input)));
 assert.throws(()=>signPaidHandoff(evt,'short'));
 console.log('SBC VERIFIED OFFICE BOX HANDOFF: PASS (stable event identity, dual signatures, invalid provider evidence rejected)');
