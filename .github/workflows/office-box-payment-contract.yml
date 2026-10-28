@@ -1,0 +1,23 @@
+name: SBC Office Box Verified Payment Contract
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'enterprise/office-box-paid-handoff.cjs'
+      - 'enterprise/v6659-square-webhook-proof.cjs'
+      - 'scripts/office-box-paid-handoff.test.cjs'
+      - '.github/workflows/office-box-payment-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verified-payment-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check enterprise/office-box-paid-handoff.cjs
+      - run: node scripts/office-box-paid-handoff.test.cjs
