@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import subprocess
 import sys
 import zipfile
 
@@ -66,6 +67,27 @@ def sha(data):
 def fail(message):
     raise SystemExit("SBC SINGLE-LAYER PACKAGE FAIL: " + message)
 
+# Enforce the SAME source fingerprint and ZIP checksum as the Node/GoDaddy
+# startup gate, including when an owner runs this Python packager directly.
+# A receipt that merely names an old successful CI build is not deployable.
+def verify_source_matched_prebuilt():
+    verifier = (
+        "const item=require('./scripts/prebuilt-runtime.cjs').readManifest(process.cwd());"
+        "if(!item||item.manifest.generatedBy!=='isolated-github-ci')"
+        "throw Error('Release lacks verified isolated CI provenance');"
+    )
+    try:
+        result = subprocess.run(
+            ["node", "-e", verifier], cwd=ROOT, capture_output=True,
+            text=True, check=False, timeout=90
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        fail("cannot verify source-bound release: " + str(exc))
+    if result.returncode:
+        fail("source-matched prebuilt gate rejected this checkout: "
+             + (result.stderr.strip() or result.stdout.strip())[-600:])
+
+verify_source_matched_prebuilt()
 manifest = json.loads(RECEIPT.read_text())
 raw = ZIP.read_bytes()
 if manifest.get("generatedBy") != "isolated-github-ci" or sha(raw) != manifest.get("archiveSha256"):
