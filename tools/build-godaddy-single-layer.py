@@ -102,7 +102,7 @@ if not required.issubset(files):
     fail("compiled runtime missing root or browser files")
 # Add one UI-only Kim Chief of Staff entrypoint to each compiled public mirror.
 # No changes to the verified server, tenant guards, recovery logic or existing Kim dialog.
-kim_asset = ROOT / "hotfix-assets" / "sbc-kim-chief-of-staff-page.js"
+kim_asset = ROOT / "ui-overlays" / "sbc-kim-chief-of-staff-page.js"
 if not kim_asset.is_file():
     fail("Kim Chief of Staff UI source missing")
 kim_bytes = kim_asset.read_bytes()
