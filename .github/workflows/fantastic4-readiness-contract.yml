@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'ecosystem/fantastic4-*'
+      - 'ecosystem/office-box-activation-client.cjs'
       - 'scripts/fantastic4-*'
       - 'docs/FANTASTIC4-*'
       - 'website/legal/**'
@@ -20,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check scripts/fantastic4-readiness.cjs
+      - run: node --check scripts/fantastic4-readiness.cjs && node --check ecosystem/office-box-activation-client.cjs
       - run: node scripts/fantastic4-readiness.test.cjs
       - name: Unverified production evidence MUST be NO_GO
         shell: bash
@@ -32,3 +33,4 @@ jobs:
           test "$exit_code" -eq 2
           node -e "const v=require('/tmp/fantastic4-readiness.json'); if(v.status!=='NO_GO')process.exit(1);"
       - run: node scripts/office-box-paid-handoff.test.cjs
+      - run: node scripts/fantastic4-officebox-activation.test.cjs
