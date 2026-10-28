@@ -48,15 +48,15 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
    if(saveReceipt==='unverified')return {source:'COMMITTED_MYSQL',commitVerified:false};
    throw Error('UNKNOWN_FIXTURE_RECEIPT');
   },
-  addActivity:()=>{},
-  REVENUE_AUTOPILOT_V56150:{recordFunnelEvent:async()=>{}},
-  SBC_COMMERCIAL:{provisionTenant:async()=>{throw Error('no commercial provider in fixture')}},
-  V569_PRODUCTION_EXPANSION:{provisionStorefront:()=>{throw Error('no storefront provider in fixture')}},
-  ensureCommissionForSale:()=>{},GOD_KIM:{orchestrate:async()=>{events.push('kim')}},
+  addActivity:(type)=>{if(type==='office_box_precommit_fulfillment_quarantined')events.push('quarantine')},
+  REVENUE_AUTOPILOT_V56150:{recordFunnelEvent:async()=>{events.push('funnel')}},
+  SBC_COMMERCIAL:{provisionTenant:async()=>{events.push('commercial');throw Error('no commercial provider in fixture')}},
+  V569_PRODUCTION_EXPANSION:{provisionStorefront:()=>{events.push('storefront');throw Error('no storefront provider in fixture')}},
+  ensureCommissionForSale:()=>{events.push('commission')},GOD_KIM:{orchestrate:async()=>{events.push('kim')}},
   createFulfillmentJobsForOrder:async()=>[],processReadyFulfillmentJobs:async()=>{},
   vendorCapabilities:()=>({}),audit:()=>{},CATALOG:{},
   sendBig3OfficeBoxHandoff:async()=>{events.push('handoff');return {ok:true,skipped:true}},
-  sendOrderIntake:async()=>({sent:false}),
+  sendOrderIntake:async()=>{events.push('intake');return {sent:false}},
   TENANT_DEFAULT_ID:7,ensureProjectForCustomer:()=>{throw Error('no customer provisioning')},
   V566_RAILS:{subscriptionRecovery:()=>({eligible:false})},V562NEXT:{billingFriction:()=>null},
  };
@@ -80,6 +80,12 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   const calls=f.events.filter(x=>x==='handoff').length;
   assert.equal(calls,index===4?1:0,
    'explicit Office Box order cannot use legacy pre-commit handoff: '+JSON.stringify(options));
+  for(const effect of ['commercial','storefront','kim','intake','funnel','commission']){
+   assert.equal(f.events.filter(x=>x===effect).length,index===4?1:0,
+    'generic precommit side effect '+effect+' must be held for Office Box: '+JSON.stringify(options));
+  }
+  assert.equal(f.events.filter(x=>x==='quarantine').length,index===4?0:1,
+   'explicit Office Box must be audit-marked as held for V2 reconciliation');
   const again=await f.run(payment);
   assert.equal(again.duplicate,true);
   assert.equal(f.events.filter(x=>x==='handoff').length,calls,'no duplicate handoff');
@@ -92,5 +98,7 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
  const badSave=fixture({failSave:true,items:[{sku:'OFFICE_BOX_BUSINESS',quantity:1}]});
  await assert.rejects(()=>badSave.run(payment),/MYSQL_RELATIONAL_COMMIT_FAILED/);
  assert.equal(badSave.events.includes('handoff'),false);
- console.log('[SBC V6693 COMPILED OFFICE BOX QUARANTINE] PASS: explicit plans skip legacy precommit send; ordinary SBC fulfillment/payment capture retained; malformed Square fails closed');
+ for(const effect of ['commercial','storefront','kim','intake','funnel','commission'])
+  assert.equal(badSave.events.includes(effect),false,'Office Box external side effects must never precede failed save');
+ console.log('[SBC V6693 COMPILED OFFICE BOX QUARANTINE] PASS: explicit plans skip all generic precommit fulfillment, tenant grants, email and legacy handoff; ordinary SBC fulfillment retained; malformed Square fails closed');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
