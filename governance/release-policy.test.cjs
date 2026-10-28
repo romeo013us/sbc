@@ -83,7 +83,7 @@ try{
  writeReceipt();
  let result=run();
  assert.equal(result.status,1,'synthetic fixture must not produce a deployable package');
- assert.match(result.stdout,/private October 26\\/27 lead intake CSV missing/,
+ assert.match(result.stdout,/private October 26\/27 lead intake CSV missing/,
   'valid pinned fixture passes source check and reaches the next safety guard');
  put('ecosystem/fixture.js','module.exports=false;\\n');
  result=run();
