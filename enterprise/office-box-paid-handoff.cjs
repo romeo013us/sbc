@@ -20,6 +20,9 @@ function buildPaidHandoff({order,parsed,payment,paymentRecord,expectedLocation,c
  if(!PLANS.has(plan)||sku!=='OFFICE_BOX_'+plan.toUpperCase())throw Error('OFFICE_BOX_PURCHASED_SKU_MISMATCH');
  const customerId=text(customer.id,120),businessName=text(customer.businessName,120),ownerEmail=text(customer.ownerEmail,180);
  if(!customerId||!businessName||!emailOk(ownerEmail))throw Error('OFFICE_BOX_VERIFIED_CUSTOMER_REQUIRED');
+ const boundCustomerId=text(order.customerId||order.customer_id,120);
+ const boundEmail=text(order.customerEmail||order.email,180);
+ if(boundCustomerId!==customerId||!boundEmail||boundEmail.toLowerCase()!==ownerEmail.toLowerCase())throw Error('OFFICE_BOX_PAID_ORDER_CUSTOMER_MISMATCH');
  const orderId=text(order.id,120),receipt=text(payment.id,120);
  if(!orderId||!receipt)throw Error('OFFICE_BOX_PAYMENT_REFERENCE_REQUIRED');
  const eventId='officebox_'+crypto.createHash('sha256').update(JSON.stringify([orderId,receipt,customerId,sku])).digest('hex').slice(0,40);
