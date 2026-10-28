@@ -77,6 +77,8 @@ jobs:
           git merge-base --is-ancestor bf6bd505e65bb6920ea5b2b80aff3040ae69060a HEAD
           echo 'a3241c86ab59c9242f06552ed8055b67b08daab006f96027f1cc43ed600ec159  SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip' | sha256sum -c -
           node --check scripts/offline-compile-release.cjs
+          node --check hotfix-assets/staged-v6692-officebox-after-commit.cjs
+          node --check scripts/v6692-staged-officebox-after-commit.test.cjs
           node --check scripts/offline-child-guard.cjs
           node scripts/offline-child-guard.test.cjs
           node scripts/manifest-identity-validator.test.js
