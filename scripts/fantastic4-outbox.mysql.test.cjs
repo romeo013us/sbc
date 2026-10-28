@@ -48,7 +48,7 @@ async function main(){
   const [[brow]]=await pool.query('SELECT status,attempts FROM sbc_office_box_outbox WHERE event_id=?',[b.eventId]);
   assert.equal(brow.status,'DELIVERED');assert.equal(brow.attempts,2);
   const c=await worker.enqueue(proof('cc'+suffix));
-  await pool.execute('UPDATE sbc_office_box_outbox SET status=\'IN_FLIGHT\',lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND),lease_owner=? WHERE event_id=?',
+  await pool.execute('UPDATE sbc_office_box_outbox SET status=\'IN_FLIGHT\',attempts=attempts+1,lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND),lease_owner=? WHERE event_id=?',
    ['simulated_dead_worker',c.eventId]);
   assert.equal((await worker.dispatchOne()).status,'DELIVERED','Expired lease must recover after process death');
   const [[crow]]=await pool.query('SELECT attempts,status FROM sbc_office_box_outbox WHERE event_id=?',[c.eventId]);
