@@ -4,6 +4,9 @@
  * Relocates the existing legacy Square->Office Box HTTP side effect after save.
  * Never enables new workers, schema mutation, or grants customer access.
  * This does NOT replace the legacy protocol with the V2 durable outbox.
+ * Do not register in production: current saveData() does not have a verified
+ * COMMITTED_MYSQL receipt contract. A truthy/undefined save result is NEVER
+ * adequate authority for sending a customer-access invitation.
  */
 const vm=require('node:vm');
 const MARKER='SBC_V6692_STAGED_OFFICE_BOX_AFTER_COMMIT';
@@ -36,12 +39,14 @@ function patchServer(source){
  handler=handler.slice(0,a)+'    sbcOfficeBoxHandoffAfterSave=true; // defer existing legacy HTTP until after commit.'+handler.slice(b);
  const after=[
   '  records.splice(5000);',
-  '  // '+MARKER+': never send an invitation on a rejected payment commit.',
+  '  // '+MARKER+': require an explicit authoritative MySQL commit receipt.',
   '  const sbcOfficeBoxCommit=await saveData();',
   '  if(sbcOfficeBoxHandoffAfterSave &&',
   '     SBC_RUNTIME_READ_ONLY===false && MYSQL_RECOVERY_EVALUATED===true &&',
   '     MYSQL_RECOVERY_REQUIRED===false && sbcWriterLeaseReady===true &&',
-  '     sbcWriterLeaseConn && mysqlPool && sbcOfficeBoxCommit?.skipped!==true){',
+  '     sbcWriterLeaseConn && mysqlPool &&',
+  '     sbcOfficeBoxCommit?.source===\'COMMITTED_MYSQL\' &&',
+  '     sbcOfficeBoxCommit?.commitVerified===true){',
   old,
   '    // Legacy handoff updates order notes: persist its result too.',
   '    await saveData();',
