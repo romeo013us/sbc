@@ -5,7 +5,7 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-no-public-prospects-'));
 try{
  const publicDir=path.join(root,'public');fs.mkdirSync(publicDir,{recursive:true});
  const ui=path.join(publicDir,'sbc-lead-import-v6541.js');
- fs.writeFileSync(ui,'// owner CSV uploader remains available\\n');
+ fs.writeFileSync(ui,'// owner CSV uploader remains available\n');
  const result=patch.apply(root);
  assert.equal(result.marker,patch.MARKER);
  assert.equal(result.rows,0);
