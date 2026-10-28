@@ -20,7 +20,7 @@ assert(handler.indexOf('const sbcOfficeBoxCommit=await saveData()')<handler.inde
 const P=require(path.join(root,'enterprise/v6659-square-webhook-proof.cjs'));
 const payment={id:'square_payment_999',order_id:'square_order_999',location_id:'sq_location_999',
  status:'COMPLETED',amount_money:{amount:34900,currency:'USD'}};
-function fixture({failSave=false,skippedSave=false,readonly=false,recovery=false,lease=true,pool=true}={}){
+function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=false,lease=true,pool=true}={}){
  const order={id:'sbc_order_999',customerId:'cust_999',tenantId:7,price:349,paymentStatus:'PENDING',
   status:'Pending',notes:JSON.stringify({squareOrderId:'square_order_999',squarePaymentStatus:'PENDING'})};
  const record={id:'rec_999',sbcOrderId:order.id,squareOrderId:'square_order_999',squarePaymentId:'',status:'PENDING'};
@@ -39,7 +39,13 @@ function fixture({failSave=false,skippedSave=false,readonly=false,recovery=false
   saveData:async()=>{
    events.push('save');
    if(failSave)throw Error('MYSQL_RELATIONAL_COMMIT_FAILED');
-   if(skippedSave)return {skipped:true};
+   if(saveReceipt==='verified')return {source:'COMMITTED_MYSQL',commitVerified:true};
+   if(saveReceipt==='undefined')return undefined;
+   if(saveReceipt==='skipped')return {skipped:true};
+   if(saveReceipt==='forged')return {source:'BROWSER',commitVerified:true};
+   if(saveReceipt==='flag_only')return {committed:true};
+   if(saveReceipt==='unverified')return {source:'COMMITTED_MYSQL',commitVerified:false};
+   throw Error('UNKNOWN_FIXTURE_RECEIPT');
   },
   addActivity:()=>{},
   REVENUE_AUTOPILOT_V56150:{recordFunnelEvent:async()=>{}},
@@ -67,7 +73,9 @@ function fixture({failSave=false,skippedSave=false,readonly=false,recovery=false
  const fail=fixture({failSave:true});
  await assert.rejects(()=>fail.run(payment),/MYSQL_RELATIONAL_COMMIT_FAILED/);
  assert.equal(fail.events.includes('handoff'),false,'cannot send on failed MySQL commit');
- for(const options of [{readonly:true},{recovery:true},{lease:false},{pool:false},{skippedSave:true}]){
+ for(const options of [{readonly:true},{recovery:true},{lease:false},{pool:false},
+  {saveReceipt:'undefined'},{saveReceipt:'skipped'},{saveReceipt:'forged'},
+  {saveReceipt:'flag_only'},{saveReceipt:'unverified'}]){
   const state=fixture(options);
   await state.run(payment);
   assert.equal(state.events.includes('handoff'),false,'missing live authority or save must stop external call: '+JSON.stringify(options));
@@ -77,5 +85,5 @@ function fixture({failSave=false,skippedSave=false,readonly=false,recovery=false
   await state.run({...payment,...changes});
   assert.equal(state.events.includes('handoff'),false,'invalid/pending provider state cannot send');
  }
- console.log('[SBC V6692 STAGED POST-COMMIT] PASS actual compiled server: payment save first, no send after failed save, no duplicate handoff, current writer/recovery gate');
+ console.log('[SBC V6692 STAGED POST-COMMIT] PASS actual compiled server: explicit MySQL commit proof, failed/undefined/skipped/forged save refusal, duplicate and writer gates; NOT production wired');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
