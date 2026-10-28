@@ -7,7 +7,7 @@ const inputPayment={id:'square_payment_ci_101',order_id:'square_order_ci_101',
  amount_money:{amount:34900,currency:'USD'}};
 const notes={squareOrderId:inputPayment.order_id,squarePaymentId:inputPayment.id,
  squarePaymentStatus:'PAID',squarePaymentCompletedAt:'2026-10-28T12:00:00Z',
- customerEmail:'buyer@example.invalid',
+ customerEmail:'buyer@example.invalid',officeBoxSku:'OFFICE_BOX_BUSINESS',
  items:[{sku:'OFFICE_BOX_BUSINESS',quantity:1}]};
 const row={id:'sbc_order_ci_101',tenant_id:7,customer_id:'sbc_customer_ci_101',
  customer_name:'CI Customer',product:'Office Box',price:'349.00',status:'Paid',
@@ -25,8 +25,8 @@ function fixture(data=snapshot){
    seen.push([sql,args]);
    if(!/^(START TRANSACTION READ ONLY|SELECT )/.test(sql))failedWriteAttempt=true;
    if(sql==='START TRANSACTION READ ONLY')return [[],[]];
-   if(sql.includes('FROM sbc_orders'))return [data.order?[data.order]:[]];
-   if(sql.includes('FROM sbc_customers'))return [data.customer?[data.customer]:[]];
+   if(sql.includes('FROM sbc_orders'))return [data.order&&String(data.order.tenant_id)===String(args[1])?[data.order]:[]];
+   if(sql.includes('FROM sbc_customers'))return [data.customer&&String(data.customer.tenant_id)===String(args[1])?[data.customer]:[]];
    if(sql.includes('FROM sbc_workspace'))return [data.workspace?[data.workspace]:[]];
    throw Error('Unexpected SQL');
   },
@@ -52,7 +52,7 @@ function fixture(data=snapshot){
   [{order:null},'COMMITTED_ORDER_MISSING'],
   [{customer:null},'COMMITTED_CUSTOMER_MISSING'],
   [{customer:{...customer,email:'other@example.invalid'}},'ORDER_BILLING_EMAIL_MISMATCH'],
-  [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'OFFICE_BOX_TEAM'}]})}},'COMMITTED_CAPTURE_MISMATCH'], // price/sku must not grant higher plan
+  [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'OFFICE_BOX_TEAM'}]})}},'OFFICE_BOX_SKU_CONFLICT'],
   [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'GENERIC_CRM'}]})}},'EXACTLY_ONE_PURCHASED_SKU_REQUIRED'],
   [{workspace:{payload:JSON.stringify({squarePayments:[]})}},'COMMITTED_CAPTURE_AMBIGUOUS_OR_MISSING'],
   [{workspace:{payload:JSON.stringify({squarePayments:[capture,capture]})}},'COMMITTED_CAPTURE_AMBIGUOUS_OR_MISSING'],
@@ -66,13 +66,7 @@ function fixture(data=snapshot){
    await loadCommittedOfficeBoxPayment({...proofRequest,pool:f.pool});
    throw Error('INVALID_PROOF_WAS_ACCEPTED '+expected);
   }catch(e){
-   // An unsupported plan price is still a blocker, but is not implied by
-   // the existing product catalog. The payment+exact-SKU gate is mandatory.
-   if(expected==='COMMITTED_CAPTURE_MISMATCH'&&overrides.order){
-    assert(e.code==='OFFICE_BOX_VERIFIED_CAPTURE_REQUIRED'||
-      e.code==='OFFICE_BOX_COMMITTED_CAPTURE_MISMATCH'||
-      e.message==='INVALID_PROOF_WAS_ACCEPTED '+expected===false);
-   }else assert(String(e.code||e.message).includes(expected),String(e));
+   assert(String(e.code||e.message).includes(expected),String(e));
   }
   assert.deepEqual(f.state(),{released:true,rolledBack:true,failedWriteAttempt:false});
  }
