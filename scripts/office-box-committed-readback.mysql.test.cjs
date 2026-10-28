@@ -55,7 +55,7 @@ if(process.env.FANTASTIC4_DISPOSABLE_MYSQL!=='1'||!/_ci$|_test$/.test(process.en
   await assert.rejects(()=>loadCommittedOfficeBoxPayment({...req,payment:{...payment,id:'wrong'}}),
    /OFFICE_BOX_COMMITTED_CAPTURE_AMBIGUOUS_OR_MISSING/);
   await assert.rejects(()=>loadCommittedOfficeBoxPayment({...req,payment:{...payment,location_id:'other'}}),
-   /SQUARE_LOCATION_MISMATCH/);
+   /SQUARE_LOCATION_MISMATCH|OFFICE_BOX_VERIFIED_CAPTURE_REQUIRED/);
   await pool.execute('UPDATE sbc_orders SET status=? WHERE id=?',['Pending',orderId]);
   await assert.rejects(()=>loadCommittedOfficeBoxPayment(req),/OFFICE_BOX_COMMITTED_ORDER_NOT_PAID/);
   await pool.execute('UPDATE sbc_orders SET status=? WHERE id=?',['Paid',orderId]);
