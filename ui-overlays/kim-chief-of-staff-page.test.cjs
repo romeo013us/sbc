@@ -20,6 +20,9 @@ if(root){
  for(const prefix of ['public','browser_public']){
    const html=fs.readFileSync(path.join(live,prefix,'index.html'),'utf8');
    assert.equal((html.match(/\/sbc-kim-chief-of-staff-page\.js\?v=66\.81\.0/g)||[]).length,1);
+   assert.equal((html.match(/\/kim-voice\.js\?v=66\.81\.0/g)||[]).length,1);
+   assert.equal((html.match(/\/kim-voice\.css\?v=66\.81\.0/g)||[]).length,1);
+   assert.ok(fs.statSync(path.join(live,prefix,'kim-voice.js')).size>1000);
  }
  const identity=JSON.parse(fs.readFileSync(path.join(live,'SBC-FLAT-RELEASE-IDENTITY.json'),'utf8'));
  const crypto=require('node:crypto');
