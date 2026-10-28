@@ -12,6 +12,12 @@ const flat=read('.github/workflows/build-godaddy-single-layer.yml');
 const offline=read('.github/workflows/sbc-isolated-reconstruction.yml');
 const proof=read('scripts/prebuilt-runtime.cjs');
 const launcher=read('tools/build-godaddy-single-layer.py');
+const packagePy=read('scripts/package-prebuilt-runtime.py');
+assert.match(packagePy,/name\\.lower\\(\\)\\.endswith\\('\\.csv'\\)/,'verified runtime must omit all prospect CSV files');
+assert.match(launcher,/name\\.lower\\(\\)\\.endswith\\("\\.csv"\\)/,'flat deploy must reject any compiled CSV');
+assert.doesNotMatch(launcher,/PRIVATE_CSV|files\\[csv_path\\]/,'manual CSV uploads must replace embedded customer data');
+assert.equal(fs.existsSync(path.join(root,'hotfix-assets/sbc-master-prospect-list-2026-10-23.csv')),false);
+assert.equal(fs.existsSync(path.join(root,'hotfix-assets/sbc-leads-oct-26-27-2026-31.csv')),false);
 
 assert.match(flat,/workflow_dispatch:\s*\n\s*inputs:\s*\n\s*publish_deploy_branch:/);
 assert.match(flat,/publish_deploy_branch:[\s\S]{0,230}type:\s*boolean[\s\S]{0,100}default:\s*false/);
@@ -49,7 +55,7 @@ console.log(JSON.stringify({result:'PASS',policy:'SBC_SAFE_RELEASE_V1',automatic
   nextAction:sourceMatches?'check compiled artifact and live approval':'rebuild from current source; never deploy stale artifact'}));
 
 // Exercise the REAL Python packager with a disposable Node/source fixture.
-// All failures must occur before CSV checks or ZIP writing; no live secrets,
+// All failures must occur before deployable ZIP writing; no live secrets,
 // customer records, network or GoDaddy service is used.
 const os=require('node:os'),crypto=require('node:crypto'),cp=require('node:child_process');
 const fixture=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-godaddy-packaging-parity-'));
@@ -83,8 +89,8 @@ try{
  writeReceipt();
  let result=run();
  assert.equal(result.status,1,'synthetic fixture must not produce a deployable package');
- assert.match(result.stderr,/private October 26\/27 lead intake CSV missing/,
-  'valid pinned fixture passes source check and reaches the next safety guard');
+ assert.match(result.stderr,/BadZipFile|File is not a zip file/,
+  'valid pinned fixture passes identity gate and reaches ZIP structure validation');
  put('ecosystem/fixture.js','module.exports=false;\\n');
  result=run();
  assert.notEqual(result.status,0);
