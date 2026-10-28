@@ -32,7 +32,9 @@ async function main(){
      ?{ok:true,data:{accepted:true,correlationId:event.correlationId}}
      :{ok:true,accepted:true,status:'ACTIVE'}};
   };
-  const common={pool,receiverOrigin:'https://officebox-ci.example.test',secret,transport,enabled:true,publishedWriter:true};
+  let writerLeaseHeld=true;
+  const writerAuthority=async()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld});
+  const common={pool,receiverOrigin:'https://officebox-ci.example.test',secret,transport,enabled:true,publishedWriter:true,writerAuthority};
   const worker=createOutbox(common);
   const a=await worker.enqueue(proof('aa'+suffix));
   assert(a.created);
@@ -66,6 +68,25 @@ async function main(){
   assert.equal(activeRow.status,'DELIVERED');
   assert.equal(activeRow.event_type,'sbc.office-box.entitlement.v1');
   assert.equal((await worker.dispatchOne()).status,'EMPTY');
+  // No production DB; explicit live lease revocation on disposable MySQL 8.
+  writerLeaseHeld=false;
+  const beforeRevoked=await pool.query('SELECT COUNT(*) AS n FROM sbc_office_box_outbox');
+  await assert.rejects(()=>worker.enqueue(proof('revoked'+suffix)),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+  await assert.rejects(()=>worker.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+  const afterRevoked=await pool.query('SELECT COUNT(*) AS n FROM sbc_office_box_outbox');
+  assert.equal(afterRevoked[0][0].n,beforeRevoked[0][0].n,'fenced attempt must not write outbox rows');
+  writerLeaseHeld=true;
+  const race=await worker.enqueue(proof('lease_race'+suffix));
+  let checks=0, networkCount=0;
+  const racedWorker=createOutbox({...common,writerAuthority:async()=>{
+    checks++;return {publishedWriter:true,recoveryVerified:true,writerLeaseHeld:checks===1};
+  },transport:async()=>{networkCount++;throw Error('network must not be called')}});
+  await assert.rejects(()=>racedWorker.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+  assert.equal(checks,2);assert.equal(networkCount,0);
+  const [[fencedRow]]=await pool.query('SELECT status,attempts FROM sbc_office_box_outbox WHERE event_id=?',[race.eventId]);
+  assert.equal(fencedRow.status,'IN_FLIGHT');assert.equal(fencedRow.attempts,1);
+  await pool.execute('UPDATE sbc_office_box_outbox SET lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE event_id=?',[race.eventId]);
+  assert.equal((await worker.dispatchOne()).status,'DELIVERED','authorized writer safely reclaims expired lease');
   console.log('FANTASTIC 4 REAL MYSQL8 OUTBOX: PASS (DDL, duplicate, ack, retry, expired lease, ACTIVE entitlement)');
  }finally{await pool.end()}
 }
