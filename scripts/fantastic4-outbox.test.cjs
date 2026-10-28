@@ -51,7 +51,8 @@ const transport=async(url,options)=>{
  if(url.endsWith('/api/sbc/entitlements'))return {status:200,json:async()=>({ok:true,accepted:true,status:'ACTIVE'})};
  return {status:200,json:async()=>({ok:true,data:{accepted:true,correlationId:ackWrong?'other_event':payload.correlationId}})};
 };
-const options={pool,receiverOrigin:'https://office.example.test',secret,enabled:true,publishedWriter:true,transport};
+const granted=()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld:true});
+const options={pool,receiverOrigin:'https://office.example.test',secret,enabled:true,publishedWriter:true,writerAuthority:granted,transport};
 async function main(){
  for(const url of ['http://office.example.test','https://localhost','https://office.example.test/path','https://x:p@office.example.test']){
   assert.throws(()=>validateTarget(url),/HTTPS_ORIGIN_REQUIRED/);
@@ -110,6 +111,32 @@ async function main(){
  assert.equal((await oneTry.dispatchOne()).status,'DEAD');
  assert.equal(rows.get(last.eventId).status,'DEAD');
  assert.equal((await oneTry.dispatchOne()).status,'EMPTY','DEAD records must not be redelivered');
+ // Fail closed if the long-running scheduler forgot to wire a live lease inspector.
+ const unfenced=createOutbox({...options,writerAuthority:null});
+ const beforeUnfenced=rows.size, sentBeforeUnfenced=sent.length;
+ await assert.rejects(()=>unfenced.enqueue(proof),/OFFICE_BOX_LIVE_WRITER_FENCE_REQUIRED/);
+ await assert.rejects(()=>unfenced.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_FENCE_REQUIRED/);
+ assert.equal(rows.size,beforeUnfenced);assert.equal(sent.length,sentBeforeUnfenced);
+ // A lease or recovery failure blocks enqueue and ALL outbound network I/O.
+ const revoked=createOutbox({...options,writerAuthority:async()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld:false})});
+ await assert.rejects(()=>revoked.enqueue(proof),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ await assert.rejects(()=>revoked.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'}),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ await assert.rejects(()=>revoked.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ assert.equal(sent.length,sentBeforeUnfenced);
+ // Even if the writer loses its lease after claiming, it MUST NOT send.
+ const raceProof={...proof,order:{...order,id:'sbc_order_400'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_400'}};
+ const raced=await outbox.enqueue(raceProof);
+ let authorityChecks=0;
+ const volatile=createOutbox({...options,writerAuthority:async()=>{
+  authorityChecks++;
+  return {publishedWriter:true,recoveryVerified:true,writerLeaseHeld:authorityChecks===1};
+ }});
+ await assert.rejects(()=>volatile.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ assert.equal(authorityChecks,2);
+ assert.equal(rows.get(raced.eventId).status,'IN_FLIGHT','expired lease reclaims without remote side effect');
+ assert.equal(sent.length,sentBeforeUnfenced,'no transport request after losing writer authority');
+ const inspectorError=createOutbox({...options,writerAuthority:async()=>{throw Error('database unavailable')}});
+ await assert.rejects(()=>inspectorError.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_UNAVAILABLE/);
  console.log('FANTASTIC 4 DURABLE OUTBOX CONTRACT: PASS (writer gate, idempotency, signed delivery, paid-to-active entitlement, lease, retry, wrong ack, dead letter)');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
