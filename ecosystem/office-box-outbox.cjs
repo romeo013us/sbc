@@ -41,12 +41,48 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
   if(!state||state.publishedWriter!==true||state.recoveryVerified!==true||state.writerLeaseHeld!==true)
    throw Error('OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED');
  }
+ function durableEventIdentity(event){
+  // JSON columns can reorder object keys. Only the payment verification
+  // timestamp can change on legitimate ACTIVE retries; the purchased access,
+  // customer and payment identity must remain identical.
+  const seen=new WeakSet();
+  const canonical=(v)=>{
+   if(v===null||typeof v==='string'||typeof v==='boolean'||typeof v==='number')
+    return JSON.stringify(v);
+   if(!v||typeof v!=='object'||seen.has(v))throw Error('OFFICE_BOX_OUTBOX_EVENT_UNSERIALIZABLE');
+   seen.add(v);
+   let result;
+   if(Array.isArray(v))result='['+v.map(canonical).join(',')+']';
+   else result='{'+Object.keys(v).sort().filter(k=>v[k]!==undefined&&
+      !(v.schema==='sbc.office-box.entitlement.v1'&&k==='verifiedAt'))
+      .map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}';
+   seen.delete(v);return result;
+  };
+  return canonical(event);
+ }
+ async function readExistingEvent(eventId){
+  const [rows]=await pool.execute(
+   'SELECT order_id,customer_id,event_type,payload_json FROM '+TABLE+' WHERE event_id=? LIMIT 1',[eventId]);
+  return Array.isArray(rows)?rows[0]:null;
+ }
  async function writeEvent(event,eventId,orderId,customerId,eventType){
   const [r]=await pool.execute(`INSERT IGNORE INTO ${TABLE}
    (event_id,order_id,customer_id,event_type,payload_json,status,attempts,next_attempt_at,created_at,updated_at)
    VALUES (?,?,?,?,?,'PENDING',0,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())`,
    [eventId,orderId,customerId,eventType,JSON.stringify(event)]);
-  return {eventId,created:Number(r?.affectedRows||0)===1};
+  if(Number(r?.affectedRows||0)===1)return {eventId,created:true};
+  // INSERT IGNORE may mean a duplicate ID OR a suppressed SQL warning.
+  // Never claim an old paid event is identical without inspecting persisted fields.
+  const row=await readExistingEvent(eventId);
+  if(!row||row.order_id!==orderId||row.customer_id!==customerId||
+     row.event_type!==eventType)
+   throw Error('OFFICE_BOX_OUTBOX_EVENT_COLLISION');
+  let existing;
+  try{existing=typeof row.payload_json==='string'?JSON.parse(row.payload_json):row.payload_json}
+  catch{throw Error('OFFICE_BOX_OUTBOX_STORED_EVENT_INVALID')}
+  if(durableEventIdentity(existing)!==durableEventIdentity(event))
+   throw Error('OFFICE_BOX_OUTBOX_EVENT_COLLISION');
+  return {eventId,created:false};
  }
  async function enqueue(verifiedPayment){
   if(!enabled||!publishedWriter)throw Error('OFFICE_BOX_OUTBOX_PUBLISHED_WRITER_ONLY');

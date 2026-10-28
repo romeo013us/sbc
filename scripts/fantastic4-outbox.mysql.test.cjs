@@ -40,6 +40,18 @@ async function main(){
   const a=await worker.enqueue(proof('aa'+suffix));
   assert(a.created);
   assert(!(await worker.enqueue(proof('aa'+suffix))).created,'dedupe must persist in real MySQL');
+  const modified=proof('aa'+suffix);
+  modified.payment={...modified.payment,id:'square_payment_modified'+suffix};
+  modified.parsed={...modified.parsed,squarePaymentId:modified.payment.id};
+  modified.paymentRecord={...modified.paymentRecord,squarePaymentId:modified.payment.id};
+  await assert.rejects(()=>worker.enqueue(modified),/OFFICE_BOX_OUTBOX_EVENT_COLLISION/,
+   'same order/customer/SKU with a different settled Square receipt is not a duplicate');
+  const originalRow=await pool.query('SELECT payload_json FROM sbc_office_box_outbox WHERE event_id=?',[a.eventId]);
+  const unchangedPayload=typeof originalRow[0][0].payload_json==='string'
+   ?JSON.parse(originalRow[0][0].payload_json):originalRow[0][0].payload_json;
+  assert.equal(unchangedPayload.payload.paymentReference,proof('aa'+suffix).payment.id,
+   'rejected collision must never overwrite the original paid reference');
+
   assert.equal((await worker.dispatchOne()).status,'DELIVERED');
   const [[row]]=await pool.query('SELECT status,attempts FROM sbc_office_box_outbox WHERE event_id=?',[a.eventId]);
   assert.equal(row.status,'DELIVERED');assert.equal(row.attempts,1);
@@ -64,6 +76,15 @@ async function main(){
   const active=await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'});
   assert(active.created);
   assert(!(await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'})).created);
+  assert(!(await worker.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T11:00:00Z'})).created,
+   'new payment-provider verification time is a valid idempotent ACTIVE replay');
+  const alteredPlanPaid={...paidEvent,payload:{...paidEvent.payload,plan:'professional'}};
+  const alteredPlanLinked={...linked,data:{...linked.data,plan:'professional'}};
+  await assert.rejects(()=>worker.enqueueActiveEntitlement({
+   paidEvent:alteredPlanPaid,activationResponse:alteredPlanLinked,verifiedAt:'2026-10-27T11:00:00Z'
+  }),/OFFICE_BOX_OUTBOX_EVENT_COLLISION/,
+   'the same entitlement event ID may not silently change the plan');
+
   assert.equal((await worker.dispatchOne()).status,'DELIVERED');
   const [[activeRow]]=await pool.query('SELECT status,event_type FROM sbc_office_box_outbox WHERE event_id=?',[active.eventId]);
   assert.equal(activeRow.status,'DELIVERED');
