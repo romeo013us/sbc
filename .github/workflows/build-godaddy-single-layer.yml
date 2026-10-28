@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/build-godaddy-single-layer.yml'
       - 'tools/build-godaddy-single-layer.py'
+      - 'ui-overlays/**'
   push:
     branches: [main]
     paths:
@@ -69,6 +70,8 @@ jobs:
           node --check "$verify_dir/server.js"
           node --check "$verify_dir/sbc-godaddy-flat-entrypoint.cjs"
           node --check "$verify_dir/bootstrap.js"
+          node --check "$verify_dir/public/sbc-kim-chief-of-staff-page.js"
+          SBC_RUNTIME_ROOT="$verify_dir" node ui-overlays/kim-chief-of-staff-page.test.cjs
           for pass in 1 2 3; do
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6669-critical-navigation-race.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6645-square-checkout-safety.test.cjs
