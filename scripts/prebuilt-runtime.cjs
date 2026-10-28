@@ -15,7 +15,18 @@ function readManifest(root){
   throw Error('[SBC PREBUILT] malformed or wrong-version release receipt');
  }
  const fingerprint=buildFingerprint(root);
- if(fingerprint!==m.sourceFingerprint)throw Error('[SBC PREBUILT] release is stale relative to checked-out source; refuse mixed code');
+ if(fingerprint!==m.sourceFingerprint){
+  // Preserve the fail-closed release gate while giving GoDaddy logs enough
+  // non-secret evidence to distinguish a stale checkout from mutated sources.
+  // Never log file contents, environment values, or secrets.
+  const error=new Error('[SBC PREBUILT] release is stale relative to checked-out source; refuse mixed code'+
+    ' | expectedFingerprint='+m.sourceFingerprint+
+    ' | actualFingerprint='+fingerprint+
+    ' | archiveSha256='+m.archiveSha256+
+    ' | sourceCommit='+String(m.sourceCommit||'unknown').slice(0,40));
+  error.code='SBC_PREBUILT_SOURCE_MISMATCH';
+  throw error;
+ }
  const bytes=fs.readFileSync(zip);
  if(sha(bytes)!==m.archiveSha256)throw Error('[SBC PREBUILT] ZIP SHA-256 does not match release receipt');
  return {bytes,manifest:m};
