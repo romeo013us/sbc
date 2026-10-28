@@ -21,12 +21,9 @@ const css=`
 @media(max-width:600px){#sbc-lead-import-launcher{right:12px;bottom:70px}#sbc-lead-import-body{padding:15px}#sbc-lead-import-head{padding:17px}#sbc-lead-import-table{font-size:11px}}
 `;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
-/* SBC_V6601_MASTER_PROSPECT_LIST */
-const masterStyle=document.createElement('style');masterStyle.id='sbc-master-prospect-list-style';masterStyle.textContent='#sbc-master-list-launcher{position:fixed;right:22px;bottom:136px;z-index:10020;border:0;border-radius:999px;padding:13px 18px;background:#ff6a00;color:#fff;font:700 14px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px #0b1f4433;cursor:pointer}#sbc-master-list-launcher:disabled{opacity:.6;cursor:progress}@media(max-width:600px){#sbc-master-list-launcher{right:12px;bottom:124px}}';document.head.appendChild(masterStyle);
 const btn=document.createElement('button');btn.id='sbc-lead-import-launcher';btn.type='button';btn.textContent='＋ Import Leads';
 const overlay=document.createElement('div');overlay.id='sbc-lead-import-overlay';overlay.innerHTML='<section id="sbc-lead-import-panel" role="dialog" aria-modal="true" aria-labelledby="sbc-lead-import-title"><header id="sbc-lead-import-head"><div><h2 id="sbc-lead-import-title">Import Leads</h2><p>Upload CSV · Preview duplicates · Import safely into your tenant</p></div><button type="button" id="sbc-lead-import-x" aria-label="Close" style="border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer">×</button></header><div id="sbc-lead-import-body"><label for="sbc-lead-import-file"><strong>Select a CSV file</strong><p>Use the SBC lead import template. CSV files only; up to 500 rows per import.</p></label><input id="sbc-lead-import-file" type="file" accept=".csv,text/csv"><div id="sbc-lead-import-status">Choose a CSV file to begin. Preview does not write any records.</div><div id="sbc-lead-import-summary"></div><div id="sbc-lead-import-tablewrap" hidden><table id="sbc-lead-import-table"><thead><tr><th>Business</th><th>Contact</th><th>Phone</th><th>Email</th><th>Website</th><th>Import status</th></tr></thead><tbody></tbody></table></div><div id="sbc-lead-import-actions"><button type="button" id="sbc-lead-import-close">Close</button><button type="button" id="sbc-lead-import-preview" class="primary" disabled>Preview import</button><button type="button" id="sbc-lead-import-commit" class="primary" disabled>Import new leads</button></div></div></section>';
 document.body.append(btn,overlay);
-const masterBtn=document.createElement('button');masterBtn.id='sbc-master-list-launcher';masterBtn.type='button';masterBtn.textContent='Import Master List (253)';document.body.appendChild(masterBtn);
 const byId=id=>document.getElementById(id),status=byId('sbc-lead-import-status'),previewBtn=byId('sbc-lead-import-preview'),commitBtn=byId('sbc-lead-import-commit'),fileInput=byId('sbc-lead-import-file');
 let rows=[],preview=null;
 function setStatus(message,kind){status.className=kind||'';status.textContent=message;}
@@ -67,48 +64,6 @@ function renderResults(data){
  byId('sbc-lead-import-tablewrap').hidden=false;byId('sbc-lead-import-summary').innerHTML='<span>Total: '+esc(data.total)+'</span><span>New: '+esc(data.ready)+'</span><span>Duplicates: '+esc(data.duplicates)+'</span>'+(data.imported!==undefined?'<span>Added: '+esc(data.imported)+'</span>':'');
 }
 btn.addEventListener('click',()=>overlay.classList.add('open'));function close(){overlay.classList.remove('open');}
-masterBtn.addEventListener('click',async()=>{
- if(masterBtn.disabled)return;
- masterBtn.disabled=true;
- overlay.classList.add('open');
- rows=[];preview=null;previewBtn.disabled=true;commitBtn.disabled=true;fileInput.value='';
- byId('sbc-lead-import-summary').innerHTML='';byId('sbc-lead-import-tablewrap').hidden=true;
- setStatus('Loading the master prospect list and checking CRM duplicates. Preview is read-only…','');
- try{
-  const response=await fetch('/sbc-master-prospect-list-2026-10-23.csv',{credentials:'same-origin',cache:'no-store'});
-  if(!response.ok)throw new Error('Master list download failed (HTTP '+response.status+').');
-  rows=parseCsv(await response.text());
-  if(rows.length>500)throw new Error('Master list exceeds the safe 500-row import limit. Split it into smaller batches.');
-  const invalid=rows.map((r,i)=>!r.business_name?i+1:null).filter(v=>v!==null);
-  if(invalid.length)throw new Error('Business name missing on data row(s): '+invalid.join(', '));
-  preview=await request({dryRun:true,rows:rows});
-  renderResults(preview);
-  previewBtn.disabled=false;
-  const ready=Number(preview.ready||0),duplicates=Number(preview.duplicates||0);
-  if(ready<=0){
-   setStatus('Master-list check complete: no new leads to add; '+duplicates+' existing/duplicate lead(s) skipped. No records were written.', 'ok');
-   commitBtn.disabled=true;
-  }else{
-   setStatus('Master-list check complete: '+ready+' new prospect(s), '+duplicates+' duplicate(s).', 'ok');
-   if(window.confirm('Import '+ready+' new prospect(s) from the master list into the current SBC tenant? '+duplicates+' duplicate(s) will be skipped. The CRM will enforce tenant, recovery, and writer safeguards.')){
-    previewBtn.disabled=true;commitBtn.disabled=true;
-    const result=await request({dryRun:false,rows:rows});
-    renderResults(result);preview=result;
-    setStatus(result.message||('Import completed: '+Number(result.imported||0)+' added.'),'ok');
-    commitBtn.disabled=true;
-   }else{
-    setStatus('Preview complete. Import cancelled; no records were written. Use Import new leads when ready.','');
-    commitBtn.disabled=false;
-   }
-  }
- }catch(e){
-  setStatus((e&&e.message?e.message:'Master-list import failed safely.')+' No partial import was committed.','error');
-  commitBtn.disabled=true;
- }finally{
-  masterBtn.disabled=false;
-  previewBtn.disabled=!rows.length;
- }
-});
 byId('sbc-lead-import-x').addEventListener('click',close);byId('sbc-lead-import-close').addEventListener('click',close);overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
 fileInput.addEventListener('change',async()=>{rows=[];preview=null;previewBtn.disabled=true;commitBtn.disabled=true;byId('sbc-lead-import-summary').innerHTML='';byId('sbc-lead-import-tablewrap').hidden=true;const file=fileInput.files&&fileInput.files[0];if(!file)return;if(!/\.csv$/i.test(file.name)){setStatus('Please select a .csv file.','error');return;}try{rows=parseCsv(await file.text());if(rows.length>500)throw new Error('This file contains '+rows.length+' rows. Split it into batches of 500 or fewer.');const invalid=rows.map((r,i)=>!r.business_name?i+1:null).filter(v=>v!==null);if(invalid.length)throw new Error('Business name is missing on data row(s): '+invalid.join(', '));previewBtn.disabled=false;setStatus(rows.length+' leads loaded from '+file.name+'. Select Preview import to check duplicates.','');}catch(e){setStatus(e.message||'Unable to read CSV.','error');}});
 // SBC_V6671_PACKAGED_BATCH_LOAD: input preparation ONLY; no automatic database writes.
