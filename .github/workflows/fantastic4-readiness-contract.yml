@@ -8,6 +8,7 @@ on:
       - 'ecosystem/office-box-activation-reconciliation.cjs'
       - 'ecosystem/office-box-outbox.cjs'
       - 'ecosystem/office-box-committed-readback.cjs'
+      - 'ecosystem/office-box-committed-enqueue.cjs'
       - 'scripts/office-box-committed-readback*.test.cjs'
       - 'ecosystem/office-box-settlement-bridge.cjs'
       - 'migrations/20261027_002_fantastic4_officebox_outbox.sql'
@@ -41,7 +42,7 @@ jobs:
       - run: node scripts/office-box-paid-handoff.test.cjs
       - run: node scripts/fantastic4-officebox-activation.test.cjs
       - run: node scripts/fantastic4-outbox.test.cjs
-      - run: node --check ecosystem/office-box-committed-readback.cjs && node scripts/office-box-committed-readback.test.cjs
+      - run: node --check ecosystem/office-box-committed-enqueue.cjs && node --check ecosystem/office-box-committed-readback.cjs && node scripts/office-box-committed-readback.test.cjs
       - run: node scripts/fantastic4-square-settlement-bridge.test.cjs
       - run: node scripts/fantastic4-officebox-activation-poll.test.cjs
 
