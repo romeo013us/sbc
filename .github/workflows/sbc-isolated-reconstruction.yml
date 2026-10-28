@@ -490,6 +490,8 @@ jobs:
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6657-square-tenant-boundaries.test.cjs | tee .sbc-isolated-reports/v6657-square-tenant-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6658-revenue-fulfillment-truth.test.cjs | tee .sbc-isolated-reports/v6658-revenue-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6659-square-completion-consistency.test.cjs | tee .sbc-isolated-reports/v6659-square-payment-replay-evidence.log
+          # Review-only patch is applied in memory to the compiled server; this does NOT alter release artifacts.
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6692-staged-officebox-after-commit.test.cjs | tee .sbc-isolated-reports/v6692-staged-post-commit-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6660-website-bridge.test.cjs | tee .sbc-isolated-reports/v6660-website-tenant-bridge-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6661-inbound-and-portal-auth.test.cjs | tee .sbc-isolated-reports/v6661-customer-inquiry-safety.log
           for pass in 1 2 3; do
