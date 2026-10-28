@@ -540,6 +540,15 @@ jobs:
           timeout --signal=TERM --kill-after=15s 90s node scripts/v6636-css-parity-browser.test.cjs | tee .sbc-isolated-reports/v6636-css-parity.json
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
           timeout --signal=TERM --kill-after=15s 90s node scripts/v6675-90day-contrast-browser.test.cjs | tee .sbc-isolated-reports/v6675-revenue-contrast-browser.json
+      - name: Verify Lead Researcher privacy, delayed mounts and owner parity in Chromium
+        shell: bash
+        env:
+          CI: 'true'
+          SBC_RUNTIME_ROLE: readonly
+        run: |
+          set -euo pipefail
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" SBC_PLAYWRIGHT_PATH="$PWD/.sbc-browser/node_modules/playwright" \
+          timeout --signal=TERM --kill-after=15s 60s node scripts/v6680-role-privacy-browser.test.cjs | tee .sbc-isolated-reports/v6680-role-privacy-browser.log
       - name: Package verified prebuilt runtime after full isolated acceptance
         shell: bash
         env:
