@@ -96,7 +96,7 @@ try{
  put('ecosystem/fixture.js','module.exports=false;\\n');
  result=run();
  assert.notEqual(result.status,0);
- assert.match(result.stderr,/release is stale relative to checked-out source/,
+ assert.match(result.stderr,/SBC_PREBUILT_SOURCE_MISMATCH|release is stale relative to checked-out source/,
   'direct packaging must reject stale source even when ZIP SHA matches');
  put('ecosystem/fixture.js','module.exports=true;\\n');
  put(zipName,Buffer.from('TAMPERED_ARCHIVE'));
