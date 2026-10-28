@@ -6,7 +6,7 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-prebuilt-contract-'));
 const put=(name,body)=>{const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,body);};
 try{
  for(const item of INPUTS){
-  if(item==='hotfix-assets'||item==='enterprise'||item==='scripts')put(item+'/fixture.js','module.exports=true');
+  if(['hotfix-assets','enterprise','ecosystem','ui-overlays','scripts'].includes(item))put(item+'/fixture.js','module.exports=true');
   else put(item,item==='package.json'?'{"version":"66.0.0"}':'fixture');
  }
  assert.equal(readManifest(root),null,'legacy checkout without prebuilt release may still start during migration');
@@ -38,6 +38,15 @@ try{
  put(ARCHIVE,blob);
  put('hotfix-assets/fixture.js','CHANGED AFTER RELEASE');
  assert.throws(()=>readManifest(root),/release is stale/,'stale compiled source rejected');
+ // A valid old archive must also be rejected when Office Box/Kim changes
+ // even when the legacy hotfix and bootstrap files remain unmodified.
+ put('hotfix-assets/fixture.js','module.exports=true');
+ assert.deepEqual(readManifest(root).manifest,m);
+ put('ecosystem/fixture.js','module.exports=false');
+ assert.throws(()=>readManifest(root),/release is stale/,'Office Box source edit refuses prebuilt reuse');
+ put('ecosystem/fixture.js','module.exports=true');
+ put('ui-overlays/fixture.js','module.exports=false');
+ assert.throws(()=>readManifest(root),/release is stale/,'Kim overlay edit refuses prebuilt reuse');
  assert.equal(adopted,0,'no stale data adoption occurred during clean fixture run');
  console.log('[SBC PREBUILT CONTRACT] PASS release checksum, source binding, cold install and cached reuse');
 } finally{fs.rmSync(root,{recursive:true,force:true});}
