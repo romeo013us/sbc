@@ -16,7 +16,7 @@ const strictId=(x,max=120)=>typeof x==='string'&&x.length>=8&&x.length<=max&&/^[
 const tid=x=>Number.isSafeInteger(x)&&x>0;
 function requireOrigin(value){
  const origin=validateTarget(value);
- const host=new URL(origin).hostname;
+ const host=new URL(origin).hostname.replace(/^\[|\]$/g,'');
  // Do not allow arbitrary private-IP / loopback targets even if they present TLS.
  if(net.isIP(host)||host.endsWith('.internal')||host.endsWith('.local')||host.endsWith('.lan'))
   throw Error('OFFICE_BOX_UNTRUSTED_NETWORK_TARGET');
