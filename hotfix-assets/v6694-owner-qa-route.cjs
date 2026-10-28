@@ -4,7 +4,7 @@
  * Does NOT create a payment link or send an external request.
  * No new env secrets, no migrations, no autonomous payment actions.
  */
-const SOURCE=String.raw\`
+const SOURCE=String.raw`
 app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||
@@ -16,7 +16,7 @@ app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
   return res.status(403).json({ok:false,code:'LAUNCH_QA_TENANT_REQUIRED'});
  }
  const email=String(req.body?.email||'').trim().toLowerCase();
- if(email.length>254||!/^\\S+@\\S+\\.\\S+$/.test(email)||
+ if(email.length>254||!/^\S+@\S+\.\S+$/.test(email)||
     email.endsWith('.invalid')||email.endsWith('.test'))
   return res.status(400).json({ok:false,code:'LAUNCH_QA_CONTROLLED_EMAIL_REQUIRED'});
  // One test per tenant and owner-provided email: cannot accidentally mint
@@ -57,5 +57,5 @@ app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
   next:'/api/payments/square/create-link/'+encodeURIComponent(order.id),
   note:'Owner must generate checkout explicitly. This endpoint does not charge.'});
 });
-\`;
+`;
 module.exports={SOURCE};
