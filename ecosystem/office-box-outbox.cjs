@@ -137,10 +137,13 @@ function createOutbox({pool,receiverOrigin,secret,enabled=false,publishedWriter=
    if(status!==200)throw Object.assign(Error('REMOTE_REJECTED'),{code:'OFFICE_BOX_RESPONSE_NOT_ACCEPTED'});
    const json=await response.json();
    const ack=handoff?json?.data:json;
-   if(json?.ok!==true||!(ack?.accepted===true||ack?.duplicate===true)||
-      (handoff&&ack?.accepted===true&&ack.correlationId!==row.event_id)||
-      (handoff&&ack?.duplicate===true&&ack.correlationId&&ack.correlationId!==row.event_id)||
-      (entitlement&&ack?.accepted===true&&ack.status!==event.status))
+   // A duplicate flag is metadata, not acceptance. Every receipt must bind
+   // to the exact persisted event, including the tenant's entitlement plan.
+   // Missing IDs/status or a fabricated HTTP 200 can never close the outbox.
+   if(json?.ok!==true||ack?.accepted!==true||
+      (handoff&&ack.correlationId!==row.event_id)||
+      (entitlement&&(ack.eventId!==row.event_id||
+        ack.status!==event.status||ack.plan!==event.plan)))
     throw Object.assign(Error('REMOTE_ACK_INVALID'),{code:'OFFICE_BOX_ACK_MISMATCH'});
    success=true;
   }catch(e){code=errorCode(e)}
