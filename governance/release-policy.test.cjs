@@ -14,6 +14,7 @@ const proof=read('scripts/prebuilt-runtime.cjs');
 const launcher=read('tools/build-godaddy-single-layer.py');
 const packagePy=read('scripts/package-prebuilt-runtime.py');
 assert.match(packagePy,/name\.lower\(\)\.endswith\('\.csv'\)/,'verified runtime must omit all prospect CSV files');
+assert.match(packagePy,/starter-leads/,'historic starter lead directory is never packaged');
 assert.match(launcher,/name\.lower\(\)\.endswith\("\.csv"\)/,'flat deploy must reject any compiled CSV');
 assert.doesNotMatch(launcher,/PRIVATE_CSV|files\[csv_path\]/,'manual CSV uploads must replace embedded customer data');
 assert.equal(fs.existsSync(path.join(root,'hotfix-assets/sbc-master-prospect-list-2026-10-23.csv')),false);
