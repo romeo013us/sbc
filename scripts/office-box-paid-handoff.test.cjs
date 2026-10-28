@@ -9,6 +9,11 @@ const customer={id:'sbc_customer_100',businessName:'Fixture Test Co',ownerEmail:
 const input={order,parsed,payment,paymentRecord,expectedLocation:'square_location_100',customer,plan:'business'};
 const evt=buildPaidHandoff(input),evt2=buildPaidHandoff(input);assert.deepEqual(evt,evt2);
 assert.equal(evt.eventType,'customer.subscription.paid');assert.equal(evt.payload.orderId,order.id);
+const secondPayment={...payment,id:'square_payment_200'};
+const secondParsed={...parsed,squarePaymentId:secondPayment.id};
+const secondRecord={...paymentRecord,squarePaymentId:secondPayment.id};
+const sameOrderDifferentTender=buildPaidHandoff({...input,payment:secondPayment,parsed:secondParsed,paymentRecord:secondRecord});
+assert.equal(evt.correlationId,sameOrderDifferentTender.correlationId,'same paid order must not create a second activation');
 const secret='sbc-officebox-verification-secret-64-characters-long';const signed=signPaidHandoff(evt,secret,{nowSeconds:1793100000});
 const raw=Buffer.from(signed.body),expected=crypto.createHmac('sha256',secret).update(raw).digest('hex');
 assert.equal(signed.headers['x-sbc-signature'],'sha256='+expected);
