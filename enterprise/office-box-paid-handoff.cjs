@@ -25,7 +25,7 @@ function buildPaidHandoff({order,parsed,payment,paymentRecord,expectedLocation,c
  if(boundCustomerId!==customerId||!boundEmail||boundEmail.toLowerCase()!==ownerEmail.toLowerCase())throw Error('OFFICE_BOX_PAID_ORDER_CUSTOMER_MISMATCH');
  const orderId=text(order.id,120),receipt=text(payment.id,120);
  if(!orderId||!receipt)throw Error('OFFICE_BOX_PAYMENT_REFERENCE_REQUIRED');
- const eventId='officebox_'+crypto.createHash('sha256').update(JSON.stringify([orderId,receipt,customerId,sku])).digest('hex').slice(0,40);
+ const eventId='officebox_'+crypto.createHash('sha256').update(JSON.stringify([orderId,customerId,sku])).digest('hex').slice(0,40);
  return {eventType:'customer.subscription.paid',correlationId:eventId,customerId,payload:{businessName,ownerEmail,orderId,paymentReference:receipt,paymentStatus:'PAID',plan,industry:text(customer.industry,80)||'General Business'}};
 }
 function signPaidHandoff(event,secret,{nowSeconds=Math.floor(Date.now()/1000)}={}){
