@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const repo=path.resolve(__dirname,'..');
-const asset=fs.readFileSync(path.join(repo,'hotfix-assets/sbc-kim-chief-of-staff-page.js'),'utf8');
+const asset=fs.readFileSync(path.join(repo,'ui-overlays/sbc-kim-chief-of-staff-page.js'),'utf8');
 new vm.Script(asset,{filename:'sbc-kim-chief-of-staff-page.js'});
 assert.match(asset,/sbcKimChiefRoom/);
 assert.match(asset,/sbcKimChiefNav/);
