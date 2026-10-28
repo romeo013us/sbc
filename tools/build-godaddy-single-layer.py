@@ -109,16 +109,20 @@ kim_bytes = kim_asset.read_bytes()
 if b"window.sbcKimCanonical" not in kim_bytes or b"startKimVoice" not in kim_bytes:
     fail("Kim UI must reuse the existing canonical chat and voice methods")
 kim_entry = b'<script src="/sbc-kim-chief-of-staff-page.js?v=66.81.0" defer></script>'
+voice_entry = b'<link rel="stylesheet" href="/kim-voice.css?v=66.81.0">\n<script src="/kim-voice.js?v=66.81.0" defer></script>'
 for html_name, js_name in (
     ("public/index.html", "public/sbc-kim-chief-of-staff-page.js"),
     ("browser_public/index.html", "browser_public/sbc-kim-chief-of-staff-page.js"),
 ):
+    prefix = html_name.split("/")[0]
+    if prefix+"/kim-voice.js" not in files or prefix+"/kim-voice.css" not in files:
+        fail("Verified runtime is missing the existing Kim voice transport and styles")
     if js_name in files or kim_entry in files[html_name]:
         fail("Kim UI overlay already exists; refuse duplicate")
     source = files[html_name]
     if source.count(b"</body>") != 1:
         fail("Unexpected Kim UI injection boundary: " + html_name)
-    files[html_name] = source.replace(b"</body>", kim_entry + b"\n</body>")
+    files[html_name] = source.replace(b"</body>", voice_entry + b"\n" + kim_entry + b"\n</body>")
     files[js_name] = kim_bytes
 
 original_server_hash = sha(files["server.js"])
@@ -167,7 +171,8 @@ with zipfile.ZipFile(DEST) as check:
         fail("packaged Kim page differs from reviewed source")
     if check.read("browser_public/sbc-kim-chief-of-staff-page.js") != kim_bytes:
         fail("browser mirror Kim page differs from reviewed source")
-    if kim_entry not in check.read("public/index.html") or kim_entry not in check.read("browser_public/index.html"):
+    if (kim_entry not in check.read("public/index.html") or kim_entry not in check.read("browser_public/index.html") or
+        voice_entry not in check.read("public/index.html") or voice_entry not in check.read("browser_public/index.html")):
         fail("Kim page is not linked in both compiled frontends")
     if sha(check.read("server.js")) != original_server_hash:
         fail("compiled server modified by packaging")
