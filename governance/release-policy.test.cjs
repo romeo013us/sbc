@@ -28,7 +28,8 @@ const jobHeader=deployJob.split(/\n    steps:/)[0];
 assert.match(jobHeader,/\n    if:\s*github\.event_name == 'workflow_dispatch' && inputs\.publish_deploy_branch == true && github\.ref == 'refs\/heads\/main'/);
 assert.match(deployJob,/HEAD_NOW=.*git ls-remote origin refs\/heads\/main/);
 assert.match(flat,/readManifest\(process\.cwd\(\)\)/);
-assert.match(proof,/if\(fingerprint!==m\.sourceFingerprint\)throw Error/);
+assert.match(proof,/if\(fingerprint!==m\.sourceFingerprint\)\s*\{[\s\S]{0,1200}error\.code='SBC_PREBUILT_SOURCE_MISMATCH';\s*throw error;/,
+  'source mismatch must throw the typed failure before archive extraction');
 assert.match(launcher,/if manifest\.get\("generatedBy"\) != "isolated-github-ci"/);
 assert.match(launcher,/verify_source_matched_prebuilt\(\)/,
   'direct Python packaging must verify the checked-out source before writing a ZIP');
