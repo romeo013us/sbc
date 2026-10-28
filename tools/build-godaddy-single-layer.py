@@ -100,6 +100,27 @@ with zipfile.ZipFile(io.BytesIO(raw)) as src:
 required = {"server.js", "package.json", "package-lock.json", "public/index.html", "browser_public/index.html"}
 if not required.issubset(files):
     fail("compiled runtime missing root or browser files")
+# Add one UI-only Kim Chief of Staff entrypoint to each compiled public mirror.
+# No changes to the verified server, tenant guards, recovery logic or existing Kim dialog.
+kim_asset = ROOT / "hotfix-assets" / "sbc-kim-chief-of-staff-page.js"
+if not kim_asset.is_file():
+    fail("Kim Chief of Staff UI source missing")
+kim_bytes = kim_asset.read_bytes()
+if b"window.sbcKimCanonical" not in kim_bytes or b"startKimVoice" not in kim_bytes:
+    fail("Kim UI must reuse the existing canonical chat and voice methods")
+kim_entry = b'<script src="/sbc-kim-chief-of-staff-page.js?v=66.81.0" defer></script>'
+for html_name, js_name in (
+    ("public/index.html", "public/sbc-kim-chief-of-staff-page.js"),
+    ("browser_public/index.html", "browser_public/sbc-kim-chief-of-staff-page.js"),
+):
+    if js_name in files or kim_entry in files[html_name]:
+        fail("Kim UI overlay already exists; refuse duplicate")
+    source = files[html_name]
+    if source.count(b"</body>") != 1:
+        fail("Unexpected Kim UI injection boundary: " + html_name)
+    files[html_name] = source.replace(b"</body>", kim_entry + b"\n</body>")
+    files[js_name] = kim_bytes
+
 original_server_hash = sha(files["server.js"])
 pkg = json.loads(files["package.json"])
 if pkg.get("main") != "server.js" or pkg["scripts"].get("start") != "node server.js":
@@ -119,7 +140,8 @@ identity = {
     "version":manifest["version"],
     "sourceCommit":manifest["sourceCommit"],
     "sourceFingerprint":manifest["sourceFingerprint"],
-    "serverSha256":original_server_hash
+    "serverSha256":original_server_hash,
+    "uiOverlays":{"kimChiefOfStaffSha256":sha(kim_bytes)}
 }
 if "SBC-FLAT-RELEASE-IDENTITY.json" in files: fail("compiled release identity path collision")
 files["SBC-FLAT-RELEASE-IDENTITY.json"] = (json.dumps(identity,indent=2)+"\n").encode()
@@ -141,6 +163,12 @@ with zipfile.ZipFile(DEST) as check:
         fail("generated ZIP CRC failed")
     if set(check.namelist()) != set(files):
         fail("unexpected generated ZIP inventory")
+    if sha(check.read("public/sbc-kim-chief-of-staff-page.js")) != sha(kim_bytes):
+        fail("packaged Kim page differs from reviewed source")
+    if check.read("browser_public/sbc-kim-chief-of-staff-page.js") != kim_bytes:
+        fail("browser mirror Kim page differs from reviewed source")
+    if kim_entry not in check.read("public/index.html") or kim_entry not in check.read("browser_public/index.html"):
+        fail("Kim page is not linked in both compiled frontends")
     if sha(check.read("server.js")) != original_server_hash:
         fail("compiled server modified by packaging")
     if check.read("bootstrap.js") != BOOTSTRAP_COMPAT.encode():
