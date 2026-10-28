@@ -52,7 +52,7 @@ function fixture(data=snapshot){
   [{order:null},'COMMITTED_ORDER_MISSING'],
   [{customer:null},'COMMITTED_CUSTOMER_MISSING'],
   [{customer:{...customer,email:'other@example.invalid'}},'ORDER_BILLING_EMAIL_MISMATCH'],
-  [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'OFFICE_BOX_TEAM'}]})}},'OFFICE_BOX_SKU_CONFLICT'],
+  [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'OFFICE_BOX_TEAM',quantity:1}]})}},'OFFICE_BOX_SKU_CONFLICT'],
   [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'GENERIC_CRM'}]})}},'EXACTLY_ONE_PURCHASED_SKU_REQUIRED'],
   [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'OFFICE_BOX_BUSINESS',quantity:2}]})}},'APPROVED_ONE_SEAT_PLAN_REQUIRED'],
   [{order:{...row,notes:JSON.stringify({...notes,items:[{sku:'OFFICE_BOX_BUSINESS'}]})}},'APPROVED_ONE_SEAT_PLAN_REQUIRED'],
