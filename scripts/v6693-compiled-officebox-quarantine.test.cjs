@@ -21,9 +21,9 @@ const P=require(path.join(root,'enterprise/v6659-square-webhook-proof.cjs'));
 const payment={id:'square_payment_999',order_id:'square_order_999',location_id:'sq_location_999',
  status:'COMPLETED',amount_money:{amount:34900,currency:'USD'}};
 
-function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=false,lease=true,pool=true,items=null,product='Website Starter',metaSku=''}={}){
- const order={id:'sbc_order_999',customerId:'cust_999',tenantId:7,price:349,paymentStatus:'PENDING',
-  status:'Pending',product,notes:JSON.stringify({squareOrderId:'square_order_999',squarePaymentStatus:'PENDING',items,officeBoxSku:metaSku})};
+function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=false,lease=true,pool=true,items=null,product='Website Starter',metaSku='',price=349,launchQa=false}={}){
+ const order={id:'sbc_order_999',customerId:'cust_999',tenantId:7,price,paymentStatus:'PENDING',launchQaOwnerCreated:launchQa,
+  status:'Pending',product,notes:JSON.stringify({squareOrderId:'square_order_999',squarePaymentStatus:'PENDING',items,officeBoxSku:metaSku,...(launchQa?{sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1}}:{})})};
  const record={id:'rec_999',sbcOrderId:order.id,squareOrderId:'square_order_999',squarePaymentId:'',status:'PENDING'};
  const db={orders:[order],squarePayments:[record],customers:[],tasks:[]};
  const events=[];
@@ -48,7 +48,7 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
    if(saveReceipt==='unverified')return {source:'COMMITTED_MYSQL',commitVerified:false};
    throw Error('UNKNOWN_FIXTURE_RECEIPT');
   },
-  addActivity:(type)=>{if(type==='office_box_precommit_fulfillment_quarantined')events.push('quarantine')},
+  addActivity:(type)=>{if(type==='office_box_precommit_fulfillment_quarantined')events.push('quarantine');if(type==='launch_qa_payment_verified')events.push('launch_qa_verified')},
   REVENUE_AUTOPILOT_V56150:{recordFunnelEvent:async()=>{events.push('funnel')}},
   SBC_COMMERCIAL:{provisionTenant:async()=>{events.push('commercial');throw Error('no commercial provider in fixture')}},
   V569_PRODUCTION_EXPANSION:{provisionStorefront:()=>{events.push('storefront');throw Error('no storefront provider in fixture')}},
@@ -100,5 +100,24 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
  assert.equal(badSave.events.includes('handoff'),false);
  for(const effect of ['commercial','storefront','kim','intake','funnel','commission'])
   assert.equal(badSave.events.includes(effect),false,'Office Box external side effects must never precede failed save');
+ const qa=fixture({price:1,launchQa:true,product:'SBC Launch QA - $1 Test Service'});
+ const paidDollar={...payment,amount_money:{amount:100,currency:'USD'}};
+ const verifiedQa=await qa.run(paidDollar);
+ assert.equal(verifiedQa.status,'PAID');
+ assert.equal(qa.order.fulfillmentStatus,'QA VERIFIED - NO FULFILLMENT');
+ assert.equal(qa.events.filter(x=>x==='launch_qa_verified').length,1);
+ assert.equal(qa.events.filter(x=>x==='save').length,1);
+ for(const effect of ['commercial','storefront','kim','intake','funnel','commission','handoff'])
+  assert.equal(qa.events.includes(effect),false,'QA $1 cannot activate vendor/invite/fulfillment: '+effect);
+ const duplicateQa=await qa.run(paidDollar);
+ assert.equal(duplicateQa.duplicate,true);
+ assert.equal(qa.events.filter(x=>x==='launch_qa_verified').length,1);
+ const mismatchedQa=fixture({price:1,launchQa:true,product:'SBC Launch QA - $1 Test Service'});
+ const mismatchQa=await mismatchedQa.run({...paidDollar,amount_money:{amount:34900,currency:'USD'}});
+ assert.equal(mismatchQa.code,'SQUARE_CAPTURE_AMOUNT_MISMATCH');
+ assert.equal(mismatchedQa.events.length,0);
+ const forgedQa=fixture({price:1,launchQa:false,product:'SBC Launch QA - $1 Test Service'});
+ await forgedQa.run(paidDollar);
+ assert.equal(forgedQa.events.includes('launch_qa_verified'),false,'product name alone is never a QA authorization');
  console.log('[SBC V6693 COMPILED OFFICE BOX QUARANTINE] PASS: explicit plans skip all generic precommit fulfillment, tenant grants, email and legacy handoff; ordinary SBC fulfillment retained; malformed Square fails closed');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
