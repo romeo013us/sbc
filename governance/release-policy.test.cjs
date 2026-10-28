@@ -13,9 +13,9 @@ const offline=read('.github/workflows/sbc-isolated-reconstruction.yml');
 const proof=read('scripts/prebuilt-runtime.cjs');
 const launcher=read('tools/build-godaddy-single-layer.py');
 const packagePy=read('scripts/package-prebuilt-runtime.py');
-assert.match(packagePy,/name\\.lower\\(\\)\\.endswith\\('\\.csv'\\)/,'verified runtime must omit all prospect CSV files');
-assert.match(launcher,/name\\.lower\\(\\)\\.endswith\\("\\.csv"\\)/,'flat deploy must reject any compiled CSV');
-assert.doesNotMatch(launcher,/PRIVATE_CSV|files\\[csv_path\\]/,'manual CSV uploads must replace embedded customer data');
+assert.match(packagePy,/name\.lower\(\)\.endswith\('\.csv'\)/,'verified runtime must omit all prospect CSV files');
+assert.match(launcher,/name\.lower\(\)\.endswith\("\.csv"\)/,'flat deploy must reject any compiled CSV');
+assert.doesNotMatch(launcher,/PRIVATE_CSV|files\[csv_path\]/,'manual CSV uploads must replace embedded customer data');
 assert.equal(fs.existsSync(path.join(root,'hotfix-assets/sbc-master-prospect-list-2026-10-23.csv')),false);
 assert.equal(fs.existsSync(path.join(root,'hotfix-assets/sbc-leads-oct-26-27-2026-31.csv')),false);
 
