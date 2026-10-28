@@ -48,6 +48,7 @@ const transport=async(url,options)=>{
  sent.push({url,options});
  if(shouldReject)return {status:503,json:async()=>({ok:false})};
  const payload=JSON.parse(options.body);
+ if(url.endsWith('/api/sbc/entitlements'))return {status:200,json:async()=>({ok:true,accepted:true,status:'ACTIVE'})};
  return {status:200,json:async()=>({ok:true,data:{accepted:true,correlationId:ackWrong?'other_event':payload.correlationId}})};
 };
 const options={pool,receiverOrigin:'https://office.example.test',secret,enabled:true,publishedWriter:true,transport};
@@ -75,6 +76,21 @@ async function main(){
  const timestamp=signed.headers['x-sbc-timestamp'];
  const wanted=crypto.createHmac('sha256',secret).update(timestamp+'.'+signed.body).digest('hex');
  assert.equal(signed.headers['x-sbc-signature-v2'],'sha256='+wanted);
+ const paidEvent=JSON.parse(rows.get(queued.eventId).payload_json),tenantId='tenant_'+('a'.repeat(16));
+ const linked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'ACTIVATED',correlationId:paidEvent.correlationId,
+  tenantId,customerId:paidEvent.customerId,orderId:paidEvent.payload.orderId,plan:'business'}};
+ await assert.rejects(()=>outbox.enqueueActiveEntitlement({paidEvent,activationResponse:{...linked,data:{...linked.data,customerId:'other_customer_100'}},
+  verifiedAt:'2026-10-27T10:00:00Z'}),/MISMATCH/);
+ const active=await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'});
+ assert(active.created,'Verified activation must enqueue one ACTIVE entitlement');
+ assert.equal((await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'})).created,false);
+ assert.equal((await outbox.dispatchOne()).status,'DELIVERED');
+ assert.equal(sent[1].url,'https://office.example.test/api/sbc/entitlements');
+ const entitlementRequest=sent[1].options,entitlementBody=JSON.parse(entitlementRequest.body);
+ assert.equal(entitlementBody.tenantId,tenantId);
+ assert.equal(entitlementBody.status,'ACTIVE');
+ assert.equal(entitlementRequest.headers['x-sbc-signature'],'sha256='+crypto.createHmac('sha256',secret)
+  .update(entitlementRequest.headers['x-sbc-timestamp']+'.'+entitlementRequest.body).digest('hex'));
  const nextProof={...proof,order:{...order,id:'sbc_order_200'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_200'}};
  const second=await outbox.enqueue(nextProof);
  shouldReject=true;
@@ -94,6 +110,6 @@ async function main(){
  assert.equal((await oneTry.dispatchOne()).status,'DEAD');
  assert.equal(rows.get(last.eventId).status,'DEAD');
  assert.equal((await oneTry.dispatchOne()).status,'EMPTY','DEAD records must not be redelivered');
- console.log('FANTASTIC 4 DURABLE OUTBOX CONTRACT: PASS (writer gate, idempotency, signed delivery, lease, retry, wrong ack, dead letter)');
+ console.log('FANTASTIC 4 DURABLE OUTBOX CONTRACT: PASS (writer gate, idempotency, signed delivery, paid-to-active entitlement, lease, retry, wrong ack, dead letter)');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
