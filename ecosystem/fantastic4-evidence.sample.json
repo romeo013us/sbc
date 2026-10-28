@@ -1,0 +1,11 @@
+{
+  "schema": "sbc.fantastic4.release-evidence.v1",
+  "release": {
+    "commandCenterCommit": "",
+    "officeBoxCommit": "",
+    "publishedRuntimeFingerprint": "",
+    "verifiedMySqlBackupReceipt": "",
+    "rollbackArtifactReceipt": ""
+  },
+  "checks": []
+}

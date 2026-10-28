@@ -1,0 +1,71 @@
+name: Fantastic 4 Contract and Readiness Safety
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ecosystem/fantastic4-*'
+      - 'ecosystem/office-box-activation-client.cjs'
+      - 'ecosystem/office-box-outbox.cjs'
+      - 'migrations/20261027_002_fantastic4_officebox_outbox.sql'
+      - 'scripts/fantastic4-*'
+      - 'docs/FANTASTIC4-*'
+      - 'website/legal/**'
+      - '.github/workflows/fantastic4-readiness-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-false-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check scripts/fantastic4-readiness.cjs && node --check ecosystem/office-box-activation-client.cjs && node --check ecosystem/office-box-outbox.cjs
+      - run: node scripts/fantastic4-readiness.test.cjs
+      - name: Unverified production evidence MUST be NO_GO
+        shell: bash
+        run: |
+          set +e
+          node scripts/fantastic4-readiness.cjs > /tmp/fantastic4-readiness.json
+          exit_code=$?
+          set -e
+          test "$exit_code" -eq 2
+          node -e "const v=require('/tmp/fantastic4-readiness.json'); if(v.status!=='NO_GO')process.exit(1);"
+      - run: node scripts/office-box-paid-handoff.test.cjs
+      - run: node scripts/fantastic4-officebox-activation.test.cjs
+      - run: node scripts/fantastic4-outbox.test.cjs
+
+  disposable-outbox-mysql:
+    name: MySQL 8 · durable paid and entitlement event lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fantastic4_disposable_ci_password
+          MYSQL_DATABASE: fantastic4_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    env:
+      FANTASTIC4_DISPOSABLE_MYSQL: '1'
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: '3306'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: fantastic4_disposable_ci_password
+      MYSQL_DATABASE: fantastic4_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/fantastic4-outbox.mysql.test.cjs
