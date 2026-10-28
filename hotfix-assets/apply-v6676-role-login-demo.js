@@ -58,8 +58,20 @@ function patchApp(s){
  s=once(s,old,fresh,'demo owner action visibility');
  s=once(s,"if(state.view==='dashboard')setTimeout(loadProductionControlDashboard,0);",
   "if(state.view==='dashboard'&&state.me?.role!=='demo')setTimeout(loadProductionControlDashboard,0);",'demo network-free owner widget');
+
+ s=once(s,"state.me=me.user;if(state.me?.role==='demo')","state.me=me.user;document.body.classList.toggle('sbc-researcher-mode',state.me?.role==='lead_researcher');if(state.me?.role==='demo')",'researcher class before async modules');
+ s=once(s,"if(state.me?.role==='caller'&&!['callcenter','customers'].includes(state.view))state.view='callcenter';",
+   "if(state.me?.role==='lead_researcher'&&!['leadresearch','leadverification','training','timeclock'].includes(state.view))state.view='leadresearch';if(state.me?.role==='caller'&&!['callcenter','customers'].includes(state.view))state.view='callcenter';",'research initial landing without dashboard flash');
+ s=once(s,"function render(){\n  if(String(state.view||'').startsWith('v23-'))",
+   "function render(){\n  if(state.me?.role==='lead_researcher'&&!['leadresearch','leadverification','training','timeclock'].includes(state.view))state.view='leadresearch';\n  if(state.me?.role==='demo'&&!['dashboard','customers','quotes','orders','presentation'].includes(state.view))state.view='dashboard';\n  if(String(state.view||'').startsWith('v23-'))",'keep researcher and demo within approved views');
+ s=once(s,"api('/api/message-templates',{timeoutMs:15000}),","state.me?.role==='owner'?api('/api/message-templates',{timeoutMs:15000}):Promise.resolve({templates:[]}),",'no owner message templates for restricted sessions');
+ s=once(s,"api('/api/training',{timeoutMs:20000})",
+   "state.me?.role==='demo'?Promise.resolve({ok:true,assigned:[],available:[],progress:[],attempts:[],certifications:[],history:[]}):api('/api/training',{timeoutMs:20000})",'no denied demo training startup request');
+ s=once(s,"openModal('Manage Lead Caller',","openModal(u.role==='demo'?'Manage Demo Viewer — Set Password':'Manage Lead Caller',",'owner demo password manager label');
  s='// '+MARKER+'\n'+s;new vm.Script(s,{filename:'app.js'});return s;
 }
+const ROLE_SCRIPT="<script id=\"sbc-lorna-least-privilege-ui\">\n(function(){\n 'use strict';\n var allowed=new Set(['leadresearch','leadverification','training','timeclock']);\n function activate(user){\n  var role=String(user&&user.role||'').trim().toLowerCase();\n  var limited=['lead_researcher','lead_generator','researcher','prospector'].includes(role);\n  document.body.classList.toggle('sbc-researcher-mode',limited);\n  if(limited&&window.state&&!allowed.has(String(window.state.view||''))){\n   window.state.view='leadresearch';\n   if(typeof window.render==='function')window.render();\n  }\n }\n window.addEventListener('sbc:authenticated',function(e){activate(e.detail&&e.detail.user)});\n window.addEventListener('pageshow',function(){if(window.state&&window.state.me)activate(window.state.me)});\n})();\n</script>";
+const ROLE_CSS="\n<style id=\"sbc-v6679-researcher-workspace\">\nbody.sbc-researcher-mode .sidebar [data-view]:not([data-view=\"leadresearch\"]):not([data-view=\"leadverification\"]):not([data-view=\"training\"]):not([data-view=\"timeclock\"]),body.sbc-researcher-mode .sidebar-group-label,body.sbc-researcher-mode .sidebar-bottom a,body.sbc-researcher-mode .global-search,body.sbc-researcher-mode #storageLabel,body.sbc-researcher-mode .status-dot,body.sbc-researcher-mode #sbcAgentOSPanel,body.sbc-researcher-mode #sbcV329Panel,body.sbc-researcher-mode #sbcV330Panel,body.sbc-researcher-mode #sbcSalesOperatingModelV6563,body.sbc-researcher-mode #sbcResearchSuperbrainPanel,body.sbc-researcher-mode .owner-only{display:none!important}\nbody.sbc-researcher-mode .main{min-width:0;max-width:100%;overflow-x:hidden}\nbody.sbc-researcher-mode #content{overflow-anchor:none;min-width:0}\nbody.sbc-researcher-mode .sidebar [data-view=\"leadresearch\"],body.sbc-researcher-mode .sidebar [data-view=\"leadverification\"],body.sbc-researcher-mode .sidebar [data-view=\"training\"],body.sbc-researcher-mode .sidebar [data-view=\"timeclock\"]{display:flex!important}\nbody.sbc-researcher-mode #viewEyebrow{color:var(--muted)}\n</style>";
 function patchHtml(s){
  if(s.includes(MARKER))throw Error(MARKER+': duplicate HTML patch');
  s=once(s,'</head>','<style id="sbc-v6676-demo-viewer">'+DEMO_CSS+'</style>\n</head>','curated demo CSS');
@@ -67,6 +79,12 @@ function patchHtml(s){
   "var allowed=new Set(['acquisition','leadresearch','leadverification','training','timeclock']);",'Lorna research tools');
  s=once(s,"var button=document.querySelector('[data-view=\"acquisition\"]');",
   "var button=document.querySelector('[data-view=\"leadresearch\"]')||document.querySelector('[data-view=\"acquisition\"]');",'Lorna lead research landing');
+
+ const roleBegin=s.indexOf('<script id="sbc-lorna-least-privilege-ui">');
+ const roleEnd=s.indexOf('</script>',roleBegin);
+ if(roleBegin<0||roleEnd<roleBegin)throw Error(MARKER+': researcher role script missing');
+ s=s.slice(0,roleBegin)+ROLE_SCRIPT+s.slice(roleEnd+'</script>'.length);
+ s=once(s,'</head>',ROLE_CSS+'\n</head>','role-scoped visibility without a global mutation observer');
  return '<!-- '+MARKER+' -->\n'+s;
 }
 function apply(root){
@@ -77,6 +95,24 @@ function apply(root){
   fs.writeFileSync(app,patchApp(fs.readFileSync(app,'utf8')));
   fs.writeFileSync(html,patchHtml(fs.readFileSync(html,'utf8')));
   changed.push(dir+'/app.js',dir+'/index.html');
+ }
+
+ // Owner-only dashboard modules must not mount or poll on workforce/demo sessions.
+ const modulePatches=[
+  ['sbc-v6563-sales-operating-model.js',[["function mount(){\n","function mount(){\n if(!window.state?.me||window.state.me.role!=='owner')return;\n"],["function start(){mount();","function start(){window.addEventListener('sbc:authenticated',mount);mount();"]]],
+  ['v32-9-enterprise.js',[["function mount(){","function mount(){if(!window.state?.me||window.state.me.role!=='owner')return;"],["if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();","window.addEventListener('sbc:authenticated',mount);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();"]]],
+  ['v33-0-launch-acquisition.js',[["function mount(){","function mount(){if(!window.state?.me||window.state.me.role!=='owner')return;"],["if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();","window.addEventListener('sbc:authenticated',mount);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();"]]],
+  ['sbc-agent-os-v56-25-3.js',[["async function load(){if(sbcAgentOSInFlight)return false;","async function load(){if(!window.state?.me||window.state.me.role!=='owner')return false;if(sbcAgentOSInFlight)return false;"],["document.addEventListener('DOMContentLoaded',()=>setTimeout(load,1200));","window.addEventListener('sbc:authenticated',()=>setTimeout(load,150));document.addEventListener('DOMContentLoaded',()=>setTimeout(load,1200));"]]]
+ ];
+ for(const dir of ['public','browser_public']){
+  for(const [name,replacements] of modulePatches){
+   const filename=path.join(root,dir,name);
+   let contents=fs.readFileSync(filename,'utf8');
+   for(const [from,to] of replacements)contents=once(contents,from,to,dir+'/'+name);
+   new vm.Script(contents,{filename:name});
+   fs.writeFileSync(filename,contents);
+   changed.push(dir+'/'+name);
+  }
  }
  return {marker:MARKER,changed,dbWrites:false,credentialChanges:false,singleWriterPreserved:true,isolatedDemo:true};
 }
