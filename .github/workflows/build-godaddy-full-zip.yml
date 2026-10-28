@@ -30,6 +30,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: BLOCK retired source ZIP with embedded prospect records
+        run: |
+          echo '::error title=Legacy ZIP blocked::Source ZIP contains frozen historical lead CSVs. Use a reviewed sanitized single-layer release only.'
+          exit 1
       - name: Verify release identity and build
         run: |
           set -euo pipefail
