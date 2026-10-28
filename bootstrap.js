@@ -376,6 +376,7 @@ function launch() {
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6635-public-checkout-preflight-safety.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6636-canonical-shell-css-bundle.js')).apply(runtimeDir);
     require(path.join(__dirname, 'hotfix-assets', 'apply-v6637-network-only-no-offline-mutation-replay.js')).apply(runtimeDir);
+    require(path.join(__dirname, 'hotfix-assets', 'apply-v6693-quarantine-legacy-officebox.js')).apply(runtimeDir);
     loadManifestValidator().audit(runtimeDir, EXPECTED_VERSION);
     verifyPatchedSyntax(runtimeDir);
     const pkg = verifyExtracted(runtimeDir, EXPECTED_VERSION);
