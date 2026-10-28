@@ -1,0 +1,30 @@
+name: SBC Safe Release Governance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-godaddy-single-layer.yml'
+      - '.github/workflows/sbc-isolated-reconstruction.yml'
+      - '.github/workflows/sbc-safe-release-governance.yml'
+      - 'governance/release-policy.test.cjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-godaddy-single-layer.yml'
+      - '.github/workflows/sbc-isolated-reconstruction.yml'
+      - '.github/workflows/sbc-safe-release-governance.yml'
+      - 'governance/release-policy.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check governance/release-policy.test.cjs
+      - run: node governance/release-policy.test.cjs

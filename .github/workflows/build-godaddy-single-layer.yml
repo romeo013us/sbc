@@ -18,6 +18,12 @@ on:
       - 'SBC-V66-PREBUILT-RUNTIME.zip'
       - 'SBC-V66-PREBUILT-RUNTIME.json'
   workflow_dispatch:
+    inputs:
+      publish_deploy_branch:
+        description: 'Explicitly approve publishing tested ZIP to godaddy-deploy (never GoDaddy Published)'
+        required: false
+        type: boolean
+        default: false
   workflow_run:
     workflows: ['SBC Offline Reconstruction Evidence Gate']
     types: [completed]
@@ -98,8 +104,9 @@ jobs:
 
   publish-godaddy-branch:
     # Do not replace production; make a clean Git branch for GoDaddy GitHub Connect.
-    # Runs only after the flat ZIP was successfully built and regression-tested.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Disabled by default; only explicit owner-approved manual workflow_dispatch can publish this branch.
+    # Even manual publishing does NOT authorize changing GoDaddy Published.
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_deploy_branch == true && github.ref == 'refs/heads/main'
     needs: single-layer
     runs-on: ubuntu-latest
     timeout-minutes: 15
