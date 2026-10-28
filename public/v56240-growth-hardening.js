@@ -11,7 +11,7 @@
     if (!data) throw new Error(/<html|<!doctype/i.test(raw) ? 'The server returned a sign-in page. Sign in again and refresh.' : 'Growth endpoint returned invalid JSON.');
     return data;
   }
-  async function load() {
+  async function load() {if(!window.state?.me||window.state.me.role!=='owner')return;
     const root = document.getElementById(ID); if (!root) return;
     try {
       const data = await api('/api/v56240/growth/status');
@@ -31,8 +31,8 @@
       document.getElementById('v56240Retry')?.addEventListener('click', load);
     }
   }
-  function mount() { if (document.getElementById(ID)) return; const content = document.getElementById('content'); if (!content) return; const el = document.createElement('section'); el.id = ID; el.className = 'sbc-v56240-hardening'; content.appendChild(el); load(); }
+  function mount() {if(!window.state?.me||window.state.me.role!=='owner')return; if (document.getElementById(ID)) return; const content = document.getElementById('content'); if (!content) return; const el = document.createElement('section'); el.id = ID; el.className = 'sbc-v56240-hardening'; content.appendChild(el); load(); }
   window.sbcV56240GrowthRefresh = load;
-  window.addEventListener('DOMContentLoaded', mount);
+  window.addEventListener('sbc:authenticated',mount);window.addEventListener('DOMContentLoaded', mount);
   const observer = new MutationObserver(mount); observer.observe(document.documentElement, {childList:true, subtree:true});
 })();

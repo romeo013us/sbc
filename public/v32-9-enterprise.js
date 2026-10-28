@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   async function get(path){if(typeof window.api==='function')return window.api(path,{timeoutMs:15000});const r=await fetch(path,{credentials:'include'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);return d;}
-  function mount(){
+  function mount(){if(!window.state?.me||window.state.me.role!=='owner')return;
     if(document.getElementById('sbcV329Panel'))return;
     const el=document.createElement('section');el.id='sbcV329Panel';el.style.cssText='margin:18px 0;padding:18px;border:1px solid rgba(11,116,209,.25);border-radius:16px;background:linear-gradient(135deg,rgba(11,116,209,.08),rgba(255,255,255,.92));box-shadow:0 8px 28px rgba(0,0,0,.08)';
     el.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><div style="font-size:18px;font-weight:800">👑 KIM Enterprise Control Fabric <span style="font-size:12px;opacity:.7">SBC OS V65.1.23 · Capabilities 101–150</span></div><div style="opacity:.75;margin-top:4px">Provider controls • lead mesh • sales continuity • communications • document integrity • worker reliability</div></div><div style="display:flex;gap:8px"><button id="sbcV329Refresh" class="btn">Refresh</button><button id="sbcV329Verify" class="btn primary">Sync CRM Lead Queue</button></div></div><div id="sbcV329Stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-top:14px"></div><div id="sbcV329Msg" style="margin-top:10px;font-size:13px;opacity:.75"></div>';
@@ -31,5 +31,5 @@
     if(window.state?.me)refresh();
     else window.addEventListener('sbc:authenticated',()=>setTimeout(refresh,80),{once:true});
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+  window.addEventListener('sbc:authenticated',mount);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
 })();
