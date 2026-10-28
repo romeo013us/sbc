@@ -11,6 +11,9 @@ on:
       - 'ecosystem/office-box-committed-enqueue.cjs'
       - 'scripts/office-box-committed-readback*.test.cjs'
       - 'ecosystem/office-box-settlement-bridge.cjs'
+      - 'ecosystem/square-provider-settlement.cjs'
+      - 'scripts/square-provider-settlement.test.cjs'
+      - 'scripts/square-provider-paid-enqueue.test.cjs'
       - 'migrations/20261027_002_fantastic4_officebox_outbox.sql'
       - 'scripts/fantastic4-*'
       - 'docs/FANTASTIC4-*'
@@ -44,6 +47,8 @@ jobs:
       - run: node scripts/fantastic4-outbox.test.cjs
       - run: node --check ecosystem/office-box-committed-enqueue.cjs && node --check ecosystem/office-box-committed-readback.cjs && node scripts/office-box-committed-readback.test.cjs
       - run: node scripts/fantastic4-square-settlement-bridge.test.cjs
+      - run: node --check ecosystem/square-provider-settlement.cjs && node scripts/square-provider-settlement.test.cjs
+      - run: node scripts/square-provider-paid-enqueue.test.cjs
       - run: node scripts/fantastic4-officebox-activation-poll.test.cjs
 
   disposable-outbox-mysql:
