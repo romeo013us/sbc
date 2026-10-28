@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),crypto=require('node:crypto');
 const {createOutbox,validateTarget}=require('../ecosystem/office-box-outbox.cjs');
+const {buildPaidHandoff}=require('../enterprise/office-box-paid-handoff.cjs');
 const rows=new Map(),sent=[];let shouldReject=false,ackWrong=false;
 const pool={
  async execute(sql,args){
@@ -45,15 +46,18 @@ const customer={id:'sbc_customer_100',businessName:'Fixture Test Co',ownerEmail:
 const proof={order,payment,parsed,paymentRecord,customer,expectedLocation:'square_location_100',plan:'business'};
 const secret='sbc-officebox-verification-secret-64-characters-long';
 const transport=async(url,options)=>{
+ assert.equal(options.redirect,'error','signed Office Box events must NEVER follow HTTP redirects');
+ assert.equal(options.cache,'no-store');
  sent.push({url,options});
  if(shouldReject)return {status:503,json:async()=>({ok:false})};
  const payload=JSON.parse(options.body);
  if(url.endsWith('/api/sbc/entitlements'))return {status:200,json:async()=>({ok:true,accepted:true,status:'ACTIVE'})};
  return {status:200,json:async()=>({ok:true,data:{accepted:true,correlationId:ackWrong?'other_event':payload.correlationId}})};
 };
-const options={pool,receiverOrigin:'https://office.example.test',secret,enabled:true,publishedWriter:true,transport};
+const granted=()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld:true});
+const options={pool,receiverOrigin:'https://office.example.test',secret,enabled:true,publishedWriter:true,writerAuthority:granted,transport};
 async function main(){
- for(const url of ['http://office.example.test','https://localhost','https://office.example.test/path','https://x:p@office.example.test']){
+ for(const url of ['http://office.example.test','https://localhost','https://127.0.0.1','https://192.168.1.12','https://[::1]','https://site.internal','https://site.local','https://site.lan','https://office.example.test/path','https://x:p@office.example.test']){
   assert.throws(()=>validateTarget(url),/HTTPS_ORIGIN_REQUIRED/);
  }
  const disabled=createOutbox({...options,enabled:false});
@@ -110,6 +114,57 @@ async function main(){
  assert.equal((await oneTry.dispatchOne()).status,'DEAD');
  assert.equal(rows.get(last.eventId).status,'DEAD');
  assert.equal((await oneTry.dispatchOne()).status,'EMPTY','DEAD records must not be redelivered');
+ // Fail closed if the long-running scheduler forgot to wire a live lease inspector.
+ const unfenced=createOutbox({...options,writerAuthority:null});
+ const beforeUnfenced=rows.size, sentBeforeUnfenced=sent.length;
+ await assert.rejects(()=>unfenced.enqueue(proof),/OFFICE_BOX_LIVE_WRITER_FENCE_REQUIRED/);
+ await assert.rejects(()=>unfenced.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_FENCE_REQUIRED/);
+ assert.equal(rows.size,beforeUnfenced);assert.equal(sent.length,sentBeforeUnfenced);
+ // A lease or recovery failure blocks enqueue and ALL outbound network I/O.
+ const revoked=createOutbox({...options,writerAuthority:async()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld:false})});
+ await assert.rejects(()=>revoked.enqueue(proof),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ await assert.rejects(()=>revoked.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'}),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ await assert.rejects(()=>revoked.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ assert.equal(sent.length,sentBeforeUnfenced);
+ // Even if the writer loses its lease after claiming, it MUST NOT send.
+ const raceProof={...proof,order:{...order,id:'sbc_order_400'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_400'}};
+ const raced=await outbox.enqueue(raceProof);
+ let authorityChecks=0;
+ const volatile=createOutbox({...options,writerAuthority:async()=>{
+  authorityChecks++;
+  return {publishedWriter:true,recoveryVerified:true,writerLeaseHeld:authorityChecks===1};
+ }});
+ await assert.rejects(()=>volatile.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_REVOKED/);
+ assert.equal(authorityChecks,2);
+ assert.equal(rows.get(raced.eventId).status,'IN_FLIGHT','expired lease reclaims without remote side effect');
+ assert.equal(sent.length,sentBeforeUnfenced,'no transport request after losing writer authority');
+ const inspectorError=createOutbox({...options,writerAuthority:async()=>{throw Error('database unavailable')}});
+ await assert.rejects(()=>inspectorError.dispatchOne(),/OFFICE_BOX_LIVE_WRITER_AUTHORITY_UNAVAILABLE/);
+ // A generic HTTP 200 is NOT proof that Office Box accepted the correct event.
+ const tamperedProof={...proof,order:{...order,id:'sbc_order_910'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_910'}};
+ const forgedAck=createOutbox({...options,transport:async(_url,req)=>{
+  assert.equal(req.redirect,'error');
+  return {status:200,json:async()=>({ok:true,data:{accepted:true}})};
+ }});
+ await forgedAck.enqueue(tamperedProof);
+ const missingId=await forgedAck.dispatchOne();
+ assert.equal(missingId.status,'RETRY_SCHEDULED');
+ assert.equal(missingId.reason,'OFFICE_BOX_ACK_MISMATCH');
+ rows.get(missingId.eventId).status='DEAD'; // isolate next test event; real DB would retry on its schedule
+ const wrongEntitlementProof={...proof,order:{...order,id:'sbc_order_911'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_911'}};
+ const newerPaid=buildPaidHandoff(wrongEntitlementProof);
+ const newerLinked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'ACTIVATED',
+  correlationId:newerPaid.correlationId,tenantId:'tenant_'+('b'.repeat(16)),
+  customerId:newerPaid.customerId,orderId:newerPaid.payload.orderId,plan:'business'}};
+ const wrongEntitlement=createOutbox({...options,transport:async(_url,req)=>{
+  assert.equal(req.redirect,'error');
+  return {status:200,json:async()=>({ok:true,accepted:true,status:'PAST_DUE'})};
+ }});
+ const ent=await wrongEntitlement.enqueueActiveEntitlement({paidEvent:newerPaid,activationResponse:newerLinked,verifiedAt:'2026-10-27T10:00:00Z'});
+ assert(ent.created);
+ const invalidAck=await wrongEntitlement.dispatchOne();
+ assert.equal(invalidAck.status,'RETRY_SCHEDULED');
+ assert.equal(invalidAck.reason,'OFFICE_BOX_ACK_MISMATCH');
  console.log('FANTASTIC 4 DURABLE OUTBOX CONTRACT: PASS (writer gate, idempotency, signed delivery, paid-to-active entitlement, lease, retry, wrong ack, dead letter)');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
