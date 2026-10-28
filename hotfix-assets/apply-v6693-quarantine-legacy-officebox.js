@@ -18,6 +18,9 @@ const GENERIC_START="    try{await REVENUE_AUTOPILOT_V56150.recordFunnelEvent('p
 const LEGACY_START="    try{const handoff=await sendBig3OfficeBoxHandoff(order,{reason:'square-payment-completed'});";
 const GENERIC_END="\n  } else if(status==='CANCELED'||status==='FAILED'){";
 const QA_ANCHOR="app.post('/api/orders',auth,ownerOnly,async(req,res)=>{";
+const CAPTURE_MUTATION="rec.status='PAID';rec.completedAt=rec.completedAt||now();order.paymentStatus='Paid';order.status='Paid';order.fulfillmentStatus='Ready for Fulfillment';";
+const SQUARE_ORDER_GET="app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{";
+const SQUARE_ORDER_GET_END="\napp.post('/api/payments/square/refresh/:orderId'";
 function exactlyOnce(source,value,label){
  const n=source.split(value).length-1;
  if(n!==1)throw Error(MARKER+': '+label+' expected once, found '+n);
@@ -57,10 +60,7 @@ function patchServer(source){
   "      const hasName=/office[ _-]*box/i.test(String(order.product||'')+' '+String(notes.bundleId||''));",
   "      return hasLine||hasMeta||hasName;",
   "    })();",
-  "    const sbcLaunchQaExplicitPurchase=order.launchQaOwnerCreated===true&&Number(order.price)===1&&",
-  "      String(order.product||'')==='SBC Launch QA - $1 Test Service'&&",
-  "      orderParsed(order).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&",
-  "      orderParsed(order).sbcLaunchQa?.version===1;",
+  "    const sbcLaunchQaExplicitPurchase=sbcLaunchQaDurable;",
   "    if(!sbcOfficeBoxExplicitPurchase&&!sbcLaunchQaExplicitPurchase){",
   original,
   "    }else if(sbcLaunchQaExplicitPurchase){",
@@ -75,6 +75,22 @@ function patchServer(source){
   "    }",
  ].join('\n');
  handler=handler.slice(0,sideEffectsStart)+selected+handler.slice(sideEffectsEnd);
+ // The owner-only QA marker lives in sbc_orders.notes (durable MySQL), not
+ // on a transient JS order property lost by readRelational() on restart.
+ exactlyOnce(handler,CAPTURE_MUTATION,'PAID mutation before duplicate branch');
+ const safeCaptured=[
+  "const sbcLaunchQaDurable=Number(order.price)===1&&",
+  "      String(order.product||'')==='SBC Launch QA - $1 Test Service'&&",
+  "      orderParsed(order).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&",
+  "      orderParsed(order).sbcLaunchQa?.version===1&&",
+  "      Array.isArray(orderParsed(order).items)&&",
+  "      orderParsed(order).items.some(line=>String(line?.sku||'')==='SBC_LAUNCH_QA_1USD');",
+  "    rec.status='PAID';rec.completedAt=rec.completedAt||now();order.paymentStatus='Paid';order.status='Paid';",
+  "    if(!sbcLaunchQaDurable)order.fulfillmentStatus='Ready for Fulfillment';",
+  "    else if(!String(order.fulfillmentStatus||'').startsWith('QA '))",
+  "      order.fulfillmentStatus='QA - NO VENDOR FULFILLMENT';"
+ ].join('\n');
+ handler=handler.replace(CAPTURE_MUTATION,safeCaptured);
  if(handler.indexOf('const sbcOfficeBoxExplicitPurchase')>
     handler.indexOf('SBC_COMMERCIAL.provisionTenant('))
   throw Error(MARKER+': generic vendor call occurs before quarantine decision');
@@ -84,6 +100,17 @@ function patchServer(source){
  if(typeof SOURCE!=='string'||!SOURCE.includes("app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,"))
   throw Error(MARKER+': launch QA source unavailable');
  patched=patched.replace(QA_ANCHOR,SOURCE+'\n'+QA_ANCHOR);
+ // Persisted Square status is authoritative across MySQL reloads; order.paymentStatus
+ // is a transient JS field, so the owner order GET must not regress to Pending.
+ exactlyOnce(patched,SQUARE_ORDER_GET,'Square order status route');
+ const getStart=patched.indexOf(SQUARE_ORDER_GET);
+ const getEnd=patched.indexOf(SQUARE_ORDER_GET_END,getStart);
+ if(getEnd<=getStart)throw Error(MARKER+': Square status boundary moved');
+ const getRoute=patched.slice(getStart,getEnd);
+ const oldStatus="paymentStatus:o.paymentStatus||'Pending'";
+ exactlyOnce(getRoute,oldStatus,'transient Square payment status');
+ const durableStatus="paymentStatus:(String(parsed.squarePaymentStatus||'').toUpperCase()==='PAID'||String(rec?.status||'').toUpperCase()==='PAID'?'Paid':o.paymentStatus||'Pending')";
+ patched=patched.slice(0,getStart)+getRoute.replace(oldStatus,durableStatus)+patched.slice(getEnd);
  if(handler.indexOf('const sbcLaunchQaExplicitPurchase')>handler.indexOf('SBC_COMMERCIAL.provisionTenant('))
   throw Error(MARKER+': launch QA quarantine not installed before external effects');
  new vm.Script(patched,{filename:'server.js'});
