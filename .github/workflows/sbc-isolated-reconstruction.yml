@@ -577,6 +577,10 @@ jobs:
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'server.js'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'public/index.html'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'browser_public/index.html'
+          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Ei '(^starter-leads/|\\.csv$)'; then
+            echo 'REFUSE: private prospect CSV must never ship in any GoDaddy compiled runtime' >&2
+            exit 1
+          fi
           catalog_check_dir="$(mktemp -d)"
           unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$catalog_check_dir"
           SBC_RUNTIME_ROOT="$catalog_check_dir" node scripts/v6653-prebuilt-catalog-boot.test.cjs
@@ -625,40 +629,15 @@ jobs:
             SBC-V66-PREBUILT-RUNTIME.json
           if-no-files-found: error
           retention-days: 14
-      - name: Create source candidate with authentic cached SDK
-        shell: bash
+      - name: Decline source ZIP containing immutable historic prospect data
         run: |
-          set -euo pipefail
-          mkdir -p release
-          rsync -a --exclude='.git' --exclude='.sbc-browser' --exclude='.sbc-isolated-runtime' --exclude='.sbc-isolated-reports' --exclude='release' --exclude='node_modules' ./ release/
-          rsync -a .sbc-twilio-sdk/ release/.sbc-twilio-sdk/
-          test -s release/.sbc-twilio-sdk/node_modules/@twilio/voice-sdk/dist/twilio.min.js
-          cd release
-          zip -qr ../SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip .
-          cd ..
-          sha256sum SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip > .sbc-isolated-reports/archive.sha256
-          # User-facing complete GoDaddy ZIP: no need to reconstruct it from logs or source.
-          cp SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip SBC-GoDaddy-COMPLETE.zip
-          sha256sum SBC-GoDaddy-COMPLETE.zip > SBC-GoDaddy-COMPLETE.sha256
-          unzip -tqq SBC-GoDaddy-COMPLETE.zip
-          unzip -Z1 SBC-GoDaddy-COMPLETE.zip | grep -qx 'bootstrap.js'
-          unzip -Z1 SBC-GoDaddy-COMPLETE.zip | grep -qx 'SBC-V66-PREBUILT-RUNTIME.zip'
-          unzip -Z1 SBC-GoDaddy-COMPLETE.zip | grep -qx 'SBC-V66-PREBUILT-RUNTIME.json'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: SBC-GoDaddy-Complete-Download
-          path: |
-            SBC-GoDaddy-COMPLETE.zip
-            SBC-GoDaddy-COMPLETE.sha256
-          retention-days: 90
-          if-no-files-found: error
+          echo 'SBC PRIVACY: only the sanitized prebuilt runtime is eligible as a release artifact.'
+          echo 'The legacy frozen baseline/source ZIP is not redistributed by this workflow.'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: SBC-P0-EVIDENCE-AND-CANDIDATE
-          path: |
-            .sbc-isolated-reports/
-            SBC-V66-OFFLINE-RECONSTRUCTED-CANDIDATE.zip
+          name: SBC-P0-EVIDENCE-ONLY
+          path: .sbc-isolated-reports/
           if-no-files-found: warn
           retention-days: 14
           include-hidden-files: true

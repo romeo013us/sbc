@@ -13,8 +13,9 @@ assert(app.includes('SBC_V6674_OWNER_IMPORT_ENTRY'));
 assert(html.includes('SBC_V6632_REMOVE_FLOATING_LEAD_IMPORT'),'floating overlay must remain suppressed on dashboard');
 assert(!html.includes('<script src="/sbc-v6667-private-owner-import.js'),'private owner importer must not be globally injected');
 assert(server.includes("app.get('/owner/lead-import',auth,ownerOnly"),'import page must require owner authentication');
-assert(server.includes("app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly"),'batch must require owner authentication');
-assert(owner.includes('Load Oct 26–27 batch (31 leads)'),'owner importer must offer the packaged 31-lead batch');
+assert(server.includes("app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly"),'retired batch endpoint remains owner-only');
+assert(owner.includes('Owner-only CSV upload ready'),'owner uploader must require a local CSV');
+assert(!owner.includes('packaged-batch'),'owner page must not fetch a bundled prospect dataset');
 const start=app.indexOf('function dashboard(){'),end=app.indexOf('\nfunction ',start+12);
 assert(start>0&&end>start,'production dashboard function must exist');
 const dashboard=new vm.Script(app.slice(start,end)+'\ndashboard()',{filename:'sbc-dashboard.js'});
@@ -28,7 +29,7 @@ for(let pass=1;pass<=3;pass++){
  const visible=render('owner');
  assert.equal(visible.split('data-sbc-owner-lead-import="true"').length-1,1,'exactly one owner import link');
  assert(visible.includes('href="/owner/lead-import"'),'owner link must open the authenticated import page');
- assert(visible.includes('Import 31 Leads'),'batch action must be clearly labeled');
+ assert(visible.includes('Import CSV Leads'),'manual CSV upload action must be clearly labeled');
  assert(visible.includes('+ New Lead')&&visible.includes('Create Quote'),'existing owner actions must remain');
  for(const role of ['manager','lead_researcher','caller','demo']){
   const hidden=render(role);
@@ -38,4 +39,4 @@ for(let pass=1;pass<=3;pass++){
  console.log('[SBC V6674] PASS '+pass+'/3 owner-visible, non-owner-hidden, existing actions retained');
 }
 new vm.Script(app,{filename:'public/app.js'});
-console.log('[SBC V6674] PASS private route and 31-lead staging retained; no import executed');
+console.log('[SBC V6674] PASS private route and owner-upload staging retained; no import executed');

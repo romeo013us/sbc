@@ -4,7 +4,6 @@
 Only release packaging/startup are changed. Business logic remains byte-identical
 to the verified compiled runtime. No production data, API calls, or secrets touched.
 """
-import csv
 import hashlib
 import io
 import json
@@ -17,7 +16,6 @@ ROOT = Path(__file__).resolve().parent.parent
 ZIP = ROOT / "SBC-V66-PREBUILT-RUNTIME.zip"
 RECEIPT = ROOT / "SBC-V66-PREBUILT-RUNTIME.json"
 DEST = ROOT / "dist" / "SBC-GoDaddy-SINGLE-LAYER-APP.zip"
-PRIVATE_CSV = ROOT / "hotfix-assets" / "sbc-leads-oct-26-27-2026-31.csv"
 ENTRY = """'use strict';
 // Preserve V66 root launcher data persistence, tenant process guards and boot beacon.
 const path = require('node:path');
@@ -92,11 +90,6 @@ manifest = json.loads(RECEIPT.read_text())
 raw = ZIP.read_bytes()
 if manifest.get("generatedBy") != "isolated-github-ci" or sha(raw) != manifest.get("archiveSha256"):
     fail("compiled artifact does not match its isolated CI receipt")
-if not PRIVATE_CSV.is_file():
-    fail("private October 26/27 lead intake CSV missing")
-with PRIVATE_CSV.open(encoding="utf-8-sig", newline="") as f:
-    if len(list(csv.DictReader(f))) != 31:
-        fail("31-lead CSV identity mismatch")
 
 files = {}
 with zipfile.ZipFile(io.BytesIO(raw)) as src:
@@ -118,6 +111,10 @@ with zipfile.ZipFile(io.BytesIO(raw)) as src:
             fail("compiled runtime contains symlink " + name)
         if "node_modules" in name.split("/") or name.lower().endswith((".zip",".tgz",".tar",".rar")):
             fail("compiled runtime contains forbidden archive or dependencies " + name)
+        if name.lower().endswith(".csv"):
+            fail("refusing personal or prospect CSV in verified prebuilt: " + name)
+        if name.startswith("starter-leads/"):
+            fail("refusing historic prospect backup directory: " + name)
         files[name] = src.read(info)
 required = {"server.js", "package.json", "package-lock.json", "public/index.html", "browser_public/index.html"}
 if not required.issubset(files):
@@ -174,9 +171,6 @@ files["SBC-FLAT-RELEASE-IDENTITY.json"] = (json.dumps(identity,indent=2)+"\n").e
 for name in ("persistent-state.js", "tenant-rejection-guard.js", "runtime-env-beacon.js"):
     if name in files: fail("launcher path conflict "+name)
     files[name] = (ROOT/name).read_bytes()
-csv_path = "hotfix-assets/sbc-leads-oct-26-27-2026-31.csv"
-if csv_path in files: fail("lead CSV path conflict")
-files[csv_path] = PRIVATE_CSV.read_bytes()
 DEST.parent.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(DEST, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=False) as dst:
     for name in sorted(files):

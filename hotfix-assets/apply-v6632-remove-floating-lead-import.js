@@ -26,13 +26,10 @@ function apply(root){
   sw=sw.replace(re,"const CACHE='sbc-static-v66-32-no-floating-import'");
   fs.writeFileSync(p,sw);changes.push(rel);
  }
- // Preserve the existing CSV in the controlled source bundle. DO NOT turn
- // historical prospect lists into boot-time mutations or add them to CRM.
- const source=path.join(root,'hotfix-assets','sbc-master-prospect-list-2026-10-23.csv');
- const publicCsv=path.join(root,'public','sbc-master-prospect-list-2026-10-23.csv');
- if(!fs.existsSync(publicCsv)&&!fs.existsSync(source))throw Error(MARKER+': master lead file absent');
+ // Prospect CSVs must never be bundled into public runtime assets.
+ // The authenticated manual CSV importer remains available.
  const index=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
  if(index.includes('/sbc-lead-import-v6541.js'))throw Error(MARKER+': legacy modal still launches');
- return {marker:MARKER,changed:changes,legacyFloatingImportDisabled:true,masterLeadsPreserved:true,crmWrites:false,autoImport:false,recoveryGatesUnchanged:true};
+ return {marker:MARKER,changed:changes,legacyFloatingImportDisabled:true,masterLeadsPreserved:false,manualOwnerCsvUpload:true,crmWrites:false,autoImport:false,recoveryGatesUnchanged:true};
 }
 module.exports={apply,MARKER};

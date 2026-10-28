@@ -101,7 +101,7 @@ function patchCatalogBootstrap(src,rel){
 const OWNER_IMPORT_MARKER='SBC_V6674_OWNER_IMPORT_ENTRY';
 function patchOwnerImportEntry(src,rel){
  if(src.includes(OWNER_IMPORT_MARKER))throw Error(OWNER_IMPORT_MARKER+': duplicate '+rel);
- src=once(src,"<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button><button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>","<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button>${state.me?.role==='owner'?'<a class=\"btn ghost\" href=\"/owner/lead-import\" data-sbc-owner-lead-import=\"true\">Import 31 Leads</a>':''}<button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>",'owner dashboard import link '+rel);
+ src=once(src,"<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button><button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>","<button class=\"btn orange\" onclick=\"newCustomer()\">+ New Lead</button>${state.me?.role==='owner'?'<a class=\"btn ghost\" href=\"/owner/lead-import\" data-sbc-owner-lead-import=\"true\">Import CSV Leads</a>':''}<button class=\"btn ghost\" onclick=\"newQuote()\">Create Quote</button>",'owner dashboard import link '+rel);
  src='// '+OWNER_IMPORT_MARKER+'\n'+src;
  new vm.Script(src,{filename:rel});
  return src;

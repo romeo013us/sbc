@@ -14,7 +14,6 @@ on:
       - 'persistent-state.js'
       - 'tenant-rejection-guard.js'
       - 'runtime-env-beacon.js'
-      - 'hotfix-assets/sbc-leads-oct-26-27-2026-31.csv'
       - 'SBC-V66-PREBUILT-RUNTIME.zip'
       - 'SBC-V66-PREBUILT-RUNTIME.json'
   workflow_dispatch:

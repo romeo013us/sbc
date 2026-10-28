@@ -21,11 +21,14 @@ with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=
     for base,dirs,files in os.walk(src,followlinks=False):
         base=pathlib.Path(base)
         relative=base.relative_to(src)
-        dirs[:]=sorted(d for d in dirs if d not in ('node_modules','backups','__pycache__') and not d.startswith('.sbc-') and not (str(relative)=='.' and d=='data'))
+        dirs[:]=sorted(d for d in dirs if d not in ('node_modules','backups','__pycache__') and not d.startswith('.sbc-') and not (str(relative)=='.' and d in ('data','starter-leads')))
         for name in sorted(files):
             p=base/name
             rel=p.relative_to(src)
             if name.startswith('.env') or name in ('.sbc-bootstrap-ready.json','.sbc-prebuilt-ready.json'):
+                continue
+            # Never ship prospect datasets in public/browser or in a server archive.
+            if name.lower().endswith('.csv'):
                 continue
             s=p.lstat()
             if not stat.S_ISREG(s.st_mode):

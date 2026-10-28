@@ -1,0 +1,15 @@
+# Never commit CRM prospect lists, exports, or live customer state.
+hotfix-assets/*.csv
+starter-leads/
+**/sbc-master-prospect-list-*.csv
+**/sbc-leads-*.csv
+**/*-lead-backup-*.csv
+.env
+.env.*
+!.env.example
+backups/
+sbc-persistent/
+dist/
+node_modules/
+.sbc-isolated-runtime/
+.sbc-isolated-reports/
