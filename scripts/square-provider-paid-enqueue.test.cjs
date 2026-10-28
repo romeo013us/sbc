@@ -66,10 +66,10 @@ const request={pool,orderId:order.id,tenantId:7,payment,expectedLocation:payment
  r=await enqueueVerifiedCommittedOfficeBox(request);
  assert.equal(r.created,false);assert.equal(queued,2);
  disputed=true;
- await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox(request),/SQUARE_PAYMENT_DISPUTE_EXISTS/);
+ await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox(request),/OFFICE_BOX_SQUARE_LIVE_READBACK_UNAVAILABLE/);
  assert.equal(queued,2);
  disputed=false;refunded=true;
- await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox(request),/SQUARE_PAYMENT_REFUND_EXISTS/);
+ await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox(request),/OFFICE_BOX_SQUARE_LIVE_READBACK_UNAVAILABLE/);
  assert.equal(queued,2);
  refunded=false;writerLeaseHeld=false;const before=sqlReads;
  await assert.rejects(()=>enqueueVerifiedCommittedOfficeBox(request),/PUBLISHED_WRITER_REVOKED/);
