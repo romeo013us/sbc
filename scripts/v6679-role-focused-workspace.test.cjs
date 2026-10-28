@@ -34,5 +34,5 @@ assert(server.includes("if(p==='/api/workforce/leads')return ['GET','POST'].incl
 assert(server.includes("app.put('/api/users/:id',auth,ownerOnly"),'demo password management is owner-only');
 assert(server.includes("if(req.body.password){if(String(req.body.password).length<10)"),'owner password reset minimum length retained');
 const moduleSource=read('public/sbc-v6563-sales-operating-model.js');
-assert(moduleSource.includes("window.state?.me.role!=='owner'"),'role guard must use authenticated identity');
+assert(moduleSource.includes("if(!window.state?.me||window.state.me.role!=='owner')"),'role guard must use authenticated identity');
 for(let pass=1;pass<=3;pass++)console.log('[SBC V6679] PASS '+pass+'/3 isolated Lorna UI, owner mounts, demo password management, server RBAC, syntax');
