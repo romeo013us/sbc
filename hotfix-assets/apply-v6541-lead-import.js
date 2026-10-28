@@ -59,7 +59,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
   " res.setHeader('X-Content-Type-Options','nosniff');",
   " return res.status(410).json({ok:false,code:'SBC_PRIVATE_CSV_UPLOAD_REQUIRED',error:'Packaged lead batches are no longer distributed. Use the owner CSV upload and preview; no records changed.'});",
   "});"
- ].join('\\n');
+ ].join('\n');
  const ownerImportRoute=[
   "app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{",
   " res.setHeader('Cache-Control','private, no-store');",
