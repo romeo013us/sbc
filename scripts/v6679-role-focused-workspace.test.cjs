@@ -19,7 +19,7 @@ assert(app.includes("if(state.me?.role==='demo'&&!['dashboard','customers','quot
 assert(app.includes("state.me?.role==='owner'?api('/api/message-templates'"),'no owner message templates on employee page');
 assert(app.includes("state.me?.role==='demo'?Promise.resolve({ok:true"),'no denied training bootstrap request from demo');
 assert(app.includes("Manage Demo Viewer — Set Password"),'owner can rotate demo password without default credentials');
-for(const f of ['sbc-v6563-sales-operating-model.js','v32-9-enterprise.js','v33-0-launch-acquisition.js','sbc-agent-os-v56-25-3.js']){
+for(const f of ['sbc-v6563-sales-operating-model.js','v32-9-enterprise.js','v33-0-launch-acquisition.js','sbc-agent-os-v56-25-3.js','v56240-growth-hardening.js']){
   const a=read('public/'+f),b=read('browser_public/'+f);
   assert.equal(a,b,'owner-only module mirrors match: '+f);
   assert(a.includes("window.state.me.role!=='owner'"),'owner-only mount guard: '+f);
