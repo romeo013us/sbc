@@ -6,6 +6,8 @@ on:
     paths:
       - 'bootstrap.js'
       - 'hotfix-assets/**'
+      - 'ui-overlays/**'
+      - 'ecosystem/**'
       - 'scripts/**'
       - 'enterprise/**'
       - 'package.json'
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/**'
+      - 'ui-overlays/**'
+      - 'ecosystem/**'
       - 'docs/SBC-V66-2026-10-24-PRODUCTION-GATES-AND-CRM-ROADMAP.md'
       - 'scripts/offline-child-guard.cjs'
       - 'scripts/offline-child-guard.test.cjs'
