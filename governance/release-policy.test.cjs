@@ -83,24 +83,24 @@ try{
  writeReceipt();
  let result=run();
  assert.equal(result.status,1,'synthetic fixture must not produce a deployable package');
- assert.match(result.stdout,/private October 26\/27 lead intake CSV missing/,
+ assert.match(result.stderr,/private October 26\/27 lead intake CSV missing/,
   'valid pinned fixture passes source check and reaches the next safety guard');
  put('ecosystem/fixture.js','module.exports=false;\\n');
  result=run();
  assert.notEqual(result.status,0);
- assert.match(result.stdout,/release is stale relative to checked-out source/,
+ assert.match(result.stderr,/release is stale relative to checked-out source/,
   'direct packaging must reject stale source even when ZIP SHA matches');
  put('ecosystem/fixture.js','module.exports=true;\\n');
  put(zipName,Buffer.from('TAMPERED_ARCHIVE'));
  result=run();
  assert.notEqual(result.status,0);
- assert.match(result.stdout,/ZIP SHA-256 does not match release receipt/,
+ assert.match(result.stderr,/ZIP SHA-256 does not match release receipt/,
   'direct packaging must reject tampered archive even when source matches');
  put(zipName,archive);
  receipt.generatedBy='unknown-runner';writeReceipt();
  result=run();
  assert.notEqual(result.status,0);
- assert.match(result.stdout,/Release lacks verified isolated CI provenance/,
+ assert.match(result.stderr,/Release lacks verified isolated CI provenance/,
   'direct packaging cannot accept untrusted provenance');
  console.log('[SBC RELEASE PACKAGING PARITY] PASS: valid, stale, tampered and unverified receipts');
 } finally {fs.rmSync(fixture,{recursive:true,force:true});}
