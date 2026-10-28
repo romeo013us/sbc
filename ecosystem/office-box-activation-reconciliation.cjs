@@ -7,7 +7,7 @@
  * database delivery evidence and a fresh, READ-ONLY payment-provider check.
  * It does not collect funds, create accounts or call customer channels.
  */
-const {net}=require('node:net');
+const net=require('node:net');
 const {validateTarget}=require('./office-box-outbox.cjs');
 const {signLookup,verifyActivationLookup,makeActiveEntitlement}=require('./office-box-activation-client.cjs');
 
