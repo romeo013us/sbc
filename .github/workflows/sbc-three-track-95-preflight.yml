@@ -1,0 +1,69 @@
+name: SBC 9.5 Three-Track Evidence (diagnostic, NOT deployment)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/runtime-build-fingerprint.cjs'
+      - 'scripts/runtime-build-fingerprint.test.cjs'
+      - 'scripts/prebuilt-runtime.cjs'
+      - 'scripts/prebuilt-runtime.test.cjs'
+      - 'scripts/sbc-v6655-strict-95-evidence.cjs'
+      - 'ecosystem/**'
+      - 'ui-overlays/**'
+      - 'governance/production-95-three-track-preflight*'
+      - '.github/workflows/sbc-three-track-95-preflight.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/runtime-build-fingerprint.cjs'
+      - 'scripts/runtime-build-fingerprint.test.cjs'
+      - 'scripts/prebuilt-runtime.cjs'
+      - 'scripts/prebuilt-runtime.test.cjs'
+      - 'ecosystem/**'
+      - 'ui-overlays/**'
+      - 'governance/production-95-three-track-preflight*'
+      - '.github/workflows/sbc-three-track-95-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic-only-never-deploy:
+    name: Build / SaaS / Company evidence — NO automatic GO
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run source fingerprint, archive and three-track decision tests
+        run: |
+          node --check governance/production-95-three-track-preflight.cjs
+          node --check governance/production-95-three-track-preflight.test.cjs
+          node scripts/runtime-build-fingerprint.test.cjs
+          node scripts/prebuilt-runtime.test.cjs
+          node governance/production-95-three-track-preflight.test.cjs
+      - name: Print exact evidence status (never publishes, bills, or touches MySQL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node governance/production-95-three-track-preflight.cjs > /tmp/sbc-three-track-status.json
+          node <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync('/tmp/sbc-three-track-status.json','utf8'));
+          if(r.deploymentAuthorized!==false||r.liveDeploymentVerified!==false)
+            throw Error('CI cannot certify or deploy a production application');
+          if(r.status!=='NO_GO'&&r.status!=='AWAITING_INDEPENDENT_LIVE_APPROVAL')
+            throw Error('Unknown three-track release decision');
+          const tracks=['build','saas','company'];
+          let summary='# SBC 9.5 — diagnostic only, never a deployment approval\n\n';
+          summary+='**Source release:** '+r.release.status+' ('+(r.release.reason||'archive verified')+')\n\n';
+          summary+='**Decision:** '+r.status+'\n\n';
+          summary+='| Track | Evidence coverage | Status |\n|---|---:|---|\n';
+          for(const track of tracks)summary+='| '+track+' | '+r.tracks[track].evidenceCoverage+' | '+r.tracks[track].status+' |\n';
+          summary+='\n**GoDaddy Published verified:** NO. **Deployment approved:** NO.\n\n';
+          summary+='External evidence, real customer conversion and accounting, actual device tests and independent restore proof are required.\n';
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,summary);
+          console.log(JSON.stringify({status:r.status,release:r.release,trackStatuses:Object.fromEntries(tracks.map(t=>[t,r.tracks[t].status])),deploymentAuthorized:r.deploymentAuthorized}));
+          if(r.status==='NO_GO')console.log('::warning title=SBC 9.5 Production NO-GO::Source release or independently verified Build/SaaS/Company evidence is incomplete. This green diagnostic job is NOT a production release approval.');
+          NODE
