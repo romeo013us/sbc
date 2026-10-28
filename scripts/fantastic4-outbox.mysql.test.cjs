@@ -3,6 +3,7 @@
 const assert=require('node:assert/strict'),crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path');
 const mysql=require('mysql2/promise');
 const {createOutbox}=require('../ecosystem/office-box-outbox.cjs');
+const {reconcileActivatedOfficeBox}=require('../ecosystem/office-box-activation-reconciliation.cjs');
 if(process.env.FANTASTIC4_DISPOSABLE_MYSQL!=='1'||!/_ci$|_test$/.test(process.env.MYSQL_DATABASE||'')){
  console.error('FANTASTIC4 DISPOSABLE MYSQL ONLY: refusing non-CI database');process.exit(3);
 }
@@ -87,6 +88,88 @@ async function main(){
   assert.equal(fencedRow.status,'IN_FLIGHT');assert.equal(fencedRow.attempts,1);
   await pool.execute('UPDATE sbc_office_box_outbox SET lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE event_id=?',[race.eventId]);
   assert.equal((await worker.dispatchOne()).status,'DELIVERED','authorized writer safely reclaims expired lease');
+  // Real MySQL delivery receipt -> signed read-only activation status ->
+  // fresh verified provider proof -> idempotent ACTIVE queue. Never live data.
+  const activation=await worker.enqueue(proof('activate'+suffix));
+  assert.equal((await worker.dispatchOne()).status,'DELIVERED');
+  let lookupResult=null,providerLookups=0,activationLookups=0;
+  const activationRecord=await pool.execute(
+   'SELECT status,event_type,payload_json FROM sbc_office_box_outbox WHERE event_id=?',[activation.eventId]);
+  const stored=activationRecord[0][0];
+  assert.equal(stored.status,'DELIVERED');
+  const event=typeof stored.payload_json==='string'?JSON.parse(stored.payload_json):stored.payload_json;
+  const remote={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'ACTIVATED',
+   correlationId:event.correlationId,tenantId:'tenant_'+('d'.repeat(16)),
+   customerId:event.customerId,orderId:event.payload.orderId,plan:event.payload.plan}};
+  const activateOpts={
+   tenantId:7,paidEventId:activation.eventId,receiverOrigin:'https://officebox-ci.example.test',secret,
+   writerAuthority,
+   readDeliveredPaidEvent:async()=>{
+    const [[saved]]=await pool.query('SELECT status,event_type,payload_json FROM sbc_office_box_outbox WHERE event_id=?',[activation.eventId]);
+    return {source:'COMMITTED_MYSQL',commitVerified:true,tenantId:7,eventId:activation.eventId,
+     status:saved.status,eventType:saved.event_type,
+     paidEvent:typeof saved.payload_json==='string'?JSON.parse(saved.payload_json):saved.payload_json,
+     expectedAmountCents:34900,currency:'USD',customerId:event.customerId,
+     orderId:event.payload.orderId,paymentReference:event.payload.paymentReference};
+   },
+   verifyLiveSettlement:async()=>{
+    providerLookups++;
+    return {source:'PAYMENT_PROVIDER_READ_ONLY',settled:true,refunded:false,disputed:false,
+     tenantId:7,customerId:event.customerId,orderId:event.payload.orderId,
+     paymentReference:event.payload.paymentReference,currency:'USD',amountCents:34900,
+     verifiedAt:new Date(Date.now()-1000).toISOString()};
+   },
+   transport:async(_url,_request)=>{
+    activationLookups++;
+    assert(_url.endsWith('/api/sbc/activation-status'));
+    assert.equal(_request.redirect,'error');
+    return {status:200,json:async()=>lookupResult};
+   },
+   outbox:worker,
+  };
+  lookupResult={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'INVITATION_PENDING',correlationId:event.correlationId}};
+  const pending=await reconcileActivatedOfficeBox(activateOpts);
+  assert.equal(pending.status,'INVITATION_PENDING');assert.equal(providerLookups,0);
+  lookupResult=remote;
+  const activeOne=await reconcileActivatedOfficeBox(activateOpts);
+  assert.equal(activeOne.status,'ACTIVE_QUEUED');
+  const activeReplay=await reconcileActivatedOfficeBox(activateOpts);
+  assert.equal(activeReplay.status,'ACTIVE_ALREADY_QUEUED');
+  assert.equal(activeOne.eventId,activeReplay.eventId);
+  const [[activeQueued]]=await pool.query('SELECT status,event_type FROM sbc_office_box_outbox WHERE event_id=?',[activeOne.eventId]);
+  assert.equal(activeQueued.status,'PENDING');
+  assert.equal(activeQueued.event_type,'sbc.office-box.entitlement.v1');
+  assert.equal((await worker.dispatchOne()).status,'DELIVERED');
+  // Refund or writer lease revocation must never enqueue a new entitlement.
+  const invalid=await worker.enqueue(proof('refund'+suffix));
+  assert.equal((await worker.dispatchOne()).status,'DELIVERED');
+  const refundedEventId=invalid.eventId;
+  const [[refundedRow]]=await pool.query('SELECT payload_json FROM sbc_office_box_outbox WHERE event_id=?',[refundedEventId]);
+  const refundEvent=typeof refundedRow.payload_json==='string'?JSON.parse(refundedRow.payload_json):refundedRow.payload_json;
+  const forbidden={...activateOpts,paidEventId:refundedEventId,
+   readDeliveredPaidEvent:async()=>({source:'COMMITTED_MYSQL',commitVerified:true,
+    tenantId:7,eventId:refundedEventId,status:'DELIVERED',eventType:'customer.subscription.paid',
+    paidEvent:refundEvent,expectedAmountCents:34900,currency:'USD',
+    customerId:refundEvent.customerId,orderId:refundEvent.payload.orderId,
+    paymentReference:refundEvent.payload.paymentReference}),
+   transport:async()=>({status:200,json:async()=>({
+    ...remote,data:{...remote.data,correlationId:refundedEventId,orderId:refundEvent.payload.orderId}
+   })}),
+   verifyLiveSettlement:async()=>({source:'PAYMENT_PROVIDER_READ_ONLY',settled:true,refunded:true,disputed:false,
+    tenantId:7,customerId:refundEvent.customerId,orderId:refundEvent.payload.orderId,
+    paymentReference:refundEvent.payload.paymentReference,currency:'USD',amountCents:34900,
+    verifiedAt:new Date().toISOString()}),
+  };
+  const [[beforeRefund]]=await pool.query('SELECT COUNT(*) AS n FROM sbc_office_box_outbox');
+  await assert.rejects(()=>reconcileActivatedOfficeBox(forbidden),/FRESH_UNREFUNDED_PAYMENT_PROOF_REQUIRED/);
+  const [[afterRefund]]=await pool.query('SELECT COUNT(*) AS n FROM sbc_office_box_outbox');
+  assert.equal(afterRefund.n,beforeRefund.n);
+  writerLeaseHeld=false;
+  await assert.rejects(()=>reconcileActivatedOfficeBox(activateOpts),/ACTIVATION_WRITER_NOT_AUTHORIZED/);
+  writerLeaseHeld=true;
+  assert.equal(providerLookups,2);
+  assert.equal(activationLookups,3);
+
   console.log('FANTASTIC 4 REAL MYSQL8 OUTBOX: PASS (DDL, duplicate, ack, retry, expired lease, ACTIVE entitlement)');
  }finally{await pool.end()}
 }
