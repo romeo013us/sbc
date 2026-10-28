@@ -233,6 +233,27 @@ async function main(){
  });
  assert.equal((await missingEntitlementAck.dispatchOne()).reason,'OFFICE_BOX_ACK_MISMATCH');
  rows.get(unboundEnt.eventId).status='DEAD';
+ // Correct event ID but a conflicting plan is also an invalid success.
+ const wrongPlanProof={...proof,order:{...order,id:'sbc_order_bad_plan_ack_913'},
+  paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_bad_plan_ack_913'}};
+ const wrongPlanPaid=buildPaidHandoff(wrongPlanProof);
+ const wrongPlanLinked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',
+  status:'ACTIVATED',correlationId:wrongPlanPaid.correlationId,
+  tenantId:'tenant_'+('d'.repeat(16)),customerId:wrongPlanPaid.customerId,
+  orderId:wrongPlanPaid.payload.orderId,plan:'business'}};
+ const wrongPlanReceiver=createOutbox({...options,transport:async(_url,req)=>{
+  const item=JSON.parse(req.body);
+  return {status:200,json:async()=>({ok:true,accepted:true,eventId:item.eventId,
+   status:'ACTIVE',plan:'team'})};
+ }});
+ const planEvent=await wrongPlanReceiver.enqueueActiveEntitlement({
+  paidEvent:wrongPlanPaid,activationResponse:wrongPlanLinked,
+  verifiedAt:'2026-10-27T10:00:00Z'
+ });
+ const badPlanAck=await wrongPlanReceiver.dispatchOne();
+ assert.equal(badPlanAck.status,'RETRY_SCHEDULED');
+ assert.equal(badPlanAck.reason,'OFFICE_BOX_ACK_MISMATCH');
+ rows.get(planEvent.eventId).status='DEAD';
  const wrongEntitlementProof={...proof,order:{...order,id:'sbc_order_911'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_911'}};
  const newerPaid=buildPaidHandoff(wrongEntitlementProof);
  const newerLinked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'ACTIVATED',
