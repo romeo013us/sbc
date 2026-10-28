@@ -494,6 +494,7 @@ jobs:
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6659-square-completion-consistency.test.cjs | tee .sbc-isolated-reports/v6659-square-payment-replay-evidence.log
           # V6693 compiled patch protects explicit Office Box sales while preserving ordinary Square settlement.
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6693-compiled-officebox-quarantine.test.cjs | tee .sbc-isolated-reports/v6693-compiled-quarantine-evidence.log
+          SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6694-owner-launch-qa.test.cjs | tee .sbc-isolated-reports/v6694-owner-one-dollar-qa-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6660-website-bridge.test.cjs | tee .sbc-isolated-reports/v6660-website-tenant-bridge-evidence.log
           SBC_RUNTIME_ROOT="$PWD/.sbc-isolated-runtime" node scripts/v6661-inbound-and-portal-auth.test.cjs | tee .sbc-isolated-reports/v6661-customer-inquiry-safety.log
           for pass in 1 2 3; do
