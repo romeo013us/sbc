@@ -5,6 +5,7 @@ on:
     paths:
       - 'ecosystem/fantastic4-*'
       - 'ecosystem/office-box-activation-client.cjs'
+      - 'ecosystem/office-box-activation-reconciliation.cjs'
       - 'ecosystem/office-box-outbox.cjs'
       - 'ecosystem/office-box-settlement-bridge.cjs'
       - 'migrations/20261027_002_fantastic4_officebox_outbox.sql'
@@ -24,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check scripts/fantastic4-readiness.cjs && node --check ecosystem/office-box-activation-client.cjs && node --check ecosystem/office-box-outbox.cjs && node --check ecosystem/office-box-settlement-bridge.cjs
+      - run: node --check scripts/fantastic4-readiness.cjs && node --check ecosystem/office-box-activation-client.cjs && node --check ecosystem/office-box-outbox.cjs && node --check ecosystem/office-box-settlement-bridge.cjs && node --check ecosystem/office-box-activation-reconciliation.cjs
       - run: node scripts/fantastic4-readiness.test.cjs
       - name: Unverified production evidence MUST be NO_GO
         shell: bash
@@ -39,6 +40,7 @@ jobs:
       - run: node scripts/fantastic4-officebox-activation.test.cjs
       - run: node scripts/fantastic4-outbox.test.cjs
       - run: node scripts/fantastic4-square-settlement-bridge.test.cjs
+      - run: node scripts/fantastic4-officebox-activation-poll.test.cjs
 
   disposable-outbox-mysql:
     name: MySQL 8 · durable paid and entitlement event lifecycle
