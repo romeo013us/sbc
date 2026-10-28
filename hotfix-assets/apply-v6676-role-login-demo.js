@@ -47,6 +47,32 @@ function patchServer(s){
   "const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');",
   "const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return res.status(403).json({error:'Lead is outside your tenant research queue.'});",
   'direct research record tenant isolation');
+
+ // SBC V66.80: no published starter credentials and no auto-reenable of a disabled demo account.
+ // The legacy seed verifier is retained ONLY to recognize and retire the old default.
+ const dStart=s.indexOf('function ensureDemoUser(){'),dEnd=s.indexOf('\nfunction seedTeamLoginPassword(',dStart);
+ if(dStart<0||dEnd<=dStart)throw Error(MARKER+': demo credential boundaries missing');
+ const newDemoAccount=String.raw`function ensureDemoUser(){
+  db.users=db.users||[];
+  let u=db.users.find(x=>String(x.username||'').toLowerCase()==='demo');
+  if(!u){
+    u={id:'usr_demo',tenantId:TENANT_DEFAULT_ID,username:'demo',name:'SBC Demo Viewer',role:'demo',active:false,
+       mustChangePassword:false,passwordHash:'',expiresAt:'',createdAt:now(),demo:true};
+    db.users.unshift(u);
+  } else {
+    u.role='demo';u.demo=true;
+    // A missing or original publicly seeded credential is NOT a valid viewer login.
+    // Preserve any owner-set active flag and custom password hash verbatim.
+    if(!u.passwordHash||u.passwordHash===SEEDED_CREDENTIALS.demo){u.active=false;u.passwordHash='';}
+  }
+  return u;
+}`;
+ s=s.slice(0,dStart)+newDemoAccount+s.slice(dEnd);
+ // Reject a missing/too-short demo password BEFORE mutating the account in memory.
+ s=once(s,
+  "if(!u)return res.status(404).json({error:'User not found.'});if(u.id==='user_owner'",
+  "if(!u)return res.status(404).json({error:'User not found.'});if(String(u.role)==='demo'){if(req.body.role!==undefined&&req.body.role!=='demo')return res.status(400).json({error:'Demo Viewer role cannot be converted into an employee role.'});if(req.body.active===true&&!u.passwordHash&&!req.body.password)return res.status(400).json({error:'Set a unique Demo Viewer password before enabling the account.'});}if(req.body.password&&String(req.body.password).length<10)return res.status(400).json({error:'Password must be at least 10 characters.'});if(u.id==='user_owner'",
+  'validate demo role and password before any user mutation');
  s='// '+MARKER+'\n'+s;
  new vm.Script(s,{filename:'server.js'});return s;
 }
@@ -95,6 +121,16 @@ function apply(root){
   fs.writeFileSync(app,patchApp(fs.readFileSync(app,'utf8')));
   fs.writeFileSync(html,patchHtml(fs.readFileSync(html,'utf8')));
   changed.push(dir+'/app.js',dir+'/index.html');
+
+ const v10=path.join(root,dir,'v10.js');
+ let leadUi=fs.readFileSync(v10,'utf8');
+ leadUi=once(leadUi,'Jonathan review queue','Lead verification queue','remove private owner name from research view');
+ leadUi=once(leadUi,'FIND → QUALIFY → VERIFY → REVENUE PLAY','FIND → QUALIFY → VERIFY → SUBMIT','research-only process heading');
+ leadUi=once(leadUi,"String(x.leadIntelligence?.verificationStatus||'Unverified')",
+  "String(x.leadIntelligence?.verificationStatus||x.verificationStatus||'Unverified')",'research verification count reflects normalized CRM field');
+ new vm.Script(leadUi,{filename:'v10.js'});
+ fs.writeFileSync(v10,leadUi);
+ changed.push(dir+'/v10.js');
  }
 
  // Owner-only dashboard modules must not mount or poll on workforce/demo sessions.

@@ -1,0 +1,50 @@
+'use strict';
+// V66.80: run against the reconstructed server/UI, with disposable users only.
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(process.env.SBC_RUNTIME_ROOT||'.sbc-isolated-runtime');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const server=read('server.js');
+const ui=read('public/v10.js');
+assert.equal(ui,read('browser_public/v10.js'),'researcher page mirrors identical');
+assert(!ui.includes('Jonathan review queue'),'no owner name exposed in lead research view');
+assert(ui.includes('Lead verification queue'),'role-neutral queue label');
+assert(ui.includes('FIND → QUALIFY → VERIFY → SUBMIT'),'role-scoped research-only workflow');
+assert(ui.includes("x.verificationStatus||'Unverified'"),'verification metric handles top-level canonical field');
+const start=server.indexOf('function ensureDemoUser(){');
+const end=server.indexOf('\nfunction seedTeamLoginPassword(',start);
+assert(start>0&&end>start,'actual compiled demo account provisioner is present');
+const factory=vm.runInNewContext(server.slice(start,end)+'\nensureDemoUser',{},{timeout:1500});
+const seedMatch=server.match(/demo:'(scrypt\$[^']+)'/);
+assert(seedMatch,'legacy demo hash used only to detect and retire seeded credentials');
+const run=(users)=>{
+ const data={users};
+ const ctx={db:data,SEEDED_CREDENTIALS:{demo:seedMatch[1]},TENANT_DEFAULT_ID:1,now:()=>new Date(0).toISOString()};
+ const f=vm.runInNewContext(server.slice(start,end)+'\nensureDemoUser',ctx,{timeout:1500});
+ const u=f();return {u,users:data.users};
+};
+for(let pass=1;pass<=3;pass++){
+ let fresh=run([]);
+ assert.equal(fresh.u.active,false,'demo not enabled without owner-created credential');
+ assert.equal(fresh.u.passwordHash,'','no known default password issued');
+ let legacy=run([{id:'d',username:'demo',role:'demo',active:true,passwordHash:seedMatch[1]}]);
+ assert.equal(legacy.u.active,false,'legacy seeded account cannot authenticate');
+ assert.equal(legacy.u.passwordHash,'','legacy hash retired');
+ let custom=run([{id:'d',username:'demo',role:'demo',active:true,passwordHash:'scrypt$owner-salt$owner-hash'}]);
+ assert.equal(custom.u.active,true,'owner-enabled demo status not overwritten');
+ assert.equal(custom.u.passwordHash,'scrypt$owner-salt$owner-hash','owner-set credential unchanged');
+ let disabled=run([{id:'d',username:'demo',role:'demo',active:false,passwordHash:'scrypt$owner-salt$owner-hash'}]);
+ assert.equal(disabled.u.active,false,'explicitly disabled demo not reactivated');
+ assert(disabled.u.passwordHash,'disabled credentials not modified');
+ let noPass=run([{id:'d',username:'demo',role:'demo',active:true,passwordHash:''}]);
+ assert.equal(noPass.u.active,false,'missing credentials force fail-closed');
+}
+assert(server.includes('Set a unique Demo Viewer password before enabling the account.'),'owner receives actionable demo credential error');
+assert(server.includes('Demo Viewer role cannot be converted into an employee role.'),'role switch blocked');
+assert(server.includes("app.put('/api/users/:id',auth,ownerOnly"),'demo password manager server enforced owner-only');
+assert(server.includes("function sbcDemoViewerAllowed(method,route)"),'demo API allowlist intact');
+assert(server.includes("function sbcLornaAllowedRequest(req,user)"),'Lorna server allowlist intact');
+assert(server.includes('sbcV6676DemoBootstrapData()'),'demo uses fictional data bootstrap');
+new vm.Script(server,{filename:'server.js'});
+new vm.Script(ui,{filename:'v10.js'});
+console.log('[SBC V6680] PASS 3/3 demo credential lifecycle, admin reset preflight, role isolation and lead research copy');
