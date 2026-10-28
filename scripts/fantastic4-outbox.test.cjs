@@ -150,6 +150,7 @@ async function main(){
  const missingId=await forgedAck.dispatchOne();
  assert.equal(missingId.status,'RETRY_SCHEDULED');
  assert.equal(missingId.reason,'OFFICE_BOX_ACK_MISMATCH');
+ rows.get(missingId.eventId).status='DEAD'; // isolate next test event; real DB would retry on its schedule
  const wrongEntitlementProof={...proof,order:{...order,id:'sbc_order_911'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_911'}};
  const newerPaid=buildPaidHandoff(wrongEntitlementProof);
  const newerLinked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'ACTIVATED',
