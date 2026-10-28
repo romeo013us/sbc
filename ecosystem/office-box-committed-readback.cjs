@@ -57,6 +57,8 @@ async function loadCommittedOfficeBoxPayment({pool,orderId,tenantId,payment,expe
    [text(row.customer_id),tenantId]);
   if(!Array.isArray(customers)||customers.length!==1)reject('OFFICE_BOX_COMMITTED_CUSTOMER_MISSING');
   const customer=customers[0];
+  if(String(customer.tenant_id)!==String(tenantId)||text(customer.id)!==text(row.customer_id))
+   reject('OFFICE_BOX_COMMITTED_CUSTOMER_TENANT_MISMATCH');
   const email=text(customer.email).toLowerCase();
   // Binding the billing email to the paid order prevents a later CRM email
   // edit from silently redirecting a pending Office Box invitation.
