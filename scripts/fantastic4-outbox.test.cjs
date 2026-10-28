@@ -55,7 +55,7 @@ const transport=async(url,options)=>{
  sent.push({url,options});
  if(shouldReject)return {status:503,json:async()=>({ok:false})};
  const payload=JSON.parse(options.body);
- if(url.endsWith('/api/sbc/entitlements'))return {status:200,json:async()=>({ok:true,accepted:true,status:'ACTIVE'})};
+ if(url.endsWith('/api/sbc/entitlements'))return {status:200,json:async()=>({ok:true,accepted:true,eventId:payload.eventId,status:payload.status,plan:payload.plan})};
  return {status:200,json:async()=>({ok:true,data:{accepted:true,correlationId:ackWrong?'other_event':payload.correlationId}})};
 };
 const granted=()=>({publishedWriter:true,recoveryVerified:true,writerLeaseHeld:true});
@@ -120,6 +120,18 @@ async function main(){
  assert.equal(replayDelivered.eventId,replayQueued.eventId);
  assert.equal(receivedDuplicateCount,1);
  assert.equal(rows.get(replayQueued.eventId).status,'DELIVERED');
+ // A forged duplicate flag without an event binding is NOT delivery proof.
+ const unboundProof={...proof,order:{...order,id:'sbc_order_unbound_duplicate'},
+  paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_unbound_duplicate'}};
+ const unboundSender=createOutbox({...options,transport:async(_url,req)=>{
+  assert.equal(req.redirect,'error');
+  return {status:200,json:async()=>({ok:true,data:{duplicate:true}})};
+ }});
+ const unbound=await unboundSender.enqueue(unboundProof);
+ const unboundResult=await unboundSender.dispatchOne();
+ assert.equal(unboundResult.status,'RETRY_SCHEDULED');
+ assert.equal(unboundResult.reason,'OFFICE_BOX_ACK_MISMATCH');
+ rows.get(unbound.eventId).status='DEAD'; // isolate the fixture; no provider side effects
  assert.equal(sent[0].url,'https://office.example.test/api/sbc/handoff');
  const signed=sent[0].options;
  const timestamp=signed.headers['x-sbc-timestamp'];
@@ -204,6 +216,23 @@ async function main(){
  assert.equal(missingId.status,'RETRY_SCHEDULED');
  assert.equal(missingId.reason,'OFFICE_BOX_ACK_MISMATCH');
  rows.get(missingId.eventId).status='DEAD'; // isolate next test event; real DB would retry on its schedule
+ // Entitlement HTTP 200 / duplicate:true alone must not grant or acknowledge access.
+ const unboundEntitlementProof={...proof,order:{...order,id:'sbc_order_912'},
+  paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_912'}};
+ const unboundPaid=buildPaidHandoff(unboundEntitlementProof);
+ const unboundLinked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',
+  status:'ACTIVATED',correlationId:unboundPaid.correlationId,
+  tenantId:'tenant_'+('c'.repeat(16)),customerId:unboundPaid.customerId,
+  orderId:unboundPaid.payload.orderId,plan:'business'}};
+ const missingEntitlementAck=createOutbox({...options,transport:async(_url,req)=>{
+  assert.equal(req.redirect,'error');
+  return {status:200,json:async()=>({ok:true,duplicate:true})};
+ }});
+ const unboundEnt=await missingEntitlementAck.enqueueActiveEntitlement({
+  paidEvent:unboundPaid,activationResponse:unboundLinked,verifiedAt:'2026-10-27T10:00:00Z'
+ });
+ assert.equal((await missingEntitlementAck.dispatchOne()).reason,'OFFICE_BOX_ACK_MISMATCH');
+ rows.get(unboundEnt.eventId).status='DEAD';
  const wrongEntitlementProof={...proof,order:{...order,id:'sbc_order_911'},paymentRecord:{...paymentRecord,sbcOrderId:'sbc_order_911'}};
  const newerPaid=buildPaidHandoff(wrongEntitlementProof);
  const newerLinked={ok:true,data:{schema:'sbc.office-box.activation-status.v1',status:'ACTIVATED',
