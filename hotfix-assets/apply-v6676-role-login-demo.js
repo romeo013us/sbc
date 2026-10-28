@@ -52,7 +52,7 @@ function patchServer(s){
  // The legacy seed verifier is retained ONLY to recognize and retire the old default.
  const dStart=s.indexOf('function ensureDemoUser(){'),dEnd=s.indexOf('\nfunction seedTeamLoginPassword(',dStart);
  if(dStart<0||dEnd<=dStart)throw Error(MARKER+': demo credential boundaries missing');
- const newDemoAccount=String.raw\`function ensureDemoUser(){
+ const newDemoAccount=String.raw`function ensureDemoUser(){
   db.users=db.users||[];
   let u=db.users.find(x=>String(x.username||'').toLowerCase()==='demo');
   if(!u){
@@ -66,7 +66,7 @@ function patchServer(s){
     if(!u.passwordHash||u.passwordHash===SEEDED_CREDENTIALS.demo){u.active=false;u.passwordHash='';}
   }
   return u;
-}\`;
+}`;
  s=s.slice(0,dStart)+newDemoAccount+s.slice(dEnd);
  // Reject a missing/too-short demo password BEFORE mutating the account in memory.
  s=once(s,
