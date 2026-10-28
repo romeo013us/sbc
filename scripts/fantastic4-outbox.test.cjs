@@ -11,6 +11,10 @@ const pool={
    rows.set(event_id,{event_id,order_id,customer_id,event_type,payload_json,status:'PENDING',attempts:0});
    return [{affectedRows:1}];
   }
+  if(sql.startsWith('SELECT order_id,customer_id,event_type,payload_json FROM ')){
+   const row=rows.get(args[0]);
+   return [row?[{order_id:row.order_id,customer_id:row.customer_id,event_type:row.event_type,payload_json:row.payload_json}]:[]];
+  }
   const event=rows.get(args[sql.includes("status='DELIVERED'")?1:4]);
   assert(event,'row must exist');
   const owner=args[sql.includes("status='DELIVERED'")?2:5];
@@ -71,6 +75,26 @@ async function main(){
  assert.equal(queued.created,true);assert.equal(rows.size,1);
  const dupe=await outbox.enqueue(proof);assert.equal(dupe.created,false);
  assert.equal(rows.size,1,'Duplicate cannot add a new event');
+ // The event ID binds order/customer/SKU, but the payment ID is inside payload.
+ // A different Square receipt must NOT be silently accepted as a replay.
+ const alteredPayment={...proof,
+  payment:{...payment,id:'square_payment_REPLACED'},
+  parsed:{...parsed,squarePaymentId:'square_payment_REPLACED'},
+  paymentRecord:{...paymentRecord,squarePaymentId:'square_payment_REPLACED'}};
+ await assert.rejects(()=>outbox.enqueue(alteredPayment),/OFFICE_BOX_OUTBOX_EVENT_COLLISION/,
+  'a different payment must not masquerade as the original outbox event');
+ await assert.rejects(()=>outbox.enqueue({...proof,customer:{...customer,businessName:'Changed Customer'}}),
+  /OFFICE_BOX_OUTBOX_EVENT_COLLISION/,
+  'changed signed customer identity must not reuse the prior paid payload');
+ assert.equal(rows.size,1,'collision checks never overwrite or insert a paid event');
+ // Verify duplicates against persisted JSON independently of property order.
+ const storedPaid=rows.get(queued.eventId);
+ const originalPaid=storedPaid.payload_json;
+ const reversed=Object.fromEntries(Object.entries(JSON.parse(originalPaid)).reverse());
+ storedPaid.payload_json=JSON.stringify(reversed);
+ assert.equal((await outbox.enqueue(proof)).created,false,'MySQL JSON key order is not a collision');
+ storedPaid.payload_json=originalPaid;
+
  const delivered=await outbox.dispatchOne();
  assert.equal(delivered.status,'DELIVERED');
  assert.equal(rows.get(queued.eventId).attempts,1);
@@ -88,6 +112,14 @@ async function main(){
  const active=await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'});
  assert(active.created,'Verified activation must enqueue one ACTIVE entitlement');
  assert.equal((await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-27T10:00:00Z'})).created,false);
+ assert.equal((await outbox.enqueueActiveEntitlement({paidEvent,activationResponse:linked,verifiedAt:'2026-10-28T10:00:00Z'})).created,false,
+  'fresh provider verification should not create a second ACTIVE entitlement');
+ const changedPlan={...paidEvent,payload:{...paidEvent.payload,plan:'team'}};
+ const changedLinked={...linked,data:{...linked.data,plan:'team'}};
+ await assert.rejects(()=>outbox.enqueueActiveEntitlement({
+  paidEvent:changedPlan,activationResponse:changedLinked,verifiedAt:'2026-10-28T10:00:00Z'
+ }),/OFFICE_BOX_OUTBOX_EVENT_COLLISION/,'same ACTIVE event key cannot silently switch a customer plan');
+
  assert.equal((await outbox.dispatchOne()).status,'DELIVERED');
  assert.equal(sent[1].url,'https://office.example.test/api/sbc/entitlements');
  const entitlementRequest=sent[1].options,entitlementBody=JSON.parse(entitlementRequest.body);
