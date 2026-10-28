@@ -6,7 +6,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const INPUTS=Object.freeze([
  'bootstrap.js','apply-v65116-hotfix.js','package.json','package-lock.json',
  'persistent-state.js','runtime-env-beacon.js','tenant-rejection-guard.js',
- 'hotfix-assets','enterprise','scripts'
+ 'hotfix-assets','enterprise','ecosystem','ui-overlays','scripts'
 ]);
 function buildFingerprint(root,entries=INPUTS){
  const h=crypto.createHash('sha256'),base=path.resolve(root);
