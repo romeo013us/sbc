@@ -24,11 +24,11 @@ assert.match(flat,/readManifest\(process\.cwd\(\)\)/);
 assert.match(proof,/if\(fingerprint!==m\.sourceFingerprint\)throw Error/);
 assert.match(launcher,/if manifest\.get\("generatedBy"\) != "isolated-github-ci"/);
 assert.match(offline,/if test "\$\(git rev-parse origin\/main\)" != "\$GITHUB_SHA"/);
-assert.match(offline,/publish_verified_prebuilt_to_main:[\\s\\S]{0,200}type:\\s*boolean[\\s\\S]{0,100}default:\\s*false/,
+assert.match(offline,/publish_verified_prebuilt_to_main:[\s\S]{0,200}type:\s*boolean[\s\S]{0,100}default:\s*false/,
   'source runtime publishing must be manual and disabled by default');
-const runtimeJob=offline.split(/\\n  publish-prebuilt-to-main:/)[1];
+const runtimeJob=offline.split(/\n  publish-prebuilt-to-main:/)[1];
 assert.ok(runtimeJob,'prebuilt publisher still exists');
-assert.match(runtimeJob.split(/\\n    steps:/)[0],/\\n    if:\\s*github\\.event_name == 'workflow_dispatch' && inputs\\.publish_verified_prebuilt_to_main == true && github\\.ref == 'refs\\/heads\\/main'/,
+assert.match(runtimeJob.split(/\n    steps:/)[0],/\n    if:\s*github\.event_name == 'workflow_dispatch' && inputs\.publish_verified_prebuilt_to_main == true && github\.ref == 'refs\/heads\/main'/,
   'generated runtime can never commit to main without explicit manual permission');
 
 for(const file of ['ui-overlays/**','ecosystem/**']){
