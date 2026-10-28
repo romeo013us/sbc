@@ -24,6 +24,13 @@ assert.match(flat,/readManifest\(process\.cwd\(\)\)/);
 assert.match(proof,/if\(fingerprint!==m\.sourceFingerprint\)throw Error/);
 assert.match(launcher,/if manifest\.get\("generatedBy"\) != "isolated-github-ci"/);
 assert.match(offline,/if test "\$\(git rev-parse origin\/main\)" != "\$GITHUB_SHA"/);
+assert.match(offline,/publish_verified_prebuilt_to_main:[\\s\\S]{0,200}type:\\s*boolean[\\s\\S]{0,100}default:\\s*false/,
+  'source runtime publishing must be manual and disabled by default');
+const runtimeJob=offline.split(/\\n  publish-prebuilt-to-main:/)[1];
+assert.ok(runtimeJob,'prebuilt publisher still exists');
+assert.match(runtimeJob.split(/\\n    steps:/)[0],/\\n    if:\\s*github\\.event_name == 'workflow_dispatch' && inputs\\.publish_verified_prebuilt_to_main == true && github\\.ref == 'refs\\/heads\\/main'/,
+  'generated runtime can never commit to main without explicit manual permission');
+
 for(const file of ['ui-overlays/**','ecosystem/**']){
   const appearances=offline.split("'"+file+"'").length-1;
   assert.ok(appearances>=2,'reconstruction watches push and PR changes to '+file);
@@ -33,6 +40,6 @@ assert.equal(manifest.generatedBy,'isolated-github-ci');
 assert.match(manifest.sourceFingerprint,/^[a-f0-9]{64}$/);
 const {buildFingerprint}=require('../scripts/runtime-build-fingerprint.cjs');
 const sourceMatches=manifest.sourceFingerprint===buildFingerprint(root);
-console.log(JSON.stringify({result:'PASS',policy:'SBC_SAFE_RELEASE_V1',automaticDeployBranch:false,
+console.log(JSON.stringify({result:'PASS',policy:'SBC_SAFE_RELEASE_V1',automaticDeployBranch:false,automaticRuntimeMainPublish:false,
   pinningEnforced:true,sourceMatchesCurrentBuild:sourceMatches,
   nextAction:sourceMatches?'check compiled artifact and live approval':'rebuild from current source; never deploy stale artifact'}));
