@@ -17,6 +17,7 @@ const END='\nconst PAYMENT_LINKS =';
 const GENERIC_START="    try{await REVENUE_AUTOPILOT_V56150.recordFunnelEvent('payment_completed'";
 const LEGACY_START="    try{const handoff=await sendBig3OfficeBoxHandoff(order,{reason:'square-payment-completed'});";
 const GENERIC_END="\n  } else if(status==='CANCELED'||status==='FAILED'){";
+const QA_ANCHOR="app.post('/api/orders',auth,ownerOnly,async(req,res)=>{";
 function exactlyOnce(source,value,label){
  const n=source.split(value).length-1;
  if(n!==1)throw Error(MARKER+': '+label+' expected once, found '+n);
@@ -56,8 +57,17 @@ function patchServer(source){
   "      const hasName=/office[ _-]*box/i.test(String(order.product||'')+' '+String(notes.bundleId||''));",
   "      return hasLine||hasMeta||hasName;",
   "    })();",
-  "    if(!sbcOfficeBoxExplicitPurchase){",
+  "    const sbcLaunchQaExplicitPurchase=order.launchQaOwnerCreated===true&&Number(order.price)===1&&",
+  "      String(order.product||'')==='SBC Launch QA - $1 Test Service'&&",
+  "      orderParsed(order).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&",
+  "      orderParsed(order).sbcLaunchQa?.version===1;",
+  "    if(!sbcOfficeBoxExplicitPurchase&&!sbcLaunchQaExplicitPurchase){",
   original,
+  "    }else if(sbcLaunchQaExplicitPurchase){",
+  "      order.fulfillmentStatus='QA VERIFIED - NO FULFILLMENT';",
+  "      updateOrderParsed(order,{fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',sbcLaunchQaPaidVerified:true});",
+  "      addActivity('launch_qa_payment_verified','$1 launch QA Square capture verified; vendor actions held for '+order.id,",
+  "        {orderId:order.id,paymentId:rec.squarePaymentId,amountCents:100,source:'SQUARE_CAPTURE'});",
   "    }else{",
   "      addActivity('office_box_precommit_fulfillment_quarantined',",
   "        'Office Box paid capture saved; generic fulfillment and legacy invitation held for '+order.id,",
@@ -68,7 +78,14 @@ function patchServer(source){
  if(handler.indexOf('const sbcOfficeBoxExplicitPurchase')>
     handler.indexOf('SBC_COMMERCIAL.provisionTenant('))
   throw Error(MARKER+': generic vendor call occurs before quarantine decision');
- const patched=source.slice(0,start)+handler+source.slice(end);
+ let patched=source.slice(0,start)+handler+source.slice(end);
+ exactlyOnce(patched,QA_ANCHOR,'owner orders route');
+ const {SOURCE}=require('./v6694-owner-qa-route.cjs');
+ if(typeof SOURCE!=='string'||!SOURCE.includes("app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,"))
+  throw Error(MARKER+': launch QA source unavailable');
+ patched=patched.replace(QA_ANCHOR,SOURCE+'\n'+QA_ANCHOR);
+ if(patched.indexOf('const sbcLaunchQaExplicitPurchase')>patched.indexOf('SBC_COMMERCIAL.provisionTenant('))
+  throw Error(MARKER+': launch QA quarantine not installed before external effects');
  new vm.Script(patched,{filename:'server.js'});
  return patched;
 }
