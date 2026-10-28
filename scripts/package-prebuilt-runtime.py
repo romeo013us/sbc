@@ -27,7 +27,10 @@ with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=
             rel=p.relative_to(src)
             if name.startswith('.env') or name in ('.sbc-bootstrap-ready.json','.sbc-prebuilt-ready.json'):
                 continue
-            # Prospect research datasets are never executable assets or startup catalogs.\n            # Do not put any CSV in browser roots, starter leads, or shipped runtime.\n            if name.lower().endswith('.csv'):\n                continue\n            s=p.lstat()
+            # Never ship prospect datasets in public/browser or in a server archive.
+            if name.lower().endswith('.csv'):
+                continue
+            s=p.lstat()
             if not stat.S_ISREG(s.st_mode):
                 raise SystemExit('REFUSE: nonregular release file '+str(rel))
             written+=1
