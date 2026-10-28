@@ -34,6 +34,12 @@ on:
       - 'hotfix-assets/**'
       - 'SBC-OS-V65.1.13-ROOT-FIXED-LOCKFILE-BLOCKED.zip'
   workflow_dispatch:
+    inputs:
+      publish_verified_prebuilt_to_main:
+        description: 'Explicitly approve committing a verified, source-matched runtime archive to main'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -654,7 +660,9 @@ jobs:
           include-hidden-files: true
 
   publish-prebuilt-to-main:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # A completed CI source rebuild is evidence, NOT permission to change GoDaddy-connected main.
+    # This job needs explicit manual approval and matches the exact source SHA or fails closed.
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_verified_prebuilt_to_main == true && github.ref == 'refs/heads/main'
     needs: [offline-reconstruct]
     runs-on: ubuntu-latest
     timeout-minutes: 10
