@@ -577,6 +577,10 @@ jobs:
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'server.js'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'public/index.html'
           unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -qx 'browser_public/index.html'
+          if unzip -Z1 SBC-V66-PREBUILT-RUNTIME.zip | grep -Ei '(^starter-leads/|\\.csv$)'; then
+            echo 'REFUSE: private prospect CSV must never ship in any GoDaddy compiled runtime' >&2
+            exit 1
+          fi
           catalog_check_dir="$(mktemp -d)"
           unzip -q SBC-V66-PREBUILT-RUNTIME.zip -d "$catalog_check_dir"
           SBC_RUNTIME_ROOT="$catalog_check_dir" node scripts/v6653-prebuilt-catalog-boot.test.cjs
