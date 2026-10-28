@@ -1,14 +1,18 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const {buildFingerprint,markerMatches}=require('./runtime-build-fingerprint.cjs');
+const {buildFingerprint,markerMatches,INPUTS}=require('./runtime-build-fingerprint.cjs');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-runtime-cache-'));
 function put(rel,contents){const p=path.join(root,rel);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,contents);}
 try{
  put('bootstrap.js','/* v1 */');
  put('hotfix-assets/apply-test.js','module.exports={apply(){}};');
  put('scripts/mock.js','module.exports=true;');
+ put('ecosystem/office-box-outbox.cjs','module.exports={enabled:false};');
+ put('ui-overlays/sbc-kim-chief-of-staff-page.js','/* Kim interface */');
+ assert(INPUTS.includes('ecosystem')&&INPUTS.includes('ui-overlays'),
+  'full release identity MUST include customer Office Box source and Kim overlay');
  put('sbc-persistent/data/customer-state.json','{"customers":248}');
- const sources=['bootstrap.js','hotfix-assets','scripts'];
+ const sources=['bootstrap.js','hotfix-assets','ecosystem','ui-overlays','scripts'];
  const first=buildFingerprint(root,sources);
  assert.match(first,/^[a-f0-9]{64}$/);
  assert.equal(first,buildFingerprint(root,[...sources].reverse()),'source traversal is deterministic');
@@ -22,11 +26,18 @@ try{
  assert.equal(markerMatches({...expected}, {...expected,sourceHash:'new baseline'}),false);
  assert.equal(markerMatches({...expected}, {...expected,patchId:'new patch'}),false);
  assert.equal(markerMatches({...expected}, {...expected,version:'67.0.0'}),false);
+ const priorOffice=buildFingerprint(root,sources);
+ put('ecosystem/office-box-outbox.cjs','module.exports={enabled:true};');
+ assert.notEqual(priorOffice,buildFingerprint(root,sources),'Office Box integration source changes MUST invalidate runtime cache');
+ const priorKim=buildFingerprint(root,sources);
+ put('ui-overlays/sbc-kim-chief-of-staff-page.js','/* Changed Kim interface */');
+ assert.notEqual(priorKim,buildFingerprint(root,sources),'Kim overlay changes MUST invalidate runtime cache');
+ const refreshed=buildFingerprint(root,sources);
  put('sbc-persistent/data/customer-state.json','{"customers":310}');
- assert.equal(changed,buildFingerprint(root,sources),'persistent database files must not trigger a rebuild');
+ assert.equal(refreshed,buildFingerprint(root,sources),'persistent database files must not trigger a rebuild');
  assert.equal(fs.readFileSync(path.join(root,'sbc-persistent/data/customer-state.json'),'utf8'),'{"customers":310}');
  put('scripts/second.js','module.exports=false;');
- assert.notEqual(changed,buildFingerprint(root,sources),'new source assets must invalidate');
+ assert.notEqual(refreshed,buildFingerprint(root,sources),'new source assets must invalidate');
  fs.unlinkSync(path.join(root,'scripts/second.js'));
  fs.symlinkSync(path.join(root,'bootstrap.js'),path.join(root,'scripts/link.js'));
  assert.throws(()=>buildFingerprint(root,sources),/symbolic source input/,'source symlinks must not be dereferenced');
