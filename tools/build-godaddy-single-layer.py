@@ -113,6 +113,8 @@ with zipfile.ZipFile(io.BytesIO(raw)) as src:
             fail("compiled runtime contains forbidden archive or dependencies " + name)
         if name.lower().endswith(".csv"):
             fail("refusing personal or prospect CSV in verified prebuilt: " + name)
+        if name.startswith("starter-leads/"):
+            fail("refusing historic prospect backup directory: " + name)
         files[name] = src.read(info)
 required = {"server.js", "package.json", "package-lock.json", "public/index.html", "browser_public/index.html"}
 if not required.issubset(files):
