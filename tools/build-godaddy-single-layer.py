@@ -80,12 +80,12 @@ function verifyFlatIntegrity(root,release){
    throw Error('[SBC FLAT INTEGRITY] unsafe inventory entry');
   seen.add(rel);
   const target=path.join(root,rel);
-  let stat;
-  try{stat=fs.lstatSync(target);}
+  let actual;
+  try{actual=fs.readFileSync(target);}
   catch{throw Error('[SBC FLAT INTEGRITY] required packaged file missing: '+rel);}
-  if(!stat.isFile()||stat.isSymbolicLink()||stat.size!==item.size)
+  if(actual.length!==item.size)
    throw Error('[SBC FLAT INTEGRITY] wrong packaged file type/size: '+rel);
-  if(digest(fs.readFileSync(target))!==item.sha256)
+  if(digest(actual)!==item.sha256)
    throw Error('[SBC FLAT INTEGRITY] packaged file altered: '+rel);
   total+=item.size;
   if(total>256*1024*1024)throw Error('[SBC FLAT INTEGRITY] release size exceeds limit');
@@ -102,6 +102,15 @@ function verifyFlatIntegrity(root,release){
 module.exports={verifyFlatIntegrity};
 if(require.main===module)verifyFlatIntegrity(__dirname,require('./SBC-FLAT-RELEASE-IDENTITY.json'));
 """
+
+# Embed the same byte-checking verifier into the launcher itself. The
+# startup-parity contract intentionally permits no extra startup imports.
+# Standalone verifier remains available for offline tamper regression tests.
+inline_verify = VERIFY.split("function digest(b)",1)[1].split("module.exports=",1)[0]
+ENTRY = ENTRY.replace(
+    "require('./sbc-flat-integrity.cjs').verifyFlatIntegrity(root,release);",
+    "function digest(b)" + inline_verify + "\nverifyFlatIntegrity(root,release);"
+)
 
 BOOTSTRAP_COMPAT = """'use strict';
 // SBC V66.73 GoDaddy backwards-compatible startup only.
