@@ -86,7 +86,7 @@ jobs:
           const p=JSON.parse(fs.readFileSync('package.json','utf8'));
           const cfg=JSON.parse(fs.readFileSync('.airo/config.json','utf8'));
           if(p.engines?.node!=='22.x'||p.scripts?.start!=='node sbc-godaddy-flat-entrypoint.cjs'||
-             p.scripts?.build!=='echo build'||!cfg.serveCommand?.includes('npm start'))
+             p.scripts?.build!=='echo build'||cfg.buildCommand!=='npm run build'||!cfg.serveCommand?.includes('npm start'))
             throw Error('GoDaddy app runtime/build contract changed unexpectedly');
           NODE
           echo '[SBC GODADDY IMPORT] npm install runtime dependencies'
