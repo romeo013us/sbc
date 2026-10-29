@@ -1,9 +1,10 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "66d646a4ec2d8380d749135c879e8c6270169c59",
-  "sourceFingerprint": "c3490a08b51c88030b5a0048529ac0962986b413fe9c06551f0211cbe521818e",
-  "serverSha256": "04fb2bf9918d738d2ceea7085b9cda77923c14f58edaa1ce4901a704e4b80372",
+  "sourceCommit": "cee2bdf22686524cf64e35100472203e230cd5a7",
+  "sourceFingerprint": "f0305ea4f92debdd01ec9e38e6faf227114de03c4d1af0e8de9111ccbee8b52c",
+  "serverSha256": "ddd659ec1af73286c118aef66712b96821023c999a97bcabaaf2158b7d5dc1e7",
+  "inventorySha256": "06aa38ea512a70ed94e598096e170282f4459f01790d9b023db3e862a1946c1d",
   "uiOverlays": {
     "kimChiefOfStaffSha256": "c1ad30fa01c2cb55d89fda99a2198b2c096a21496fd8544baf47cdf1e92ca690"
   }

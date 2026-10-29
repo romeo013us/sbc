@@ -1,7 +1,7 @@
 {
-  "sourceCommit": "66d646a4ec2d8380d749135c879e8c6270169c59",
-  "sourceFingerprint": "c3490a08b51c88030b5a0048529ac0962986b413fe9c06551f0211cbe521818e",
-  "artifactSha256": "cf69e9cac06c905b91b680b3ab59c69daf1e71632b590838443c3e3cec4aa2c0",
+  "sourceCommit": "cee2bdf22686524cf64e35100472203e230cd5a7",
+  "sourceFingerprint": "f0305ea4f92debdd01ec9e38e6faf227114de03c4d1af0e8de9111ccbee8b52c",
+  "artifactSha256": "5495334adf3ff0fa4657d737476fe2050beb8ea70a0debeab0765ca13b394fb6",
   "buildBranch": "main",
   "deployBranch": "godaddy-deploy",
   "createdBy": "SBC GoDaddy Single-Layer ZIP GitHub Actions"
