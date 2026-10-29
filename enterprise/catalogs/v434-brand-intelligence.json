@@ -1,0 +1,356 @@
+{
+  "version": "43.4.0",
+  "source": "SBC Brand Intelligence roadmap",
+  "items": [
+    {
+      "id": "brand-001",
+      "name": "Founder Authority Signal Engine",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Turns verified founder actions, launches, customer wins and operating milestones into reusable authority signals.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-002",
+      "name": "Romeo Story-to-Content Transformer",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Converts documented business moments into draft stories while preserving factual claims and founder voice.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-003",
+      "name": "Founder Proof-of-Work Timeline",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Maintains a chronological record of shipped work, launches, milestones and verified outcomes.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-004",
+      "name": "SBC Origin Story Engine",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Keeps the SBC origin, mission and evolution available for consistent brand storytelling.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-005",
+      "name": "Founder Voice DNA",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Stores approved tone, phrasing preferences and brand vocabulary for content drafts.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-006",
+      "name": "Authority Moment Detector",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Flags legitimate moments worth documenting, such as launches, customer wins or process improvements.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-007",
+      "name": "Founder Spotlight Scheduler",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Queues approved founder stories for publishing on an explicit schedule.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-008",
+      "name": "Behind-the-Business Publisher",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Creates draft content around real operations, team building and business progress.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-009",
+      "name": "Founder Credibility Graph",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Links verified founder actions, projects, customer outcomes and public proof points.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-010",
+      "name": "SBC Brand Memory Core",
+      "group": "Founder & SBC Brand Intelligence",
+      "description": "Centralizes approved brand facts, offers, positioning, stories and proof.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-011",
+      "name": "Miami Business Signal Engine",
+      "group": "Miami & Local Brand",
+      "description": "Tracks relevant local business themes that can inform SBC content and outreach.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-012",
+      "name": "Hyperlocal SBC Opportunity Map",
+      "group": "Miami & Local Brand",
+      "description": "Organizes local opportunities by neighborhood, industry and business need.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-013",
+      "name": "Neighborhood Business Story Radar",
+      "group": "Miami & Local Brand",
+      "description": "Surfaces local-business stories that may be appropriate for SBC content or partnerships.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-014",
+      "name": "Local Partnership Discovery Engine",
+      "group": "Miami & Local Brand",
+      "description": "Tracks potential local partnerships and collaboration opportunities.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-015",
+      "name": "Miami Founder Network Graph",
+      "group": "Miami & Local Brand",
+      "description": "Maps approved founder and business relationships for partnership context.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-016",
+      "name": "Community Contribution Tracker",
+      "group": "Miami & Local Brand",
+      "description": "Records legitimate community participation, sponsorships and contributions.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-017",
+      "name": "Local Authority Content Generator",
+      "group": "Miami & Local Brand",
+      "description": "Drafts locally relevant content from verified SBC knowledge and business observations.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-018",
+      "name": "Local Business Success Map",
+      "group": "Miami & Local Brand",
+      "description": "Connects customer wins and local business outcomes into a factual portfolio view.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-019",
+      "name": "Miami SMB Pulse Dashboard",
+      "group": "Miami & Local Brand",
+      "description": "Summarizes local SMB signals, internal lead patterns and approved market observations.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-020",
+      "name": "Local Reputation Opportunity Detector",
+      "group": "Miami & Local Brand",
+      "description": "Finds gaps where accurate customer proof or helpful local content can strengthen visibility.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-021",
+      "name": "Customer Victory Engine",
+      "group": "Customer Proof",
+      "description": "Turns verified customer milestones into candidate stories for approval.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-022",
+      "name": "Proof-of-Results Timeline",
+      "group": "Customer Proof",
+      "description": "Organizes measurable customer outcomes with dates and source records.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-023",
+      "name": "Customer Story Composer",
+      "group": "Customer Proof",
+      "description": "Drafts customer stories from approved facts and permissions.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-024",
+      "name": "Trust Signal Composer",
+      "group": "Customer Proof",
+      "description": "Assembles verified credentials, process proof, reviews and outcomes into reusable trust blocks.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-025",
+      "name": "Review Momentum Radar",
+      "group": "Customer Proof",
+      "description": "Tracks review-request and response activity without fabricating or manipulating reviews.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-026",
+      "name": "Testimonial Authenticity Ledger",
+      "group": "Customer Proof",
+      "description": "Stores the source and approval state for testimonials and customer quotes.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-027",
+      "name": "Customer Permission Gate",
+      "group": "Customer Proof",
+      "description": "Requires documented customer permission before publishing identifiable customer stories.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-028",
+      "name": "Proof-of-Service Vault",
+      "group": "Customer Proof",
+      "description": "Stores links or references to completed work and service evidence.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-029",
+      "name": "Customer Milestone Spotlight",
+      "group": "Customer Proof",
+      "description": "Identifies meaningful, verified customer milestones for optional promotion.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-030",
+      "name": "SBC Customer Wall of Progress",
+      "group": "Customer Proof",
+      "description": "Builds an internal gallery of approved customer progress and wins.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-031",
+      "name": "One Story \u2192 Everywhere Engine",
+      "group": "Brand Distribution",
+      "description": "Repurposes one approved story into channel-specific drafts without changing factual claims.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-032",
+      "name": "Content Saturation Controller",
+      "group": "Brand Distribution",
+      "description": "Prevents over-posting the same story or message across channels.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-033",
+      "name": "Audience Resonance Mapper",
+      "group": "Brand Distribution",
+      "description": "Maps approved content themes to audience segments and observed engagement.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-034",
+      "name": "Brand Consistency Sentinel",
+      "group": "Brand Distribution",
+      "description": "Checks drafts against approved SBC brand facts, voice and offer language.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-035",
+      "name": "SBC Visual Identity Guardian",
+      "group": "Brand Distribution",
+      "description": "Checks content metadata against the approved SBC visual identity.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-036",
+      "name": "Brand Asset Relationship Graph",
+      "group": "Brand Distribution",
+      "description": "Links logos, campaigns, stories, offers and approved assets.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-037",
+      "name": "Content Opportunity Radar",
+      "group": "Brand Distribution",
+      "description": "Surfaces content opportunities from real business events and unanswered customer questions.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-038",
+      "name": "Evergreen Knowledge Recycler",
+      "group": "Brand Distribution",
+      "description": "Refreshes older useful content using current verified facts.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-039",
+      "name": "Campaign Story Arc Builder",
+      "group": "Brand Distribution",
+      "description": "Builds multi-post campaign arcs around one approved business theme.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-040",
+      "name": "Brand Signal Attribution",
+      "group": "Brand Distribution",
+      "description": "Tracks where brand content originated and what verified source supports it.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-041",
+      "name": "SBC Brand Twin",
+      "group": "Unique SBC Brand",
+      "description": "Creates a structured model of approved SBC positioning, proof, offers and voice.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-042",
+      "name": "\u201cWhy SBC?\u201d Intelligence Layer",
+      "group": "Unique SBC Brand",
+      "description": "Maintains evidence-backed answers for why a customer might choose SBC.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-043",
+      "name": "Founder-to-Customer Context Bridge",
+      "group": "Unique SBC Brand",
+      "description": "Connects founder initiatives to the customer outcomes they are intended to improve.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-044",
+      "name": "Trust Gap Detector",
+      "group": "Unique SBC Brand",
+      "description": "Identifies missing proof or unclear claims that should be addressed before publication.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-045",
+      "name": "Brand Gravity Scorecard",
+      "group": "Unique SBC Brand",
+      "description": "Tracks factual visibility indicators such as content consistency, proof coverage and customer-story readiness.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-046",
+      "name": "Reputation Recovery Playbook",
+      "group": "Unique SBC Brand",
+      "description": "Provides an approved workflow for responding to negative feedback and documenting resolution.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-047",
+      "name": "SBC Knowledge-to-Authority Engine",
+      "group": "Unique SBC Brand",
+      "description": "Turns internal expertise and completed work into educational, evidence-backed content.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-048",
+      "name": "Founder Legacy Archive",
+      "group": "Unique SBC Brand",
+      "description": "Preserves approved milestones, lessons and historical business records.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-049",
+      "name": "Brand Serendipity Engine",
+      "group": "Unique SBC Brand",
+      "description": "Surfaces unexpected but relevant connections between SBC work, customers and content opportunities.",
+      "mode": "local-safe"
+    },
+    {
+      "id": "brand-050",
+      "name": "SBC \u201cMoment Maker\u201d",
+      "group": "Unique SBC Brand",
+      "description": "Packages a real milestone into a coordinated, approval-gated brand moment.",
+      "mode": "local-safe"
+    }
+  ]
+}

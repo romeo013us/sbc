@@ -4,7 +4,8 @@ const path=require('path');
 const crypto=require('crypto');
 const os=require('os');
 const ROOT=path.resolve(__dirname,'..');
-const CATALOG=JSON.parse(fs.readFileSync(path.join(ROOT,'data','v4341-kim-resilience-control.json'),'utf8'));
+// Release-owned static catalog; /data is reserved for persistent SBC state.
+const CATALOG=require('./catalogs/v4341-kim-resilience-control.json');
 const OWNER_FILE=path.join(ROOT,'data','sbc-owner-protection.json');
 const MANIFEST_FILE=path.join(ROOT,'data','sbc-integrity-manifest.json');
 const now=()=>new Date().toISOString();

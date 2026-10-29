@@ -10,8 +10,12 @@ const RESILIENCE_FILE = path.join(ROOT, 'data', 'v434-resilience-suite.json');
 const BRAND_FILE = path.join(ROOT, 'data', 'v434-brand-intelligence.json');
 const AUDIT_FILE = path.join(ROOT, 'data', 'v434-audit-chain.jsonl');
 
-const RESILIENCE = JSON.parse(fs.readFileSync(RESILIENCE_FILE, 'utf8'));
-const BRAND = JSON.parse(fs.readFileSync(BRAND_FILE, 'utf8'));
+// The resilience and brand catalogs are release-owned code assets, not live CRM state.
+// GoDaddy may mount /data as persistent storage without these packaged defaults.
+// Keep the catalogs alongside this module so a fresh persistent volume cannot
+// prevent HTTP startup. Never synthesize empty catalogs or modify /data here.
+const RESILIENCE = require('./catalogs/v434-resilience-suite.json');
+const BRAND = require('./catalogs/v434-brand-intelligence.json');
 
 const now = () => new Date().toISOString();
 const clean = (v, n = 2000) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
