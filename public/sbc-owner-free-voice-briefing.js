@@ -19,7 +19,7 @@
    const hour=new Date().getHours();
    const greeting=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
    let previous=-1;
-   try{const stored=localStorage.getItem(rotationKey);if(stored!==null&&/^\\d+$/.test(stored))previous=Number(stored)%themes.length;}catch(_){}
+   try{const stored=localStorage.getItem(rotationKey);if(stored!==null&&/^\d+$/.test(stored))previous=Number(stored)%themes.length;}catch(_){}
    const index=(previous+1)%themes.length;
    try{localStorage.setItem(rotationKey,String(index))}catch(_){}
    const topic=themes[index];
