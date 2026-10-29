@@ -68,6 +68,41 @@ jobs:
           if unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -E '(^|/)node_modules/|\.zip$|^\.env($|\.)|^\.github/|^\.git/'; then
             echo 'Forbidden dependency, nested archive, CI workflow or secret in GoDaddy flat ZIP'; exit 1
           fi
+      - name: Reproduce GoDaddy Folder upload dependency installation and build
+        # The host runs npm install, then npm run build, after extracting the app.
+        # Our prior release CI validated only the archive and scripts, not this
+        # actual production-dependency step. Never run against live GoDaddy.
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_dir="$(mktemp -d)"
+          trap 'rm -rf "$install_dir"' EXIT
+          unzip -q dist/SBC-GoDaddy-SINGLE-LAYER-APP.zip -d "$install_dir"
+          cd "$install_dir"
+          test -f package.json && test -f package-lock.json
+          test -f .airo/config.json && test -f sbc-godaddy-flat-entrypoint.cjs
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const cfg=JSON.parse(fs.readFileSync('.airo/config.json','utf8'));
+          if(p.engines?.node!=='22.x'||p.scripts?.start!=='node sbc-godaddy-flat-entrypoint.cjs'||
+             p.scripts?.build!=='echo build'||!cfg.serveCommand?.includes('npm start'))
+            throw Error('GoDaddy app runtime/build contract changed unexpectedly');
+          NODE
+          echo '[SBC GODADDY IMPORT] npm install runtime dependencies'
+          npm install --omit=dev --no-audit --no-fund
+          echo '[SBC GODADDY IMPORT] npm run build'
+          npm run build
+          echo '[SBC GODADDY IMPORT] confirm immutable files and all critical modules'
+          node sbc-flat-integrity.cjs
+          node --check sbc-godaddy-flat-entrypoint.cjs
+          node - <<'NODE'
+          for(const name of ['express','mysql2','redis','twilio','ws','nodemailer','amqplib','ssh2-sftp-client','body-parser','express-rate-limit']){
+            require.resolve(name);
+          }
+          console.log('[SBC GODADDY IMPORT] PASS: exact folder-upload install/build and compiled release integrity');
+          NODE
+
       - name: Triple-check actual packaged browser, revenue and CRM gates
         run: |
           set -euo pipefail
