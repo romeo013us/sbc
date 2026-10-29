@@ -53,6 +53,9 @@ async function main() {
     async ping() {}, async beginTransaction() {},
     async query(sql, params=[]) {
       statements.push({ sql, params });
+      // The current guarded CRM path acquires and releases a named tenant mutex.
+      if (/^\s*SELECT GET_LOCK\(/i.test(sql)) return [[{ acquired: 1 }], []];
+      if (/^\s*SELECT RELEASE_LOCK\(/i.test(sql)) return [[{ released: 1 }], []];
       if (/^\s*SELECT id, business_name FROM sbc_customers/i.test(sql)) return [[], []];
       if (/^\s*INSERT INTO sbc_customers/i.test(sql)) return [{ affectedRows: 1, insertId: 1 }, []];
       if (/^\s*SELECT id,business_name,contact_name,email,phone,status,source,tenant_id FROM sbc_customers/i.test(sql)) return [[{ id: params[1], business_name: 'Example Business', contact_name: 'Owner', email: 'owner@example.com', phone: '3055550100', status: 'Lead', source: 'SBC Lead Workspace', tenant_id: 1 }], []];
@@ -91,6 +94,8 @@ async function main() {
   assert.equal(committed, 1, 'transaction commits after read-after-write verification');
   assert.equal(rolledBack, 0);
   assert.equal(released, 1);
+  assert.ok(statements.some(x=>/^\s*SELECT GET_LOCK\(/i.test(x.sql)), 'tenant mutex obtained before mutation');
+  assert.ok(statements.some(x=>/^\s*SELECT RELEASE_LOCK\(/i.test(x.sql)), 'tenant mutex released after transaction');
   assert.equal(fakeDb.customers.length, 1, 'in-memory cache updates only after commit');
   assert.equal(auditCalls, 1);
   assert.equal(saveCalls, 0, 'lead save must not invoke broad snapshot writer');
