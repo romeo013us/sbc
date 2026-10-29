@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm install --omit=dev --no-audit --no-fund && npm run build",
   "serveCommand": "NODE_ENV=production npm start",
   "packageManager": "npm"
 }

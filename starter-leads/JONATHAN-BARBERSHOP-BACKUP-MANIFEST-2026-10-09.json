@@ -1,0 +1,17 @@
+{
+  "release": "SBC OS V65.0.9 — Jonathan Barbershop Backup Intake",
+  "source": "User-provided SBC Leads - Backup worksheet",
+  "records": 18,
+  "industry": "Barber Shop",
+  "city_context": "Miami, Florida (based on source worksheet context; individual addresses not supplied)",
+  "status": "STAGED_PENDING_OWNER_VERIFICATION",
+  "leadTemperature": "Cold",
+  "leadScore": 0,
+  "sourceUrlsPreserved": true,
+  "automaticOutreach": false,
+  "activeCustomerInsertion": false,
+  "recoveryBaselineContribution": false,
+  "ingestion": "Existing startup lead seeder, only after authoritative MySQL recovery gate clears",
+  "dedupe": "Normalized business name for this batch; existing CRM duplicate check applies",
+  "dataQualityNote": "User-supplied research claims are preserved as notes and have not been independently reverified in this build."
+}

@@ -2,13 +2,12 @@
 'use strict';
 const ID='sbcSalesOperatingModelV6563';
 function mount(){
- if(!window.state?.me||window.state.me.role!=='owner')return;
  if(document.getElementById(ID))return;
  const p=document.createElement('section');p.id=ID;
  p.innerHTML='<div class="sbc63-head"><div><div class="sbc63-eyebrow">SALES OPERATING MODEL · V65.1.63</div><h2>Human-led launch. AI-ready scale.</h2><p>Start selling now without removing the AI calling capability planned for scale.</p></div><span class="sbc63-status">OPERATING PLAN</span></div><div class="sbc63-grid"><article class="sbc63-lane sbc63-leads"><span class="sbc63-number">01</span><h3>Lorna · Lead engine</h3><p>Keep sourcing and verifying qualified business prospects in the central CRM.</p><div class="sbc63-foot">HIRING MILESTONE<strong>800 qualified leads</strong></div></article><article class="sbc63-lane sbc63-human"><span class="sbc63-number">02</span><h3>Human outbound calls</h3><p>Owner-led calls can start now. Log outcomes, objections, appointments, and follow-ups.</p><div class="sbc63-foot">INITIAL EXECUTION<strong>Human-assisted</strong></div></article><article class="sbc63-lane sbc63-digital"><span class="sbc63-number">03</span><h3>AI text &amp; email</h3><p>Continue AI-assisted outreach, personalization, and follow-up organization.</p><div class="sbc63-foot">CURRENT CHANNEL<strong>Retained</strong></div></article><article class="sbc63-lane sbc63-voice"><span class="sbc63-number">04</span><h3>AI voice calling</h3><p>Keep the voice SDK, calling interface, and AI calling architecture intact. This update does not disable them.</p><div class="sbc63-foot">CAPABILITY<strong>Preserved · live test still required</strong></div></article></div><div class="sbc63-rule"><strong>Hiring rule:</strong> build toward 800 qualified leads, learn from manual calls, then assess workload and results before hiring an outbound caller.<span>Informational UI only: no call routing, credentials, CRM records, or recovery/writer safeguards are changed.</span></div>';
  const d=document.getElementById('sbcProductionControlDashboard');
  if(d&&d.parentNode)d.parentNode.insertBefore(p,d);else (document.getElementById('content')||document.querySelector('main')||document.body).appendChild(p);
 }
-function start(){window.addEventListener('sbc:authenticated',mount);mount();new MutationObserver(mount).observe(document.documentElement,{childList:true,subtree:true})}
+function start(){mount();new MutationObserver(mount).observe(document.documentElement,{childList:true,subtree:true})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

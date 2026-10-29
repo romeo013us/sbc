@@ -15,7 +15,7 @@
     document.getElementById('sbcAgentOSHolds')?.addEventListener('click',async()=>{try{const x=await api('/api/agent-os/holds');alert(x.holds?.length?`${x.holds.length} frozen economic hold(s) require owner approval.`:'No frozen economic holds.');}catch(e){alert(e.message)}});
   }
   let sbcAgentOSInFlight=false;
-  async function load(){if(!window.state?.me||window.state.me.role!=='owner')return false;if(sbcAgentOSInFlight)return false;sbcAgentOSInFlight=true;try{const d=await api('/api/agent-os/status');render(d);return true}catch(e){
+  async function load(){if(sbcAgentOSInFlight)return false;sbcAgentOSInFlight=true;try{const d=await api('/api/agent-os/status');render(d);return true}catch(e){
     const target=document.querySelector('#dashboard')||document.querySelector('.dashboard')||document.querySelector('main');
     if(target){let panel=document.getElementById('sbcAgentOSPanel');if(!panel){panel=document.createElement('section');panel.id='sbcAgentOSPanel';panel.className='sbc-agent-os-panel';target.prepend(panel)}
       panel.innerHTML='<div class="sbc-agent-os-head"><div><div class="sbc-agent-kicker">SBC AGENT OPERATING SYSTEM</div><h2>Agent Control Plane</h2><p>Intelligence service is temporarily unavailable. Command Center UI remains operational.</p></div><div class="sbc-agent-governor"><strong>OWNER</strong><span>CONTROLLED</span></div></div><div class="sbc-agent-os-foot"><span>SBC_V6529_OPEN_READINESS · UI release 65.1.31</span><button type="button" id="sbcAgentOSRetry">Retry</button></div>';
@@ -24,7 +24,7 @@
     return false;
   }finally{sbcAgentOSInFlight=false}}
   window.sbcAgentOSRefresh=load;
-  window.addEventListener('sbc:authenticated',()=>setTimeout(load,150));document.addEventListener('DOMContentLoaded',()=>setTimeout(load,1200));
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(load,1200));
   setInterval(()=>{if(document.visibilityState==='visible'&&window.state?.me)load()},60000);
 })();
 

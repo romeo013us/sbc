@@ -1,4 +1,3 @@
-// SBC_V6676_ROLE_LOGIN_AND_DEMO
 // SBC_V6521_ATOMIC_WEBHOOK_RECOVERY
 // SBC_V6520_STRICT_TENANT_HARDENING
 function __sbcRequireTenantId(value){const n=Number(value);if(!Number.isSafeInteger(n)||n<=0)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED',status:403});return n;}
@@ -313,18 +312,18 @@ function sbcLornaAllowedRequest(req,user){
  const p=String(req.path||''),m=String(req.method||'GET').toUpperCase();
  if(!p.startsWith('/api/'))return !/^\/(?:office-box|ops-center|admin|settings|system-console|commercial-console)(?:\/|$)/i.test(p);
  if((p==='/api/login'||p==='/api/logout')&&['POST','GET'].includes(m))return true;
- if(['/api/me','/api/release-identity','/api/bootstrap','/api/catalog'].includes(p))return m==='GET';
+ if(p==='/api/me'||p==='/api/release-identity')return m==='GET';
  if(p==='/api/v9/bootstrap')return m==='GET';
  if(p==='/api/v9/lead-verification')return m==='GET';
  if(/^\/api\/v9\/lead-verification\/[^/]+$/.test(p))return m==='POST';
  if(p==='/api/v9/time/clock')return m==='POST';
  if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
- if(p==='/api/workforce/lead-draft')return ['GET','PUT','DELETE'].includes(m);
+ if(p==='/api/workforce/lead-draft')return m==='GET';
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
- if(/^\/api\/workforce\/leads\/[^/]+$/.test(p))return ['GET','PUT'].includes(m);
+ if(/^\/api\/workforce\/leads\/[^/]+$/.test(p))return m==='GET';
  if(p==='/api/v10/leads/submit')return m==='POST';
- // Researchers use /api/workforce/leads; owner CSV import stays owner-only.
+ if(p==='/api/crm/leads/import')return m==='POST';
  if(p==='/api/training')return m==='GET';
  if(/^\/api\/training\/courses\/[^/]+$/.test(p))return m==='GET';
  if(/^\/api\/training\/history\/[^/]+$/.test(p)&&m==='GET'){
@@ -344,7 +343,7 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
  if(isApi&&['/api/login','/api/release-identity'].includes(p))return next();
  try{
   const user=await sessionUser(req);
-  req._sbcRoleIdentity=user;if(!user||!sbcLornaRole(user))return next();
+  if(!user||!sbcLornaRole(user))return next();
   if(sbcLornaAllowedRequest(req,user))return next();
   res.setHeader('Cache-Control','no-store');
   return res.status(403).json({ok:false,code:'LORNA_LEAST_PRIVILEGE_DENIED',error:'This page or API is outside the Lead Researcher role.'});
@@ -354,22 +353,6 @@ app.use(async function sbcLornaLeastPrivilegeGate(req,res,next){
  }
 });
 
-// SBC_V6676_DEMO_VIEWER_API: server-enforced allowlist, not a cosmetic CSS restriction.
-function sbcDemoViewerAllowed(method,route){
- const p=String(route||'').split('?')[0],m=String(method||'GET').toUpperCase();
- if(m==='POST'&&p==='/api/logout')return true;
- return m==='GET'&&['/api/me','/api/bootstrap','/api/catalog','/api/release-identity'].includes(p);
-}
-app.use(async function sbcDemoViewerGate(req,res,next){
- const p=String(req.path||'');if(!p.startsWith('/api/')||p==='/api/login')return next();
- try{
-  const user=Object.hasOwn(req,'_sbcRoleIdentity')?req._sbcRoleIdentity:await sessionUser(req);
-  if(!user||String(user.role||'')!=='demo')return next();
-  if(sbcDemoViewerAllowed(req.method,p))return next();
-  res.setHeader('Cache-Control','private, no-store');
-  return res.status(403).json({ok:false,code:'SBC_DEMO_READ_ONLY',error:'Demo mode uses sample data only. Sign in as the owner to perform business operations.'});
- }catch(e){return res.status(503).json({ok:false,code:'DEMO_AUTH_UNAVAILABLE',error:'Demo permissions could not be verified safely.'});}
-});
 app.get('/api/gateways/readiness',auth,(req,res)=>{res.json({ok:true,...gatewayReadiness(),note:'Secrets are never returned.'}); });
 app.get('/api/gateways/public-readiness',(req,res)=>{
   if(String(process.env.SBC_ZERO_TRUST_ENFORCE||'true')==='true')return res.status(404).json({error:'Public gateway discovery disabled.'});
@@ -898,16 +881,7 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
       return {ok:false,orderId:order.id,status:'AMOUNT_MISMATCH',squarePaymentId,expectedAmountCents,paymentAmountCents};
     }
     const alreadyPaid=SBC_V6659_SQUARE_PROOF.persistedCompletion(orderParsed(order),payment);
-    const sbcLaunchQaDurable=Number(order.price)===1&&
-      String(order.product||'')==='SBC Launch QA - $1 Test Service'&&
-      orderParsed(order).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&
-      orderParsed(order).sbcLaunchQa?.version===1&&
-      Array.isArray(orderParsed(order).items)&&
-      orderParsed(order).items.some(line=>String(line?.sku||'')==='SBC_LAUNCH_QA_1USD');
-    rec.status='PAID';rec.completedAt=rec.completedAt||now();order.paymentStatus='Paid';order.status='Paid';
-    if(!sbcLaunchQaDurable)order.fulfillmentStatus='Ready for Fulfillment';
-    else if(!String(order.fulfillmentStatus||'').startsWith('QA '))
-      order.fulfillmentStatus='QA - NO VENDOR FULFILLMENT';
+    rec.status='PAID';rec.completedAt=rec.completedAt||now();order.paymentStatus='Paid';order.status='Paid';order.fulfillmentStatus='Ready for Fulfillment';
     if(alreadyPaid){
       rec.duplicateCompletedAt=rec.duplicateCompletedAt||now();
       records.splice(5000); await saveData();
@@ -915,17 +889,6 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
     }
     updateOrderParsed(order,{squarePaymentStatus:'PAID',squarePaymentId:rec.squarePaymentId,squarePaymentCompletedAt:rec.completedAt,fulfillmentStatus:'Ready for Fulfillment'});
     addActivity('payment_received',`Square payment received for ${order.id}`,{orderId:order.id,squareOrderId:rec.squareOrderId,squarePaymentId:rec.squarePaymentId,amount:order.price});
-    // SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE: explicit Office Box sales require dedicated POST-COMMIT V2 flow.
-    const sbcOfficeBoxExplicitPurchase=(()=>{
-      const notes=orderParsed(order);
-      const lines=Array.isArray(notes.items)?notes.items:[];
-      const hasLine=lines.some(line=>/^OFFICE_BOX(?:_|$)/i.test(String(line?.sku||'')));
-      const hasMeta=/^OFFICE_BOX(?:_|$)/i.test(String(notes.officeBoxSku||order.officeBoxSku||''));
-      const hasName=/office[ _-]*box/i.test(String(order.product||'')+' '+String(notes.bundleId||''));
-      return hasLine||hasMeta||hasName;
-    })();
-    const sbcLaunchQaExplicitPurchase=sbcLaunchQaDurable;
-    if(!sbcOfficeBoxExplicitPurchase&&!sbcLaunchQaExplicitPurchase){
     try{await REVENUE_AUTOPILOT_V56150.recordFunnelEvent('payment_completed',order.customerId,{tenantId:order.tenantId||TENANT_DEFAULT_ID,orderId:order.id,amount:Number(order.price||0),idempotencyKey:`payment_completed:${order.id}`});}catch(e){}
     const c=db.customers.find(x=>x.id===order.customerId);if(c){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,orderParsed(order).bundleId||'',orderParsed(order).bundleName||order.product);}
     // V60.2 Commercial OS: successful paid orders create/replay a commercial tenant idempotently.
@@ -943,16 +906,6 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
     try{await GOD_KIM.orchestrate({order,requestUser:{id:'square-webhook',name:'GodKim / Square'},createFulfillmentJobsForOrder,processReadyFulfillmentJobs,vendorCapabilities,addActivity,audit,saveData,db,catalog:CATALOG,sendCustomerStatus:async(order,msg)=>{const c=(db.customers||[]).find(x=>x.id===order.customerId);if(c&&c.email)return sendEmail(c,msg.subject,msg.body);return {sent:false};},testMode:false});}catch(e){addActivity('fulfillment_automation_error',`GodKim orchestration could not start for ${order.id}: ${e.message}`,{orderId:order.id});}
     try{const handoff=await sendBig3OfficeBoxHandoff(order,{reason:'square-payment-completed'});addActivity('big3_office_box_handoff',handoff.ok?`Office Box handoff ${handoff.skipped?'skipped':'sent'} for ${order.id}`:`Office Box handoff not completed for ${order.id}`,{orderId:order.id,officeBox:handoff});}catch(e){addActivity('big3_office_box_handoff_error',`Office Box handoff failed for ${order.id}: ${e.message}`,{orderId:order.id})}
     if(!orderParsed(order).customerIntakeSentAt){try{await sendOrderIntake(order,baseOverride)}catch(e){addActivity('intake_error',`Customer intake could not be sent for ${order.id}: ${e.message}`,{orderId:order.id})}}
-    }else if(sbcLaunchQaExplicitPurchase){
-      order.fulfillmentStatus='QA VERIFIED - NO FULFILLMENT';
-      updateOrderParsed(order,{fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',sbcLaunchQaPaidVerified:true});
-      addActivity('launch_qa_payment_verified','$1 launch QA Square capture verified; vendor actions held for '+order.id,
-        {orderId:order.id,paymentId:rec.squarePaymentId,amountCents:100,source:'SQUARE_CAPTURE'});
-    }else{
-      addActivity('office_box_precommit_fulfillment_quarantined',
-        'Office Box paid capture saved; generic fulfillment and legacy invitation held for '+order.id,
-        {orderId:order.id,reason:'OFFICE_BOX_V2_COMMITTED_MYSQL_PROVIDER_PROOF_REQUIRED'});
-    }
   } else if(status==='CANCELED'||status==='FAILED'){
     rec.status=status;order.paymentStatus=status==='FAILED'?'Failed':'Canceled';order.fulfillmentStatus='Payment Required';updateOrderParsed(order,{squarePaymentStatus:rec.status});
     if(status==='FAILED'){
@@ -4189,16 +4142,8 @@ const SEEDED_CREDENTIALS={
 function ensureDemoUser(){
   db.users=db.users||[];
   let u=db.users.find(x=>String(x.username||'').toLowerCase()==='demo');
-  if(!u){
-    u={id:'usr_demo',tenantId:TENANT_DEFAULT_ID,username:'demo',name:'SBC Demo Viewer',role:'demo',active:false,
-       mustChangePassword:false,passwordHash:'',expiresAt:'',createdAt:now(),demo:true};
-    db.users.unshift(u);
-  } else {
-    u.role='demo';u.demo=true;
-    // A missing or original publicly seeded credential is NOT a valid viewer login.
-    // Preserve any owner-set active flag and custom password hash verbatim.
-    if(!u.passwordHash||u.passwordHash===SEEDED_CREDENTIALS.demo){u.active=false;u.passwordHash='';}
-  }
+  if(!u){u={id:'usr_demo',tenantId:TENANT_DEFAULT_ID,username:'demo',name:'SBC Demo Viewer',role:'demo',active:true,mustChangePassword:false,passwordHash:SEEDED_CREDENTIALS.demo,expiresAt:'',createdAt:now(),demo:true};db.users.unshift(u);}
+  else {u.role='demo';u.active=true;u.demo=true;if(!u.passwordHash)u.passwordHash=SEEDED_CREDENTIALS.demo;u.mustChangePassword=false;}
   return u;
 }
 function seedTeamLoginPassword(u,key){
@@ -4564,23 +4509,7 @@ app.post('/api/autonomy/control/resume',auth,ownerOnly,async(req,res)=>{try{if(M
 app.post('/api/autonomy/control/sweep',auth,ownerOnly,async(req,res)=>{try{if(MYSQL_RECOVERY_REQUIRED)return res.status(423).json({ok:false,error:'MYSQL_RECOVERY_REQUIRED',readOnly:true});const result=SBC_AUTONOMY.sweep(db,db);await saveData();res.json({ok:true,version:BUILD_VERSION,result});}catch(e){res.status(400).json({ok:false,error:e.message});}});
 app.get('/api/autonomy/control/simulate',auth,ownerOnly,async(req,res)=>res.json({ok:true,version:BUILD_VERSION,simulation:SBC_AUTONOMY.simulate()}));
 
-// SBC_V6676_SYNTHETIC_DEMO: fictional non-billable sample data only.
-function sbcV6676DemoBootstrapData(){
- const createdAt='2026-10-01T14:00:00.000Z';
- const customers=[
-  {id:'sbc_demo_lead_1',tenantId:-1,businessName:'Harbor Glow Studio (Demo)',contactName:'Sample Contact',phone:'555-0100',email:'hello@example.invalid',status:'Lead',source:'Synthetic Demo',industry:'Wellness',websiteStatus:'No Website',dealValue:349,createdAt,demo:true},
-  {id:'sbc_demo_lead_2',tenantId:-1,businessName:'Cypress Creative Works (Demo)',contactName:'Demo Representative',phone:'555-0101',email:'info@example.invalid',status:'Qualified',source:'Synthetic Demo',industry:'Professional Services',dealValue:699,createdAt,demo:true},
-  {id:'sbc_demo_customer_3',tenantId:-1,businessName:'Summit Community Print (Demo)',contactName:'Demo Buyer',phone:'555-0102',email:'sales@example.invalid',status:'Customer',source:'Synthetic Demo',industry:'Retail',dealValue:199,createdAt,demo:true}
- ];
- const quotes=[{id:'demo_quote_1',quoteNumber:'SBC-DEMO-001',customerId:'sbc_demo_lead_2',customerName:'Cypress Creative Works (Demo)',status:'Sent',total:699,items:[{name:'SBC Complete Business Launch',qty:1,unitPrice:699}],createdAt,demo:true}];
- const orders=[{id:'demo_order_1',customerId:'sbc_demo_customer_3',customerName:'Summit Community Print (Demo)',status:'In Production',product:'Demo Business Cards',total:199,createdAt,demo:true}];
- const renewals=[{id:'demo_renew_1',customerId:'sbc_demo_customer_3',customerName:'Summit Community Print (Demo)',status:'Upcoming',amount:49,dueDate:'2026-11-15',demo:true}];
- const activities=[{id:'demo_act_1',type:'customer',message:'Demo prospect qualified',createdAt,meta:{customerId:'sbc_demo_lead_2'},demo:true},
-  {id:'demo_act_2',type:'quote',message:'Demo proposal created — no real email sent',createdAt,meta:{customerId:'sbc_demo_lead_2'},demo:true}];
- return {customers,quotes,orders,renewals,activities,appointments:[],sequences:[],sequenceEnrollments:[],
-  emailTemplates:[],tasks:[],callReports:[],portalAccounts:[],portalMessages:[]};
-}
-app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no-store');let recovery=null;let recoveryProjection=[];if(req.user.role==='demo'){const d=sbcV6676DemoBootstrapData();return res.json({settings:{businessName:'Successful By Choice',tagline:'Digital & Print Solutions',slogan:'Because Why Not?',phone:'305-496-1065',email:'demo@example.com',city:'Miami, Florida',website:'https://sbcmia.com',websites:'https://sbcwebsites.com',office:'DEMO MODE'},customers:d.customers,activities:d.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:d.callReports,storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},quotes:d.quotes,orders:d.orders,renewals:d.renewals,appointments:d.appointments,sequences:d.sequences,sequenceEnrollments:d.sequenceEnrollments,emailTemplates:d.emailTemplates,tasks:d.tasks,portalAccounts:d.portalAccounts,portalMessages:d.portalMessages,hotWebLeads:[],ecosystem:{webLeadBridge:true,squareWebhook:false,customerIntake:true,orderPipelines:{digital:{orders:1,value:699},print:{orders:0,value:0}}},opsSummary:{role:'demo',permissions:SBC_ROLE_PERMISSIONS.demo||[]}});}if(req.user.role==='owner'&&!MYSQL_RECOVERY_REQUIRED){ensureCoreTeamProfiles();}
+app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no-store');let recovery=null;let recoveryProjection=[];if(req.user.role==='demo'){const d=demoBootstrapData();return res.json({settings:{businessName:'Successful By Choice',tagline:'Digital & Print Solutions',slogan:'Because Why Not?',phone:'305-496-1065',email:'demo@example.com',city:'Miami, Florida',website:'https://sbcmia.com',websites:'https://sbcwebsites.com',office:'DEMO MODE'},customers:d.customers,activities:d.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:d.callReports,storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},quotes:d.quotes,orders:d.orders,renewals:d.renewals,appointments:d.appointments,sequences:d.sequences,sequenceEnrollments:d.sequenceEnrollments,emailTemplates:d.emailTemplates,tasks:d.tasks,portalAccounts:d.portalAccounts,portalMessages:d.portalMessages,hotWebLeads:[],ecosystem:{webLeadBridge:true,squareWebhook:false,customerIntake:true,orderPipelines:{digital:{orders:1,value:699},print:{orders:0,value:0}}},opsSummary:{role:'demo',permissions:SBC_ROLE_PERMISSIONS.demo||[]}});}if(req.user.role==='owner'&&!MYSQL_RECOVERY_REQUIRED){ensureCoreTeamProfiles();}
   if(MYSQL_RECOVERY_REQUIRED){
     recovery={required:true,version:BUILD_VERSION,reason:'Authoritative MySQL recovery/reconciliation is required. No startup mutation pipeline is running.',counts:{},identity:{},migrations:{},verifiedBaseline:{customers:VERIFIED_PRE_CORRUPTION_CRM_COUNT,activeLeads:VERIFIED_PRE_CORRUPTION_ACTIVE_LEADS},relationalCore:0,restoredVerifiedLeads:Number((db.customers||[]).filter(c=>c?.leadIntelligence?.recoverySource==='sbc_lead_mesh').length),localCoreCount:(db.customers||[]).length+(db.quotes||[]).length+(db.orders||[]).length+(db.renewals||[]).length};
     try{
@@ -4611,30 +4540,6 @@ app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no
     }catch(e){recovery.diagnosticError=String(e?.message||e);}
   }
   const projectedCustomers=db.customers; // Authoritative CRM only. Recovery candidates are exposed separately and remain read-only.
-  // SBC_V6676_LORNA_BOOT: provide a minimal, tenant-scoped bootstrap for the regular login.
-  if(sbcLornaRole(req.user)){
-   const tenantId=Number(requireRequestTenant(req)),userId=String(req.user.id);
-   const allowed=c=>Number(c.tenantId)===tenantId &&
-    !['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(String(c.status||'Lead').toLowerCase()) &&
-    (!c.assignedTo||String(c.assignedTo)===userId) &&
-    (String(c.verificationStatus||'')!=='Sales Ready'||String(c.assignedTo)===userId);
-   const customers=(db.customers||[]).filter(allowed).map(c=>({
-    id:c.id,tenantId,businessName:c.businessName||'',contactName:c.contactName||'',phone:c.phone||'',email:c.email||'',
-    website:c.website||'',websiteStatus:c.websiteStatus||'',industry:c.industry||'',city:c.city||'',
-    status:c.status||'Lead',source:c.source||'',notes:c.notes||'',verificationStatus:c.verificationStatus||'',
-    leadTemperature:c.leadTemperature||'',assignedTo:c.assignedTo||'',researcherId:c.researcherId||'',
-    createdAt:c.createdAt||null,updatedAt:c.updatedAt||null
-   }));
-   const visible=new Set(customers.map(c=>String(c.id)));
-   res.setHeader('Cache-Control','private, no-store');
-   return res.json({version:BUILD_VERSION,storage:storageMode,user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},
-    settings:{businessName:db.settings.businessName,tagline:db.settings.tagline,slogan:db.settings.slogan},
-    customers,activities:(db.activities||[]).filter(a=>visible.has(String(a.meta?.customerId||''))).slice(0,50),
-    catalog:CATALOG,recovery:{required:Boolean(MYSQL_RECOVERY_REQUIRED)},
-    quotes:[],orders:[],renewals:[],appointments:[],sequences:[],sequenceEnrollments:[],
-    callReports:[],callScripts:{},emailTemplates:[],messageTemplates:[],tasks:[],portalAccounts:[],portalMessages:[],
-    hotWebLeads:[],opsSummary:{role:'lead_researcher',permissions:['research','verify','submit']}});
-  }
   const base={settings:{businessName:db.settings.businessName,tagline:db.settings.tagline,slogan:db.settings.slogan,phone:db.settings.phone,email:db.settings.email,city:db.settings.city,website:db.settings.website,websites:db.settings.websites,office:db.settings.office},customers:projectedCustomers,activities:db.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:db.callReports||[],storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},square:{configured:squareConfigured(),webhookConfigured:squareWebhookConfigured(),environment:squareEnvironment(),pendingPayments:squarePaymentRecords().filter(x=>x.status==='PENDING').length},hotWebLeads:(projectedCustomers||[]).filter(c=>c.webLead&&!['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(c.status||''))&&(req.user.role==='owner'||req.user.role==='manager'||!c.assignedTo||String(c.assignedTo)===String(req.user.id))).slice(0,25),ecosystem:{webLeadBridge:true,squareWebhook:squareWebhookConfigured(),customerIntake:true,orderPipelines:ecosystemOrderSplit(db.orders||[])},opsSummary:{role:req.user.role,permissions:SBC_ROLE_PERMISSIONS[req.user.role]||[],pipeline:opsOverview(req).pipeline,quality:opsOverview(req).counts.quality,duplicates:opsOverview(req).counts.duplicates}};if(req.user.role==='owner')Object.assign(base,{settings:db.settings,quotes:db.quotes,orders:db.orders,renewals:db.renewals,appointments:db.appointments,sequences:db.sequences,sequenceEnrollments:db.sequenceEnrollments,emailTemplates:db.emailTemplates,messageTemplates:db.messageTemplates,tasks:db.tasks,megaOps:megaData(),users:(db.users||[]).map(u=>({id:u.id,username:u.username,name:u.name,email:u.email||u.profile?.email||'',role:u.role,active:u.active!==false,expiresAt:u.expiresAt||'',createdAt:u.createdAt})),auditLog:db.auditLog||[]});else{base.customers=(req.user.role==='lead_researcher'||isLornaLeadAccount(req.user))?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id||String(c.researcherId||'')===String(req.user.id)):db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id);base.activities=(db.activities||[]).filter(a=>base.customers.some(c=>c.id===a.meta?.customerId)).slice(0,100);base.callReports=(db.callReports||[]).filter(r=>r.callerId===req.user.id||r.status==='Pending');base.orders=(db.orders||[]).filter(o=>!o.salesRepId||o.salesRepId===req.user.id||req.user.role==='fulfillment');}res.json(base)});
 
 app.get('/api/owner/recovery/projection',auth,ownerOnly,async(req,res)=>{
@@ -4733,60 +4638,6 @@ app.post('/api/public/checkout',async(req,res)=>{
 });
 
 app.get('/api/sales-orders',auth,v25SalesAccess,(req,res)=>res.json((db.orders||[]).filter(o=>req.user.role==='owner'||req.user.role==='manager'||!o.salesRepId||o.salesRepId===req.user.id||req.user.role==='fulfillment').map(o=>({...o,parsed:o.notes&&o.notes.startsWith('{')?(()=>{try{return JSON.parse(o.notes)}catch{return {}}})():{}}))));
-
-app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
- res.setHeader('Cache-Control','no-store');
- if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||
-    !MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady||
-    RUNTIME_GATE.blocked('NEW_CHECKOUTS'))
-  return res.status(423).json({ok:false,code:'LAUNCH_QA_WRITER_OR_CHECKOUT_LOCKED'});
- let tenantId;
- try{tenantId=requireRequestTenant(req)}catch(_){
-  return res.status(403).json({ok:false,code:'LAUNCH_QA_TENANT_REQUIRED'});
- }
- const email=String(req.body?.email||'').trim().toLowerCase();
- if(email.length>254||!/^\S+@\S+\.\S+$/.test(email)||
-    email.endsWith('.invalid')||email.endsWith('.test'))
-  return res.status(400).json({ok:false,code:'LAUNCH_QA_CONTROLLED_EMAIL_REQUIRED'});
- // One test per tenant and owner-provided email: cannot accidentally mint
- // another charge by retrying after an ambiguous response.
- const existing=(db.orders||[]).find(o=>Number(o.tenantId)===tenantId&&
-  String(o.product||'')==='SBC Launch QA - $1 Test Service'&&
-  orderParsed(o).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&
-  (db.customers||[]).some(c=>String(c.id)===String(o.customerId)&&
-    Number(c.tenantId)===tenantId&&String(c.email||'').toLowerCase()===email));
- if(existing)return res.json({ok:true,existing:true,orderId:existing.id,
-  customerId:existing.customerId,amountCents:100,
-  paymentStatus:existing.paymentStatus||'Pending',paymentUrl:existing.paymentUrl||'',
-  next:'Reuse the existing order. Never issue a second checkout automatically.'});
- const t=now();
- const customer={id:id('cust'),tenantId,businessName:'SBC Launch QA Test Customer',
-  contactName:'Owner Internal Test',email,phone:'',status:'Internal Test',
-  source:'Owner Launch QA',notes:'Internal test: no vendor fulfillment or follow-up automation',
-  createdAt:t,updatedAt:t};
- const order={id:id('ord'),tenantId,customerId:customer.id,
-  customerName:customer.businessName,product:'SBC Launch QA - $1 Test Service',
-  quantity:1,status:'New',cost:0,price:1,
-  notes:JSON.stringify({sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1},
-   items:[{id:'SBC_LAUNCH_QA_1USD',sku:'SBC_LAUNCH_QA_1USD',
-    name:'SBC Launch QA',qty:1,unitPrice:1}],
-   customerEmail:email,fulfillmentStatus:'QA - NO VENDOR FULFILLMENT'}),
-  launchQaOwnerCreated:true,paymentStatus:'Pending',
-  fulfillmentStatus:'QA - NO VENDOR FULFILLMENT',createdAt:t,updatedAt:t};
- db.customers.unshift(customer);db.orders.unshift(order);
- addActivity('launch_qa_order_created','Owner created controlled $1 Square checkout test',
-  {orderId:order.id,customerId:customer.id,amountCents:100});
- try{await saveData()}catch(_){
-  return res.status(503).json({ok:false,code:'LAUNCH_QA_SAVE_UNCONFIRMED',
-   orderId:order.id,automaticRetry:false,
-   error:'Persistence uncertain; verify existing order before retry.'});
- }
- return res.status(201).json({ok:true,existing:false,orderId:order.id,
-  customerId:customer.id,amountCents:100,paymentStatus:'Pending',
-  next:'/api/payments/square/create-link/'+encodeURIComponent(order.id),
-  note:'Owner must generate checkout explicitly. This endpoint does not charge.'});
-});
-
 app.post('/api/orders',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{};if(!b.customerName||!b.product)return res.status(400).json({error:'Customer and product are required.'});const o={id:id('ord'),tenantId,customerId:String(b.customerId||''),customerName:String(b.customerName),product:String(b.product),quantity:Number(b.quantity||1),status:b.status||'New',cost:Number(b.cost||0),price:Number(b.price||0),notes:String(b.notes||''),createdAt:now(),updatedAt:now()};db.orders.unshift(o);addActivity('order',`Created print order for ${o.customerName}`,{orderId:o.id});await saveData();res.status(201).json(o)});
 app.put('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const o=db.orders.find(x=>x.id===req.params.id);if(!o)return res.status(404).json({error:'Order not found.'});Object.assign(o,req.body||{},{id:o.id,updatedAt:now()});await saveData();res.json(o)});
 app.delete('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const i=db.orders.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Order not found.'});db.orders[i].status='Deleted';db.orders[i].updatedAt=now();await saveData();db.orders.splice(i,1);res.json({ok:true})});
@@ -5362,7 +5213,7 @@ app.post('/api/call-reports/:id/approve',auth,ownerOnly,async(req,res)=>{const r
 app.get('/api/call-reports/pending',auth,ownerOnly,(req,res)=>res.json((db.callReports||[]).filter(x=>x.status==='Pending')));
 app.get('/api/users',auth,ownerOnly,(req,res)=>res.json((db.users||[]).map(u=>({id:u.id,username:u.username,name:u.name,role:u.role,active:u.active!==false,expiresAt:u.expiresAt||'',createdAt:u.createdAt}))));
 app.post('/api/users',auth,ownerOnly,async(req,res)=>{const b=req.body||{},username=String(b.username||'').trim().toLowerCase(),name=String(b.name||'').trim(),password=String(b.password||'');if(!/^[a-z0-9._-]{3,40}$/.test(username)||!name||password.length<10)return res.status(400).json({error:'Username must be 3–40 characters and password must be at least 10 characters.'});if((db.users||[]).some(u=>u.username===username))return res.status(409).json({error:'That username already exists.'});const role=['caller','lead_researcher','fulfillment','manager','sales_manager'].includes(String(b.role||''))?String(b.role):'caller';const u={id:id('user'),tenantId:requireRequestTenant(req),username,name,role,active:true,expiresAt:String(b.expiresAt||''),passwordHash:hashPassword(password),createdAt:now()};db.users.unshift(u);audit(req.user,'user_created',`Created ${workforceRoleLabel(role)} ${name}`,{userId:u.id,role});await saveData();res.status(201).json({id:u.id,username:u.username,name:u.name,role:u.role,active:true,expiresAt:u.expiresAt,createdAt:u.createdAt})});
-app.put('/api/users/:id',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.id);if(!u)return res.status(404).json({error:'User not found.'});if(String(u.role)==='demo'){if(req.body.role!==undefined&&req.body.role!=='demo')return res.status(400).json({error:'Demo Viewer role cannot be converted into an employee role.'});if(req.body.active===true&&!u.passwordHash&&!req.body.password)return res.status(400).json({error:'Set a unique Demo Viewer password before enabling the account.'});}if(req.body.password&&String(req.body.password).length<10)return res.status(400).json({error:'Password must be at least 10 characters.'});if(u.id==='user_owner'&&req.body.role&&req.body.role!=='owner')return res.status(400).json({error:'The owner account cannot be downgraded.'});if(req.body.name!==undefined)u.name=String(req.body.name);if(req.body.role!==undefined&&u.id!=='user_owner'){const nr=String(req.body.role);if(!['caller','lead_researcher','fulfillment','manager','sales_manager'].includes(nr))return res.status(400).json({error:'Invalid workforce role.'});u.role=nr;}if(req.body.active!==undefined)u.active=Boolean(req.body.active);if(req.body.expiresAt!==undefined)u.expiresAt=String(req.body.expiresAt||'');if(req.body.password){if(String(req.body.password).length<10)return res.status(400).json({error:'Password must be at least 10 characters.'});u.passwordHash=hashPassword(String(req.body.password))}audit(req.user,'user_updated',`Updated user ${u.name}`,{userId:u.id});await saveData();res.json({id:u.id,username:u.username,name:u.name,role:u.role,active:u.active,expiresAt:u.expiresAt})});
+app.put('/api/users/:id',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.id);if(!u)return res.status(404).json({error:'User not found.'});if(u.id==='user_owner'&&req.body.role&&req.body.role!=='owner')return res.status(400).json({error:'The owner account cannot be downgraded.'});if(req.body.name!==undefined)u.name=String(req.body.name);if(req.body.role!==undefined&&u.id!=='user_owner'){const nr=String(req.body.role);if(!['caller','lead_researcher','fulfillment','manager','sales_manager'].includes(nr))return res.status(400).json({error:'Invalid workforce role.'});u.role=nr;}if(req.body.active!==undefined)u.active=Boolean(req.body.active);if(req.body.expiresAt!==undefined)u.expiresAt=String(req.body.expiresAt||'');if(req.body.password){if(String(req.body.password).length<10)return res.status(400).json({error:'Password must be at least 10 characters.'});u.passwordHash=hashPassword(String(req.body.password))}audit(req.user,'user_updated',`Updated user ${u.name}`,{userId:u.id});await saveData();res.json({id:u.id,username:u.username,name:u.name,role:u.role,active:u.active,expiresAt:u.expiresAt})});
 app.get('/api/ops/lead-count-audit',auth,ownerOnly,(req,res)=>{const customers=db.customers||[],excluded=new Set(['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified']);const active=customers.filter(c=>!excluded.has(String(c.status||'')));const research=customers.filter(c=>String(c.status||'')==='Lead');const byStatus={};const bySource={};const seen={email:new Map(),phone:new Map(),business:new Map()};const duplicates=[];for(const c of customers){const status=String(c.status||'Lead');byStatus[status]=(byStatus[status]||0)+1;const source=String(c.source||'Other');bySource[source]=(bySource[source]||0)+1;for(const [kind,val] of [['email',String(c.email||'').trim().toLowerCase()],['phone',String(c.phone||'').replace(/\D/g,'')],['business',String(c.businessName||'').trim().toLowerCase()]]){if(!val)continue;const m=seen[kind];const prior=m.get(val);if(prior)duplicates.push({kind,key:val,firstId:prior,duplicateId:c.id});else m.set(val,c.id)}}res.json({ok:true,version:BUILD_VERSION,totalCrmRecords:customers.length,activeSalesLeads:active.length,researchQueueLeads:research.length,byStatus,bySource,duplicateSignals:duplicates.length,duplicates:duplicates.slice(0,250),note:'Read-only audit. No lead records were deleted, merged, restored, or rewritten.'});});
 
 app.get('/api/crm/analytics',auth,ownerOnly,(req,res)=>{const c=db.customers,q=db.quotes,a=db.appointments;const statuses=['Lead','Contacted','Qualified','Proposal','Customer','Lost'];const pipeline=Object.fromEntries(statuses.map(s=>[s,{count:c.filter(x=>x.status===s).length,value:q.filter(x=>{const cc=c.find(z=>z.id===x.customerId);return cc?.status===s}).reduce((v,x)=>v+Number(x.total||0),0)}]));const won=q.filter(x=>['Won','Paid'].includes(x.status));const sources={};c.forEach(x=>sources[x.source||'Other']=(sources[x.source||'Other']||0)+1);res.json({totalLeads:c.length,activeLeads:c.filter(x=>!['Customer','Lost'].includes(x.status)).length,customers:c.filter(x=>x.status==='Customer').length,pipelineValue:q.filter(x=>!['Won','Paid','Lost'].includes(x.status)).reduce((v,x)=>v+Number(x.total||0),0),wonRevenue:won.reduce((v,x)=>v+Number(x.total||0),0),conversion:q.length?Math.round(won.length/q.length*100):0,appointments:a.filter(x=>x.status!=='Cancelled'&&new Date(x.startAt)>=new Date()).length,pipeline,sources});});
@@ -5921,7 +5772,7 @@ app.get('/api/v9/bootstrap',auth,async(req,res)=>{
   // A GET must remain side-effect free while the authoritative MySQL recovery gate is active.
   if(!recoveryReadOnly) (db.customers||[]).forEach(normalizeLeadQuality);
   const v=v9data(), role=req.user.role, isOwnerRole=role==='owner', manager=role==='manager', caller=role==='caller', researcher=sbcLornaRole(req.user), fulfillment=role==='fulfillment';
-  const customers=caller?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id):researcher?db.customers.filter(c=>{if(Number(c?.tenantId)!==Number(requireRequestTenant(req)))return false;const status=String(c?.status||'Lead').trim().toLowerCase();const assignedTo=String(c?.assignedTo||'');const mine=!assignedTo||assignedTo===String(req.user.id);const active=!(['customer','lost','do not call','dnc','closed','duplicate'].includes(status));const notSalesReady=String(c?.verificationStatus||'')!=='Sales Ready';return active&&mine&&(notSalesReady||assignedTo===String(req.user.id));}):fulfillment?db.customers.filter(c=>['Customer','Qualified','Proposal'].includes(c.status)||c.fulfillmentOwner===req.user.id):db.customers;
+  const customers=caller?db.customers.filter(c=>!c.assignedTo||c.assignedTo===req.user.id):researcher?db.customers.filter(c=>{const status=String(c?.status||'Lead').trim().toLowerCase();const assignedTo=String(c?.assignedTo||'');const mine=!assignedTo||assignedTo===String(req.user.id);const active=!(['customer','lost','do not call','dnc','closed','duplicate'].includes(status));const notSalesReady=String(c?.verificationStatus||'')!=='Sales Ready';return active&&mine&&(notSalesReady||assignedTo===String(req.user.id));}):fulfillment?db.customers.filter(c=>['Customer','Qualified','Proposal'].includes(c.status)||c.fulfillmentOwner===req.user.id):db.customers;
   const orders=fulfillment?db.orders.filter(o=>!o.fulfillmentOwner||o.fulfillmentOwner===req.user.id):isOwnerRole||manager?db.orders:[];
   const quotes=isOwnerRole||manager||caller?db.quotes:[];
   const trainingDb=recoveryReadOnly?{...db,settings:{...(db.settings||{}),trainingCenterV2:db.settings?.trainingCenterV2?JSON.parse(JSON.stringify(db.settings.trainingCenterV2)):undefined},users:Array.isArray(db.users)?db.users:[]}:db;
@@ -6021,14 +5872,14 @@ app.post('/api/v9/assign-batch',auth,async(req,res)=>{if(!['owner','manager'].in
 app.get('/api/v9/lead-verification',auth,(req,res)=>{
   if(!['owner','manager','lead_researcher'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
   const all=(db.customers||[]).map(normalizeLeadQuality);
-  const mine=sbcLornaRole(req.user)?all.filter(c=>{if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return false;const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');return !['customer','lost','do not call','dnc','closed','duplicate'].includes(status)&&(!assigned||assigned===String(req.user.id))&&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));}):all;
+  const mine=sbcLornaRole(req.user)?all.filter(c=>{const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');return !['customer','lost','do not call','dnc','closed','duplicate'].includes(status)&&(!assigned||assigned===String(req.user.id))&&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));}):all;
   const stats={total:mine.length,hot:mine.filter(c=>c.leadTemperature==='Hot').length,warm:mine.filter(c=>c.leadTemperature==='Warm').length,cold:mine.filter(c=>c.leadTemperature==='Cold').length,needsVerification:mine.filter(c=>['Needs Verification','Owner Review'].includes(c.verificationStatus)).length,salesReady:mine.filter(c=>c.verificationStatus==='Sales Ready').length};
   res.json({stats,leads:mine.slice(0,1000),users:['owner','manager'].includes(req.user.role)?(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role})):[]});
 });
-app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED||!sbcWriterLeaseReady)return res.status(423).json({error:'CRM writer/recovery gate unavailable. No lead updated.'});
+app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
   const allowed=['owner','manager','lead_researcher']; if(!allowed.includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
   const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)); if(!c)return res.status(404).json({error:'Lead not found.'});
-  if(sbcLornaRole(req.user)){const tid=Number(requireRequestTenant(req)),uid=String(req.user.id),assigned=String(c.assignedTo||''),status=String(c.status||'Lead').toLowerCase();if(Number(c.tenantId)!==tid||['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(status)||(assigned&&assigned!==uid)||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==uid))return res.status(403).json({error:'Lead is outside your permitted research queue.'});}const b=req.body||{};
+  const b=req.body||{};
   for(const k of ['businessName','contactName','phone','email','website','industry','city','zip','notes','source','verificationSource']) if(b[k]!==undefined)c[k]=String(b[k]||'');
   if(req.user.role==='lead_researcher'&&b.assignedTo!==undefined&&String(b.assignedTo)!==String(req.user.id))return res.status(403).json({error:'Researchers may verify and submit leads, but only owner/manager may reassign them.'});
   if(['owner','manager'].includes(req.user.role)&&b.assignedTo!==undefined){const uid=String(b.assignedTo||'');const u=uid?(db.users||[]).find(x=>x.id===uid&&x.active!==false&&['lead_researcher','caller'].includes(x.role)):null;if(uid&&!u)return res.status(400).json({error:'Select an active lead researcher or sales manager/caller.'});c.assignedTo=uid;c.assignedToName=u?.name||'';}
@@ -6109,7 +5960,7 @@ app.put('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(!canEditResearchLead(req.user))return res.status(403).json({error:'Lead editing access required.'});
   const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));
   if(!c)return res.status(404).json({error:'Lead not found.'});
-  if(sbcLornaRole(req.user)){const tid=Number(requireRequestTenant(req)),uid=String(req.user.id),assigned=String(c.assignedTo||''),status=String(c.status||'Lead').toLowerCase();if(Number(c.tenantId)!==tid||['customer','lost','do not call','dnc','closed','duplicate','deleted'].includes(status)||(assigned&&assigned!==uid)||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==uid))return res.status(403).json({error:'Lead is outside your permitted research queue.'});}const b=req.body||{};
+  const b=req.body||{};
   const first=(...v)=>v.map(x=>String(x??'').trim()).find(Boolean)||'';
   for(const k of ['businessName','contactName','phone','email','website','industry','websiteStatus','source','notes','address']){
     if(b[k]!==undefined)c[k]=String(b[k]).slice(0,k==='notes'?5000:500);
@@ -6127,7 +5978,7 @@ app.put('/api/workforce/leads/:id',auth,async(req,res)=>{
 });
 app.get('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(!canEditResearchLead(req.user))return res.status(403).json({error:'Lead access denied.'});
-  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));if(!c)return res.status(404).json({error:'Lead not found.'});if(sbcLornaRole(req.user)&&req.user.role!=='owner'&&req.user.role!=='manager'){const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(Number(c.tenantId)!==Number(requireRequestTenant(req)))return res.status(403).json({error:'Lead is outside your tenant research queue.'});if(['customer','lost','do not call','dnc','closed','duplicate'].includes(status)||(assigned&&assigned!==String(req.user.id))||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==String(req.user.id))){return res.status(403).json({error:'This lead is outside your assigned research queue.'});}}
+  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));if(!c)return res.status(404).json({error:'Lead not found.'});if(sbcLornaRole(req.user)&&req.user.role!=='owner'&&req.user.role!=='manager'){const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(['customer','lost','do not call','dnc','closed','duplicate'].includes(status)||(assigned&&assigned!==String(req.user.id))||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==String(req.user.id))){return res.status(403).json({error:'This lead is outside your assigned research queue.'});}}
   res.json({ok:true,lead:{...c,leadIntelligence:leadIntel(c)}});
 });
 
@@ -7887,7 +7738,7 @@ app.post('/api/v32-2/payment-reconciliation',auth,ownerOnly,(req,res)=>{
 });
 // SBC_V6657_SQUARE_TENANT_BOUNDARIES: tenant-bound payment-link creation.
 app.post('/api/payments/square/create-link/:orderId',auth,v25SalesAccess,FINANCIAL_GOVERNOR.middleware('square_payment_link'),async(req,res)=>{let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});if(req.user.role==='caller'&&o.salesRepId&&o.salesRepId!==req.user.id)return res.status(403).json({error:'This order is not assigned to you.'});try{const out=await createSquarePaymentLinkForOrder(o,req);res.json({ok:true,...out})}catch(e){res.status(e.status===401||e.status===403?502:400).json({error:e.message||'Could not create Square payment link.',squareConfigured:squareConfigured()})}});
-app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});const parsed=orderParsed(o);const rec=squarePaymentRecords().find(x=>x.sbcOrderId===o.id)||null;res.json({ok:true,order:{id:o.id,price:o.price,paymentStatus:(String(parsed.squarePaymentStatus||'').toUpperCase()==='PAID'||String(rec?.status||'').toUpperCase()==='PAID'?'Paid':o.paymentStatus||'Pending'),fulfillmentStatus:o.fulfillmentStatus||'Awaiting Customer Payment',paymentUrl:o.paymentUrl||parsed.squarePaymentLinkUrl||'',squareOrderId:rec?.squareOrderId||parsed.squareOrderId||'',squarePaymentId:rec?.squarePaymentId||parsed.squarePaymentId||'',squareStatus:rec?.status||parsed.squarePaymentStatus||'PENDING'}})});
+app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});const parsed=orderParsed(o);const rec=squarePaymentRecords().find(x=>x.sbcOrderId===o.id)||null;res.json({ok:true,order:{id:o.id,price:o.price,paymentStatus:o.paymentStatus||'Pending',fulfillmentStatus:o.fulfillmentStatus||'Awaiting Customer Payment',paymentUrl:o.paymentUrl||parsed.squarePaymentLinkUrl||'',squareOrderId:rec?.squareOrderId||parsed.squareOrderId||'',squarePaymentId:rec?.squarePaymentId||parsed.squarePaymentId||'',squareStatus:rec?.status||parsed.squarePaymentStatus||'PENDING'}})});
 app.post('/api/payments/square/refresh/:orderId',auth,ownerOnly,async(req,res)=>{
   let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
   const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);
@@ -9026,9 +8877,12 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
 });
 
 app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly,(req,res)=>{
+ const batch=require('node:path').join(__dirname,'hotfix-assets','sbc-leads-oct-26-27-2026-31.csv');
+ if(!require('node:fs').existsSync(batch))return res.status(404).json({ok:false,code:'SBC_PACKAGED_BATCH_MISSING',error:'The verified 31-lead batch is not present in this runtime. No records were changed.'});
  res.setHeader('Cache-Control','private, no-store');
  res.setHeader('X-Content-Type-Options','nosniff');
- return res.status(410).json({ok:false,code:'SBC_PRIVATE_CSV_UPLOAD_REQUIRED',error:'Packaged lead batches are no longer distributed. Use the owner CSV upload and preview; no records changed.'});
+ res.setHeader('Content-Disposition','attachment; filename="sbc-leads-oct-26-27-2026-31.csv"');
+ res.type('text/csv').send(require('node:fs').readFileSync(batch,'utf8'));
 });
 app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{
  res.setHeader('Cache-Control','private, no-store');

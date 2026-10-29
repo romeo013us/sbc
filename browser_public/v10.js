@@ -104,11 +104,11 @@
     const recoveryRows=(d().recoveryProjection||[]).slice(0,250); const pendingRecoveryRows=recoveryRows.filter(x=>!x._restored);
     const leadRows=rows.filter(x=>String(x.source||'').toLowerCase().includes('lorna')||x.researcherId);
     const recoveryNotice=pendingRecoveryRows.length?`<div class="card" style="margin-bottom:14px;border-color:rgba(34,197,94,.35)"><div class="card-body"><strong>🛡 ${pendingRecoveryRows.length} verified lead records still awaiting CRM restoration</strong><p class="mini">These are the real records held in <b>sbc_lead_mesh</b>. They are not being discarded. Owner-controlled restoration places them into the authoritative CRM with deterministic IDs and preserves the lead-mesh source reference. Full CRM recovery remains protected until the rest of the authoritative core is restored.</p><div class="actions" style="margin-top:10px"><button class="btn primary" type="button" onclick="window.sbcRestoreVerifiedLeads?.()">Restore Verified Leads to CRM</button></div></div></div>`:'';
-    return shell('Lead Research Desk','FIND → QUALIFY → VERIFY → SUBMIT',
+    return shell('Lead Research Desk','FIND → QUALIFY → VERIFY → REVENUE PLAY',
       recoveryNotice+`<div class="grid stats section">
         <div class="stat"><div class="label">AUTHORITATIVE CRM LEADS</div><div class="value">${allRows.length}</div><div class="sub">Persistent central CRM · showing ${rows.length} on this page</div></div>
         <div class="stat"><div class="label">RECOVERY LEAD CANDIDATES</div><div class="value">${pendingRecoveryRows.length}</div><div class="sub">Verified source records not yet restored</div></div>
-        <div class="stat"><div class="label">READY FOR VERIFICATION</div><div class="value">${allRows.filter(x=>String(x.leadIntelligence?.verificationStatus||x.verificationStatus||'Unverified')!=='Verified').length}</div><div class="sub">Lead verification queue</div></div>
+        <div class="stat"><div class="label">READY FOR VERIFICATION</div><div class="value">${allRows.filter(x=>String(x.leadIntelligence?.verificationStatus||'Unverified')!=='Verified').length}</div><div class="sub">Jonathan review queue</div></div>
       </div>
       ${card('Submit a New Qualified Lead',`<form id="research11"><div class="form-grid">
         <label>Business name *<input name="businessName" required></label><label>Phone<input name="phone"></label>
