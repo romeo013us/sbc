@@ -93,6 +93,7 @@ body{overflow-x:hidden}
 @media(max-width:760px){#app.app>.main>.content>#sbcConsultativeRevenueMount,#app.app>.main>.content>#sbcGodTierBroadcastMount{margin:12px 0}}
 </style>
 <style id="sbc-v6632-no-floating-import">/* SBC_V6632_REMOVE_FLOATING_LEAD_IMPORT */ #sbc-lead-import-launcher,#sbc-master-list-launcher,#sbc-lead-import-overlay{display:none!important}</style>
+<style id="sbc-owner-import-nav-style">#sbc-owner-import-link[hidden]{display:none!important}#sbc-owner-import-link:not([hidden]){display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;width:100%;box-sizing:border-box}#sbc-owner-import-link:focus-visible{outline:2px solid #f99542;outline-offset:2px}</style>
 </head><body>
 <div id="toast" class="toast"></div>
 <div id="login" class="login-screen"><div class="login-card"><img class="brand-logo login-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div class="eyebrow">SUCCESSFUL BY CHOICE</div><h1>Business Command Center</h1><p>Private operating system for SBC sales, customers, quotes, payments, print orders and renewals.</p><form id="loginForm"><label>Username<input id="loginUsername" autocomplete="username" value="owner" required placeholder="owner"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your SBC password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="form-error"></div></form></div></div>
@@ -111,6 +112,7 @@ body{overflow-x:hidden}
 <div class="sidebar-group-label">LEGACY TOOLS</div>
 <div class="v56-legacy-tools">
 <button data-view="customers" class="nav-item"><span>◉</span> Leads & Customers</button>
+<a id="sbc-owner-import-link" class="nav-item sbc-owner-import-link" href="/owner/lead-import" hidden aria-label="Import leads — owner only"><span>⇧</span> Import Leads</a>
 <button data-view="quotes" class="nav-item"><span>▤</span> Quotes</button>
 <button data-view="communications" class="nav-item"><span>✉</span> Communications</button>
 <button data-view="calendar" class="nav-item"><span>◫</span> Calendar</button>
@@ -246,5 +248,31 @@ function ready(){scan();new MutationObserver(queue).observe(document.body,{child
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
 })();
 </script>
-<script src="/sbc-owner-free-voice-briefing.js?v=20261029-2" defer></script></body>
+<script src="/sbc-owner-free-voice-briefing.js?v=20261029-2" defer></script><script id="sbc-owner-import-nav-verified">
+/* Owner-only navigation to the EXISTING private importer. No network writes, migrations, or customer data changes. */
+(function(){
+ 'use strict';
+ var doc=document,app=doc.getElementById('app'),link=doc.getElementById('sbc-owner-import-link');
+ if(!app||!link)return;
+ var checking=false,verified=false;
+ function hide(){link.hidden=true;verified=false}
+ async function verify(){
+  if(checking||verified||app.classList.contains('hidden'))return;
+  checking=true;
+  try{
+   var response=await fetch('/api/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   if(!response.ok){hide();return;}
+   var data=await response.json();
+   if(!app.classList.contains('hidden')&&data&&data.authenticated===true&&data.user&&data.user.role==='owner'){
+    verified=true;link.hidden=false;
+   }else hide();
+  }catch(_){hide()}finally{checking=false}
+ }
+ function sync(){if(app.classList.contains('hidden'))hide();else verify()}
+ if(window.MutationObserver)new MutationObserver(sync).observe(app,{attributes:true,attributeFilter:['class']});
+ doc.getElementById('logoutBtn')?.addEventListener('click',hide);
+ sync();
+})();
+</script>
+</body>
 </html>
