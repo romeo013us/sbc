@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const registerCRM = require('../routes/crm');
+const { runWithTenantContext } = require('../enterprise/tenant-context.cjs');
 const root = path.resolve(__dirname, '..');
 const routeSource = fs.readFileSync(path.join(root, 'routes/crm.js'), 'utf8');
 const appJs = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
@@ -68,12 +69,24 @@ async function main() {
     audit: () => { auditCalls++; },
     saveData: async () => { saveCalls++; }
   }) });
-  const savedRes = mockResponse();
+  // Refuse a write without authenticated AsyncLocalStorage tenant context even if
+  // a request body or caller-provided tenantId claims the owner role.
+  const noContextRes = mockResponse();
   await findHandler(writeApp, 'POST', '/api/v65110/crm/leads')({
-    user: { role: 'owner', username: 'owner' }, tenantId: 1, requestId: 'test-request',
-    body: { businessName: 'Example Business', contactName: 'Owner', email: 'OWNER@example.com', phone: '(305) 555-0100', source: 'Integration Test' }
-  }, savedRes);
-  assert.equal(savedRes.statusCode, 201, 'successful verified fake-DB write returns 201');
+    user: { role: 'owner', username: 'owner' }, tenantId: 1,
+    body: { businessName: 'Untrusted Tenant Claim' }
+  }, noContextRes);
+  assert.equal(noContextRes.statusCode, 403, 'missing authoritative tenant context blocks the fake write');
+  assert.equal(statements.length, 0, 'tenant rejection must happen before SQL');
+
+  const savedRes = mockResponse();
+  await runWithTenantContext({ tenantId: 1, actorId: 'owner' }, async () => {
+    await findHandler(writeApp, 'POST', '/api/v65110/crm/leads')({
+      user: { role: 'owner', username: 'owner' }, tenantId: 1, requestId: 'test-request',
+      body: { businessName: 'Example Business', contactName: 'Owner', email: 'OWNER@example.com', phone: '(305) 555-0100', source: 'Integration Test' }
+    }, savedRes);
+  });
+  assert.equal(savedRes.statusCode, 201, 'successful verified fake-DB write returns 201 with authenticated tenant context');
   assert.equal(savedRes.body.durable, true);
   assert.equal(committed, 1, 'transaction commits after read-after-write verification');
   assert.equal(rolledBack, 0);
