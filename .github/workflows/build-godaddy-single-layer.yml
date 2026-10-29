@@ -89,7 +89,7 @@ jobs:
           const original=fs.readFileSync(target);
           try{
             fs.appendFileSync(target,'\n// disposed CI-only deployment tamper\n');
-            assert.throws(()=>verifyFlatIntegrity(dir,identity),/SBC FLAT INTEGRITY.*altered/);
+            assert.throws(()=>verifyFlatIntegrity(dir,identity),/SBC FLAT INTEGRITY.*(?:altered|wrong packaged file type\/size)/);
           }finally{fs.writeFileSync(target,original);}
           assert.equal(verifyFlatIntegrity(dir,identity).ok,true);
           console.log('[SBC GO DADDY FLAT TAMPER TEST] PASS: modified browser code rejected and restored');
