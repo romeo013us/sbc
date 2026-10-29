@@ -488,26 +488,59 @@ function parseCSV(text){
   });
 }
 async function submitClientFindrImport(){
+  const inputRows=state._importRows||[];
+  if(!inputRows.length){toast('Choose a CSV first.');return;}
+  const rows=inputRows.map(r=>({
+    businessName:r.businessName||r.business_name||r.business||r.company||r['Business Name']||r['Company Name']||'',
+    contactName:r.contactName||r.contact_name||r.contact||r['Contact Name']||r.Name||'',
+    phone:r.phone||r.Phone||r['Phone Number']||'',
+    email:r.email||r.Email||'',
+    website:r.website||r.Website||'',
+    websiteStatus:r.websiteStatus||r.website_status||'',
+    address:r.address||r.Address||'',
+    industry:r.industry||r.Industry||r.business_category||'',
+    source:r.source||r.lead_source||'SBC CSV Import',
+    notes:r.notes||r.research_notes||'Imported from SBC CSV.'
+  }));
+  const btn=document.querySelector('#importPreview button');
+  if(btn){btn.disabled=true;btn.textContent='Checking with CRM…';}
   try{
-    const inputRows=state._importRows||[];
-    if(!inputRows.length)throw Error('Choose a CSV first.');
-    if(!confirm('Import '+inputRows.length+' lead records into the authorized SBC CRM? Existing contacts will be skipped.'))return;
-    const rows=inputRows.map(r=>({
-      businessName:r.businessName||r.business_name||r.business||r.company||r['Business Name']||r['Company Name']||'',
-      contactName:r.contactName||r.contact_name||r.contact||r['Contact Name']||r.Name||'',
-      phone:r.phone||r.Phone||r['Phone Number']||'',
-      email:r.email||r.Email||'',
-      website:r.website||r.Website||'',
-      websiteStatus:r.websiteStatus||r.website_status||'',
-      address:r.address||r.Address||'',
-      industry:r.industry||r.Industry||r.business_category||'',
-      source:r.source||r.lead_source||'SBC CSV Import',
-      notes:r.notes||r.research_notes||'Imported from SBC CSV.'
-    }));
-    const result=await api('/api/crm/leads/import',{method:'POST',body:JSON.stringify({rows,source:'SBC CSV Import'})});
-    state._importRows=null;closeModal();await load();
-    toast('CRM import verified: '+result.added+' added · '+result.skipped+' duplicate/skipped.');
-  }catch(err){toast(err.message||'Lead import failed. No success reported.');}
+    // The authoritative import API defaults to dryRun. Always explicitly preview
+    // first, then issue a separately authorized transaction request.
+    const preview=await api('/api/crm/leads/import',{
+      method:'POST',body:JSON.stringify({rows,dryRun:true,mode:'preview'})
+    });
+    if(preview.ok!==true||preview.dryRun!==true||!Array.isArray(preview.results))
+      throw new Error('CRM did not return a valid read-only import preview. No records imported.');
+    const ready=Number(preview.ready||0),duplicates=Number(preview.duplicates||0);
+    const summary=ready+' new leads ready · '+duplicates+' duplicates already in CRM.';
+    const panel=document.getElementById('importPreview');
+    if(panel)panel.textContent=summary;
+    if(ready===0){toast('No new leads to import. '+duplicates+' duplicates found.');return;}
+    if(!confirm(summary+'\n\nCommit the '+ready+' new leads to the SBC database?'))return;
+    if(btn){btn.disabled=true;btn.textContent='Saving to CRM…';}
+    const result=await api('/api/crm/leads/import',{
+      method:'POST',body:JSON.stringify({rows,dryRun:false,mode:'import'})
+    });
+    if(result.ok!==true||result.dryRun!==false||
+       !Number.isInteger(result.imported)||!Number.isInteger(result.duplicates))
+      throw new Error('CRM has not confirmed an actual database import. No success will be claimed.');
+    state._importRows=null;
+    closeModal();
+    await load();
+    toast('Saved '+result.imported+' leads in CRM · '+result.duplicates+' duplicates skipped.');
+  }catch(err){
+    const message=String(err&&err.message||err);
+    if(/API route not found|404|not found/i.test(message)){
+      toast('The running GoDaddy backend is outdated: lead-import API missing. Update the correct source in GoDaddy Preview before retrying.');
+    }else{
+      toast(message||'Lead import failed. No completed import was confirmed.');
+    }
+    const panel=document.getElementById('importPreview');
+    if(panel)panel.textContent='Import not confirmed: '+message;
+  }finally{
+    if(btn&&document.contains(btn)){btn.disabled=false;btn.textContent='Preview & Import Leads';}
+  }
 }
 async function crmAnalytics(){try{const a=await api('/api/crm/analytics');const panel=$('#crmAnalyticsPanel');if(!panel)return;panel.innerHTML=`<div class="analytics-grid">${Object.entries(a.pipeline).map(([k,v])=>`<div class="analytics-stage"><div><strong>${k}</strong><span>${v.count}</span></div><div class="progress"><i style="width:${a.totalLeads?Math.min(100,v.count/a.totalLeads*100):0}%"></i></div><small>${money(v.value)}</small></div>`).join('')}</div><div class="source-grid">${Object.entries(a.sources).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<span class="badge blue">${esc(k)} · ${v}</span>`).join('')}</div>`}catch(x){toast(x.message)}}
 
