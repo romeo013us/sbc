@@ -214,6 +214,26 @@ if pkg["scripts"].get("build") != "echo build" or pkg.get("engines",{}).get("nod
 pkg["main"] = "sbc-godaddy-flat-entrypoint.cjs"
 pkg["scripts"]["start"] = "node sbc-godaddy-flat-entrypoint.cjs"
 files["package.json"] = (json.dumps(pkg,indent=2) + "\n").encode()
+# GoDaddy Hosting automatically installs runtime dependencies before executing
+# buildCommand. The compiled source carried another 'npm install' in .airo,
+# which ran package installation TWICE and introduced needless failure points.
+# Preserve the only supported serve command and execute the build script once.
+airo_path = ".airo/config.json"
+if airo_path not in files: fail("GoDaddy .airo deploy config absent")
+airo = json.loads(files[airo_path])
+if airo.get("packageManager") != "npm" or airo.get("serveCommand") != "NODE_ENV=production npm start":
+    fail("unexpected GoDaddy source deployment contract")
+if airo.get("buildCommand") not in ("npm install --omit=dev --no-audit --no-fund && npm run build", "npm run build"):
+    fail("unexpected GoDaddy build command")
+airo["buildCommand"] = "npm run build"
+files[airo_path] = (json.dumps(airo,indent=2) + "\n").encode()
+# Keep package-lock's root npm scripts aligned with our packaged entrypoint.
+# npm install may otherwise rewrite lockfile metadata on every GoDaddy build.
+lock = json.loads(files["package-lock.json"])
+if not isinstance(lock.get("packages",{}).get(""),dict):
+    fail("invalid npm root package lock metadata")
+lock["packages"][""].setdefault("scripts",{})["start"] = pkg["scripts"]["start"]
+files["package-lock.json"] = (json.dumps(lock,indent=2) + "\n").encode()
 files["sbc-godaddy-flat-entrypoint.cjs"] = ENTRY.encode()
 # The artifact is safe under npm start and any previously persisted
 # GoDaddy `node bootstrap.js` serve command. Never compile a second runtime.
