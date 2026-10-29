@@ -3,5 +3,7 @@
   "version": "66.0.0",
   "sourceCommit": "0c6152e7aae7ad7aed33dd99d66f9f691ed57cd2",
   "sourceFingerprint": "571db994e28fa617fca729071dcc9b65a75caf0dfcbdab81cac6d4eee2f1cf82",
-  "serverSha256": "75549413e4fdc11a06c92c57e55cb66b407335b10806fb3b23aff3f20193dfac"
+  "serverSha256": "bcf32c6738de8f07df903d2a60aacce94dd85963d72f0689a02faa2370499941",
+  "runtimePatch": "v66.0.0-lead-import-route-registration-2026-10-29",
+  "runtimePatchFrom": "sbc-original-working-20261027"
 }
