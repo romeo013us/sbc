@@ -27,11 +27,13 @@ const root = __dirname;
 const release = require('./SBC-FLAT-RELEASE-IDENTITY.json');
 if(release.schema!==1||! /^[a-f0-9]{40}$/.test(release.sourceCommit||'')||
    ! /^[a-f0-9]{64}$/.test(release.sourceFingerprint||'')||
-   ! /^[a-f0-9]{64}$/.test(release.serverSha256||'')) {
+   ! /^[a-f0-9]{64}$/.test(release.serverSha256||'')||
+   ! /^[a-f0-9]{64}$/.test(release.inventorySha256||'')) {
   throw Error('[SBC DEPLOY IDENTITY] invalid pinned release identity');
 }
 const serverSha = crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'server.js'))).digest('hex');
 if(serverSha!==release.serverSha256)throw Error('[SBC DEPLOY IDENTITY] packaged server has changed since verification');
+require('./sbc-flat-integrity.cjs').verifyFlatIntegrity(root,release);
 const receiptPath = path.join(root,'SBC-DEPLOY-RECEIPT.json');
 const hasReceipt = fs.existsSync(receiptPath);
 if(hasReceipt){
@@ -51,6 +53,56 @@ console.log(require('./runtime-env-beacon.js').buildBeaconLine(process.env,os.ho
 require('./tenant-rejection-guard.js').installTenantRejectionGuard(process,console);
 require(path.join(root,'server.js'));
 """
+VERIFY = """'use strict';
+// SBC V66 clean deployment: verify all packaged application code and assets.
+// Fail closed on missing, substituted or partially-extracted release files.
+// Does not read/modify MySQL, session files, backups or persistent data.
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+function digest(b){return crypto.createHash('sha256').update(b).digest('hex');}
+function verifyFlatIntegrity(root,release){
+ const file=path.join(root,'SBC-FLAT-FILE-INVENTORY.json');
+ const bytes=fs.readFileSync(file);
+ if(digest(bytes)!==release.inventorySha256)
+  throw Error('[SBC FLAT INTEGRITY] manifest hash mismatch; mixed/incomplete deployment');
+ const m=JSON.parse(bytes.toString('utf8'));
+ if(m.schema!==1||m.version!==release.version||m.sourceFingerprint!==release.sourceFingerprint||
+    !Array.isArray(m.files)||m.files.length<200||m.files.length>5000)
+  throw Error('[SBC FLAT INTEGRITY] malformed source-bound inventory');
+ let total=0;
+ const seen=new Set();
+ for(const item of m.files){
+  const rel=item.path;
+  if(typeof rel!=='string'||!rel||rel.startsWith('/')||rel.includes('\\\\')||
+     rel.split('/').some(s=>!s||s==='.'||s==='..')||seen.has(rel)||
+     /^(?:data|backups|sbc-persistent|node_modules|\\.git)\\//.test(rel)||
+     !/^[a-f0-9]{64}$/.test(item.sha256||'')||
+     !Number.isSafeInteger(item.size)||item.size<0||item.size>50*1024*1024)
+   throw Error('[SBC FLAT INTEGRITY] unsafe inventory entry');
+  seen.add(rel);
+  const target=path.join(root,rel);
+  let stat;
+  try{stat=fs.lstatSync(target);}
+  catch{throw Error('[SBC FLAT INTEGRITY] required packaged file missing: '+rel);}
+  if(!stat.isFile()||stat.isSymbolicLink()||stat.size!==item.size)
+   throw Error('[SBC FLAT INTEGRITY] wrong packaged file type/size: '+rel);
+  if(digest(fs.readFileSync(target))!==item.sha256)
+   throw Error('[SBC FLAT INTEGRITY] packaged file altered: '+rel);
+  total+=item.size;
+  if(total>256*1024*1024)throw Error('[SBC FLAT INTEGRITY] release size exceeds limit');
+ }
+ for(const required of ['server.js','package.json','bootstrap.js','sbc-godaddy-flat-entrypoint.cjs',
+                         'sbc-flat-integrity.cjs','persistent-state.js',
+                         'tenant-rejection-guard.js','runtime-env-beacon.js',
+                         'public/index.html','public/app.js','browser_public/index.html']){
+  if(!seen.has(required))throw Error('[SBC FLAT INTEGRITY] critical runtime asset not pinned: '+required);
+ }
+ console.log('[SBC FLAT INTEGRITY] PASS source='+release.sourceCommit.slice(0,12)+' files='+seen.size+' bytes='+total);
+ return {ok:true,files:seen.size};
+}
+module.exports={verifyFlatIntegrity};
+if(require.main===module)verifyFlatIntegrity(__dirname,require('./SBC-FLAT-RELEASE-IDENTITY.json'));
+"""
+
 BOOTSTRAP_COMPAT = """'use strict';
 // SBC V66.73 GoDaddy backwards-compatible startup only.
 // If GoDaddy preserved a legacy `node bootstrap.js` command, launch the same
@@ -158,19 +210,38 @@ files["sbc-godaddy-flat-entrypoint.cjs"] = ENTRY.encode()
 # GoDaddy `node bootstrap.js` serve command. Never compile a second runtime.
 if "bootstrap.js" in files: fail("compiled runtime conflicts with GoDaddy compatibility launcher")
 files["bootstrap.js"] = BOOTSTRAP_COMPAT.encode()
+for name in ("persistent-state.js", "tenant-rejection-guard.js", "runtime-env-beacon.js"):
+    if name in files: fail("launcher path conflict "+name)
+    files[name] = (ROOT/name).read_bytes()
+if "sbc-flat-integrity.cjs" in files: fail("integrity verifier path conflict")
+files["sbc-flat-integrity.cjs"] = VERIFY.encode()
+# Do not pin files that GoDaddy's package manager owns or the app writes.
+# Every executable and browser asset remains checksum-pinned.
+mutable = {"package-lock.json"}
+def inventory_pinned(name):
+    return (name not in mutable and
+            name not in {"SBC-FLAT-RELEASE-IDENTITY.json","SBC-FLAT-FILE-INVENTORY.json"} and
+            not name.startswith(("data/","backups/","sbc-persistent/",".airo/")))
+inventory = {
+    "schema": 1, "version": manifest["version"],
+    "sourceFingerprint": manifest["sourceFingerprint"],
+    "files": [{"path": name, "sha256": sha(files[name]), "size": len(files[name])}
+              for name in sorted(files) if inventory_pinned(name)]
+}
+if len(inventory["files"]) < 200: fail("application inventory unexpectedly small")
+inventory_bytes=(json.dumps(inventory,separators=(",",":"),sort_keys=True)+"\n").encode()
+files["SBC-FLAT-FILE-INVENTORY.json"]=inventory_bytes
 identity = {
     "schema":1,
     "version":manifest["version"],
     "sourceCommit":manifest["sourceCommit"],
     "sourceFingerprint":manifest["sourceFingerprint"],
     "serverSha256":original_server_hash,
+    "inventorySha256":sha(inventory_bytes),
     "uiOverlays":{"kimChiefOfStaffSha256":sha(kim_bytes)}
 }
 if "SBC-FLAT-RELEASE-IDENTITY.json" in files: fail("compiled release identity path collision")
 files["SBC-FLAT-RELEASE-IDENTITY.json"] = (json.dumps(identity,indent=2)+"\n").encode()
-for name in ("persistent-state.js", "tenant-rejection-guard.js", "runtime-env-beacon.js"):
-    if name in files: fail("launcher path conflict "+name)
-    files[name] = (ROOT/name).read_bytes()
 DEST.parent.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(DEST, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=False) as dst:
     for name in sorted(files):
@@ -192,6 +263,12 @@ with zipfile.ZipFile(DEST) as check:
         fail("Kim page is not linked in both compiled frontends")
     if sha(check.read("server.js")) != original_server_hash:
         fail("compiled server modified by packaging")
+    if sha(check.read("SBC-FLAT-FILE-INVENTORY.json")) != identity["inventorySha256"]:
+        fail("release file inventory mutated")
+    if not all(sha(check.read(item["path"]))==item["sha256"] for item in inventory["files"]):
+        fail("packaged inventory file mismatch")
+    if "sbc-flat-integrity.cjs" not in check.namelist():
+        fail("runtime inventory verifier missing")
     if check.read("bootstrap.js") != BOOTSTRAP_COMPAT.encode():
         fail("legacy startup compatibility launcher changed")
     if json.loads(check.read("SBC-FLAT-RELEASE-IDENTITY.json")) != identity:
