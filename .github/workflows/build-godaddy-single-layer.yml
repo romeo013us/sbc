@@ -63,6 +63,8 @@ jobs:
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx sbc-godaddy-flat-entrypoint.cjs
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx bootstrap.js
           unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx SBC-FLAT-RELEASE-IDENTITY.json
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx SBC-FLAT-FILE-INVENTORY.json
+          unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -qx sbc-flat-integrity.cjs
           if unzip -Z1 SBC-GoDaddy-SINGLE-LAYER-APP.zip | grep -E '(^|/)node_modules/|\.zip$|^\.env($|\.)|^\.github/|^\.git/'; then
             echo 'Forbidden dependency, nested archive, CI workflow or secret in GoDaddy flat ZIP'; exit 1
           fi
@@ -75,9 +77,27 @@ jobs:
           node --check "$verify_dir/server.js"
           node --check "$verify_dir/sbc-godaddy-flat-entrypoint.cjs"
           node --check "$verify_dir/bootstrap.js"
+          node --check "$verify_dir/sbc-flat-integrity.cjs"
+          node "$verify_dir/sbc-flat-integrity.cjs"
+          # A mixed GoDaddy extraction must fail BEFORE it can load server.js.
+          # Do this only inside disposable CI extraction, never a customer's app.
+          node - "$verify_dir" <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+          const dir=process.argv[2],target=path.join(dir,'public/app.js');
+          const {verifyFlatIntegrity}=require(path.join(dir,'sbc-flat-integrity.cjs'));
+          const identity=require(path.join(dir,'SBC-FLAT-RELEASE-IDENTITY.json'));
+          const original=fs.readFileSync(target);
+          try{
+            fs.appendFileSync(target,'\n// disposed CI-only deployment tamper\n');
+            assert.throws(()=>verifyFlatIntegrity(dir,identity),/SBC FLAT INTEGRITY.*altered/);
+          }finally{fs.writeFileSync(target,original);}
+          assert.equal(verifyFlatIntegrity(dir,identity).ok,true);
+          console.log('[SBC GO DADDY FLAT TAMPER TEST] PASS: modified browser code rejected and restored');
+          NODE
           node --check "$verify_dir/public/sbc-kim-chief-of-staff-page.js"
           SBC_RUNTIME_ROOT="$verify_dir" node ui-overlays/kim-chief-of-staff-page.test.cjs
           for pass in 1 2 3; do
+            node "$verify_dir/sbc-flat-integrity.cjs"
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6669-critical-navigation-race.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6645-square-checkout-safety.test.cjs
             SBC_RUNTIME_ROOT="$verify_dir" SBC_AUDIT_PASS="$pass" node scripts/v6648-revenue-tenant-isolation.test.cjs
