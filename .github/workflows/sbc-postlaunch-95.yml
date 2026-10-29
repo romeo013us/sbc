@@ -1,0 +1,40 @@
+name: SBC 9.5 post-launch safety gates (development only)
+on:
+  push:
+    branches:
+      - improve/sbc-post-launch-9-5
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sbc-postlaunch-95-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-and-import-safety:
+    name: Node 22 · lead import, tenant boundaries and source integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out development branch
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify release source syntax
+        run: |
+          node --check server.js
+          node --check public/sbc-lead-import-v6541.js
+          node --check public/sbc-v6667-private-owner-import.js
+          node --check scripts/postlaunch-95-import-gate.test.cjs
+      - name: Run non-mutating importer and CSV regression
+        run: node scripts/postlaunch-95-import-gate.test.cjs
+      - name: Install pinned test dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check tenant boundary and guarded CRM route
+        run: |
+          node scripts/v6605-crm-tenant-barrier-test.js
+          node scripts/v65110-lead-workspace-integration-test.js
+      - name: Verify no deployment scripts were invoked
+        run: echo "SBC 9.5 development-only gate completed; no GoDaddy deployment or database connection performed."
