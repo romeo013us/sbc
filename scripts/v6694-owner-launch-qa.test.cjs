@@ -59,6 +59,13 @@ function setup({locked=false,tenant=7,saveFails=false}={}){
  assert.equal(f.db.customers[0].status,'Internal Test');
  assert.equal(f.db.customers[0].email,'owner+test@example.com');
  assert.equal(f.activities.length,1);
+ // Only the relational columns survive restart; top-level QA marker is ephemeral.
+ // The owner may retry after a restart, but may NOT create a second test order.
+ f.db.orders[0]={
+  id:first.payload.orderId,tenantId:7,customerId:first.payload.customerId,
+  customerName:'SBC Launch QA Test Customer',product:'SBC Launch QA - $1 Test Service',
+  status:'New',price:1,notes:f.db.orders[0].notes,fulfillmentStatus:'QA - NO VENDOR FULFILLMENT'
+ };
  const again=await f.call('owner+test@example.com');
  assert.equal(again.statusCode,200);
  assert.equal(again.payload.existing,true);
@@ -80,5 +87,29 @@ function setup({locked=false,tenant=7,saveFails=false}={}){
  assert.equal(second.statusCode,200);
  assert.equal(second.payload.existing,true);
  assert.equal(save.db.orders.length,1);
+ // Stored MySQL payment status must be visible after readRelational() drops
+ // the in-memory paymentStatus property; otherwise a paid order looks Pending.
+ const getStart=src.indexOf("app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{");
+ const getEnd=src.indexOf("\napp.post('/api/payments/square/refresh/:orderId'",getStart);
+ assert(getStart>=0&&getEnd>getStart,'compiled Square owner status route present');
+ const getSource=src.slice(getStart,getEnd);
+ const paymentOrder={
+  id:'QA_SQL_ORDER_1',tenantId:7,price:1,customerId:'QA_SQL_CUSTOMER_1',
+  fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',
+  notes:JSON.stringify({squarePaymentStatus:'PAID',squarePaymentId:'sq_payment_1',squareOrderId:'sq_order_1'})
+ };
+ const statusApp={get:(route,auth,handler)=>{
+  assert.equal(route,'/api/payments/square/order/:orderId');
+  statusApp.handler=handler;
+ }};
+ vm.runInNewContext(getSource,{app:statusApp,auth:'AUTH',db:{orders:[paymentOrder]},
+  requireRequestTenant:()=>7,orderParsed:o=>JSON.parse(o.notes),
+  squarePaymentRecords:()=>[],Number,String},{timeout:4000});
+ const response={payload:null,statusCode:200,json(j){this.payload=j;return this},
+  status(n){this.statusCode=n;return this}};
+ await statusApp.handler({params:{orderId:'QA_SQL_ORDER_1'}},response);
+ assert.equal(response.payload?.order?.paymentStatus,'Paid',
+  'owner GET derives paid truth from MySQL notes after server restart');
+ assert.equal(response.payload?.order?.fulfillmentStatus,'QA VERIFIED - NO FULFILLMENT');
  console.log('[SBC OWNER $1 QA] PASS: compiled owner middleware, $1, tenant, anti-double-charge, writer lock, failure, no money movement');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});

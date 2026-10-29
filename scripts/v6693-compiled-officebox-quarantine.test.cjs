@@ -23,7 +23,7 @@ const payment={id:'square_payment_999',order_id:'square_order_999',location_id:'
 
 function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=false,lease=true,pool=true,items=null,product='Website Starter',metaSku='',price=349,launchQa=false}={}){
  const order={id:'sbc_order_999',customerId:'cust_999',tenantId:7,price,paymentStatus:'PENDING',launchQaOwnerCreated:launchQa,
-  status:'Pending',product,notes:JSON.stringify({squareOrderId:'square_order_999',squarePaymentStatus:'PENDING',items,officeBoxSku:metaSku,...(launchQa?{sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1}}:{})})};
+  status:'Pending',product,notes:JSON.stringify({squareOrderId:'square_order_999',squarePaymentStatus:'PENDING',items:launchQa&&!items?[{sku:'SBC_LAUNCH_QA_1USD',qty:1,unitPrice:1}]:items,officeBoxSku:metaSku,...(launchQa?{sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1}}:{})})};
  const record={id:'rec_999',sbcOrderId:order.id,squareOrderId:'square_order_999',squarePaymentId:'',status:'PENDING'};
  const db={orders:[order],squarePayments:[record],customers:[],tasks:[]};
  const events=[];
@@ -109,9 +109,24 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
  assert.equal(qa.events.filter(x=>x==='save').length,1);
  for(const effect of ['commercial','storefront','kim','intake','funnel','commission','handoff'])
   assert.equal(qa.events.includes(effect),false,'QA $1 cannot activate vendor/invite/fulfillment: '+effect);
+ // MySQL readRelational() drops launchQaOwnerCreated and paymentStatus;
+ // replay after that actual production serialization must not release vendors.
+ delete qa.order.launchQaOwnerCreated;
+ delete qa.order.paymentStatus;
  const duplicateQa=await qa.run(paidDollar);
  assert.equal(duplicateQa.duplicate,true);
+ assert.equal(qa.order.fulfillmentStatus,'QA VERIFIED - NO FULFILLMENT',
+  'duplicate callback after hydration must never reset QA hold');
  assert.equal(qa.events.filter(x=>x==='launch_qa_verified').length,1);
+ const restarted=fixture({price:1,launchQa:true,product:'SBC Launch QA - $1 Test Service'});
+ delete restarted.order.launchQaOwnerCreated;
+ delete restarted.order.paymentStatus;
+ const afterRestart=await restarted.run(paidDollar);
+ assert.equal(afterRestart.status,'PAID');
+ assert.equal(restarted.order.fulfillmentStatus,'QA VERIFIED - NO FULFILLMENT');
+ assert.equal(restarted.events.filter(x=>x==='launch_qa_verified').length,1);
+ for(const effect of ['commercial','storefront','kim','intake','funnel','commission','handoff'])
+  assert.equal(restarted.events.includes(effect),false,'restarted QA must not trigger '+effect);
  const mismatchedQa=fixture({price:1,launchQa:true,product:'SBC Launch QA - $1 Test Service'});
  const mismatchQa=await mismatchedQa.run({...paidDollar,amount_money:{amount:34900,currency:'USD'}});
  assert.equal(mismatchQa.code,'SQUARE_CAPTURE_AMOUNT_MISMATCH');
@@ -119,5 +134,6 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
  const forgedQa=fixture({price:1,launchQa:false,product:'SBC Launch QA - $1 Test Service'});
  await forgedQa.run(paidDollar);
  assert.equal(forgedQa.events.includes('launch_qa_verified'),false,'product name alone is never a QA authorization');
+ assert.equal(forgedQa.events.includes('commercial'),true,'ordinary SBC order side effects unchanged');
  console.log('[SBC V6693 COMPILED OFFICE BOX QUARANTINE] PASS: explicit plans skip all generic precommit fulfillment, tenant grants, email and legacy handoff; ordinary SBC fulfillment retained; malformed Square fails closed');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
