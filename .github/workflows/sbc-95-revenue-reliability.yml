@@ -34,6 +34,8 @@ jobs:
         run: node scripts/v6605-revenue-integrity.test.cjs
       - name: Quote server hardening transform (syntax and anchor proof; no mutations)
         run: node scripts/v6606-quote-server-hardening.cjs
+      - name: Quote server route behavior proof (in-memory mocks only)
+        run: node scripts/v6606-quote-server-hardening.test.cjs
       - name: Existing theme safety regression
         run: node hotfix-assets/v6555-theme-contrast-test.js
 
