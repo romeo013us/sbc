@@ -1,0 +1,43 @@
+name: SBC frozen source snapshot export (no deployment)
+on:
+  push:
+    branches: [improve/sbc-post-launch-9-5]
+    paths: ['.github/workflows/sbc-frozen-source-export.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive-frozen-source:
+    name: Archive pinned frozen Command Center source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout frozen source commit only
+        uses: actions/checkout@v4
+        with:
+          ref: b1ce7d01d25e7e9c48bb842ca1d16c4b4ccd7872
+          persist-credentials: false
+      - name: Validate exact pinned source
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "b1ce7d01d25e7e9c48bb842ca1d16c4b4ccd7872"
+          test -f server.js
+          test -f public/index.html
+          test -f browser_public/index.html
+          test -f sbc-godaddy-flat-entrypoint.cjs
+          test -f package-lock.json
+      - name: Archive tracked source at frozen identity
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/sbc-frozen-export"
+          git archive --format=zip --prefix=SBC-Command-Center-FROZEN/ --output="$RUNNER_TEMP/sbc-frozen-export/SBC-COMMAND-CENTER-FROZEN-SOURCE-2026-10-29.zip" HEAD
+          (cd "$RUNNER_TEMP/sbc-frozen-export" && sha256sum SBC-COMMAND-CENTER-FROZEN-SOURCE-2026-10-29.zip > SBC-COMMAND-CENTER-FROZEN-SOURCE-2026-10-29.zip.sha256)
+          printf 'SBC Command Center source snapshot\nSource commit: %s\nBranch checkpoint: freeze/sbc-soft-launch-2026-10-29\nNOTE: git-tracked source only; not a GoDaddy deployable prebuilt runtime, database backup, or hosting snapshot.\nNo customer records or live secrets are included unless accidentally committed in source. Do not distribute this private archive.\n' "$(git rev-parse HEAD)" > "$RUNNER_TEMP/sbc-frozen-export/README-SOURCE-ONLY.txt"
+          unzip -t "$RUNNER_TEMP/sbc-frozen-export/SBC-COMMAND-CENTER-FROZEN-SOURCE-2026-10-29.zip" | tail -1
+      - name: Upload export as short-lived downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SBC-COMMAND-CENTER-FROZEN-SOURCE-2026-10-29
+          path: ${{ runner.temp }}/sbc-frozen-export/*
+          if-no-files-found: error
+          retention-days: 30
