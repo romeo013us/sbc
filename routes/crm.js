@@ -89,15 +89,20 @@ module.exports = function registerCRM(app, { auth, getContext }) {
         activities = [];
       }
 
-      const lifetimeValue = orders
-        .filter(x => ['Paid', 'Completed', 'Fulfilled', 'Won'].includes(String(x.status)))
-        .reduce((sum, x) => sum + Number(x.price || 0), 0);
+      // This relational projection does not retrieve verified Square capture identifiers.
+      // Its lifetimeValue must be zero until authoritative proof is joined.
+      const estimatedOrderValue=orders.reduce((sum,x)=>{
+        const amount=Number(x.price||0);
+        return sum+(Number.isFinite(amount)&&amount>0?amount:0);
+      },0);
+      const lifetimeValue=0;
+      const paymentEvidenceStatus='UNVERIFIED_IN_THIS_RELATIONAL_PROJECTION';
 
       res.json({
         ok: true,
         version: RAILS.VERSION,
         tenantId: tenant,
-        data: { customer: customers[0], quotes, orders, activities, lifetimeValue }
+        data: { customer: customers[0], quotes, orders, activities, lifetimeValue, estimatedOrderValue, paymentEvidenceStatus }
       });
     } catch (e) {
       res.status(['TENANT_CONTEXT_MISSING','VALID_TENANT_CONTEXT_REQUIRED','TENANT_DATABASE_ID_INVALID','TENANT_CONTEXT_MISMATCH'].includes(e?.code) ? 403 : 503).json({ ok: false, error: 'CUSTOMER_360_READ_FAILED' });
