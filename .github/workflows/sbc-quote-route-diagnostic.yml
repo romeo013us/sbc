@@ -1,0 +1,16 @@
+name: SBC Quote Route Diagnostic (read-only)
+on:
+  push:
+    branches:
+      - audit/95-revenue-proof-20261029
+permissions:
+  contents: read
+jobs:
+  inspect-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Redacted economic quote route excerpt
+        run: node scripts/v6604-quote-route-diagnostic.cjs
