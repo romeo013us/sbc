@@ -1,0 +1,29 @@
+/* SBC V66.0.1: reversible, light-only readability layer.
+   Dark theme, hero/sidebar artwork, status colors, and layout geometry are untouched. */
+body[data-theme="light"] #content .card:not(.hero),
+body[data-theme="light"] #content .stat,
+body[data-theme="light"] #content .list-card,
+body[data-theme="light"] #content .table-wrap,
+body[data-theme="light"] #modal .modal-card {
+  background:#fff!important;color:#17283a!important;border-color:#c6d3e1!important;
+}
+body[data-theme="light"] #content :is(.card-body,.detail-box,.quote-total,.total-row,.quote-line),
+body[data-theme="light"] #modal :is(.modal-body,.form-grid,.quote-items,.quote-line,.quote-total,.total-row,#modalBody) {
+  color:#17283a!important;
+}
+body[data-theme="light"] #modal :is(label,.quote-line label,.total-row span,.total-row strong),
+body[data-theme="light"] #content :is(.card-head h2,.card-body h3,.quote-total strong) {
+  color:#17283a!important;
+}
+body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea) {
+  background:#fff!important;color:#17283a!important;border-color:#b9c8d9!important;
+}
+body[data-theme="light"] :is(#content,#modal) :is(.mini,.meta,.sub,.muted,.description) {
+  color:#52677b!important;
+}
+body[data-theme="light"] #modal .btn.primary {
+  background:#0b74d1!important;color:#fff!important;border-color:#0b74d1!important;
+}
+body[data-theme="light"] #modal #sbcQuoteSaveError {
+  background:#fff3e5!important;color:#713f12!important;border:1px solid #e4b87e!important;
+}

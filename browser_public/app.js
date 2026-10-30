@@ -326,7 +326,49 @@ function newQuote(){openModal('Create SBC quote',`<form id="quoteForm"><div clas
 function addQuoteLine(){const wrap=$('#quoteItems');if(!wrap)return;const quoteCatalog=[...state.catalog.packages,...state.catalog.services].filter(p=>state.me?.role==='owner'||!p.testOnly);const options=quoteCatalog.map(p=>`<option value="${esc(p.name)}" data-price="${p.price||0}" data-payment="${p.paymentUrl||''}">${esc(p.name)} — ${p.price?money(p.price):'Quote'}</option>`).join('');const row=document.createElement('div');row.className='quote-line';row.innerHTML=`<label>Item<select class="line-name">${options}<option value="Custom item" data-price="0">Custom item</option></select></label><label>Qty<input class="line-qty" type="number" min="1" value="1"></label><label>Unit price<input class="line-price" type="number" min="0" step="0.01" value="0"></label><div><div class="mini">Total</div><strong class="line-total">$0.00</strong></div><button type="button" class="icon-btn remove-line">×</button>`;wrap.appendChild(row);const s=row.querySelector('.line-name');s.onchange=()=>{const o=s.selectedOptions[0];row.querySelector('.line-price').value=o?.dataset.price||0;updateQuoteTotals()};row.querySelector('.line-qty').oninput=updateQuoteTotals;row.querySelector('.line-price').oninput=updateQuoteTotals;row.querySelector('.remove-line').onclick=()=>{row.remove();updateQuoteTotals()};s.dispatchEvent(new Event('change'))}
 function quoteItems(){return $$('#quoteItems .quote-line').map(r=>({name:r.querySelector('.line-name').value||'Custom item',qty:Number(r.querySelector('.line-qty').value||1),unitPrice:Number(r.querySelector('.line-price').value||0),paymentUrl:r.querySelector('.line-name').selectedOptions[0]?.dataset.payment||''})).filter(x=>x.name)}
 function updateQuoteTotals(){if(!$('#quoteItems'))return;const items=quoteItems(),sub=items.reduce((a,x)=>a+x.qty*x.unitPrice,0),disc=Number($('#quoteDiscount')?.value||0),rate=Number($('#quoteTax')?.value||0),tax=Math.max(0,sub-disc)*rate/100,total=Math.max(0,sub-disc)+tax;items.forEach((x,i)=>{const r=$$('#quoteItems .quote-line')[i];if(r)r.querySelector('.line-total').textContent=money(x.qty*x.unitPrice)});$('#quoteTotals').innerHTML=`<div class="total-row"><span>Subtotal</span><strong>${money(sub)}</strong></div><div class="total-row"><span>Discount</span><strong>-${money(disc)}</strong></div><div class="total-row"><span>Tax</span><strong>${money(tax)}</strong></div><div class="total-row grand"><span>Total</span><strong>${money(total)}</strong></div>`}
-async function saveQuote(e){e.preventDefault();const p=Object.fromEntries(new FormData(e.target).entries());p.items=quoteItems();p.discount=Number(p.discount||0);p.taxRate=Number(p.taxRate||0);try{await api('/api/quotes',{method:'POST',body:JSON.stringify(p)});closeModal();await load();toast('Quote created')}catch(x){toast(x.message)}}
+async function saveQuote(e){
+  e.preventDefault();
+  const form=e.target;
+  if(form.dataset.sbcQuoteSaving==='1')return;
+  const submit=form.querySelector('button.btn.primary');
+  const oldLabel=submit?.textContent||'Save quote';
+  form.dataset.sbcQuoteSaving='1';
+  if(submit){submit.disabled=true;submit.textContent='Saving quote…';}
+  form.querySelector('#sbcQuoteSaveError')?.remove();
+  const p=Object.fromEntries(new FormData(form).entries());
+  p.items=quoteItems();p.discount=Number(p.discount||0);p.taxRate=Number(p.taxRate||0);
+  try{
+    await api('/api/quotes',{method:'POST',body:JSON.stringify(p)});
+    closeModal();
+    try{await load();toast('Quote created');}
+    catch(refreshError){
+      console.warn('[SBC QUOTE SAVE] Quote saved; refresh failed:',refreshError?.message||refreshError);
+      toast('Quote saved, but account refresh failed. Refresh before submitting another quote.');
+    }
+  }catch(x){
+    const raw=String(x?.message||'Quote service rejected the request.');
+    let message=raw;
+    if(/ECONOMIC_COST_DATA_REQUIRED|UNCONFIGURED_SKU_COST_REJECTION/i.test(raw))
+      message='Quote not saved: actual vendor cost is missing for this item. Configure its verified cost in the product catalog before checkout.';
+    else if(/MARGIN_BELOW_MINIMUM|REJECTED_MARGIN/i.test(raw))
+      message='Quote not saved: price is below the contribution-margin minimum. Review actual cost and selling price.';
+    else if(/ECONOMIC_GATE_UNAVAILABLE/i.test(raw))
+      message='Quote not saved: economic validation is unavailable. Do not bypass the financial safety gate.';
+    else if(/401|authentication|session|sign in/i.test(raw))
+      message='Quote not saved: session expired. Sign in again to Published.';
+    else if(/503|unavailable|recovery/i.test(raw))
+      message='Quote not saved: Published quote service is unavailable. Check GoDaddy logs.';
+    const alert=document.createElement('div');
+    alert.id='sbcQuoteSaveError';alert.className='install-tip';alert.setAttribute('role','alert');
+    alert.textContent=message;
+    const actions=form.querySelector('.actions');
+    if(actions)actions.before(alert);else form.appendChild(alert);
+    toast('Quote not saved. Review the error above Save quote.');
+  }finally{
+    delete form.dataset.sbcQuoteSaving;
+    if(submit?.isConnected){submit.disabled=false;submit.textContent=oldLabel;}
+  }
+}
 function sbcLoadQuoteToCart(id){
   const q=(state.data.quotes||[]).find(x=>x.id===id);
   if(!q){toast('Quote not found.');return;}
