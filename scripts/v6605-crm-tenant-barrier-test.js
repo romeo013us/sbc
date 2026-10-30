@@ -18,7 +18,8 @@ async function test(){
   r=res();await basic({user:{tenantId:1},tenantId:1,params:{id:'a'}},r);
   assert.equal(r.code,200);assert.equal(r.body.data.customer.businessName,'A');
   assert.deepEqual(r.body.data.quotes.map(x=>x.id),['q2']);
-  assert.equal(r.body.data.lifetimeValue,10);
+  assert.equal(r.body.data.lifetimeValue,0,'status-only Paid must not count as captured revenue');
+  assert.equal(r.body.data.contractedOrderValue,10,'non-Square order value is kept separately');
   r=res();await basic({user:{tenantId:1},tenantId:1,params:{id:'b'}},r);assert.equal(r.code,404);
   r=res();await basic({user:{tenantId:1},tenantId:1,params:{id:'orphan'}},r);assert.equal(r.code,404);
   r=res();await basic({user:{tenantId:2},tenantId:2,params:{id:'a'}},r);assert.equal(r.code,403);
