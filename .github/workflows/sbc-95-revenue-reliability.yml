@@ -30,6 +30,8 @@ jobs:
         run: node scripts/v6601-ui-revenue-resilience.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
+      - name: Tenant economic cost and verified customer revenue contract
+        run: node scripts/v6605-revenue-integrity.test.cjs
       - name: Existing theme safety regression
         run: node hotfix-assets/v6555-theme-contrast-test.js
 
