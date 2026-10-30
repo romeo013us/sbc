@@ -1,0 +1,128 @@
+name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
+
+on:
+  push:
+    branches: [audit/95-revenue-proof-20261029]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verified-staged-zip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify source quote and economic protections before staging
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node scripts/v6606-quote-server-hardening.cjs
+          node scripts/v6606-quote-server-hardening.test.cjs
+          node scripts/v6605-revenue-integrity.test.cjs
+          node scripts/v6602-payment-evidence-contract.test.cjs
+          node scripts/v6605-crm-tenant-barrier-test.js
+          node scripts/v6603-flat-release-contract.test.cjs
+      - name: Transform staged source only (CI disposable checkout)
+        env:
+          SBC_ENABLE_V6606_SOURCE_WRITE: YES
+        run: |
+          node scripts/v6606-quote-server-hardening.cjs --apply
+          node --check server.js
+          node --check public/app.js
+          node --check browser_public/app.js
+          node --check enterprise/financial-governor-v56-25-3.js
+      - name: Generate honest staged release identity (do not reuse prior receipt)
+        run: |
+          node - <<'NODE'
+          const crypto=require('node:crypto'),fs=require('node:fs'),assert=require('node:assert/strict');
+          const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+          const identity=JSON.parse(fs.readFileSync('SBC-FLAT-RELEASE-IDENTITY.json','utf8'));
+          identity.serverSha256=sha('server.js');
+          identity.sourceCommit=process.env.GITHUB_SHA;
+          identity.sourceFingerprint=crypto.createHash('sha256').update(JSON.stringify({
+            commit:process.env.GITHUB_SHA,server:identity.serverSha256,
+            finance:sha('enterprise/financial-governor-v56-25-3.js'),
+            app:sha('public/app.js'),html:sha('public/index.html')
+          })).digest('hex');
+          identity.runtimePatch='v66.0.6-stage-safe-draft-owner-payment-proof';
+          identity.runtimePatchFrom='a-sbc-rollback-oct27';
+          fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
+          // A receipt from a different release MUST NOT be distributed.
+          fs.rmSync('SBC-DEPLOY-RECEIPT.json',{force:true});
+          assert.equal(sha('server.js'),identity.serverSha256);
+          console.log('[SBC STAGED IDENTITY] release hash matches staged code; prior deploy receipt removed');
+          NODE
+      - name: Build disposable flat GoDaddy ZIP and SHA256 evidence
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          root=pathlib.Path('.').resolve()
+          out=root/'dist-stage'
+          out.mkdir(exist_ok=True)
+          banned={'.git','.github','node_modules','dist','dist-stage','data','backups','__pycache__','.pytest_cache'}
+          files=[]
+          for p in root.rglob('*'):
+              if not p.is_file():continue
+              rel=p.relative_to(root)
+              if any(part in banned for part in rel.parts):continue
+              if p.name=='.env' or (p.name.startswith('.env.') and p.name!='.env.example'):continue
+              if p.suffix.lower() in ('.zip','.tgz','.tar','.gz','.sqlite','.db'):continue
+              if rel.parts[0]=='releases':continue
+              files.append(rel)
+          files.sort(key=str)
+          assert all(pathlib.Path(n) in files for n in ('package.json','package-lock.json','server.js','sbc-godaddy-flat-entrypoint.cjs','SBC-FLAT-RELEASE-IDENTITY.json','.airo/config.json','public/app.js'))
+          manifest={'schema':1,'status':'STAGING CANDIDATE ONLY — NOT LIVE CERTIFIED',
+            'sourceCommit':json.loads((root/'SBC-FLAT-RELEASE-IDENTITY.json').read_text())['sourceCommit'],
+            'files':{str(p):hashlib.sha256((root/p).read_bytes()).hexdigest() for p in files}}
+          zip_path=out/'SBC-V66-QUOTE-SAFETY-STAGING.zip'
+          with zipfile.ZipFile(zip_path,'w',zipfile.ZIP_DEFLATED,compresslevel=8) as z:
+              for rel in files:z.write(root/rel,str(rel))
+              z.writestr('SBC-STAGED-INVENTORY.json',json.dumps(manifest,indent=2)+'\n')
+          (out/'SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256').write_text(hashlib.sha256(zip_path.read_bytes()).hexdigest()+'  '+zip_path.name+'\n')
+          with zipfile.ZipFile(zip_path) as z:
+              assert z.testzip() is None
+              assert 'SBC-DEPLOY-RECEIPT.json' not in z.namelist()
+          print('[SBC STAGING ZIP] '+str(len(files))+' files; no customer state, secrets or stale deploy receipt');
+          PY
+      - name: Triple-check packaged server identity, revenue rules and frontend
+        run: |
+          set -euo pipefail
+          (cd dist-stage && sha256sum -c SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256)
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          unzip -q dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip -d "$tmp"
+          for pass in 1 2 3; do
+            node - "$tmp" <<'NODE'
+          const assert=require('node:assert/strict'),crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path');
+          const root=process.argv[2],read=p=>fs.readFileSync(path.join(root,p));
+          const release=JSON.parse(read('SBC-FLAT-RELEASE-IDENTITY.json').toString());
+          const actual=crypto.createHash('sha256').update(read('server.js')).digest('hex');
+          assert.equal(actual,release.serverSha256);
+          const inventory=JSON.parse(read('SBC-STAGED-INVENTORY.json').toString());
+          for(const [name,hash] of Object.entries(inventory.files)){
+            assert.equal(crypto.createHash('sha256').update(read(name)).digest('hex'),hash,name);
+          }
+          const code=read('server.js').toString();
+          assert.ok(code.includes('SBC_V6606_QUOTE_WRITER_HARDENING'));
+          assert.ok(code.includes('PAYMENT_PROOF_REQUIRED'));
+          assert.ok(code.includes('sbcV6606QuoteCreateGate'));
+          assert.ok(code.includes('sbcV6606QuoteUpdateGuard'));
+          console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
+          NODE
+            node --check "$tmp/server.js"
+            node --check "$tmp/public/app.js"
+            node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
+          done
+      - name: Upload isolated staging candidate (never publish)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SBC-V66-QUOTE-SAFETY-STAGING-CANDIDATE
+          path: |
+            dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip
+            dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256
+          retention-days: 30
