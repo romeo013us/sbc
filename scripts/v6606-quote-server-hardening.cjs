@@ -106,6 +106,9 @@ function patch(source){
    "Object.assign(q,req.body||{},{id:q.id,tenantId:q.tenantId,updatedAt:now()});",'quote update whitelist');
  s=s.slice(0,pos)+upd+s.slice(next);
  // Owner-only vendor cost update must take its tenant from authenticated request.
+ // It is a financial database mutation and is forbidden on read-only Preview.
+ s=one(s,"app.post('/api/economic/costs',auth,ownerOnly,async(req,res)=>{try{",
+   "app.post('/api/economic/costs',auth,ownerOnly,async(req,res)=>{if(!sbcV6606QuoteWriterReady(req,res))return;try{",'verified supplier cost writer boundary');
  s=one(s,"FINANCIAL_GOVERNOR.upsertCost({itemId:b.itemId",
    "FINANCIAL_GOVERNOR.upsertCost({tenantId:requireRequestTenant(req),itemId:b.itemId",'verified supplier cost tenant');
  return {source:s,alreadyApplied:false};
