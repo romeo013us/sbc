@@ -8,7 +8,7 @@ function poolStub(){
   const costRows=new Map(),ledger=[],queries=[];
   return {costRows,ledger,queries,async query(sql,params=[]){
     queries.push({sql,params});
-    if(/^CREATE TABLE/.test(sql))return [[],[]];
+    if(/^SELECT (item_id FROM sbc_cost_catalog|id FROM sbc_economic_exposure_ledger) LIMIT 0$/.test(sql))return [[],[]];
     if(/INSERT INTO sbc_cost_catalog/.test(sql)){
       const [id,name,wholesale,shipping,source,actor]=params;
       costRows.set(id,{item_id:id,item_name:name,wholesale_cost:wholesale,shipping_cost:shipping,source,actor});
@@ -28,6 +28,7 @@ const sample=(id,c)=>({itemId:id,itemName:'Verified Service',wholesaleCost:c,shi
 async function test(){
  const db=poolStub();
  const governor=createFinancialGovernor({getPool:()=>db,getAgentOS:()=>({governorEvaluate:async()=>({status:'ALLOWED'})}),logger:{error(){}}});
+ assert.ok(!require('node:fs').readFileSync(require('node:path').join(__dirname,'../enterprise/financial-governor-v56-25-3.js'),'utf8').includes('CREATE TABLE IF NOT EXISTS'),'Economic API must not attempt schema-changing DDL');
  await governor.upsertCost({tenantId:1,...sample('SBC_WEB_SETUP',20)});
  await governor.upsertCost({tenantId:2,...sample('SBC_WEB_SETUP',80)});
  assert.equal(db.costRows.size,2,'shared SKU must not share vendor cost across tenants');
