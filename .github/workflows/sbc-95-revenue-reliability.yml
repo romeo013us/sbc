@@ -36,6 +36,8 @@ jobs:
         run: node scripts/v6606-quote-server-hardening.cjs
       - name: Quote server route behavior proof (in-memory mocks only)
         run: node scripts/v6606-quote-server-hardening.test.cjs
+      - name: Owner supplier-cost form validation (no charges)
+        run: node scripts/v6607-cost-editor.test.cjs
       - name: Existing theme safety regression
         run: node hotfix-assets/v6555-theme-contrast-test.js
 
