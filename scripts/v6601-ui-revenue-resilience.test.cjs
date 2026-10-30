@@ -31,3 +31,54 @@ assert.match(fix,/sbcRepair/);
 assert.match(fix,/\/sw\.js/);
 assert.match(fix,/sbc-static-v/);
 console.log('[SBC V66.0.1 UI/REVENUE] PASS: scoped contrast, deliberate cache repair, quote feedback and mirrored assets.');
+
+const start=ui.indexOf('async function saveQuote(e){');
+const finish=ui.indexOf('\nfunction sbcLoadQuoteToCart',start);
+assert.ok(start>=0&&finish>start,'quote handler is extractable');
+const excerpt=ui.slice(start,finish);
+new Function(ui); // syntax compile only: never boot or call production APIs
+new Function(get('public/sbc-browser-view-repair-v6601.js'));
+async function exercise(kind){
+  const notes=[],alerts=[];let calls=0,closed=0,release;
+  const button={textContent:'Save quote',disabled:false,isConnected:true};
+  const form={dataset:{},querySelector(selector){
+    if(selector==='button.btn.primary')return button;
+    if(selector==='#sbcQuoteSaveError')return null;
+    if(selector==='.actions')return {before:el=>alerts.push(el)};
+    return null;
+  },appendChild:el=>alerts.push(el)};
+  class FormDataStub{entries(){return [['customerId','test-customer'],['status','Draft']].values();}}
+  const documentStub={createElement:()=>({setAttribute(){},textContent:''})};
+  const pending=new Promise(done=>release=done);
+  const apiStub=async()=>{
+    calls++;
+    if(kind==='cost')throw Error('ECONOMIC_COST_DATA_REQUIRED:SBC CHECKOUT TEST');
+    if(kind==='duplicate')await pending;
+    return {ok:true};
+  };
+  const loadStub=async()=>{if(kind==='refresh')throw Error('Read-only refresh error');};
+  const save=new Function('api','FormData','quoteItems','closeModal','load','toast','document','console',
+    excerpt+'\nreturn saveQuote;')(
+    apiStub,FormDataStub,()=>[{name:'Test',qty:1,unitPrice:.01}],
+    ()=>closed++,loadStub,t=>notes.push(t),documentStub,{warn(){}}
+  );
+  const event={preventDefault(){},target:form};
+  if(kind==='duplicate'){const a=save(event),b=save(event);release();await Promise.all([a,b]);}
+  else await save(event);
+  assert.equal(button.disabled,false,'submit re-enabled after completion');
+  assert.equal(form.dataset.sbcQuoteSaving,undefined,'request guard released');
+  return {calls,closed,alerts,notes};
+}
+(async()=>{
+  const blocked=await exercise('cost');
+  assert.equal(blocked.calls,1);
+  assert.equal(blocked.closed,0,'rejected quote must leave form open');
+  assert.match(blocked.alerts[0].textContent,/vendor cost/i);
+  const refresh=await exercise('refresh');
+  assert.equal(refresh.closed,1,'saved quote closes modal');
+  assert.ok(refresh.notes.some(s=>s.includes('Quote saved')),'successful write not mislabeled as failure');
+  const duplicate=await exercise('duplicate');
+  assert.equal(duplicate.calls,1,'only one POST on double-click');
+  console.log('[SBC V66.0.1 UI/REVENUE] PASS: cost gate feedback, post-write refresh, duplicate-submit guard.');
+})().catch(err=>{console.error(err);process.exitCode=1;});
+
