@@ -1,0 +1,33 @@
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+const get=p=>fs.readFileSync(path.join(root,p),'utf8');
+const ui=get('public/app.js');
+const mirror=get('browser_public/app.js');
+assert.equal(ui,mirror,'browser app mirrors must be identical');
+assert.match(ui,/async function saveQuote\(e\)/);
+assert.match(ui,/ECONOMIC_COST_DATA_REQUIRED/);
+assert.match(ui,/sbcQuoteSaveError/);
+assert.match(ui,/sbcQuoteSaving/);
+assert.match(ui,/Quote saved, but account refresh failed/);
+const css=get('public/sbc-light-contrast-v6601.css');
+assert.equal(css,get('browser_public/sbc-light-contrast-v6601.css'));
+assert.ok(css.includes('body[data-theme="light"]'));
+assert.ok(!css.includes('body[data-theme="dark"]'),'light fix must not change dark mode');
+for(const html of ['public/index.html','browser_public/index.html']){
+  const s=get(html);
+  const stylesheet='/sbc-light-contrast-v6601.css?v=66.0.1';
+  const recovery='/sbc-browser-view-repair-v6601.js?v=66.0.1';
+  assert.equal(s.split(stylesheet).length-1,1,'light layer is included exactly once in '+html);
+  assert.equal(s.split(recovery).length-1,1,'repair helper is included exactly once in '+html);
+  assert.ok(s.indexOf('sbc-v6636-canonical-styles')<s.indexOf(stylesheet),'light layer follows existing canonical CSS');
+}
+const fix=get('public/sbc-browser-view-repair-v6601.js');
+assert.equal(fix,get('browser_public/sbc-browser-view-repair-v6601.js'));
+assert.ok(!/localStorage\.(?:clear|removeItem)|indexedDB\.deleteDatabase|document\.cookie\s*=/.test(fix),'never delete user-owned browser state');
+assert.match(fix,/sbcRepair/);
+assert.match(fix,/\/sw\.js/);
+assert.match(fix,/sbc-static-v/);
+console.log('[SBC V66.0.1 UI/REVENUE] PASS: scoped contrast, deliberate cache repair, quote feedback and mirrored assets.');
