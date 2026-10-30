@@ -64,14 +64,14 @@ jobs:
           root=pathlib.Path('.').resolve()
           out=root/'dist-stage'
           out.mkdir(exist_ok=True)
-          banned={'.git','.github','node_modules','dist','dist-stage','data','backups','__pycache__','.pytest_cache'}
+          banned={'.git','.github','node_modules','dist','dist-stage','data','backups','starter-leads','__pycache__','.pytest_cache'}
           files=[]
           for p in root.rglob('*'):
               if not p.is_file():continue
               rel=p.relative_to(root)
               if any(part in banned for part in rel.parts):continue
               if p.name=='.env' or (p.name.startswith('.env.') and p.name!='.env.example'):continue
-              if p.suffix.lower() in ('.zip','.tgz','.tar','.gz','.sqlite','.db'):continue
+              if p.suffix.lower() in ('.zip','.tgz','.tar','.gz','.sqlite','.db','.csv'):continue
               if rel.parts[0]=='releases':continue
               files.append(rel)
           files.sort(key=str)
@@ -87,6 +87,7 @@ jobs:
           with zipfile.ZipFile(zip_path) as z:
               assert z.testzip() is None
               assert 'SBC-DEPLOY-RECEIPT.json' not in z.namelist()
+              assert not any(n.lower().endswith('.csv') or n.startswith('starter-leads/') for n in z.namelist()), 'Customer prospect CSVs must never be shipped'
           print('[SBC STAGING ZIP] '+str(len(files))+' files; no customer state, secrets or stale deploy receipt');
           PY
       - name: Triple-check packaged server identity, revenue rules and frontend
@@ -112,6 +113,7 @@ jobs:
           assert.ok(code.includes('PAYMENT_PROOF_REQUIRED'));
           assert.ok(code.includes('sbcV6606QuoteCreateGate'));
           assert.ok(code.includes('sbcV6606QuoteUpdateGuard'));
+          assert.ok(code.includes('SBC_V6608_PROSPECT_CSV_PRIVACY_GATE'));
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
