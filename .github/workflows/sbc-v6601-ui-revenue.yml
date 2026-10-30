@@ -1,0 +1,32 @@
+name: SBC V66.0.1 Focused UI and Quote Regression
+
+on:
+  push:
+    branches:
+      - fix/checkout-feedback-light-theme-20261029
+  pull_request:
+    branches:
+      - a-sbc-rollback-oct27
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-quote-mocks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate frontend syntax and browser helper
+        run: |
+          node --check public/app.js
+          node --check browser_public/app.js
+          node --check public/sbc-browser-view-repair-v6601.js
+          node --check browser_public/sbc-browser-view-repair-v6601.js
+      - name: Test quote error/refresh/duplicate and light-only/browser safety invariants
+        run: node scripts/v6601-ui-revenue-resilience.test.cjs
+      - name: Existing theme contrast regression
+        run: node hotfix-assets/v6555-theme-contrast-test.js
