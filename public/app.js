@@ -336,6 +336,10 @@ async function saveQuote(e){
   if(submit){submit.disabled=true;submit.textContent='Saving quote…';}
   form.querySelector('#sbcQuoteSaveError')?.remove();
   const p=Object.fromEntries(new FormData(form).entries());
+  // Stable retry identity stops a client-side timeout from creating a second quote.
+  if(!form.dataset.sbcClientRequestId&&typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')
+    form.dataset.sbcClientRequestId=crypto.randomUUID();
+  if(form.dataset.sbcClientRequestId)p.clientRequestId=form.dataset.sbcClientRequestId;
   p.items=quoteItems();p.discount=Number(p.discount||0);p.taxRate=Number(p.taxRate||0);
   try{
     await api('/api/quotes',{method:'POST',body:JSON.stringify(p)});
