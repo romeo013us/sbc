@@ -17,3 +17,11 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Prospect and client exports never belong in source control or public static assets
+/public/**/*.csv
+/browser_public/**/*.csv
+/starter-leads/**/*.csv
+/hotfix-assets/**/*.csv
+*.sqlite
+*.db
