@@ -18,6 +18,7 @@ const V562 = require('./v562-tier1-architecture');
 const V562NEXT = require('./v562-next-architecture');
 const V563 = require('./v563-maturity-layer');
 const V565 = require('./v565-operational-hardening');
+const PAYMENT_EVIDENCE = require('./v6640-payment-evidence.cjs');
 
 const VERSION = '56.6.0';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -82,10 +83,15 @@ function customer360(db = {}, customerId) {
   const renewals = (db.renewals || []).filter(x => String(x.customerId) === id);
   const activities = (db.activities || []).filter(x => String(x.meta?.customerId || x.customerId) === id);
   const tasks = (db.tasks || []).filter(x => String(x.customerId) === id);
-  const paid = orders.filter(o => ['Paid','Completed','Fulfilled','Won'].includes(String(o.status || '')));
-  const lifetimeValue = paid.reduce((s, o) => s + Number(o.price || o.total || 0), 0);
+  // SBC_V6605_VERIFIED_LTV: only recorded Square capture proof counts as collected revenue.
+  const paymentProof = PAYMENT_EVIDENCE.snapshot(orders);
+  const lifetimeValue = paymentProof.recognizedPaidRevenue;
+  const contractedOrderValue = orders.reduce((sum,o)=>{
+    const amount=Number(o.price ?? o.total ?? 0);
+    return sum + (Number.isFinite(amount)&&amount>0?amount:0);
+  },0);
   const timeline = [...quotes.map(x => ({at:x.updatedAt||x.createdAt,type:'quote',status:x.status,id:x.id})), ...orders.map(x => ({at:x.updatedAt||x.createdAt,type:'order',status:x.status,id:x.id,value:Number(x.price||0)})), ...renewals.map(x => ({at:x.updatedAt||x.createdAt,type:'renewal',status:x.status,id:x.id,value:Number(x.amount||0)})), ...activities.map(x => ({at:x.createdAt,type:'activity',status:x.type,id:x.id,message:x.message})), ...tasks.map(x => ({at:x.updatedAt||x.createdAt,type:'task',status:x.status,id:x.id,title:x.title}))].sort((a,b) => new Date(b.at||0)-new Date(a.at||0));
-  return { customer, quotes, orders, renewals, activities, tasks, lifetimeValue, timeline, sourceOrigin: customer.source || '', generatedAt: now() };
+  return { customer, quotes, orders, renewals, activities, tasks, lifetimeValue, contractedOrderValue, lifetimeValueMethod:'SBC-recorded Square capture metadata; provider reconciliation pending', paymentProof, timeline, sourceOrigin: customer.source || '', generatedAt: now() };
 }
 
 function growthFactory(input = {}) {

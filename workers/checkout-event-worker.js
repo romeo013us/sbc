@@ -1,5 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
+const { MIN_MARGIN_PCT } = require('../enterprise/sbc-margin-policy.cjs');
 
 /**
  * V58.3 checkout.paid consumer.
@@ -41,7 +42,7 @@ class CheckoutEventWorker {
       const vendorMap={godaddy:'godaddy',godaddyapi:'godaddy','4over4':'fourOverFour',fouroverfour:'fourOverFour',vistaprint:'vistaPrint',internal:'internal',sbcinternal:'internal'};
       const vendor=vendorMap[rawVendor]||(/domain|hosting|wordpress|microsoft|email/.test(type)?'godaddy':/print|card|flyer|brochure/.test(type)?'fourOverFour':/service|internal|website|seo|onboarding/.test(type)?'internal':'');
       const mappingRequired=!vendor,canonicalVendor=vendor||'internal',orderReferenceMissing=!checkout.order_id;
-      if (Number(checkout.vendor_cost || 0) <= 0 || Number(checkout.margin_pct || 0) < 0.30) {
+      if (Number(checkout.vendor_cost || 0) <= 0 || Number(checkout.margin_pct || 0) < MIN_MARGIN_PCT) {
         await connection.query(
           `UPDATE sbc_checkout_event_ledger
               SET status = 'FROZEN_ECONOMIC_GUARD'
