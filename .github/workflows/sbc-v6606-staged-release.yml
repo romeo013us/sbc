@@ -2,7 +2,7 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 
 on:
   push:
-    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030, fix/v66-one-click-sales-qa-20261031, fix/v66-persistent-browser-repair-20261031, fix/v66-owner-qa-nav-visibility-20261031, fix/v66-master-one-click-qa-20261031]
+    branches: [a-sbc-master]
   workflow_dispatch:
 
 permissions:
@@ -68,13 +68,26 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.17-master-owner-one-click-qa';
-          identity.runtimePatchFrom='a-sbc-rollback-oct27';
+          identity.runtimePatch='v66.0.18-master-receipt-overlay-repair';
+          identity.runtimePatchFrom='a-sbc-master';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
-          // A receipt from a different release MUST NOT be distributed.
-          fs.rmSync('SBC-DEPLOY-RECEIPT.json',{force:true});
+          // GoDaddy extracts without cleaning /app. Omitting this file leaves the
+          // old deployment receipt in place and causes a production rollback.
+          // Rebuild a matching receipt for THIS package; it will be included
+          // in the immutable staged manifest and overwrite the stale file.
+          const receipt={
+            sourceCommit:identity.sourceCommit,
+            sourceFingerprint:identity.sourceFingerprint,
+            artifactType:'server.js',
+            artifactSha256:identity.serverSha256,
+            buildBranch:'a-sbc-master',
+            deployBranch:'a-sbc-master',
+            createdBy:'SBC V66 Verified Master Release GitHub Actions'
+          };
+          fs.writeFileSync('SBC-DEPLOY-RECEIPT.json',JSON.stringify(receipt,null,2)+'\n');
           assert.equal(sha('server.js'),identity.serverSha256);
-          console.log('[SBC STAGED IDENTITY] release hash matches staged code; prior deploy receipt removed');
+          assert.equal(receipt.sourceCommit,identity.sourceCommit);
+          console.log('[SBC STAGED IDENTITY] release server digest and freshly regenerated receipt match');
           NODE
       - name: Build disposable flat GoDaddy ZIP and SHA256 evidence
         run: |
@@ -113,9 +126,10 @@ jobs:
           (out/'SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256').write_text(hashlib.sha256(zip_path.read_bytes()).hexdigest()+'  '+zip_path.name+'\n')
           with zipfile.ZipFile(zip_path) as z:
               assert z.testzip() is None
-              assert 'SBC-DEPLOY-RECEIPT.json' not in z.namelist()
+              assert 'SBC-DEPLOY-RECEIPT.json' in z.namelist(), 'Package must overwrite GoDaddy stale receipt'
               assert not any(n.lower().endswith('.csv') or n.startswith('starter-leads/') for n in z.namelist()), 'Customer prospect CSVs must never be shipped'
-          print('[SBC STAGING ZIP] '+str(len(files))+' files; no customer state, secrets or stale deploy receipt');
+          assert 'SBC-DEPLOY-RECEIPT.json' in hashed, 'Receipt must be included in pinned inventory' 
+          print('[SBC STAGING ZIP] '+str(len(files))+' files; fresh pinned receipt, no customer state or secrets');
           PY
       - name: Triple-check packaged server identity, revenue rules and frontend
         run: |
@@ -131,7 +145,13 @@ jobs:
           const release=JSON.parse(read('SBC-FLAT-RELEASE-IDENTITY.json').toString());
           const actual=crypto.createHash('sha256').update(read('server.js')).digest('hex');
           assert.equal(actual,release.serverSha256);
+          const receipt=JSON.parse(read('SBC-DEPLOY-RECEIPT.json').toString());
+          assert.equal(receipt.sourceCommit,release.sourceCommit);
+          assert.equal(receipt.sourceFingerprint,release.sourceFingerprint);
+          assert.equal(receipt.artifactType,'server.js');
+          assert.equal(receipt.artifactSha256,actual);
           const inventory=JSON.parse(read('SBC-STAGED-INVENTORY.json').toString());
+          assert.ok(inventory.files['SBC-DEPLOY-RECEIPT.json'],'Fresh receipt must be included in inventory');
           for(const [name,hash] of Object.entries(inventory.files)){
             assert.equal(crypto.createHash('sha256').update(read(name)).digest('hex'),hash,name);
           }
@@ -160,6 +180,25 @@ jobs:
           else
             echo '[SBC STAGED INVENTORY] PASS: corrupted frontend is rejected'
           fi
+      - name: Prove GoDaddy overlay replaces a previous release receipt
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          # Model GoDaddy's cleanAppDirBeforeExtract:false extraction behavior.
+          printf '%s\n' '{"sourceCommit":"0c6152e7aae7ad7aed33dd99d66f9f691ed57cd2","sourceFingerprint":"obsolete","artifactSha256":"obsolete"}' > "$tmp/SBC-DEPLOY-RECEIPT.json"
+          unzip -oq dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip -d "$tmp"
+          node - "$tmp" <<'NODE'
+          const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+          const root=process.argv[2],read=p=>JSON.parse(fs.readFileSync(path.join(root,p),'utf8'));
+          const release=read('SBC-FLAT-RELEASE-IDENTITY.json');
+          const receipt=read('SBC-DEPLOY-RECEIPT.json');
+          assert.equal(receipt.sourceCommit,release.sourceCommit,'Old GoDaddy receipt was not replaced');
+          assert.equal(receipt.sourceFingerprint,release.sourceFingerprint);
+          assert.equal(receipt.artifactSha256,release.serverSha256);
+          require(path.join(root,'scripts/v6611-verify-stage-inventory.cjs')).verifyStagedInventory(root,release);
+          console.log('[SBC GODADDY OVERLAY] PASS: previous receipt overwritten with verified master identity');
+          NODE
       - name: Reproduce GoDaddy production npm installation on extracted ZIP
         run: |
           set -euo pipefail
@@ -186,7 +225,7 @@ jobs:
   # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
   # Never update the GoDaddy-connected rollback source branch or Published app.
   github-preview-branch:
-    if: github.ref == 'refs/heads/a-sbc-rollback-oct27' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/a-sbc-master' && github.event_name == 'push'
     needs: verified-staged-zip
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -222,31 +261,33 @@ jobs:
           for(const token of ['SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE','owner-verified-zero-vendor-cost'])
             assert.ok(fs.readFileSync(path.join(temp,'server.js'),'utf8').includes(token),'Missing runtime guard: '+token);
           NODE
-          # Exactly three changed or added release files and removal of stale receipt.
+          # Four pinned release assets: this receipt MUST overwrite any old /app copy.
           cp "$temp/server.js" server.js
           cp "$temp/SBC-FLAT-RELEASE-IDENTITY.json" SBC-FLAT-RELEASE-IDENTITY.json
           cp "$temp/SBC-STAGED-INVENTORY.json" SBC-STAGED-INVENTORY.json
-          rm -f SBC-DEPLOY-RECEIPT.json
+          cp "$temp/SBC-DEPLOY-RECEIPT.json" SBC-DEPLOY-RECEIPT.json
           node scripts/v6611-verify-stage-inventory.cjs .
           node --check server.js
           node --check sbc-godaddy-flat-entrypoint.cjs
-          BRANCH="release/sbc-v66-qa-$(printf '%.12s' "$GITHUB_SHA")"
-          git switch -c "$BRANCH"
-          git add server.js SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json
-          git add -u -- SBC-DEPLOY-RECEIPT.json
+          BRANCH='a-sbc-master'
+          git switch -c "sbc-master-verified-$(printf '%.12s' "$GITHUB_SHA")"
+          git add server.js SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json SBC-DEPLOY-RECEIPT.json
           node - <<'NODE'
           const cp=require('node:child_process'),assert=require('node:assert/strict');
           const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
           const allowed=new Set(['server.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
-          assert.ok(paths.length>=3&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
+          assert.ok(paths.length>=4&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
           NODE
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "release(godaddy): tested QA runtime from $GITHUB_SHA"
-          # Unique SHA-specific branch; never force-push/overwrite the existing live rollback.
+          # Fast-forward ONLY the canonical master to the verified compiled commit.
+          # Reject any concurrent source edit rather than overwriting other work.
+          remote=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          test "$remote" = "$GITHUB_SHA" || { echo '[SBC MASTER] source moved during build; refusing to overwrite' >&2; exit 1; }
           git push origin "HEAD:refs/heads/$BRANCH"
           echo "### GoDaddy GitHub Preview candidate" >> "$GITHUB_STEP_SUMMARY"
           echo "Source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
-          echo "Select GitHub branch: $BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          echo "Select GoDaddy GitHub branch: $BRANCH (compiled verified master)" >> "$GITHUB_STEP_SUMMARY"
           echo "Validated: complete runtime, no stale receipt, 20% margin, owner-only QA, supplier holds." >> "$GITHUB_STEP_SUMMARY"
           echo "**No GoDaddy Preview or Published deployment occurred.**" >> "$GITHUB_STEP_SUMMARY"
