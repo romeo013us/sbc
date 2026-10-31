@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { MIN_MARGIN_PCT } = require('./sbc-margin-policy.cjs');
 
 /**
  * SBC V58.3 Storefront Checkout Event Handler
@@ -9,18 +10,18 @@ const crypto = require('crypto');
  *  - validate tenant/SKU/amount boundaries
  *  - read vendor cost only from the tenant-scoped product catalog
  *  - fail closed on missing/zero cost
- *  - enforce the 30% contribution-margin floor
+ *  - enforce the owner-approved 20% contribution-margin floor
  *  - persist checkout + revenue + Agent OS event in one transaction
  *  - provide deterministic idempotency for provider retries
  *  - never perform refunds or other irreversible financial mutations
  */
 class StorefrontCheckoutEventHandler {
-  constructor({ pool, signatureVerifier = null, clock = () => new Date(), minimumMargin = 0.30 } = {}) {
+  constructor({ pool, signatureVerifier = null, clock = () => new Date() } = {}) {
     if (!pool) throw new Error('StorefrontCheckoutEventHandler requires pool');
     this.pool = pool;
     this.signatureVerifier = signatureVerifier;
     this.clock = clock;
-    this.minimumMargin = Number.isFinite(Number(minimumMargin)) ? Number(minimumMargin) : 0.30;
+    this.minimumMargin = MIN_MARGIN_PCT;
   }
 
   static canonicalize(value) {
