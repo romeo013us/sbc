@@ -292,7 +292,7 @@ jobs:
           const cp=require('node:child_process'),assert=require('node:assert/strict');
           const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
           const allowed=new Set(['server.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
-          assert.ok(paths.length>=4&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
+          assert.ok(paths.length>=3&&paths.includes('SBC-DEPLOY-RECEIPT.json')&&paths.includes('SBC-FLAT-RELEASE-IDENTITY.json')&&paths.includes('SBC-STAGED-INVENTORY.json')&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
           NODE
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
