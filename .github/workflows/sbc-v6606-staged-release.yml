@@ -2,7 +2,7 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 
 on:
   push:
-    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030, fix/v66-one-click-sales-qa-20261031, fix/v66-persistent-browser-repair-20261031]
+    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030, fix/v66-one-click-sales-qa-20261031, fix/v66-persistent-browser-repair-20261031, fix/v66-owner-qa-nav-visibility-20261031]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,7 @@ jobs:
           node scripts/v6601-ui-revenue-resilience.test.cjs
           node scripts/v6613-browser-profile-stability.test.cjs
           node scripts/v6614-quick-checkout-ui.test.cjs
+          node scripts/v6616-owner-qa-nav.test.cjs
           node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
@@ -67,7 +68,7 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.15-stage-qa-checkout-persistent-browser-repair';
+          identity.runtimePatch='v66.0.16-stage-owner-qa-visible-nav-and-checkout';
           identity.runtimePatchFrom='a-sbc-rollback-oct27';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
           // A receipt from a different release MUST NOT be distributed.

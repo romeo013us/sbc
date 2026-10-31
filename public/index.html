@@ -2,7 +2,7 @@
 <!-- SBC V65.1.26 Startup Fail-Closed Recovery Gate --><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta name="theme-color" content="#0b74d1"><meta name="description" content="Successful By Choice private business operating system · V65.1.33"><meta name="theme-color" content="#0b74d1"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/assets/sbc-logo.jpg"><title>SBC Business Command Center — 66.0.0</title><link id="sbc-v6636-canonical-styles" rel="stylesheet" href="/sbc-v6636-styles.30b58fe998a1ed88.css" data-sbc-v6636="30b58fe998a1ed88eb9b1c2ad0fff6bdefca8527f31fc60f0295adf632bcf6a0"><link rel="stylesheet" href="/sbc-light-contrast-v6601.css?v=66.0.1"><script defer src="/sbc-browser-view-repair-v6601.js?v=66.0.13-profile-stability"></script>
 <!-- SBC 54.0.2 training cleanup: unified curriculum, stable filters, anchored Kim -->
 
-<style id="sbc-v56140-monetization-cockpit">.arch-revenue-link{margin-top:16px;padding:14px 16px;border:1px solid rgba(34,197,94,.35);border-radius:14px;background:rgba(34,197,94,.06);display:flex;align-items:center;gap:12px;flex-wrap:wrap}.arch-revenue-link strong{margin-right:auto}</style><script src="/v570-revenue-os.js?v=66.0.13-profile-stability" defer></script><style id="sbc-no-floating-ask-kim-v6550">#ckLauncher,.ck-launcher,#kimGreatnessFab,.akx-launcher,#sbcKimLauncher,.sbc-kim-bottom-launcher{display:none!important;visibility:hidden!important;pointer-events:none!important}</style>
+<style id="sbc-v6616-checkout-nav-guard">#sbc-quick-checkout-nav-link[hidden],#sbc-owner-qa-nav-link[hidden]{display:none!important}</style><style id="sbc-v56140-monetization-cockpit">.arch-revenue-link{margin-top:16px;padding:14px 16px;border:1px solid rgba(34,197,94,.35);border-radius:14px;background:rgba(34,197,94,.06);display:flex;align-items:center;gap:12px;flex-wrap:wrap}.arch-revenue-link strong{margin-right:auto}</style><script src="/v570-revenue-os.js?v=66.0.13-profile-stability" defer></script><style id="sbc-no-floating-ask-kim-v6550">#ckLauncher,.ck-launcher,#kimGreatnessFab,.akx-launcher,#sbcKimLauncher,.sbc-kim-bottom-launcher{display:none!important;visibility:hidden!important;pointer-events:none!important}</style>
 
 <script id="sbc-stark-cockpit-theme-default">try{if(!localStorage.getItem("sbc-theme"))localStorage.setItem("sbc-theme","dark")}catch(e){}</script>
 
@@ -99,6 +99,8 @@ body{overflow-x:hidden}
 <div id="login" class="login-screen"><div class="login-card"><img class="brand-logo login-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div class="eyebrow">SUCCESSFUL BY CHOICE</div><h1>Business Command Center</h1><p>Private operating system for SBC sales, customers, quotes, payments, print orders and renewals.</p><form id="loginForm"><label>Username<input id="loginUsername" autocomplete="username" value="owner" required placeholder="owner"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your SBC password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="form-error"></div></form></div></div>
 <div id="app" class="app hidden v56-app"><aside class="sidebar"><div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div><strong>Successful By Choice</strong><span>Business Command Center</span></div></div><nav class="v56-primary-nav">
 <button data-view="dashboard" class="nav-item v56-nav-item active"><span>⌂</span> Home</button>
+<button type="button" id="sbc-quick-checkout-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start customer Quick Checkout"><span>⚡</span> Quick Checkout</button>
+<button type="button" id="sbc-owner-qa-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start owner-only internal $1 Square test"><span>🧪</span> $1 Test Checkout</button>
 <button data-view="notifications" class="nav-item v56-nav-item owner-only"><span>🔔</span> Notifications</button>
 <button data-view="crm" class="nav-item v56-nav-item"><span>💰</span> Sales</button>
 <button data-view="revenue90" class="nav-item v56-nav-item"><span>🎯</span> 90-Day Revenue</button>
@@ -255,10 +257,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 /* Owner-only navigation to the EXISTING private importer. No network writes, migrations, or customer data changes. */
 (function(){
  'use strict';
- var doc=document,app=doc.getElementById('app'),link=doc.getElementById('sbc-owner-import-link');
+ var doc=document,app=doc.getElementById('app'),link=doc.getElementById('sbc-owner-import-link'),qa=doc.getElementById('sbc-owner-qa-nav-link'),fast=doc.getElementById('sbc-quick-checkout-nav-link');
  if(!app||!link)return;
  var checking=false,verified=false;
- function hide(){link.hidden=true;verified=false}
+ function hide(){link.hidden=true;if(qa)qa.hidden=true;if(fast)fast.hidden=true;verified=false}
  async function verify(){
   if(checking||verified||app.classList.contains('hidden'))return;
   checking=true;
@@ -266,14 +268,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
    var response=await fetch('/api/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
    if(!response.ok){hide();return;}
    var data=await response.json();
-   if(!app.classList.contains('hidden')&&data&&data.authenticated===true&&data.user&&data.user.role==='owner'){
-    verified=true;link.hidden=false;
-   }else hide();
+   var role=String(data?.user?.role||'').toLowerCase();
+   var allowed=!app.classList.contains('hidden')&&data?.authenticated===true;
+   var isOwner=allowed&&role==='owner';
+   var canSell=allowed&&['owner','admin','manager','sales','sales_manager','sales_account_manager'].includes(role);
+   link.hidden=!isOwner;if(qa)qa.hidden=!isOwner;if(fast)fast.hidden=!canSell;
+   verified=allowed;
   }catch(_){hide()}finally{checking=false}
  }
  function sync(){if(app.classList.contains('hidden'))hide();else verify()}
  if(window.MutationObserver)new MutationObserver(sync).observe(app,{attributes:true,attributeFilter:['class']});
  doc.getElementById('logoutBtn')?.addEventListener('click',hide);
+ qa?.addEventListener('click',function(){if(!qa.hidden&&typeof window.sbcOpenOwnerDollarQA==='function')window.sbcOpenOwnerDollarQA();});
+ fast?.addEventListener('click',function(){if(!fast.hidden&&typeof window.sbcOpenQuickCheckout==='function')window.sbcOpenQuickCheckout();});
  sync();
 })();
 </script>

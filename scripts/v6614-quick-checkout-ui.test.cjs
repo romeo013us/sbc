@@ -30,9 +30,9 @@ function setup(role='owner',existing=false){
   return elems[id];
  }
  el('sbc-v6614-email').value='owner@example.com';
- const state={me:{role},data:{customers:[],recovery:{}},catalog:{packages:[],services:[]}};
+ const state={me:{role},data:{customers:[{id:'customer-1',businessName:'Sample Business',email:'owner@example.com'}],recovery:{}},catalog:{packages:[{id:'starter',name:'SBC Business Starter',price:199}],services:[]}};
  const win={
-  state,toast(msg){alerts.push(msg)},confirm:()=>true,
+  toast(msg){alerts.push(msg)},confirm:()=>true,
   openModal(){},closeModal(){},
   api:async(url,opt)=>{calls.push({url,opt});if(url.endsWith('launch-qa/create-order'))return {ok:true,existing,amountCents:100,orderId:'qa-order-1',paymentStatus:'Pending'};
    if(url.includes('create-link/'))return {paymentUrl:'https://square.link/u/test-only'};
@@ -70,6 +70,12 @@ function setup(role='owner',existing=false){
  await reused.invoke('sbc-v6614-qa-form','submit');
  assert.equal(reused.elems['sbc-v6614-link-btn'].disabled,true,'Reused order may not issue a second link');
  await reused.invoke('sbc-v6614-link-btn');
- assert.equal(reused.calls.length,1,'No second payment link request for reused order');
+ assert.equal(reused.calls.length,2,'Reused QA order only makes a read-only status lookup');
+ assert.equal(reused.calls[1].url,'/api/payments/square/order/qa-order-1');
+ assert.equal(reused.calls[1].opt.method,'GET');
+ const quick=setup('owner');
+ assert.equal(Object.prototype.hasOwnProperty.call(quick.win,'state'),false,'Canonical SBC state lives in a lexical binding');
+ quick.win.sbcOpenQuickCheckout();
+ assert.equal(quick.calls.length,0,'Opening prefilled checkout makes no backend mutations');
  console.log('[SBC V6614 QUICK CHECKOUT] PASS: owner-gated $1 UI, explicit link, one request, read-only Paid check, mirrored UI');
 })().catch(e=>{console.error(e);process.exitCode=1});
