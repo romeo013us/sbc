@@ -16,7 +16,10 @@ function verifyStagedInventory(root,identity){
   const hasAnchor=Object.prototype.hasOwnProperty.call(identity||{},'stagedInventorySha256');
   if(!hasFile&&!hasAnchor)return {legacy:true,checked:0};
   if(!hasFile||!hasAnchor||!shaPattern.test(String(identity.stagedInventorySha256||'')))
-    throw Error('[SBC STAGED INVENTORY] missing inventory or release identity anchor');
+    throw Error('[SBC STAGED INVENTORY] missing inventory or release identity anchor '+
+      '(file='+hasFile+' anchor='+hasAnchor+' hashValid='+
+      shaPattern.test(String(identity?.stagedInventorySha256||''))+
+      ' source='+String(identity?.sourceCommit||'unknown').slice(0,12)+')');
   const original=fs.readFileSync(inventoryPath);
   if(sha256(original)!==identity.stagedInventorySha256)
     throw Error('[SBC STAGED INVENTORY] inventory checksum mismatch');
