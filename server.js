@@ -465,7 +465,7 @@ app.get('/readyz',async(req,res)=>{
 app.get('/api/system/hardening/status',auth,ownerOnly,async(req,res)=>{try{await RUNTIME_GATE.ensureSchema();res.json({ok:true,version:BUILD_VERSION,requestId:req.requestId,gate:RUNTIME_GATE.snapshot(),tenantId:PRODUCTION_HARDENING.requireTenant(req.tenantId)});}catch(e){res.status(503).json({ok:false,error:e.message,requestId:req.requestId});}});
 app.post('/api/system/hardening/kill-switch',auth,ownerOnly,async(req,res)=>{try{await RUNTIME_GATE.ensureSchema();const b=req.body||{};const stops={};for(const k of PRODUCTION_HARDENING.KILL_STATES)if(Object.prototype.hasOwnProperty.call(b,k))stops[k]=Boolean(b[k]);const out=await RUNTIME_GATE.setKill(Boolean(b.globalKill),stops,req.user?.id||'owner');res.json({ok:true,requestId:req.requestId,gate:out});}catch(e){res.status(503).json({ok:false,error:e.message,requestId:req.requestId});}});
 app.get('/api/economic/gate/status',auth,ownerOnly,async(req,res)=>{try{res.json({ok:true,gate:await FINANCIAL_GOVERNOR.status(requireRequestTenant(req))});}catch(e){res.status(503).json({ok:false,error:e.message});}});
-app.post('/api/economic/costs',auth,ownerOnly,async(req,res)=>{try{const b=req.body||{};const out=await FINANCIAL_GOVERNOR.upsertCost({itemId:b.itemId,itemName:b.itemName,wholesaleCost:b.wholesaleCost,shippingCost:b.shippingCost,source:b.source||'owner-manifest',actor:req.user?.id||'owner'});res.status(201).json(out);}catch(e){res.status(400).json({ok:false,error:e.message});}});
+app.post('/api/economic/costs',auth,ownerOnly,async(req,res)=>{if(!sbcV6606QuoteWriterReady(req,res))return;try{const b=req.body||{};const out=await FINANCIAL_GOVERNOR.upsertCost({tenantId:requireRequestTenant(req),itemId:b.itemId,itemName:b.itemName,wholesaleCost:b.wholesaleCost,shippingCost:b.shippingCost,source:b.source||'owner-manifest',actor:req.user?.id||'owner'});res.status(201).json(out);}catch(e){res.status(400).json({ok:false,error:e.message});}});
 app.post('/api/system/hardening/consent',auth,ownerOnly,async(req,res)=>{try{const b=req.body||{};const out=await RUNTIME_GATE.addConsent({tenantId:PRODUCTION_HARDENING.requireTenant(req.tenantId),contactId:b.contactId,channel:b.channel,status:b.status,source:b.source,wording:b.wording,metadata:b.metadata});res.status(201).json({...out,requestId:req.requestId});}catch(e){res.status(503).json({ok:false,error:e.message,requestId:req.requestId});}});
 
 const V56242_PRODUCTION = require('./enterprise/v56242-production-operating-system');
@@ -881,7 +881,16 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
       return {ok:false,orderId:order.id,status:'AMOUNT_MISMATCH',squarePaymentId,expectedAmountCents,paymentAmountCents};
     }
     const alreadyPaid=SBC_V6659_SQUARE_PROOF.persistedCompletion(orderParsed(order),payment);
-    rec.status='PAID';rec.completedAt=rec.completedAt||now();order.paymentStatus='Paid';order.status='Paid';order.fulfillmentStatus='Ready for Fulfillment';
+    const sbcLaunchQaDurable=Number(order.price)===1&&
+      String(order.product||'')==='SBC Launch QA - $1 Test Service'&&
+      orderParsed(order).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&
+      orderParsed(order).sbcLaunchQa?.version===1&&
+      Array.isArray(orderParsed(order).items)&&
+      orderParsed(order).items.some(line=>String(line?.sku||'')==='SBC_LAUNCH_QA_1USD');
+    rec.status='PAID';rec.completedAt=rec.completedAt||now();order.paymentStatus='Paid';order.status='Paid';
+    if(!sbcLaunchQaDurable)order.fulfillmentStatus='Ready for Fulfillment';
+    else if(!String(order.fulfillmentStatus||'').startsWith('QA '))
+      order.fulfillmentStatus='QA - NO VENDOR FULFILLMENT';
     if(alreadyPaid){
       rec.duplicateCompletedAt=rec.duplicateCompletedAt||now();
       records.splice(5000); await saveData();
@@ -889,6 +898,17 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
     }
     updateOrderParsed(order,{squarePaymentStatus:'PAID',squarePaymentId:rec.squarePaymentId,squarePaymentCompletedAt:rec.completedAt,fulfillmentStatus:'Ready for Fulfillment'});
     addActivity('payment_received',`Square payment received for ${order.id}`,{orderId:order.id,squareOrderId:rec.squareOrderId,squarePaymentId:rec.squarePaymentId,amount:order.price});
+    // SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE: explicit Office Box sales require dedicated POST-COMMIT V2 flow.
+    const sbcOfficeBoxExplicitPurchase=(()=>{
+      const notes=orderParsed(order);
+      const lines=Array.isArray(notes.items)?notes.items:[];
+      const hasLine=lines.some(line=>/^OFFICE_BOX(?:_|$)/i.test(String(line?.sku||'')));
+      const hasMeta=/^OFFICE_BOX(?:_|$)/i.test(String(notes.officeBoxSku||order.officeBoxSku||''));
+      const hasName=/office[ _-]*box/i.test(String(order.product||'')+' '+String(notes.bundleId||''));
+      return hasLine||hasMeta||hasName;
+    })();
+    const sbcLaunchQaExplicitPurchase=sbcLaunchQaDurable;
+    if(!sbcOfficeBoxExplicitPurchase&&!sbcLaunchQaExplicitPurchase){
     try{await REVENUE_AUTOPILOT_V56150.recordFunnelEvent('payment_completed',order.customerId,{tenantId:order.tenantId||TENANT_DEFAULT_ID,orderId:order.id,amount:Number(order.price||0),idempotencyKey:`payment_completed:${order.id}`});}catch(e){}
     const c=db.customers.find(x=>x.id===order.customerId);if(c){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,orderParsed(order).bundleId||'',orderParsed(order).bundleName||order.product);}
     // V60.2 Commercial OS: successful paid orders create/replay a commercial tenant idempotently.
@@ -906,6 +926,16 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
     try{await GOD_KIM.orchestrate({order,requestUser:{id:'square-webhook',name:'GodKim / Square'},createFulfillmentJobsForOrder,processReadyFulfillmentJobs,vendorCapabilities,addActivity,audit,saveData,db,catalog:CATALOG,sendCustomerStatus:async(order,msg)=>{const c=(db.customers||[]).find(x=>x.id===order.customerId);if(c&&c.email)return sendEmail(c,msg.subject,msg.body);return {sent:false};},testMode:false});}catch(e){addActivity('fulfillment_automation_error',`GodKim orchestration could not start for ${order.id}: ${e.message}`,{orderId:order.id});}
     try{const handoff=await sendBig3OfficeBoxHandoff(order,{reason:'square-payment-completed'});addActivity('big3_office_box_handoff',handoff.ok?`Office Box handoff ${handoff.skipped?'skipped':'sent'} for ${order.id}`:`Office Box handoff not completed for ${order.id}`,{orderId:order.id,officeBox:handoff});}catch(e){addActivity('big3_office_box_handoff_error',`Office Box handoff failed for ${order.id}: ${e.message}`,{orderId:order.id})}
     if(!orderParsed(order).customerIntakeSentAt){try{await sendOrderIntake(order,baseOverride)}catch(e){addActivity('intake_error',`Customer intake could not be sent for ${order.id}: ${e.message}`,{orderId:order.id})}}
+    }else if(sbcLaunchQaExplicitPurchase){
+      order.fulfillmentStatus='QA VERIFIED - NO FULFILLMENT';
+      updateOrderParsed(order,{fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',sbcLaunchQaPaidVerified:true});
+      addActivity('launch_qa_payment_verified','$1 launch QA Square capture verified; vendor actions held for '+order.id,
+        {orderId:order.id,paymentId:rec.squarePaymentId,amountCents:100,source:'SQUARE_CAPTURE'});
+    }else{
+      addActivity('office_box_precommit_fulfillment_quarantined',
+        'Office Box paid capture saved; generic fulfillment and legacy invitation held for '+order.id,
+        {orderId:order.id,reason:'OFFICE_BOX_V2_COMMITTED_MYSQL_PROVIDER_PROOF_REQUIRED'});
+    }
   } else if(status==='CANCELED'||status==='FAILED'){
     rec.status=status;order.paymentStatus=status==='FAILED'?'Failed':'Canceled';order.fulfillmentStatus='Payment Required';updateOrderParsed(order,{squarePaymentStatus:rec.status});
     if(status==='FAILED'){
@@ -4563,8 +4593,76 @@ app.post('/api/customers/:id/account-notes',auth,async(req,res)=>{if(SBC_RUNTIME
 app.delete('/api/customers/:id',auth,ownerOnly,async(req,res)=>{if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||!MYSQL_RECOVERY_EVALUATED)return res.status(423).json({ok:false,error:'CRM_RELATIONAL_WRITER_UNAVAILABLE',readOnly:true});if(MYSQL_RECOVERY_REQUIRED)return res.status(423).json({ok:false,error:'MYSQL_RECOVERY_REQUIRED',readOnly:true,message:'CRM writes are disabled until authoritative MySQL recovery is complete.'});if(MYSQL_RECOVERY_REQUIRED&&String(req.params.id).startsWith('recovery-lead-'))return res.status(409).json({ok:false,error:'RECOVERY_PROJECTION_READ_ONLY',message:'Recovery-projected leads cannot be deleted until authoritative CRM recovery is completed.'});const i=db.customers.findIndex(x=>x.id===req.params.id&&V6620_LEGACY_CRM.owns(x,requireRequestTenant(req)));if(i<0)return res.status(404).json({error:'Customer not found.'});const c=db.customers[i];c.status='Deleted';c.updatedAt=now();addActivity('customer',`Deleted ${c.businessName||c.contactName}`,{});try{await saveData();}catch(error){console.error('[SBC LEGACY CRM] MySQL persistence rejected',error?.code||'MYSQL_WRITE_FAILED');return res.status(503).json({ok:false,error:'CRM_RELATIONAL_COMMIT_FAILED',retryable:true});}db.customers.splice(i,1);res.json({ok:true})});
 app.post('/api/customers/bulk-delete',auth,ownerOnly,async(req,res)=>{if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||!MYSQL_RECOVERY_EVALUATED)return res.status(423).json({ok:false,error:'CRM_RELATIONAL_WRITER_UNAVAILABLE',readOnly:true});if(MYSQL_RECOVERY_REQUIRED)return res.status(423).json({ok:false,error:'MYSQL_RECOVERY_REQUIRED',readOnly:true,message:'CRM writes are disabled until authoritative MySQL recovery is complete.'});const tenantId=requireRequestTenant(req);const ids=Array.isArray(req.body?.ids)?req.body.ids.map(String).filter(Boolean):[];if(!ids.length)return res.status(400).json({error:'No leads selected.'});const removed=db.customers.filter(c=>ids.includes(String(c.id))&&V6620_LEGACY_CRM.owns(c,tenantId));removed.forEach(c=>{c.status='Deleted';c.updatedAt=now();});removed.forEach(c=>addActivity('customer',`Deleted ${c.businessName||c.contactName||c.phone||'lead'}`,{bulk:true}));try{await saveData();}catch(error){console.error('[SBC LEGACY CRM] MySQL persistence rejected',error?.code||'MYSQL_WRITE_FAILED');return res.status(503).json({ok:false,error:'CRM_RELATIONAL_COMMIT_FAILED',retryable:true});}db.customers=db.customers.filter(c=>!(ids.includes(String(c.id))&&V6620_LEGACY_CRM.owns(c,tenantId)));res.json({ok:true,deleted:removed.length})});
 
-app.post('/api/quotes',auth,ownerOnly,FINANCIAL_GOVERNOR.middleware('quote_generation'),async(req,res)=>{const b=req.body||{},items=Array.isArray(b.items)?b.items.map(x=>({name:String(x.name||'Item'),qty:Math.max(1,Number(x.qty||1)),unitPrice:Math.max(0,Number(x.unitPrice||0)),paymentUrl:String(x.paymentUrl||'')})).filter(x=>x.name):[];if(!items.length)return res.status(400).json({error:'Add at least one quote item.'});const subtotal=totals(items),discount=Math.max(0,Number(b.discount||0)),taxRate=Math.max(0,Number(b.taxRate ?? db.settings.taxRate ?? 0)),tax=Math.max(0,subtotal-discount)*taxRate/100,total=Math.max(0,subtotal-discount)+tax;const q={id:id('quote'),tenantId:requireRequestTenant(req),quoteNumber:`${db.settings.quotePrefix}-${db.settings.nextQuoteNumber++}`,customerId:String(b.customerId||''),customerName:String(b.customerName||'Customer'),status:b.status||'Draft',validUntil:b.validUntil||'',notes:String(b.notes||''),items,subtotal,discount,taxRate,tax,total,paymentUrl:String(b.paymentUrl||items.find(x=>x.paymentUrl)?.paymentUrl||''),createdAt:now(),updatedAt:now()};db.quotes.unshift(q);addActivity('quote',`Created ${q.quoteNumber} for ${q.customerName}`,{quoteId:q.id});await saveData();res.status(201).json(q)});
-app.put('/api/quotes/:id',auth,ownerOnly,async(req,res)=>{const q=db.quotes.find(x=>x.id===req.params.id);if(!q)return res.status(404).json({error:'Quote not found.'});Object.assign(q,req.body||{},{id:q.id,updatedAt:now()});const c=db.customers.find(x=>x.id===q.customerId);if(c&&['Won','Paid'].includes(q.status)){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,q.items?.[0]?.packageId||'',q.items?.[0]?.name||q.customerName);if(q.status==='Paid')ensureCommissionForSale({...q,quoteId:q.id,salesRepId:q.salesRepId||q.assignedTo||''});createMegaEvent('sale_won',`Sale won: ${q.customerName} · ${q.quoteNumber}`,{quoteId:q.id,customerId:c.id,total:q.total})}addActivity('quote',`Updated ${q.quoteNumber}`,{quoteId:q.id});await saveData();res.json(q)});
+
+/* SBC_V6606_QUOTE_WRITER_HARDENING: draft is not a payment or provisioning approval. */
+function sbcV6606QuoteWriterReady(req,res){
+  if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||!MYSQL_RECOVERY_EVALUATED||
+     MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady){
+    res.status(423).json({ok:false,error:'QUOTE_WRITER_UNAVAILABLE',
+      message:'Published writer and authoritative MySQL recovery clearance are required. No quote was changed.'});
+    return false;
+  }
+  return true;
+}
+function sbcV6606QuoteCreateGate(req,res,next){
+  if(!sbcV6606QuoteWriterReady(req,res))return;
+  const tenant=requireRequestTenant(req);
+  const body=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body:{};
+  const status=String(body.status||'Draft').trim();
+  if(!['Draft','Sent','Won'].includes(status))
+    return res.status(409).json({ok:false,error:status==='Paid'?'PAYMENT_PROOF_REQUIRED':'INVALID_QUOTE_INITIAL_STATUS',
+      message:'Paid can only follow verified Square settlement; create a Draft, Sent or Won quote.'});
+  const requestId=String(body.clientRequestId||'').trim();
+  if(requestId&&!/^[a-zA-Z0-9_-]{12,90}$/.test(requestId))
+    return res.status(422).json({ok:false,error:'QUOTE_REQUEST_ID_INVALID'});
+  req.sbcClientRequestId=requestId;
+  if(requestId){
+    const existing=db.quotes.find(q=>Number(q.tenantId)===tenant&&q.clientRequestId===requestId);
+    if(existing)return res.status(200).json(existing); // idempotent retry; no duplicate quote or charge
+  }
+  if(status==='Draft'){
+    // The original quote route only stores a draft, never executes Square or provisions work.
+    // Remove any supplied payment URL so the draft is never mistaken for authorized checkout.
+    req.body={...body,status:'Draft',paymentUrl:'',
+      items:Array.isArray(body.items)?body.items.map(x=>({...x,paymentUrl:''})):body.items};
+    req.sbcDraftUnpriced=true;
+    return next();
+  }
+  return FINANCIAL_GOVERNOR.middleware('quote_generation')(req,res,next);
+}
+function sbcV6606QuoteUpdateGuard(req,res,next){
+  if(!sbcV6606QuoteWriterReady(req,res))return;
+  const tenant=requireRequestTenant(req);
+  const q=db.quotes.find(x=>x.id===req.params.id&&Number(x.tenantId)===tenant);
+  if(!q)return res.status(404).json({ok:false,error:'QUOTE_NOT_FOUND_IN_TENANT'});
+  const body=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body:{};
+  const allowed=['status','notes','validUntil'];
+  if(Object.keys(body).some(k=>!allowed.includes(k)))
+    return res.status(422).json({ok:false,error:'QUOTE_FINANCIAL_FIELDS_IMMUTABLE',
+      message:'Totals, customer identity, tenant, payment URL and line items cannot be overwritten by a quote-status request.'});
+  if(String(q.status||'').trim()==='Paid')
+    return res.status(409).json({ok:false,error:'SETTLED_QUOTE_IMMUTABLE',
+      message:'A settled quote cannot be changed through manual status editing.'});
+  const status=String(body.status||q.status||'Draft').trim();
+  if(status==='Paid')return res.status(409).json({ok:false,error:'PAYMENT_PROOF_REQUIRED',
+      message:'Only a verified provider settlement workflow may mark this quote Paid or trigger a paid commission.'});
+  if(!['Draft','Sent','Won','Lost'].includes(status))
+    return res.status(422).json({ok:false,error:'QUOTE_STATUS_INVALID'});
+  req.body={status,...(Object.prototype.hasOwnProperty.call(body,'notes')?{notes:String(body.notes||'').slice(0,10000)}:{}),
+    ...(Object.prototype.hasOwnProperty.call(body,'validUntil')?{validUntil:String(body.validUntil||'').slice(0,40)}:{})};
+  if(status!=='Sent'&&status!=='Won')return next();
+  if(status===q.status)return next();
+  // Check real tenant-scoped supplier costs before sending/accepting an obligation.
+  const savedBody=req.body;
+  req.body={...savedBody,items:q.items,total:q.total};
+  return FINANCIAL_GOVERNOR.middleware('quote_status_change')(req,res,()=>{
+    req.body=savedBody;
+    next();
+  });
+}
+
+app.post('/api/quotes',auth,ownerOnly,sbcV6606QuoteCreateGate,async(req,res)=>{const b=req.body||{},items=Array.isArray(b.items)?b.items.map(x=>({name:String(x.name||'Item'),qty:Math.max(1,Number(x.qty||1)),unitPrice:Math.max(0,Number(x.unitPrice||0)),paymentUrl:String(x.paymentUrl||'')})).filter(x=>x.name):[];if(!items.length)return res.status(400).json({error:'Add at least one quote item.'});const subtotal=totals(items),discount=Math.max(0,Number(b.discount||0)),taxRate=Math.max(0,Number(b.taxRate ?? db.settings.taxRate ?? 0)),tax=Math.max(0,subtotal-discount)*taxRate/100,total=Math.max(0,subtotal-discount)+tax;const q={id:id('quote'),tenantId:requireRequestTenant(req),clientRequestId:req.sbcClientRequestId||'',quoteNumber:`${db.settings.quotePrefix}-${db.settings.nextQuoteNumber++}`,customerId:String(b.customerId||''),customerName:String(b.customerName||'Customer'),status:b.status||'Draft',validUntil:b.validUntil||'',notes:String(b.notes||''),items,subtotal,discount,taxRate,tax,total,paymentUrl:String(b.paymentUrl||items.find(x=>x.paymentUrl)?.paymentUrl||''),createdAt:now(),updatedAt:now()};db.quotes.unshift(q);addActivity('quote',`Created ${q.quoteNumber} for ${q.customerName}`,{quoteId:q.id});await saveData();res.status(201).json(q)});
+app.put('/api/quotes/:id',auth,ownerOnly,sbcV6606QuoteUpdateGuard,async(req,res)=>{const q=db.quotes.find(x=>x.id===req.params.id&&Number(x.tenantId)===requireRequestTenant(req));if(!q)return res.status(404).json({error:'Quote not found.'});Object.assign(q,req.body||{},{id:q.id,tenantId:q.tenantId,updatedAt:now()});const c=db.customers.find(x=>x.id===q.customerId);if(c&&['Won','Paid'].includes(q.status)){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,q.items?.[0]?.packageId||'',q.items?.[0]?.name||q.customerName);if(q.status==='Paid')ensureCommissionForSale({...q,quoteId:q.id,salesRepId:q.salesRepId||q.assignedTo||''});createMegaEvent('sale_won',`Sale won: ${q.customerName} · ${q.quoteNumber}`,{quoteId:q.id,customerId:c.id,total:q.total})}addActivity('quote',`Updated ${q.quoteNumber}`,{quoteId:q.id});await saveData();res.json(q)});
 app.delete('/api/quotes/:id',auth,ownerOnly,async(req,res)=>{const i=db.quotes.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Quote not found.'});const q=db.quotes[i];q.status='Deleted';q.updatedAt=now();addActivity('quote',`Deleted ${q.quoteNumber}`,{});await saveData();db.quotes.splice(i,1);res.json({ok:true})});
 
 // V25 Sales Order Builder / fulfillment handoff
@@ -4638,6 +4736,74 @@ app.post('/api/public/checkout',async(req,res)=>{
 });
 
 app.get('/api/sales-orders',auth,v25SalesAccess,(req,res)=>res.json((db.orders||[]).filter(o=>req.user.role==='owner'||req.user.role==='manager'||!o.salesRepId||o.salesRepId===req.user.id||req.user.role==='fulfillment').map(o=>({...o,parsed:o.notes&&o.notes.startsWith('{')?(()=>{try{return JSON.parse(o.notes)}catch{return {}}})():{}}))));
+
+app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||
+    !MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady||
+    RUNTIME_GATE.blocked('NEW_CHECKOUTS'))
+  return res.status(423).json({ok:false,code:'LAUNCH_QA_WRITER_OR_CHECKOUT_LOCKED'});
+ let tenantId;
+ try{tenantId=requireRequestTenant(req)}catch(_){
+  return res.status(403).json({ok:false,code:'LAUNCH_QA_TENANT_REQUIRED'});
+ }
+ const email=String(req.body?.email||'').trim().toLowerCase();
+ if(email.length>254||!/^\S+@\S+\.\S+$/.test(email)||
+    email.endsWith('.invalid')||email.endsWith('.test'))
+  return res.status(400).json({ok:false,code:'LAUNCH_QA_CONTROLLED_EMAIL_REQUIRED'});
+ // The QA SKU has no outside vendor, shipping or provisioning cost by design.
+ // Register that *exact* item under the authenticated owner/tenant, using the
+ // financial governor's explicitly verified zero-vendor-cost contract.
+ // Never alter a commercial product or bypass the 20% margin calculation.
+ try{
+   await FINANCIAL_GOVERNOR.upsertCost({
+     tenantId,itemId:'SBC_LAUNCH_QA_1USD',itemName:'Owner-only $1 QA internal test',
+     wholesaleCost:0,shippingCost:0,source:'owner-verified-zero-vendor-cost',
+     actor:'owner-only-qa-route'
+   });
+ }catch(e){
+   return res.status(503).json({ok:false,code:'LAUNCH_QA_ECONOMIC_SETUP_REQUIRED',
+     message:'Owner QA test cost could not be registered; no order, payment link or provider charge created.'});
+ }
+ // One test per tenant and owner-provided email: cannot accidentally mint
+ // another charge by retrying after an ambiguous response.
+ const existing=(db.orders||[]).find(o=>Number(o.tenantId)===tenantId&&
+  String(o.product||'')==='SBC Launch QA - $1 Test Service'&&
+  orderParsed(o).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'&&
+  (db.customers||[]).some(c=>String(c.id)===String(o.customerId)&&
+    Number(c.tenantId)===tenantId&&String(c.email||'').toLowerCase()===email));
+ if(existing)return res.json({ok:true,existing:true,orderId:existing.id,
+  customerId:existing.customerId,amountCents:100,
+  paymentStatus:existing.paymentStatus||'Pending',paymentUrl:existing.paymentUrl||'',
+  next:'Reuse the existing order. Never issue a second checkout automatically.'});
+ const t=now();
+ const customer={id:id('cust'),tenantId,businessName:'SBC Launch QA Test Customer',
+  contactName:'Owner Internal Test',email,phone:'',status:'Internal Test',
+  source:'Owner Launch QA',notes:'Internal test: no vendor fulfillment or follow-up automation',
+  createdAt:t,updatedAt:t};
+ const order={id:id('ord'),tenantId,customerId:customer.id,
+  customerName:customer.businessName,product:'SBC Launch QA - $1 Test Service',
+  quantity:1,status:'New',cost:0,price:1,
+  notes:JSON.stringify({sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1},
+   items:[{id:'SBC_LAUNCH_QA_1USD',sku:'SBC_LAUNCH_QA_1USD',
+    name:'SBC Launch QA',qty:1,unitPrice:1}],
+   customerEmail:email,fulfillmentStatus:'QA - NO VENDOR FULFILLMENT'}),
+  launchQaOwnerCreated:true,paymentStatus:'Pending',
+  fulfillmentStatus:'QA - NO VENDOR FULFILLMENT',createdAt:t,updatedAt:t};
+ db.customers.unshift(customer);db.orders.unshift(order);
+ addActivity('launch_qa_order_created','Owner created controlled $1 Square checkout test',
+  {orderId:order.id,customerId:customer.id,amountCents:100});
+ try{await saveData()}catch(_){
+  return res.status(503).json({ok:false,code:'LAUNCH_QA_SAVE_UNCONFIRMED',
+   orderId:order.id,automaticRetry:false,
+   error:'Persistence uncertain; verify existing order before retry.'});
+ }
+ return res.status(201).json({ok:true,existing:false,orderId:order.id,
+  customerId:customer.id,amountCents:100,paymentStatus:'Pending',
+  next:'/api/payments/square/create-link/'+encodeURIComponent(order.id),
+  note:'Owner must generate checkout explicitly. This endpoint does not charge.'});
+});
+
 app.post('/api/orders',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{};if(!b.customerName||!b.product)return res.status(400).json({error:'Customer and product are required.'});const o={id:id('ord'),tenantId,customerId:String(b.customerId||''),customerName:String(b.customerName),product:String(b.product),quantity:Number(b.quantity||1),status:b.status||'New',cost:Number(b.cost||0),price:Number(b.price||0),notes:String(b.notes||''),createdAt:now(),updatedAt:now()};db.orders.unshift(o);addActivity('order',`Created print order for ${o.customerName}`,{orderId:o.id});await saveData();res.status(201).json(o)});
 app.put('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const o=db.orders.find(x=>x.id===req.params.id);if(!o)return res.status(404).json({error:'Order not found.'});Object.assign(o,req.body||{},{id:o.id,updatedAt:now()});await saveData();res.json(o)});
 app.delete('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const i=db.orders.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Order not found.'});db.orders[i].status='Deleted';db.orders[i].updatedAt=now();await saveData();db.orders.splice(i,1);res.json({ok:true})});
@@ -7738,7 +7904,7 @@ app.post('/api/v32-2/payment-reconciliation',auth,ownerOnly,(req,res)=>{
 });
 // SBC_V6657_SQUARE_TENANT_BOUNDARIES: tenant-bound payment-link creation.
 app.post('/api/payments/square/create-link/:orderId',auth,v25SalesAccess,FINANCIAL_GOVERNOR.middleware('square_payment_link'),async(req,res)=>{let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});if(req.user.role==='caller'&&o.salesRepId&&o.salesRepId!==req.user.id)return res.status(403).json({error:'This order is not assigned to you.'});try{const out=await createSquarePaymentLinkForOrder(o,req);res.json({ok:true,...out})}catch(e){res.status(e.status===401||e.status===403?502:400).json({error:e.message||'Could not create Square payment link.',squareConfigured:squareConfigured()})}});
-app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});const parsed=orderParsed(o);const rec=squarePaymentRecords().find(x=>x.sbcOrderId===o.id)||null;res.json({ok:true,order:{id:o.id,price:o.price,paymentStatus:o.paymentStatus||'Pending',fulfillmentStatus:o.fulfillmentStatus||'Awaiting Customer Payment',paymentUrl:o.paymentUrl||parsed.squarePaymentLinkUrl||'',squareOrderId:rec?.squareOrderId||parsed.squareOrderId||'',squarePaymentId:rec?.squarePaymentId||parsed.squarePaymentId||'',squareStatus:rec?.status||parsed.squarePaymentStatus||'PENDING'}})});
+app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});const parsed=orderParsed(o);const rec=squarePaymentRecords().find(x=>x.sbcOrderId===o.id)||null;res.json({ok:true,order:{id:o.id,price:o.price,paymentStatus:(String(parsed.squarePaymentStatus||'').toUpperCase()==='PAID'||String(rec?.status||'').toUpperCase()==='PAID'?'Paid':o.paymentStatus||'Pending'),fulfillmentStatus:o.fulfillmentStatus||'Awaiting Customer Payment',paymentUrl:o.paymentUrl||parsed.squarePaymentLinkUrl||'',squareOrderId:rec?.squareOrderId||parsed.squareOrderId||'',squarePaymentId:rec?.squarePaymentId||parsed.squarePaymentId||'',squareStatus:rec?.status||parsed.squarePaymentStatus||'PENDING'}})});
 app.post('/api/payments/square/refresh/:orderId',auth,ownerOnly,async(req,res)=>{
   let tenantId;try{tenantId=requireRequestTenant(req)}catch(_){return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
   const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&Number(x.tenantId)===tenantId);
@@ -8282,7 +8448,7 @@ app.post('/api/supernova/fulfillment/route',auth,(req,res)=>{try{res.json({ok:tr
 app.get('/api/supernova/domain-map',auth,(req,res)=>res.json({ok:true,tenant:requireRequestTenant(req),host:req.get('host')||'',note:'Domain mapping is configuration-driven; no filesystem alias is changed by this read endpoint.'}));
 
 /* SBC_V6634_VERSIONED_ASSET_CACHE_FIX: only content-addressed filenames may be cached immutably. */
-app.use(express.static(path.join(__dirname,'public'),{dotfiles:'ignore',setHeaders:(res,file)=>{if(/\.[a-f0-9]{12,64}\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?)$/i.test(file))res.setHeader('Cache-Control','public,max-age=31536000,immutable');else{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');}}}));
+app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\.csv$/i.test(name)||/(?:^|\/)starter-leads(?:\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE\napp.use(express.static(path.join(__dirname,'public'),{dotfiles:'ignore',setHeaders:(res,file)=>{if(/\.[a-f0-9]{12,64}\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?)$/i.test(file))res.setHeader('Cache-Control','public,max-age=31536000,immutable');else{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');}}}));
 // V65.1.3: SPA fallback is registered after every API/HTML route so it cannot shadow later route registrations.
 
 
