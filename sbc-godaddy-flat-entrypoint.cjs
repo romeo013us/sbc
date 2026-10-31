@@ -25,6 +25,12 @@ if(hasReceipt){
  if(receipt.sourceCommit!==release.sourceCommit||receipt.sourceFingerprint!==release.sourceFingerprint){
   throw Error('[SBC DEPLOY IDENTITY] GitHub deployment receipt does not match running server');
  }
+ // SBC_V6618_RECEIPT_BINDING: newly staged receipts identify the exact compiled
+ // server and are shipped WITH the release so GoDaddy's extract-without-cleanup
+ // cannot leave a stale receipt from a prior deployment.
+ if(receipt.artifactType==='server.js'&&receipt.artifactSha256!==release.serverSha256){
+  throw Error('[SBC DEPLOY IDENTITY] deployment receipt compiled server digest mismatch');
+ }
 }
 console.log('[SBC DEPLOY IDENTITY] entry=flat source_commit='+release.sourceCommit+' source_fingerprint='+release.sourceFingerprint+' receipt='+(hasReceipt?'VERIFIED':'ZIP_INSTALL'));
 const {persistState} = require('./persistent-state.js');
