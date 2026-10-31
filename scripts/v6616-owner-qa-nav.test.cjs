@@ -9,7 +9,7 @@ assert.equal(html,fs.readFileSync(path.join(root,'browser_public/index.html'),'u
 assert.match(html,/id="sbc-owner-qa-nav-link"/);
 assert.match(html,/id="sbc-quick-checkout-nav-link"/);
 assert.match(html,/id="sbc-owner-qa-topbar"/);
-assert.match(html,/#sbc-owner-qa-nav-link\[hidden\]\{display:none!important\}/);
+assert.match(html,/#sbc-owner-qa-nav-link\[hidden\],#sbc-owner-qa-topbar\[hidden\]\{display:none!important\}/);
 assert.match(html,/id="sbc-owner-qa-nav-link"[^>]*hidden/);
 assert.match(html,/id="sbc-owner-qa-topbar"[^>]*hidden/);
 assert.match(html,/id="sbc-quick-checkout-nav-link"[^>]*hidden/);
