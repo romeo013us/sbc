@@ -14,9 +14,9 @@ assert.match(route,/auth,ownerOnly/);
 assert.match(route,/sbcWriterLeaseReady/);
 assert.match(route,/await saveData\(\)/);
 assert.doesNotMatch(route,/createSquarePaymentLinkForOrder|sendEmail|fetch\(|provisionTenant|sendBig3/);
-function setup({locked=false,tenant=7,saveFails=false}={}){
+function setup({locked=false,tenant=7,saveFails=false,costFails=false}={}){
  let seq=0,saves=0;
- const db={customers:[],orders:[]},activities=[];
+ const db={customers:[],orders:[]},activities=[],configuredCosts=[];
  const app={post:(name,auth,ownerOnly,handler)=>{
   assert.equal(name,'/api/owner/launch-qa/create-order');
   assert.equal(auth,'AUTH');assert.equal(ownerOnly,'OWNER_ONLY');
@@ -26,6 +26,7 @@ function setup({locked=false,tenant=7,saveFails=false}={}){
   SBC_RUNTIME_READ_ONLY:locked,sbcShutdownStarted:false,mysqlPool:{},
   MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,
   RUNTIME_GATE:{blocked:()=>false},
+  FINANCIAL_GOVERNOR:{async upsertCost(c){if(costFails)throw Error('ECONOMIC_SCHEMA_NOT_READY');configuredCosts.push(c);return {ok:true};}},
   requireRequestTenant:()=>{if(tenant<1)throw Error('NO_TENANT');return tenant},
   id:()=>String(++seq)+'-fixture',now:()=>new Date().toISOString(),
   orderParsed:o=>{try{return JSON.parse(o.notes||'{}')}catch{return {}}},
@@ -41,12 +42,17 @@ function setup({locked=false,tenant=7,saveFails=false}={}){
   await app.handler({body:{email},user:{role:'owner'}},res);
   return res;
  };
- return {db,activities,call,getSaves:()=>saves};
+ return {db,activities,call,configuredCosts,getSaves:()=>saves};
 }
 (async()=>{
  const f=setup();
  const first=await f.call('OWNER+test@example.com');
  assert.equal(first.statusCode,201);
+ assert.equal(f.configuredCosts.length,1);
+ assert.equal(f.configuredCosts[0].tenantId,7);
+ assert.equal(f.configuredCosts[0].itemId,'SBC_LAUNCH_QA_1USD');
+ assert.equal(f.configuredCosts[0].wholesaleCost,0);
+ assert.equal(f.configuredCosts[0].source,'owner-verified-zero-vendor-cost');
  assert.equal(first.payload.amountCents,100);
  assert.equal(first.payload.existing,false);
  assert.equal(first.payload.paymentStatus,'Pending');
@@ -73,6 +79,11 @@ function setup({locked=false,tenant=7,saveFails=false}={}){
  assert.equal(f.db.orders.length,1);assert.equal(f.getSaves(),1);
  const bad=await f.call('test@example.invalid');
  assert.equal(bad.statusCode,400);assert.equal(f.db.orders.length,1);
+ const brokenEconomics=setup({costFails:true});
+ const noCost=await brokenEconomics.call('owner@example.com');
+ assert.equal(noCost.statusCode,503,'Missing economics schema fails closed before order creation');
+ assert.equal(noCost.payload.code,'LAUNCH_QA_ECONOMIC_SETUP_REQUIRED');
+ assert.equal(brokenEconomics.db.orders.length,0);
  const locked=setup({locked:true});
  assert.equal((await locked.call('owner@example.com')).statusCode,423);
  assert.equal(locked.db.orders.length,0);
