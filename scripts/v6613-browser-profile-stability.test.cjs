@@ -52,6 +52,7 @@ assert.match(roleBlock,/readCooldownMs=15000/,'do not hammer the auth service');
     location:{origin:'https://command.example',href:'https://command.example/',reload:()=>reloads.push('reload')},
     URL,console,
   };
+  context.window={caches:context.caches};
   vm.runInNewContext(guard,context,{timeout:4000});
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(removed,['sbc'],'only same-origin SBC /sw.js is removed');
