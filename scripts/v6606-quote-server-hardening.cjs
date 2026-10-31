@@ -135,8 +135,8 @@ if(require.main===module){
  if(process.argv.includes('--apply')){
    if(process.env.SBC_ENABLE_V6606_SOURCE_WRITE!=='YES')throw Error('SBC_V6606_EXPLICIT_SOURCE_WRITE_APPROVAL_REQUIRED');
    fs.writeFileSync(file,next);
-   console.log(out.source===original?'[SBC V6606] Existing quote hardening verified; staged source unchanged.':'[SBC V6606] Staged server source patched; update flat release identity and repackage before deployment.');
- }else console.log(out.source===original?'[SBC V6606] PASS: existing verified compiled quote guards are idempotent.':'[SBC V6606] PASS: patch parsed, anchors matched, idempotent and ready for staging.');
+   console.log(next===original?'[SBC V6606] Existing quote hardening verified; staged source unchanged.':'[SBC V6606] Staged server source patched; update flat release identity and repackage before deployment.');
+ }else console.log(next===original?'[SBC V6606] PASS: existing verified compiled quote guards are idempotent.':'[SBC V6606] PASS: patch parsed, anchors matched, idempotent and ready for staging.');
  console.log('[SBC V6606] sha256 original='+oldHash+' patched='+newHash);
 }
 module.exports={patch,check,MARK};
