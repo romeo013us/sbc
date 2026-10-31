@@ -177,3 +177,72 @@ jobs:
             dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip
             dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256
           retention-days: 30
+
+
+  # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
+  # Never update the GoDaddy-connected rollback source branch or Published app.
+  github-preview-branch:
+    if: github.ref == 'refs/heads/a-sbc-rollback-oct27' && github.event_name == 'push'
+    needs: verified-staged-zip
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out pinned V66 source commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download verified staging ZIP from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: SBC-V66-QUOTE-SAFETY-STAGING-CANDIDATE
+          path: verified-runtime
+      - name: Generate isolated GitHub-ready GoDaddy branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s verified-runtime/SBC-V66-QUOTE-SAFETY-STAGING.zip
+          (cd verified-runtime && sha256sum -c SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256)
+          temp=$(mktemp -d)
+          trap 'rm -rf "$temp"' EXIT
+          unzip -q verified-runtime/SBC-V66-QUOTE-SAFETY-STAGING.zip -d "$temp"
+          node scripts/v6611-verify-stage-inventory.cjs "$temp"
+          node - "$temp" <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+          const temp=process.argv[2];
+          const id=JSON.parse(fs.readFileSync(path.join(temp,'SBC-FLAT-RELEASE-IDENTITY.json')));
+          assert.equal(id.sourceCommit,process.env.GITHUB_SHA,'Only the tested commit can be published as a GitHub release candidate');
+          const actual=crypto.createHash('sha256').update(fs.readFileSync(path.join(temp,'server.js'))).digest('hex');
+          assert.equal(actual,id.serverSha256,'No stale compiled server');
+          for(const token of ['SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE','owner-verified-zero-vendor-cost'])
+            assert.ok(fs.readFileSync(path.join(temp,'server.js'),'utf8').includes(token),'Missing runtime guard: '+token);
+          NODE
+          # Exactly three changed or added release files and removal of stale receipt.
+          cp "$temp/server.js" server.js
+          cp "$temp/SBC-FLAT-RELEASE-IDENTITY.json" SBC-FLAT-RELEASE-IDENTITY.json
+          cp "$temp/SBC-STAGED-INVENTORY.json" SBC-STAGED-INVENTORY.json
+          rm -f SBC-DEPLOY-RECEIPT.json
+          node scripts/v6611-verify-stage-inventory.cjs .
+          node --check server.js
+          node --check sbc-godaddy-flat-entrypoint.cjs
+          BRANCH="release/sbc-v66-qa-$(printf '%.12s' "$GITHUB_SHA")"
+          git switch -c "$BRANCH"
+          git add server.js SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json
+          git add -u -- SBC-DEPLOY-RECEIPT.json
+          node - <<'NODE'
+          const cp=require('node:child_process'),assert=require('node:assert/strict');
+          const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+          const allowed=new Set(['server.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
+          assert.ok(paths.length>=3&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
+          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "release(godaddy): tested QA runtime from $GITHUB_SHA"
+          # Unique SHA-specific branch; never force-push/overwrite the existing live rollback.
+          git push origin "HEAD:refs/heads/$BRANCH"
+          echo "### GoDaddy GitHub Preview candidate" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Select GitHub branch: $BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          echo "Validated: complete runtime, no stale receipt, 20% margin, owner-only QA, supplier holds." >> "$GITHUB_STEP_SUMMARY"
+          echo "**No GoDaddy Preview or Published deployment occurred.**" >> "$GITHUB_STEP_SUMMARY"
