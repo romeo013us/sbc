@@ -15,8 +15,10 @@ window.submitTrainingAssessmentV2=window.submitTrainingAssessmentV2||function(..
 (function sbcClientFreshness(){try{
   // SBC_V6613_PROFILE_STABILITY: retire only obsolete SBC static caches without
   // forcing an app reload after scripts have started rendering.
-  const VERSION='66.0.13-profile-stability',KEY='sbc-client-version';
-  if(localStorage.getItem(KEY)===VERSION)return;
+  // SBC_V6615_PERSISTENT_REPAIR: old SW caches can return after a prior cleanup.
+  // Never suppress safe background checks based on a localStorage version marker.
+  // This is intentionally non-blocking, has no reload, and preserves browser drafts.
+  const VERSION='66.0.15-persistent-repair',KEY='sbc-client-version';
   localStorage.setItem(KEY,VERSION);
   (async function cleanupStaticOnly(){
     try{
