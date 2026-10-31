@@ -10,7 +10,7 @@ var current=()=>typeof state==='object'&&state?state:window.state;
 var esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 var isOwner=()=>String(current()?.me?.role||'').toLowerCase()==='owner';
 var canSell=()=>['owner','admin','manager','sales','sales_manager','sales_account_manager'].includes(String(current()?.me?.role||'').toLowerCase());
-var clients=()=>Array.isArray(current()?.data?.customers)?window.state.data.customers.filter(c=>c&&!c._recoveryProjection):[];
+var clients=()=>Array.isArray(current()?.data?.customers)?current().data.customers.filter(c=>c&&!c._recoveryProjection):[];
 var productList=()=>[...(current()?.catalog?.packages||[]),...(current()?.catalog?.services||[])].filter(p=>p&&!p.testOnly&&Number(p.price)>0&&!/launch qa|SBC_LAUNCH_QA_1USD/i.test(String(p.name||'')+' '+String(p.id||'')));
 var setText=(id,message)=>{var el=$(id);if(el)el.textContent=message;};
 var notify=s=>{if(typeof window.toast==='function')window.toast(s);};
@@ -78,7 +78,12 @@ window.sbcOpenOwnerDollarQA=function(){
     orderId=String(r.orderId);
     $('sbc-v6614-qa-steps').hidden=false;
     setText('sbc-v6614-order-label','Internal order '+orderId+' · $1.00 · '+String(r.paymentStatus||'Pending'));
-    if(r.existing){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;msg('Existing test order reused. Review its status or original Square link; no new payment link will be issued.');}
+    if(r.existing){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;msg('Existing test order reused. Checking provider link/status without creating a second payment link.');
+      try{var existing=await authFetch('/api/payments/square/order/'+encodeURIComponent(orderId),{method:'GET'});var order=existing?.order||existing;
+        if(showLink(order?.paymentUrl))msg('Original Square link recovered. Verify the merchant, $1.00 amount, and payment status before paying.');
+        if(String(order?.paymentStatus||'').toLowerCase()==='paid')msg('This QA order is already marked Paid. Verify it in Square; do not charge again.');
+      }catch(_){msg('Existing order found, but read-only link lookup failed. Do not generate a second link.');}
+    }
     if(showLink(r.paymentUrl)){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;}
     msg(r.existing?'Existing order reused. Never create a duplicate charge.':'Order saved. No Square link or payment was created.');
   }catch(err){
