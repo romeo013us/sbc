@@ -2,7 +2,7 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 
 on:
   push:
-    branches: [audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030]
+    branches: [audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,8 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           node scripts/v6606-quote-server-hardening.cjs
           node scripts/v6606-quote-server-hardening.test.cjs
+          node --check hotfix-assets/apply-v6693-quarantine-legacy-officebox.js
+          node --check hotfix-assets/v6694-owner-qa-route.cjs
           node scripts/v6605-revenue-integrity.test.cjs
           node scripts/v6610-shared-margin-policy.test.cjs
           node scripts/v6612-public-prospect-privacy.test.cjs
@@ -35,6 +37,16 @@ jobs:
           SBC_ENABLE_V6606_SOURCE_WRITE: YES
         run: |
           node scripts/v6606-quote-server-hardening.cjs --apply
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const {patchServer}=require('./hotfix-assets/apply-v6693-quarantine-legacy-officebox.js');
+          const src=fs.readFileSync('server.js','utf8');
+          const patched=patchServer(src); // exact anchors; no external calls
+          fs.writeFileSync('server.js',patched);
+          console.log('[SBC $1 QA STAGE] owner route and no-vendor capture protection applied to disposable source');
+          NODE
+          SBC_RUNTIME_ROOT=. node scripts/v6694-owner-launch-qa.test.cjs
+          SBC_RUNTIME_ROOT=. node scripts/v6693-compiled-officebox-quarantine.test.cjs
           node --check server.js
           node --check public/app.js
           node --check browser_public/app.js
@@ -52,7 +64,7 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.6-stage-safe-draft-owner-payment-proof';
+          identity.runtimePatch='v66.0.11-stage-owner-qa-no-vendor-and-quote-proof';
           identity.runtimePatchFrom='a-sbc-rollback-oct27';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
           // A receipt from a different release MUST NOT be distributed.
@@ -125,6 +137,9 @@ jobs:
           assert.ok(code.includes('sbcV6606QuoteCreateGate'));
           assert.ok(code.includes('sbcV6606QuoteUpdateGuard'));
           assert.ok(code.includes('SBC_V6608_PROSPECT_CSV_PRIVACY_GATE'));
+          assert.ok(code.includes('SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE'));
+          assert.ok(code.includes("app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,"));
+          assert.ok(code.includes('QA VERIFIED - NO FULFILLMENT'));
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
