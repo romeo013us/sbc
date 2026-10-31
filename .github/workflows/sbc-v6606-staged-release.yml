@@ -25,6 +25,8 @@ jobs:
           node scripts/v6606-quote-server-hardening.test.cjs
           node scripts/v6605-revenue-integrity.test.cjs
           node scripts/v6610-shared-margin-policy.test.cjs
+          node scripts/v6612-public-prospect-privacy.test.cjs
+          node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
           node scripts/v6603-flat-release-contract.test.cjs
