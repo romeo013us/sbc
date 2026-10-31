@@ -6,16 +6,17 @@
 if(window.__SBC_V6614_FAST_CHECKOUT__)return;
 window.__SBC_V6614_FAST_CHECKOUT__=true;
 var $=id=>document.getElementById(id);
+var current=()=>typeof state==='object'&&state?state:window.state;
 var esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-var isOwner=()=>String(window.state?.me?.role||'').toLowerCase()==='owner';
-var canSell=()=>['owner','admin','manager','sales','sales_manager','sales_account_manager'].includes(String(window.state?.me?.role||'').toLowerCase());
-var clients=()=>Array.isArray(window.state?.data?.customers)?window.state.data.customers.filter(c=>c&&!c._recoveryProjection):[];
-var productList=()=>[...(window.state?.catalog?.packages||[]),...(window.state?.catalog?.services||[])].filter(p=>p&&!p.testOnly&&Number(p.price)>0&&!/launch qa|SBC_LAUNCH_QA_1USD/i.test(String(p.name||'')+' '+String(p.id||'')));
+var isOwner=()=>String(current()?.me?.role||'').toLowerCase()==='owner';
+var canSell=()=>['owner','admin','manager','sales','sales_manager','sales_account_manager'].includes(String(current()?.me?.role||'').toLowerCase());
+var clients=()=>Array.isArray(current()?.data?.customers)?window.state.data.customers.filter(c=>c&&!c._recoveryProjection):[];
+var productList=()=>[...(current()?.catalog?.packages||[]),...(current()?.catalog?.services||[])].filter(p=>p&&!p.testOnly&&Number(p.price)>0&&!/launch qa|SBC_LAUNCH_QA_1USD/i.test(String(p.name||'')+' '+String(p.id||'')));
 var setText=(id,message)=>{var el=$(id);if(el)el.textContent=message;};
 var notify=s=>{if(typeof window.toast==='function')window.toast(s);};
 var authFetch=(url,options)=>{if(typeof window.api!=='function')throw Error('Authenticated SBC service unavailable');return window.api(url,options);};
 var modal=(title,html)=>{if(typeof window.openModal!=='function')throw Error('SBC modal unavailable');window.openModal(title,html);};
-var locked=()=>!!(window.state?.data?.recovery?.required||window.state?.data?.readOnly||window.state?.data?.mysqlRecoveryRequired);
+var locked=()=>!!(current()?.data?.recovery?.required||current()?.data?.readOnly||current()?.data?.mysqlRecoveryRequired);
 function squareUrl(raw){
  try{var u=new URL(String(raw||''));return u.protocol==='https:'&&!u.username&&!u.password&&['square.link','checkout.square.site','square.site','squareup.com'].includes(u.hostname.toLowerCase())?u.href:'';}catch{return '';}
 }
