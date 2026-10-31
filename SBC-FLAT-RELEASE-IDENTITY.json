@@ -1,9 +1,10 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "0c6152e7aae7ad7aed33dd99d66f9f691ed57cd2",
-  "sourceFingerprint": "571db994e28fa617fca729071dcc9b65a75caf0dfcbdab81cac6d4eee2f1cf82",
-  "serverSha256": "bcf32c6738de8f07df903d2a60aacce94dd85963d72f0689a02faa2370499941",
-  "runtimePatch": "v66.0.0-lead-import-route-registration-2026-10-29",
-  "runtimePatchFrom": "sbc-original-working-20261027"
+  "sourceCommit": "9b6f3fc88be9a8c43fdfee20e3df7d4c9c6dbbb9",
+  "sourceFingerprint": "85a29af83310dcc13bbdcb3ee2b3667542e4c59e7e0967e90a63c654b9f7f7b5",
+  "serverSha256": "70eac46bb76511e6ba39e4ab6ec93889c4a6c5ad09c0589d990b61048edd5c0a",
+  "runtimePatch": "v66.0.14-stage-qa-and-fast-checkout",
+  "runtimePatchFrom": "a-sbc-rollback-oct27",
+  "stagedInventorySha256": "cf23318f1b9a1b50422f818c7f0c40b7690974e9316b2ad1fdae6593c99f5fb9"
 }
