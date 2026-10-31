@@ -24,9 +24,9 @@ Effective decision recorded: October 30, 2026. Operational specification only; n
 
 ## Owner economic review — critical
 - Customer sale price $199; domain + builder estimated $108; cards and fulfillment estimated $42; current nominal gross contribution **$49 = 24.62%** before processing, labor, tax, and any separately proven reseller commission.
-- The currently documented V66 checkout governor enforces a **30% minimum margin** for applicable checkouts. If recognized cost is $150, compliant price is at least **$214.29**; at a $199 price, recognized cost must not exceed **$139.30**.
+- **Owner policy update October 30:** the minimum checkout contribution margin is now **20%** in proposed source PR #224 (not yet GoDaddy-live). For $199 retail, gross recognized costs before any fees may total up to **$159.20**; with the financial governor's default gateway estimate of 2.9% + $0.30, supplier and shipping cost may be at most **$153.13** (round down for safety). A $150 combined supplier/card cost is approximately **21.57%** after the estimated $6.07 gateway fee.
 - Never treat the asserted 40% reseller payment as *additional* profit until the specific transaction's commission eligibility and accounting are verified against an actual payout. Avoid double-counting markups already embedded in supplier charges.
-- Do not bypass global stop, margin floor, owner approval, tenant price/cost isolation, payment-evidence or writer/recovery gates merely to force a checkout. Resolve product economics lawfully with supplier discounts, revised offer, validated accounting, or a separately reviewed and authorized pricing-policy exception implemented with audit trail.
+- Apply the owner-approved **20%** minimum consistently to quote economics, storefront event validation and the fulfillment worker. Do not bypass the 20% floor, global stop, owner approval, tenant price/cost isolation, payment-evidence or writer/recovery gates merely to force checkout; verify supplier costs and ensure the release was rebuilt and tested.
 - Keep reseller wholesale and customer retail payments clearly distinguished in the ledger.
 
 ## Fulfillment operating procedure
