@@ -187,7 +187,27 @@ jobs:
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
             node "$tmp/scripts/v6611-verify-stage-inventory.cjs" "$tmp"
+            SBC_RELEASE_PREFLIGHT_ONLY=1 node "$tmp/sbc-godaddy-flat-entrypoint.cjs"
           done
+          # Reproduce BOTH reported GoDaddy errors through the REAL startup gate;
+          # no customer state is opened (preflight exits after all checks pass).
+          cp "$tmp/SBC-DEPLOY-RECEIPT.json" "$tmp/receipt.backup"
+          node - "$tmp" <<'NODE'
+          const fs=require('fs'),path=require('path'),p=path.join(process.argv[2],'SBC-DEPLOY-RECEIPT.json');
+          const r=JSON.parse(fs.readFileSync(p,'utf8'));r.sourceCommit='0c6152e7aae7ad7aed33dd99d66f9f691ed57cd2';
+          fs.writeFileSync(p,JSON.stringify(r));
+          NODE
+          if SBC_RELEASE_PREFLIGHT_ONLY=1 node "$tmp/sbc-godaddy-flat-entrypoint.cjs"; then
+            echo '[SBC GO DADDY TEST] ERROR: stale receipt accepted' >&2;exit 1
+          fi
+          mv "$tmp/receipt.backup" "$tmp/SBC-DEPLOY-RECEIPT.json"
+          cp "$tmp/SBC-STAGED-INVENTORY.json" "$tmp/inventory.backup"
+          rm "$tmp/SBC-STAGED-INVENTORY.json"
+          if SBC_RELEASE_PREFLIGHT_ONLY=1 node "$tmp/sbc-godaddy-flat-entrypoint.cjs"; then
+            echo '[SBC GO DADDY TEST] ERROR: missing manifest accepted' >&2;exit 1
+          fi
+          mv "$tmp/inventory.backup" "$tmp/SBC-STAGED-INVENTORY.json"
+          SBC_RELEASE_PREFLIGHT_ONLY=1 node "$tmp/sbc-godaddy-flat-entrypoint.cjs"
           # Deliberate corruption must fail closed before persistent state is opened.
           printf '\nSBC_STAGING_TAMPER_PROBE\n' >> "$tmp/public/app.js"
           if node "$tmp/scripts/v6611-verify-stage-inventory.cjs" "$tmp"; then
