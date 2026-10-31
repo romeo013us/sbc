@@ -14,6 +14,10 @@ if(release.schema!==1||! /^[a-f0-9]{40}$/.test(release.sourceCommit||'')||
 }
 const serverSha = crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'server.js'))).digest('hex');
 if(serverSha!==release.serverSha256)throw Error('[SBC DEPLOY IDENTITY] packaged server has changed since verification');
+// Preflight every staged program asset before state persistence, writer lease or app startup.
+const stageIntegrity = require('./scripts/v6611-verify-stage-inventory.cjs')
+  .verifyStagedInventory(root, release);
+if(!stageIntegrity.legacy)console.log('[SBC STAGED INVENTORY] verified='+stageIntegrity.checked);
 const receiptPath = path.join(root,'SBC-DEPLOY-RECEIPT.json');
 const hasReceipt = fs.existsSync(receiptPath);
 if(hasReceipt){
