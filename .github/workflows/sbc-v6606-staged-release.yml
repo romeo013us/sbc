@@ -45,9 +45,22 @@ jobs:
           const fs=require('node:fs');
           const {patchServer}=require('./hotfix-assets/apply-v6693-quarantine-legacy-officebox.js');
           const src=fs.readFileSync('server.js','utf8');
-          const patched=patchServer(src); // exact anchors; no external calls
-          fs.writeFileSync('server.js',patched);
-          console.log('[SBC $1 QA STAGE] owner route and no-vendor capture protection applied to disposable source');
+          const marker='SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE';
+          if(src.includes(marker)){
+            // a-sbc-master is already compiled. Never patch it twice; assert
+            // complete signed-payment, owner QA, supplier-hold and quote rails.
+            const required=[
+              marker,"app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,",
+              'QA VERIFIED - NO FULFILLMENT','sbcLaunchQaDurable',
+              'SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE'
+            ];
+            for(const token of required)if(!src.includes(token))throw Error('[SBC MASTER] partial compiled source: '+token);
+            console.log('[SBC $1 QA STAGE] verified already-compiled owner route and quarantine; no reapplication');
+          }else{
+            const patched=patchServer(src); // exact anchors; no external calls
+            fs.writeFileSync('server.js',patched);
+            console.log('[SBC $1 QA STAGE] owner route and no-vendor capture protection applied to disposable source');
+          }
           NODE
           SBC_RUNTIME_ROOT=. node scripts/v6694-owner-launch-qa.test.cjs
           SBC_RUNTIME_ROOT=. node scripts/v6693-compiled-officebox-quarantine.test.cjs
