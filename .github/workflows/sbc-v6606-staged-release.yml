@@ -2,7 +2,7 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 
 on:
   push:
-    branches: [audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030]
+    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030]
   workflow_dispatch:
 
 permissions:
