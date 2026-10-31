@@ -78,6 +78,7 @@ window.sbcOpenOwnerDollarQA=function(){
     orderId=String(r.orderId);
     $('sbc-v6614-qa-steps').hidden=false;
     setText('sbc-v6614-order-label','Internal order '+orderId+' · $1.00 · '+String(r.paymentStatus||'Pending'));
+    if(r.existing){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;msg('Existing test order reused. Review its status or original Square link; no new payment link will be issued.');}
     if(showLink(r.paymentUrl)){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;}
     msg(r.existing?'Existing order reused. Never create a duplicate charge.':'Order saved. No Square link or payment was created.');
   }catch(err){
