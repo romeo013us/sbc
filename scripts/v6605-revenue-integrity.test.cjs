@@ -2,6 +2,7 @@
 /* SBC_V6605_REVENUE_INTEGRITY: no network, no production databases and no payment calls. */
 const assert=require('node:assert/strict');
 const {createFinancialGovernor}=require('../enterprise/financial-governor-v56-25-3');
+const {MIN_MARGIN_PCT}=require('../enterprise/sbc-margin-policy.cjs');
 const RAILS=require('../enterprise/v566-scale-revenue-rails');
 
 function poolStub(){
@@ -41,10 +42,20 @@ async function test(){
  const item={id:'SBC_WEB_SETUP',name:'Verified Service',qty:1,unitPrice:100};
  const ok=await governor.evaluate({tenantId:1,action:'quote_send',items:[item],price:100,idempotencyKey:'tenant-1-quote-1'});
  assert.equal(ok.status,'ALLOWED');
- assert.ok(ok.marginPct>=0.30);
+ assert.ok(ok.marginPct>=MIN_MARGIN_PCT);
+ assert.equal(governor.MIN_MARGIN_PCT,0.20);
+ assert.equal((await governor.status(1)).minMarginPct,0.20);
  const expensive=await governor.evaluate({tenantId:2,action:'quote_send',items:[item],price:100,idempotencyKey:'tenant-2-quote-1'});
  assert.equal(expensive.status,'FROZEN');
  assert.equal(expensive.reason,'MARGIN_TOO_LOW');
+ await governor.upsertCost({tenantId:1,...sample('SBC_STARTER_199',150)});
+ const starter=await governor.evaluate({tenantId:1,action:'quote_send',items:[{id:'SBC_STARTER_199',qty:1,unitPrice:199}],price:199,idempotencyKey:'starter-199-20pct'});
+ assert.equal(starter.status,'ALLOWED','$199 bundle with $151 entered vendor+shipping cost should pass 20% after gateway fee');
+ assert.ok(starter.marginPct>=0.20);
+ await governor.upsertCost({tenantId:1,...sample('SBC_STARTER_TOO_EXPENSIVE',155)});
+ const below=await governor.evaluate({tenantId:1,action:'quote_send',items:[{id:'SBC_STARTER_TOO_EXPENSIVE',qty:1,unitPrice:199}],price:199,idempotencyKey:'starter-199-below-20pct'});
+ assert.equal(below.status,'FROZEN','Genuine sub-20% quote must remain blocked');
+ assert.equal(below.requiredMarginPct,0.20);
  await assert.rejects(governor.evaluate({tenantId:3,action:'quote_send',items:[item],price:100,idempotencyKey:'tenant-3-quote-1'}),/ECONOMIC_COST_DATA_REQUIRED:SBC_WEB_SETUP/);
  await assert.rejects(governor.upsertCost({tenantId:1,...sample('B',0)}),/ZERO_VENDOR_COST_REQUIRES_OWNER_VERIFICATION/);
  await assert.rejects(governor.upsertCost({tenantId:1,...sample('B',-1)}),/VERIFIED_COST_INVALID/);
