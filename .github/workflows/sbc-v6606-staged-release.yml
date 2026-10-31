@@ -2,7 +2,7 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 
 on:
   push:
-    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030, fix/v66-one-click-sales-qa-20261031, fix/v66-persistent-browser-repair-20261031, fix/v66-owner-qa-nav-visibility-20261031]
+    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030, fix/v66-one-click-sales-qa-20261031, fix/v66-persistent-browser-repair-20261031, fix/v66-owner-qa-nav-visibility-20261031, fix/v66-master-one-click-qa-20261031]
   workflow_dispatch:
 
 permissions:
@@ -68,7 +68,7 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.16-stage-owner-qa-visible-nav-and-checkout';
+          identity.runtimePatch='v66.0.17-master-owner-one-click-qa';
           identity.runtimePatchFrom='a-sbc-rollback-oct27';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
           // A receipt from a different release MUST NOT be distributed.
