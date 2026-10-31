@@ -32,6 +32,8 @@ jobs:
         run: node scripts/v6602-payment-evidence-contract.test.cjs
       - name: Tenant economic cost and verified customer revenue contract
         run: node scripts/v6605-revenue-integrity.test.cjs
+      - name: Shared 20 percent floor across governor, storefront and fulfillment
+        run: node scripts/v6610-shared-margin-policy.test.cjs
       - name: Quote server hardening transform (syntax and anchor proof; no mutations)
         run: node scripts/v6606-quote-server-hardening.cjs
       - name: Quote server route behavior proof (in-memory mocks only)
