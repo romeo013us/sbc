@@ -2,7 +2,7 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 
 on:
   push:
-    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030]
+    branches: [a-sbc-rollback-oct27, audit/95-revenue-proof-20261029, fix/v66-launch-privacy-integrity-20261030, fix/v66-owner-one-dollar-release-gate-20261030, fix/v66-qa-paas-preflight-20261030, fix/v66-browser-profile-stability-20261030, fix/v66-one-click-sales-qa-20261031]
   workflow_dispatch:
 
 permissions:
@@ -30,6 +30,7 @@ jobs:
           node scripts/v6612-public-prospect-privacy.test.cjs
           node scripts/v6601-ui-revenue-resilience.test.cjs
           node scripts/v6613-browser-profile-stability.test.cjs
+          node scripts/v6614-quick-checkout-ui.test.cjs
           node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
@@ -66,7 +67,7 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.13-stage-qa-and-browser-profile-stability';
+          identity.runtimePatch='v66.0.14-stage-qa-and-fast-checkout';
           identity.runtimePatchFrom='a-sbc-rollback-oct27';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
           // A receipt from a different release MUST NOT be distributed.
