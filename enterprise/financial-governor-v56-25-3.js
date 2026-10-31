@@ -1,8 +1,9 @@
 'use strict';
 const crypto=require('crypto');
+const {MIN_MARGIN_PCT}=require('./sbc-margin-policy.cjs');
 const VERSION='56.25.3';
 const THRESHOLD=10000;
-const MIN_MARGIN_PCT=Math.max(0,Number(process.env.SBC_MIN_MARGIN_PCT||0.30));
+// SBC margin minimum is set by the owner-approved shared policy, not stale 30% environment defaults.
 const GATEWAY_PCT=Math.max(0,Number(process.env.SBC_GATEWAY_FEE_PCT||0.029));
 const GATEWAY_FIXED=Math.max(0,Number(process.env.SBC_GATEWAY_FEE_FIXED||0.30));
 function tenantIdOf(v){const n=Number(v);if(!Number.isInteger(n)||n<=0)throw new Error('TENANT_CONTEXT_REQUIRED');return n;}
