@@ -140,6 +140,7 @@ jobs:
           assert.ok(code.includes('SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE'));
           assert.ok(code.includes("app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,"));
           assert.ok(code.includes('QA VERIFIED - NO FULFILLMENT'));
+          assert.ok(code.includes('owner-verified-zero-vendor-cost'), 'QA zero-vendor-cost approval must be in compiled runtime');
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
@@ -155,6 +156,19 @@ jobs:
           else
             echo '[SBC STAGED INVENTORY] PASS: corrupted frontend is rejected'
           fi
+      - name: Reproduce GoDaddy production npm installation on extracted ZIP
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          unzip -q dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip -d "$tmp"
+          cd "$tmp"
+          npm install --omit=dev --no-audit --no-fund
+          npm run build
+          node --check server.js
+          node --check sbc-godaddy-flat-entrypoint.cjs
+          node scripts/v6611-verify-stage-inventory.cjs .
+          echo '[SBC GODADDY HOST PREFLIGHT] npm production install, build and stage integrity PASS'
       - name: Upload isolated staging candidate (never publish)
         uses: actions/upload-artifact@v4
         with:
