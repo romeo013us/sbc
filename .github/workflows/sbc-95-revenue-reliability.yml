@@ -28,6 +28,8 @@ jobs:
           node --check browser_public/sbc-customer360-workspace-v6525.js
       - name: Recent quote-save and light-mode regression
         run: node scripts/v6601-ui-revenue-resilience.test.cjs
+      - name: Browser profile/role stability no-reload regression
+        run: node scripts/v6613-browser-profile-stability.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
       - name: Tenant economic cost and verified customer revenue contract

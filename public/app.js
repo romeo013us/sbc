@@ -12,7 +12,33 @@ const today=()=>new Date().toISOString().slice(0,10);
 window.completeTrainingModuleV2=window.completeTrainingModuleV2||function(...args){return typeof window.sbcCanonicalCompleteLesson==='function'?window.sbcCanonicalCompleteLesson(...args):Promise.reject(new Error('Training engine is initializing.'))};
 window.submitTrainingAssessmentV2=window.submitTrainingAssessmentV2||function(...args){return typeof window.sbcCanonicalSubmitAssessment==='function'?window.sbcCanonicalSubmitAssessment(...args):Promise.reject(new Error('Training engine is initializing.'))};
 // V55.10.1 — client freshness guard. The production app has historically been served behind browser/service-worker caches. On a versioned build, retire stale SBC caches once, then continue normally.
-(function sbcClientFreshness(){try{const V='65.1.25-customer360',KEY='sbc-client-version',RELOADED='sbc-client-reloaded';if(localStorage.getItem(KEY)!==V){localStorage.setItem(KEY,V);const cleanup=async()=>{try{if('serviceWorker' in navigator){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}}catch{}try{if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>/^sbc-static-v(?:55|56)-/.test(k)).map(k=>caches.delete(k)));}}catch{}if(sessionStorage.getItem(RELOADED)!==V){sessionStorage.setItem(RELOADED,V);location.reload();}};cleanup();}}catch(e){}})();
+(function sbcClientFreshness(){try{
+  // SBC_V6613_PROFILE_STABILITY: retire only obsolete SBC static caches without
+  // forcing an app reload after scripts have started rendering.
+  const VERSION='66.0.13-profile-stability',KEY='sbc-client-version';
+  if(localStorage.getItem(KEY)===VERSION)return;
+  localStorage.setItem(KEY,VERSION);
+  (async function cleanupStaticOnly(){
+    try{
+      if('serviceWorker' in navigator){
+        const regs=await navigator.serviceWorker.getRegistrations();
+        for(const reg of regs){
+          const worker=reg.active||reg.waiting||reg.installing;
+          if(!worker)continue;
+          const u=new URL(worker.scriptURL,location.href);
+          if(u.origin===location.origin&&u.pathname==='/sw.js')await reg.unregister();
+        }
+      }
+    }catch(err){console.warn('[SBC PROFILE STABILITY] Worker cleanup deferred',err);}
+    try{
+      if('caches' in window){
+        const keys=await caches.keys();
+        for(const key of keys)if(/^sbc-static-v[\w.-]*$/.test(key))await caches.delete(key);
+      }
+    }catch(err){console.warn('[SBC PROFILE STABILITY] Cache cleanup deferred',err);}
+  })();
+  // No location.reload, session reset, storage.clear, cookies, IndexedDB or CRM writes.
+}catch(err){console.warn('[SBC PROFILE STABILITY] Preferences unavailable',err);}})();
 
 function sbcShowLogin(reason=''){try{state.me=null;/* V65.1.23: an expired session must never leave the body-level Lead Workspace modal covering the login/sign-out controls. */const leadModal=document.getElementById('sbc-lead-workspace');if(leadModal)leadModal.classList.remove('is-open');const leadLauncher=document.getElementById('sbc-lead-workspace-launcher');if(leadLauncher)leadLauncher.hidden=true;const login=document.querySelector('#login'),app=document.querySelector('#app'),err=document.querySelector('#loginError');if(login)login.classList.remove('hidden');if(app)app.classList.add('hidden');if(err)err.textContent=reason||'Your SBC session expired or is no longer available. Sign in again.';}catch{}}
 async function api(url,opt={}){if(state.me?.role==='demo'&&String(opt.method||'GET').toUpperCase()!=='GET'&&!String(url).includes('/api/logout'))throw new Error('Demo mode is read-only. This action is disabled for the demo account.');const controller=new AbortController();const timeout=Number(opt.timeoutMs||125000);const timer=setTimeout(()=>controller.abort(),timeout);try{const headers={'Content-Type':'application/json','Accept':'application/json',...(opt.headers||{})};const fetchOpt={...opt,headers,credentials:opt.credentials||'include',signal:opt.signal||controller.signal};delete fetchOpt.timeoutMs;const r=await fetch(url,fetchOpt);const raw=await r.text();let j=null;try{j=raw?JSON.parse(raw):{}}catch{}const html=!j&&(/<!doctype\s+html|<html[\s>]|<body[\s>]/i.test(raw));if(html){if(r.status===401){if(!String(url).includes('/api/login'))sbcShowLogin('Your SBC authentication session is missing or expired. Sign in again.');throw new Error('Your SBC authentication session is missing or expired. Sign in again.')}throw new Error(`The server returned HTML instead of JSON for ${url}. This is an endpoint/proxy response, not proof that your session expired. Your current screen has been preserved; refresh or report this endpoint.`)}if(!r.ok){if(r.status===401&&!String(url).includes('/api/login'))sbcShowLogin('Your SBC authentication session is missing or expired. Sign in again.');const msg=r.status===423?(j?.message||'Recovery lock active: production writes are suspended until authoritative MySQL recovery is verified.'):j?.message||j?.error||(r.status===403?'Access denied for this workspace role.':`Request failed (${r.status})`);throw new Error(msg)}if(j===null)throw new Error(`The server response for ${url} was not valid JSON.`);return j}catch(e){if(e?.name==='AbortError')throw new Error(`SBC request timed out: ${url}`);throw e}finally{clearTimeout(timer)}}

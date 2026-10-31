@@ -30,3 +30,5 @@ jobs:
         run: node scripts/v6601-ui-revenue-resilience.test.cjs
       - name: Existing theme contrast regression
         run: node hotfix-assets/v6555-theme-contrast-test.js
+      - name: Chrome profile cache and role stability guard
+        run: node scripts/v6613-browser-profile-stability.test.cjs

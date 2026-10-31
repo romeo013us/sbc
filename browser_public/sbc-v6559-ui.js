@@ -14,5 +14,6 @@ function initReorder(){ /* SBC_V6565_DASHBOARD_LAYOUT_STABILITY: disable global 
 function run(){removeAcquisition();initReorder()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 // SBC_V6565_DASHBOARD_LAYOUT_STABILITY: no post-hydration observer may reorder or remove live dashboard sections.
-window.addEventListener('storage',function(e){if(e.key&&e.key.indexOf(ORDER_KEY)===0)location.reload()});
+// SBC_V6613_PROFILE_STABILITY: legacy cross-tab layout storage changes must not reload
+// an authenticated workspace. The obsolete dashboard drag order is disabled.
 })();

@@ -19,7 +19,7 @@ assert.ok(!css.includes('body[data-theme="dark"]'),'light fix must not change da
 for(const html of ['public/index.html','browser_public/index.html']){
   const s=get(html);
   const stylesheet='/sbc-light-contrast-v6601.css?v=66.0.1';
-  const recovery='/sbc-browser-view-repair-v6601.js?v=66.0.1';
+  const recovery='/sbc-browser-view-repair-v6601.js?v=66.0.13-profile-stability';
   assert.equal(s.split(stylesheet).length-1,1,'light layer is included exactly once in '+html);
   assert.equal(s.split(recovery).length-1,1,'repair helper is included exactly once in '+html);
   assert.ok(s.indexOf('sbc-v6636-canonical-styles')<s.indexOf(stylesheet),'light layer follows existing canonical CSS');
