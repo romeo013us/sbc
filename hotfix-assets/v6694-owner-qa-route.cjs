@@ -19,6 +19,20 @@ app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
  if(email.length>254||!/^\S+@\S+\.\S+$/.test(email)||
     email.endsWith('.invalid')||email.endsWith('.test'))
   return res.status(400).json({ok:false,code:'LAUNCH_QA_CONTROLLED_EMAIL_REQUIRED'});
+ // The QA SKU has no outside vendor, shipping or provisioning cost by design.
+ // Register that *exact* item under the authenticated owner/tenant, using the
+ // financial governor's explicitly verified zero-vendor-cost contract.
+ // Never alter a commercial product or bypass the 20% margin calculation.
+ try{
+   await FINANCIAL_GOVERNOR.upsertCost({
+     tenantId,itemId:'SBC_LAUNCH_QA_1USD',itemName:'Owner-only $1 QA internal test',
+     wholesaleCost:0,shippingCost:0,source:'owner-verified-zero-vendor-cost',
+     actor:'owner-only-qa-route'
+   });
+ }catch(e){
+   return res.status(503).json({ok:false,code:'LAUNCH_QA_ECONOMIC_SETUP_REQUIRED',
+     message:'Owner QA test cost could not be registered; no order, payment link or provider charge created.'});
+ }
  // One test per tenant and owner-provided email: cannot accidentally mint
  // another charge by retrying after an ambiguous response.
  const existing=(db.orders||[]).find(o=>Number(o.tenantId)===tenantId&&
