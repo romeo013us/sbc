@@ -1,0 +1,9 @@
+{
+  "sourceCommit": "978024d012fac70ade69b22f5f2ffba17dde9c68",
+  "sourceFingerprint": "136aac254245b21f3465f118970504de10aac8022254cc20eb8ef3ba7c3edf98",
+  "artifactType": "server.js",
+  "artifactSha256": "70eac46bb76511e6ba39e4ab6ec93889c4a6c5ad09c0589d990b61048edd5c0a",
+  "buildBranch": "a-sbc-master",
+  "deployBranch": "a-sbc-master",
+  "createdBy": "SBC V66 Verified Master Release GitHub Actions"
+}
