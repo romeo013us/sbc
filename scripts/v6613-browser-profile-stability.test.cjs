@@ -21,7 +21,7 @@ assert.match(guard,/SBC_V6613_PROFILE_STABILITY/);
 assert.doesNotMatch(guard,/\blocation\.(?:reload|replace|assign)\s*\(/,'never reload an active CRM automatically');
 assert.doesNotMatch(guard,/localStorage\.(?:clear|removeItem)|sessionStorage\.(?:clear|removeItem)|indexedDB\.deleteDatabase|document\.cookie\s*=/,
   'do not clear sessions, drafts, history or persistent customer state');
-assert.match(index,/\/app\.js\?v=66\.0\.13-profile-stability/);
+assert.match(index,/\/app\.js\?v=66\.0\.15-persistent-repair/);
 assert.match(index,/\/sbc-browser-view-repair-v6601\.js\?v=66\.0\.13-profile-stability/);
 assert.match(index,/SBC_V6613_PROFILE_STABILITY/);
 assert.ok((index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length>80,
@@ -40,15 +40,17 @@ assert.match(roleBlock,/readCooldownMs=15000/,'do not hammer the auth service');
 (async()=>{
   const store=new Map([['sbc-client-version','65.1.25-customer360'],['sbc-call-draft-v1:123','private draft']]);
   const deleted=[],removed=[],reloads=[];
+  let oldWorkerPresent=true;
+  const liveCacheKeys=new Set(['sbc-static-v65-old','sbc-static-v66-current','unrelated-cache','another-app']);
   const registrations=[
-    {active:{scriptURL:'https://command.example/sw.js'},async unregister(){removed.push('sbc');return true;}},
+    {active:{scriptURL:'https://command.example/sw.js'},async unregister(){removed.push('sbc');oldWorkerPresent=false;return true;}},
     {active:{scriptURL:'https://command.example/other-sw.js'},async unregister(){removed.push('other');return true;}},
   ];
   const context={
     localStorage:{getItem:key=>store.get(key)||null,setItem:(k,v)=>store.set(k,v)},
-    navigator:{serviceWorker:{getRegistrations:async()=>registrations}},
-    caches:{keys:async()=>['sbc-static-v65-old','sbc-static-v66-current','unrelated-cache','another-app'],
-      delete:async key=>{deleted.push(key);return true;}},
+    navigator:{serviceWorker:{getRegistrations:async()=>registrations.filter(r=>r.active.scriptURL.endsWith('/other-sw.js')||oldWorkerPresent)}},
+    caches:{keys:async()=>[...liveCacheKeys],
+      delete:async key=>{deleted.push(key);liveCacheKeys.delete(key);return true;}},
     location:{origin:'https://command.example',href:'https://command.example/',reload:()=>reloads.push('reload')},
     URL,console,
   };
@@ -59,10 +61,17 @@ assert.match(roleBlock,/readCooldownMs=15000/,'do not hammer the auth service');
   assert.deepEqual(deleted,['sbc-static-v65-old','sbc-static-v66-current'],
     'only specifically named SBC caches are deleted');
   assert.equal(store.get('sbc-call-draft-v1:123'),'private draft');
-  assert.equal(store.get('sbc-client-version'),'66.0.13-profile-stability');
+  assert.equal(store.get('sbc-client-version'),'66.0.15-persistent-repair');
   assert.equal(reloads.length,0,'no flashing auto-refresh');
+  // Simulate an obsolete worker/cache being reintroduced AFTER the first successful repair.
+  // A version-marker short-circuit would leave it active indefinitely.
+  oldWorkerPresent=true;
+  liveCacheKeys.add('sbc-static-v64-resurrected');
   vm.runInNewContext(guard,context,{timeout:4000});
   await new Promise(resolve=>setImmediate(resolve));
-  assert.deepEqual(removed,['sbc'],'once-per-version cleanup only');
+  assert.deepEqual(removed,['sbc','sbc'],'reintroduced SBC worker removed on subsequent normal visit');
+  assert.deepEqual(deleted,['sbc-static-v65-old','sbc-static-v66-current','sbc-static-v64-resurrected']);
+  assert.equal(store.get('sbc-call-draft-v1:123'),'private draft');
+  assert.equal(reloads.length,0,'no auto reload after repeated repair');
   console.log('[SBC V6613 PROFILE STABILITY] PASS: new URLs, coalesced role observer, no auto reload, scoped SW/cache cleanup, preserved draft and role protection');
 })().catch(e=>{console.error(e);process.exitCode=1});
