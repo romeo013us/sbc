@@ -20,7 +20,7 @@ assert.ok(!code.includes("fetch("),'Use existing authenticated SBC API exclusive
 assert.match(code,/\/api\/owner\/launch-qa\/create-order/);
 assert.match(code,/\/api\/payments\/square\/create-link\//);
 assert.match(code,/\/api\/payments\/square\/order\//);
-function setup(role='owner'){
+function setup(role='owner',existing=false){
  const events={},calls=[],alerts=[],elems={};
  function el(id){
   if(!elems[id])elems[id]={id,hidden:false,disabled:false,value:'',textContent:'',
@@ -34,7 +34,7 @@ function setup(role='owner'){
  const win={
   state,toast(msg){alerts.push(msg)},confirm:()=>true,
   openModal(){},closeModal(){},
-  api:async(url,opt)=>{calls.push({url,opt});if(url.endsWith('launch-qa/create-order'))return {ok:true,amountCents:100,orderId:'qa-order-1',paymentStatus:'Pending'};
+  api:async(url,opt)=>{calls.push({url,opt});if(url.endsWith('launch-qa/create-order'))return {ok:true,existing,amountCents:100,orderId:'qa-order-1',paymentStatus:'Pending'};
    if(url.includes('create-link/'))return {paymentUrl:'https://square.link/u/test-only'};
    if(url.includes('/api/payments/square/order/'))return {order:{paymentStatus:'Paid',fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT'}};
    throw Error('Unknown endpoint: '+url); }
@@ -65,5 +65,11 @@ function setup(role='owner'){
  assert.equal(owner.calls[2].opt.method,'GET','Read-only status check');
  assert.match(owner.elems['sbc-v6614-payment-status'].textContent,/QA VERIFIED - NO FULFILLMENT/);
  assert.equal(owner.calls.length,3,'No surprise provider call');
+ const reused=setup('owner',true);
+ reused.win.sbcOpenOwnerDollarQA();
+ await reused.invoke('sbc-v6614-qa-form','submit');
+ assert.equal(reused.elems['sbc-v6614-link-btn'].disabled,true,'Reused order may not issue a second link');
+ await reused.invoke('sbc-v6614-link-btn');
+ assert.equal(reused.calls.length,1,'No second payment link request for reused order');
  console.log('[SBC V6614 QUICK CHECKOUT] PASS: owner-gated $1 UI, explicit link, one request, read-only Paid check, mirrored UI');
 })().catch(e=>{console.error(e);process.exitCode=1});
