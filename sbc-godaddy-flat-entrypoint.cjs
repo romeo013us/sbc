@@ -23,6 +23,13 @@ const hasReceipt = fs.existsSync(receiptPath);
 if(hasReceipt){
  const receipt=JSON.parse(fs.readFileSync(receiptPath,'utf8'));
  if(receipt.sourceCommit!==release.sourceCommit||receipt.sourceFingerprint!==release.sourceFingerprint){
+  console.error('[SBC DEPLOY PREFLIGHT] receipt mismatch',JSON.stringify({
+   releaseSource:String(release.sourceCommit).slice(0,12),
+   receiptSource:String(receipt.sourceCommit||'').slice(0,12),
+   releaseFingerprint:String(release.sourceFingerprint||'').slice(0,12),
+   receiptFingerprint:String(receipt.sourceFingerprint||'').slice(0,12),
+   manifestAnchored:!stageIntegrity.legacy,receiptPath:'SBC-DEPLOY-RECEIPT.json'
+  }));
   throw Error('[SBC DEPLOY IDENTITY] GitHub deployment receipt does not match running server');
  }
  // SBC_V6618_RECEIPT_BINDING: newly staged receipts identify the exact compiled
@@ -33,6 +40,16 @@ if(hasReceipt){
  }
 }
 console.log('[SBC DEPLOY IDENTITY] entry=flat source_commit='+release.sourceCommit+' source_fingerprint='+release.sourceFingerprint+' receipt='+(hasReceipt?'VERIFIED':'ZIP_INSTALL'));
+// CI-only startup proof: exercise THIS exact flat runtime integrity/receipt gate
+// without opening persistent customer state or requiring production secrets.
+// This flag does not alter any verification; it exits only AFTER all gates pass.
+if(process.env.SBC_RELEASE_PREFLIGHT_ONLY==='1'){
+ if(stageIntegrity.legacy||!hasReceipt||release.serverSha256!==serverSha){
+  throw Error('[SBC DEPLOY PREFLIGHT] compiled master requires signed-off inventory, receipt and pinned server hash');
+ }
+ console.log('[SBC DEPLOY PREFLIGHT] PASS compiled server, inventory and receipt are one release');
+ process.exit(0);
+}
 const {persistState} = require('./persistent-state.js');
 const state = persistState(root, root, {reused:false});
 if (state.ephemeral) throw Error('SBC flat runtime rejects ephemeral customer state');
