@@ -33,7 +33,7 @@ window.submitTrainingAssessmentV2=window.submitTrainingAssessmentV2||function(..
     try{
       if('caches' in window){
         const keys=await caches.keys();
-        for(const key of keys)if(/^sbc-static-v[\\w.-]*$/.test(key))await caches.delete(key);
+        for(const key of keys)if(/^sbc-static-v[\w.-]*$/.test(key))await caches.delete(key);
       }
     }catch(err){console.warn('[SBC PROFILE STABILITY] Cache cleanup deferred',err);}
   })();
