@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - audit/95-revenue-proof-20261029
+      - a-sbc-master
   pull_request:
     branches:
       - a-sbc-rollback-oct27
+      - a-sbc-master
 
 permissions:
   contents: read
@@ -34,6 +36,7 @@ jobs:
         run: |
           node scripts/v6614-quick-checkout-ui.test.cjs
           node scripts/v6616-owner-qa-nav.test.cjs
+          node scripts/v6621-launch-acceptance.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
       - name: Tenant economic cost and verified customer revenue contract
