@@ -124,7 +124,7 @@ function fixture({links=[],pages=null,sOrders={},searchOrders=[],searchPages=nul
  };
  r=await giant.call();assert.equal(r.code,409);
  assert.equal(r.body.reason,'SQUARE_LINK_PAGINATION_INCOMPLETE');
- assert.match(r.body.message,/inventory is too large/);
+ assert.match(r.body.message,/inventory is incomplete/);
  assert.equal(giant.paths.length,21);
  assert.equal(r.body.canCreate,false);
  // Unrelated historical links do not block a newly created QA order.

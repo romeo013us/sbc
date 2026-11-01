@@ -3,7 +3,7 @@
   "version": "66.0.0",
   "sourceCommit": "e20a4e784ec4892ae09c92e54b4f4479053e9b20",
   "sourceFingerprint": "683f8aa196db6b24bc640123324ff3e39d643e062748da35a218330286c3650b",
-  "serverSha256": "75f21688b605d023b628c82790428d346ace0b3335806ce05ddbe290a2bb8991",
+  "serverSha256": "a0cb78d3c11dfacfe7843842c1414c7c79b5205967dbe1e31b3295a2fb06fef6",
   "runtimePatch": "v66.0.24-static-assets-routed",
   "runtimePatchFrom": "a-sbc-master",
   "stagedInventorySha256": "d926462a70b363a5598e2bf27d2850d3de26cb9cc4c4ed492804f50669b731db"
