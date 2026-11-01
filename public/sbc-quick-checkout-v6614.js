@@ -78,14 +78,27 @@ window.sbcOpenOwnerDollarQA=function(){
     orderId=String(r.orderId);
     $('sbc-v6614-qa-steps').hidden=false;
     setText('sbc-v6614-order-label','Internal order '+orderId+' · $1.00 · '+String(r.paymentStatus||'Pending'));
-    if(r.existing){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;msg('Existing test order reused. Checking provider link/status without creating a second payment link.');
-      try{var existing=await authFetch('/api/payments/square/order/'+encodeURIComponent(orderId),{method:'GET'});var order=existing?.order||existing;
-        if(showLink(order?.paymentUrl))msg('Original Square link recovered. Verify the merchant, $1.00 amount, and payment status before paying.');
-        if(String(order?.paymentStatus||'').toLowerCase()==='paid')msg('This QA order is already marked Paid. Verify it in Square; do not charge again.');
-      }catch(_){msg('Existing order found, but read-only link lookup failed. Do not generate a second link.');}
+    if(r.existing){
+      linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;
+      msg('Existing test order located. Checking its status without creating another order or link.');
+      try{
+        var existing=await authFetch('/api/payments/square/order/'+encodeURIComponent(orderId),{method:'GET'});
+        var order=existing?.order||existing;
+        var status=String(order?.paymentStatus||'Pending'),hold=String(order?.fulfillmentStatus||'Unknown');
+        setText('sbc-v6614-payment-status','Payment: '+status+' · Fulfillment: '+hold);
+        if(status.toLowerCase()==='paid'){
+          $('sbc-v6614-payment-link')?.replaceChildren();
+          msg('Existing order is Paid. Do NOT pay again. Confirm the Square charge and QA no-fulfillment hold.');
+        }else if(showLink(order?.paymentUrl||r.paymentUrl)){
+          msg('Original Square link recovered. Check merchant and $1.00 before paying once; no new link created.');
+        }else{
+          msg('Existing order has no recoverable Square link. Reconcile it in Payments/Square; do NOT create another charge.');
+        }
+      }catch(_){msg('Existing order found, but read-only status lookup failed. Do NOT retry or create another link.');}
+    }else{
+      if(showLink(r.paymentUrl)){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;}
+      msg('New $1 QA order saved. No Square payment or provider action has occurred.');
     }
-    if(showLink(r.paymentUrl)){linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;}
-    msg(r.existing?'Existing order reused. Never create a duplicate charge.':'Order saved. No Square link or payment was created.');
   }catch(err){
     msg('STOP: '+String(err.message||'Unconfirmed order')+'. Verify existing order before trying again. No automatic retry.');
     // Button stays disabled on uncertain responses.
