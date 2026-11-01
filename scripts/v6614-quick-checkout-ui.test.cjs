@@ -101,6 +101,7 @@ function setup(role='owner',existing=false,paymentStatus='Paid'){
  await pendingUnlinked.invoke('sbc-v6614-link-btn');
  assert.equal(pendingUnlinked.calls.length,4,'create exactly once on deliberate click');
  assert.equal(pendingUnlinked.elems['sbc-v6614-payment-link'].child.href,'https://square.link/u/qa-order-link');
+ assert.match(pendingUnlinked.calls[3].opt.body,/create_if_absent/,'owner creates only after provider absence confirmed');
  const quick=setup('owner');
  assert.equal(Object.prototype.hasOwnProperty.call(quick.win,'state'),false,'Canonical SBC state lives in a lexical binding');
  quick.win.sbcOpenQuickCheckout();

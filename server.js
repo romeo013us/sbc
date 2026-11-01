@@ -865,8 +865,40 @@ async function createSquarePaymentLinkForOrder(o,req){
   if(Number(o.price)===1&&String(o.product||'')==='SBC Launch QA - $1 Test Service'&&
      orderParsed(o).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'){
     const reconciliation=await sbcSquareQaExistingLink(o);
-    if(reconciliation.status==='MATCHED')
+    if(String(req?.user?.role||'').toLowerCase()!=='owner'){
+      const e=new Error('SQUARE_QA_OWNER_REQUIRED');e.status=403;throw e;
+    }
+    if(reconciliation.status==='MATCHED'){
+      if(reconciliation.source==='SQUARE_VERIFIED_ORDER'){
+        // Owner clicked to attach one previously created, provider-proven link.
+        // No new Square checkout POST and no charge; persist linkage so that
+        // signed Square webhook and manual refresh can identify this QA order.
+        if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||
+           !MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady){
+          const e=new Error('SQUARE_QA_WRITER_LOCKED');e.status=423;throw e;
+        }
+        const found=String(reconciliation.squareOrderId||'');
+        if(!found){const e=new Error('SQUARE_QA_LINK_MISSING_ORDER_ID');e.status=409;throw e;}
+        updateOrderParsed(o,{
+          squarePaymentLinkUrl:reconciliation.url,squareOrderId:found,
+          squarePaymentStatus:'PENDING',squarePaymentEnvironment:squareEnvironment(),
+          fulfillmentStatus:'QA - NO VENDOR FULFILLMENT'
+        });
+        o.paymentUrl=reconciliation.url;
+        o.fulfillmentStatus='QA - NO VENDOR FULFILLMENT';
+        if(!squarePaymentRecords().some(r=>r.sbcOrderId===o.id&&r.squareOrderId===found))
+          squarePaymentRecords().unshift({
+            id:id('sqpay'),sbcOrderId:o.id,squareOrderId:found,
+            squarePaymentId:'',paymentUrl:reconciliation.url,amount:1,currency:'USD',
+            status:'PENDING',customerId:o.customerId||'',createdAt:now(),updatedAt:now()
+          });
+        await saveData();
+      }
       return {existing:true,url:reconciliation.url,order:o,source:reconciliation.source};
+    }
+    if(String(req?.body?.qaOperation||'')==='recover_only'){
+      const e=new Error('SQUARE_QA_NO_VERIFIED_LINK_TO_ATTACH');e.status=409;throw e;
+    }
     if(reconciliation.status!=='NONE'){
       const e=new Error('SQUARE_QA_RECONCILIATION_REQUIRED');e.status=409;throw e;
     }

@@ -57,7 +57,7 @@ window.sbcOpenQuickCheckout=function(){
 window.sbcOpenOwnerDollarQA=function(){
  if(!isOwner())return notify('Owner-only checkout test.');
  if(locked())return notify('Recovery/read-only lock. Use verified Published writer.');
- var orderId='',linkAttempted=false;
+ var orderId='',linkAttempted=false,verifiedRecoveryMode=false;
  modal('🧪 Owner $1 Square test','<p class="install-tip"><strong>Owner-only internal test — $1.00 USD.</strong> No domain, print, commission or Office Box fulfillment. Each financial action requires your click and existing server authorization.</p><form id="sbc-v6614-qa-form"><label>Owner-controlled email<input type="email" id="sbc-v6614-email" required maxlength="254" autocomplete="email"></label><div class="actions"><button type="submit" class="btn primary" id="sbc-v6614-order-btn">1. Create / find $1 QA order</button></div></form><div id="sbc-v6614-qa-steps" hidden class="detail-box"><strong id="sbc-v6614-order-label"></strong><div class="actions"><button type="button" class="btn orange" id="sbc-v6614-link-btn">2. Generate Square link once</button><button type="button" class="btn" id="sbc-v6614-status-btn">3. Check payment status</button></div><div id="sbc-v6614-payment-link"></div><div id="sbc-v6614-payment-status"></div></div><p class="mini" role="status" aria-live="polite" id="sbc-v6614-qa-message">No payment or vendor action has been initiated.</p>');
  var msg=s=>setText('sbc-v6614-qa-message',s);
  var create=$('sbc-v6614-order-btn');
@@ -97,8 +97,15 @@ window.sbcOpenOwnerDollarQA=function(){
             var found=await authFetch('/api/owner/launch-qa/reconcile/'+encodeURIComponent(orderId),{method:'GET'});
             if(found?.status==='PAID'){
               msg('This QA order is already marked Paid. Verify its Square transaction; do not pay again.');
-            }else if(found?.status==='MATCHED'&&showLink(found.url)){
-              msg('Square link recovered for this exact order. Verify merchant and $1.00; do not create another link.');
+            }else if(found?.status==='MATCHED'){
+              if(found.source==='SQUARE_VERIFIED_ORDER'){
+                verifiedRecoveryMode=true;linkAttempted=false;
+                $('sbc-v6614-link-btn').disabled=false;
+                $('sbc-v6614-link-btn').textContent='2. Attach verified Square link (no charge)';
+                msg('Square found an order-matched link. Click Attach to securely record it against this existing QA order before paying. No new Square link will be created.');
+              }else if(showLink(found.url)){
+                msg('Saved Square link recovered for this exact order. Verify merchant and $1.00; do not create another link.');
+              }else msg('Square link URL invalid. Reconcile manually; do NOT pay yet.');
             }else if(found?.status==='NONE'&&found.canCreate===true){
               linkAttempted=false;$('sbc-v6614-link-btn').disabled=false;
               msg('No order-matched Square link found. You may create ONE checkout link for this existing order using step 2. Existing generic Square links are not automatically attached.');
@@ -119,14 +126,19 @@ window.sbcOpenOwnerDollarQA=function(){
  });
  $('sbc-v6614-link-btn').addEventListener('click',async()=>{
   if(!orderId||linkAttempted)return;
-  if(!window.confirm('Create one Square checkout link for this verified $1 internal QA order?'))return;
+  if(!window.confirm(verifiedRecoveryMode?
+    'Attach the Square-verified existing link to this $1 QA order? No new link or charge will be created.':
+    'Create one Square checkout link for this verified $1 internal QA order?'))return;
   linkAttempted=true;$('sbc-v6614-link-btn').disabled=true;
   msg('Creating one checkout link. Do not repeat if the response is uncertain.');
   try{
-    var r=await authFetch('/api/payments/square/create-link/'+encodeURIComponent(orderId),{method:'POST',body:'{}'});
+    var r=await authFetch('/api/payments/square/create-link/'+encodeURIComponent(orderId),
+      {method:'POST',body:JSON.stringify({qaOperation:verifiedRecoveryMode?'recover_only':'create_if_absent'})});
     var url=r?.paymentUrl||r?.checkoutUrl||r?.url||r?.link?.url||r?.paymentLink?.url||r?.payment_link?.url;
     if(!showLink(url))throw Error('No valid Square URL returned. Reconcile in Payments/Square; do not create a second link.');
-    msg('Link ready. On Square, confirm the merchant and $1.00 before paying once.');
+    msg(verifiedRecoveryMode?
+      'Existing Square link attached to the original QA order. Confirm merchant and $1.00, then pay once if not previously paid.':
+      'Link ready. On Square, confirm the merchant and $1.00 before paying once.');
   }catch(err){msg('STOP: '+String(err.message||'No checkout URL')+'. Reconcile the order; no automatic retry.');}
  });
  $('sbc-v6614-status-btn').addEventListener('click',async()=>{

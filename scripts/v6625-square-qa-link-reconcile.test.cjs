@@ -12,6 +12,10 @@ assert.doesNotMatch(code,/await saveData\(|squareApi\([^,]+,\s*\{\s*method:\s*'P
 assert.match(s,/if\(reconciliation.status!=='NONE'\)/,'link creation must independently recheck provider before POST');
 assert.match(s,/o.fulfillmentStatus=isOwnerQa\?'QA - NO VENDOR FULFILLMENT':'Awaiting Customer Payment'/);
 assert.match(s,/fulfillmentStatus:sbcLaunchQaDurable\?'QA - NO VENDOR FULFILLMENT':'Ready for Fulfillment'/);
+assert.match(s,/SQUARE_QA_OWNER_REQUIRED/,'QA link operations must be owner-only');
+assert.match(s,/SQUARE_QA_NO_VERIFIED_LINK_TO_ATTACH/,'recover_only may never create a new checkout');
+assert.match(s,/squareOrderId:found/,'provider-verified linkage must be persisted for webhook reconciliation');
+assert.match(s,/await saveData\(\)/,'verified POST recovery must persist linkage');
 const qa={id:'qa-1',tenantId:7,price:1,product:'SBC Launch QA - $1 Test Service',
  notes:JSON.stringify({sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1}})};
 const order={id:'square-1',reference_id:'qa-1',location_id:'location-1',total_money:{amount:100,currency:'USD'}};
