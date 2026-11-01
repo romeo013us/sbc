@@ -321,11 +321,39 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "release(godaddy): tested QA runtime from $GITHUB_SHA"
-          # Fast-forward ONLY the canonical master to the verified compiled commit.
-          # Reject any concurrent source edit rather than overwriting other work.
+          # Fast-forward ONLY if this exact source commit is still at branch HEAD.
+          # On an Actions rerun, a prior successful job may have ALREADY pushed
+          # the exact verified compiled release. Accept only an identical direct
+          # child with matching hashes/receipt/inventory; never overwrite newer work.
           remote=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
-          test "$remote" = "$GITHUB_SHA" || { echo '[SBC MASTER] source moved during build; refusing to overwrite' >&2; exit 1; }
-          git push origin "HEAD:refs/heads/$BRANCH"
+          if [ "$remote" = "$GITHUB_SHA" ]; then
+            git push origin "HEAD:refs/heads/$BRANCH"
+            echo "[SBC MASTER] Published verified compiled candidate to $BRANCH"
+          else
+            git fetch --quiet --no-tags --depth=2 origin "refs/heads/$BRANCH"
+            fetched=$(git rev-parse FETCH_HEAD)
+            test "$fetched" = "$remote" || { echo '[SBC MASTER] branch moved during verification; refusing to overwrite' >&2; exit 1; }
+            REMOTE_RELEASE_SHA="$remote" node - <<'NODE'
+          const assert=require('node:assert/strict'),fs=require('node:fs'),cp=require('node:child_process');
+          const remote=process.env.REMOTE_RELEASE_SHA,source=process.env.GITHUB_SHA;
+          assert.match(remote,/^[a-f0-9]{40}$/);
+          const git=(...args)=>cp.execFileSync('git',args,{encoding:'utf8',maxBuffer:8*1024*1024});
+          assert.equal(git('rev-parse',remote+'^').trim(),source,
+            'Branch moved to another source/release; refusing to overwrite');
+          const files=['server.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
+          for(const file of files){
+            assert.equal(git('show',remote+':'+file),fs.readFileSync(file,'utf8'),
+              'Previously published release differs from this exact verified ZIP: '+file);
+          }
+          const id=JSON.parse(fs.readFileSync('SBC-FLAT-RELEASE-IDENTITY.json','utf8'));
+          const receipt=JSON.parse(fs.readFileSync('SBC-DEPLOY-RECEIPT.json','utf8'));
+          assert.equal(id.sourceCommit,source);
+          assert.equal(receipt.sourceCommit,id.sourceCommit);
+          assert.equal(receipt.sourceFingerprint,id.sourceFingerprint);
+          assert.equal(receipt.artifactSha256,id.serverSha256);
+          console.log('[SBC MASTER] PASS: identical signed-off release already published; rerun is idempotent, no push needed');
+          NODE
+          fi
           echo "### GoDaddy GitHub Preview candidate" >> "$GITHUB_STEP_SUMMARY"
           echo "Source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "Select GoDaddy GitHub branch: $BRANCH (compiled verified master)" >> "$GITHUB_STEP_SUMMARY"
