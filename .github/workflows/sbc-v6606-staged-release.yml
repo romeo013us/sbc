@@ -32,6 +32,7 @@ jobs:
           node scripts/v6613-browser-profile-stability.test.cjs
           node scripts/v6614-quick-checkout-ui.test.cjs
           node scripts/v6616-owner-qa-nav.test.cjs
+          node scripts/v6621-launch-acceptance.test.cjs
           node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
@@ -81,7 +82,7 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.18-master-receipt-overlay-repair';
+          identity.runtimePatch='v66.0.21-phase1-4-owner-readonly-acceptance';
           identity.runtimePatchFrom='a-sbc-master';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
           // GoDaddy extracts without cleaning /app. Omitting this file leaves the
