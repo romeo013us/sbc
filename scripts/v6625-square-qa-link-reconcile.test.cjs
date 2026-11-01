@@ -16,6 +16,9 @@ assert.match(s,/SQUARE_QA_OWNER_REQUIRED/,'QA link operations must be owner-only
 assert.match(s,/SQUARE_QA_NO_VERIFIED_LINK_TO_ATTACH/,'recover_only may never create a new checkout');
 assert.match(s,/squareOrderId:found/,'provider-verified linkage must be persisted for webhook reconciliation');
 assert.match(s,/await saveData\(\)/,'verified POST recovery must persist linkage');
+assert.match(code,/SQUARE_ORDERS_READ_PERMISSION_OR_LOCATION_REJECTED/);
+assert.match(code,/SQUARE_ACCESS_TOKEN_REJECTED/);
+assert.match(code,/SQUARE_PROVIDER_RATE_LIMITED/);
 const qa={id:'qa-1',tenantId:7,price:1,product:'SBC Launch QA - $1 Test Service',
  notes:JSON.stringify({sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT',version:1}})};
 const order={id:'square-1',reference_id:'qa-1',location_id:'location-1',total_money:{amount:100,currency:'USD'}};
@@ -76,6 +79,19 @@ function fixture({links=[],sOrders={},providerError=false,readonly=false,blocked
  r=await duplicate.call();assert.equal(r.code,409);assert.equal(r.body.status,'BLOCKED');assert.equal(r.body.canCreate,false);
  const offline=fixture({providerError:true});
  r=await offline.call();assert.equal(r.code,503);assert.equal(r.body.canCreate,false);
+ assert.equal(r.body.code,'SQUARE_PAYMENT_LINK_LOOKUP_FAILED');
+ const denied=fixture({providerError:true});
+ denied.context.squareApi=async()=>{throw Object.assign(Error('PRIVATE_ERROR'),{status:403})};
+ r=await denied.call();assert.equal(r.code,503);
+ assert.equal(r.body.code,'SQUARE_ORDERS_READ_PERMISSION_OR_LOCATION_REJECTED');
+ assert.equal(r.body.canCreate,false);
+ assert.doesNotMatch(JSON.stringify(r.body),/PRIVATE_ERROR/);
+ const invalidToken=fixture({providerError:true});
+ invalidToken.context.squareApi=async()=>{throw Object.assign(Error('PRIVATE_TOKEN'),{status:401})};
+ r=await invalidToken.call();assert.equal(r.body.code,'SQUARE_ACCESS_TOKEN_REJECTED');
+ const rateLimited=fixture({providerError:true});
+ rateLimited.context.squareApi=async()=>{throw Object.assign(Error('PRIVATE_PROVIDER'),{status:429})};
+ r=await rateLimited.call();assert.equal(r.body.code,'SQUARE_PROVIDER_RATE_LIMITED');
  const locked=fixture({readonly:true});
  r=await locked.call();assert.equal(r.code,200);assert.equal(r.body.status,'NONE');assert.equal(r.body.canCreate,false);
  const killed=fixture({blocked:true});

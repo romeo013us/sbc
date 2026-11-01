@@ -851,9 +851,29 @@ app.get('/api/owner/launch-qa/reconcile/:orderId',auth,ownerOnly,async(req,res)=
          !sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&
          !MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady&&
          !RUNTIME_GATE.blocked('NEW_CHECKOUTS')});
-  }catch(_){
+  }catch(e){
+    // SBC_V6626_SQUARE_RECONCILE_DIAGNOSTICS: report only stable
+    // classifications; never expose credentials, provider text or buyer info.
+    const providerStatus=Number(e?.status||0),reason=String(e?.message||'');
+    const code=reason==='OUTBOUND_API_PAUSED_BY_OWNER'?'SQUARE_OUTBOUND_OWNER_PAUSED':
+      providerStatus===401?'SQUARE_ACCESS_TOKEN_REJECTED':
+      providerStatus===403?'SQUARE_ORDERS_READ_PERMISSION_OR_LOCATION_REJECTED':
+      providerStatus===429?'SQUARE_PROVIDER_RATE_LIMITED':
+      providerStatus>=500&&providerStatus<=599?'SQUARE_PROVIDER_TEMPORARILY_UNAVAILABLE':
+      reason.includes('Square dynamic checkout is not configured.')?'SQUARE_CONFIGURATION_REQUIRED':
+      e?.name==='TimeoutError'||e?.name==='AbortError'?'SQUARE_PROVIDER_TIMEOUT':
+      'SQUARE_PAYMENT_LINK_LOOKUP_FAILED';
+    const guidance=code==='SQUARE_ORDERS_READ_PERMISSION_OR_LOCATION_REJECTED'?
+      'Square rejected payment-link/order read access. Verify ORDERS_READ and merchant/location permissions. No new link or charge is allowed.':
+      code==='SQUARE_ACCESS_TOKEN_REJECTED'?
+      'Square rejected the server token. Review Square integration privately; never paste access tokens.':
+      code==='SQUARE_OUTBOUND_OWNER_PAUSED'?
+      'Owner outbound integration pause is active. Reconciliation cannot override owner governance.':
+      code==='SQUARE_PROVIDER_RATE_LIMITED'||code==='SQUARE_PROVIDER_TEMPORARILY_UNAVAILABLE'||code==='SQUARE_PROVIDER_TIMEOUT'?
+      'Square did not complete the read-only lookup. Do not create a new link until provider access recovers.':
+      'Square payment-link lookup could not be verified. Check provider permissions and server diagnostics.';
     return res.status(503).json({ok:false,status:'UNAVAILABLE',
-      canCreate:false,code:'SQUARE_QA_READ_ONLY_RECONCILIATION_UNAVAILABLE'});
+      canCreate:false,code,error:code,message:guidance});
   }
 });
 

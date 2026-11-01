@@ -112,7 +112,10 @@ window.sbcOpenOwnerDollarQA=function(){
             }else{
               msg('Square link reconciliation is unconfirmed. Do NOT create another checkout link or charge.');
             }
-          }catch(_){msg('Square read-only reconciliation unavailable. Do NOT create another checkout link or charge.');}
+          }catch(err){
+            var detail=String(err?.message||'Square read-only reconciliation unavailable.').slice(0,240);
+            msg('STOP — '+detail+' Do NOT create another checkout link or charge.');
+          }
         }
       }catch(_){msg('Existing order found, but read-only status lookup failed. Do NOT retry or create another link.');}
     }else{
