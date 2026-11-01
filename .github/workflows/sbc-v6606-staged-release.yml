@@ -33,6 +33,7 @@ jobs:
           node scripts/v6614-quick-checkout-ui.test.cjs
           node scripts/v6616-owner-qa-nav.test.cjs
           node scripts/v6621-launch-acceptance.test.cjs
+          node scripts/v6622-phase2-4-contracts.test.cjs
           node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
