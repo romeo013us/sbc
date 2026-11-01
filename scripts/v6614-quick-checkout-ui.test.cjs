@@ -20,7 +20,7 @@ assert.ok(!code.includes("fetch("),'Use existing authenticated SBC API exclusive
 assert.match(code,/\/api\/owner\/launch-qa\/create-order/);
 assert.match(code,/\/api\/payments\/square\/create-link\//);
 assert.match(code,/\/api\/payments\/square\/order\//);
-function setup(role='owner',existing=false){
+function setup(role='owner',existing=false,paymentStatus='Paid'){
  const events={},calls=[],alerts=[],elems={};
  function el(id){
   if(!elems[id])elems[id]={id,hidden:false,disabled:false,value:'',textContent:'',
@@ -36,7 +36,7 @@ function setup(role='owner',existing=false){
   openModal(){},closeModal(){},
   api:async(url,opt)=>{calls.push({url,opt});if(url.endsWith('launch-qa/create-order'))return {ok:true,existing,amountCents:100,orderId:'qa-order-1',paymentStatus:'Pending'};
    if(url.includes('create-link/'))return {paymentUrl:'https://square.link/u/test-only'};
-   if(url.includes('/api/payments/square/order/'))return {order:{paymentStatus:'Paid',fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT'}};
+   if(url.includes('/api/payments/square/order/'))return {order:{paymentStatus,fulfillmentStatus:paymentStatus==='Paid'?'QA VERIFIED - NO FULFILLMENT':'QA - NO VENDOR FULFILLMENT',paymentUrl:'https://square.link/u/existing-only'}};
    throw Error('Unknown endpoint: '+url); }
  };
  const document={getElementById:el,createElement:()=>({})};
@@ -73,6 +73,16 @@ function setup(role='owner',existing=false){
  assert.equal(reused.calls.length,2,'Reused QA order only makes a read-only status lookup');
  assert.equal(reused.calls[1].url,'/api/payments/square/order/qa-order-1');
  assert.equal(reused.calls[1].opt.method,'GET');
+ assert.match(reused.elems['sbc-v6614-payment-status'].textContent,/Payment: Paid/);
+ assert.match(reused.elems['sbc-v6614-qa-message'].textContent,/Do NOT pay again/,'reused Paid state must not be overwritten');
+ assert.equal(reused.elems['sbc-v6614-payment-link'].child,undefined,'Paid QA must not expose duplicate-payment link');
+ const pending=setup('owner',true,'Pending');
+ pending.win.sbcOpenOwnerDollarQA();
+ await pending.invoke('sbc-v6614-qa-form','submit');
+ assert.equal(pending.calls.length,2,'pending reused QA makes one read-only lookup');
+ assert.equal(pending.elems['sbc-v6614-payment-link'].child.href,'https://square.link/u/existing-only','recover only the existing Square link');
+ assert.equal(pending.elems['sbc-v6614-link-btn'].disabled,true,'pending reused QA cannot mint a second link');
+ assert.match(pending.elems['sbc-v6614-qa-message'].textContent,/Original Square link recovered/);
  const quick=setup('owner');
  assert.equal(Object.prototype.hasOwnProperty.call(quick.win,'state'),false,'Canonical SBC state lives in a lexical binding');
  quick.win.sbcOpenQuickCheckout();
