@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "71e0018c6c337a9b2fb2783f4545e758115c0f9a",
+  "sourceCommit": "2d406d99388318232a0c2902220cb35f55d51ce1",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -108,7 +108,7 @@
     "RELEASE-V56.13.3-MIAMI-EXPANSION-IMPORT.md": "3a5548b250abade7babb9d89a2b37575038ad89123eda6eba7e4ba2cbc391be1",
     "RELEASE-VERIFICATION-V65.1.12.md": "92e8b34b4b5a7108847e21b042d6f737375876e652c1f501d772d3b64f1286fe",
     "RELEASE-VERIFICATION-V65.1.13.md": "d5a57729d5217bb7031fce462b2723dee78929f8bdc4f4f4cea85fa5722925e7",
-    "SBC-DEPLOY-RECEIPT.json": "9075804f8229eb8559dd9bdb7e7d216ec7b044fb7f2a3726dc1c466374c16c36",
+    "SBC-DEPLOY-RECEIPT.json": "9ebe36c13a7a49cee5efb4c17cbbb1eebc779c35be07d310d83c72c926e3c461",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "V56.1.0-BUILD-MANIFEST.json": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
     "V56.25.0-FILE-SHA256.txt": "3a6d2fa626a1604f7d5cd340cf0f8cf161539549c643e3e821ca0db0c2659ed1",
@@ -1105,6 +1105,7 @@
     "scripts/v6619-launch-security-test.cjs": "a07a2f516ba6689a7f75728f7c5de7e49dd58a93b547c0527ac6a2e046b16c17",
     "scripts/v6620-legacy-crm-tenant-guard-test.cjs": "f92a2f02d74c8fa55c969a6297972d7bcd25573d4f0ebc0bea960b2887e07f70",
     "scripts/v6621-launch-acceptance.test.cjs": "0978bac7cceac698b421da482958bb6d440dc32b1e4ad5ebec875bcb1a7adb81",
+    "scripts/v6622-phase2-4-contracts.test.cjs": "f8ff8ff2e9eb622fadc9039e6b9a577538584410e7bcf43d277121dfefca9dbd",
     "scripts/v6656-disposable-restore.test.cjs": "e40a19363a1030847a2fd24ada2a400f986d8ac179626ae1ca2e1c349e1813af",
     "scripts/v6693-compiled-officebox-quarantine.test.cjs": "5dc539e9e03f0f29709e5007e44da0a2f4adaac36bffaacd58c88709b3fc6807",
     "scripts/v6694-owner-launch-qa.test.cjs": "69318a294d41a28c37d32d417bd35c7438a5c4dbfc1e7c9a6641568d9d115e1e",
