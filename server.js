@@ -789,6 +789,41 @@ async function sendOrderIntake(order,baseOverride=''){const c=(db.customers||[])
 // SBC_V6625_OWNER_QA_LINK_RECONCILIATION: read Square links without creating
 // a charge/link, and accept a link ONLY when its Square order matches this
 // exact SBC order, merchant location, amount and currency. No DB writes here.
+// SBC_V6627_QA_ORDER_SEARCH: Square Orders Search is a READ-ONLY HTTP POST.
+// No new payment link/charge; incomplete verification always blocks checkout.
+async function sbcSquareQaSearchProviderOrders(o){
+ const stamp=Date.parse(String(o.createdAt||''));
+ if(!Number.isFinite(stamp)||stamp<946684800000||stamp>Date.now()+300000)
+   return {status:'UNAVAILABLE',reason:'SQUARE_QA_CREATION_TIMESTAMP_UNAVAILABLE'};
+ const location=String(process.env.SQUARE_LOCATION_ID||'');
+ if(!location)return {status:'UNAVAILABLE',reason:'SQUARE_NOT_CONFIGURED'};
+ const base={location_ids:[location],limit:1000,return_entries:false,
+   query:{filter:{date_time_filter:{created_at:{start_at:new Date(stamp-86400000).toISOString()}}},
+     sort:{sort_field:'CREATED_AT',sort_order:'DESC'}}};
+ const seen=new Set(),matches=[];let cursor='',pages=0;
+ const deadline=Date.now()+45000;
+ do{
+   if(++pages>10||Date.now()>deadline)
+     return {status:'UNAVAILABLE',reason:'SQUARE_ORDER_SEARCH_INCOMPLETE'};
+   const page=await squareApi('/v2/orders/search',{method:'POST',body:cursor?{...base,cursor}:base});
+   if(page.orders!==undefined&&!Array.isArray(page.orders))
+     return {status:'UNAVAILABLE',reason:'SQUARE_ORDER_SEARCH_INVALID_RESULT'};
+   for(const sq of (page.orders||[])){
+     if(String(sq?.reference_id||'')!==String(o.id))continue;
+     if(!sq.id||String(sq.location_id)!==location||
+        Number(sq.total_money?.amount)!==squareMoneyCents(o.price)||
+        String(sq.total_money?.currency||'').toUpperCase()!=='USD')
+       return {status:'BLOCKED',reason:'SQUARE_QA_ORDER_DETAILS_MISMATCH'};
+     if(!matches.includes(String(sq.id)))matches.push(String(sq.id));
+     if(matches.length>1)return {status:'BLOCKED',reason:'MULTIPLE_MATCHING_SQUARE_ORDERS'};
+   }
+   const next=String(page.cursor||'');
+   if(next&&seen.has(next))return {status:'UNAVAILABLE',reason:'SQUARE_ORDER_SEARCH_CURSOR_REPEATED'};
+   if(next)seen.add(next);cursor=next;
+ }while(cursor);
+ if(!matches.length)return {status:'NONE',source:'SQUARE_ORDER_SEARCH_COMPLETE'};
+ return {status:'FOUND_ORDER',squareOrderId:matches[0]};
+}
 async function sbcSquareQaExistingLink(o){
   const parsed=orderParsed(o);
   const stored=String(o.paymentUrl||parsed.squarePaymentLinkUrl||
@@ -798,6 +833,14 @@ async function sbcSquareQaExistingLink(o){
      parsed.checkoutLinkStatus==='RECONCILIATION_REQUIRED')
     return {status:'BLOCKED',reason:'PREVIOUS_SQUARE_OUTCOME_UNCONFIRMED'};
   if(!squareConfigured())return {status:'UNAVAILABLE',reason:'SQUARE_NOT_CONFIGURED'};
+  // Search only Square orders created in this QA order's trusted time window.
+  // No matching Square order => no app-created Square checkout for this QA ID.
+  const searched=await sbcSquareQaSearchProviderOrders(o);
+  if(searched.status==='NONE'||searched.status==='UNAVAILABLE'||searched.status==='BLOCKED')
+    return searched;
+  if(searched.status!=='FOUND_ORDER'||!searched.squareOrderId)
+    return {status:'UNAVAILABLE',reason:'SQUARE_ORDER_SEARCH_INVALID_RESULT'};
+  const expectedSquareOrder=String(searched.squareOrderId);
   const expectedNote='SBC Order '+String(o.id);
   const expectedDescription='SBC '+String(o.id)+' payment for ';
   const matches=[];
@@ -813,7 +856,7 @@ async function sbcSquareQaExistingLink(o){
     const page=await squareApi('/v2/online-checkout/payment-links?limit=1000'+
       (cursor?'&cursor='+encodeURIComponent(cursor):''));
     for(const pl of (Array.isArray(page.payment_links)?page.payment_links:[])){
-      if(!pl?.order_id||!pl?.url)continue;
+      if(!pl?.order_id||!pl?.url||String(pl.order_id)!==expectedSquareOrder)continue;
       if(String(pl.payment_note||'')!==expectedNote&&
          !String(pl.description||'').startsWith(expectedDescription))continue;
       let sq;
@@ -837,7 +880,8 @@ async function sbcSquareQaExistingLink(o){
     cursor=nextCursor;
   }while(cursor);
   if(matches.length===1)return {status:'MATCHED',...matches[0],source:'SQUARE_VERIFIED_ORDER'};
-  return {status:'NONE'};
+  // A known Square order without a verified payment link is NOT absence proof.
+  return {status:'BLOCKED',reason:'SQUARE_QA_PROVIDER_ORDER_LINK_NOT_FOUND'};
 }
 app.get('/api/owner/launch-qa/reconcile/:orderId',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
@@ -862,7 +906,14 @@ app.get('/api/owner/launch-qa/reconcile/:orderId',auth,ownerOnly,async(req,res)=
       MULTIPLE_MATCHING_SQUARE_LINKS:'Multiple Square links match this QA order. Resolve them in Square; do not create or pay another link.',
       SQUARE_ORDER_PROOF_UNAVAILABLE:'A potential link was found, but Square could not verify its exact order. No new checkout is allowed.',
       SQUARE_LINK_CURSOR_REPEATED:'Square returned a repeated pagination cursor. The existing links could not be fully checked.',
-      SQUARE_LINK_PAGINATION_INCOMPLETE:'Square link inventory is too large or slow to check completely. Existing payment links must be reconciled before creating another.'
+      SQUARE_LINK_PAGINATION_INCOMPLETE:'Square link inventory is incomplete for an existing QA-linked provider order. No new payment link is allowed.',
+      SQUARE_QA_PROVIDER_ORDER_LINK_NOT_FOUND:'Square has an order linked to this QA ID, but its payment link was not found. Recover that existing link.',
+      SQUARE_QA_CREATION_TIMESTAMP_UNAVAILABLE:'Original QA order creation timestamp is missing or invalid. Safe reconciliation requires authoritative order timing.',
+      SQUARE_ORDER_SEARCH_INCOMPLETE:'Square order search did not finish. No new checkout link is allowed.',
+      SQUARE_ORDER_SEARCH_CURSOR_REPEATED:'Square returned a repeated order-search cursor. No new checkout link is allowed.',
+      SQUARE_ORDER_SEARCH_INVALID_RESULT:'Square returned an invalid order-search response. No new checkout link is allowed.',
+      SQUARE_QA_ORDER_DETAILS_MISMATCH:'A Square order references this QA ID but has a different location, amount or currency.',
+      MULTIPLE_MATCHING_SQUARE_ORDERS:'Square has multiple orders referencing this QA ID. Reconcile them manually before proceeding.'
     };
     return res.status(safe?200:409).json({ok:safe,...result,
       ...(!safe?{code:safeReason||'SQUARE_QA_RECONCILIATION_BLOCKED',
