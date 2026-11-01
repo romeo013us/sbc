@@ -103,6 +103,8 @@ jobs:
         run: node scripts/security-check.js
       - name: Public prospect CSV privacy gate
         run: node scripts/v6612-public-prospect-privacy.test.cjs
+      - name: HTTP static asset routing regression
+        run: node scripts/v6624-static-assets.test.cjs
       - name: Current V66 flat release and verified server identity
         run: node scripts/v6603-flat-release-contract.test.cjs
       - name: Historical V65 literal route matcher (advisory; handlers moved)

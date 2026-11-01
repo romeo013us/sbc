@@ -35,6 +35,7 @@ jobs:
           node scripts/v6621-launch-acceptance.test.cjs
           node scripts/v6622-phase2-4-contracts.test.cjs
           node scripts/v6623-login-access.test.cjs
+          node scripts/v6624-static-assets.test.cjs
           node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
@@ -84,7 +85,7 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
-          identity.runtimePatch='v66.0.23-login-freeze-stability';
+          identity.runtimePatch='v66.0.24-static-assets-routed';
           identity.runtimePatchFrom='a-sbc-master';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');
           // GoDaddy extracts without cleaning /app. Omitting this file leaves the

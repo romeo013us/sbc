@@ -3,8 +3,8 @@
   "version": "66.0.0",
   "sourceCommit": "70594c3d83d1e3d13ced2301e4be8e5cf66dc630",
   "sourceFingerprint": "3f75a83808348d592df3e9c650dc9f7d25939a5d00c87f0dc3c7668c59402bc2",
-  "serverSha256": "70eac46bb76511e6ba39e4ab6ec93889c4a6c5ad09c0589d990b61048edd5c0a",
-  "runtimePatch": "v66.0.23-login-freeze-stability",
+  "serverSha256": "c89e0ab8e593c995b9a1918b95d4c0756b50d62986c805b4937a595764e6cad5",
+  "runtimePatch": "v66.0.24-static-assets-routed",
   "runtimePatchFrom": "a-sbc-master",
   "stagedInventorySha256": "4a724a33cd2bad24ef5e7fac2626d7be34f7288181bc26a3b6829b413505cd53"
 }

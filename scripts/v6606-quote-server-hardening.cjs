@@ -114,7 +114,7 @@ function patch(source){
  // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE: static assets must never serve prospect exports.
  // The deployment packaging gate also omits every CSV and starter-leads source.
  s=one(s,"app.use(express.static(path.join(__dirname,'public'),",
-   "app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\\.csv$/i.test(name)||/(?:^|\\/)starter-leads(?:\\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE\\napp.use(express.static(path.join(__dirname,'public'),",'deny public prospect CSVs before static');
+   "app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\\.csv$/i.test(name)||/(?:^|\\/)starter-leads(?:\\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE\napp.use(express.static(path.join(__dirname,'public'),",'deny public prospect CSVs before static');
   return {source:s,alreadyApplied:false};
 }
 function check(source){

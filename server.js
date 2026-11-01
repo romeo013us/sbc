@@ -8448,7 +8448,8 @@ app.post('/api/supernova/fulfillment/route',auth,(req,res)=>{try{res.json({ok:tr
 app.get('/api/supernova/domain-map',auth,(req,res)=>res.json({ok:true,tenant:requireRequestTenant(req),host:req.get('host')||'',note:'Domain mapping is configuration-driven; no filesystem alias is changed by this read endpoint.'}));
 
 /* SBC_V6634_VERSIONED_ASSET_CACHE_FIX: only content-addressed filenames may be cached immutably. */
-app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\.csv$/i.test(name)||/(?:^|\/)starter-leads(?:\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE\napp.use(express.static(path.join(__dirname,'public'),{dotfiles:'ignore',setHeaders:(res,file)=>{if(/\.[a-f0-9]{12,64}\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?)$/i.test(file))res.setHeader('Cache-Control','public,max-age=31536000,immutable');else{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');}}}));
+app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\.csv$/i.test(name)||/(?:^|\/)starter-leads(?:\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE
+app.use(express.static(path.join(__dirname,'public'),{dotfiles:'ignore',setHeaders:(res,file)=>{if(/\.[a-f0-9]{12,64}\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?)$/i.test(file))res.setHeader('Cache-Control','public,max-age=31536000,immutable');else{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');}}}));
 // V65.1.3: SPA fallback is registered after every API/HTML route so it cannot shadow later route registrations.
 
 
