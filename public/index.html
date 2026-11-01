@@ -204,7 +204,28 @@ body{overflow-x:hidden}
 })();
 </script>
 
-<script id="sbc-v6553-header-recovery-control-guard">(function(){function scrub(){document.querySelectorAll("#sbcKimBottomButton,.sbc-commercial-trigger,.akx-launcher,#ckLauncher,#kimGreatnessFab,#sbcKimLauncher,.sbc-kim-bottom-launcher,#sbcLeadImportLauncher,.sbc-lead-import-launcher,.sbc-lead-import-trigger").forEach(function(x){x.remove();});document.querySelectorAll("button,[role=button]").forEach(function(x){var s=[x.innerText,x.getAttribute("aria-label"),x.getAttribute("title")].join(" "),p=window.getComputedStyle(x),r=x.getBoundingClientRect();if(p.position==="fixed"&&r.bottom>window.innerHeight-150&&/lead\\s*import|import\\s*leads|ask\\s*kim/i.test(s))x.remove();});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",scrub,{once:true});else scrub();if(document.body)new MutationObserver(scrub).observe(document.body,{childList:true,subtree:true});})();</script>
+<script id="sbc-v6553-header-recovery-control-guard">(function(){
+/* V66.23: expensive getComputedStyle/getBoundingClientRect scrubbing must not
+ * run repeatedly while the login screen is visible or on every DOM insertion.
+ * Keep the original safety removal after authenticated app becomes visible. */
+var scheduled=false;
+function scrub(){scheduled=false;
+ var app=document.getElementById('app');
+ if(!app||app.classList.contains('hidden'))return;
+ document.querySelectorAll("#sbcKimBottomButton,.sbc-commercial-trigger,.akx-launcher,#ckLauncher,#kimGreatnessFab,#sbcKimLauncher,.sbc-kim-bottom-launcher,#sbcLeadImportLauncher,.sbc-lead-import-launcher,.sbc-lead-import-trigger").forEach(function(x){x.remove();});
+ document.querySelectorAll("button,[role=button]").forEach(function(x){
+  var s=[x.innerText,x.getAttribute("aria-label"),x.getAttribute("title")].join(" ");
+  if(!/lead\\s*import|import\\s*leads|ask\\s*kim/i.test(s))return;
+  var p=window.getComputedStyle(x),r=x.getBoundingClientRect();
+  if(p.position==="fixed"&&r.bottom>window.innerHeight-150)x.remove();
+ });
+}
+function schedule(){if(scheduled)return;scheduled=true;setTimeout(scrub,150);}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule,{once:true});else schedule();
+if(document.body)new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+var app=document.getElementById('app');
+if(app)new MutationObserver(schedule).observe(app,{attributes:true,attributeFilter:['class']});
+})();</script>
 
 <!-- SBC_V6554_STARK_CINEMATIC_COCKPIT: visual-only theme; workflows retained -->
 <script src="/sbc-v6559-ui.js?v=66.0.13-profile-stability" defer></script>
