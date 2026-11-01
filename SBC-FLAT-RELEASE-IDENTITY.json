@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "a3b44ebe5ad34cb3dbf958c5513df99c0add913e",
-  "sourceFingerprint": "ef20456d7426611f97ecfe4ab99dfe9a164020b6716b341af5ed1346829e3aba",
+  "sourceCommit": "70594c3d83d1e3d13ced2301e4be8e5cf66dc630",
+  "sourceFingerprint": "3f75a83808348d592df3e9c650dc9f7d25939a5d00c87f0dc3c7668c59402bc2",
   "serverSha256": "70eac46bb76511e6ba39e4ab6ec93889c4a6c5ad09c0589d990b61048edd5c0a",
-  "runtimePatch": "v66.0.21-phase1-4-owner-readonly-acceptance",
+  "runtimePatch": "v66.0.23-login-freeze-stability",
   "runtimePatchFrom": "a-sbc-master",
-  "stagedInventorySha256": "188166149e0e56bd2c4175d329799ba5e6bed06d2e6a80539faa2345a3e20a10"
+  "stagedInventorySha256": "4a724a33cd2bad24ef5e7fac2626d7be34f7288181bc26a3b6829b413505cd53"
 }
