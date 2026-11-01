@@ -801,10 +801,16 @@ async function sbcSquareQaExistingLink(o){
   const expectedNote='SBC Order '+String(o.id);
   const expectedDescription='SBC '+String(o.id)+' payment for ';
   const matches=[];
+  // Square accepts up to 1,000 links per page. Scan every page to detect
+  // duplicates, but never authorize a new checkout after partial inventory.
+  // The bounded scan is read-only and does not mutate customer or order data.
   let cursor='',pages=0;
+  const seenCursors=new Set();
+  const scanDeadline=Date.now()+60000;
   do{
-    if(++pages>10)return {status:'UNAVAILABLE',reason:'SQUARE_LINK_PAGINATION_INCOMPLETE'};
-    const page=await squareApi('/v2/online-checkout/payment-links?limit=100'+
+    if(++pages>20||Date.now()>scanDeadline)
+      return {status:'UNAVAILABLE',reason:'SQUARE_LINK_PAGINATION_INCOMPLETE'};
+    const page=await squareApi('/v2/online-checkout/payment-links?limit=1000'+
       (cursor?'&cursor='+encodeURIComponent(cursor):''));
     for(const pl of (Array.isArray(page.payment_links)?page.payment_links:[])){
       if(!pl?.order_id||!pl?.url)continue;
@@ -824,7 +830,11 @@ async function sbcSquareQaExistingLink(o){
       matches.push({url:u.href,squareOrderId:String(pl.order_id)});
       if(matches.length>1)return {status:'BLOCKED',reason:'MULTIPLE_MATCHING_SQUARE_LINKS'};
     }
-    cursor=String(page.cursor||'');
+    const nextCursor=String(page.cursor||'');
+    if(nextCursor&&seenCursors.has(nextCursor))
+      return {status:'UNAVAILABLE',reason:'SQUARE_LINK_CURSOR_REPEATED'};
+    if(nextCursor)seenCursors.add(nextCursor);
+    cursor=nextCursor;
   }while(cursor);
   if(matches.length===1)return {status:'MATCHED',...matches[0],source:'SQUARE_VERIFIED_ORDER'};
   return {status:'NONE'};
@@ -846,7 +856,17 @@ app.get('/api/owner/launch-qa/reconcile/:orderId',auth,ownerOnly,async(req,res)=
   try{
     const result=await sbcSquareQaExistingLink(o);
     const safe=result.status==='MATCHED'||result.status==='NONE';
+    const safeReason=String(result.reason||'');
+    const blockedMessages={
+      PREVIOUS_SQUARE_OUTCOME_UNCONFIRMED:'Previous Square checkout outcome is uncertain. Verify the original link in Square before any new checkout.',
+      MULTIPLE_MATCHING_SQUARE_LINKS:'Multiple Square links match this QA order. Resolve them in Square; do not create or pay another link.',
+      SQUARE_ORDER_PROOF_UNAVAILABLE:'A potential link was found, but Square could not verify its exact order. No new checkout is allowed.',
+      SQUARE_LINK_CURSOR_REPEATED:'Square returned a repeated pagination cursor. The existing links could not be fully checked.',
+      SQUARE_LINK_PAGINATION_INCOMPLETE:'Square link inventory is too large or slow to check completely. Existing payment links must be reconciled before creating another.'
+    };
     return res.status(safe?200:409).json({ok:safe,...result,
+      ...(!safe?{code:safeReason||'SQUARE_QA_RECONCILIATION_BLOCKED',
+        message:blockedMessages[safeReason]||'Square reconciliation is incomplete. Do not create another payment link or charge.'}:{}),
       canCreate:result.status==='NONE'&&!SBC_RUNTIME_READ_ONLY&&
          !sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&
          !MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady&&

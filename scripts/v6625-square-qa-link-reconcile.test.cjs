@@ -24,7 +24,7 @@ const qa={id:'qa-1',tenantId:7,price:1,product:'SBC Launch QA - $1 Test Service'
 const order={id:'square-1',reference_id:'qa-1',location_id:'location-1',total_money:{amount:100,currency:'USD'}};
 const matched={id:'link-1',order_id:'square-1',url:'https://square.link/u/internal-qa',
  payment_note:'SBC Order qa-1'};
-function fixture({links=[],sOrders={},providerError=false,readonly=false,blocked=false,
+function fixture({links=[],pages=null,sOrders={},providerError=false,readonly=false,blocked=false,
   orderNotes=qa.notes,dbOrder=qa}={}){
  const paths=[],app={};
  const requestOrder={...dbOrder,notes:orderNotes};
@@ -39,7 +39,10 @@ function fixture({links=[],sOrders={},providerError=false,readonly=false,blocked
   squareApi:async p=>{
     paths.push(p);
     if(providerError)throw Error('NO_NETWORK');
-    if(p.startsWith('/v2/online-checkout/payment-links'))return {payment_links:links};
+    if(p.startsWith('/v2/online-checkout/payment-links')){
+      const cursor=new URL('https://test.invalid'+p).searchParams.get('cursor')||'';
+      return pages?pages[cursor]||{payment_links:[]}: {payment_links:links};
+    }
     if(p.startsWith('/v2/orders/'))return {order:sOrders[p.split('/').pop()]||null};
     throw Error('UNEXPECTED_PATH '+p);
   }};
@@ -64,6 +67,7 @@ function fixture({links=[],sOrders={},providerError=false,readonly=false,blocked
  let r=await manual.call();
  assert.equal(r.code,200);assert.equal(r.body.status,'NONE');assert.equal(r.body.canCreate,true);
  assert.equal(manual.paths.length,1,'Generic manual links are not attachable and must not trigger Square order guesses');
+ assert.match(manual.paths[0],/limit=1000/,'Use Square documented maximum page size');
  const confirmed=fixture({links:[matched],sOrders:{'square-1':order}});
  r=await confirmed.call();
  assert.equal(r.code,200);assert.equal(r.body.status,'MATCHED');assert.equal(r.body.canCreate,false);
@@ -77,6 +81,39 @@ function fixture({links=[],sOrders={},providerError=false,readonly=false,blocked
  r=await wrongLocation.call();assert.equal(r.body.status,'NONE');
  const duplicate=fixture({links:[matched,{...matched,id:'link-2',url:'https://square.link/u/duplicate'}],sOrders:{'square-1':order}});
  r=await duplicate.call();assert.equal(r.code,409);assert.equal(r.body.status,'BLOCKED');assert.equal(r.body.canCreate,false);
+ // An exact match buried beyond page one is recovered without an extra link.
+ const longAccount=fixture({pages:{
+   '':{payment_links:[{id:'generic',order_id:'other',url:'https://square.link/u/generic'}],cursor:'next'},
+   next:{payment_links:[matched]}
+ },sOrders:{'square-1':order}});
+ r=await longAccount.call();assert.equal(r.code,200);
+ assert.equal(r.body.status,'MATCHED');assert.equal(r.body.canCreate,false);
+ assert.equal(longAccount.paths.length,3);
+ assert.match(longAccount.paths[1],/cursor=next/);
+ // Duplicate links across different pages remain blocked.
+ const crossPageDuplicate=fixture({pages:{
+   '':{payment_links:[matched],cursor:'second'},
+   second:{payment_links:[{...matched,id:'second',url:'https://square.link/u/second'}]}
+ },sOrders:{'square-1':order}});
+ r=await crossPageDuplicate.call();assert.equal(r.code,409);
+ assert.equal(r.body.reason,'MULTIPLE_MATCHING_SQUARE_LINKS');
+ assert.match(r.body.message,/Multiple Square links/);
+ assert.equal(r.body.canCreate,false);
+ // A repeated cursor must fail closed rather than looping or authorizing checkout.
+ const repeated=fixture({pages:{
+   '':{payment_links:[],cursor:'loop'},
+   loop:{payment_links:[],cursor:'loop'}
+ }});
+ r=await repeated.call();assert.equal(r.code,409);
+ assert.equal(r.body.reason,'SQUARE_LINK_CURSOR_REPEATED');assert.equal(r.body.canCreate,false);
+ // Even with the documented page size, a truly massive account stays blocked.
+ const giant=fixture();
+ giant.context.squareApi=async p=>{giant.paths.push(p);return {payment_links:[],cursor:String(giant.paths.length)};};
+ r=await giant.call();assert.equal(r.code,409);
+ assert.equal(r.body.reason,'SQUARE_LINK_PAGINATION_INCOMPLETE');
+ assert.match(r.body.message,/inventory is too large/);
+ assert.equal(giant.paths.length,20);
+ assert.equal(r.body.canCreate,false);
  const offline=fixture({providerError:true});
  r=await offline.call();assert.equal(r.code,503);assert.equal(r.body.canCreate,false);
  assert.equal(r.body.code,'SQUARE_PAYMENT_LINK_LOOKUP_FAILED');
@@ -105,5 +142,5 @@ function fixture({links=[],sOrders={},providerError=false,readonly=false,blocked
  for(const f of [manual,confirmed,mismatched,duplicate,offline]){
    assert.equal(f.db.orders.length,1);assert.equal(f.db.squarePayments.length,0);
  }
- console.log('[SBC V6625 SQUARE QA] PASS: provider-matched reference/location/$1, generic links ignored, no duplicate, fail-closed, tenant/owner, no charges or writes');
+ console.log('[SBC V6625 SQUARE QA] PASS: 1000/page full search, repeated-cursor guard, cross-page duplicates, high-volume fail-closed, exact order/location/$1, no charges or writes');
 })().catch(e=>{console.error(e);process.exitCode=1});
