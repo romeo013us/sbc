@@ -20,6 +20,7 @@ assert.ok(!code.includes("fetch("),'Use existing authenticated SBC API exclusive
 assert.match(code,/\/api\/owner\/launch-qa\/create-order/);
 assert.match(code,/\/api\/payments\/square\/create-link\//);
 assert.match(code,/\/api\/payments\/square\/order\//);
+assert.match(code,/\/api\/owner\/launch-qa\/reconcile\//);
 function setup(role='owner',existing=false,paymentStatus='Paid'){
  const events={},calls=[],alerts=[],elems={};
  function el(id){
@@ -37,6 +38,7 @@ function setup(role='owner',existing=false,paymentStatus='Paid'){
   api:async(url,opt)=>{calls.push({url,opt});if(url.endsWith('launch-qa/create-order'))return {ok:true,existing,amountCents:100,orderId:'qa-order-1',paymentStatus:'Pending'};
    if(url.includes('create-link/'))return {paymentUrl:'https://square.link/u/test-only'};
    if(url.includes('/api/payments/square/order/'))return {order:{paymentStatus,fulfillmentStatus:paymentStatus==='Paid'?'QA VERIFIED - NO FULFILLMENT':'QA - NO VENDOR FULFILLMENT',paymentUrl:'https://square.link/u/existing-only'}};
+   if(url.includes('/api/owner/launch-qa/reconcile/'))return {ok:true,status:'NONE',canCreate:true};
    throw Error('Unknown endpoint: '+url); }
  };
  const document={getElementById:el,createElement:()=>({})};
@@ -83,6 +85,22 @@ function setup(role='owner',existing=false,paymentStatus='Paid'){
  assert.equal(pending.elems['sbc-v6614-payment-link'].child.href,'https://square.link/u/existing-only','recover only the existing Square link');
  assert.equal(pending.elems['sbc-v6614-link-btn'].disabled,true,'pending reused QA cannot mint a second link');
  assert.match(pending.elems['sbc-v6614-qa-message'].textContent,/Original Square link recovered/);
+ const pendingUnlinked=setup('owner',true,'Pending');
+ pendingUnlinked.win.api=async function(url,opt){pendingUnlinked.calls.push({url,opt});
+   if(url.endsWith('launch-qa/create-order'))return {ok:true,existing:true,amountCents:100,orderId:'qa-order-1',paymentStatus:'Pending'};
+   if(url.includes('/api/payments/square/order/'))return {order:{paymentStatus:'Pending',fulfillmentStatus:'QA - NO VENDOR FULFILLMENT',paymentUrl:''}};
+   if(url.includes('/api/owner/launch-qa/reconcile/'))return {ok:true,status:'NONE',canCreate:true};
+   if(url.includes('/api/payments/square/create-link/'))return {url:'https://square.link/u/qa-order-link'};
+   throw Error('Unexpected URL '+url);
+ };
+ pendingUnlinked.win.sbcOpenOwnerDollarQA();
+ await pendingUnlinked.invoke('sbc-v6614-qa-form','submit');
+ assert.equal(pendingUnlinked.calls.length,3,'existing missing link requires read-only Square reconciliation');
+ assert.equal(pendingUnlinked.calls[2].opt.method,'GET');
+ assert.equal(pendingUnlinked.elems['sbc-v6614-link-btn'].disabled,false,'unlinked QA can proceed only after verified no match');
+ await pendingUnlinked.invoke('sbc-v6614-link-btn');
+ assert.equal(pendingUnlinked.calls.length,4,'create exactly once on deliberate click');
+ assert.equal(pendingUnlinked.elems['sbc-v6614-payment-link'].child.href,'https://square.link/u/qa-order-link');
  const quick=setup('owner');
  assert.equal(Object.prototype.hasOwnProperty.call(quick.win,'state'),false,'Canonical SBC state lives in a lexical binding');
  quick.win.sbcOpenQuickCheckout();

@@ -92,7 +92,20 @@ window.sbcOpenOwnerDollarQA=function(){
         }else if(showLink(order?.paymentUrl||r.paymentUrl)){
           msg('Original Square link recovered. Check merchant and $1.00 before paying once; no new link created.');
         }else{
-          msg('Existing order has no recoverable Square link. Reconcile it in Payments/Square; do NOT create another charge.');
+          msg('Checking Square for a link tied to this exact SBC $1 order. No charges or links are being created.');
+          try{
+            var found=await authFetch('/api/owner/launch-qa/reconcile/'+encodeURIComponent(orderId),{method:'GET'});
+            if(found?.status==='PAID'){
+              msg('This QA order is already marked Paid. Verify its Square transaction; do not pay again.');
+            }else if(found?.status==='MATCHED'&&showLink(found.url)){
+              msg('Square link recovered for this exact order. Verify merchant and $1.00; do not create another link.');
+            }else if(found?.status==='NONE'&&found.canCreate===true){
+              linkAttempted=false;$('sbc-v6614-link-btn').disabled=false;
+              msg('No order-matched Square link found. You may create ONE checkout link for this existing order using step 2. Existing generic Square links are not automatically attached.');
+            }else{
+              msg('Square link reconciliation is unconfirmed. Do NOT create another checkout link or charge.');
+            }
+          }catch(_){msg('Square read-only reconciliation unavailable. Do NOT create another checkout link or charge.');}
         }
       }catch(_){msg('Existing order found, but read-only status lookup failed. Do NOT retry or create another link.');}
     }else{

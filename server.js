@@ -785,11 +785,96 @@ async function sendOrderIntake(order,baseOverride=''){const c=(db.customers||[])
   }
   updateOrderParsed(order,{customerIntakeUrl:url,customerIntakeSentAt:delivered?now():'',customerIntakeChannels:results,customerIntakeDeliveryStatus:delivered?'DELIVERED':'BLOCKED_REQUIRES_HUMAN'});
   return {sent:delivered,url,channels:results,deliveryStatus:delivered?'DELIVERED':'BLOCKED_REQUIRES_HUMAN'};}
+
+// SBC_V6625_OWNER_QA_LINK_RECONCILIATION: read Square links without creating
+// a charge/link, and accept a link ONLY when its Square order matches this
+// exact SBC order, merchant location, amount and currency. No DB writes here.
+async function sbcSquareQaExistingLink(o){
+  const parsed=orderParsed(o);
+  const stored=String(o.paymentUrl||parsed.squarePaymentLinkUrl||
+    (Array.isArray(db.squarePayments)?db.squarePayments.find(r=>r.sbcOrderId===o.id)?.paymentUrl:'')||'');
+  if(stored)return {status:'MATCHED',url:stored,source:'SBC_SAVED_LINK'};
+  if(o.checkoutLinkStatus==='RECONCILIATION_REQUIRED'||
+     parsed.checkoutLinkStatus==='RECONCILIATION_REQUIRED')
+    return {status:'BLOCKED',reason:'PREVIOUS_SQUARE_OUTCOME_UNCONFIRMED'};
+  if(!squareConfigured())return {status:'UNAVAILABLE',reason:'SQUARE_NOT_CONFIGURED'};
+  const expectedNote='SBC Order '+String(o.id);
+  const expectedDescription='SBC '+String(o.id)+' payment for ';
+  const matches=[];
+  let cursor='',pages=0;
+  do{
+    if(++pages>10)return {status:'UNAVAILABLE',reason:'SQUARE_LINK_PAGINATION_INCOMPLETE'};
+    const page=await squareApi('/v2/online-checkout/payment-links?limit=100'+
+      (cursor?'&cursor='+encodeURIComponent(cursor):''));
+    for(const pl of (Array.isArray(page.payment_links)?page.payment_links:[])){
+      if(!pl?.order_id||!pl?.url)continue;
+      if(String(pl.payment_note||'')!==expectedNote&&
+         !String(pl.description||'').startsWith(expectedDescription))continue;
+      let sq;
+      try{sq=(await squareApi('/v2/orders/'+encodeURIComponent(String(pl.order_id)))).order;}
+      catch(_){return {status:'UNAVAILABLE',reason:'SQUARE_ORDER_PROOF_UNAVAILABLE'};}
+      if(!sq||String(sq.id)!==String(pl.order_id)||
+         String(sq.reference_id)!==String(o.id)||
+         String(sq.location_id)!==String(process.env.SQUARE_LOCATION_ID)||
+         Number(sq.total_money?.amount)!==squareMoneyCents(o.price)||
+         String(sq.total_money?.currency||'').toUpperCase()!=='USD')continue;
+      let u;
+      try{u=new URL(String(pl.url));}catch(_){continue;}
+      if(u.protocol!=='https:'||u.hostname!=='square.link'||u.username||u.password)continue;
+      matches.push({url:u.href,squareOrderId:String(pl.order_id)});
+      if(matches.length>1)return {status:'BLOCKED',reason:'MULTIPLE_MATCHING_SQUARE_LINKS'};
+    }
+    cursor=String(page.cursor||'');
+  }while(cursor);
+  if(matches.length===1)return {status:'MATCHED',...matches[0],source:'SQUARE_VERIFIED_ORDER'};
+  return {status:'NONE'};
+}
+app.get('/api/owner/launch-qa/reconcile/:orderId',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  let tenantId;
+  try{tenantId=requireRequestTenant(req)}catch(_){
+    return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});
+  }
+  const o=(db.orders||[]).find(x=>String(x.id)===String(req.params.orderId)&&
+     Number(x.tenantId)===tenantId);
+  if(!o||Number(o.price)!==1||String(o.product||'')!=='SBC Launch QA - $1 Test Service'||
+     orderParsed(o).sbcLaunchQa?.kind!=='OWNER_ONLY_ONE_DOLLAR_CHECKOUT')
+    return res.status(404).json({ok:false,code:'OWNER_QA_ORDER_NOT_FOUND'});
+  if(String(orderParsed(o).squarePaymentStatus||'').toUpperCase()==='PAID'||
+     String(o.paymentStatus||'').toUpperCase()==='PAID')
+    return res.json({ok:true,status:'PAID',canCreate:false});
+  try{
+    const result=await sbcSquareQaExistingLink(o);
+    const safe=result.status==='MATCHED'||result.status==='NONE';
+    return res.status(safe?200:409).json({ok:safe,...result,
+      canCreate:result.status==='NONE'&&!SBC_RUNTIME_READ_ONLY&&
+         !sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&
+         !MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady&&
+         !RUNTIME_GATE.blocked('NEW_CHECKOUTS')});
+  }catch(_){
+    return res.status(503).json({ok:false,status:'UNAVAILABLE',
+      canCreate:false,code:'SQUARE_QA_READ_ONLY_RECONCILIATION_UNAVAILABLE'});
+  }
+});
+
 async function createSquarePaymentLinkForOrder(o,req){
   if(RUNTIME_GATE.blocked('NEW_CHECKOUTS')){const e=new Error('NEW_CHECKOUTS_PAUSED_BY_OWNER');e.status=423;throw e;}
   if(!o) throw new Error('Order not found.');
   if(Number(o.price||0)<=0) throw new Error('Order total must be greater than $0.');
   if(o.squarePaymentLink?.url || orderParsed(o).squarePaymentLinkUrl) return {existing:true,url:o.squarePaymentLink?.url||orderParsed(o).squarePaymentLinkUrl,order:o};
+  if(Number(o.price)===1&&String(o.product||'')==='SBC Launch QA - $1 Test Service'&&
+     orderParsed(o).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT'){
+    const reconciliation=await sbcSquareQaExistingLink(o);
+    if(reconciliation.status==='MATCHED')
+      return {existing:true,url:reconciliation.url,order:o,source:reconciliation.source};
+    if(reconciliation.status!=='NONE'){
+      const e=new Error('SQUARE_QA_RECONCILIATION_REQUIRED');e.status=409;throw e;
+    }
+    if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||
+       !MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady){
+      const e=new Error('SQUARE_QA_WRITER_LOCKED');e.status=423;throw e;
+    }
+  }
   if(o.checkoutLinkStatus==='RECONCILIATION_REQUIRED'||orderParsed(o).checkoutLinkStatus==='RECONCILIATION_REQUIRED'){
     const e=Error('SQUARE_PAYMENT_LINK_RECONCILIATION_REQUIRED');e.status=409;throw e;
   }
@@ -808,7 +893,11 @@ async function createSquarePaymentLinkForOrder(o,req){
   const record={id:id('sqpay'),sbcOrderId:o.id,squarePaymentLinkId:pl.id,squareOrderId:pl.order_id,squarePaymentId:'',paymentUrl:pl.url,longUrl:pl.long_url||'',amount:Number(o.price||0),currency:'USD',status:'PENDING',customerId:o.customerId||'',customerName:o.customerName||'',createdAt:now(),updatedAt:now(),completedAt:'',createdBy:req.user?.id||'',createdByName:req.user?.name||''};
   squarePaymentRecords().unshift(record); squarePaymentRecords().splice(5000);
   updateOrderParsed(o,{squarePaymentLinkId:pl.id,squareOrderId:pl.order_id,squarePaymentLinkUrl:pl.url,squarePaymentStatus:'PENDING',squarePaymentCreatedAt:now(),squarePaymentEnvironment:squareEnvironment()});
-  o.paymentUrl=pl.url; o.paymentStatus='Pending'; o.fulfillmentStatus='Awaiting Customer Payment';
+  o.paymentUrl=pl.url; o.paymentStatus='Pending';
+  const isOwnerQa=Number(o.price)===1&&String(o.product||'')==='SBC Launch QA - $1 Test Service'&&
+    orderParsed(o).sbcLaunchQa?.kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT';
+  o.fulfillmentStatus=isOwnerQa?'QA - NO VENDOR FULFILLMENT':'Awaiting Customer Payment';
+  if(isOwnerQa)updateOrderParsed(o,{fulfillmentStatus:'QA - NO VENDOR FULFILLMENT'});
   addActivity('payment_link',`Generated Square payment link for ${o.id}`,{orderId:o.id,squareOrderId:pl.order_id,squarePaymentLinkId:pl.id,amount:o.price});
   await saveData();
   return {existing:false,url:pl.url,longUrl:pl.long_url||'',paymentLinkId:pl.id,squareOrderId:pl.order_id,order:o};
@@ -896,7 +985,7 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
       records.splice(5000); await saveData();
       return {ok:true,orderId:order.id,status:'PAID',squarePaymentId:rec.squarePaymentId,duplicate:true};
     }
-    updateOrderParsed(order,{squarePaymentStatus:'PAID',squarePaymentId:rec.squarePaymentId,squarePaymentCompletedAt:rec.completedAt,fulfillmentStatus:'Ready for Fulfillment'});
+    updateOrderParsed(order,{squarePaymentStatus:'PAID',squarePaymentId:rec.squarePaymentId,squarePaymentCompletedAt:rec.completedAt,fulfillmentStatus:sbcLaunchQaDurable?'QA - NO VENDOR FULFILLMENT':'Ready for Fulfillment'});
     addActivity('payment_received',`Square payment received for ${order.id}`,{orderId:order.id,squareOrderId:rec.squareOrderId,squarePaymentId:rec.squarePaymentId,amount:order.price});
     // SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE: explicit Office Box sales require dedicated POST-COMMIT V2 flow.
     const sbcOfficeBoxExplicitPurchase=(()=>{
