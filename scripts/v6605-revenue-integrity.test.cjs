@@ -1,6 +1,7 @@
 'use strict';
 /* SBC_V6605_REVENUE_INTEGRITY: no network, no production databases and no payment calls. */
 const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {createFinancialGovernor}=require('../enterprise/financial-governor-v56-25-3');
 const {MIN_MARGIN_PCT}=require('../enterprise/sbc-margin-policy.cjs');
 const RAILS=require('../enterprise/v566-scale-revenue-rails');
@@ -67,6 +68,38 @@ async function test(){
  assert.equal(response.code,422,'missing costs are a configuration error, not server downtime');
  assert.equal(response.body.error,'ECONOMIC_COST_DATA_REQUIRED');
  assert.equal(nexts,0);
+ // SBC_V6628 regression: live MySQL hydrate replaces the db reference after
+ // the app is constructed. Finance middleware must observe the replacement,
+ // not an empty boot-time snapshot. No provider calls, DB writes or charges.
+ const source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
+ const sourceGetter=source.match(/Object\.defineProperty\(app\.locals,'__SBC_DB',\{[\s\S]*?get:\(\)=>db\s*\}\);/);
+ assert.ok(sourceGetter,'Finance governor needs a dynamic getter for hydrated db');
+ const ctx={app:{locals:{}},db:{orders:[]}};
+ vm.runInNewContext(sourceGetter[0],ctx);
+ assert.equal(ctx.app.locals.__SBC_DB.orders.length,0,'startup snapshot contains no QA orders');
+ const qaOrder={id:'ord-test-existing',tenantId:1,price:1,
+   notes:JSON.stringify({items:[{id:'SBC_LAUNCH_QA_1USD',qty:1,unitPrice:1}]})};
+ ctx.db={orders:[qaOrder]}; // simulate MySQL hydration replacing db
+ assert.equal(ctx.app.locals.__SBC_DB.orders[0],qaOrder,'governor must see the hydrated order');
+ await governor.upsertCost({tenantId:1,itemId:'SBC_LAUNCH_QA_1USD',itemName:'Owner internal QA',
+   wholesaleCost:0,shippingCost:0,source:'owner-verified-zero-vendor-cost',actor:'owner'});
+ let qaApproved=0;
+ const qaReq={tenantId:1,path:'/api/payments/square/create-link/'+qaOrder.id,
+   params:{orderId:qaOrder.id},body:{qaOperation:'create_if_absent'},
+   app:ctx.app,user:{role:'owner',id:'owner1'},get:()=>''};
+ const qaRes={code:200,status(code){this.code=code;return this},json(body){this.body=body;return this}};
+ await governor.middleware('square_payment_link')(qaReq,qaRes,()=>{qaApproved++});
+ assert.equal(qaApproved,1,'same-tenant owner must reach link creation after hydration');
+ assert.equal(qaReq.economicGate?.status,'ALLOWED','20% economic and owner governor checks remain enforced');
+ // Another tenant cannot reference the existing QA order even with its ID.
+ const otherTenant={...qaReq,tenantId:2};
+ const otherRes={code:200,status(code){this.code=code;return this},json(body){this.body=body;return this}};
+ await governor.middleware('square_payment_link')(otherTenant,otherRes,()=>{qaApproved++});
+ assert.equal(otherRes.code,404,'cross-tenant QA link creation must not see the owner order');
+ assert.equal(otherRes.body.code,'ORDER_NOT_FOUND_IN_TENANT');
+ assert.equal(qaApproved,1);
+ assert.equal(db.ledger.length>0,true,'existing economic governor ledger is retained');
+ assert.equal(ctx.db.orders.length,1,'no QA order was added, removed or charged');
  const sameName=[{id:'a',customerId:'customer-1',status:'Won',price:300},
                  {id:'b',customerId:'customer-1',status:'Fulfilled',price:40},
                  {id:'c',customerId:'customer-1',status:'Paid',price:900},
@@ -77,6 +110,6 @@ async function test(){
  assert.equal(customer.lifetimeValue,55,'only captured Square payment is recognized as collected revenue');
  assert.equal(customer.contractedOrderValue,1295);
  assert.equal(customer.paymentProof.providerVerificationPending,true);
- console.log('[SBC V66 REVENUE INTEGRITY] PASS: tenant prices isolated; cost/margin gate; 422 not 503; verified lifetime value.');
+ console.log('[SBC V66 REVENUE INTEGRITY] PASS: live DB after hydrate, exact-tenant QA order gate, margin and owner economic authorization, 422 not 503; verified lifetime value.');
 }
 test().catch(e=>{console.error(e);process.exitCode=1});

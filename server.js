@@ -742,7 +742,12 @@ const SBC_SQUARE_LOCATION_PROBE=SBC_SQUARE_SAFETY.createLocationProbe();
 function squareEnvironment(){return String(process.env.SQUARE_ENVIRONMENT||'production').toLowerCase()==='sandbox'?'sandbox':'production'}
 function squareBaseUrl(){return squareEnvironment()==='sandbox'?'https://connect.squareupsandbox.com':'https://connect.squareup.com'}
 function squareConfigured(){return Boolean(process.env.SQUARE_ACCESS_TOKEN && process.env.SQUARE_LOCATION_ID)}
-app.locals.__SBC_DB=db;
+// SBC_V6628_LIVE_DB_FINANCIAL_GOVERNOR: MySQL hydration and controlled
+// restores replace the db object. A static snapshot silently loses orders,
+// making the financial gate reject a confirmed $1 QA order with a false 404.
+Object.defineProperty(app.locals,'__SBC_DB',{
+  configurable:false,enumerable:false,get:()=>db
+});
 function squareWebhookConfigured(){return Boolean(process.env.SQUARE_WEBHOOK_SIGNATURE_KEY && (process.env.SQUARE_WEBHOOK_URL || process.env.SBC_PUBLIC_URL))}
 function squareWebhookUrl(){return String(process.env.SQUARE_WEBHOOK_URL||`${String(process.env.SBC_PUBLIC_URL||'').replace(/\/$/,'')}/api/webhooks/square`).trim()}
 function squarePaymentRecords(){db.squarePayments=Array.isArray(db.squarePayments)?db.squarePayments:[];return db.squarePayments}
