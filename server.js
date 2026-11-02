@@ -4878,9 +4878,9 @@ function sbcV6606QuoteUpdateGuard(req,res,next){
   });
 }
 
-app.post('/api/quotes',auth,ownerOnly,sbcV6606QuoteCreateGate,async(req,res)=>{const b=req.body||{},items=Array.isArray(b.items)?b.items.map(x=>({name:String(x.name||'Item'),qty:Math.max(1,Number(x.qty||1)),unitPrice:Math.max(0,Number(x.unitPrice||0)),paymentUrl:String(x.paymentUrl||'')})).filter(x=>x.name):[];if(!items.length)return res.status(400).json({error:'Add at least one quote item.'});const subtotal=totals(items),discount=Math.max(0,Number(b.discount||0)),taxRate=Math.max(0,Number(b.taxRate ?? db.settings.taxRate ?? 0)),tax=Math.max(0,subtotal-discount)*taxRate/100,total=Math.max(0,subtotal-discount)+tax;const q={id:id('quote'),tenantId:requireRequestTenant(req),clientRequestId:req.sbcClientRequestId||'',quoteNumber:`${db.settings.quotePrefix}-${db.settings.nextQuoteNumber++}`,customerId:String(b.customerId||''),customerName:String(b.customerName||'Customer'),status:b.status||'Draft',validUntil:b.validUntil||'',notes:String(b.notes||''),items,subtotal,discount,taxRate,tax,total,paymentUrl:String(b.paymentUrl||items.find(x=>x.paymentUrl)?.paymentUrl||''),createdAt:now(),updatedAt:now()};db.quotes.unshift(q);addActivity('quote',`Created ${q.quoteNumber} for ${q.customerName}`,{quoteId:q.id});await saveData();res.status(201).json(q)});
-app.put('/api/quotes/:id',auth,ownerOnly,sbcV6606QuoteUpdateGuard,async(req,res)=>{const q=db.quotes.find(x=>x.id===req.params.id&&Number(x.tenantId)===requireRequestTenant(req));if(!q)return res.status(404).json({error:'Quote not found.'});Object.assign(q,req.body||{},{id:q.id,tenantId:q.tenantId,updatedAt:now()});const c=db.customers.find(x=>x.id===q.customerId);if(c&&['Won','Paid'].includes(q.status)){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,q.items?.[0]?.packageId||'',q.items?.[0]?.name||q.customerName);if(q.status==='Paid')ensureCommissionForSale({...q,quoteId:q.id,salesRepId:q.salesRepId||q.assignedTo||''});createMegaEvent('sale_won',`Sale won: ${q.customerName} · ${q.quoteNumber}`,{quoteId:q.id,customerId:c.id,total:q.total})}addActivity('quote',`Updated ${q.quoteNumber}`,{quoteId:q.id});await saveData();res.json(q)});
-app.delete('/api/quotes/:id',auth,ownerOnly,async(req,res)=>{const i=db.quotes.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Quote not found.'});const q=db.quotes[i];q.status='Deleted';q.updatedAt=now();addActivity('quote',`Deleted ${q.quoteNumber}`,{});await saveData();db.quotes.splice(i,1);res.json({ok:true})});
+app.post('/api/quotes',auth,ownerOnly,sbcV6606QuoteCreateGate,async(req,res)=>{const b=req.body||{};if(b.customerId&&!(db.customers||[]).some(c=>String(c.id)===String(b.customerId)&&Number(c.tenantId)===requireRequestTenant(req)))return res.status(404).json({ok:false,code:'CUSTOMER_NOT_FOUND_IN_TENANT'});const items=Array.isArray(b.items)?b.items.map(x=>({name:String(x.name||'Item'),qty:Math.max(1,Number(x.qty||1)),unitPrice:Math.max(0,Number(x.unitPrice||0)),paymentUrl:String(x.paymentUrl||'')})).filter(x=>x.name):[];if(!items.length)return res.status(400).json({error:'Add at least one quote item.'});const subtotal=totals(items),discount=Math.max(0,Number(b.discount||0)),taxRate=Math.max(0,Number(b.taxRate ?? db.settings.taxRate ?? 0)),tax=Math.max(0,subtotal-discount)*taxRate/100,total=Math.max(0,subtotal-discount)+tax;const q={id:id('quote'),tenantId:requireRequestTenant(req),clientRequestId:req.sbcClientRequestId||'',quoteNumber:`${db.settings.quotePrefix}-${db.settings.nextQuoteNumber++}`,customerId:String(b.customerId||''),customerName:String(b.customerName||'Customer'),status:b.status||'Draft',validUntil:b.validUntil||'',notes:String(b.notes||''),items,subtotal,discount,taxRate,tax,total,paymentUrl:String(b.paymentUrl||items.find(x=>x.paymentUrl)?.paymentUrl||''),createdAt:now(),updatedAt:now()};db.quotes.unshift(q);addActivity('quote',`Created ${q.quoteNumber} for ${q.customerName}`,{quoteId:q.id});await saveData();res.status(201).json(q)});
+app.put('/api/quotes/:id',auth,ownerOnly,sbcV6606QuoteUpdateGuard,async(req,res)=>{const q=db.quotes.find(x=>x.id===req.params.id&&Number(x.tenantId)===requireRequestTenant(req));if(!q)return res.status(404).json({error:'Quote not found.'});Object.assign(q,req.body||{},{id:q.id,tenantId:q.tenantId,updatedAt:now()});const c=db.customers.find(x=>x.id===q.customerId&&Number(x.tenantId)===requireRequestTenant(req));if(c&&['Won','Paid'].includes(q.status)){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,q.items?.[0]?.packageId||'',q.items?.[0]?.name||q.customerName);if(q.status==='Paid')ensureCommissionForSale({...q,quoteId:q.id,salesRepId:q.salesRepId||q.assignedTo||''});createMegaEvent('sale_won',`Sale won: ${q.customerName} · ${q.quoteNumber}`,{quoteId:q.id,customerId:c.id,total:q.total})}addActivity('quote',`Updated ${q.quoteNumber}`,{quoteId:q.id});await saveData();res.json(q)});
+app.delete('/api/quotes/:id',auth,ownerOnly,async(req,res)=>{if(!sbcV6606QuoteWriterReady(req,res))return;const tenantId=requireRequestTenant(req);const i=db.quotes.findIndex(x=>x.id===req.params.id&&Number(x.tenantId)===tenantId);if(i<0)return res.status(404).json({error:'Quote not found.'});const q=db.quotes[i];if(String(q.status||'').toLowerCase()==='paid'||q.paymentUrl)return res.status(409).json({ok:false,code:'SETTLED_OR_LINKED_QUOTE_IMMUTABLE'});q.status='Deleted';q.updatedAt=now();addActivity('quote',`Deleted ${q.quoteNumber}`,{});await saveData();db.quotes.splice(i,1);res.json({ok:true})});
 
 // V25 Sales Order Builder / fulfillment handoff
 const V25_BUNDLES={
@@ -5021,9 +5021,71 @@ app.post('/api/owner/launch-qa/create-order',auth,ownerOnly,async(req,res)=>{
   note:'Owner must generate checkout explicitly. This endpoint does not charge.'});
 });
 
-app.post('/api/orders',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{};if(!b.customerName||!b.product)return res.status(400).json({error:'Customer and product are required.'});const o={id:id('ord'),tenantId,customerId:String(b.customerId||''),customerName:String(b.customerName),product:String(b.product),quantity:Number(b.quantity||1),status:b.status||'New',cost:Number(b.cost||0),price:Number(b.price||0),notes:String(b.notes||''),createdAt:now(),updatedAt:now()};db.orders.unshift(o);addActivity('order',`Created print order for ${o.customerName}`,{orderId:o.id});await saveData();res.status(201).json(o)});
-app.put('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const o=db.orders.find(x=>x.id===req.params.id);if(!o)return res.status(404).json({error:'Order not found.'});Object.assign(o,req.body||{},{id:o.id,updatedAt:now()});await saveData();res.json(o)});
-app.delete('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const i=db.orders.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Order not found.'});db.orders[i].status='Deleted';db.orders[i].updatedAt=now();await saveData();db.orders.splice(i,1);res.json({ok:true})});
+
+/* SBC_V6630_CUSTOMER_JOURNEY_ORDER_GUARDS: legacy CRUD cannot mint financial proof. */
+function sbcV6630OrderLinked(o){
+ const n=orderParsed(o);
+ return !!(n.squareOrderId||n.squarePaymentId||n.squarePaymentLinkId||
+   o.squareOrderId||o.squarePaymentId||o.paymentUrl||
+   String(o.paymentStatus||'').toUpperCase()==='PAID');
+}
+function sbcV6630ProtectedNotes(v){
+ if(typeof v!=='string')return true;
+ let n={};try{n=JSON.parse(v)}catch{return false}
+ if(!n||typeof n!=='object')return false;
+ return ['squareOrderId','squarePaymentId','squarePaymentStatus','squarePaymentLinkId',
+   'squarePaymentCompletedAt','sbcLaunchQa','manualPaymentEvidence',
+   'manualPaymentConfirmation','sbcLaunchQaPaidVerified'].some(k=>Object.prototype.hasOwnProperty.call(n,k));
+}
+function sbcV6630OrderAllowed(req,res,tenantId,b,existing){
+ if(!sbcV6606QuoteWriterReady(req,res))return false;
+ if(!b||typeof b!=='object'||Array.isArray(b)){
+   res.status(422).json({ok:false,code:'ORDER_PATCH_INVALID'});return false;
+ }
+ const forbidden=new Set(['id','tenantId','tenant_id','createdAt','updatedAt','paymentStatus',
+   'paymentUrl','squareOrderId','squarePaymentId','squarePaymentStatus',
+   'squarePaymentLinkId','squarePaymentCompletedAt','launchQaOwnerCreated',
+   'sbcLaunchQaPaidVerified','fulfillmentStatus']);
+ if(Object.keys(b).some(k=>forbidden.has(k))){
+   res.status(422).json({ok:false,code:'ORDER_FINANCIAL_FIELDS_IMMUTABLE'});return false;
+ }
+ if(existing&&Object.keys(b).some(k=>!new Set(['customerName','product','quantity','cost','price','status','notes']).has(k))){
+   res.status(422).json({ok:false,code:'ORDER_PATCH_FIELD_NOT_ALLOWED'});return false;
+ }
+ const status=String(b.status||'').trim();
+ if(/^(paid|completed|fulfilled|delivered|ready for fulfillment)$/i.test(status)){
+   res.status(409).json({ok:false,code:'PAYMENT_PROOF_REQUIRED'});return false;
+ }
+ if(Object.prototype.hasOwnProperty.call(b,'notes')&&sbcV6630ProtectedNotes(b.notes)){
+   res.status(409).json({ok:false,code:'PROVIDER_PAYMENT_NOTES_IMMUTABLE'});return false;
+ }
+ for(const k of ['price','cost','quantity']){
+   if(Object.prototype.hasOwnProperty.call(b,k) &&
+      (!Number.isFinite(Number(b[k]))||Number(b[k])<(k==='quantity'?0.000001:0))){
+     res.status(422).json({ok:false,code:'ORDER_AMOUNT_INVALID'});return false;
+   }
+ }
+ if(b.customerId&&!(db.customers||[]).some(c=>String(c.id)===String(b.customerId)&&Number(c.tenantId)===tenantId)){
+   res.status(404).json({ok:false,code:'CUSTOMER_NOT_FOUND_IN_TENANT'});return false;
+ }
+ if(existing){
+   if(orderParsed(existing).sbcLaunchQa||String(existing.fulfillmentStatus||'').startsWith('QA ')||sbcV6630OrderLinked(existing)){
+     res.status(409).json({ok:false,code:'PAYMENT_LINKED_ORDER_IMMUTABLE'});return false;
+   }
+ }
+ return true;
+}
+function sbcV6630OrderCanDelete(req,res,o){
+ if(!sbcV6606QuoteWriterReady(req,res))return false;
+ if(orderParsed(o).sbcLaunchQa||String(o.fulfillmentStatus||'').startsWith('QA ')||sbcV6630OrderLinked(o)){
+   res.status(409).json({ok:false,code:'PAYMENT_LINKED_ORDER_IMMUTABLE'});return false;
+ }
+ return true;
+}
+
+app.post('/api/orders',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{};if(!sbcV6630OrderAllowed(req,res,tenantId,b,null))return;if(!b.customerName||!b.product)return res.status(400).json({error:'Customer and product are required.'});const o={id:id('ord'),tenantId,customerId:String(b.customerId||''),customerName:String(b.customerName),product:String(b.product),quantity:Number(b.quantity||1),status:b.status||'New',cost:Number(b.cost||0),price:Number(b.price||0),notes:String(b.notes||''),createdAt:now(),updatedAt:now()};db.orders.unshift(o);addActivity('order',`Created print order for ${o.customerName}`,{orderId:o.id});await saveData();res.status(201).json(o)});
+app.put('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const o=db.orders.find(x=>x.id===req.params.id&&Number(x.tenantId)===tenantId);if(!o)return res.status(404).json({error:'Order not found.'});if(!sbcV6630OrderAllowed(req,res,tenantId,req.body||{},o))return;Object.assign(o,req.body||{},{id:o.id,tenantId:o.tenantId,updatedAt:now()});await saveData();res.json(o)});
+app.delete('/api/orders/:id',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const i=db.orders.findIndex(x=>x.id===req.params.id&&Number(x.tenantId)===tenantId);if(i<0)return res.status(404).json({error:'Order not found.'});if(!sbcV6630OrderCanDelete(req,res,db.orders[i]))return;db.orders[i].status='Deleted';db.orders[i].updatedAt=now();await saveData();db.orders.splice(i,1);res.json({ok:true})});
 
 app.post('/api/renewals',auth,ownerOnly,async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{};if(!b.customerName||!b.service||!b.dueDate)return res.status(400).json({error:'Customer, service and due date are required.'});const r={id:id('ren'),tenantId,customerId:String(b.customerId||''),customerName:String(b.customerName),service:String(b.service),dueDate:b.dueDate,amount:Number(b.amount||0),status:b.status||'Upcoming',notes:String(b.notes||''),createdAt:now(),updatedAt:now()};db.renewals.unshift(r);addActivity('renewal',`Added ${r.service} renewal for ${r.customerName}`,{renewalId:r.id});await saveData();res.status(201).json(r)});
 app.put('/api/renewals/:id',auth,ownerOnly,async(req,res)=>{const r=db.renewals.find(x=>x.id===req.params.id);if(!r)return res.status(404).json({error:'Renewal not found.'});Object.assign(r,req.body||{},{id:r.id,updatedAt:now()});await saveData();res.json(r)});
@@ -9387,7 +9449,7 @@ registerCRMRoutes(app,{auth,getContext:()=>({db,mysqlPool,audit,saveData,user:nu
 require('./routes/crm-edits-v6606')(app,{auth,getContext:()=>({db,mysqlPool,audit,recoveryRequired:()=>Boolean(MYSQL_RECOVERY_REQUIRED)})});
 registerIntelligenceRoutes(app,{auth,getContext:()=>({db,mysqlPool,audit,saveData,user:null})});
 registerV56131Routes(app,{auth,ownerOnly,telemetry:V56131_TELEMETRY,getContext:()=>({db,mysqlPool,audit,saveData,user:null})});
-registerV56131RevenueFinisher(app,{auth,ownerOnly,getContext:()=>({db,mysqlPool,audit,saveData,user:null,addActivity,assignLeadAutomatically,enqueueLeadAssist,normalizeLeadIntelligence,sqlDateTime})});
+registerV56131RevenueFinisher(app,{auth,ownerOnly,getContext:()=>({db,mysqlPool,audit,saveData,user:null,addActivity,assignLeadAutomatically,enqueueLeadAssist,normalizeLeadIntelligence,sqlDateTime,writerReady:!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady})});
 const registerV56131RevenuePipeline = require('./routes/v56131-revenue-pipeline');
 const registerV56131RevenueOS = require('./routes/v56131-revenue-os');
 const registerV56131SignatureIntelligence = require('./routes/v56131-signature-intelligence');
