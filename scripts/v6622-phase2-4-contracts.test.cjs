@@ -71,6 +71,17 @@ assert.equal(q.needsRecordVerification,1);
 assert.equal(q.manualResearchQueue,1);
 assert.deepEqual(q.manualCallLeadIds,['one']);
 assert.deepEqual(q.researchLeadIds,['two']);
+const countsOnly=leads.inspect(records,1,{limit:0});
+assert.equal(countsOnly.verifiedHumanCallReady,q.verifiedHumanCallReady,
+ 'counts-only summary must preserve eligible lead totals');
+assert.equal(countsOnly.manualResearchQueue,q.manualResearchQueue,
+ 'counts-only summary must preserve research totals');
+assert.deepEqual(countsOnly.manualCallLeadIds,[],
+ 'limit=0 must not expose any human-call lead IDs');
+assert.deepEqual(countsOnly.researchLeadIds,[],
+ 'limit=0 must not expose any research lead IDs');
+assert.equal(leads.inspect(records,1,{}).manualCallLeadIds.length,1,
+ 'omitted limit retains existing default behavior');
 assert.equal(q.verifiedNoPhone,1);
 assert.equal(q.verifiedEmailReviewReady,2);
 assert.equal(q.noAutomaticCalls,true);
