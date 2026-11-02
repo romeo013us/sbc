@@ -3,6 +3,8 @@ name: SBC V66 Quote Safe Draft — Reproducible Candidate ZIP
 on:
   push:
     branches: [a-sbc-master]
+  pull_request:
+    branches: [a-sbc-master]
   workflow_dispatch:
 
 permissions:
