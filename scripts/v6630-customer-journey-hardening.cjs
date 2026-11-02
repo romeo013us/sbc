@@ -84,6 +84,10 @@ function patchServer(source){
  block=once(block,"const i=db.orders.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Order not found.'});db.orders[i].status='Deleted';",
    "const tenantId=requireRequestTenant(req);const i=db.orders.findIndex(x=>x.id===req.params.id&&Number(x.tenantId)===tenantId);if(i<0)return res.status(404).json({error:'Order not found.'});if(!sbcV6630OrderCanDelete(req,res,db.orders[i]))return;db.orders[i].status='Deleted';",'order delete');
  let result=source.slice(0,start)+GUARDS+'\n'+block+source.slice(end);
+ result=once(result,
+   "registerV56131RevenueFinisher(app,{auth,ownerOnly,getContext:()=>({db,mysqlPool,audit,saveData,user:null,addActivity,assignLeadAutomatically,enqueueLeadAssist,normalizeLeadIntelligence,sqlDateTime})});",
+   "registerV56131RevenueFinisher(app,{auth,ownerOnly,getContext:()=>({db,mysqlPool,audit,saveData,user:null,addActivity,assignLeadAutomatically,enqueueLeadAssist,normalizeLeadIntelligence,sqlDateTime,writerReady:!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady})});",
+   'legacy import writer context');
  const qs=result.indexOf("app.post('/api/quotes',auth,ownerOnly,");
  const qe=result.indexOf("// V25 Sales Order Builder",qs);
  if(qs<0||qe<=qs)throw Error(MARK+': quote boundary missing');
