@@ -9,7 +9,7 @@ const MAX_BYTES = 25 * 1024 * 1024;
 
 function clean(v,n=500){return String(v ?? '').trim().slice(0,n);}
 function first(...v){return v.map(x=>clean(x)).find(Boolean)||'';}
-function normPhone(v){return clean(v,80).replace(/global.__SBC_REQUIRE_TENANT(req)D/g,'');}
+function normPhone(v){return clean(v,80).replace(/\D/g,'');}
 function now(){return new Date().toISOString();}
 function id(prefix='lead'){return `${prefix}_${crypto.randomBytes(8).toString('hex')}`;}
 
@@ -52,7 +52,7 @@ function bulkScore(c){
   if(!website){gaps.push('NO_WEBSITE');}
   if(!email){gaps.push('NO_BUSINESS_EMAIL');}
   if(!phone){gaps.push('NO_PHONE');}
-  if(website && /^(facebook|instagram|yelp|linktrglobal.__SBC_REQUIRE_TENANT(req).ee|googleglobal.__SBC_REQUIRE_TENANT(req).)/i.test(website))gaps.push('SOCIAL_ONLY_PRESENCE');
+  if(website && /^(facebook|instagram|yelp|linktr\.ee|google\.)/i.test(website))gaps.push('SOCIAL_ONLY_PRESENCE');
   const contactability=(email?15:0)+(phone?20:0);
   const digitalGap=(gaps.includes('NO_WEBSITE')?28:0)+(gaps.includes('NO_BUSINESS_EMAIL')?18:0)+(gaps.includes('SOCIAL_ONLY_PRESENCE')?12:0);
   const completeness=(c.address?7:0)+(c.industry?5:0)+(c.contactName?8:0);
@@ -73,7 +73,7 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
       const bytes=Buffer.from(String(req.body?.contentBase64||''),'base64');
       if(!bytes.length)return res.status(400).json({error:'contentBase64 is required.'});
       if(bytes.length>MAX_BYTES)return res.status(413).json({error:'CSV exceeds the 25MB processing limit.'});
-      if(!/global.__SBC_REQUIRE_TENANT(req).csv$/i.test(filename))return res.status(400).json({error:'Only CSV files are accepted by Smart Lead Ingest.'});
+      if(!/\.csv$/i.test(filename))return res.status(400).json({error:'Only CSV files are accepted by Smart Lead Ingest.'});
       const preview=csvPreview(bytes,filename);
       const sample=preview.preview.map(x=>({businessName:first(x.businessName,x.business_name,x.business,x.company,x['Business Name'],x['Company Name'],x.name),phone:first(x.phone,x.Phone,x['Phone Number']),email:first(x.email,x.Email,x['Email Address']),website:first(x.website,x.Website),industry:first(x.industry,x.Industry,x.Type)}));
       res.json({ok:true,filename,bytes:bytes.length,rows:preview.rows,headers:preview.headers,sample,limits:{maxRows:MAX_ROWS,maxBytes:MAX_BYTES},engine:'SBC V56.13.1 Smart Lead Ingest'});
@@ -84,6 +84,9 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
     const ctx=getContext();
     try{
       if(!allowed.has(req.user?.role))return res.status(403).json({error:'Lead research access required.'});
+      if(ctx.writerReady!==true)return res.status(423).json({ok:false,code:'LEAD_IMPORT_WRITER_UNAVAILABLE'});
+      if(!ctx.mysqlPool)return res.status(503).json({ok:false,code:'LEAD_IMPORT_MYSQL_REQUIRED'});
+      const tenantId=Number(global.__SBC_REQUIRE_TENANT(req));
       const filename=clean(req.body?.filename||'leads.csv',180);
       const bytes=Buffer.from(String(req.body?.contentBase64||''),'base64');
       if(!bytes.length)return res.status(400).json({error:'contentBase64 is required.'});
@@ -101,15 +104,15 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
         const key=duplicateKey(r);
         if(seen.has(key)){skipped++;continue;}
         seen.add(key);
-        const exists=(ctx.db?.customers||[]).some(c=>
+        const exists=(ctx.db?.customers||[]).some(c=>Number(c.tenantId)===tenantId&&(
           (r.email && clean(c.email).toLowerCase()===r.email.toLowerCase()) ||
           (normPhone(r.phone) && normPhone(c.phone)===normPhone(r.phone)) ||
-          (r.businessName && clean(c.businessName).toLowerCase()===r.businessName.toLowerCase())
+          (r.businessName && clean(c.businessName).toLowerCase()===r.businessName.toLowerCase()))
         );
         if(exists){skipped++;continue;}
         const createdAt=now();
         const c={
-          id:id('cust'),businessName:clean(r.businessName,255),contactName:clean(r.contactName,255),
+          id:id('cust'),tenantId,businessName:clean(r.businessName,255),contactName:clean(r.contactName,255),
           phone:clean(r.phone,80),email:clean(r.email,255),status:'Lead',source:clean(r.source,100),
           followUp:'',notes:clean(r.notes,4000),website:clean(r.website,500),
           websiteStatus:clean(r.websiteStatus,80)||(r.website?'':'No Website'),address:clean(r.address,500),
@@ -132,9 +135,9 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
         if(ctx.mysqlPool){
           await ctx.mysqlPool.query(
             `INSERT INTO sbc_customers
-              (id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [c.id,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,JSON.stringify(c.leadIntelligence),ctx.sqlDateTime?ctx.sqlDateTime(c.createdAt):c.createdAt,ctx.sqlDateTime?ctx.sqlDateTime(c.updatedAt):c.updatedAt]
+              (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [c.id,tenantId,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,JSON.stringify(c.leadIntelligence),ctx.sqlDateTime?ctx.sqlDateTime(c.createdAt):c.createdAt,ctx.sqlDateTime?ctx.sqlDateTime(c.updatedAt):c.updatedAt]
           );
         }
         ctx.db.customers.unshift(c);
