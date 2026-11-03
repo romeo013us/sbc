@@ -13,8 +13,8 @@ function patchServer(source){
  // An owner pause must stop NEW Square checkouts, not read-only reconciliation
  // for customer payments already captured by Square.
  s=once(s,
-  "async function squareApi(pathname,{method='GET',body}={}){\\n  if(RUNTIME_GATE.blocked('NEW_CHECKOUTS')) throw new Error('OUTBOUND_API_PAUSED_BY_OWNER');",
-  "async function squareApi(pathname,{method='GET',body}={}){\\n  if(String(method).toUpperCase()!=='GET'&&RUNTIME_GATE.blocked('NEW_CHECKOUTS')) throw new Error('OUTBOUND_API_PAUSED_BY_OWNER');",
+  "async function squareApi(pathname,{method='GET',body}={}){\n  if(RUNTIME_GATE.blocked('NEW_CHECKOUTS')) throw new Error('OUTBOUND_API_PAUSED_BY_OWNER');",
+  "async function squareApi(pathname,{method='GET',body}={}){\n  if(String(method).toUpperCase()!=='GET'&&RUNTIME_GATE.blocked('NEW_CHECKOUTS')) throw new Error('OUTBOUND_API_PAUSED_BY_OWNER');",
   'Square GET readback while checkout paused');
  const before="async function handleSquarePaymentEvent(event,baseOverride=''){\n  const payment=event?.data?.object?.payment||event?.data?.object||{};";
  const after="async function handleSquarePaymentEvent(event,baseOverride=''){\n  let payment=event?.data?.object?.payment||event?.data?.object||{};";
