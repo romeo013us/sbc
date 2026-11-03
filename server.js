@@ -4931,8 +4931,12 @@ if(review.existing)return res.status(200).json({
   if(b.generatePaymentLink!==false){try{checkout=await createSquarePaymentLinkForOrder(o,req)}catch(e){return res.status(201).json({ok:true,order:o,bundle:bundle?{id:bundle.id,name:bundle.name,price:bundle.price}:null,paymentUrl:'',paymentStatus:'Pending',dynamicCheckoutError:e.message,squareConfigured:squareConfigured(),requiresManualPayment:true});}}
   res.status(201).json({ok:true,order:o,bundle:bundle?{id:bundle.id,name:bundle.name,price:bundle.price}:null,paymentUrl:checkout?.url||'',longUrl:checkout?.longUrl||'',paymentLinkId:checkout?.paymentLinkId||'',squareOrderId:checkout?.squareOrderId||'',paymentStatus:o.paymentStatus||'Pending',dynamicCheckout:true,requiresManualPayment:false});
 });
+/* SBC_V6672_SIGNED_WEBSITE_CHECKOUT */
+const SBC_V6672_SITE_CHECKOUT=require('./enterprise/v6672-site-checkout-integrity.cjs');
+const SBC_V6672_CHECKOUT_INFLIGHT=new Set();
 const PUBLIC_CHECKOUT_RATE=new Map();
 app.post('/api/public/checkout',async(req,res)=>{
+  let websiteCheckoutLock='';
   try{
     const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'unknown').split(',')[0].trim();
     const nowMs=Date.now(), recent=PUBLIC_CHECKOUT_RATE.get(ip)||[]; const fresh=recent.filter(t=>nowMs-t<60000);
@@ -4940,11 +4944,22 @@ app.post('/api/public/checkout',async(req,res)=>{
     fresh.push(nowMs);PUBLIC_CHECKOUT_RATE.set(ip,fresh);
     const b=req.body||{};
     if(String(b.website||'').trim())return res.status(400).json({error:'Invalid checkout request.'});
-    const tenantId=requireMappedRequestTenant(req);
+    const siteSigned=Boolean(req.headers['x-sbc-website-host']);
+    let tenantId;try{tenantId=siteSigned?sbcVerifiedWebsiteTenant(req):requireMappedRequestTenant(req)}catch(e){return res.status(e.status||403).json({ok:false,code:e.code||'WEBSITE_CHECKOUT_TENANT_REQUIRED'})}
+    const websiteRequestId=siteSigned?String(b.clientRequestId||'').trim():'';
     const packageId=String(b.packageId||'').trim(); const pkg=CATALOG.packages.find(x=>String(x.id)===packageId);
     if(!pkg)return res.status(400).json({error:'Approved package not found.'});
     const name=String(b.customerName||b.businessName||'').trim(); const email=String(b.customerEmail||b.email||'').trim().toLowerCase(); const phone=normalizeBuyerPhone(b.customerPhone||b.phone);
     if(!name||!email||!phone)return res.status(400).json({error:'Business name, email and phone are required.'});
+    if(siteSigned){
+      if(!['quickstart','starter','essentials'].includes(packageId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_PACKAGE_UNAVAILABLE'});
+      if(!SBC_V6672_SITE_CHECKOUT.requestIdValid(websiteRequestId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_REQUEST_ID_REQUIRED'});
+      const found=SBC_V6672_SITE_CHECKOUT.inspectExisting({tenantId,clientRequestId:websiteRequestId,packageId,email,businessName:name,orders:db.orders,customers:db.customers});
+      if(found.found)return res.status(found.ok?200:found.status).json(found);
+      const key=String(tenantId)+':'+websiteRequestId;
+      if(SBC_V6672_CHECKOUT_INFLIGHT.has(key))return res.status(409).json({ok:false,code:'WEBSITE_CHECKOUT_IN_PROGRESS',noNewOrder:true,noNewPaymentLink:true,automaticRetry:false});
+      SBC_V6672_CHECKOUT_INFLIGHT.add(key);websiteCheckoutLock=key;
+    }
     // SBC_V6635_PUBLIC_CHECKOUT_PREFLIGHT: fail BEFORE creating customers/orders when Square or the writer is unavailable.
     if(SBC_RUNTIME_READ_ONLY||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)return res.status(423).json({ok:false,code:'CHECKOUT_WRITER_LOCKED',error:'Checkout is temporarily unavailable. No customer or order was created.'});
     if(RUNTIME_GATE.blocked('NEW_CHECKOUTS'))return res.status(423).json({ok:false,code:'CHECKOUT_OWNER_PAUSED',error:'Owner has paused new checkouts. No customer or order was created.'});
@@ -4955,9 +4970,9 @@ app.post('/api/public/checkout',async(req,res)=>{
     try{squareLocationProbe=await SBC_SQUARE_LOCATION_PROBE({token:process.env.SQUARE_ACCESS_TOKEN,locationId:process.env.SQUARE_LOCATION_ID,environment:squareEnvironment(),apiVersion:SQUARE_API_VERSION});}
     catch(_){return res.status(503).json({ok:false,code:'SQUARE_PREFLIGHT_UNAVAILABLE',error:'Secure checkout temporarily unavailable. No customer or order was created.'});}
     if(!squareLocationProbe?.reachable)return res.status(503).json({ok:false,code:'SQUARE_PREFLIGHT_UNAVAILABLE',error:'Square location could not be verified. No customer or order was created.'});
-    const c={id:id('cust'),tenantId,businessName:name,contactName:String(b.contactName||'').trim(),phone,email,status:'Proposal',source:'Public Checkout',createdAt:now(),updatedAt:now()}; db.customers.unshift(c);
+    const c={id:id('cust'),tenantId,businessName:name,contactName:String(b.contactName||'').trim(),phone,email,status:'Proposal',source:siteSigned?'sbcmia.com Checkout':'Public Checkout',createdAt:now(),updatedAt:now()}; db.customers.unshift(c);
     const items=[{id:pkg.id,name:pkg.name,qty:1,unitPrice:Number(pkg.price),category:pkg.category}];
-    const o={id:id('ord'),tenantId,customerId:c.id,customerName:name,product:pkg.name,quantity:1,status:'New',cost:0,price:Number(pkg.price),notes:JSON.stringify({publicCheckout:true,items,bundleId:pkg.id,bundleName:pkg.name,subtotal:Number(pkg.price),discount:0,taxRate:0,tax:0,total:Number(pkg.price),paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now()}),salesRepId:'',salesRepName:'SBC Web Checkout',paymentUrl:'',paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now(),updatedAt:now()};
+    const o={id:id('ord'),tenantId,customerId:c.id,customerName:name,product:pkg.name,quantity:1,status:'New',cost:0,price:Number(pkg.price),notes:JSON.stringify({publicCheckout:true,websiteCheckoutRequestId:siteSigned?websiteRequestId:'',websiteCheckoutSource:siteSigned?'sbcmia.com':'',items,bundleId:pkg.id,bundleName:pkg.name,subtotal:Number(pkg.price),discount:0,taxRate:0,tax:0,total:Number(pkg.price),paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now()}),salesRepId:'',salesRepName:'SBC Web Checkout',paymentUrl:'',paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now(),updatedAt:now()};
     db.orders.unshift(o); c.dealValue=o.price;
     addActivity('public_checkout',`Customer started checkout for ${pkg.name}`,{orderId:o.id,customerId:c.id,packageId:pkg.id,total:o.price});
     await saveData();
@@ -4974,6 +4989,7 @@ app.post('/api/public/checkout',async(req,res)=>{
     }
     res.status(201).json({ok:true,orderId:o.id,package:{id:pkg.id,name:pkg.name,price:pkg.price},paymentUrl:checkout.url,longUrl:checkout.longUrl||'',paymentLinkId:checkout.paymentLinkId,squareOrderId:checkout.squareOrderId,paymentStatus:'Pending',godKim:'armed_after_verified_square_payment'});
   }catch(e){res.status(400).json({ok:false,error:e.message||'Checkout could not be created.'});}
+  finally{if(websiteCheckoutLock)SBC_V6672_CHECKOUT_INFLIGHT.delete(websiteCheckoutLock)}
 });
 
 app.get('/api/sales-orders',auth,v25SalesAccess,(req,res)=>res.json((db.orders||[]).filter(o=>req.user.role==='owner'||req.user.role==='manager'||!o.salesRepId||o.salesRepId===req.user.id||req.user.role==='fulfillment').map(o=>({...o,parsed:o.notes&&o.notes.startsWith('{')?(()=>{try{return JSON.parse(o.notes)}catch{return {}}})():{}}))));
