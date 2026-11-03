@@ -138,11 +138,36 @@ class SBCUnattendedNotifications {
   async sendEmail(subject, text, html) {
     const cfg = this._smtpConfig(), to = this._contacts().email;
     if (!cfg.configured || !to || !this.nodemailer) return { ok: false, skipped: true, reason: !to ? 'OWNER_EMAIL_NOT_CONFIGURED' : !cfg.configured ? 'SMTP_NOT_CONFIGURED' : 'NODEMAILER_UNAVAILABLE' };
-    const transporter = this.nodemailer.createTransport({ host: cfg.host, port: cfg.port, secure: cfg.secure, auth: { user: cfg.user, pass: cfg.pass }, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000 });
-    const info = await transporter.sendMail({ from: cfg.from, to, subject, text, html });
-    const result = { ok: true, messageId: String(info.messageId || ''), acceptedCount: Array.isArray(info.accepted) ? info.accepted.length : undefined };
-    this.lastResult.email = { at: this.clock().toISOString(), ok: true, messageId: result.messageId };
-    return result;
+    // GoDaddy Professional Email prefers implicit TLS/465. Only on transport-level
+    // failures, retry authenticated STARTTLS/587. Never send via plaintext SMTP
+    // or silently retry bad credentials; these are owner-only notifications.
+    const candidates = [{ port: cfg.port, secure: cfg.port === 465 || cfg.secure }];
+    if (cfg.port === 465) candidates.push({ port: 587, secure: false });
+    const networkFailures = new Set(['EACCES', 'ECONNREFUSED', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNECTION', 'ESOCKET']);
+    let lastError = null;
+    for (const candidate of candidates) {
+      const transport = this.nodemailer.createTransport({
+        host: cfg.host, port: candidate.port, secure: candidate.secure,
+        requireTLS: !candidate.secure,
+        tls: { minVersion: 'TLSv1.2', servername: cfg.host },
+        auth: { user: cfg.user, pass: cfg.pass },
+        connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
+      });
+      try {
+        const info = await transport.sendMail({ from: cfg.from, to, subject, text, html });
+        if (Array.isArray(info.accepted) && !info.accepted.length) {
+          const error = new Error('SMTP_RECIPIENT_NOT_ACCEPTED'); error.code = 'EENVELOPE'; throw error;
+        }
+        const result = { ok: true, messageId: String(info.messageId || ''), acceptedCount: Array.isArray(info.accepted) ? info.accepted.length : undefined };
+        this.lastResult.email = { at: this.clock().toISOString(), ok: true, messageId: result.messageId, transportPort: candidate.port };
+        return result;
+      } catch (error) {
+        lastError = error;
+        if (!networkFailures.has(String(error?.code || '').toUpperCase())) break;
+      } finally { try { transport.close?.(); } catch {} }
+    }
+    this.lastResult.email = { at: this.clock().toISOString(), ok: false, code: String(lastError?.code || 'SMTP_DELIVERY_FAILED').slice(0, 40) };
+    throw lastError || new Error('SMTP_DELIVERY_FAILED');
   }
   async sendSms(body) {
     const cfg = this._twilioConfig(), to = this._contacts().phone;
