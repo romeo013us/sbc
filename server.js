@@ -736,6 +736,8 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const SQUARE_API_VERSION = process.env.SQUARE_API_VERSION || '2026-09-16';
 const SBC_SQUARE_SAFETY=require('./enterprise/v6645-square-checkout-safety.cjs');
 const SBC_V6659_SQUARE_PROOF=require('./enterprise/v6659-square-webhook-proof.cjs');
+/* SBC_V6671_SQUARE_AUTHORITATIVE_READBACK */
+const SBC_V6671_SQUARE_WEBHOOK=require('./enterprise/v6671-square-webhook-readback.cjs');
 // SBC_V6659_SQUARE_COMPLETION_CONSISTENCY: reconcile even when a legacy Paid text label predates real capture.
 const SBC_SQUARE_LOCATION_PROBE=SBC_SQUARE_SAFETY.createLocationProbe();
 // SBC_V6645_SQUARE_PAYMENT_PROOF_AND_READINESS: provider payment proof and read-only readiness.
@@ -757,7 +759,7 @@ function updateOrderParsed(o,patch){const parsed=orderParsed(o);Object.assign(pa
 function normalizeBuyerPhone(v){const raw=String(v||'').trim();if(!raw)return '';const digits=raw.replace(/\D/g,'');if(digits.length===10)return '+1'+digits;if(digits.length===11&&digits.startsWith('1'))return '+'+digits;if(raw.startsWith('+')&&digits.length>=8&&digits.length<=15)return raw;return ''}
 function squareMoneyCents(v){return Math.round(Number(v||0)*100)}
 async function squareApi(pathname,{method='GET',body}={}){
-  if(RUNTIME_GATE.blocked('NEW_CHECKOUTS')) throw new Error('OUTBOUND_API_PAUSED_BY_OWNER');
+  if(String(method).toUpperCase()!=='GET'&&RUNTIME_GATE.blocked('NEW_CHECKOUTS')) throw new Error('OUTBOUND_API_PAUSED_BY_OWNER');
   if(!squareConfigured()) throw new Error('Square dynamic checkout is not configured. Add SQUARE_ACCESS_TOKEN and SQUARE_LOCATION_ID in GoDaddy Secrets.');
   const headers={'Authorization':`Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,'Square-Version':SQUARE_API_VERSION,'Content-Type':'application/json'};
   const r=await fetch(squareBaseUrl()+pathname,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
@@ -1071,7 +1073,7 @@ async function sendBig3OfficeBoxHandoff(order, {reason='paid-order', force=false
 }
 
 async function handleSquarePaymentEvent(event,baseOverride=''){
-  const payment=event?.data?.object?.payment||event?.data?.object||{};
+  let payment=event?.data?.object?.payment||event?.data?.object||{};
   const squarePaymentId=String(payment.id||''); const squareOrderId=String(payment.order_id||''); const status=String(payment.status||'').toUpperCase();
   if(!squarePaymentId && !squareOrderId)return {ignored:true,reason:'No payment/order id'};
   const paymentAmountCents=Number(payment.amount_money?.amount||0);
@@ -1079,7 +1081,17 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
   let rec=records.find(x=>(squarePaymentId&&x.squarePaymentId===squarePaymentId)||(squareOrderId&&x.squareOrderId===squareOrderId));
   let order=rec?db.orders.find(x=>x.id===rec.sbcOrderId):null;
   if(!order&&squareOrderId)order=(db.orders||[]).find(x=>orderParsed(x).squareOrderId===squareOrderId);
-  if(!order)return {ignored:true,reason:'No matching SBC order',squareOrderId,squarePaymentId};
+  if(!order)return status==='COMPLETED'
+    ?{ok:false,status:'RECONCILIATION_REQUIRED',code:'SQUARE_COMPLETED_PAYMENT_UNMATCHED',squareOrderId,squarePaymentId}
+    :{ignored:true,reason:'No matching SBC order',squareOrderId,squarePaymentId};
+  // A signed webhook is only a notification. Read Square's authoritative Payment
+  // before recognizing paid revenue; transient provider errors propagate to retry.
+  if(status==='COMPLETED'){
+    const provider=await squareApi('/v2/payments/'+encodeURIComponent(squarePaymentId));
+    const checked=SBC_V6671_SQUARE_WEBHOOK.verifyReadback(payment,provider?.payment);
+    if(!checked.ok)return {ok:false,orderId:order.id,status:'RECONCILIATION_REQUIRED',code:checked.code};
+    payment=provider.payment;
+  }
   // Validate Square order, location, payment ID, amount and currency before modifying anything.
   if(status==='COMPLETED'){
     const proof=SBC_V6659_SQUARE_PROOF.validateCompleted(payment,order,orderParsed(order),rec,process.env.SQUARE_LOCATION_ID);
@@ -8289,7 +8301,7 @@ async function processPendingSquareWebhooks(){
       const result=event.type==='payment.updated'||event.type==='payment.created'
         ?await handleSquarePaymentEvent(event,process.env.SBC_PUBLIC_URL||'')
         :{ignored:true,type:event.type};
-      rec.status='PROCESSED';rec.processedAt=now();rec.result=result;rec.lastError='';
+      rec.status=SBC_V6671_SQUARE_WEBHOOK.outcome(result);rec.processedAt=now();rec.result=result;rec.lastError='';
       await saveData();
     }catch(e){
       rec.status='RETRY';rec.lastError=String(e.message||'Processing error').slice(0,1000);rec.attempts=Number(rec.attempts||0)+1;rec.lastAttemptAt=now();
@@ -8304,7 +8316,7 @@ MONETIZATION_QUEUE.configure(async job=>{
     if(!event)throw new Error('Square webhook event missing from monetization queue.');
     const result=event.type==='payment.updated'||event.type==='payment.created'?await handleSquarePaymentEvent(event,process.env.SBC_PUBLIC_URL||''):{ignored:true,type:event.type};
     const rec=squareWebhookRecords().find(x=>x.eventId===String(event.event_id||''));
-    if(rec){rec.status='PROCESSED';rec.processedAt=now();rec.result=result;rec.lastError='';await saveData();}
+    if(rec){rec.status=SBC_V6671_SQUARE_WEBHOOK.outcome(result);rec.processedAt=now();rec.result=result;rec.lastError='';await saveData();}
     return result;
   }
   throw new Error(`Unsupported monetization queue event: ${job.eventType}`);
