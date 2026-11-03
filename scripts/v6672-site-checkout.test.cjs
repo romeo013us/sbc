@@ -22,6 +22,7 @@ const ctx={
    return 1;
  },
  requireMappedRequestTenant:req=>{if(req.headers?.host!=='cc.example.test')throw Error('unmapped');return 1},
+ process:{env:{SQUARE_ACCESS_TOKEN:'SYNTHETIC_ONLY',SQUARE_LOCATION_ID:'LOC_SYNTHETIC',SQUARE_ENVIRONMENT:'sandbox'}},SQUARE_API_VERSION:'2026-09-16',squareEnvironment:()=> 'sandbox',
  CATALOG:{packages:[{id:'starter',name:'SBC Business Starter',price:199,category:'Package'}, {id:'quickstart',name:'Business Visibility',price:99,category:'Package'}]},
  normalizeBuyerPhone:v=>String(v||'').replace(/\D/g,'').length===10?'+1'+String(v).replace(/\D/g,''):'',
  SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,
