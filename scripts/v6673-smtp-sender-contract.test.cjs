@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const s=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
+assert.ok(s.includes("const relayEnabled=String(process.env.SBC_SMTP_RELAY_ENABLED||'false').toLowerCase()==='true';"),'unauthenticated relay must not be enabled by default');
+assert.ok(!s.includes("SBC_SMTP_RELAY_ENABLED||'true'"),'silent relay default is forbidden');
+assert.ok(s.includes("requireTLS: !candidate.secure"),'STARTTLS must be mandatory for non-implicit TLS');
+assert.ok(s.includes("tls: { minVersion: 'TLSv1.2'"),'no legacy TLS');
+const from="const from=process.env.SBC_MAIL_FROM||process.env.SBC_SMTP_USER||String(db.settings?.email||'j@sbcmia.com').trim();";
+assert.ok(s.split(from).length>=3,'customer and staff email must prefer authenticated sender');
+console.log('[SBC V6673] PASS: no unauthenticated fallback, STARTTLS and SMTP identity sender contract; no outbound mail');
