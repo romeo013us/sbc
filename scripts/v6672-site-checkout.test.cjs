@@ -12,6 +12,7 @@ const key='sbc-website-hmac-synthetic-key-at-least-32-characters-00001';
 let seq=0,write=0,links=0,activity=0,holdProbe=false,releaseProbe,failLink=false;
 const db={customers:[],orders:[]},registered={};
 const ctx={
+ require:p=>{assert.equal(p,'./enterprise/v6672-site-checkout-integrity.cjs');return safety},
  app:{post:(url,...handlers)=>{registered[url]=handlers.at(-1)}},
  SBC_V6672_SITE_CHECKOUT:safety,SBC_V6672_CHECKOUT_INFLIGHT:new Set(),
  PUBLIC_CHECKOUT_RATE:new Map(),
