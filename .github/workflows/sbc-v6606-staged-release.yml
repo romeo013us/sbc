@@ -41,6 +41,8 @@ jobs:
           node scripts/v6624-static-assets.test.cjs
           node scripts/v6630-customer-journey.test.cjs
           node scripts/v6631-legacy-journey-contract.test.cjs
+          node scripts/v6670-quote-order-journey.test.cjs
+          node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
           node --check routes/v56131-revenue-loop.js
           node --check scripts/v6611-verify-stage-inventory.cjs
@@ -74,6 +76,7 @@ jobs:
           }
           NODE
           SBC_ENABLE_V6630_SOURCE_WRITE=YES node scripts/v6630-customer-journey-hardening.cjs --apply
+          SBC_ENABLE_V6670_SOURCE_WRITE=YES node scripts/v6670-quote-order-stage.cjs --apply
           node scripts/v6630-customer-journey.test.cjs
           node scripts/v6631-legacy-journey-contract.test.cjs
           SBC_RUNTIME_ROOT=. node scripts/v6694-owner-launch-qa.test.cjs
@@ -196,6 +199,7 @@ jobs:
           assert.ok(code.includes('QA VERIFIED - NO FULFILLMENT'));
           assert.ok(code.includes('owner-verified-zero-vendor-cost'), 'QA zero-vendor-cost approval must be in compiled runtime');
           assert.ok(code.includes('SBC_V6630_CUSTOMER_JOURNEY_ORDER_GUARDS'), 'compiled customer journey safety guards missing');
+          assert.ok(code.includes('SBC_V6670_QUOTE_ORDER_TRANSACTION_INTEGRITY'), 'compiled quote-to-order integrity guard missing');
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
@@ -309,7 +313,7 @@ jobs:
           assert.equal(id.sourceCommit,process.env.GITHUB_SHA,'Only the tested commit can be published as a GitHub release candidate');
           const actual=crypto.createHash('sha256').update(fs.readFileSync(path.join(temp,'server.js'))).digest('hex');
           assert.equal(actual,id.serverSha256,'No stale compiled server');
-          for(const token of ['SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE','owner-verified-zero-vendor-cost'])
+          for(const token of ['SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE','owner-verified-zero-vendor-cost','SBC_V6670_QUOTE_ORDER_TRANSACTION_INTEGRITY'])
             assert.ok(fs.readFileSync(path.join(temp,'server.js'),'utf8').includes(token),'Missing runtime guard: '+token);
           NODE
           # Four pinned release assets: this receipt MUST overwrite any old /app copy.
