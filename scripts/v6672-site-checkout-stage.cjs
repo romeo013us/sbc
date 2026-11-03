@@ -22,7 +22,7 @@ function patchServer(source){
   "if(!name||!email||!phone)return res.status(400).json({error:'Business name, email and phone are required.'});",
   `if(!name||!email||!phone)return res.status(400).json({error:'Business name, email and phone are required.'});
     if(siteSigned){
-      if(!['quickstart','starter','essentials','professional'].includes(packageId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_PACKAGE_UNAVAILABLE'});
+      if(!['quickstart','starter','essentials'].includes(packageId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_PACKAGE_UNAVAILABLE'});
       if(!SBC_V6672_SITE_CHECKOUT.requestIdValid(websiteRequestId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_REQUEST_ID_REQUIRED'});
       const found=SBC_V6672_SITE_CHECKOUT.inspectExisting({tenantId,clientRequestId:websiteRequestId,packageId,email,businessName:name,orders:db.orders,customers:db.customers});
       if(found.found)return res.status(found.ok?200:found.status).json(found);
