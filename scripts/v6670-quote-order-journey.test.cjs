@@ -113,6 +113,6 @@ async function post(body,tenantId=1){
  const collision=await post({...noQuote,customerId:'c3',customerEmail:'third@example.test'});
  assert.equal(collision.code,409);
  assert.equal(db.orders.length,2);
- assert.equal(activities,2);
+ assert.equal(activities,3,'first sale logs both order and quote handoff; second sale logs order only');
  console.log('[SBC V6670] PASS: quote provenance, tenant/customer/cost checks, safe idempotent retry, no repeat Square link, backward-compatible no-link order');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
