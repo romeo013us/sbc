@@ -44,6 +44,7 @@ jobs:
           node scripts/v6631-legacy-journey-contract.test.cjs
           node scripts/v6670-quote-order-journey.test.cjs
           node scripts/v6671-square-webhook-readback.test.cjs
+          node scripts/v6672-site-checkout.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
       - name: Tenant economic cost and verified customer revenue contract

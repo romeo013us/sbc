@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 // Authenticate server-to-server SBCMIA requests; browser Host/Origin alone never authorizes tenant writes.
 const SITES=new Set(['sbcmia.com','www.sbcmia.com']);
-const ROUTES=new Set(['/api/web-lead','/api/portal/register','/api/portal/login']);
+const ROUTES=new Set(['/api/web-lead','/api/portal/register','/api/portal/login','/api/public/checkout']);
 const seen=new Map();
 function signature({key,host,method,path,at,nonce,body}){
  const b=Buffer.isBuffer(body)?body:Buffer.from(String(body||''),'utf8');
