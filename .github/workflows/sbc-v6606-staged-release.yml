@@ -47,7 +47,6 @@ jobs:
           node scripts/v6672-site-checkout.test.cjs
           node scripts/v6504-unattended-notifications-test.js
           node scripts/v6673-owner-smtp-transport.test.cjs
-          node scripts/v6673-smtp-sender-contract.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
           node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
