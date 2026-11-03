@@ -42,6 +42,8 @@ jobs:
           node scripts/v6630-customer-journey.test.cjs
           node scripts/v6631-legacy-journey-contract.test.cjs
           node scripts/v6670-quote-order-journey.test.cjs
+          node scripts/v6671-square-webhook-readback.test.cjs
+          node scripts/v6671-square-webhook-stage.cjs
           node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
           node --check routes/v56131-revenue-loop.js
@@ -77,6 +79,7 @@ jobs:
           NODE
           SBC_ENABLE_V6630_SOURCE_WRITE=YES node scripts/v6630-customer-journey-hardening.cjs --apply
           SBC_ENABLE_V6670_SOURCE_WRITE=YES node scripts/v6670-quote-order-stage.cjs --apply
+          SBC_ENABLE_V6671_SOURCE_WRITE=YES node scripts/v6671-square-webhook-stage.cjs --apply
           node scripts/v6630-customer-journey.test.cjs
           node scripts/v6631-legacy-journey-contract.test.cjs
           SBC_RUNTIME_ROOT=. node scripts/v6694-owner-launch-qa.test.cjs
@@ -200,6 +203,7 @@ jobs:
           assert.ok(code.includes('owner-verified-zero-vendor-cost'), 'QA zero-vendor-cost approval must be in compiled runtime');
           assert.ok(code.includes('SBC_V6630_CUSTOMER_JOURNEY_ORDER_GUARDS'), 'compiled customer journey safety guards missing');
           assert.ok(code.includes('SBC_V6670_QUOTE_ORDER_TRANSACTION_INTEGRITY'), 'compiled quote-to-order integrity guard missing');
+          assert.ok(code.includes('SBC_V6671_SQUARE_AUTHORITATIVE_READBACK'), 'compiled Square provider readback proof missing');
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"

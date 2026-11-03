@@ -18,6 +18,7 @@ const handler=patched.slice(start,end);
 assert(handler.includes('sbcOfficeBoxExplicitPurchase'));
 assert(handler.indexOf('sbcOfficeBoxExplicitPurchase')<handler.indexOf('sendBig3OfficeBoxHandoff('));
 const P=require(path.join(root,'enterprise/v6659-square-webhook-proof.cjs'));
+const R=require(path.join(root,'enterprise/v6671-square-webhook-readback.cjs'));
 const payment={id:'square_payment_999',order_id:'square_order_999',location_id:'sq_location_999',
  status:'COMPLETED',amount_money:{amount:34900,currency:'USD'}};
 
@@ -34,7 +35,8 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   db,now,id:()=> 'fixture_only_id',String,Number,Object,Date,Math,
   process:{env:{SQUARE_LOCATION_ID:'sq_location_999',SBC_PUBLIC_URL:'https://invalid.example.test'}},
   squarePaymentRecords:()=>db.squarePayments,squareMoneyCents:n=>Math.round(n*100),orderParsed,updateOrderParsed,
-  SBC_V6659_SQUARE_PROOF:P,
+  SBC_V6659_SQUARE_PROOF:P,SBC_V6671_SQUARE_WEBHOOK:R,
+  squareApi:async(path)=>{assert.match(path,/^\/v2\/payments\//);events.push('provider-readback');return {payment:ctx.providerPayment};},
   SBC_RUNTIME_READ_ONLY:readonly,MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:recovery,
   sbcWriterLeaseReady:lease,sbcWriterLeaseConn:lease?{}:null,mysqlPool:pool?{}:null,
   saveData:async()=>{
@@ -61,7 +63,7 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   V566_RAILS:{subscriptionRecovery:()=>({eligible:false})},V562NEXT:{billingFriction:()=>null},
  };
  vm.runInNewContext(handler+'\nthis.runSquareCapture=handleSquarePaymentEvent;',ctx,{timeout:3000});
- return {order,events,db,run:p=>ctx.runSquareCapture({type:'payment.updated',event_id:'fixture-only',data:{object:{payment:p}}})};
+ return {order,events,db,run:p=>{ctx.providerPayment=p;return ctx.runSquareCapture({type:'payment.updated',event_id:'fixture-only',data:{object:{payment:p}}})}};
 }
 (async()=>{
  const scenarios=[
@@ -77,6 +79,7 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   assert.equal(res.status,'PAID');
   assert.equal(f.order.paymentStatus,'Paid');
   assert.equal(f.events.filter(x=>x==='save').length,1,'payment is still saved exactly once');
+  assert.equal(f.events.filter(x=>x==='provider-readback').length,1,'Square payment must be independently retrieved before settlement');
   const calls=f.events.filter(x=>x==='handoff').length;
   assert.equal(calls,index===4?1:0,
    'explicit Office Box order cannot use legacy pre-commit handoff: '+JSON.stringify(options));
@@ -130,7 +133,7 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
  const mismatchedQa=fixture({price:1,launchQa:true,product:'SBC Launch QA - $1 Test Service'});
  const mismatchQa=await mismatchedQa.run({...paidDollar,amount_money:{amount:34900,currency:'USD'}});
  assert.equal(mismatchQa.code,'SQUARE_CAPTURE_AMOUNT_MISMATCH');
- assert.equal(mismatchedQa.events.length,0);
+ assert.equal(mismatchedQa.events.filter(x=>x!=='provider-readback').length,0);
  const forgedQa=fixture({price:1,launchQa:false,product:'SBC Launch QA - $1 Test Service'});
  await forgedQa.run(paidDollar);
  assert.equal(forgedQa.events.includes('launch_qa_verified'),false,'product name alone is never a QA authorization');
