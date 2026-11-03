@@ -16,7 +16,8 @@ assert.equal(helper.cents(199.005),19901);
 assert.ok(!helper.examine({tenantId:1,total:0}).ok);
 
 const start=compiled.indexOf("app.post('/api/sales-orders',auth,v25SalesAccess,");
-const end=compiled.indexOf("const PUBLIC_CHECKOUT_RATE=new Map();",start);
+const v6672Boundary=compiled.indexOf("/* SBC_V6672_SIGNED_WEBSITE_CHECKOUT */",start);
+const end=v6672Boundary>start?v6672Boundary:compiled.indexOf("const PUBLIC_CHECKOUT_RATE=new Map();",start);
 assert.ok(start>0&&end>start);
 const handlers={};
 const db={
