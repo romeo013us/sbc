@@ -45,6 +45,7 @@ jobs:
           node scripts/v6670-quote-order-journey.test.cjs
           node scripts/v6671-square-webhook-readback.test.cjs
           node scripts/v6672-site-checkout.test.cjs
+          node scripts/v6674-officebox-v2-handoff.test.cjs
           node scripts/v6504-unattended-notifications-test.js
           node scripts/v6673-owner-smtp-transport.test.cjs
       - name: Source-level economic and payment evidence contract
