@@ -6,8 +6,8 @@
 
 - Owner notification emails: try configured TLS SMTP host/port, and, on network-level failure from port 465, retry authenticated STARTTLS on port 587. Do not retry authentication failures.
 - Both connections validate TLS (minimum TLS 1.2). Never fall back to unencrypted SMTP for executive briefings.
-- Customer and internal staff emails: prefer the authenticated SMTP mailbox as sender; a separately configured `SBC_MAIL_FROM` still takes precedence.
-- Automatically trying GoDaddy's unauthenticated port-25 relay is **disabled**. The legacy relay remains a manual opt-in setting and will now require TLS.
+- Customer and internal staff emails remain on the existing production path; this maintenance change does not alter that path or its SMTP sender defaults. A future customer-email hardening change requires a separately verified release.
+- The pre-existing customer-email relay fallback is **not changed** by this release. Do not set `SBC_SMTP_RELAY_ENABLED=true` as a troubleshooting shortcut.
 - Every test uses synthetic email provider responses. CI success is not proof GoDaddy permits outbound SMTP.
 
 ## Operator settings for the existing Professional Email account
@@ -22,7 +22,7 @@ Replace existing values in GoDaddy **Secrets / Environment Variables**; never ad
 | `SBC_SMTP_USER` | Active business mailbox address |
 | `SBC_SMTP_PASS` | Mailbox password, set privately in GoDaddy |
 | `SBC_MAIL_FROM` | Optional; if already defined, align with mailbox |
-| `SBC_SMTP_RELAY_ENABLED` | Omit (default false), do not enable for troubleshooting |
+| `SBC_SMTP_RELAY_ENABLED` | Set `false` explicitly if an existing setting is present; this release does not change its legacy default |
 
 GoDaddy Professional Email officially documents `smtpout.secureserver.net`, SSL, and port 465. Port 587 is a contingent STARTTLS alternative, not a guarantee the GoDaddy Node.js environment allows it.
 
