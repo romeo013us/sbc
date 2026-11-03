@@ -20,7 +20,7 @@ function prepareHandoff({order,customer,squareReadback,commitReceipt,expectedLoc
  if(squareReadback.squareOrderId!==payment.order_id||String(order.squareOrderId||'')!==payment.order_id)fail('OFFICEBOX_SQUARE_ORDER_MISMATCH');
  const amount=Number(order.price);
  if(!Number.isFinite(amount)||amount<=0||Math.round(amount*100)!==Number(payment.amount_money?.amount))fail('OFFICEBOX_SQUARE_AMOUNT_MISMATCH');
- if(!['PAID','COMPLETED'].includes(String(order.paymentStatus||'').toUpperCase())fail('OFFICEBOX_ORDER_NOT_PAID');
+ if(!['PAID','COMPLETED'].includes(String(order.paymentStatus||'').toUpperCase()))fail('OFFICEBOX_ORDER_NOT_PAID');
  const sku=String(order.officeBoxSku||'').toUpperCase(),plan=PLANS[sku];
  if(!plan)fail('OFFICEBOX_EXPLICIT_PURCHASE_SKU_REQUIRED');
  if(order.launchQaOwnerCreated===true||order.sbcLaunchQa===true||String(order.product||'').includes('QA -'))fail('OFFICEBOX_QA_ORDER_NOT_ELIGIBLE');
