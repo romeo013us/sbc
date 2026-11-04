@@ -34,9 +34,9 @@ assert(!p.includes('SBCCheckout.autoCharge'),'no new customer autocharge');
 for(const expected of [
 'Payment Center — choose the right checkout.',
 'Verify Existing $1 Order (read-only)',
-"checkoutLinks.essentials='https://square.link/u/c8wuNr1c'",
-'/api/payments/square/order/'
+"checkoutLinks.essentials='https://square.link/u/c8wuNr1c'"
 ]){
  assert(app.includes(expected),'existing checkout/QA contract must remain: '+expected);
 }
+assert(fs.readFileSync(path.join(root,'public/sbc-v6675-payment-readback.js'),'utf8').includes('/api/payments/square/order/'), 'protected read-only QA order API must remain in its dedicated module');
 console.log('[SBC V66.77] PASS: 250-card copy, three designs, shipping, setup scope, owner-confirmed two Square links, shipping opt-in, browser parity');
