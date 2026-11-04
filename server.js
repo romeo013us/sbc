@@ -1179,10 +1179,11 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
   records.splice(5000); await saveData(); return {ok:true,orderId:order.id,status:rec.status,squarePaymentId:rec.squarePaymentId};
 }
 
+/* SBC_V6675_SQUARE_699_OWNER_LINK */
 const PAYMENT_LINKS = {
   cards100: 'https://square.link/u/QBqS1dri', cards1000: 'https://square.link/u/5chWtP1V',
   cards200: 'https://square.link/u/G4DTFmin', cards500: 'https://square.link/u/oN2M9stv',
-  basic: 'https://square.link/u/uf53mzCR', essentials: '',
+  basic: 'https://square.link/u/uf53mzCR', essentials: 'https://square.link/u/c8wuNr1c',
   growth: 'https://square.link/u/NTzmK97y', visibility: 'https://square.link/u/h7pS4Z9i', starter: 'https://square.link/u/lKxGXNQs'
 };
 
@@ -1191,7 +1192,7 @@ const CATALOG = {
     { id:'quickstart', name:'Business Visibility', price:99, value:185, category:'Package', description:'A digital presence starter for businesses that need visibility before a full website.', features:['Google Business Profile setup or cleanup','Business information, services & hours','Up to 2 social media profiles setup or cleanup','100 business cards','Professional business email setup guidance'], paymentUrl:PAYMENT_LINKS.visibility },
     { id:'starter', name:'SBC Business Starter', price:199, value:275, category:'Package', description:'A professional starting point for a new or very small business ready for a website.', features:['Domain setup','Basic hosting','1-page website','100 business cards','Basic setup support','Office Box available as an upgrade'], officeBoxEntitlement:'upgrade', paymentUrl:PAYMENT_LINKS.starter },
     { id:'essentials', name:'Business Essentials', price:349, value:475, category:'Package', description:'For businesses that need a real website and stronger branding.', features:['Domain + hosting','Up to 4-page website','Mobile optimization','200 business cards','Basic maintenance support','Office Box available as a preferred upgrade'], officeBoxEntitlement:'preferred-upgrade', paymentUrl:PAYMENT_LINKS.basic },
-    { id:'professional', name:'SBC Complete Business Launch', price:699, value:0, category:'Package', description:'Premium launch package that connects the website, business technology and Office Box workspace from the start.', features:['Professional website','Domain + domain protection','Free SSL','Microsoft 365 business email','Managed WordPress hosting','500 business cards','Office Box customer workspace foundation included'], officeBoxEntitlement:'included-foundation', paymentUrl:'' },
+    { id:'professional', name:'SBC Complete Business Launch', price:699, value:0, category:'Package', description:'Premium launch package that connects the website, business technology and Office Box workspace from the start.', features:['Professional website','Domain + domain protection','Free SSL','Microsoft 365 business email','Managed WordPress hosting','500 business cards','Office Box customer workspace foundation included'], officeBoxEntitlement:'included-foundation', paymentUrl:PAYMENT_LINKS.essentials },
     { id:'growth', name:'Business Growth', price:999, value:1400, category:'Package', description:'For companies ready for a more complete online and print presence.', features:['Everything in Essentials','Expanded website build','Enhanced business email','1,000 business cards','2 marketing pieces','Ongoing support priority'], paymentUrl:PAYMENT_LINKS.growth },
     { id:'storestarter', name:'Online Store Starter', price:699, value:1000, category:'E-Commerce', description:'A practical online store setup for businesses ready to start selling online.', features:['E-commerce website','First 10 products setup','Payment gateway setup','Shipping + tax setup','Mobile optimization','Launch support'], paymentUrl:'' },
     { id:'storepro', name:'Online Store Pro', price:899, value:1350, category:'E-Commerce', description:'Expanded e-commerce setup for growing product businesses.', features:['Everything in Online Store Starter','Expanded product setup','Advanced store configuration','Enhanced customer experience','Store training','Priority support'], paymentUrl:'' },
