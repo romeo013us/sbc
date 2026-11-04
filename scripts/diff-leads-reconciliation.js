@@ -27,7 +27,11 @@ function keySet(r){return {name:norm(get(r,'business_name','Business Name','busi
 function compare(csv, dbRows){const index={name:new Map(),email:new Map(),phone:new Map()};for(const r of dbRows){const k=keySet(r);for(const type of Object.keys(index)){if(k[type]){if(!index[type].has(k[type]))index[type].set(k[type],[]);index[type].get(k[type]).push(r);}}}return csv.map(c=>{const k=keySet(c),matches=[];for(const type of Object.keys(index)){if(k[type])for(const r of (index[type].get(k[type])||[]))matches.push({field:type,tableId:get(r,'id'),businessName:get(r,'business_name'),source:get(r,'source'),tenantId:get(r,'tenant_id')});}const unique=[...new Map(matches.map(m=>[`${m.field}:${m.tableId}`,m])).values()];return {sourceFile:c._sourceFile,businessName:get(c,'Business Name','business_name'),contactName:get(c,'Contact Name','contact_name'),email:get(c,'Email','email'),phone:get(c,'Phone','phone'),matchCount:unique.length,matches:unique,classification:unique.length?'MATCH_CANDIDATE':'NO_MATCH_FOUND'};});}
 const sqlPath=process.argv[2]?path.resolve(process.cwd(),process.argv[2]):path.join(root,'database.sql');
 if(!fs.existsSync(sqlPath)){console.error(JSON.stringify({ok:false,error:'SQL_DUMP_NOT_FOUND',path:sqlPath}));process.exit(2);}
-const sql=fs.readFileSync(sqlPath,'utf8'); const csvDir=path.join(root,'starter-leads'); const files=fs.existsSync(csvDir)?fs.readdirSync(csvDir).filter(f=>f.toLowerCase().endsWith('.csv')).sort():[];
+// Optional explicit fixture directory makes read-only reconciliation tests deterministic.
+// Default remains the historical starter-leads location; no customer records are modified.
+const fixtureArg=process.argv.slice(3).find(arg=>arg.startsWith('--csv-dir='));
+const csvDir=fixtureArg?path.resolve(process.cwd(),fixtureArg.slice('--csv-dir='.length)):path.join(root,'starter-leads');
+const sql=fs.readFileSync(sqlPath,'utf8'); const files=fs.existsSync(csvDir)?fs.readdirSync(csvDir).filter(f=>f.toLowerCase().endsWith('.csv')).sort():[];
 const csv=[];for(const file of files)for(const row of parseCsv(fs.readFileSync(path.join(csvDir,file),'utf8')))csv.push({...row,_sourceFile:file});
 const customers=findInsertRows(sql,'sbc_customers');const mesh=findInsertRows(sql,'sbc_lead_mesh');const customerCompare=compare(csv,customers);const meshCompare=compare(csv,mesh);
 const claims=[

@@ -36,14 +36,14 @@ check('dashboard catalog is normalized before rendering',()=>{
   assert.match(app,/services:Array\.isArray\(catalogCandidate\.services\)/);
   assert.match(browserApp,/catalogCandidate=state\.data\?\.catalog/);
 });
-check('release identity and visible shell match V65.1.26',()=>{
+check('release identity and visible shell match current V66.0.0',()=>{
   assert.match(identity,new RegExp("RELEASE_VERSION = '" + pkg.version.replaceAll('.', '\\.') + "'"));
-  assert.match(identity,/patch:26/);
-  assert.match(read('package.json'),/"version": "65\.1\.26"/);
-  assert.match(shell,/V65\.1\.26 · DEMO STUDIO/);
-  assert.match(shell,/app\.js\?v=65\.1\.26-demo-studio/);
-  assert.match(read('public/v56251-ui-finalize.js'),/V65\.1\.26 · DEMO STUDIO/);
-  assert.match(agentOs,/data\.version\|\|'65\.1\.\d+'/);
+  assert.match(identity,/patch:0/);
+  assert.match(read('package.json'),/"version": "66\.0\.0"/);
+  assert.match(shell,/V66\.0\.0 · DEMO STUDIO/);
+  assert.match(shell,/app\.js\?v=66\./);
+  assert.match(read('public/v56251-ui-finalize.js'),/V66\.0\.0 · DEMO STUDIO/);
+  assert.match(agentOs,/data\.releaseVersion\|\|'65\.1\.\d+'/);
   assert.match(growthUi,/SBC OS V65\.1\.\d+/);
 });
 check('recovery-mode Training GET uses detached read-only catalog and never saves',()=>{

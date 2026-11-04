@@ -1,0 +1,28 @@
+name: SBC V66 Release Identity and Reconciliation Regression
+on:
+  pull_request:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Secret audit — known synthetic fixtures, real credentials still blocked
+        run: node scripts/secret-audit.js
+      - name: Synthetic CSV/SQL reconciliation — never access customer records
+        run: node scripts/reconciliation-audit-test.js
+      - name: Verified V66 badge, mirrored frontend, pinned server identity
+        run: node scripts/v6603-flat-release-contract.test.cjs
+      - name: Recovery, buyer demo, signed handoff regression
+        run: |
+          node scripts/v6510-ui-recovery-buttons-test.js
+          node scripts/v6513-recovery-safe-training-test.js
+          node scripts/v6515-buyer-demo-stability-test.js
+          node scripts/v6674-officebox-v2-handoff.test.cjs
