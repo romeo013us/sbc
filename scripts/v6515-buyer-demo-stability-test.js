@@ -18,9 +18,9 @@ function check(name,fn){fn();checks.push(name);console.log('PASS '+name)}
 check('release identity, package version, and cache-busted shell agree',()=>{
   assert.equal(pkg.version, require('../package.json').version);
   assert.match(identity,new RegExp("RELEASE_VERSION = '" + pkg.version.replaceAll('.', '\\.') + "'"));
-  assert.match(read('VERSION'),/V65\.1\.26/);
-  assert.match(read('public/index.html'),/V65\.1\.26 · DEMO STUDIO/);
-  assert.match(read('public/index.html'),/app\.js\?v=65\.1\.26-demo-studio/);
+  assert.match(read('VERSION'),/^66\.0\.0/);
+  assert.match(read('public/index.html'),/V66\.0\.0 · DEMO STUDIO/);
+  assert.match(read('public/index.html'),/app\.js\?v=66\./);
 });
 check('training library falls back to the authenticated admin catalog when assignment projections are empty',()=>{
   assert.match(app,/if\(map\.size===0&&Array\.isArray\(t\.library\?\.courses\)\)/);
