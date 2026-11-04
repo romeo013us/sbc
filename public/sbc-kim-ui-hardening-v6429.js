@@ -21,7 +21,7 @@ function boot(){
   observer.observe(document.body,{childList:true,subtree:true});
   window.__SBC_KIM_UI_RELEASE__=RELEASE;
   window.__SBC_KIM_UI_LOCKED__=true;
-  window.__SBC_UI_RELEASE__=RELEASE;
+  // Keep the global release identity owned by the V66 finalizer.
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
