@@ -49,6 +49,7 @@ jobs:
           node scripts/v6675-payment-center-readback.test.cjs
           node scripts/v6677-service-offer-clarity.test.cjs
           node scripts/v6678-square-card-catalog-stage.cjs
+          node scripts/v6679-monthly-care-checkouts.test.cjs
           node scripts/v6504-unattended-notifications-test.js
           node scripts/v6673-owner-smtp-transport.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
@@ -90,7 +91,8 @@ jobs:
           SBC_ENABLE_V6671_SOURCE_WRITE=YES node scripts/v6671-square-webhook-stage.cjs --apply
           SBC_ENABLE_V6672_SOURCE_WRITE=YES node scripts/v6672-site-checkout-stage.cjs --apply
           node scripts/v6675-square-catalog-stage.cjs --apply
-          node scripts/v6678-square-card-catalog-stage.cjs --apply
+          node scripts/v6678-square-card-catalog-stage.cjs
+          node scripts/v6679-monthly-care-checkouts.test.cjs --apply
           node scripts/v6675-payment-center-readback.test.cjs
           node scripts/v6677-service-offer-clarity.test.cjs
           node scripts/v6630-customer-journey.test.cjs
