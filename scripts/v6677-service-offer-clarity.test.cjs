@@ -9,7 +9,7 @@ const start=app.indexOf('function payments(){');
 const end=app.indexOf('async function runFullSystemTestOrder()',start);
 assert(start>=0&&end>start,'expected isolated payment-center surface');
 const p=app.slice(start,end);
-for(const [quantity,price] of [[100,40],[250,50],[500,75],[1000,110]]){
+for(const [quantity,price] of [['100',40],['250',50],['500',75],['1,000',110]]){
  assert(p.includes('Business Cards — '+quantity+"',"+price),'missing canonical quantity/price: '+quantity);
 }
 assert(!p.includes('Business Cards — 200'), 'superseded 200-card label must not appear');
