@@ -47,6 +47,8 @@ jobs:
           node scripts/v6672-site-checkout.test.cjs
           node scripts/v6674-officebox-v2-handoff.test.cjs
           node scripts/v6675-payment-center-readback.test.cjs
+          node scripts/v6677-service-offer-clarity.test.cjs
+          node scripts/v6678-square-card-catalog-stage.cjs
           node scripts/v6504-unattended-notifications-test.js
           node scripts/v6673-owner-smtp-transport.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
@@ -88,7 +90,9 @@ jobs:
           SBC_ENABLE_V6671_SOURCE_WRITE=YES node scripts/v6671-square-webhook-stage.cjs --apply
           SBC_ENABLE_V6672_SOURCE_WRITE=YES node scripts/v6672-site-checkout-stage.cjs --apply
           node scripts/v6675-square-catalog-stage.cjs --apply
+          node scripts/v6678-square-card-catalog-stage.cjs --apply
           node scripts/v6675-payment-center-readback.test.cjs
+          node scripts/v6677-service-offer-clarity.test.cjs
           node scripts/v6630-customer-journey.test.cjs
           node scripts/v6631-legacy-journey-contract.test.cjs
           SBC_RUNTIME_ROOT=. node scripts/v6694-owner-launch-qa.test.cjs
@@ -215,6 +219,7 @@ jobs:
           assert.ok(code.includes('SBC_V6671_SQUARE_AUTHORITATIVE_READBACK'), 'compiled Square provider readback proof missing');
           assert.ok(code.includes('SBC_V6672_SIGNED_WEBSITE_CHECKOUT'), 'compiled signed website checkout guard missing');
           assert.ok(code.includes('SBC_V6675_SQUARE_699_OWNER_LINK'), 'verified $699 hosted Square link absent from staged runtime');
+          assert.ok(code.includes('SBC_V6678_OWNER_CONFIRMED_250_CARDS'), 'confirmed 250-card Square catalog not in packaged runtime');
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
