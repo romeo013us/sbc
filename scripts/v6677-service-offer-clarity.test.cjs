@@ -13,9 +13,17 @@ for(const [quantity,price] of [[100,40],[250,50],[500,75],[1000,110]]){
  assert(p.includes('Business Cards — '+quantity+"',"+price),'missing canonical quantity/price: '+quantity);
 }
 assert(!p.includes('Business Cards — 200'), 'superseded 200-card label must not appear');
-assert(p.includes("x[0]==='cards200'?"),'must gate legacy Square 200-card item on quantity verification');
-assert(p.includes("Prepare verified 250-card quote"),'staff quote fallback required');
-assert(p.includes('250-card Square item requires verification'),'warning required');
+assert(p.includes("['cards250','Business Cards — 250',50"),'new distinct 250-card SKU required');
+assert(p.includes("checkoutLinks.cards250='https://square.link/u/HxgFM50Y'"),'owner-confirmed $50 checkout required');
+assert(p.includes("checkoutLinks.expeditedShipping9='https://square.link/u/EF7DTDhT'"),'owner-confirmed separate $9 shipping checkout required');
+assert(!p.includes('250-card Square item requires verification'),'old unverified link warning must be removed');
+assert(p.includes('Optional expedited business-card shipping — $9'),'shipping fee must remain opt-in');
+assert(p.includes('never added automatically'),'shipping fee must not be automatic');
+assert(p.includes('Do not treat a shipping-fee receipt as payment'),'shipping payment is not the base order');
+
+
+
+
 assert(p.includes('Expedited delivery is an optional +$9'),'rush shipping remains optional');
 assert(p.includes('8 business days after final proof'),'standard timing starts after proof');
 assert(p.includes('three initial design concepts'),'included designs disclosed');
@@ -31,4 +39,4 @@ for(const expected of [
 ]){
  assert(app.includes(expected),'existing checkout/QA contract must remain: '+expected);
 }
-console.log('[SBC V66.77] PASS: 250-card copy, three designs, shipping, setup scope, provider gate, browser parity');
+console.log('[SBC V66.77] PASS: 250-card copy, three designs, shipping, setup scope, owner-confirmed two Square links, shipping opt-in, browser parity');
