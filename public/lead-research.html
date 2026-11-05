@@ -57,13 +57,15 @@
 <div class="card"><div class="card-head"><div><h2>Research Queue</h2><p>Live, server-scoped SBC leads. Use Refresh to pull changes made by the owner or other authorized users.</p></div><input id="search" aria-label="Search research queue" type="search" placeholder="Search business, phone, city…"></div><div id="queue-error" class="small-error" hidden></div><div id="queue-list" class="list"><p class="muted">Loading research queue…</p></div></div>
 </section>
 <section class="pane" data-pane="add" hidden>
-<div class="card maxform"><h2>Submit a Business Lead</h2><p>Saved directly to the existing SBC CRM. At least a business name, phone or email is required; provide reliable information wherever possible.</p>
+<div class="card maxform"><h2>Submit a Business Lead</h2><p>Saved directly to the existing SBC CRM. A verified business with a contact method and documented research source earns one qualified-lead credit. Otherwise, you can save it unverified and complete the research later.</p>
 <form id="lead-form">
 <div class="fields"><label>Business name<input name="businessName" autocomplete="organization" maxlength="200" placeholder="Business name"></label><label>Contact person<input name="contactName" maxlength="150" placeholder="Verified contact name"></label>
 <label>Phone<input name="phone" type="tel" maxlength="80" placeholder="Business phone"></label><label>Email<input name="email" type="email" maxlength="250" placeholder="Business email"></label>
 <label>Website<input name="website" maxlength="300" placeholder="https://example.com"></label><label>Industry<input name="industry" maxlength="160" placeholder="Barber, restaurant, salon…"></label>
 <label class="wide">Business address / city<input name="address" maxlength="350" placeholder="Confirmed business location"></label>
-<label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label></div>
+<label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label>
+<label class="wide">Verification source<input name="verificationSource" maxlength="300" placeholder="Public business website, current Google Business Profile, or other source actually checked"></label>
+<label class="wide verify-option"><input type="checkbox" name="verifiedResearch" value="yes"><span>I personally verified this business and a real contact method. Count it toward today’s qualified-lead goal only after SBC confirms the save.</span></label></div>
 <div class="form-actions"><button id="save-lead" class="primary" type="submit">Submit to SBC CRM</button><button type="reset" class="outline">Clear form</button></div><p class="muted">Duplicate records are rejected by the backend. Submission is never automatically retried.</p></form></div>
 </section>
 <section class="pane" data-pane="import" hidden>
