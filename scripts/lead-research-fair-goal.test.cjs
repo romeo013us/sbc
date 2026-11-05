@@ -17,7 +17,7 @@ assert.match(update,/!business\|\|!contact\|\|!evidence/);
 assert.match(update,/res\.status\(422\)/);
 assert.ok(update.indexOf('if(!business||!contact||!evidence)')<update.indexOf("for(const k of ['businessName'"),'verification evidence check must happen before any mutation');
 assert.match(update,/researchVerified:Boolean\(researcher&&c\.verificationStatus==='Verified'/);
-assert.match(update,/!\\['Verified','Sales Ready'\\]\.includes\(priorVerificationStatus\)/);
+assert.match(update,/!\['Verified','Sales Ready'\]\.includes\(priorVerificationStatus\)/);
 assert.match(source,/event_type IN \('workforce_lead_created','lead_verification_update'\)/);
 assert.match(source,/qualified\.has\(customerId\)/);
 assert.match(source,/qualified\.set\(customerId/);
