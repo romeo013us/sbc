@@ -38,7 +38,47 @@ function displayLead(c){
  var item=element('div','lead-row'),left=element('div'),right=element('div'),status=c.verificationStatus||c.status||'Needs Verification';
  left.append(element('strong',null,c.businessName||'Unnamed business'));
  left.append(element('small',null,[c.city||c.address,c.industry,c.phone,c.email].filter(Boolean).join(' · ')||'Contact details pending'));
- right.append(element('span','pill',status));item.append(left,right);return item;
+ right.append(element('span','pill',status));
+ var button=element('button','outline','Review');
+ button.type='button';button.addEventListener('click',function(){openReview(item,c);});
+ right.append(button);item.append(left,right);return item;
+}
+function openReview(item,lead){
+ document.querySelectorAll('.research-review').forEach(function(el){el.remove();});
+ var form=element('form','research-review'),fields=element('div','fields');
+ var editable=[
+  ['Business name','businessName'],['Contact person','contactName'],
+  ['Phone','phone'],['Email','email'],['Website','website'],
+  ['Industry','industry'],['City','city'],['Research source','verificationSource']
+ ];
+ editable.forEach(function(pair){
+  var label=element('label',null,pair[0]),input=element('input');input.name=pair[1];
+  input.value=String(lead[pair[1]]||'').slice(0,500);input.maxLength=500;
+  label.append(input);fields.append(label);
+ });
+ var notes=element('label','wide','Research notes'),textarea=element('textarea');
+ textarea.name='notes';textarea.maxLength=3000;textarea.rows=3;textarea.value=String(lead.notes||'').slice(0,3000);notes.append(textarea);fields.append(notes);
+ var statusLabel=element('label','wide','Verification decision'),select=element('select');
+ select.name='verificationStatus';
+ [['Needs Verification','Still needs verification'],['Verified','Information verified'],['Owner Review','Needs owner review']].forEach(function(pair){
+   var option=element('option',null,pair[1]);option.value=pair[0];option.selected=lead.verificationStatus===pair[0];select.append(option);
+ });statusLabel.append(select);fields.append(statusLabel);
+ var actions=element('div','form-actions'),submit=element('button','primary','Save research review'),cancel=element('button','outline','Cancel');
+ submit.type='submit';cancel.type='button';cancel.onclick=function(){form.remove();};
+ actions.append(submit,cancel);form.append(fields,actions);
+ form.onsubmit=async function(event){
+  event.preventDefault();submit.disabled=true;clearNote();
+  var fd=new FormData(form),data={};
+  editable.forEach(function(pair){data[pair[1]]=String(fd.get(pair[1])||'').trim();});
+  data.notes=String(fd.get('notes')||'').trim();data.verificationStatus=String(fd.get('verificationStatus')||'Needs Verification');
+  try{
+   await api('/api/v9/lead-verification/'+encodeURIComponent(String(lead.id)),{method:'POST',body:JSON.stringify(data)});
+   note('Research review saved to SBC.');form.remove();
+   await loadLeads().catch(function(){note('Review saved, but the refreshed queue is unavailable.',true);});
+  }catch(e){note('Research review was not saved: '+errorMessage(e),true);}
+  finally{submit.disabled=false;}
+ };
+ item.append(form);
 }
 function drawLeads(){
  if(!leads)return;
