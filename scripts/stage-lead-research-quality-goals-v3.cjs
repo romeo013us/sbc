@@ -71,10 +71,12 @@ function patchSource(src){
  }
  durableOnce("db=normalize({version:4,settings,megaOpsStore:megaOpsFromWorkspace,customers:",
    "db=normalize({version:4,settings,megaOpsStore:megaOpsFromWorkspace,leadAssistQueue:Array.isArray(extra.leadAssistQueue)?extra.leadAssistQueue:[],customers:");
+ durableOnce("leadIntelligence:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {})}catch{return {}}})(),createdAt:",
+   "leadIntelligence:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {})}catch{return {}}})(),verificationStatus:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {}).verificationStatus||'Needs Verification'}catch{return 'Needs Verification'}})(),createdAt:");
  durableOnce("const extra={appointments:db.appointments||[],sequences:",
    "const extra={leadAssistQueue:(db.leadAssistQueue||[]).slice(0,5000),appointments:db.appointments||[],sequences:");
  durableOnce("      job.status='COMPLETE';job.result=",
-   "      c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=c.leadAssist.status;c.leadIntelligence.autoVerificationCheckedAt=c.leadAssist.checkedAt||now();\n      job.status='COMPLETE';job.result=");
+   "      c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=c.leadAssist.status;c.leadIntelligence.autoVerificationCheckedAt=c.leadAssist.checkedAt||now();c.leadIntelligence.verificationStatus=c.verificationStatus;\n      job.status='COMPLETE';job.result=");
  durableOnce("job.updatedAt=now();out.push({customerId:c.id,businessName:c.businessName,status:job.status,error:job.error});",
    "job.updatedAt=now();c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=job.status;out.push({customerId:c.id,businessName:c.businessName,status:job.status,error:job.error});");
  durableOnce("const q=leadAssistQueue();const work=q.filter",
