@@ -69,6 +69,8 @@ assert.match(route,/workforce_lead_created/);
 assert.match(route,/customerMap\.get\(customerId\)/);
 assert.match(route,/America\/New_York/);
 assert.match(route,/todayCount:current\.length/);
+assert.match(route,/submittedLeadIds:accepted\.map\(r=>r\.id\)/);
+assert.match(js,/submittedIds\.has\(String\(c\.id\)\)/);
 assert.match(route,/goalMin:16,goalMax:20/);
 assert.match(route,/RESEARCH_STATS_UNAVAILABLE/);
 assert.doesNotMatch(route,/db\.users|db\.orders|db\.quotes|payroll|credential/);
