@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,newVerifiedToday=null,existingVerifiedToday=null;
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,autoVerifiedToday=null,needsReviewToday=null,pendingAutoToday=null;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -30,54 +30,71 @@ function setTab(tab){
  active=tab;
  document.querySelectorAll('[data-pane]').forEach(function(el){el.hidden=el.getAttribute('data-pane')!==tab;});
  document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===tab);});
- var titles={home:'My Dashboard',today:'Today’s Tasks',queue:'Research Queue',add:'Add Business Lead',import:'CSV & List Import',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
+ var titles={home:'My Dashboard',today:'Today’s Tasks',queue:'Needs Attention',add:'Add Business Lead',import:'CSV & List Import',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
  if(tab==='clock'&&!clock)loadClock();
  if(tab==='today')renderDailyPlan();
 }
+function leadAutomationStatus(c){
+ var state=String(c?.leadAssistStatus||'NOT_CHECKED');
+ if(state==='AUTO_VERIFIED')return 'SBC auto-verified';
+ if(state==='NEEDS_HUMAN_REVIEW'||state==='FAILED')return 'Needs more information';
+ if(state==='QUEUED'||state==='PROCESSING')return 'SBC checking automatically';
+ if(String(c?.verificationStatus||'')==='Owner Review')return 'Owner review';
+ return 'Awaiting SBC checks';
+}
+function isException(c){
+ return ['NEEDS_HUMAN_REVIEW','FAILED'].includes(String(c?.leadAssistStatus||''))||String(c?.verificationStatus||'')==='Owner Review';
+}
 function displayLead(c){
- var item=element('div','lead-row'),left=element('div'),right=element('div'),status=c.verificationStatus||c.status||'Needs Verification';
+ var item=element('div','lead-row'),left=element('div'),right=element('div');
+ var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
  left.append(element('small',null,[c.city||c.address,c.industry,c.phone,c.email].filter(Boolean).join(' · ')||'Contact details pending'));
- right.append(element('span','pill',status));
- var button=element('button','outline','Review');
- button.type='button';button.addEventListener('click',function(){openReview(item,c);});
+ right.append(element('span','pill',leadAutomationStatus(c)));
+ var actionable=own&&isException(c);
+ var button=element('button','outline',actionable?'Correct information':'View details');
+ button.type='button';button.addEventListener('click',function(){openReview(item,c,actionable);});
  right.append(button);item.append(left,right);return item;
 }
-function openReview(item,lead){
+function openReview(item,lead,editable){
  document.querySelectorAll('.research-review').forEach(function(el){el.remove();});
- var form=element('form','research-review'),fields=element('div','fields');
- var editable=[
+ var form=element('div','research-review');
+ form.append(element('h3',null,lead.businessName||'Lead details'));
+ form.append(element('p','muted','Automation: '+leadAutomationStatus(lead)+(lead.leadAssistCheckedAt?' · Last check '+new Date(lead.leadAssistCheckedAt).toLocaleString():'')));
+ form.append(element('p','muted','SBC handles verification. You only need to correct a record when its automatic check requests additional information.'));
+ if(!editable){
+  form.append(element('p',null,'Research source: '+String(lead.researchSource||lead.source||'Not recorded')));
+  var close=element('button','outline','Close');close.type='button';close.onclick=function(){form.remove();};form.append(close);item.append(form);return;
+ }
+ var fields=element('div','fields');
+ var editableFields=[
   ['Business name','businessName'],['Contact person','contactName'],
   ['Phone','phone'],['Email','email'],['Website','website'],
   ['Industry','industry'],['City','city'],['Research source','verificationSource']
  ];
- editable.forEach(function(pair){
+ editableFields.forEach(function(pair){
   var label=element('label',null,pair[0]),input=element('input');input.name=pair[1];
-  input.value=String(lead[pair[1]]||'').slice(0,500);input.maxLength=500;
-  label.append(input);fields.append(label);
+  input.value=String(lead[pair[1]]||lead.researchSource&&pair[1]==='verificationSource'&&lead.researchSource||'').slice(0,500);
+  input.maxLength=500;label.append(input);fields.append(label);
  });
  var notes=element('label','wide','Research notes'),textarea=element('textarea');
  textarea.name='notes';textarea.maxLength=3000;textarea.rows=3;textarea.value=String(lead.notes||'').slice(0,3000);notes.append(textarea);fields.append(notes);
- var statusLabel=element('label','wide','Verification decision'),select=element('select');
- select.name='verificationStatus';
- [['Needs Verification','Still needs verification'],['Verified','Information verified'],['Owner Review','Needs owner review']].forEach(function(pair){
-   var option=element('option',null,pair[1]);option.value=pair[0];option.selected=lead.verificationStatus===pair[0];select.append(option);
- });statusLabel.append(select);fields.append(statusLabel);
- var actions=element('div','form-actions'),submit=element('button','primary','Save research review'),cancel=element('button','outline','Cancel');
+ var submitForm=element('form','research-correction'),actions=element('div','form-actions');
+ var submit=element('button','primary','Save correction and recheck'),cancel=element('button','outline','Cancel');
  submit.type='submit';cancel.type='button';cancel.onclick=function(){form.remove();};
- actions.append(submit,cancel);form.append(fields,actions);
- form.onsubmit=async function(event){
+ actions.append(submit,cancel);submitForm.append(fields,actions);form.append(submitForm);
+ submitForm.onsubmit=async function(event){
   event.preventDefault();submit.disabled=true;clearNote();
-  var fd=new FormData(form),data={};
-  editable.forEach(function(pair){data[pair[1]]=String(fd.get(pair[1])||'').trim();});
-  data.notes=String(fd.get('notes')||'').trim();data.verificationStatus=String(fd.get('verificationStatus')||'Needs Verification');
+  var fd=new FormData(submitForm),data={};
+  editableFields.forEach(function(pair){data[pair[1]]=String(fd.get(pair[1])||'').trim();});
+  data.notes=String(fd.get('notes')||'').trim();
   try{
    await api('/api/v9/lead-verification/'+encodeURIComponent(String(lead.id)),{method:'POST',body:JSON.stringify(data)});
-   note('Research review saved to SBC.');form.remove();
-   await Promise.allSettled([loadLeads(),loadProgress()]);
-  }catch(e){note('Research review was not saved: '+errorMessage(e),true);}
+   note('Correction saved. SBC Lead Assist will automatically recheck the record.');
+   form.remove();await Promise.allSettled([loadLeads(),loadProgress()]);
+  }catch(e){note('Correction could not be saved: '+errorMessage(e),true);}
   finally{submit.disabled=false;}
  };
  item.append(form);
@@ -85,15 +102,22 @@ function openReview(item,lead){
 function drawLeads(){
  if(!leads)return;
  var q=$('queue-list'),m=$('mine-list'),filter=String($('search').value||'').trim().toLowerCase();
- var chosen=leads.filter(function(c){return [c.businessName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
- var own=leads.filter(function(c){return submittedIds?submittedIds.has(String(c.id)):String(c.researcherId||'')===String(user.id);});
+ if(!submittedIds){
+  empty(q,'Loading your own SBC submissions and exception queue…');
+  empty(m,'Loading your submission history…');
+  ['metric-queue','metric-unverified','metric-mine'].forEach(function(id){txt(id,'—');});
+  return;
+ }
+ var own=leads.filter(function(c){return submittedIds.has(String(c.id));});
+ var attention=own.filter(isException);
+ var chosen=attention.filter(function(c){return [c.businessName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
  q.replaceChildren();m.replaceChildren();
- if(!chosen.length)empty(q,filter?'No matching leads in your current research queue.':'No leads currently assigned to your research queue.');
+ if(!chosen.length)empty(q,filter?'No matching exceptions from your submissions.':'No records currently need your corrections. SBC automatically checks submitted leads.');
  else chosen.forEach(function(c){q.append(displayLead(c));});
- if(!own.length)empty(m,'No current queue items are marked as submitted by your account. Completed or moved leads may no longer appear here.');
+ if(!own.length)empty(m,'No submitted leads currently visible in your active research CRM. Historical totals appear on your dashboard.');
  else own.forEach(function(c){m.append(displayLead(c));});
- txt('metric-queue',leads.length);
- txt('metric-unverified',leads.filter(function(c){return !c.verificationStatus||['Needs Verification','Owner Review'].includes(c.verificationStatus);}).length);
+ txt('metric-queue',attention.length);
+ txt('metric-unverified',own.filter(function(c){return ['QUEUED','PROCESSING','NOT_CHECKED'].includes(String(c.leadAssistStatus||'NOT_CHECKED'))&&!isException(c);}).length);
  txt('metric-mine',own.length);
 }
 async function loadLeads(){
