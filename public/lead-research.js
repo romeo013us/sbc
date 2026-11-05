@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false;
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -85,7 +85,7 @@ function drawLeads(){
  if(!leads)return;
  var q=$('queue-list'),m=$('mine-list'),filter=String($('search').value||'').trim().toLowerCase();
  var chosen=leads.filter(function(c){return [c.businessName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
- var own=leads.filter(function(c){return String(c.researcherId||'')===String(user.id);});
+ var own=leads.filter(function(c){return submittedIds?submittedIds.has(String(c.id)):String(c.researcherId||'')===String(user.id);});
  q.replaceChildren();m.replaceChildren();
  if(!chosen.length)empty(q,filter?'No matching leads in your current research queue.':'No leads currently assigned to your research queue.');
  else chosen.forEach(function(c){q.append(displayLead(c));});
@@ -114,6 +114,9 @@ async function loadProgress(){
   var result=await api('/api/workforce/research-progress');
   if(!result.ok||!Number.isInteger(result.todayCount)||result.todayCount<0)throw Error('SBC did not return valid production counts.');
   var total=result.todayCount,target=16,stretch=20;
+  if(!Array.isArray(result.submittedLeadIds))throw Error('CRM did not return auditable submission IDs.');
+  submittedIds=new Set(result.submittedLeadIds.map(String));
+  if(leads)drawLeads();
   txt('goal-current',total);
   txt('goal-seven',Number.isInteger(result.last7Count)?result.last7Count:'—');
   txt('goal-all',Number.isInteger(result.allTimeCount)?result.allTimeCount:'—');
