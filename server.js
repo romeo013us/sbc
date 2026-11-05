@@ -1922,7 +1922,7 @@ async function readRelational(){
   const megaOpsFromWorkspace=extra.megaOps||settings.megaOps||null;
   if(megaOpsFromWorkspace && durableJobs.length){megaOpsFromWorkspace.fulfillmentJobs=durableJobs.map(r=>({id:r.id,orderId:r.order_id,customerId:r.customer_id,customerName:r.customer_name,itemId:r.item_id,product:r.product,quantity:Number(r.quantity),vendor:r.vendor,status:r.status,vendorStatus:r.vendor_status,vendorOrderNumber:r.vendor_order_number,trackingNumber:r.tracking_number,cost:Number(r.cost||0),value:Number(r.value||0),requirements:(()=>{try{return JSON.parse(r.requirements_json||'{}')}catch{return {}}})(),attempts:Number(r.attempts||0),lastError:r.last_error||'',idempotencyKey:r.idempotency_key||'',claimedAt:r.claimed_at?fromSqlDateTime(r.claimed_at):'',processingStartedAt:r.processing_started_at?fromSqlDateTime(r.processing_started_at):'',leaseUntil:r.lease_until?fromSqlDateTime(r.lease_until):'',nextAttemptAt:r.next_attempt_at?fromSqlDateTime(r.next_attempt_at):'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)}));}
   delete settings.megaOps;
-  db=normalize({version:4,settings,megaOpsStore:megaOpsFromWorkspace,customers:customers.map(r=>({id:r.id,tenantId:Number(r.tenant_id),businessName:r.business_name,contactName:r.contact_name,phone:r.phone,email:r.email,status:r.status,source:r.source,followUp:fromSqlDate(r.follow_up),notes:r.notes||'',website:r.website||'',websiteStatus:r.website_status||'',industry:r.industry||'',assignedTo:r.assigned_to||'',accountNotes:(()=>{try{return safeJsonParse(r.account_notes_json, [])}catch{return []}})(),leadIntelligence:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {})}catch{return {}}})(),createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),quotes:quotes.map(r=>({id:r.id,tenantId:Number(r.tenant_id),quoteNumber:r.quote_number,customerId:r.customer_id,customerName:r.customer_name,status:r.status,validUntil:fromSqlDate(r.valid_until),notes:r.notes||'',items:safeJsonParse(r.items_json, []),subtotal:Number(r.subtotal),discount:Number(r.discount),taxRate:Number(r.tax_rate),tax:Number(r.tax),total:Number(r.total),paymentUrl:r.payment_url||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),orders:orders.map(r=>({id:r.id,tenantId:Number(r.tenant_id),customerId:r.customer_id,customerName:r.customer_name,product:r.product,quantity:Number(r.quantity),status:r.status,fulfillmentStatus:r.fulfillment_status||'Not Started',fulfillmentUpdatedAt:r.fulfillment_updated_at?fromSqlDateTime(r.fulfillment_updated_at):'',cost:Number(r.cost),price:Number(r.price),notes:r.notes||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),renewals:renewals.map(r=>({id:r.id,tenantId:Number(r.tenant_id),customerId:r.customer_id,customerName:r.customer_name,service:r.service,dueDate:fromSqlDate(r.due_date),amount:Number(r.amount),status:r.status,notes:r.notes||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),activities:activities.map(r=>({id:r.id,tenantId:Number(r.tenant_id),type:r.activity_type,message:r.message,meta:r.meta_json?safeJsonParse(r.meta_json, {}):{},createdAt:fromSqlDateTime(r.created_at)})),appointments:extra.appointments||[],sequences:extra.sequences||[],sequenceEnrollments:extra.sequenceEnrollments||[],emailTemplates:extra.emailTemplates||[],messageTemplates:extra.messageTemplates||[],tasks:extra.tasks||[],users:(durableUsers.length?durableUsers:(extra.users||[])),callReports:extra.callReports||[],auditLog:extra.auditLog||[],callLogs:extra.callLogs||[],customerAccounts:extra.customerAccounts||[],customerMessages:extra.customerMessages||[],squarePayments:extra.squarePayments||[],squareWebhookEvents:extra.squareWebhookEvents||[]});
+  db=normalize({version:4,settings,megaOpsStore:megaOpsFromWorkspace,leadAssistQueue:Array.isArray(extra.leadAssistQueue)?extra.leadAssistQueue:[],customers:customers.map(r=>({id:r.id,tenantId:Number(r.tenant_id),businessName:r.business_name,contactName:r.contact_name,phone:r.phone,email:r.email,status:r.status,source:r.source,followUp:fromSqlDate(r.follow_up),notes:r.notes||'',website:r.website||'',websiteStatus:r.website_status||'',industry:r.industry||'',assignedTo:r.assigned_to||'',accountNotes:(()=>{try{return safeJsonParse(r.account_notes_json, [])}catch{return []}})(),leadIntelligence:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {})}catch{return {}}})(),verificationStatus:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {}).verificationStatus||'Needs Verification'}catch{return 'Needs Verification'}})(),createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),quotes:quotes.map(r=>({id:r.id,tenantId:Number(r.tenant_id),quoteNumber:r.quote_number,customerId:r.customer_id,customerName:r.customer_name,status:r.status,validUntil:fromSqlDate(r.valid_until),notes:r.notes||'',items:safeJsonParse(r.items_json, []),subtotal:Number(r.subtotal),discount:Number(r.discount),taxRate:Number(r.tax_rate),tax:Number(r.tax),total:Number(r.total),paymentUrl:r.payment_url||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),orders:orders.map(r=>({id:r.id,tenantId:Number(r.tenant_id),customerId:r.customer_id,customerName:r.customer_name,product:r.product,quantity:Number(r.quantity),status:r.status,fulfillmentStatus:r.fulfillment_status||'Not Started',fulfillmentUpdatedAt:r.fulfillment_updated_at?fromSqlDateTime(r.fulfillment_updated_at):'',cost:Number(r.cost),price:Number(r.price),notes:r.notes||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),renewals:renewals.map(r=>({id:r.id,tenantId:Number(r.tenant_id),customerId:r.customer_id,customerName:r.customer_name,service:r.service,dueDate:fromSqlDate(r.due_date),amount:Number(r.amount),status:r.status,notes:r.notes||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),activities:activities.map(r=>({id:r.id,tenantId:Number(r.tenant_id),type:r.activity_type,message:r.message,meta:r.meta_json?safeJsonParse(r.meta_json, {}):{},createdAt:fromSqlDateTime(r.created_at)})),appointments:extra.appointments||[],sequences:extra.sequences||[],sequenceEnrollments:extra.sequenceEnrollments||[],emailTemplates:extra.emailTemplates||[],messageTemplates:extra.messageTemplates||[],tasks:extra.tasks||[],users:(durableUsers.length?durableUsers:(extra.users||[])),callReports:extra.callReports||[],auditLog:extra.auditLog||[],callLogs:extra.callLogs||[],customerAccounts:extra.customerAccounts||[],customerMessages:extra.customerMessages||[],squarePayments:extra.squarePayments||[],squareWebhookEvents:extra.squareWebhookEvents||[]});
 }
 
 async function writeRelational({includeSettings=true}={}){
@@ -2144,7 +2144,7 @@ async function writeRelational({includeSettings=true}={}){
          sqlDateTime(u.createdAt||now()),sqlDateTime(u.updatedAt||now())]);
     }
 
-    const extra={appointments:db.appointments||[],sequences:db.sequences||[],sequenceEnrollments:db.sequenceEnrollments||[],
+    const extra={leadAssistQueue:(db.leadAssistQueue||[]).slice(0,5000),appointments:db.appointments||[],sequences:db.sequences||[],sequenceEnrollments:db.sequenceEnrollments||[],
       emailTemplates:db.emailTemplates||[],messageTemplates:db.messageTemplates||[],tasks:db.tasks||[],users:db.users||[],
       callReports:db.callReports||[],auditLog:(db.auditLog||[]).slice(0,500),callLogs:(db.callLogs||[]).slice(0,1000),
       customerAccounts:(db.customerAccounts||[]),customerMessages:(db.customerMessages||[]).slice(0,5000),
@@ -6360,56 +6360,65 @@ app.post('/api/v9/assign-batch',auth,async(req,res)=>{if(!['owner','manager'].in
 
 // SBC_RESEARCH_PRODUCTIVITY_V2: per-researcher, tenant-scoped accepted CRM lead counts.
 // Count auditable, durable lead-creation events, not queue membership or client-side attempts.
+
+// SBC_RESEARCH_AUTO_HANDOFF_V4: employee productivity is measured at research intake.
+// The existing Lead Assist / Revenue verifier decides whether a prospect is auto-verified.
 app.get('/api/workforce/research-progress',auth,async(req,res)=>{
-  res.setHeader('Cache-Control','no-store');
-  if(!sbcLornaRole(req.user))return res.status(403).json({ok:false,error:'Researcher access required.'});
-  try{
-    const tenantId=requireRequestTenant(req);
-    if(!mysqlPool||MYSQL_RECOVERY_REQUIRED)return res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'Verified CRM progress is temporarily unavailable.'});
-    const customerMap=new Map((db.customers||[]).filter(c=>Number(c.tenantId)===Number(tenantId)).map(c=>[String(c.id),c]));
-    const [sqlEvents]=await mysqlPool.query(
-      "SELECT id,meta_json,created_at FROM sbc_audit_log WHERE user_id=? AND event_type='workforce_lead_created' ORDER BY created_at DESC LIMIT 20000",
-      [String(req.user.id)]
-    );
-    const seenEvents=new Set(),seenCustomers=new Set(),accepted=[];
-    const source=[...(sqlEvents||[]).map(r=>({id:r.id,meta:r.meta_json,createdAt:r.created_at})),
-      ...(db.auditLog||[]).filter(e=>String(e.userId)===String(req.user.id)&&e.eventType==='workforce_lead_created').map(e=>({id:e.id,meta:e.meta,createdAt:e.createdAt}))];
-    const etParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
-    const etDate=value=>{
-      const date=new Date(value);
-      if(!Number.isFinite(date.getTime()))return '';
-      const parts=Object.fromEntries(etParts.formatToParts(date).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
-      return parts.year+'-'+parts.month+'-'+parts.day;
-    };
-    for(const event of source){
-      const id=String(event.id||'');
-      if(!id||seenEvents.has(id))continue;
-      seenEvents.add(id);
-      let meta=event.meta;
-      if(typeof meta==='string'){try{meta=JSON.parse(meta)}catch{continue}}
-      const customerId=String(meta?.customerId||'');
-      if(!customerId||seenCustomers.has(customerId))continue;
-      const customer=customerMap.get(customerId);
-      if(!customer||isSbcSyntheticTestRecord(customer))continue;
-      const day=etDate(event.createdAt);
-      if(!day)continue;
-      seenCustomers.add(customerId);
-      accepted.push({id:customerId,day,verified:['Verified','Sales Ready'].includes(String(customer.verificationStatus||''))});
-    }
-    const today=etDate(new Date()),days=[];
-    for(let offset=6;offset>=0;offset--){
-      const date=new Date(Date.parse(today+'T12:00:00Z')-offset*86400000).toISOString().slice(0,10);
-      days.push({date,count:accepted.filter(r=>r.day===date).length});
-    }
-    const current=accepted.filter(r=>r.day===today);
-    res.json({ok:true,date:today,timeZone:'America/New_York',goalMin:16,goalMax:20,
-      todayCount:current.length,verifiedTodayCount:current.filter(r=>r.verified).length,
-      last7Count:days.reduce((sum,d)=>sum+d.count,0),allTimeCount:accepted.length,
-      last7Days:days,submittedLeadIds:accepted.map(r=>r.id).slice(0,1000),source:'durable-crm-audit',limitReached:(sqlEvents||[]).length>=20000});
-  }catch(err){
-    console.error('[SBC RESEARCH PROGRESS] secure read failed:',String(err?.code||err?.message||'unknown'));
-    res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'Verified CRM progress is temporarily unavailable.'});
+ res.setHeader('Cache-Control','no-store');
+ if(!sbcLornaRole(req.user))return res.status(403).json({ok:false,error:'Researcher access required.'});
+ try{
+  const tenantId=requireRequestTenant(req);
+  if(!mysqlPool||MYSQL_RECOVERY_REQUIRED)return res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'CRM research metrics are temporarily unavailable.'});
+  const customerMap=new Map((db.customers||[]).filter(c=>Number(c.tenantId)===Number(tenantId)).map(c=>[String(c.id),c]));
+  const [sqlEvents]=await mysqlPool.query(
+   "SELECT id,meta_json,created_at FROM sbc_audit_log WHERE user_id=? AND event_type='workforce_lead_created' ORDER BY created_at DESC LIMIT 20000",
+   [String(req.user.id)]
+  );
+  const source=[...(sqlEvents||[]).map(r=>({id:r.id,meta:r.meta_json,createdAt:r.created_at})),
+   ...(db.auditLog||[]).filter(e=>String(e.userId)===String(req.user.id)&&e.eventType==='workforce_lead_created').map(e=>({id:e.id,meta:e.meta,createdAt:e.createdAt}))];
+  source.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const seenEvents=new Set(),saved=new Map();
+  const etParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+  const etDate=value=>{
+   const d=new Date(value);if(!Number.isFinite(d.getTime()))return '';
+   const parts=Object.fromEntries(etParts.formatToParts(d).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+   return parts.year+'-'+parts.month+'-'+parts.day;
+  };
+  for(const e of source){
+   const eventId=String(e.id||'');
+   if(!eventId||seenEvents.has(eventId))continue;
+   seenEvents.add(eventId);
+   let meta=e.meta;
+   if(typeof meta==='string'){try{meta=JSON.parse(meta)}catch{continue}}
+   const id=String(meta?.customerId||''),customer=customerMap.get(id);
+   if(!id||!customer||saved.has(id)||isSbcSyntheticTestRecord(customer))continue;
+   const day=etDate(e.createdAt);if(!day)continue;
+   // Never infer quality from an AI verification status, or from raw CSV row count.
+   // The canonical intake independently checks name + contact + documented research source.
+   const complete=meta?.researchComplete===true;
+   const machineStatus=String(customer.leadAssist?.status||customer.leadIntelligence?.autoVerificationStatus||'NOT_CHECKED');
+   saved.set(id,{id,day,complete,machineStatus});
   }
+  const all=[...saved.values()],qualified=all.filter(r=>r.complete);
+  const today=etDate(new Date()),current=qualified.filter(r=>r.day===today),days=[];
+  for(let offset=6;offset>=0;offset--){
+   const day=new Date(Date.parse(today+'T12:00:00Z')-offset*86400000).toISOString().slice(0,10);
+   days.push({date:day,count:qualified.filter(r=>r.day===day).length});
+  }
+  const autoVerifiedToday=current.filter(r=>r.machineStatus==='AUTO_VERIFIED').length;
+  const needsReviewToday=current.filter(r=>r.machineStatus==='NEEDS_HUMAN_REVIEW'||r.machineStatus==='FAILED').length;
+  const pendingToday=current.length-autoVerifiedToday-needsReviewToday;
+  res.json({ok:true,date:today,timeZone:'America/New_York',goalMin:16,goalMax:20,
+   todayCount:current.length,researchCompleteTodayCount:current.length,
+   rawSavedTodayCount:all.filter(r=>r.day===today).length,
+   autoVerifiedTodayCount:autoVerifiedToday,needsReviewTodayCount:needsReviewToday,pendingAutoTodayCount:pendingToday,
+   last7Count:days.reduce((n,d)=>n+d.count,0),allTimeCount:qualified.length,rawSavedAllTimeCount:all.length,
+   last7Days:days,submittedLeadIds:all.map(r=>r.id).slice(-1000),source:'research-intake-audit',
+   limitReached:(sqlEvents||[]).length>=20000});
+ }catch(e){
+  console.error('[SBC RESEARCH INTAKE] read failed:',String(e?.code||e?.message||'unknown'));
+  res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'CRM research metrics are temporarily unavailable.'});
+ }
 });
 
 app.get('/api/v9/lead-verification',auth,(req,res)=>{
@@ -6427,7 +6436,7 @@ app.get('/api/v9/lead-verification',auth,(req,res)=>{
   const stats={total:mine.length,hot:mine.filter(c=>c.leadTemperature==='Hot').length,warm:mine.filter(c=>c.leadTemperature==='Warm').length,cold:mine.filter(c=>c.leadTemperature==='Cold').length,needsVerification:mine.filter(c=>['Needs Verification','Owner Review'].includes(c.verificationStatus)).length,salesReady:mine.filter(c=>c.verificationStatus==='Sales Ready').length};
   const view=mine.slice(0,1000).map(c=>researcher?{
     id:c.id,businessName:c.businessName||'',contactName:c.contactName||'',phone:c.phone||'',email:c.email||'',website:c.website||'',industry:c.industry||'',city:c.city||'',zip:c.zip||'',address:c.address||'',source:c.source||'',notes:c.notes||'',
-    verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||''
+    verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||'',leadAssistStatus:c.leadAssist?.status||c.leadIntelligence?.autoVerificationStatus||'NOT_CHECKED',leadAssistCheckedAt:c.leadAssist?.checkedAt||c.leadIntelligence?.autoVerificationCheckedAt||'',researchStatus:c.leadIntelligence?.researchStatus||'NOT_RECORDED',researchSource:c.leadIntelligence?.researchSource||''
   }:c);
   res.setHeader('Cache-Control','no-store');
   res.json({stats,leads:view,users:researcher?[]:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});
@@ -6444,7 +6453,7 @@ app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
       &&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));
     if(!permitted)return res.status(403).json({error:'Lead is outside your research queue.'});
     if(req.body?.assignedTo!==undefined)return res.status(403).json({error:'Researchers cannot reassign leads.'});
-    if(req.body?.verificationStatus!==undefined&&!['Needs Verification','Verified','Owner Review'].includes(String(req.body.verificationStatus)))
+    if(req.body?.verificationStatus!==undefined&&!['Needs Verification','Owner Review'].includes(String(req.body.verificationStatus)))
       return res.status(403).json({error:'Owner review required to mark a lead Sales Ready.'});
   }
   const b=req.body||{};
@@ -6457,6 +6466,7 @@ app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
   if(c.verificationStatus==='Sales Ready'&&c.leadTemperature==='Cold')c.verificationStatus='Needs Verification';
   c.updatedAt=now();
   audit(req.user,'lead_verification_update',`Updated lead verification for ${c.businessName||c.phone||c.id}`,{customerId:c.id,verificationStatus:c.verificationStatus,leadTemperature:c.leadTemperature,assignedTo:c.assignedTo||''});
+  if(researcher){c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus='QUEUED';enqueueLeadAssist(c.id,'researcher_corrected_exception','high');}
   await saveData();
   res.setHeader('Cache-Control','no-store');
   if(researcher)return res.json({ok:true,id:c.id,businessName:c.businessName,verificationStatus:c.verificationStatus,updatedAt:c.updatedAt});
@@ -6481,20 +6491,28 @@ app.post('/api/workforce/leads',auth,async(req,res)=>{
   const normPhone=phone.replace(/\D/g,'');
   const normEmail=email.toLowerCase();
   const normBusiness=business.toLowerCase();
+  const rawSource=String(b.source||'').trim();
+  const researchSource=String(b.verificationSource||b.researchSource||(!/^(Lead Research|Lead Research - Bulk Import|CSV Import)$/i.test(rawSource)?rawSource:'')||'').trim().slice(0,300);
+  const contactComplete=Boolean(revenuePhoneShape(phone)||revenueEmailShape(email)||revenueWebsiteShape(b.website));
+  const researchComplete=Boolean(business&&contactComplete&&researchSource);
   const tenantId=requireRequestTenant(req);
   const localDup=db.customers.some(c=>String(c.tenantId)===String(tenantId)&&((normPhone&&String(c.phone||'').replace(/\D/g,'')===normPhone)||(normEmail&&String(c.email||'').toLowerCase()===normEmail)||(normBusiness&&String(c.businessName||'').toLowerCase()===normBusiness)));
   if(localDup)return res.status(409).json({error:'Possible duplicate lead already exists.',duplicate:true});
   if(mysqlPool){const [rows]=await mysqlPool.query(`SELECT id FROM sbc_customers WHERE tenant_id=? AND ((? <> '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'(',''),')','') = ?) OR (? <> '' AND LOWER(email)=LOWER(?)) OR (? <> '' AND LOWER(business_name)=LOWER(?))) LIMIT 1`,[tenantId,normPhone,normPhone,normEmail,email,normBusiness,business]);if(rows.length)return res.status(409).json({error:'Possible duplicate lead already exists in the central CRM.',duplicate:true});}
   const createdAt=now();
   const c={id:id('cust'),tenantId,businessName:business,contactName:first(b.contactName,b.contact_name),phone,email,status:'Lead',source:first(b.source)||'Lead Research',followUp:'',notes:first(b.notes)||'Submitted by lead research.',website:first(b.website),websiteStatus:first(b.websiteStatus,b.website_status)||(!b.website?'No Website':''),address:first(b.address),industry:first(b.industry),dealValue:Number(b.dealValue||0),assignedTo:'',researcherId:req.user.id,researcherName:req.user.name||req.user.username||'Lead Research',leadIntelligence:{...LEAD_INTELLIGENCE_DEFAULTS,...(b.leadIntelligence&&typeof b.leadIntelligence==='object'?b.leadIntelligence:{})},createdAt,updatedAt:createdAt};
+  c.leadIntelligence.researchStatus=researchComplete?'RESEARCH_SUBMITTED':'NEEDS_RESEARCH';
+  c.leadIntelligence.researchSource=researchSource;
+  c.leadIntelligence.autoVerificationStatus='QUEUED';
+  c.leadIntelligence.researchSubmittedBy=String(req.user.id);
   if(mysqlPool){await mysqlPool.query(`INSERT INTO sbc_customers (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,lead_intelligence_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[c.id,c.tenantId,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,'[]',JSON.stringify(c.leadIntelligence||{}),sqlDateTime(c.createdAt),sqlDateTime(c.updatedAt)]);}
   db.customers.unshift(c);
   enqueueLeadAssist(c.id,'lead_submission','high');
   addActivity('customer',`Added ${c.businessName||c.contactName||c.phone} from ${c.researcherName}`,{customerId:c.id,source:c.source,researcherId:c.researcherId,researcherName:c.researcherName});
-  audit(req.user,'workforce_lead_created',`Submitted lead ${business||phone}`,{customerId:c.id,researcherId:c.researcherId,source:c.source});
+  audit(req.user,'workforce_lead_created',`Submitted lead ${business||phone}`,{customerId:c.id,researcherId:c.researcherId,source:c.source,researchComplete:researchComplete,researchSource:researchSource});
   saveData().catch(e=>console.warn('[SBC WORKFORCE LEAD] secondary snapshot sync:',e?.message||e));
   if(mysqlPool){const [rows]=await mysqlPool.query('SELECT id FROM sbc_customers WHERE id=? LIMIT 1',[c.id]);if(!rows.length)return res.status(503).json({error:'The central CRM write could not be verified. Please try Save Lead again.',retryable:true});}
-  res.status(201).json({...c,persistence:{local:true,mysql:Boolean(mysqlPool),verified:true,writeMode:mysqlPool?'direct-relational':'local-fallback'},route:'workforce-leads-v1',message:'Lead saved to the central SBC CRM.'});
+  res.status(201).json({...c,persistence:{local:true,mysql:Boolean(mysqlPool),verified:true,writeMode:mysqlPool?'direct-relational':'local-fallback'},route:'workforce-leads-v1',researchComplete:researchComplete,leadAssist:{status:'QUEUED',message:'Saved in SBC CRM. Automatic Lead Assist verification queued.'},message:'Lead saved to the central SBC CRM and queued for automatic verification.'});
 });
 
 
@@ -6782,7 +6800,10 @@ function enqueueLeadAssist(customerId,reason='lead_submitted',priority='normal')
   const item={id:id('laq'),customerId:String(customerId),reason,status:'QUEUED',priority,attempts:0,createdAt:now(),updatedAt:now()};q.unshift(item);db.leadAssistQueue=q.slice(0,5000);return item;
 }
 async function processLeadAssistQueue(limit=5,scopedTenantId=null){
-  const q=leadAssistQueue();const work=q.filter(x=>x.status==='QUEUED'&&(scopedTenantId===null||(db.customers||[]).some(c=>String(c.id)===String(x.customerId)&&Number(c.tenantId)===scopedTenantId))).sort((a,b)=>(a.priority==='high'?0:1)-(b.priority==='high'?0:1)||new Date(a.createdAt)-new Date(b.createdAt)).slice(0,Math.max(1,Math.min(10,limit)));const out=[];
+  const q=leadAssistQueue();
+  const knownJobs=new Set(q.filter(j=>['QUEUED','PROCESSING','COMPLETE','FAILED'].includes(j.status)).map(j=>String(j.customerId)));
+  for(const c of (db.customers||[]))if(c.leadIntelligence?.autoVerificationStatus==='QUEUED'&&c.leadIntelligence?.researchSubmittedBy&&!knownJobs.has(String(c.id))){enqueueLeadAssist(c.id,'recover_research_auto_check','high');knownJobs.add(String(c.id));}
+  const work=q.filter(x=>(x.status==='QUEUED'||(x.status==='PROCESSING'&&Date.now()-Date.parse(x.updatedAt||x.createdAt||0)>10*60*1000))&&(scopedTenantId===null||(db.customers||[]).some(c=>String(c.id)===String(x.customerId)&&Number(c.tenantId)===scopedTenantId))).sort((a,b)=>(a.priority==='high'?0:1)-(b.priority==='high'?0:1)||new Date(a.createdAt)-new Date(b.createdAt)).slice(0,Math.max(1,Math.min(10,limit)));const out=[];
   for(const job of work){const c=(db.customers||[]).find(x=>String(x.id)===String(job.customerId));if(!c){job.status='SKIPPED';job.error='Lead no longer exists.';continue;}job.status='PROCESSING';job.attempts=Number(job.attempts||0)+1;job.updatedAt=now();
     try{
       const publicResearch=await LEAD_INTELLIGENCE.enrichBusiness(c);
@@ -6796,9 +6817,10 @@ async function processLeadAssistQueue(limit=5,scopedTenantId=null){
       c.verificationSource='SBC Lead Assist Waterfall V55.16';c.updatedAt=now();
       const verification=await revenueVerifyLeadRecord(c);
       if(result.autoVerify&&verification.passed){c.verificationStatus='Sales Ready';c.leadAssist.status='AUTO_VERIFIED';}else if(c.verificationStatus!=='Sales Ready')c.verificationStatus='Owner Review';
+      c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=c.leadAssist.status;c.leadIntelligence.autoVerificationCheckedAt=c.leadAssist.checkedAt||now();c.leadIntelligence.verificationStatus=c.verificationStatus;
       job.status='COMPLETE';job.result={verificationStatus:c.verificationStatus,autoVerify:result.autoVerify,score:result.score};job.updatedAt=now();out.push({customerId:c.id,businessName:c.businessName,status:job.status,leadAssist:c.leadAssist,verification});
       audit({id:'system',name:'SBC Lead Assist',role:'system'},'lead_assist_completed',`Lead Assist reviewed ${c.businessName||c.contactName||c.id}`,{customerId:c.id,reason:job.reason,autoVerify:result.autoVerify,score:result.score,verificationStatus:c.verificationStatus,before,after:{email:c.email,phone:c.phone,website:c.website,address:c.address,contactName:c.contactName}});
-    }catch(e){job.status=job.attempts>=3?'FAILED':'QUEUED';job.error=String(e.message||e).slice(0,500);job.updatedAt=now();out.push({customerId:c.id,businessName:c.businessName,status:job.status,error:job.error});}
+    }catch(e){job.status=job.attempts>=3?'FAILED':'QUEUED';job.error=String(e.message||e).slice(0,500);job.updatedAt=now();c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=job.status;out.push({customerId:c.id,businessName:c.businessName,status:job.status,error:job.error});}
   }
   if(work.length)await saveData();return {processed:work.length,results:out,pending:q.filter(x=>x.status==='QUEUED'&&(scopedTenantId===null||(db.customers||[]).some(c=>String(c.id)===String(x.customerId)&&Number(c.tenantId)===scopedTenantId))).length};
 }
