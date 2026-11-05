@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null;
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -34,6 +34,7 @@ function setTab(tab){
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
  if(tab==='clock'&&!clock)loadClock();
+ if(tab==='today')renderDailyPlan();
 }
 function displayLead(c){
  var item=element('div','lead-row'),left=element('div'),right=element('div'),status=c.verificationStatus||c.status||'Needs Verification';
@@ -117,6 +118,8 @@ async function loadProgress(){
   if(!Array.isArray(result.submittedLeadIds))throw Error('CRM did not return auditable submission IDs.');
   submittedIds=new Set(result.submittedLeadIds.map(String));
   if(leads)drawLeads();
+  dailyAccepted=total;
+  renderDailyPlan();
   txt('goal-current',total);
   txt('goal-seven',Number.isInteger(result.last7Count)?result.last7Count:'—');
   txt('goal-all',Number.isInteger(result.allTimeCount)?result.allTimeCount:'—');
@@ -128,9 +131,51 @@ async function loadProgress(){
   $('goal-track').setAttribute('aria-valuetext',String(total)+' leads saved out of 20 stretch target');
  }catch(e){
   ['goal-current','goal-seven','goal-all','goal-verified'].forEach(function(id){txt(id,'—');});
+  dailyAccepted=null;renderDailyPlan();
   txt('goal-status','Could not load verified CRM totals: '+errorMessage(e));
   $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','CRM progress unavailable');
  }
+}
+
+function easternDay(){
+ var d=new Date(),zone='America/New_York';
+ return {day:new Intl.DateTimeFormat('en-US',{timeZone:zone,weekday:'long'}).format(d),
+  date:new Intl.DateTimeFormat('en-US',{timeZone:zone,month:'short',day:'numeric',year:'numeric'}).format(d),
+  key:new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(d)};
+}
+function trainedToday(){
+ if(!train||!Array.isArray(train.progress))return null;
+ var date=easternDay().key,fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+ return train.progress.filter(function(p){
+  if(!['completed','passed'].includes(p.status)||!p.completedAt)return false;
+  var when=new Date(p.completedAt);
+  return !Number.isNaN(when.valueOf())&&fmt.format(when)===date;
+ }).length;
+}
+function renderDailyPlan(){
+ var list=$('daily-task-list');if(!list)return;
+ var et=easternDay(),themes={Monday:'barbers and beauty businesses',Tuesday:'restaurants and cafés',Wednesday:'auto services and repair shops',Thursday:'local retail stores',Friday:'professional and home services',Saturday:'quality checks and existing lead cleanup',Sunday:'prepare next week’s research queue'},
+  focus=themes[et.day]||'local small businesses';
+ txt('daily-focus-title','Today’s focus: '+focus);
+ txt('daily-overview',et.day+' · '+et.date+' ET · Research, verify, learn, and hand off qualified prospects.');
+ txt('daily-plan-date',et.day+', '+et.date+' · Suggested focus: '+focus+'. Priorities refresh automatically each Eastern business day.');
+ var unverified=leads?leads.filter(function(c){return !c.verificationStatus||['Needs Verification','Owner Review'].includes(c.verificationStatus);}).length:null;
+ var incomplete=leads?leads.filter(function(c){return !c.phone||!c.website||!c.contactName;}).length:null;
+ var training=trainedToday();
+ var items=[
+  {number:'01',label:'Start with verification',detail:'Review at least 5 existing leads. Confirm contact details and document a trustworthy research source. Do not mark Sales Ready.',tab:'queue',action:'Open research queue',stat:unverified===null?'Queue loading…':unverified+' active leads need verification'},
+  {number:'02',label:'Research new business prospects',detail:'Focus on '+focus+'. Locate real businesses, check for duplicates, and capture verified phones, websites and contact names. Aim for 8 quality prospects in your first research block.',tab:'add',action:'Add new business',stat:dailyAccepted===null?'Accepted lead total unavailable':dailyAccepted+' accepted in CRM today'},
+  {number:'03',label:'Clean up records',detail:'Audit 5 existing records for missing numbers, stale websites, duplicate names or uncertain data. Correct only information you have confirmed; flag the rest for owner review.',tab:'queue',action:'Review existing leads',stat:incomplete===null?'Research data loading…':incomplete+' visible records need contact cleanup'},
+  {number:'04',label:'Study one Academy lesson',detail:'Open an assigned SBC training course, read the full learning material, complete the practice and answer the knowledge check before recording progress.',tab:'training',action:'Open training reader',stat:training===null?'Training progress unavailable':training+' lesson'+(training===1?'':'s')+' completed today'},
+  {number:'05',label:'Finish the lead target and handoff',detail:'Continue verified research toward 16 accepted leads, with 20 as a stretch. Before signing out, review submissions and note any items needing management approval.',tab:'mine',action:'Review my submissions',stat:dailyAccepted===null?'CRM count unavailable':dailyAccepted>=16?'Daily accepted-lead goal reached':(16-dailyAccepted)+' additional accepted leads to base goal'}
+ ];
+ list.replaceChildren();
+ items.forEach(function(item){
+  var row=element('div','daily-task-row'),number=element('div','daily-task-number',item.number),body=element('div','daily-task-body');
+  body.append(element('strong',null,item.label),element('p',null,item.detail),element('small',null,item.stat));
+  var button=element('button','outline',item.action);button.type='button';button.onclick=function(){setTab(item.tab);};
+  row.append(number,body,button);list.append(row);
+ });
 }
 
 function trainingParagraph(parent,label,value){
@@ -212,7 +257,8 @@ async function loadTraining(){
    if(!c.id||c.status!=='published'||known.has(String(c.id)))return false;
    known.add(String(c.id));return true;
   });
-  if(!items.length){empty(list,'No published training is available for your account. Contact your SBC owner or manager; do not mark courses complete without learning material.');return;}
+  if(!items.length){empty(list,'No published training is available for your account. Contact your SBC owner or manager; do not mark courses complete without learning material.');renderDailyPlan();return;}
+  renderDailyPlan();
   items.forEach(function(item){
    var course=item.course,box=element('div','course-row'),left=element('div'),button=element('button','outline','Open course and lessons');
    left.append(element('strong',null,course.title||'SBC Academy Course'));
