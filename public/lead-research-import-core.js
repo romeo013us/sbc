@@ -73,13 +73,39 @@
   if(table.length>100)throw Error('For controlled imports, use a maximum of 100 businesses per batch. Split larger lists into separate batches.');
   var seenNames=new Set(),seenPhones=new Set(),seenEmails=new Set();
   var records=table.map(function(cells,index){
-   var record={source:'Lead Research - Bulk Import'},errors=[],warnings=[];
-   keys.forEach(function(key,n){if(!key)return;var val=String(cells[n]||'').trim();if(val)record[key]=val;});
+   var record={source:'Lead Research - Bulk Import'},errors=[],warnings=[],suppliedSource='';
+   keys.forEach(function(key,n){
+    if(!key)return;
+    var val=String(cells[n]||'').trim();
+    if(key==='source'){suppliedSource=val;return;}
+    if(val)record[key]=val;
+   });
    ORDER.forEach(function(key){record[key]=String(record[key]||'').trim();});
+   // "Source" is evidence about a prospect, not the short CRM intake channel.
+   // Keep the short provenance constant for the canonical SBC CRM; map the
+   // original source into the dedicated research evidence field instead.
+   if(suppliedSource){
+    if(suppliedSource.length<=300){
+     record.verificationSource=suppliedSource;
+    }else{
+     // Never silently throw away a long URL or directory citation. Preserve
+     // the entire original in Notes, otherwise reject the row with a clear
+     // explanation so the employee can revise it before a write occurs.
+     var extra='Original research source (CSV): '+suppliedSource;
+     var combined=(record.notes?record.notes+'\n\n':'')+extra;
+     if(combined.length>2000){
+      errors.push('Research source exceeds available Notes space; shorten it or move the source into a separate Notes field (2,000 characters max)');
+     }else{
+      record.notes=combined;
+      record.verificationSource=suppliedSource.slice(0,297)+'...';
+      warnings.push('Full research source preserved in Notes; Research Source shortened for CRM');
+     }
+    }
+   }
    if(!record.businessName)errors.push('Business name required');
    if(!record.phone&&!record.email&&!record.website)warnings.push('Add contact details when available');
    if(record.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email))errors.push('Email address appears invalid');
-   var limit={businessName:200,contactName:150,phone:80,email:250,website:300,industry:160,address:350,notes:2000,source:160};
+   var limit={businessName:200,contactName:150,phone:80,email:250,website:300,industry:160,address:350,notes:2000,source:160,verificationSource:300};
    Object.keys(limit).forEach(function(key){if(record[key].length>limit[key])errors.push(key+' is too long');});
    var name=record.businessName.toLowerCase().replace(/\s+/g,' '),phone=record.phone.replace(/\D/g,''),email=record.email.toLowerCase();
    if(name&&seenNames.has(name) || phone&&seenPhones.has(phone) || email&&seenEmails.has(email))errors.push('Duplicate within this batch');
