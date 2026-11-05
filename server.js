@@ -320,6 +320,7 @@ function sbcLornaAllowedRequest(req,user){
  if(p==='/api/v9/time/clock')return m==='POST';
  if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
+ if(p==='/api/workforce/research-progress')return m==='GET';
  // Legacy employee draft service is not exposed here.
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
  // Individual lead data is accessed through the scoped research queue.
@@ -6356,6 +6357,61 @@ app.post('/api/training/courses/:courseId/archive',auth,async(req,res)=>{
 app.post('/api/v9/time/clock',auth,async(req,res)=>{const action=String(req.body?.action||''),mode=String(req.body?.mode||'training');if(isWorkforceRole(req.user.role)&&req.user.active===false)return res.status(403).json({error:'Your employee account is inactive.'});if(req.user.role==='caller'&&mode==='calling'&&!v9CanLiveCall(req.user))return res.status(403).json({error:'Live calling requires completed certification and owner approval.'});const v=v9data();v.timeEntries=v.timeEntries||[];let open=v.timeEntries.find(x=>x.userId===req.user.id&&!x.clockOut);if(action==='in'){if(open)return res.status(400).json({error:'You are already clocked in.'});open={id:id('time'),userId:req.user.id,userName:req.user.name,mode:['training','calling','admin'].includes(mode)?mode:'training',clockIn:now(),clockOut:null,breaks:[],activeBreak:null,createdAt:now()};v.timeEntries.unshift(open)}else if(action==='out'){if(!open)return res.status(400).json({error:'You are not clocked in.'});if(open.activeBreak?.start)return res.status(409).json({error:'End your active break before clocking out so the break is recorded correctly.'});open.clockOut=now();open.activeBreak=null}else if(action==='break_start'){if(!open)return res.status(400).json({error:'Clock in first.'});if(open.activeBreak)return res.status(400).json({error:'Break already started.'});open.activeBreak={start:now()}}else if(action==='break_end'){if(!open?.activeBreak)return res.status(400).json({error:'No active break is running.'});const started=Date.parse(open.activeBreak.start),ended=Date.now();if(!Number.isFinite(started)||ended<=started)return res.status(400).json({error:'The break timestamp is invalid. Please start the break again.'});open.breaks=Array.isArray(open.breaks)?open.breaks:[];open.breaks.push({start:open.activeBreak.start,end:new Date(ended).toISOString()});open.activeBreak=null}else return res.status(400).json({error:'Unknown clock action.'});await v9save(v);audit(req.user,'time_clock',`Time clock ${action}`,{mode:open?.mode||mode});res.json(open||{})})
 app.get('/api/v9/time/status',auth,(req,res)=>{const v=v9data();res.json({open:(v.timeEntries||[]).find(x=>x.userId===req.user.id&&!x.clockOut)||null,entries:(v.timeEntries||[]).filter(x=>x.userId===req.user.id).slice(0,200)})})
 app.post('/api/v9/assign-batch',auth,async(req,res)=>{if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Owner or manager access required.'});const uid=String(req.body?.userId||''),limit=Math.max(1,Math.min(500,Number(req.body?.amount||25)));const u=(db.users||[]).find(x=>x.id===uid&&x.active!==false&&x.role==='caller');if(!u)return res.status(400).json({error:'Select an active Sales Caller.'});const candidates=(db.customers||[]).filter(c=>!['Customer','Lost','DNC'].includes(c.status)&&c.assignedTo!==uid).filter(c=>!c.assignedTo||String(c.assignedTo)==='').slice(0,limit);candidates.forEach(c=>{c.assignedTo=u.id;c.assignedToName=u.name;c.updatedAt=now()});await saveData();audit(req.user,'lead_batch_assignment',`Assigned ${candidates.length} leads to ${u.name}`,{userId:u.id,amount:candidates.length});res.json({assigned:candidates.length,userId:u.id,userName:u.name,leadIds:candidates.map(x=>x.id)})});
+
+// SBC_RESEARCH_PRODUCTIVITY_V2: per-researcher, tenant-scoped accepted CRM lead counts.
+// Count auditable, durable lead-creation events, not queue membership or client-side attempts.
+app.get('/api/workforce/research-progress',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!sbcLornaRole(req.user))return res.status(403).json({ok:false,error:'Researcher access required.'});
+  try{
+    const tenantId=requireRequestTenant(req);
+    if(!mysqlPool||MYSQL_RECOVERY_REQUIRED)return res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'Verified CRM progress is temporarily unavailable.'});
+    const customerMap=new Map((db.customers||[]).filter(c=>Number(c.tenantId)===Number(tenantId)).map(c=>[String(c.id),c]));
+    const [sqlEvents]=await mysqlPool.query(
+      "SELECT id,meta_json,created_at FROM sbc_audit_log WHERE user_id=? AND event_type='workforce_lead_created' ORDER BY created_at DESC LIMIT 20000",
+      [String(req.user.id)]
+    );
+    const seenEvents=new Set(),seenCustomers=new Set(),accepted=[];
+    const source=[...(sqlEvents||[]).map(r=>({id:r.id,meta:r.meta_json,createdAt:r.created_at})),
+      ...(db.auditLog||[]).filter(e=>String(e.userId)===String(req.user.id)&&e.eventType==='workforce_lead_created').map(e=>({id:e.id,meta:e.meta,createdAt:e.createdAt}))];
+    const etParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+    const etDate=value=>{
+      const date=new Date(value);
+      if(!Number.isFinite(date.getTime()))return '';
+      const parts=Object.fromEntries(etParts.formatToParts(date).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+      return parts.year+'-'+parts.month+'-'+parts.day;
+    };
+    for(const event of source){
+      const id=String(event.id||'');
+      if(!id||seenEvents.has(id))continue;
+      seenEvents.add(id);
+      let meta=event.meta;
+      if(typeof meta==='string'){try{meta=JSON.parse(meta)}catch{continue}}
+      const customerId=String(meta?.customerId||'');
+      if(!customerId||seenCustomers.has(customerId))continue;
+      const customer=customerMap.get(customerId);
+      if(!customer||isSbcSyntheticTestRecord(customer))continue;
+      const day=etDate(event.createdAt);
+      if(!day)continue;
+      seenCustomers.add(customerId);
+      accepted.push({id:customerId,day,verified:['Verified','Sales Ready'].includes(String(customer.verificationStatus||''))});
+    }
+    const today=etDate(new Date()),days=[];
+    for(let offset=6;offset>=0;offset--){
+      const date=new Date(Date.parse(today+'T12:00:00Z')-offset*86400000).toISOString().slice(0,10);
+      days.push({date,count:accepted.filter(r=>r.day===date).length});
+    }
+    const current=accepted.filter(r=>r.day===today);
+    res.json({ok:true,date:today,timeZone:'America/New_York',goalMin:16,goalMax:20,
+      todayCount:current.length,verifiedTodayCount:current.filter(r=>r.verified).length,
+      last7Count:days.reduce((sum,d)=>sum+d.count,0),allTimeCount:accepted.length,
+      last7Days:days,submittedLeadIds:accepted.map(r=>r.id).slice(0,1000),source:'durable-crm-audit',limitReached:(sqlEvents||[]).length>=20000});
+  }catch(err){
+    console.error('[SBC RESEARCH PROGRESS] secure read failed:',String(err?.code||err?.message||'unknown'));
+    res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'Verified CRM progress is temporarily unavailable.'});
+  }
+});
+
 app.get('/api/v9/lead-verification',auth,(req,res)=>{
   const researcher=sbcLornaRole(req.user);
   if(!researcher&&!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
