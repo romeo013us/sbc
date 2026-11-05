@@ -62,6 +62,8 @@ jobs:
         run: node scripts/v6606-quote-server-hardening.cjs
       - name: Quote server route behavior proof (in-memory mocks only)
         run: node scripts/v6606-quote-server-hardening.test.cjs
+      - name: V66.82 owner lock binding and clearance regression (synthetic only)
+        run: node scripts/v6682-financial-binding.test.cjs
       - name: Owner supplier-cost form validation (no charges)
         run: node scripts/v6607-cost-editor.test.cjs
       - name: Existing theme safety regression
