@@ -69,7 +69,7 @@ assert.equal(overflow.ready,0,'reject rather than silently drop evidence if Note
 assert.match(overflow.records[0].errors.join(' '),/source exceeds available Notes space/i);
 const noSource=core.preview('Business Name,Phone\n"Example Motors",3055550199');
 assert.equal(noSource.ready,1);
-assert.equal(noSource.records[0].record.verificationSource,undefined,'never fabricate a research source');
+assert.equal(noSource.records[0].record.verificationSource,'','never fabricate a research source');
 assert.equal(noSource.records[0].record.source,'Lead Research - Bulk Import');
 
 assert.ok(js.includes("'/api/workforce/leads'"),'bulk must reuse canonical verified CRM write endpoint');
