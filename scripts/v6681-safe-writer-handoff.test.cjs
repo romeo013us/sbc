@@ -16,7 +16,7 @@ assert.match(patched,/await RUNTIME_GATE.ensureSchema/,'original recovery/schema
 assert.match(patched,/VERIFIED_PRE_CORRUPTION_CRM_COUNT/,'minimum CRM census must remain');
 assert.match(patched,/SELECT GET_LOCK\(\?, 0\) AS acquired/,'original MySQL named lock remains');
 assert.doesNotMatch(read('enterprise/v6681-safe-writer-handoff.cjs'),/RELEASE_LOCK|KILL QUERY|DROP TABLE|UPDATE sbc_customers|DELETE FROM/i,'must not unlock a foreign owner or mutate data');
-assert.match(original,/const ready=!fatalRuntimeFault && \(mysqlOk \|\| !configured\)/,'original readiness anchor remains pinned');
+if(!original.includes(stage.MARK))assert.match(original,/const ready=!fatalRuntimeFault && \(mysqlOk \|\| !configured\)/,'unmodified master readiness anchor remains pinned');
 let clock=0,polls=0,waits=0;
 const log=[],operations=[];
 const connection={
