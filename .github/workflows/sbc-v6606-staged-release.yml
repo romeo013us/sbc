@@ -69,6 +69,7 @@ jobs:
           node scripts/v6605-crm-tenant-barrier-test.js
           node scripts/v6603-flat-release-contract.test.cjs
           node scripts/v6681-safe-writer-handoff.test.cjs
+          node scripts/v6682-financial-binding.test.cjs
       - name: Transform staged source only (CI disposable checkout)
         env:
           SBC_ENABLE_V6606_SOURCE_WRITE: YES
@@ -112,7 +113,9 @@ jobs:
           node scripts/stage-lead-research-goals-v2.cjs --apply
           node scripts/stage-lead-research-quality-goals-v3.cjs --apply
           node scripts/v6681-stage-safe-writer-handoff.cjs --apply
+          SBC_V6682_ISOLATED_STAGE=YES node scripts/v6682-stage-owner-clearance.cjs --apply
           node scripts/v6681-safe-writer-handoff.test.cjs
+          node scripts/v6682-financial-binding.test.cjs
           node scripts/lead-research-workspace.test.cjs
           node scripts/lead-research-import-goals.test.cjs
           node scripts/lorna-training-daily-missions.test.cjs
@@ -240,6 +243,8 @@ jobs:
           assert.ok(code.includes('SBC_V6672_SIGNED_WEBSITE_CHECKOUT'), 'compiled signed website checkout guard missing');
           assert.ok(code.includes('SBC_V6675_SQUARE_699_OWNER_LINK'), 'verified $699 hosted Square link absent from staged runtime');
           assert.ok(code.includes('SBC_V6678_OWNER_CONFIRMED_250_CARDS'), 'confirmed 250-card Square catalog not in packaged runtime');
+          assert.ok(code.includes('SBC_V6682_DURABLE_OWNER_CLEARANCE_BINDING'), 'durable owner approval route missing');
+          assert.ok(read('enterprise/v569-production-expansion.js').toString().includes('SBC_V6682_FINANCIAL_LOCK_BINDING'), 'finance binding module missing');
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
