@@ -48,7 +48,7 @@ assert.ok(!js.includes("'/api/crm/leads/import'"),'owner importer must not be ca
 assert.ok(js.includes("'/api/workforce/research-progress'"),'live goal must be server-sourced');
 assert.ok(js.includes('persistence?.verified!==true'),'successful CRM write must have proof');
 assert.ok(js.includes('e.status===409'),'duplicates must be reported as skips');
-assert.ok(js.includes("row.status='pending'"),'uncertain network errors must not restart batch');
+assert.ok(js.includes("r.status='pending'"),'uncertain network errors must not restart batch');
 assert.ok(!js.includes('localStorage.'),'never persist prospect imports in browser storage');
 assert.match(html,/data-tab="import"/);
 assert.match(html,/id="import-confirm"/);
