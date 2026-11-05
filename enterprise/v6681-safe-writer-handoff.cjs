@@ -30,7 +30,10 @@ async function waitForWriterLease(connection, lockName, options={}){
     // This call is read-only except for the MySQL advisory lock itself.
     // It can acquire only when no existing session owns the named lock.
     const [rows]=await connection.query(SQL,[lockName]);
-    const status=Number(rows?.[0]?.acquired);
+    // MySQL GET_LOCK can return NULL on error. Never convert NULL to 0
+    // (Number(null) === 0), or a broken lock check would wait forever.
+    const rawStatus=rows?.[0]?.acquired;
+    const status=rawStatus===0||rawStatus==='0'?0:rawStatus===1||rawStatus==='1'?1:NaN;
     if(status===1){
       const connectionId=Number(rows?.[0]?.connectionId);
       if(!Number.isSafeInteger(connectionId)||connectionId<=0)
