@@ -6007,7 +6007,10 @@ async function createFulfillmentJobsForOrder(order){
 async function submitVendorJob(job){
   const sourceOrder=(db.orders||[]).find(o=>String(o.id)===String(job?.orderId));
   SBC_V6651_REQUIRE_PAID(sourceOrder,job?.tenantId);
-  const amount=Number(job?.value||0);
+  // SBC_V6682_ORDER_AMOUNT_INTEGRITY: a paid $25k order cannot run as a $9k job.
+  const amount=V569_PRODUCTION_EXPANSION.financialAmountCents(job?.value)/100;
+  const orderAmount=V569_PRODUCTION_EXPANSION.financialAmountCents(sourceOrder?.price)/100;
+  if(amount!==orderAmount)throw new Error('FULFILLMENT_ORDER_AMOUNT_MISMATCH');
   if(amount>=V569_PRODUCTION_EXPANSION.OWNER_THRESHOLD){
     await V569_PRODUCTION_EXPANSION.financialExecutionGate({pool:mysqlPool,amount,tenantId:job?.tenantId||TENANT_DEFAULT_ID,resourceId:job?.id,lockId:job?.financialLockId,action:'vendor_fulfillment'});
   }
@@ -9717,15 +9720,32 @@ V565_HARDENING.registerRoutes(app,{auth,ownerOnly,getContext:()=>({db,mysqlPool,
 app.get('/api/v566/facade/manifest',auth,(req,res)=>res.json({ok:true,...V566_RAILS.releaseManifest(),domains:['crm','intelligence','security','growth','billing','delivery','dropzone']}));
 app.post('/api/v566/delivery/approve/:jobId',auth,ownerOnly,async(req,res)=>{
   try{
+    // SBC_V6682_DURABLE_OWNER_CLEARANCE_BINDING: no UI clearance before vault authorization.
+    const tenant=__sbcRequireTenantId(req.tenantId);
     const m=megaData();
-    const job=(m.fulfillmentJobs||[]).find(x=>String(x.id)===String(req.params.jobId));
+    const job=(m.fulfillmentJobs||[]).find(x=>String(x.id)===String(req.params.jobId)&&Number(x.tenantId)===tenant);
     if(!job)return res.status(404).json({ok:false,error:'Fulfillment job not found.'});
-    if(Number(job.value||0)<10000)return res.json({ok:true,version:BUILD_VERSION,job,status:'NO_CLEARANCE_REQUIRED'});
-    job.ownerClearanceAt=now(); job.ownerClearanceBy=req.user?.id||'owner'; job.status='ready'; job.vendorStatus='approved_for_execution'; job.lastError=''; job.updatedAt=now();
+    const jobAmount=V569_PRODUCTION_EXPANSION.financialAmountCents(job.value)/100;
+    if(jobAmount<10000)return res.json({ok:true,version:BUILD_VERSION,job,status:'NO_CLEARANCE_REQUIRED'});
+    if(!['ready','owner_clearance_required'].includes(String(job.status)))throw new Error('FULFILLMENT_JOB_NOT_APPROVABLE');
+    if(!mysqlPool)throw new Error('FINANCIAL_VAULT_STORAGE_UNAVAILABLE');
+    if(!job.financialLockId)throw new Error('FINANCIAL_LOCK_ID_REQUIRED');
+    const approvedBy=String(req.user?.id||req.user?.email||'').trim();
+    if(!approvedBy)throw new Error('OWNER_APPROVAL_REQUIRED');
+    const scope={tenantId:tenant,resourceId:job.id,action:'vendor_fulfillment',amount:jobAmount};
+    const persisted=await V569_PRODUCTION_EXPANSION.getPersistentFinancialLock(mysqlPool,job.financialLockId,tenant);
+    V569_PRODUCTION_EXPANSION.assertPersistentFinancialLockBinding(persisted,scope);
+    const approval=await V569_PRODUCTION_EXPANSION.authorizePersistentFinancialExecution(mysqlPool,job.financialLockId,approvedBy,{tenantId:tenant});
+    if(String(approval.status)!=='OWNER_AUTHORIZED'||!approval.owner_authorized_by||!approval.owner_authorized_at)
+      throw new Error('FINANCIAL_VAULT_APPROVAL_NOT_DURABLE');
+    // Retry/worker overlap must not reopen a processing or completed job.
+    if(!['ready','owner_clearance_required'].includes(String(job.status)))throw new Error('FULFILLMENT_JOB_NOT_APPROVABLE');
+    V569_PRODUCTION_EXPANSION.assertPersistentFinancialLockBinding(persisted,{tenantId:tenant,resourceId:job.id,action:'vendor_fulfillment',amount:job.value});
+    // The worker still checks exact vault binding and holds an atomic ready->processing job claim.
+    job.ownerClearanceAt=now();job.ownerClearanceBy=approvedBy;job.status='ready';job.vendorStatus='approved_for_execution';job.lastError='';job.updatedAt=now();
     await megaSave(m);
-    const jobAmount=Number(job.value||0);
-    audit(req.user,'fulfillment_owner_clearance',`Owner cleared fulfillment job ${job.id}`,{jobId:job.id,orderId:job.orderId,amount:jobAmount});
-    res.status(202).json({ok:true,version:BUILD_VERSION,job,status:'CLEARED'});
+    audit(req.user,'fulfillment_owner_clearance',`Owner cleared fulfillment job ${job.id}`,{jobId:job.id,orderId:job.orderId,amount:jobAmount,lockId:job.financialLockId});
+    res.status(202).json({ok:true,version:BUILD_VERSION,job,status:'CLEARED',clearancePersisted:true});
   }catch(e){res.status(400).json({ok:false,error:e.message});}
 });
 
