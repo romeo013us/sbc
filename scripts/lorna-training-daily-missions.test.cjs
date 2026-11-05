@@ -46,7 +46,7 @@ assert.match(js,/courseId:courseId,moduleId:mod\.id,status:'completed',evidence:
 assert.ok(!js.includes("'Mark lesson complete'"),'old blind completion control must be removed');
 assert.ok(!js.includes('window.location.reload('),'training navigation must not reload dashboard');
 assert.match(js,/function renderDailyPlan\(\)/);
-for(const tag of ['Start with verification','Research new business prospects','Clean up records','Study one Academy lesson','Finish the lead target and handoff'])assert.ok(js.includes(tag),'daily task missing '+tag);
+for(const tag of ['Verify existing leads','Find and verify new businesses','Quality-check as you go','Complete a short Academy lesson','Complete your goal and hand off'])assert.ok(js.includes(tag),'daily task missing '+tag);
 assert.match(js,/themes=\{Monday:/,'daily focus rotation missing');
 assert.match(js,/timeZone:'America\/New_York'/,'daily plan must follow SBC Eastern business day');
 assert.match(js,/setTab\(item\.tab\)/,'daily action buttons must open real workspace screens');
