@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home';
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -19,17 +19,18 @@ async function api(path,opts){
   options.signal=controller.signal;
   var response=await fetch(path,options),payload={};
   try{payload=await response.json();}catch(_){throw Error('SBC returned an invalid response.');}
-  if(!response.ok){if(response.status===401)throw Error('Your session expired. Sign in again.');throw Error(payload.error||payload.message||('SBC request failed: '+response.status));}
+  if(!response.ok){var problem=Error(response.status===401?'Your session expired. Sign in again.':(payload.error||payload.message||('SBC request failed: '+response.status)));problem.status=response.status;problem.code=payload.code;problem.duplicate=payload.duplicate===true;throw problem;}
   return payload;
  }catch(e){if(e.name==='AbortError')throw Error('SBC did not respond before the connection timeout.');throw e;}
  finally{clearTimeout(timer);}
 }
 function setTab(tab){
- if(!['home','queue','add','mine','training','clock'].includes(tab))return;
+ if(!['home','queue','add','import','mine','training','clock'].includes(tab))return;
+ if(importRunning&&tab!=='import'){note('Bulk import is running. Finish the current batch before changing workspaces.',true);return;}
  active=tab;
  document.querySelectorAll('[data-pane]').forEach(function(el){el.hidden=el.getAttribute('data-pane')!==tab;});
  document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===tab);});
- var titles={home:'My Dashboard',queue:'Research Queue',add:'Add Business Lead',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
+ var titles={home:'My Dashboard',queue:'Research Queue',add:'Add Business Lead',import:'CSV & List Import',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
  if(tab==='clock'&&!clock)loadClock();
@@ -108,6 +109,26 @@ async function loadLeads(){
   throw e;
  }
 }
+async function loadProgress(){
+ try{
+  var result=await api('/api/workforce/research-progress');
+  if(!result.ok||!Number.isInteger(result.todayCount)||result.todayCount<0)throw Error('SBC did not return valid production counts.');
+  var total=result.todayCount,target=16,stretch=20;
+  txt('goal-current',total);
+  txt('goal-seven',Number.isInteger(result.last7Count)?result.last7Count:'—');
+  txt('goal-all',Number.isInteger(result.allTimeCount)?result.allTimeCount:'—');
+  txt('goal-verified',Number.isInteger(result.verifiedTodayCount)?result.verifiedTodayCount:'—');
+  txt('goal-date',result.date+' · Eastern business day');
+  txt('goal-status',total>=stretch?'Stretch goal achieved! Every additional quality lead is a bonus.':total>=target?'Daily goal reached — '+(stretch-total)+' more to hit the stretch.':(target-total)+' more accepted leads to reach your daily goal.');
+  $('goal-fill').style.width=Math.min(100,Math.max(0,total/stretch*100))+'%';
+  $('goal-track').setAttribute('aria-valuenow',String(Math.min(stretch,total)));
+  $('goal-track').setAttribute('aria-valuetext',String(total)+' leads saved out of 20 stretch target');
+ }catch(e){
+  ['goal-current','goal-seven','goal-all','goal-verified'].forEach(function(id){txt(id,'—');});
+  txt('goal-status','Could not load verified CRM totals: '+errorMessage(e));
+  $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','CRM progress unavailable');
+ }
+}
 async function loadTraining(){
  try{
   var data=await api('/api/training');train=data;
@@ -169,20 +190,130 @@ async function submitLead(event){
   var saved=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(data)});
   if(!saved.id||!saved.persistence||saved.persistence.verified!==true)throw Error('The backend did not provide verified CRM persistence evidence.');
   form.reset();setTab('home');note('Lead saved and verified in the central SBC CRM. Reference: '+saved.id);
-  await loadLeads().catch(function(){note('Lead saved to SBC CRM, but the research queue refresh failed. Do not resubmit: '+saved.id,true);});
+  await Promise.allSettled([loadLeads(),loadProgress()]);
  }catch(e){note('Lead not submitted: '+errorMessage(e),true);}
  finally{busy=false;$('save-lead').disabled=false;}
 }
 async function refresh(){
  $('refresh').disabled=true;
- try{await Promise.allSettled([loadLeads(),loadTraining(),loadClock()]);}
+ try{await Promise.allSettled([loadLeads(),loadProgress(),loadTraining(),loadClock()]);}
  finally{$('refresh').disabled=false;}
 }
+
+function importStatus(message){txt('import-run-status',message);}
+function rowResult(row){
+ if(row.status==='invalid')return row.errors.join(' · ');
+ if(row.status==='saved')return 'Saved · '+row.reference;
+ if(row.status==='duplicate')return 'Already in CRM — skipped';
+ if(row.status==='error')return 'Not confirmed: '+row.message;
+ if(row.status==='pending')return 'Not attempted';
+ if(row.warnings.length)return 'Ready · '+row.warnings.join(' · ');
+ return 'Ready to import';
+}
+function importRowElement(row){
+ var div=element('div','import-row '+(row.status==='saved'?'saved':row.status==='error'||row.status==='invalid'?'failed':''));
+ div.id='import-row-'+row.index;
+ var index=element('span',null,String(row.rowNumber));
+ var name=element('strong',null,row.record.businessName||'Missing business name');
+ var detail=element('small',null,[row.record.contactName,row.record.phone,row.record.email,row.record.website].filter(Boolean).join(' · ')||'No verified contact details supplied');
+ var result=element('span','result',rowResult(row));
+ div.append(index,name,detail,result);return div;
+}
+function drawImportPreview(){
+ var panel=$('import-preview-panel'),list=$('import-preview-list');
+ panel.hidden=!importBatch;
+ if(!importBatch){list.replaceChildren();return;}
+ var rows=importBatch.records;
+ txt('import-details',importBatch.total+' businesses found · '+importBatch.format+(importBatch.headersDetected?' · column headers mapped':' · standard column order'));
+ txt('import-ready',rows.filter(function(r){return r.status==='ready';}).length+' ready');
+ txt('import-invalid',rows.filter(function(r){return r.status==='invalid';}).length+' invalid');
+ txt('import-saved',rows.filter(function(r){return r.status==='saved';}).length+' saved · '+rows.filter(function(r){return r.status==='duplicate';}).length+' CRM duplicates');
+ list.replaceChildren();
+ rows.forEach(function(row){list.append(importRowElement(row));});
+ $('import-confirm').disabled=importRunning||!rows.some(function(r){return r.status==='ready';});
+}
+function updateImportRow(row){
+ var old=$('import-row-'+row.index);
+ if(old)old.replaceWith(importRowElement(row));
+ var rows=importBatch.records;
+ txt('import-ready',rows.filter(function(r){return r.status==='ready';}).length+' remaining');
+ txt('import-invalid',rows.filter(function(r){return r.status==='invalid';}).length+' invalid');
+ txt('import-saved',rows.filter(function(r){return r.status==='saved';}).length+' saved · '+rows.filter(function(r){return r.status==='duplicate';}).length+' duplicates');
+}
+async function previewImport(){
+ if(importRunning)return;
+ var preview=$('import-preview');preview.disabled=true;
+ try{
+  var file=$('import-file').files[0],raw='';
+  if(file){
+   if(file.size>600000)throw Error('File exceeds the 600 KB safety limit. Split the list into smaller CSV files.');
+   raw=await file.text();
+  }else raw=$('import-text').value;
+  if(!window.SBCResearchImportCore)throw Error('CSV parser did not load. Refresh this workspace before importing.');
+  importBatch=window.SBCResearchImportCore.preview(raw,{format:$('import-format').value});
+  drawImportPreview();importStatus('Preview complete. Review the businesses and click Import to save valid rows.');
+ }catch(e){
+  importBatch=null;drawImportPreview();importStatus('Preview not available: '+errorMessage(e));
+ }finally{preview.disabled=false;}
+}
+function resetImport(){
+ if(importRunning)return;
+ $('import-file').value='';$('import-text').value='';$('import-format').value='auto';
+ importBatch=null;drawImportPreview();importStatus('List cleared. No changes were made to SBC CRM.');
+}
+async function confirmImport(){
+ if(importRunning||busy||!importBatch)return;
+ var rows=importBatch.records,ready=rows.filter(function(r){return r.status==='ready';});
+ if(!ready.length){importStatus('There are no valid new rows to import.');return;}
+ // Confirmation is a direct user action. We never retry failed or unknown writes.
+ importRunning=true;$('import-confirm').disabled=true;$('import-preview').disabled=true;$('import-reset').disabled=true;
+ $('import-file').disabled=true;$('import-text').disabled=true;$('import-format').disabled=true;
+ var saved=0,duplicates=0,errors=0,attempts=0,stopped=false;
+ try{
+  for(var row of ready){
+   if(!user){stopped=true;break;}
+   attempts++;importStatus('Saving '+attempts+' of '+ready.length+' · '+saved+' accepted · '+duplicates+' duplicates…');
+   try{
+    var result=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(row.record)});
+    if(!result||!result.id||result.persistence?.verified!==true)
+      throw Error('CRM save could not be verified. Stop and check SBC before importing again.');
+    row.status='saved';row.reference=String(result.id);saved++;
+   }catch(e){
+    if(e.status===409||e.duplicate){row.status='duplicate';duplicates++;}
+    else{
+     row.status='error';row.message=errorMessage(e);errors++;
+     // Server 5xx, connection/timeouts, role expiration or read-only recovery:
+     // do not send further records after an ambiguous or denied write.
+     stopped=true;
+    }
+   }
+   updateImportRow(row);
+   if(stopped)break;
+  }
+  if(stopped){
+   rows.filter(function(r){return r.status==='ready';}).forEach(function(r){r.status='pending';updateImportRow(r);});
+   importStatus('Import stopped safely. '+saved+' saved, '+duplicates+' duplicates, '+errors+' unconfirmed errors. Remaining rows were not attempted. Check SBC CRM before attempting those rows again.');
+  }else importStatus('Import completed: '+saved+' saved, '+duplicates+' duplicates, '+errors+' errors. Invalid preview rows were never sent.');
+  await Promise.allSettled([loadLeads(),loadProgress()]);
+ }finally{
+  importRunning=false;$('import-preview').disabled=false;$('import-reset').disabled=false;
+  $('import-file').disabled=false;$('import-text').disabled=false;$('import-format').disabled=false;
+  $('import-confirm').disabled=true; // Never replay rows without a fresh review.
+  if(!stopped&&saved>0)note('CSV import saved '+saved+' new business leads to SBC CRM.');
+ }
+}
+
 document.querySelectorAll('[data-tab]').forEach(function(button){button.addEventListener('click',function(){setTab(button.getAttribute('data-tab'));});});
 document.querySelectorAll('[data-go]').forEach(function(button){button.addEventListener('click',function(){setTab(button.getAttribute('data-go'));});});
 $('search').addEventListener('input',drawLeads);
 $('refresh').addEventListener('click',refresh);
 $('lead-form').addEventListener('submit',submitLead);
+$('import-preview').addEventListener('click',previewImport);
+$('import-reset').addEventListener('click',resetImport);
+$('import-confirm').addEventListener('click',confirmImport);
+$('import-file').addEventListener('change',function(){if(!importRunning){importBatch=null;drawImportPreview();importStatus($('import-file').files.length?'File selected. Click Preview to review it.':'File cleared; paste a list or select another file.');}});
+$('import-text').addEventListener('input',function(){if(!importRunning){importBatch=null;drawImportPreview();}});
+$('import-format').addEventListener('change',function(){if(!importRunning){importBatch=null;drawImportPreview();}});
 $('clock-in').addEventListener('click',function(){doClock('in');});
 $('clock-out').addEventListener('click',function(){doClock('out');});
 $('sign-out').addEventListener('click',async function(){try{await api('/api/logout',{method:'POST'});}finally{location.replace('/');}});
@@ -193,7 +324,7 @@ $('sign-out').addEventListener('click',async function(){try{await api('/api/logo
   user=me.user;txt('user-name',user.name||user.username||'Lead Researcher');
   $('access').hidden=true;$('workspace').hidden=false;
   await refresh();
-  setInterval(function(){if(document.visibilityState==='visible'&&!busy)loadLeads().catch(function(){});},60000);
+  setInterval(function(){if(document.visibilityState==='visible'&&!busy&&!importRunning)Promise.allSettled([loadLeads(),loadProgress()]);},60000);
  }catch(e){
   var msg=errorMessage(e);txt('access',msg);
   if(/session|authentication|expired/i.test(msg)){location.replace('/');}
