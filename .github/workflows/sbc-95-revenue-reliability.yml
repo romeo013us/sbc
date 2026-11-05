@@ -133,6 +133,35 @@ jobs:
           SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
         run: node scripts/v6682-mysql-concurrency-ci.test.cjs
 
+  recovery-snapshot-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local_ci_only_sbc_v6683
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plocal_ci_only_sbc_v6683"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Disposable MySQL 8 logical backup and strict row-digest restore
+        env:
+          CI: 'true'
+          SBC_V6683_RESTORE_CI: 'YES'
+          MYSQL_HOST: '127.0.0.1'
+          MYSQL_PORT: '3306'
+          SBC_V6683_CI_ROOT_PASSWORD: local_ci_only_sbc_v6683
+        run: node scripts/v6683-full-recovery-ci.test.cjs
+
   security-and-package:
     runs-on: ubuntu-latest
     timeout-minutes: 15
