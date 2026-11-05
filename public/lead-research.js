@@ -137,30 +137,33 @@ async function loadLeads(){
 async function loadProgress(){
  try{
   var result=await api('/api/workforce/research-progress');
-  if(!result.ok||!Number.isInteger(result.todayCount)||result.todayCount<0)throw Error('SBC did not return valid production counts.');
-  var total=result.todayCount,target=16,stretch=20;
-  if(!Array.isArray(result.submittedLeadIds))throw Error('CRM did not return auditable submission IDs.');
+  if(!result.ok||result.source!=='research-intake-audit'||!Number.isInteger(result.todayCount)||result.todayCount<0)
+   throw Error('SBC research progress endpoint is outdated or returned invalid counts. Update the verified server release.');
+  if(!Array.isArray(result.submittedLeadIds))throw Error('SBC did not return auditable submission IDs.');
   submittedIds=new Set(result.submittedLeadIds.map(String));
+  dailyAccepted=result.todayCount;
+  autoVerifiedToday=Number.isInteger(result.autoVerifiedTodayCount)?result.autoVerifiedTodayCount:null;
+  needsReviewToday=Number.isInteger(result.needsReviewTodayCount)?result.needsReviewTodayCount:null;
+  pendingAutoToday=Number.isInteger(result.pendingAutoTodayCount)?result.pendingAutoTodayCount:null;
   if(leads)drawLeads();
-  newVerifiedToday=Number.isInteger(result.newVerifiedToday)?result.newVerifiedToday:null;
-  existingVerifiedToday=Number.isInteger(result.existingVerifiedToday)?result.existingVerifiedToday:null;
-  dailyAccepted=total;
   renderDailyPlan();
-  txt('goal-current',total);
+  txt('goal-current',dailyAccepted);
   txt('goal-seven',Number.isInteger(result.last7Count)?result.last7Count:'—');
   txt('goal-all',Number.isInteger(result.rawSavedAllTimeCount)?result.rawSavedAllTimeCount:'—');
-  txt('goal-verified',newVerifiedToday===null?'—':newVerifiedToday);
-  txt('goal-existing',existingVerifiedToday===null?'—':existingVerifiedToday);
+  txt('goal-verified',autoVerifiedToday===null?'—':autoVerifiedToday);
+  txt('goal-existing',needsReviewToday===null?'—':needsReviewToday);
   txt('goal-date',result.date+' · Eastern business day');
-  txt('goal-status',(total>=stretch?'Stretch goal reached!':total>=target?'Daily goal reached — '+(stretch-total)+' more to hit the stretch.':(target-total)+' verified leads remain to reach your daily goal.')+(newVerifiedToday!==null?' · '+newVerifiedToday+' new + '+existingVerifiedToday+' existing verified':'') );
-  $('goal-fill').style.width=Math.min(100,Math.max(0,total/stretch*100))+'%';
-  $('goal-track').setAttribute('aria-valuenow',String(Math.min(stretch,total)));
-  $('goal-track').setAttribute('aria-valuetext',String(total)+' unique verified leads out of 20 stretch target');
+  txt('goal-status',(dailyAccepted>=20?'Stretch research target achieved!':dailyAccepted>=16?'Daily research target achieved — '+(20-dailyAccepted)+' to reach stretch.':(16-dailyAccepted)+' complete research submissions remain toward your target.')+
+   (pendingAutoToday!==null?' · '+pendingAutoToday+' automatic checks pending':''));
+  $('goal-fill').style.width=Math.min(100,Math.max(0,dailyAccepted/20*100))+'%';
+  $('goal-track').setAttribute('aria-valuenow',String(Math.min(20,dailyAccepted)));
+  $('goal-track').setAttribute('aria-valuetext',String(dailyAccepted)+' unique research-complete submissions out of 20 stretch target');
  }catch(e){
   ['goal-current','goal-seven','goal-all','goal-verified','goal-existing'].forEach(function(id){txt(id,'—');});
-  dailyAccepted=null;newVerifiedToday=null;existingVerifiedToday=null;renderDailyPlan();
-  txt('goal-status','Could not load verified CRM totals: '+errorMessage(e));
-  $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','CRM progress unavailable');
+  dailyAccepted=null;autoVerifiedToday=null;needsReviewToday=null;pendingAutoToday=null;
+  submittedIds=null;drawLeads();renderDailyPlan();
+  txt('goal-status','Could not load research totals: '+errorMessage(e));
+  $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','SBC research totals unavailable');
  }
 }
 
@@ -183,18 +186,16 @@ function renderDailyPlan(){
  var list=$('daily-task-list');if(!list)return;
  var et=easternDay(),themes={Monday:'barbers and beauty businesses',Tuesday:'restaurants and cafés',Wednesday:'auto services and repair shops',Thursday:'local retail stores',Friday:'professional and home services',Saturday:'quality checks and existing lead cleanup',Sunday:'prepare next week’s research queue'},
   focus=themes[et.day]||'local small businesses';
- txt('daily-focus-title','Today’s focus: '+focus);
- txt('daily-overview',et.day+' · '+et.date+' ET · Research, verify, learn, and hand off qualified prospects.');
- txt('daily-plan-date',et.day+', '+et.date+' · Suggested focus: '+focus+'. Priorities refresh automatically each Eastern business day.');
- var unverified=leads?leads.filter(function(c){return !c.verificationStatus||['Needs Verification','Owner Review'].includes(c.verificationStatus);}).length:null;
- var incomplete=leads?leads.filter(function(c){return !c.phone||!c.website||!c.contactName;}).length:null;
+ txt('daily-focus-title','Research new '+focus);
+ txt('daily-overview',et.day+' · '+et.date+' ET · Find prospects, document sources, submit, and let SBC verify.');
+ txt('daily-plan-date',et.day+', '+et.date+' · Suggested research focus: '+focus+'. Priorities follow the Eastern business day.');
  var training=trainedToday();
  var items=[
-  {number:'01',label:'Verify existing leads',detail:'As part of the shared 16–20 goal, work on roughly 4–6 existing leads that still need verification. Confirm the source and a genuine contact method. This is a flexible mix, not a second quota.',tab:'queue',action:'Open research queue',stat:existingVerifiedToday===null?'Verification progress loading…':existingVerifiedToday+' existing leads verified today'}, 
-  {number:'02',label:'Find and verify new businesses',detail:'Focus on '+focus+'. Aim for roughly 10–12 new verified leads, checking for duplicates before creating records. They count only when you have verified the business and a real contact method. Shift the mix as needed.',tab:'add',action:'Add new business',stat:newVerifiedToday===null?'Verification progress loading…':newVerifiedToday+' new leads verified today'}, 
-  {number:'03',label:'Quality-check as you go',detail:'When you research or verify a lead, also fix missing details, outdated websites, and potential duplicates. This is part of the same lead assignment—not an extra five-lead quota.',tab:'queue',action:'Review existing leads',stat:incomplete===null?'Research data loading…':incomplete+' records could use more contact details'}, 
-  {number:'04',label:'Complete a short Academy lesson',detail:'Set aside a short training block. Open an assigned course, read its actual lesson, practice the skill and submit your reflection. Training does not count against the 16–20 qualified-lead goal.',tab:'training',action:'Open training reader',stat:training===null?'Training progress unavailable':training+' lesson'+(training===1?'':'s')+' completed today'}, 
-  {number:'05',label:'Complete your goal and hand off',detail:'Finish toward 16 total verified leads (20 stretch): a combination of new and existing. Review your submitted work, and flag anything needing owner review before signing out.',tab:'mine',action:'Review my submissions',stat:dailyAccepted===null?'Verified CRM count unavailable':dailyAccepted>=16?'Daily qualified-lead goal reached':(16-dailyAccepted)+' unique verified leads remain to base goal'}
+  {number:'01',label:'Find new business prospects',detail:'Research '+focus+'. Collect real business names and usable public contact details. Verify the source of what you enter, not a second approval status.',tab:'add',action:'Submit researched lead',stat:dailyAccepted===null?'CRM total unavailable':dailyAccepted+' research-complete leads submitted today'},
+  {number:'02',label:'Add complete researched lists',detail:'Use CSV or paste to add multiple businesses when you have reliable contact details and a source for each. A raw list of names alone does not count toward the research goal.',tab:'import',action:'Open CSV & list import',stat:'Preview, reject duplicates, and confirm each CRM save'},
+  {number:'03',label:'Handle only automatic-verification exceptions',detail:'SBC Lead Assist automatically checks submitted leads. Only correct your own records when SBC specifically flags missing or conflicting information. Do not review all existing CRM leads.',tab:'queue',action:'View my exceptions',stat:needsReviewToday===null?'SBC checks loading…':needsReviewToday+' of today’s research submissions need follow-up'},
+  {number:'04',label:'Finish a short Academy lesson',detail:'Use a short training block to improve research accuracy. Open and read the actual lesson before saving progress; do not treat training as extra lead quota.',tab:'training',action:'Open training reader',stat:training===null?'Training progress unavailable':training+' Academy lesson'+(training===1?'':'s')+' completed today'},
+  {number:'05',label:'Reach your 16–20 research goal and hand off',detail:'Finish with 16 complete, unique submissions (20 stretch). Review your work, note any unresolved exceptions and sign out. Automatic verification runs independently; its delays do not reduce your submitted-work count.',tab:'mine',action:'My leads & status',stat:dailyAccepted===null?'CRM goal unavailable':dailyAccepted>=16?'Daily research goal reached':(16-dailyAccepted)+' complete submissions remain to the base goal'}
  ];
  list.replaceChildren();
  items.forEach(function(item){
@@ -349,14 +350,12 @@ async function submitLead(event){
  event.preventDefault();if(busy)return;
  var form=event.target,fd=new FormData(form),data={source:'Lead Research'};
  ['businessName','contactName','phone','email','website','industry','address','notes','verificationSource'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
- data.verifiedResearch=fd.get('verifiedResearch')==='yes';
  if(!data.businessName&&!data.phone&&!data.email){note('Enter a business name, phone or email.',true);return;}
- if(data.verifiedResearch&&(!data.businessName||!(data.phone||data.email||data.website)||!data.verificationSource)){note('To mark a new lead verified, provide the business name, a phone/email/website and the research source you checked.',true);return;}
  busy=true;$('save-lead').disabled=true;clearNote();
  try{
   var saved=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(data)});
   if(!saved.id||!saved.persistence||saved.persistence.verified!==true)throw Error('The backend did not provide verified CRM persistence evidence.');
-  form.reset();setTab('home');note((data.verifiedResearch?'New business verified and saved. It counts once toward your daily qualified-lead goal.':'New business saved to SBC CRM for later verification.')+' Reference: '+saved.id);
+  form.reset();setTab('home');note((saved.researchComplete?'Research-complete lead saved; it counts toward your daily research target.':'Lead saved. Add a real contact method and research source to qualify for the research target.')+' SBC Lead Assist will perform verification automatically. Reference: '+saved.id);
   await Promise.allSettled([loadLeads(),loadProgress()]);
  }catch(e){note('Lead not submitted: '+errorMessage(e),true);}
  finally{busy=false;$('save-lead').disabled=false;}
