@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>SBC | Lead Research Workspace</title>
 <link rel="stylesheet" href="/lead-research.css?v=4">
-<script src="/lead-research-import-core.js?v=2" defer></script>
+<script src="/lead-research-import-core.js?v=3" defer></script>
 <script src="/sbc-research-lesson-reader.js?v=3" defer></script>
 <script src="/lead-research.js?v=4" defer></script>
 </head>
@@ -76,10 +76,10 @@
 <div class="form-actions"><button type="button" class="primary" id="import-preview">Preview list</button><button type="button" class="outline" id="import-reset">Clear</button></div>
 <div id="import-preview-panel" hidden><h3>Import Review</h3><p class="muted" id="import-details"></p><div class="import-counts"><span id="import-ready"></span><span id="import-invalid"></span><span id="import-saved"></span></div>
 <div id="import-preview-list" class="import-results"></div>
-<div class="form-actions"><button type="button" id="import-confirm" class="primary">Import valid rows as unverified leads</button></div>
+<div class="form-actions"><button type="button" id="import-confirm" class="primary">Import valid rows for SBC automatic checks</button></div>
 <div id="import-run-status" class="import-run-status" role="status" aria-live="polite"></div>
-</div><p class="muted">Common column names are automatically mapped (Business Name, Contact, Phone, Email, Website, Industry, Address, Notes, Source). Without a header, CSV columns use that order. One-name-per-line lists are also supported. Existing CRM duplicates are skipped by the server.</p>
-<p class="muted"><strong>Important:</strong> Imported names without phone, email or website can be saved but still need research. Never fabricate missing information. Each business is saved individually with SBC's normal CRM safeguards—no automatic retries.</p>
+</div><p class="muted">Common column names are automatically mapped (Business Name, Contact, Phone, Email, Website, Industry, Address, Notes, Source). The CSV Source column becomes research evidence, not the CRM import channel. Long sources are preserved in Notes when space permits; otherwise the preview explains what to edit. Without a header, CSV columns use that order. One-name-per-line lists are also supported. Existing CRM duplicates are skipped by the server.</p>
+<p class="muted"><strong>Important:</strong> Imported names without phone, email or website can be saved but still need research. SBC Lead Assist automatically checks saved leads; Lorna does not manually approve them. Never fabricate missing information. Each business is saved individually with SBC's normal CRM safeguards—no automatic retries.</p>
 </div></section>
 <section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads and Auto-Verification Status</h2><p>Your submissions in the active SBC CRM, including queued checks, automatically verified results and items needing a specific correction. Not an all-time report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>
 <section class="pane" data-pane="training" hidden><div class="card"><h2>My Assigned Training</h2><p>Open a course, choose a lesson, read the actual Academy material, complete the practice and knowledge check, then explicitly record your progress. Course completion does not grant certification.</p><div id="training-list" class="list"><p class="muted">Loading training…</p></div><div id="training-detail" class="course-detail" hidden></div></div></section>
