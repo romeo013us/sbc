@@ -3,7 +3,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const html=read('public/lead-research.html');
 const js=read('public/lead-research.js');
-const server=read('server.js');
+const rawServer=read('server.js');
+const {patchSource,MARKER}=require('./stage-lead-research-role-isolation.cjs');
+const server=rawServer.includes(MARKER)?rawServer:patchSource(rawServer);
+new (require('node:vm').Script)(server,{filename:'server.js'});
 const login=read('public/sbc-login-controller-v6623.js');
 const app=read('public/app.js');
 const styles=read('public/lead-research.css');
