@@ -1,59 +1,69 @@
 'use strict';
-/* Stage research-quality goal accounting in CI only after existing role/identity safeguards.
-   Does NOT run in the already deployed GoDaddy runtime or weaken other permissions. */
+/* Stage Lorna's automatic verification handoff and research-intake metrics only
+ * inside the rehashed, integrity-checked GoDaddy candidate release. Do not touch
+ * pinned source server.js before CI regenerates hashes and receipt.
+ */
 const fs=require('node:fs'),path=require('node:path');
-const MARKER='SBC_RESEARCH_QUALITY_GOAL_V3';
-const ROUTE="\napp.get('/api/workforce/research-progress',auth,async(req,res)=>{\n  res.setHeader('Cache-Control','no-store');\n  if(!sbcLornaRole(req.user))return res.status(403).json({ok:false,error:'Researcher access required.'});\n  try{\n    const tenantId=requireRequestTenant(req);\n    if(!mysqlPool||MYSQL_RECOVERY_REQUIRED)return res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'Verified CRM progress is temporarily unavailable.'});\n    const customerMap=new Map((db.customers||[]).filter(c=>Number(c.tenantId)===Number(tenantId)).map(c=>[String(c.id),c]));\n    const [sqlEvents]=await mysqlPool.query(\n      \"SELECT id,event_type,meta_json,created_at FROM sbc_audit_log WHERE user_id=? AND event_type IN ('workforce_lead_created','lead_verification_update') ORDER BY created_at DESC LIMIT 20000\",\n      [String(req.user.id)]\n    );\n    const wanted=new Set(['workforce_lead_created','lead_verification_update']);\n    const events=[...(sqlEvents||[]).map(r=>({id:r.id,type:r.event_type,meta:r.meta_json,createdAt:r.created_at})),\n      ...(db.auditLog||[]).filter(e=>String(e.userId)===String(req.user.id)&&wanted.has(String(e.eventType))).map(e=>({id:e.id,type:e.eventType,meta:e.meta,createdAt:e.createdAt}))];\n    events.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));\n    const seenEvents=new Set(),created=new Map(),qualified=new Map();\n    const etParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});\n    const etDate=value=>{\n      const date=new Date(value);\n      if(!Number.isFinite(date.getTime()))return '';\n      const parts=Object.fromEntries(etParts.formatToParts(date).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));\n      return parts.year+'-'+parts.month+'-'+parts.day;\n    };\n    for(const event of events){\n      const eventId=String(event.id||'');\n      if(!eventId||seenEvents.has(eventId))continue;\n      seenEvents.add(eventId);\n      let meta=event.meta;\n      if(typeof meta==='string'){try{meta=JSON.parse(meta)}catch{continue}}\n      const customerId=String(meta?.customerId||'');\n      if(!customerId)continue;\n      const customer=customerMap.get(customerId);\n      if(!customer||isSbcSyntheticTestRecord(customer))continue;\n      const day=etDate(event.createdAt);\n      if(!day)continue;\n      if(event.type==='workforce_lead_created'){\n        if(!created.has(customerId))created.set(customerId,{id:customerId,day});\n      }else if(event.type==='lead_verification_update'){\n        // Only a first documented transition into Verified counts; saving again never adds work units.\n        if(meta?.researchVerified!==true||String(meta?.verificationStatus)!=='Verified'||qualified.has(customerId))continue;\n        if(!['Verified','Sales Ready'].includes(String(customer.verificationStatus||customer.leadIntelligence?.verificationStatus||'')))continue;\n        qualified.set(customerId,{id:customerId,day});\n      }\n    }\n    const saved=[...created.values()],verified=[...qualified.values()].map(r=>({...r,kind:created.get(r.id)?.day===r.day?'new':'existing'}));\n    const today=etDate(new Date()),days=[];\n    for(let offset=6;offset>=0;offset--){\n      const date=new Date(Date.parse(today+'T12:00:00Z')-offset*86400000).toISOString().slice(0,10);\n      days.push({date,count:verified.filter(r=>r.day===date).length});\n    }\n    const current=verified.filter(r=>r.day===today);\n    const newVerifiedToday=current.filter(r=>r.kind==='new').length;\n    const existingVerifiedToday=current.length-newVerifiedToday;\n    res.json({ok:true,date:today,timeZone:'America/New_York',goalMin:16,goalMax:20,\n      todayCount:current.length,verifiedTodayCount:current.length,\n      newVerifiedToday,existingVerifiedToday,\n      rawSavedTodayCount:saved.filter(r=>r.day===today).length,\n      last7Count:days.reduce((sum,d)=>sum+d.count,0),allTimeCount:verified.length,rawSavedAllTimeCount:saved.length,\n      last7Days:days,submittedLeadIds:saved.map(r=>r.id).slice(-1000),source:'qualified-crm-audit',limitReached:(sqlEvents||[]).length>=20000});\n  }catch(err){\n    console.error('[SBC RESEARCH PROGRESS] secure read failed:',String(err?.code||err?.message||'unknown'));\n    res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'Verified CRM progress is temporarily unavailable.'});\n  }\n});\n";
+const MARKER='SBC_RESEARCH_AUTO_HANDOFF_V4';
+const ROUTE="\n// SBC_RESEARCH_AUTO_HANDOFF_V4: employee productivity is measured at research intake.\n// The existing Lead Assist / Revenue verifier decides whether a prospect is auto-verified.\napp.get('/api/workforce/research-progress',auth,async(req,res)=>{\n res.setHeader('Cache-Control','no-store');\n if(!sbcLornaRole(req.user))return res.status(403).json({ok:false,error:'Researcher access required.'});\n try{\n  const tenantId=requireRequestTenant(req);\n  if(!mysqlPool||MYSQL_RECOVERY_REQUIRED)return res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'CRM research metrics are temporarily unavailable.'});\n  const customerMap=new Map((db.customers||[]).filter(c=>Number(c.tenantId)===Number(tenantId)).map(c=>[String(c.id),c]));\n  const [sqlEvents]=await mysqlPool.query(\n   \"SELECT id,meta_json,created_at FROM sbc_audit_log WHERE user_id=? AND event_type='workforce_lead_created' ORDER BY created_at DESC LIMIT 20000\",\n   [String(req.user.id)]\n  );\n  const source=[...(sqlEvents||[]).map(r=>({id:r.id,meta:r.meta_json,createdAt:r.created_at})),\n   ...(db.auditLog||[]).filter(e=>String(e.userId)===String(req.user.id)&&e.eventType==='workforce_lead_created').map(e=>({id:e.id,meta:e.meta,createdAt:e.createdAt}))];\n  source.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));\n  const seenEvents=new Set(),saved=new Map();\n  const etParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});\n  const etDate=value=>{\n   const d=new Date(value);if(!Number.isFinite(d.getTime()))return '';\n   const parts=Object.fromEntries(etParts.formatToParts(d).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));\n   return parts.year+'-'+parts.month+'-'+parts.day;\n  };\n  for(const e of source){\n   const eventId=String(e.id||'');\n   if(!eventId||seenEvents.has(eventId))continue;\n   seenEvents.add(eventId);\n   let meta=e.meta;\n   if(typeof meta==='string'){try{meta=JSON.parse(meta)}catch{continue}}\n   const id=String(meta?.customerId||''),customer=customerMap.get(id);\n   if(!id||!customer||saved.has(id)||isSbcSyntheticTestRecord(customer))continue;\n   const day=etDate(e.createdAt);if(!day)continue;\n   // Never infer quality from an AI verification status, or from raw CSV row count.\n   // The canonical intake independently checks name + contact + documented research source.\n   const complete=meta?.researchComplete===true;\n   const machineStatus=String(customer.leadAssist?.status||'NOT_CHECKED');\n   saved.set(id,{id,day,complete,machineStatus});\n  }\n  const all=[...saved.values()],qualified=all.filter(r=>r.complete);\n  const today=etDate(new Date()),current=qualified.filter(r=>r.day===today),days=[];\n  for(let offset=6;offset>=0;offset--){\n   const day=new Date(Date.parse(today+'T12:00:00Z')-offset*86400000).toISOString().slice(0,10);\n   days.push({date:day,count:qualified.filter(r=>r.day===day).length});\n  }\n  const autoVerifiedToday=current.filter(r=>r.machineStatus==='AUTO_VERIFIED').length;\n  const needsReviewToday=current.filter(r=>r.machineStatus==='NEEDS_HUMAN_REVIEW'||r.machineStatus==='FAILED').length;\n  const pendingToday=current.length-autoVerifiedToday-needsReviewToday;\n  res.json({ok:true,date:today,timeZone:'America/New_York',goalMin:16,goalMax:20,\n   todayCount:current.length,researchCompleteTodayCount:current.length,\n   rawSavedTodayCount:all.filter(r=>r.day===today).length,\n   autoVerifiedTodayCount:autoVerifiedToday,needsReviewTodayCount:needsReviewToday,pendingAutoTodayCount:pendingToday,\n   last7Count:days.reduce((n,d)=>n+d.count,0),allTimeCount:qualified.length,rawSavedAllTimeCount:all.length,\n   last7Days:days,submittedLeadIds:all.map(r=>r.id).slice(-1000),source:'research-intake-audit',\n   limitReached:(sqlEvents||[]).length>=20000});\n }catch(e){\n  console.error('[SBC RESEARCH INTAKE] read failed:',String(e?.code||e?.message||'unknown'));\n  res.status(503).json({ok:false,code:'RESEARCH_STATS_UNAVAILABLE',error:'CRM research metrics are temporarily unavailable.'});\n }\n});\n";
 function patchSource(src){
- if(src.includes(MARKER))return src;
+ if(src.includes(MARKER)){
+  if(!src.includes("source:'research-intake-audit'")||!src.includes("researchComplete:researchComplete"))
+   throw Error('[SBC AUTO HANDOFF] incomplete staged patch');
+  return src;
+ }
  const start="app.get('/api/workforce/research-progress',auth,async(req,res)=>{";
  const end="app.get('/api/v9/lead-verification',auth,(req,res)=>{";
  const i=src.indexOf(start),j=src.indexOf(end,i+start.length);
- if(i<0||j<0||src.indexOf(start,i+1)!==-1||j<i)throw Error('[SBC RESEARCH QUALITY GOAL] unsafe progress route anchors');
- let out=src.slice(0,i)+'// '+MARKER+'\n'+ROUTE+'\n'+src.slice(j);
- const verifyStart="app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{";
- const verifyEnd="app.post('/api/v9/assign',auth,ownerOnly,async(req,res)=>{";
- const a=out.indexOf(verifyStart),b=out.indexOf(verifyEnd,a);
- if(a<0||b<0||out.indexOf(verifyStart,a+1)!==-1)throw Error('[SBC RESEARCH QUALITY GOAL] unsafe verification route anchors');
- let section=out.slice(a,b);
- function once(oldPart,newPart){
-  if(section.split(oldPart).length!==2)throw Error('[SBC RESEARCH QUALITY GOAL] missing verification guard: '+oldPart.slice(0,90));
-  section=section.replace(oldPart,newPart);
- }
- once("  const b=req.body||{};","  const priorVerificationStatus=String(c.verificationStatus||c.leadIntelligence?.verificationStatus||'Needs Verification');\n  const b=req.body||{};");
- once("  for(const k of ['businessName'","  if(researcher&&String(b.verificationStatus||'')==='Verified'){\n    const business=String(b.businessName??c.businessName??'').trim();\n    const contact=String(b.phone??c.phone??'').trim()||String(b.email??c.email??'').trim()||String(b.website??c.website??'').trim();\n    const evidence=String(b.verificationSource??c.verificationSource??c.leadIntelligence?.verificationSource??'').trim();\n    if(!business||!contact||!evidence)return res.status(422).json({error:'To verify a lead, confirm its business name, a phone/email/website, and your research source.'});\n  }\n  for(const k of ['businessName'");
- once("verificationStatus:c.verificationStatus,leadTemperature:c.leadTemperature,assignedTo:c.assignedTo||''","verificationStatus:c.verificationStatus,previousVerificationStatus:priorVerificationStatus,researchVerified:Boolean(researcher&&c.verificationStatus==='Verified'&&!['Verified','Sales Ready'].includes(priorVerificationStatus)),verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature,assignedTo:c.assignedTo||''");
-
- once("  c.updatedAt=now();",
- "  c.leadIntelligence=c.leadIntelligence||{};\n  c.leadIntelligence.verificationStatus=c.verificationStatus;\n  c.leadIntelligence.verificationSource=c.verificationSource||c.leadIntelligence.verificationSource||'';\n  c.updatedAt=now();");
- out=out.slice(0,a)+section+out.slice(b);
+ if(i<0||j<0||src.indexOf(start,i+1)!==-1)throw Error('[SBC AUTO HANDOFF] unsafe research API anchors');
+ let out=src.slice(0,i)+ROUTE+'\n'+src.slice(j);
  const getStart="app.get('/api/v9/lead-verification',auth,(req,res)=>{";
  const getEnd="app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{";
- const getA=out.indexOf(getStart),getB=out.indexOf(getEnd,getA);
- if(getA<0||getB<0)throw Error('[SBC RESEARCH QUALITY GOAL] GET projection missing');
- let getter=out.slice(getA,getB);
- const getOld="const all=(db.customers||[]).map(normalizeLeadQuality);";
- const getNew="const all=(db.customers||[]).map(c=>normalizeLeadQuality({...c,verificationStatus:c.verificationStatus||c.leadIntelligence?.verificationStatus,verificationSource:c.verificationSource||c.leadIntelligence?.verificationSource}));";
- if(getter.split(getOld).length!==2)throw Error('[SBC RESEARCH QUALITY GOAL] unexpected GET projection');
- getter=getter.replace(getOld,getNew);
- out=out.slice(0,getA)+getter+out.slice(getB);
+ const a=out.indexOf(getStart),b=out.indexOf(getEnd,a);
+ if(a<0||b<0)throw Error('[SBC AUTO HANDOFF] missing existing queue endpoint');
+ let get=out.slice(a,b);
+ const original="verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||''";
+ const replacement="verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||'',leadAssistStatus:c.leadAssist?.status||'NOT_CHECKED',leadAssistCheckedAt:c.leadAssist?.checkedAt||'',researchStatus:c.leadIntelligence?.researchStatus||'NOT_RECORDED',researchSource:c.leadIntelligence?.researchSource||''";
+ if(get.split(original).length!==2)throw Error('[SBC AUTO HANDOFF] queue projection changed unexpectedly');
+ get=get.replace(original,replacement);
+ out=out.slice(0,a)+get+out.slice(b);
+ const reviewStart="app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{";
+ const reviewEnd="app.post('/api/v9/assign',auth,ownerOnly,async(req,res)=>{";
+ const c=out.indexOf(reviewStart),d=out.indexOf(reviewEnd,c);
+ if(c<0||d<0)throw Error('[SBC AUTO HANDOFF] research correction route missing');
+ let review=out.slice(c,d);
+ const oldGate="['Needs Verification','Verified','Owner Review'].includes(String(req.body.verificationStatus))";
+ if(review.split(oldGate).length!==2)throw Error('[SBC AUTO HANDOFF] cannot restrict blind manual researcher verification');
+ review=review.replace(oldGate,"['Needs Verification','Owner Review'].includes(String(req.body.verificationStatus))");
+ const oldSave="  await saveData();\n  res.setHeader('Cache-Control','no-store');";
+ if(review.split(oldSave).length!==2)throw Error('[SBC AUTO HANDOFF] correction save anchor missing');
+ review=review.replace(oldSave,
+  "  if(researcher)enqueueLeadAssist(c.id,'researcher_corrected_exception','high');\n"+oldSave);
+ out=out.slice(0,c)+review+out.slice(d);
  const createStart="app.post('/api/workforce/leads',auth,async(req,res)=>{";
  const createEnd="// V55.19 — persistent Lorna/lead-research workspace drafts and structured lead editing.";
- const createA=out.indexOf(createStart),createB=out.indexOf(createEnd,createA);
- if(createA<0||createB<0)throw Error('[SBC RESEARCH QUALITY GOAL] create route missing');
- let creation=out.slice(createA,createB);
- function createOnce(oldPart,newPart){
-  if(creation.split(oldPart).length!==2)throw Error('[SBC RESEARCH QUALITY GOAL] create route guard missing: '+oldPart.slice(0,90));
-  creation=creation.replace(oldPart,newPart);
- }
- createOnce("  const tenantId=requireRequestTenant(req);",
-   "  const qualifiedAtCreation=Boolean(b.verifiedResearch===true&&sbcLornaRole(req.user));\n  const evidence=String(b.verificationSource||'').trim();\n  if(qualifiedAtCreation&&(!business||!(phone||email||String(b.website||'').trim())||!evidence))return res.status(422).json({error:'Verified research requires a business name, a phone/email/website and a documented verification source.'});\n  const tenantId=requireRequestTenant(req);");
- createOnce("  if(mysqlPool){await mysqlPool.query(\`INSERT INTO sbc_customers",
-   "  if(qualifiedAtCreation){c.verificationStatus='Verified';c.verificationSource=evidence;c.leadIntelligence.verificationStatus='Verified';c.leadIntelligence.verificationSource=evidence;}\n  if(mysqlPool){await mysqlPool.query(\`INSERT INTO sbc_customers");
- createOnce("  saveData().catch(e=>console.warn('[SBC WORKFORCE LEAD] secondary snapshot sync:',e?.message||e));",
-   "  if(qualifiedAtCreation)audit(req.user,'lead_verification_update',\`Verified newly researched lead \${business||phone}\`,{customerId:c.id,verificationStatus:'Verified',previousVerificationStatus:'Needs Verification',researchVerified:true,verificationSource:evidence});\n  saveData().catch(e=>console.warn('[SBC WORKFORCE LEAD] secondary snapshot sync:',e?.message||e));");
- out=out.slice(0,createA)+creation+out.slice(createB);
- if(!out.includes("source:'qualified-crm-audit'")||!out.includes("researchVerified:Boolean(researcher"))throw Error('[SBC RESEARCH QUALITY GOAL] partial staged patch');
+ const x=out.indexOf(createStart),y=out.indexOf(createEnd,x);
+ if(x<0||y<0)throw Error('[SBC AUTO HANDOFF] canonical lead-create endpoint missing');
+ let create=out.slice(x,y);
+ function once(a,b){if(create.split(a).length!==2)throw Error('[SBC AUTO HANDOFF] lead create anchor missing: '+a.slice(0,75));create=create.replace(a,b);}
+ once("  const tenantId=requireRequestTenant(req);",
+  "  const rawSource=String(b.source||'').trim();\n"+
+  "  const researchSource=String(b.verificationSource||b.researchSource||(!/^(Lead Research|Lead Research - Bulk Import|CSV Import)$/i.test(rawSource)?rawSource:'')||'').trim().slice(0,300);\n"+
+  "  const contactComplete=Boolean(revenuePhoneShape(phone)||revenueEmailShape(email)||revenueWebsiteShape(b.website));\n"+
+  "  const researchComplete=Boolean(business&&contactComplete&&researchSource);\n"+
+  "  const tenantId=requireRequestTenant(req);");
+ once("  if(mysqlPool){await mysqlPool.query(\`INSERT INTO sbc_customers",
+  "  c.leadIntelligence.researchStatus=researchComplete?'RESEARCH_SUBMITTED':'NEEDS_RESEARCH';\n"+
+  "  c.leadIntelligence.researchSource=researchSource;\n"+
+  "  c.leadIntelligence.researchSubmittedBy=String(req.user.id);\n"+
+  "  if(mysqlPool){await mysqlPool.query(\`INSERT INTO sbc_customers");
+ once("researcherId:c.researcherId,source:c.source});",
+      "researcherId:c.researcherId,source:c.source,researchComplete:researchComplete,researchSource:researchSource});");
+ once("route:'workforce-leads-v1',message:'Lead saved to the central SBC CRM.'",
+      "route:'workforce-leads-v1',researchComplete:researchComplete,leadAssist:{status:'QUEUED',message:'Saved in SBC CRM. Automatic Lead Assist verification queued.'},message:'Lead saved to the central SBC CRM and queued for automatic verification.'");
+ out=out.slice(0,x)+create+out.slice(y);
+ if(!out.includes(MARKER)||!out.includes("researchComplete:researchComplete")||!out.includes("['Needs Verification','Owner Review'].includes(String(req.body.verificationStatus))"))
+  throw Error('[SBC AUTO HANDOFF] staged safety requirements missing');
  return out;
 }
 function apply(root){
@@ -62,7 +72,7 @@ function apply(root){
  return {marker:MARKER,applied:before!==after,bytes:after.length};
 }
 if(require.main===module){
- if(process.argv[2]!=='--apply')throw Error('Use --apply only in verified candidate CI.');
- console.log('[SBC RESEARCH QUALITY GOAL] '+JSON.stringify(apply(path.resolve(__dirname,'..'))));
+ if(process.argv[2]!=='--apply')throw Error('Only stage inside integrity-checked candidate CI.');
+ console.log('[SBC AUTO HANDOFF] '+JSON.stringify(apply(path.resolve(__dirname,'..'))));
 }
 module.exports={MARKER,patchSource,apply};
