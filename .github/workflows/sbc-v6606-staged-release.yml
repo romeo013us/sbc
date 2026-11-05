@@ -68,6 +68,7 @@ jobs:
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
           node scripts/v6603-flat-release-contract.test.cjs
+          node scripts/v6681-safe-writer-handoff.test.cjs
       - name: Transform staged source only (CI disposable checkout)
         env:
           SBC_ENABLE_V6606_SOURCE_WRITE: YES
@@ -110,6 +111,8 @@ jobs:
           node scripts/stage-lead-research-role-isolation.cjs --apply
           node scripts/stage-lead-research-goals-v2.cjs --apply
           node scripts/stage-lead-research-quality-goals-v3.cjs --apply
+          node scripts/v6681-stage-safe-writer-handoff.cjs --apply
+          node scripts/v6681-safe-writer-handoff.test.cjs
           node scripts/lead-research-workspace.test.cjs
           node scripts/lead-research-import-goals.test.cjs
           node scripts/lorna-training-daily-missions.test.cjs
