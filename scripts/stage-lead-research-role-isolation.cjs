@@ -25,7 +25,11 @@ function patchSource(source){
 function apply(root){
  const server=path.join(root,'server.js');
  const before=fs.readFileSync(server,'utf8'),after=patchSource(before);
- if(before===after)throw Error('[SBC RESEARCH ROLE STAGE] already applied; stop to prevent stale build reuse');
+ if(before===after){
+  if(!before.includes(MARKER)||!before.includes('Owner review required to mark a lead Sales Ready.')||!before.includes('Number(c.tenantId)!==Number(tenantId)'))
+   throw Error('[SBC RESEARCH ROLE STAGE] no change but required compiled guards missing');
+  return {marker:MARKER,alreadyCompiled:true,bytes:before.length};
+ }
  fs.writeFileSync(server,after);
  return {marker:MARKER,bytes:after.length};
 }

@@ -6,8 +6,9 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <meta name="robots" content="noindex,nofollow">
 <title>SBC | Lead Research Workspace</title>
-<link rel="stylesheet" href="/lead-research.css?v=1">
-<script src="/lead-research.js?v=1" defer></script>
+<link rel="stylesheet" href="/lead-research.css?v=2">
+<script src="/lead-research-import-core.js?v=2" defer></script>
+<script src="/lead-research.js?v=2" defer></script>
 </head>
 <body>
 <div id="access" role="status" class="access">Checking your SBC session…</div>
@@ -19,6 +20,7 @@
 <button class="active" type="button" data-tab="home">⌂ <span>My Dashboard</span></button>
 <button type="button" data-tab="queue">◉ <span>Research Queue</span></button>
 <button type="button" data-tab="add">＋ <span>Add Business Lead</span></button>
+<button type="button" data-tab="import">⇧ <span>CSV & List Import</span></button>
 <button type="button" data-tab="mine">✓ <span>My Submitted Leads</span></button>
 <button type="button" data-tab="training">🎓 <span>My Training</span></button>
 <button type="button" data-tab="clock">◷ <span>Time Clock</span></button>
@@ -30,6 +32,12 @@
 <div id="notice" class="notice" hidden role="status"></div>
 <section class="pane" data-pane="home">
 <div class="welcome"><div class="eyebrow">YOUR DAILY MISSION</div><h2>Find the right businesses. Make every lead count.</h2><p>Research verified businesses, save accurate contact details, and send quality prospects to SBC's sales team.</p><button class="primary" type="button" data-go="add">+ Submit a New Lead</button></div>
+<div class="goal-card" aria-label="Daily lead production goal">
+<div class="goal-top"><div><div class="eyebrow">TODAY'S LEAD TARGET · EASTERN TIME</div><h3><span id="goal-current">—</span> <small>of 16 saved leads</small></h3><p id="goal-status">Checking your verified CRM submissions…</p></div><div class="goal-number"><strong>16–20</strong><small>Daily range</small></div></div>
+<div class="goal-track" id="goal-track" role="progressbar" aria-label="Progress toward daily stretch goal" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0"><div class="goal-fill" id="goal-fill"></div><span class="goal-min-marker" aria-hidden="true"></span></div>
+<div class="goal-bottom"><span>Base goal: <b>16</b></span><span>Stretch: <b>20</b></span><span id="goal-date">Business day · America/New_York</span></div>
+<div class="mini-kpis"><div><strong id="goal-seven">—</strong><small>Saved over last 7 days</small></div><div><strong id="goal-all">—</strong><small>My total saved leads</small></div><div><strong id="goal-verified">—</strong><small>Today's currently verified</small></div></div>
+<p class="muted">Only successfully saved, non-test leads count. Duplicate or rejected imports do not count. Your lead count continues even when a lead leaves your research queue.</p></div>
 <div class="stats">
 <div class="stat"><small>Visible research queue</small><strong id="metric-queue">—</strong><span>Current permitted leads</span></div>
 <div class="stat"><small>Needs verification</small><strong id="metric-unverified">—</strong><span>Research still required</span></div>
@@ -54,10 +62,24 @@
 <label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label></div>
 <div class="form-actions"><button id="save-lead" class="primary" type="submit">Submit to SBC CRM</button><button type="reset" class="outline">Clear form</button></div><p class="muted">Duplicate records are rejected by the backend. Submission is never automatically retried.</p></form></div>
 </section>
+<section class="pane" data-pane="import" hidden>
+<div class="card maxform import-card"><div class="card-head"><div><h2>Import Businesses in Bulk</h2><p>Upload a CSV or TXT file, or paste multiple businesses at once. Preview every batch before saving to the SBC CRM.</p></div><span class="pill">Up to 100 per batch</span></div>
+<div class="import-inputs"><label>Upload your list (.csv, .tsv, .txt)<input id="import-file" type="file" accept=".csv,.tsv,.txt,text/plain,text/csv" aria-describedby="import-file-hint"></label>
+<p class="muted" id="import-file-hint">Selecting a file uses that file for preview. To use pasted text instead, clear the file selection.</p>
+<label>Or paste a list<textarea id="import-text" rows="8" spellcheck="false" placeholder="Business Name,Contact,Phone,Email,Website,Industry,Address,Notes&#10;Carmen's Salon,Carmen,305-555-0100,,carmensalon.com,Salon,Miami FL,Found via Maps&#10;Ocean Barber Shop,James,305-555-0102,,oceanbarber.com,Barber,Miami FL,Website checked"></textarea></label>
+<label>Input format<select id="import-format"><option value="auto">Automatic detection (CSV, tabs or lines)</option><option value="csv">CSV — comma separated</option><option value="tsv">TSV — tab separated</option><option value="lines">One business name per line</option></select></label></div>
+<div class="form-actions"><button type="button" class="primary" id="import-preview">Preview list</button><button type="button" class="outline" id="import-reset">Clear</button></div>
+<div id="import-preview-panel" hidden><h3>Import Review</h3><p class="muted" id="import-details"></p><div class="import-counts"><span id="import-ready"></span><span id="import-invalid"></span><span id="import-saved"></span></div>
+<div id="import-preview-list" class="import-results"></div>
+<div class="form-actions"><button type="button" id="import-confirm" class="primary">Import verified rows into SBC CRM</button></div>
+<div id="import-run-status" class="import-run-status" role="status" aria-live="polite"></div>
+</div><p class="muted">Common column names are automatically mapped (Business Name, Contact, Phone, Email, Website, Industry, Address, Notes, Source). Without a header, CSV columns use that order. One-name-per-line lists are also supported. Existing CRM duplicates are skipped by the server.</p>
+<p class="muted"><strong>Important:</strong> Imported names without phone, email or website can be saved but still need research. Never fabricate missing information. Each business is saved individually with SBC's normal CRM safeguards—no automatic retries.</p>
+</div></section>
 <section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads in the Active Queue</h2><p>This shows your submissions still present in your permitted active research queue. It is not an all-time submission report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>
 <section class="pane" data-pane="training" hidden><div class="card"><h2>My Assigned Training</h2><p>Course information is retrieved from the existing SBC Training Center for your employee account.</p><div id="training-list" class="list"><p class="muted">Loading training…</p></div><div id="training-detail" class="course-detail" hidden></div></div></section>
 <section class="pane" data-pane="clock" hidden><div class="card maxform"><h2>Time Clock</h2><p>Your individual time clock. No other employee's payroll, compensation, or time reports are available here.</p><div id="clock-summary" class="clock-summary">Loading time status…</div><div class="form-actions"><button type="button" class="primary" id="clock-in">Clock In</button><button type="button" class="outline" id="clock-out">Clock Out</button></div><p class="muted">Time is logged to the existing SBC workforce service. The current backend classifies this role's clock mode as training until a distinct research mode is implemented.</p></div></section>
-<footer>Successful By Choice · Because Why Not? · Research workspace v1</footer>
+<footer>Successful By Choice · Because Why Not? · Research workspace v2</footer>
 </main>
 </div>
 </body></html>
