@@ -459,7 +459,11 @@ app.get('/readyz',async(req,res)=>{
   let mysqlOk=false;
   try{if(mysqlPool){await mysqlPool.query('SELECT 1');mysqlOk=true;}}catch{}
   const configured=Boolean(process.env.DB_HOST&&process.env.DB_USER&&process.env.DB_NAME);
-  const ready=!fatalRuntimeFault && (mysqlOk || !configured);
+  // SBC_V6681_SAFE_WRITER_HANDOFF: liveness is NOT database-write readiness.
+  // Preview may read once its own recovery census succeeds; Published must also
+  // prove exclusive lock ownership and completed authoritative recovery.
+  const operational= !configured || (MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED && (SBC_RUNTIME_READ_ONLY || sbcWriterLeaseReady));
+  const ready=!fatalRuntimeFault && (mysqlOk || !configured) && operational;
   res.status(ready?200:503).json({ok:ready,status:ready?'ready':'not_ready',version:BUILD_VERSION,requestId:req.requestId,database:{configured,reachable:mysqlOk},recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),writeProtection:Boolean(MYSQL_RECOVERY_REQUIRED),writePrerequisitesReported:Boolean(!SBC_RUNTIME_READ_ONLY&&sbcWriterLeaseReady&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&mysqlOk)});
 });
 
@@ -1479,7 +1483,7 @@ async function initMysql(){
       return true;
     }
     // SBC_V6528_RUNTIME_WRITER_LEASE: acquire exclusive lease before any DDL, migration, seed, repair, or worker write.
-    if(!SBC_RUNTIME_READ_ONLY){let leaseCandidate=null;try{const mysqlLease=require('mysql2/promise');leaseCandidate=await mysqlLease.createConnection({host:process.env.DB_HOST,user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,port:Number(process.env.DB_PORT||3306),connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),enableKeepAlive:true,keepAliveInitialDelay:10000,charset:'utf8mb4'});const [rows]=await leaseCandidate.query('SELECT GET_LOCK(?, 0) AS acquired, CONNECTION_ID() AS connectionId',[SBC_RUNTIME_WRITER_LOCK_NAME]);if(Number(rows&&rows[0]&&rows[0].acquired)!==1)throw Object.assign(new Error('SBC_RUNTIME_WRITER_BUSY: another process owns the writer lease.'),{code:'SBC_RUNTIME_WRITER_BUSY'});sbcWriterLeaseConn=leaseCandidate;sbcWriterLeaseConnectionId=Number(rows[0].connectionId);sbcWriterLeaseReady=true;console.log('[SBC_V6528_RUNTIME_WRITER_LEASE] process writer lease acquired; boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' port='+String(process.env.PORT||'<absent>')+' connectionId='+sbcWriterLeaseConnectionId);sbcWriterLeaseTimer=setInterval(async()=>{
+    if(!SBC_RUNTIME_READ_ONLY){let leaseCandidate=null;try{const mysqlLease=require('mysql2/promise');leaseCandidate=await mysqlLease.createConnection({host:process.env.DB_HOST,user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,port:Number(process.env.DB_PORT||3306),connectTimeout:Number(process.env.SBC_DB_CONNECT_TIMEOUT_MS||10000),enableKeepAlive:true,keepAliveInitialDelay:10000,charset:'utf8mb4'});const rows=await require('./enterprise/v6681-safe-writer-handoff.cjs').waitForWriterLease(leaseCandidate,SBC_RUNTIME_WRITER_LOCK_NAME,{shouldAbort:()=>sbcShutdownStarted,logger:console});if(Number(rows&&rows[0]&&rows[0].acquired)!==1)throw Object.assign(new Error('SBC_RUNTIME_WRITER_BUSY: another process owns the writer lease.'),{code:'SBC_RUNTIME_WRITER_BUSY'});sbcWriterLeaseConn=leaseCandidate;sbcWriterLeaseConnectionId=Number(rows[0].connectionId);sbcWriterLeaseReady=true;console.log('[SBC_V6528_RUNTIME_WRITER_LEASE] process writer lease acquired; boot_id='+String(process.env.SBC_BOOT_ID||'<not-set>')+' pid='+process.pid+' port='+String(process.env.PORT||'<absent>')+' connectionId='+sbcWriterLeaseConnectionId);sbcWriterLeaseTimer=setInterval(async()=>{
  if(sbcWriterLeaseCheckInFlight||Date.now()<sbcWriterLeaseRetryAt)return;
  sbcWriterLeaseCheckInFlight=true;
  let conn=sbcWriterLeaseConn,deadline=null;
@@ -3930,7 +3934,7 @@ async function runFantastic4AutonomousSweep(){
 app.get('/api/v562/business-capabilities',auth,(req,res)=>res.json({ok:true,version:V562_BUSINESS.VERSION,scope:V562_BUSINESS.tenantScope({tenantId:requireRequestTenant(req),userId:req.user?.id,role:req.user?.role}),capabilities:V562_BUSINESS.capabilityMatrix(req.user?.role)}));
 app.get('/api/v562/office-box-link',auth,(req,res)=>res.json({ok:true,configured:Boolean(process.env.SBC_OFFICE_BOX_URL),url:process.env.SBC_OFFICE_BOX_URL||'/office-box',tenantId:requireRequestTenant(req)}));
 app.get('/api/ecosystem/contract',(req,res)=>res.json({ok:true,version:BUILD_VERSION,product:'SBC Business Command Center',ecosystem:{website:'storefront',commandCenter:'control-plane',officeBox:'customer-workspace',deployment:'separate-applications',handoff:'signed-hmac',schema:BIG3.VERSION,officeBoxUrlConfigured:Boolean(process.env.SBC_OFFICE_BOX_URL),sharedWebhookSecretConfigured:Boolean(process.env.SBC_WEBHOOK_SECRET)},entitlements:Object.fromEntries(Object.entries(BIG3.PRODUCTS).map(([k,v])=>[k,{officeBox:v.officeBox}]))}));
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'SBC Business Command Center',version:BUILD_VERSION,storage:storageMode,database:storageMode.startsWith('mysql')?'connected':'fallback'}));
+app.get('/api/health',(req,res)=>res.json({ok:true,app:'SBC Business Command Center',version:BUILD_VERSION,storage:storageMode,database:storageMode.startsWith('mysql')?'connected':'fallback',productionReady:!fatalRuntimeFault&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&(SBC_RUNTIME_READ_ONLY||sbcWriterLeaseReady),writerLeaseReady:!SBC_RUNTIME_READ_ONLY&&sbcWriterLeaseReady,recoveryEvaluated:Boolean(MYSQL_RECOVERY_EVALUATED),recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED)}));
 const {SBCUnattendedNotifications}=require('./enterprise/sbc-unattended-notifications-v6504.cjs');
 const SBC_UNATTENDED_NOTIFICATIONS = new SBCUnattendedNotifications({
   env: process.env,
