@@ -9,6 +9,12 @@ const before=read('server.js'),after=stage.patchSource(before);
 assert.equal(stage.patchSource(after),after,'staged repair must be idempotent');
 new vm.Script(after,{filename:'server.js'});
 assert.match(after,/SBC_RESEARCH_AUTO_HANDOFF_V4/);
+assert.match(after,/leadAssistQueue:Array\.isArray\(extra\.leadAssistQueue\)/,'queued work must survive MySQL reload');
+assert.match(after,/leadAssistQueue:\(db\.leadAssistQueue\|\|\[\]\)\.slice\(0,5000\)/,'queue must persist in existing workspace snapshot');
+assert.match(after,/c\.leadIntelligence\.autoVerificationStatus=c\.leadAssist\.status/,'machine outcome must persist with canonical customer');
+assert.match(after,/c\.leadIntelligence\.autoVerificationStatus=job\.status/,'failed jobs must persist failure state');
+assert.match(after,/x\.status==='PROCESSING'&&Date\.now\(\)-Date\.parse/,'abandoned processing must be safely retried');
+
 const i=after.indexOf("app.get('/api/workforce/research-progress',auth,async(req,res)=>{");
 const j=after.indexOf("app.get('/api/v9/lead-verification',auth,(req,res)=>{",i);
 assert.ok(i>=0&&j>i,'secure research progress endpoint must exist');
