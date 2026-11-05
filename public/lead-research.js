@@ -324,13 +324,15 @@ async function doClock(action){
 async function submitLead(event){
  event.preventDefault();if(busy)return;
  var form=event.target,fd=new FormData(form),data={source:'Lead Research'};
- ['businessName','contactName','phone','email','website','industry','address','notes'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
+ ['businessName','contactName','phone','email','website','industry','address','notes','verificationSource'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
+ data.verifiedResearch=fd.get('verifiedResearch')==='yes';
  if(!data.businessName&&!data.phone&&!data.email){note('Enter a business name, phone or email.',true);return;}
+ if(data.verifiedResearch&&(!data.businessName||!(data.phone||data.email||data.website)||!data.verificationSource)){note('To mark a new lead verified, provide the business name, a phone/email/website and the research source you checked.',true);return;}
  busy=true;$('save-lead').disabled=true;clearNote();
  try{
   var saved=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(data)});
   if(!saved.id||!saved.persistence||saved.persistence.verified!==true)throw Error('The backend did not provide verified CRM persistence evidence.');
-  form.reset();setTab('home');note('Lead saved and verified in the central SBC CRM. Reference: '+saved.id);
+  form.reset();setTab('home');note((data.verifiedResearch?'New business verified and saved. It counts once toward your daily qualified-lead goal.':'New business saved to SBC CRM for later verification.')+' Reference: '+saved.id);
   await Promise.allSettled([loadLeads(),loadProgress()]);
  }catch(e){note('Lead not submitted: '+errorMessage(e),true);}
  finally{busy=false;$('save-lead').disabled=false;}
