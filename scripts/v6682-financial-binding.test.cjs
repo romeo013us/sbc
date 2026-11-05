@@ -81,8 +81,27 @@ function route(vault,status='owner_clearance_required'){
     const results=await Promise.all(Array.from({length:25},()=>finance.authorizePersistentFinancialExecution(p,'lock-1','owner-1',{tenantId:1})));
     assert.equal(p.updates,1);assert.equal(results.filter(r=>r.approvalOutcome==='AUTHORIZED').length,1);
   });
-  await test('staged owner route patch idempotent and present',async()=>{
-    const s=patchSource(source);assert.ok(s.includes(MARK));assert.equal(patchSource(s),s);
+  await test('staged owner and order-amount guards both present',async()=>{
+    const s=patchSource(source);assert.ok(s.includes(MARK));assert.ok(s.includes('SBC_V6682_ORDER_AMOUNT_INTEGRITY'));assert.equal(patchSource(s),s);
+  });
+  await test('a paid $25k order cannot dispatch as a $9k job',async()=>{
+    const patched=patchSource(source);
+    const begin=patched.indexOf('async function submitVendorJob(job){');
+    const end=patched.indexOf('\nasync function recoverStaleFulfillmentJobs(){',begin);
+    assert.ok(begin>0&&end>begin);
+    let submit,vendorCalls=0;
+    const vmSource=patched.slice(begin,end)+'\nsubmit=submitVendorJob;';
+    const context={
+      db:{orders:[{id:'order-1',tenantId:1,price:25000}]},
+      SBC_V6651_REQUIRE_PAID:()=>{},
+      V569_PRODUCTION_EXPANSION:finance,
+      TENANT_DEFAULT_ID:1,mysqlPool:pool([LOCK()]),
+      fulfillmentAdapterFor:()=>({validateOrder(){},submitOrder(){vendorCalls++;return {status:'submitted'}}}),
+      submit:null
+    };
+    vm.runInNewContext(vmSource,context);
+    await assert.rejects(context.submit({orderId:'order-1',tenantId:1,value:9000,vendor:'4over4'}),/FULFILLMENT_ORDER_AMOUNT_MISMATCH/);
+    assert.equal(vendorCalls,0);
   });
   await test('route missing vault never clears UI',async()=>{
     const r=route(null),x=await r.call();assert.equal(x.code,400);assert.equal(r.saves(),0);assert.equal(r.job.status,'owner_clearance_required');
