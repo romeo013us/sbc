@@ -137,16 +137,44 @@ async function financialStatusPersistent(pool,tenantId){
   return {threshold:OWNER_THRESHOLD,openLocks:rows,counts};
 }
 
+// SBC_V6682_FINANCIAL_LOCK_BINDING: exact durable approval scope; never
+// use a tenant-level approval to authorize a different job, action, or amount.
+function financialAmountCents(amount){
+  const value=Number(amount);
+  if(amount===null||amount===undefined||typeof amount==='boolean'||(typeof amount==='string'&&!amount.trim())||!Number.isFinite(value)||value<0||!Number.isSafeInteger(Math.round(value*100))||Math.abs(value*100-Math.round(value*100))>0.000001)
+    throw new Error('FINANCIAL_AMOUNT_INVALID');
+  return Math.round(value*100);
+}
+function assertPersistentFinancialLockBinding(row,{tenantId,resourceId,action,amount}={}){
+  if(!row)throw new Error('FINANCIAL_LOCK_NOT_FOUND');
+  const tenant=Number(__sbcRequireTenantId(tenantId));
+  const resource=String(resourceId||'').trim(),operation=String(action||'').trim();
+  if(!resource||!operation)throw new Error('FINANCIAL_LOCK_BINDING_REQUIRED');
+  if(Number(row.tenant_id)!==tenant)throw new Error('FINANCIAL_LOCK_TENANT_MISMATCH');
+  if(String(row.resource_id||'')!==resource)throw new Error('FINANCIAL_LOCK_RESOURCE_MISMATCH');
+  if(String(row.action||'')!==operation)throw new Error('FINANCIAL_LOCK_ACTION_MISMATCH');
+  if(financialAmountCents(row.amount)!==financialAmountCents(amount))throw new Error('FINANCIAL_LOCK_AMOUNT_MISMATCH');
+  return row;
+}
+
 async function financialExecutionGate({pool,amount,tenantId,resourceId,lockId,action='financial_action'}={}){
-  const value=Number(amount||0);
+  const value=financialAmountCents(amount)/100;
   if(value<OWNER_THRESHOLD) return {ok:true,locked:false,authorized:true,amount:value,threshold:OWNER_THRESHOLD};
   if(!pool) throw new Error('OWNER_HARD_BREAKPOINT_STORAGE_UNAVAILABLE');
+  const tenant=Number(__sbcRequireTenantId(tenantId));
+  const resource=String(resourceId||'').trim(),operation=String(action||'').trim();
+  if(!resource||!operation)throw new Error('FINANCIAL_LOCK_BINDING_REQUIRED');
   let row=null;
-  if(lockId){ const [rows]=await pool.query('SELECT * FROM sbc_financial_vault_locks WHERE lock_id=? AND tenant_id=? LIMIT 1',[String(lockId),Number(__sbcRequireTenantId(tenantId))]); row=rows[0]||null; }
-  if(!row && resourceId){ const [rows]=await pool.query(`SELECT * FROM sbc_financial_vault_locks WHERE tenant_id=? AND resource_id=? AND amount>=? ORDER BY created_at DESC LIMIT 1`,[Number(__sbcRequireTenantId(tenantId)),String(resourceId),OWNER_THRESHOLD]); row=rows[0]||null; }
-  if(!row || row.status!=='OWNER_AUTHORIZED' || !row.owner_authorized_by || !row.owner_authorized_at){
-    throw new Error(`OWNER_HARD_BREAKPOINT:${action}`);
+  if(lockId){
+    const [rows]=await pool.query('SELECT * FROM sbc_financial_vault_locks WHERE lock_id=? AND tenant_id=? LIMIT 1',[String(lockId),tenant]);
+    row=rows[0]||null; // Explicit unknown lock ID never falls back to a different approval.
+  }else{
+    const [rows]=await pool.query(`SELECT * FROM sbc_financial_vault_locks WHERE tenant_id=? AND resource_id=? AND action=? AND amount=? ORDER BY created_at DESC LIMIT 1`,[tenant,resource,operation,value]);
+    row=rows[0]||null;
   }
+  if(!row || row.status!=='OWNER_AUTHORIZED' || !row.owner_authorized_by || !row.owner_authorized_at || Number(row.automation_allowed)!==1)
+    throw new Error(`OWNER_HARD_BREAKPOINT:${operation}`);
+  assertPersistentFinancialLockBinding(row,{tenantId:tenant,resourceId:resource,action:operation,amount:value});
   return {ok:true,locked:true,authorized:true,amount:value,threshold:OWNER_THRESHOLD,lockId:row.lock_id,ownerId:String(row.owner_authorized_by),ownerClearanceAt:row.owner_authorized_at};
 }
 
@@ -164,4 +192,4 @@ function vendorPayload({job,provider='4over4'}={}){const allowed=['4over4','four
 
 function twilioPolicy({phone,region='',consent=true,optOut=false}={}){if(optOut)return {allowed:false,reason:'OPT_OUT'};if(!consent)return {allowed:false,reason:'CONSENT_REQUIRED'};const configured=Boolean(process.env.TWILIO_PHONE_NUMBER);return {allowed:configured,reason:configured?'SENDER_CONFIGURED':'SENDER_NOT_CONFIGURED',requestedRegion:clean(region,80),from:configured?String(process.env.TWILIO_PHONE_NUMBER):'',identityAttestation:'NOT_ASSERTED_BY_SBC'};}
 
-module.exports={VERSION,OWNER_THRESHOLD,hostOnly,loadHostMap,tenantFromHost,bindRequestTenant,tenantPredicate,tenantQuery,capabilityNonce,verifyCapability,capabilitySweep,recordTenantFailure,quarantineTenant,releaseTenant,tenantHealth,financialLock,authorizeFinancialExecution,assertFinancialExecution,financialStatus,persistFinancialLock,authorizePersistentFinancialExecution,getPersistentFinancialLock,financialStatusPersistent,financialExecutionGate,normalizeE164,normalizeLeadRow,normalizeLeadBatch,storefrontProfile,renderStorefront,provisionStorefront,revenueCapacitySnapshot,vendorPayload,twilioPolicy};
+module.exports={VERSION,OWNER_THRESHOLD,hostOnly,loadHostMap,tenantFromHost,bindRequestTenant,tenantPredicate,tenantQuery,capabilityNonce,verifyCapability,capabilitySweep,recordTenantFailure,quarantineTenant,releaseTenant,tenantHealth,financialLock,authorizeFinancialExecution,assertFinancialExecution,financialStatus,persistFinancialLock,authorizePersistentFinancialExecution,getPersistentFinancialLock,financialStatusPersistent,financialExecutionGate,assertPersistentFinancialLockBinding,financialAmountCents,normalizeE164,normalizeLeadRow,normalizeLeadBatch,storefrontProfile,renderStorefront,provisionStorefront,revenueCapacitySnapshot,vendorPayload,twilioPolicy};
