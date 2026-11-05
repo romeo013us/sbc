@@ -37,6 +37,9 @@ jobs:
           node scripts/v6616-owner-qa-nav.test.cjs
           node scripts/v6621-launch-acceptance.test.cjs
           node scripts/v6622-phase2-4-contracts.test.cjs
+          node --check server.js
+          node --check public/lead-research.js
+          node scripts/lead-research-workspace.test.cjs
           node scripts/v6623-login-access.test.cjs
           node scripts/v6624-static-assets.test.cjs
           node scripts/v6630-customer-journey.test.cjs
@@ -99,6 +102,8 @@ jobs:
           node scripts/v6631-legacy-journey-contract.test.cjs
           SBC_RUNTIME_ROOT=. node scripts/v6694-owner-launch-qa.test.cjs
           SBC_RUNTIME_ROOT=. node scripts/v6693-compiled-officebox-quarantine.test.cjs
+          node scripts/stage-lead-research-role-isolation.cjs --apply
+          node scripts/lead-research-workspace.test.cjs
           node --check server.js
           node --check public/app.js
           node --check browser_public/app.js

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta name="robots" content="noindex,nofollow">
+<title>SBC | Lead Research Workspace</title>
+<link rel="stylesheet" href="/lead-research.css?v=1">
+<script src="/lead-research.js?v=1" defer></script>
+</head>
+<body>
+<div id="access" role="status" class="access">Checking your SBC session…</div>
+<div id="workspace" hidden>
+<aside class="nav">
+<div class="brand"><span class="mark">SBC</span><div><strong>Successful By Choice</strong><small>Lead Research Workspace</small></div></div>
+<div class="identity"><span class="dot"></span><div><strong id="user-name">Researcher</strong><small>Verified employee session</small></div></div>
+<nav aria-label="Research navigation">
+<button class="active" type="button" data-tab="home">⌂ <span>My Dashboard</span></button>
+<button type="button" data-tab="queue">◉ <span>Research Queue</span></button>
+<button type="button" data-tab="add">＋ <span>Add Business Lead</span></button>
+<button type="button" data-tab="mine">✓ <span>My Submitted Leads</span></button>
+<button type="button" data-tab="training">🎓 <span>My Training</span></button>
+<button type="button" data-tab="clock">◷ <span>Time Clock</span></button>
+</nav>
+<div class="nav-bottom"><button class="signout" type="button" id="sign-out">Sign out</button></div>
+</aside>
+<main>
+<header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="page-title">My Dashboard</h1><p id="page-subtitle">Research businesses. Verify details. Send quality prospects to SBC.</p></div><div class="actions"><span class="sync" id="sync-label">Connecting to CRM…</span><button type="button" class="outline" id="refresh">Refresh data</button></div></header>
+<div id="notice" class="notice" hidden role="status"></div>
+<section class="pane" data-pane="home">
+<div class="welcome"><div class="eyebrow">YOUR DAILY MISSION</div><h2>Find the right businesses. Make every lead count.</h2><p>Research verified businesses, save accurate contact details, and send quality prospects to SBC's sales team.</p><button class="primary" type="button" data-go="add">+ Submit a New Lead</button></div>
+<div class="stats">
+<div class="stat"><small>Visible research queue</small><strong id="metric-queue">—</strong><span>Current permitted leads</span></div>
+<div class="stat"><small>Needs verification</small><strong id="metric-unverified">—</strong><span>Research still required</span></div>
+<div class="stat"><small>My visible submissions</small><strong id="metric-mine">—</strong><span>Currently in your queue</span></div>
+<div class="stat"><small>Session status</small><strong id="metric-session">Verified</strong><span>Access scoped by server</span></div>
+</div>
+<div class="two">
+<div class="card"><h3>Today's research workflow</h3><ol><li>Find a real business and verify it exists.</li><li>Confirm business name, phone, website and city.</li><li>Check duplicates before submitting.</li><li>Record decision-maker and opportunity information when verified.</li><li>Submit to the SBC CRM and verify the confirmation.</li></ol></div>
+<div class="card"><h3>Quality standard</h3><p>Never invent phone numbers, email addresses, decision makers or business information. If a fact cannot be confirmed, leave it blank and document the source.</p><p>Duplicates, incomplete contact data and uncertain facts should be flagged for review rather than marked Sales Ready.</p></div>
+</div>
+</section>
+<section class="pane" data-pane="queue" hidden>
+<div class="card"><div class="card-head"><div><h2>Research Queue</h2><p>Live, server-scoped SBC leads. Use Refresh to pull changes made by the owner or other authorized users.</p></div><input id="search" aria-label="Search research queue" type="search" placeholder="Search business, phone, city…"></div><div id="queue-error" class="small-error" hidden></div><div id="queue-list" class="list"><p class="muted">Loading research queue…</p></div></div>
+</section>
+<section class="pane" data-pane="add" hidden>
+<div class="card maxform"><h2>Submit a Business Lead</h2><p>Saved directly to the existing SBC CRM. At least a business name, phone or email is required; provide reliable information wherever possible.</p>
+<form id="lead-form">
+<div class="fields"><label>Business name<input name="businessName" autocomplete="organization" maxlength="200" placeholder="Business name"></label><label>Contact person<input name="contactName" maxlength="150" placeholder="Verified contact name"></label>
+<label>Phone<input name="phone" type="tel" maxlength="80" placeholder="Business phone"></label><label>Email<input name="email" type="email" maxlength="250" placeholder="Business email"></label>
+<label>Website<input name="website" maxlength="300" placeholder="https://example.com"></label><label>Industry<input name="industry" maxlength="160" placeholder="Barber, restaurant, salon…"></label>
+<label class="wide">Business address / city<input name="address" maxlength="350" placeholder="Confirmed business location"></label>
+<label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label></div>
+<div class="form-actions"><button id="save-lead" class="primary" type="submit">Submit to SBC CRM</button><button type="reset" class="outline">Clear form</button></div><p class="muted">Duplicate records are rejected by the backend. Submission is never automatically retried.</p></form></div>
+</section>
+<section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads in the Active Queue</h2><p>This shows your submissions still present in your permitted active research queue. It is not an all-time submission report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>
+<section class="pane" data-pane="training" hidden><div class="card"><h2>My Assigned Training</h2><p>Course information is retrieved from the existing SBC Training Center for your employee account.</p><div id="training-list" class="list"><p class="muted">Loading training…</p></div><div id="training-detail" class="course-detail" hidden></div></div></section>
+<section class="pane" data-pane="clock" hidden><div class="card maxform"><h2>Time Clock</h2><p>Your individual time clock. No other employee's payroll, compensation, or time reports are available here.</p><div id="clock-summary" class="clock-summary">Loading time status…</div><div class="form-actions"><button type="button" class="primary" id="clock-in">Clock In</button><button type="button" class="outline" id="clock-out">Clock Out</button></div><p class="muted">Time is logged to the existing SBC workforce service. The current backend classifies this role's clock mode as training until a distinct research mode is implemented.</p></div></section>
+<footer>Successful By Choice · Because Why Not? · Research workspace v1</footer>
+</main>
+</div>
+</body></html>

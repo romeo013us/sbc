@@ -30,6 +30,10 @@
     throw Error(String(detail).slice(0,250));
    }
    show('Signed in. Loading your private workspace…');
+   // SBC Research Workspace v1: bypass owner dashboard initialization for Lead Researchers.
+   if(['lead_researcher','researcher','lead_generator','prospector'].includes(String(payload?.user?.role||'').toLowerCase())){
+    window.location.replace('/lead-research.html');return;
+   }
    if(typeof window.boot==='function'){
     await window.boot();
     if(document.getElementById('app')?.classList.contains('hidden')===false)return;
