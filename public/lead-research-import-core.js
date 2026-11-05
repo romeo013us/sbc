@@ -73,7 +73,7 @@
   if(table.length>100)throw Error('For controlled imports, use a maximum of 100 businesses per batch. Split larger lists into separate batches.');
   var seenNames=new Set(),seenPhones=new Set(),seenEmails=new Set();
   var records=table.map(function(cells,index){
-   var record={source:'Lead Research - Bulk Import'},errors=[],warnings=[],suppliedSource='';
+   var record={source:'Lead Research - Bulk Import',verificationSource:''},errors=[],warnings=[],suppliedSource='';
    keys.forEach(function(key,n){
     if(!key)return;
     var val=String(cells[n]||'').trim();
