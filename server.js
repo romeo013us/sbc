@@ -313,17 +313,16 @@ function sbcLornaAllowedRequest(req,user){
  if(!p.startsWith('/api/'))return !/^\/(?:office-box|ops-center|admin|settings|system-console|commercial-console)(?:\/|$)/i.test(p);
  if((p==='/api/login'||p==='/api/logout')&&['POST','GET'].includes(m))return true;
  if(p==='/api/me'||p==='/api/release-identity')return m==='GET';
- if(p==='/api/v9/bootstrap')return m==='GET';
+ // Broad legacy bootstrap is not available to the Lead Researcher role.
  if(p==='/api/v9/lead-verification')return m==='GET';
  if(/^\/api\/v9\/lead-verification\/[^/]+$/.test(p))return m==='POST';
  if(p==='/api/v9/time/clock')return m==='POST';
  if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
- if(p==='/api/workforce/lead-draft')return m==='GET';
+ // Legacy employee draft service is not exposed here.
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
- if(/^\/api\/workforce\/leads\/[^/]+$/.test(p))return m==='GET';
- if(p==='/api/v10/leads/submit')return m==='POST';
- if(p==='/api/crm/leads/import')return m==='POST';
+ // Individual lead data is accessed through the scoped research queue.
+ // Researcher can submit individual leads; bulk import is owner controlled.
  if(p==='/api/training')return m==='GET';
  if(/^\/api\/training\/courses\/[^/]+$/.test(p))return m==='GET';
  if(/^\/api\/training\/history\/[^/]+$/.test(p)&&m==='GET'){
