@@ -30,7 +30,7 @@ assert.ok(html.includes('data-tab="today"'),'daily task navigation absent');
 assert.ok(html.includes('data-pane="today"'),'daily task section absent');
 assert.ok(html.includes('id="daily-task-list"'));
 assert.ok(html.includes('sbc-research-lesson-reader.js?v=3'));
-assert.ok(html.indexOf('sbc-research-lesson-reader.js?v=3')<html.indexOf('lead-research.js?v=3'),'reader helper must load before UI');
+assert.ok(html.indexOf('sbc-research-lesson-reader.js?v=3')<html.search(/lead-research\.js\?v=\d+/),'reader helper must load before UI');
 assert.match(js,/lessonContent\(content,mod,course\.id,status\)/,'click must show full lesson body');
 assert.match(js,/var reader=window\.SBCResearchLessonReader/);
 assert.match(js,/trainingParagraph\(parent,'Lesson objective'/);
