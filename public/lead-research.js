@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null;
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,autoVerifiedToday=null,needsReviewToday=null,pendingAutoToday=null;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -25,58 +25,76 @@ async function api(path,opts){
  finally{clearTimeout(timer);}
 }
 function setTab(tab){
- if(!['home','queue','add','import','mine','training','clock'].includes(tab))return;
+ if(!['home','today','queue','add','import','mine','training','clock'].includes(tab))return;
  if(importRunning&&tab!=='import'){note('Bulk import is running. Finish the current batch before changing workspaces.',true);return;}
  active=tab;
  document.querySelectorAll('[data-pane]').forEach(function(el){el.hidden=el.getAttribute('data-pane')!==tab;});
  document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===tab);});
- var titles={home:'My Dashboard',queue:'Research Queue',add:'Add Business Lead',import:'CSV & List Import',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
+ var titles={home:'My Dashboard',today:'Today’s Tasks',queue:'Needs Attention',add:'Add Business Lead',import:'CSV & List Import',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
  if(tab==='clock'&&!clock)loadClock();
+ if(tab==='today')renderDailyPlan();
+}
+function leadAutomationStatus(c){
+ var state=String(c?.leadAssistStatus||'NOT_CHECKED');
+ if(state==='AUTO_VERIFIED')return 'SBC auto-verified';
+ if(state==='NEEDS_HUMAN_REVIEW'||state==='FAILED')return 'Needs more information';
+ if(state==='QUEUED'||state==='PROCESSING')return 'SBC checking automatically';
+ if(String(c?.verificationStatus||'')==='Owner Review')return 'Owner review';
+ return 'Awaiting SBC checks';
+}
+function isException(c){
+ return ['NEEDS_HUMAN_REVIEW','FAILED'].includes(String(c?.leadAssistStatus||''))||String(c?.verificationStatus||'')==='Owner Review';
 }
 function displayLead(c){
- var item=element('div','lead-row'),left=element('div'),right=element('div'),status=c.verificationStatus||c.status||'Needs Verification';
+ var item=element('div','lead-row'),left=element('div'),right=element('div');
+ var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
  left.append(element('small',null,[c.city||c.address,c.industry,c.phone,c.email].filter(Boolean).join(' · ')||'Contact details pending'));
- right.append(element('span','pill',status));
- var button=element('button','outline','Review');
- button.type='button';button.addEventListener('click',function(){openReview(item,c);});
+ right.append(element('span','pill',leadAutomationStatus(c)));
+ var actionable=own&&isException(c);
+ var button=element('button','outline',actionable?'Correct information':'View details');
+ button.type='button';button.addEventListener('click',function(){openReview(item,c,actionable);});
  right.append(button);item.append(left,right);return item;
 }
-function openReview(item,lead){
+function openReview(item,lead,editable){
  document.querySelectorAll('.research-review').forEach(function(el){el.remove();});
- var form=element('form','research-review'),fields=element('div','fields');
- var editable=[
+ var form=element('div','research-review');
+ form.append(element('h3',null,lead.businessName||'Lead details'));
+ form.append(element('p','muted','Automation: '+leadAutomationStatus(lead)+(lead.leadAssistCheckedAt?' · Last check '+new Date(lead.leadAssistCheckedAt).toLocaleString():'')));
+ form.append(element('p','muted','SBC handles verification. You only need to correct a record when its automatic check requests additional information.'));
+ if(!editable){
+  form.append(element('p',null,'Research source: '+String(lead.researchSource||lead.source||'Not recorded')));
+  var close=element('button','outline','Close');close.type='button';close.onclick=function(){form.remove();};form.append(close);item.append(form);return;
+ }
+ var fields=element('div','fields');
+ var editableFields=[
   ['Business name','businessName'],['Contact person','contactName'],
   ['Phone','phone'],['Email','email'],['Website','website'],
   ['Industry','industry'],['City','city'],['Research source','verificationSource']
  ];
- editable.forEach(function(pair){
+ editableFields.forEach(function(pair){
   var label=element('label',null,pair[0]),input=element('input');input.name=pair[1];
-  input.value=String(lead[pair[1]]||'').slice(0,500);input.maxLength=500;
-  label.append(input);fields.append(label);
+  input.value=String(lead[pair[1]]||lead.researchSource&&pair[1]==='verificationSource'&&lead.researchSource||'').slice(0,500);
+  input.maxLength=500;label.append(input);fields.append(label);
  });
  var notes=element('label','wide','Research notes'),textarea=element('textarea');
  textarea.name='notes';textarea.maxLength=3000;textarea.rows=3;textarea.value=String(lead.notes||'').slice(0,3000);notes.append(textarea);fields.append(notes);
- var statusLabel=element('label','wide','Verification decision'),select=element('select');
- select.name='verificationStatus';
- [['Needs Verification','Still needs verification'],['Verified','Information verified'],['Owner Review','Needs owner review']].forEach(function(pair){
-   var option=element('option',null,pair[1]);option.value=pair[0];option.selected=lead.verificationStatus===pair[0];select.append(option);
- });statusLabel.append(select);fields.append(statusLabel);
- var actions=element('div','form-actions'),submit=element('button','primary','Save research review'),cancel=element('button','outline','Cancel');
+ var submitForm=element('form','research-correction'),actions=element('div','form-actions');
+ var submit=element('button','primary','Save correction and recheck'),cancel=element('button','outline','Cancel');
  submit.type='submit';cancel.type='button';cancel.onclick=function(){form.remove();};
- actions.append(submit,cancel);form.append(fields,actions);
- form.onsubmit=async function(event){
+ actions.append(submit,cancel);submitForm.append(fields,actions);form.append(submitForm);
+ submitForm.onsubmit=async function(event){
   event.preventDefault();submit.disabled=true;clearNote();
-  var fd=new FormData(form),data={};
-  editable.forEach(function(pair){data[pair[1]]=String(fd.get(pair[1])||'').trim();});
-  data.notes=String(fd.get('notes')||'').trim();data.verificationStatus=String(fd.get('verificationStatus')||'Needs Verification');
+  var fd=new FormData(submitForm),data={};
+  editableFields.forEach(function(pair){data[pair[1]]=String(fd.get(pair[1])||'').trim();});
+  data.notes=String(fd.get('notes')||'').trim();
   try{
    await api('/api/v9/lead-verification/'+encodeURIComponent(String(lead.id)),{method:'POST',body:JSON.stringify(data)});
-   note('Research review saved to SBC.');form.remove();
-   await loadLeads().catch(function(){note('Review saved, but the refreshed queue is unavailable.',true);});
-  }catch(e){note('Research review was not saved: '+errorMessage(e),true);}
+   note('Correction saved. SBC Lead Assist will automatically recheck the record.');
+   form.remove();await Promise.allSettled([loadLeads(),loadProgress()]);
+  }catch(e){note('Correction could not be saved: '+errorMessage(e),true);}
   finally{submit.disabled=false;}
  };
  item.append(form);
@@ -84,15 +102,22 @@ function openReview(item,lead){
 function drawLeads(){
  if(!leads)return;
  var q=$('queue-list'),m=$('mine-list'),filter=String($('search').value||'').trim().toLowerCase();
- var chosen=leads.filter(function(c){return [c.businessName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
- var own=leads.filter(function(c){return submittedIds?submittedIds.has(String(c.id)):String(c.researcherId||'')===String(user.id);});
+ if(!submittedIds){
+  empty(q,'Loading your own SBC submissions and exception queue…');
+  empty(m,'Loading your submission history…');
+  ['metric-queue','metric-unverified','metric-mine'].forEach(function(id){txt(id,'—');});
+  return;
+ }
+ var own=leads.filter(function(c){return submittedIds.has(String(c.id));});
+ var attention=own.filter(isException);
+ var chosen=attention.filter(function(c){return [c.businessName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
  q.replaceChildren();m.replaceChildren();
- if(!chosen.length)empty(q,filter?'No matching leads in your current research queue.':'No leads currently assigned to your research queue.');
+ if(!chosen.length)empty(q,filter?'No matching exceptions from your submissions.':'No records currently need your corrections. SBC automatically checks submitted leads.');
  else chosen.forEach(function(c){q.append(displayLead(c));});
- if(!own.length)empty(m,'No current queue items are marked as submitted by your account. Completed or moved leads may no longer appear here.');
+ if(!own.length)empty(m,'No submitted leads currently visible in your active research CRM. Historical totals appear on your dashboard.');
  else own.forEach(function(c){m.append(displayLead(c));});
- txt('metric-queue',leads.length);
- txt('metric-unverified',leads.filter(function(c){return !c.verificationStatus||['Needs Verification','Owner Review'].includes(c.verificationStatus);}).length);
+ txt('metric-queue',attention.length);
+ txt('metric-unverified',own.filter(function(c){return ['QUEUED','PROCESSING','NOT_CHECKED'].includes(String(c.leadAssistStatus||'NOT_CHECKED'))&&!isException(c);}).length);
  txt('metric-mine',own.length);
 }
 async function loadLeads(){
@@ -112,62 +137,200 @@ async function loadLeads(){
 async function loadProgress(){
  try{
   var result=await api('/api/workforce/research-progress');
-  if(!result.ok||!Number.isInteger(result.todayCount)||result.todayCount<0)throw Error('SBC did not return valid production counts.');
-  var total=result.todayCount,target=16,stretch=20;
-  if(!Array.isArray(result.submittedLeadIds))throw Error('CRM did not return auditable submission IDs.');
+  if(!result.ok||result.source!=='research-intake-audit'||!Number.isInteger(result.todayCount)||result.todayCount<0)
+   throw Error('SBC research progress endpoint is outdated or returned invalid counts. Update the verified server release.');
+  if(!Array.isArray(result.submittedLeadIds))throw Error('SBC did not return auditable submission IDs.');
   submittedIds=new Set(result.submittedLeadIds.map(String));
+  dailyAccepted=result.todayCount;
+  autoVerifiedToday=Number.isInteger(result.autoVerifiedTodayCount)?result.autoVerifiedTodayCount:null;
+  needsReviewToday=Number.isInteger(result.needsReviewTodayCount)?result.needsReviewTodayCount:null;
+  pendingAutoToday=Number.isInteger(result.pendingAutoTodayCount)?result.pendingAutoTodayCount:null;
   if(leads)drawLeads();
-  txt('goal-current',total);
+  renderDailyPlan();
+  txt('goal-current',dailyAccepted);
   txt('goal-seven',Number.isInteger(result.last7Count)?result.last7Count:'—');
-  txt('goal-all',Number.isInteger(result.allTimeCount)?result.allTimeCount:'—');
-  txt('goal-verified',Number.isInteger(result.verifiedTodayCount)?result.verifiedTodayCount:'—');
+  txt('goal-all',Number.isInteger(result.rawSavedAllTimeCount)?result.rawSavedAllTimeCount:'—');
+  txt('goal-verified',autoVerifiedToday===null?'—':autoVerifiedToday);
+  txt('goal-existing',needsReviewToday===null?'—':needsReviewToday);
   txt('goal-date',result.date+' · Eastern business day');
-  txt('goal-status',total>=stretch?'Stretch goal achieved! Every additional quality lead is a bonus.':total>=target?'Daily goal reached — '+(stretch-total)+' more to hit the stretch.':(target-total)+' more accepted leads to reach your daily goal.');
-  $('goal-fill').style.width=Math.min(100,Math.max(0,total/stretch*100))+'%';
-  $('goal-track').setAttribute('aria-valuenow',String(Math.min(stretch,total)));
-  $('goal-track').setAttribute('aria-valuetext',String(total)+' leads saved out of 20 stretch target');
+  txt('goal-status',(dailyAccepted>=20?'Stretch research target achieved!':dailyAccepted>=16?'Daily research target achieved — '+(20-dailyAccepted)+' to reach stretch.':(16-dailyAccepted)+' complete research submissions remain toward your target.')+
+   (pendingAutoToday!==null?' · '+pendingAutoToday+' automatic checks pending':''));
+  $('goal-fill').style.width=Math.min(100,Math.max(0,dailyAccepted/20*100))+'%';
+  $('goal-track').setAttribute('aria-valuenow',String(Math.min(20,dailyAccepted)));
+  $('goal-track').setAttribute('aria-valuetext',String(dailyAccepted)+' unique research-complete submissions out of 20 stretch target');
  }catch(e){
-  ['goal-current','goal-seven','goal-all','goal-verified'].forEach(function(id){txt(id,'—');});
-  txt('goal-status','Could not load verified CRM totals: '+errorMessage(e));
-  $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','CRM progress unavailable');
+  ['goal-current','goal-seven','goal-all','goal-verified','goal-existing'].forEach(function(id){txt(id,'—');});
+  dailyAccepted=null;autoVerifiedToday=null;needsReviewToday=null;pendingAutoToday=null;
+  submittedIds=null;drawLeads();renderDailyPlan();
+  txt('goal-status','Could not load research totals: '+errorMessage(e));
+  $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','SBC research totals unavailable');
  }
+}
+
+function easternDay(){
+ var d=new Date(),zone='America/New_York';
+ return {day:new Intl.DateTimeFormat('en-US',{timeZone:zone,weekday:'long'}).format(d),
+  date:new Intl.DateTimeFormat('en-US',{timeZone:zone,month:'short',day:'numeric',year:'numeric'}).format(d),
+  key:new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(d)};
+}
+function trainedToday(){
+ if(!train||!Array.isArray(train.progress))return null;
+ var date=easternDay().key,fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+ return train.progress.filter(function(p){
+  if(!['completed','passed'].includes(p.status)||!p.completedAt)return false;
+  var when=new Date(p.completedAt);
+  return !Number.isNaN(when.valueOf())&&fmt.format(when)===date;
+ }).length;
+}
+function renderDailyPlan(){
+ var list=$('daily-task-list');if(!list)return;
+ var et=easternDay(),themes={Monday:'barbers and beauty businesses',Tuesday:'restaurants and cafés',Wednesday:'auto services and repair shops',Thursday:'local retail stores',Friday:'professional and home services',Saturday:'quality checks and existing lead cleanup',Sunday:'prepare next week’s research queue'},
+  focus=themes[et.day]||'local small businesses';
+ txt('daily-focus-title','Research new '+focus);
+ txt('daily-overview',et.day+' · '+et.date+' ET · Find prospects, document sources, submit, and let SBC verify.');
+ txt('daily-plan-date',et.day+', '+et.date+' · Suggested research focus: '+focus+'. Priorities follow the Eastern business day.');
+ var training=trainedToday();
+ var items=[
+  {number:'01',label:'Find new business prospects',detail:'Research '+focus+'. Collect real business names and usable public contact details. Verify the source of what you enter, not a second approval status.',tab:'add',action:'Submit researched lead',stat:dailyAccepted===null?'CRM total unavailable':dailyAccepted+' research-complete leads submitted today'},
+  {number:'02',label:'Add complete researched lists',detail:'Use CSV or paste to add multiple businesses when you have reliable contact details and a source for each. A raw list of names alone does not count toward the research goal.',tab:'import',action:'Open CSV & list import',stat:'Preview, reject duplicates, and confirm each CRM save'},
+  {number:'03',label:'Handle only automatic-verification exceptions',detail:'SBC Lead Assist automatically checks submitted leads. Only correct your own records when SBC specifically flags missing or conflicting information. Do not review all existing CRM leads.',tab:'queue',action:'View my exceptions',stat:needsReviewToday===null?'SBC checks loading…':needsReviewToday+' of today’s research submissions need follow-up'},
+  {number:'04',label:'Finish a short Academy lesson',detail:'Use a short training block to improve research accuracy. Open and read the actual lesson before saving progress; do not treat training as extra lead quota.',tab:'training',action:'Open training reader',stat:training===null?'Training progress unavailable':training+' Academy lesson'+(training===1?'':'s')+' completed today'},
+  {number:'05',label:'Reach your 16–20 research goal and hand off',detail:'Finish with 16 complete, unique submissions (20 stretch). Review your work, note any unresolved exceptions and sign out. Automatic verification runs independently; its delays do not reduce your submitted-work count.',tab:'mine',action:'My leads & status',stat:dailyAccepted===null?'CRM goal unavailable':dailyAccepted>=16?'Daily research goal reached':(16-dailyAccepted)+' complete submissions remain to the base goal'}
+ ];
+ list.replaceChildren();
+ items.forEach(function(item){
+  var row=element('div','daily-task-row'),number=element('div','daily-task-number',item.number),body=element('div','daily-task-body');
+  body.append(element('strong',null,item.label),element('p',null,item.detail),element('small',null,item.stat));
+  var button=element('button','outline',item.action);button.type='button';button.onclick=function(){setTab(item.tab);};
+  row.append(number,body,button);list.append(row);
+ });
+}
+
+function trainingParagraph(parent,label,value){
+ if(!value)return;
+ var section=element('section','lesson-part');
+ if(label)section.append(element('h4',null,label));
+ section.append(element('p',null,value));
+ parent.append(section);
+}
+function lessonContent(parent,mod,courseId,status){
+ var reader=window.SBCResearchLessonReader;
+ if(!reader||typeof reader.normalize!=='function'){
+  empty(parent,'Training lesson reader is unavailable. Refresh the page; completion is disabled until content loads.');return;
+ }
+ var lesson=reader.normalize(mod);
+ if(!lesson.hasReadableContent){
+  empty(parent,'This lesson has no readable course material. Contact your SBC manager. Completion is disabled.');return;
+ }
+ var meta=element('p','muted','Estimated lesson time: '+lesson.minutes+' minutes');
+ parent.append(meta);
+ trainingParagraph(parent,'Lesson objective',lesson.objective);
+ if(lesson.learn.length){
+  var sec=element('section','lesson-part'),heading=element('h4',null,'What you need to learn'),ul=element('ul','lesson-bullets');
+  lesson.learn.forEach(function(point){ul.append(element('li',null,point));});
+  sec.append(heading,ul);parent.append(sec);
+ }
+ trainingParagraph(parent,'Practice exercise',lesson.practicePrompt);
+ trainingParagraph(parent,'Evidence to record',lesson.practiceEvidence);
+ trainingParagraph(parent,'Knowledge check',lesson.knowledgePrompt);
+ trainingParagraph(parent,'What a good answer demonstrates',lesson.passingRule);
+ if(lesson.questions.length){
+  var quiz=element('section','lesson-part'),h=element('h4',null,'Assessment preparation'),ol=element('ol','lesson-bullets');
+  lesson.questions.forEach(function(q){ol.append(element('li',null,q));});
+  quiz.append(h,ol,element('p','muted','These are review prompts, not an automatically graded assessment. Formal certification remains owner-controlled.'));
+  parent.append(quiz);
+ }
+ if(['completed','passed'].includes(String(status||''))){
+  parent.append(element('p','training-done','Lesson completed. You can reopen and review it at any time.'));
+  return;
+ }
+ var form=element('form','lesson-complete-form'),reflection=element('textarea');
+ reflection.rows=3;reflection.maxLength=1000;reflection.placeholder='Write what you learned and how you would apply it to a real SBC lead.';
+ var label=element('label','lesson-reflection',lesson.knowledgePrompt?'Your answer to the knowledge check':'Your lesson notes');
+ label.append(reflection);
+ var attestation=element('label','lesson-ack'),check=element('input');
+ check.type='checkbox';check.setAttribute('aria-label','I have read and practiced this lesson');
+ attestation.append(check,element('span',null,'I have read the lesson and completed the practice and knowledge check.'));
+ var submit=element('button','primary','Save Completed Lesson');
+ submit.type='submit';submit.disabled=true;
+ function validate(){submit.disabled=!check.checked||reflection.value.trim().length<12;}
+ check.addEventListener('change',validate);reflection.addEventListener('input',validate);
+ form.append(label,attestation,element('p','muted','Write a short, specific reflection (at least 12 characters). This records lesson study, not a graded exam or certification.'),submit);
+ form.addEventListener('submit',async function(event){
+  event.preventDefault();if(submit.disabled)return;
+  var answer=reflection.value.trim();
+  if(answer.length<12||!check.checked)return;
+  submit.disabled=true;
+  try{
+   var result=await api('/api/training/progress',{method:'POST',
+     body:JSON.stringify({courseId:courseId,moduleId:mod.id,status:'completed',evidence:answer,notes:'Study completed in SBC Research Academy'})});
+   if(result?.ok===false)throw Error(result.error||'Training service did not confirm the update.');
+   note('Lesson completed and saved to your SBC Academy progress.');
+   await loadTraining();
+   await loadCourse(courseId);
+  }catch(e){note('Lesson was not marked complete: '+errorMessage(e),true);validate();}
+ });
+ parent.append(form);
 }
 async function loadTraining(){
  try{
-  var data=await api('/api/training');train=data;
+  var data=await api('/api/training');
+  if(!data||data.ok===false||!Array.isArray(data.assigned))throw Error('SBC training catalog returned an unexpected format.');
+  train=data;
   var list=$('training-list');list.replaceChildren();
-  var assigned=Array.isArray(data.assigned)?data.assigned:[];
-  if(!assigned.length){empty(list,'No training courses assigned to your account yet.');return;}
-  assigned.forEach(function(item){
-   var course=item.course||item,box=element('div','course-row'),left=element('div'),button=element('button','outline','View course');
-   left.append(element('strong',null,course.title||course.name||'Assigned training'));
-   left.append(element('small',null,course.description||'View your course content and modules.'));
-   button.type='button';button.onclick=function(){loadCourse(course.id||item.courseId||item.id);};
+  var assigned=data.assigned.map(function(item){return {course:item.course||item,summary:item.summary||null,assigned:true};});
+  var available=Array.isArray(data.available)?data.available.map(function(c){return {course:c,summary:null,assigned:false};}):[];
+  var known=new Set(),items=assigned.concat(available).filter(function(item){
+   var c=item.course||{};
+   if(!c.id||c.status!=='published'||known.has(String(c.id)))return false;
+   known.add(String(c.id));return true;
+  });
+  if(!items.length){empty(list,'No published training is available for your account. Contact your SBC owner or manager; do not mark courses complete without learning material.');renderDailyPlan();return;}
+  renderDailyPlan();
+  items.forEach(function(item){
+   var course=item.course,box=element('div','course-row'),left=element('div'),button=element('button','outline','Open course and lessons');
+   left.append(element('strong',null,course.title||'SBC Academy Course'));
+   var stats=item.summary;
+   left.append(element('small',null,(course.description||'Assigned SBC training')+' · '+(course.modules?.length||stats?.moduleCount||0)+' lessons'+(stats?' · '+stats.percent+'% complete':'')+(item.assigned?' · Assigned':' · Available')));
+   button.type='button';button.onclick=function(){loadCourse(course.id);};
    box.append(left,button);list.append(box);
   });
- }catch(e){empty($('training-list'),'Training cannot be loaded: '+errorMessage(e));}
+ }catch(e){empty($('training-list'),'Training is unavailable: '+errorMessage(e));train=null;}
 }
 async function loadCourse(id){
- if(!id){note('Course identifier is missing. Please contact your SBC manager.',true);return;}
- var area=$('training-detail');area.hidden=false;empty(area,'Loading course…');
+ if(!id){note('Course identifier is missing. Contact your SBC manager.',true);return;}
+ var area=$('training-detail');area.hidden=false;empty(area,'Loading course and lesson material…');
  try{
   var data=await api('/api/training/courses/'+encodeURIComponent(id)),course=data.course||{};
-  area.replaceChildren(element('h3',null,course.title||'Training Course'));
-  var mods=Array.isArray(course.modules)?course.modules:[];
-  if(!mods.length){area.append(element('p','muted','This course has no visible modules.'));return;}
-  mods.forEach(function(mod){
-   var box=element('div','course-module'),title=element('strong',null,mod.title||'Lesson'),content=element('p',null,typeof mod.content==='string'?mod.content:(mod.description||'Open this lesson in the training system for additional materials.'));
-   box.append(title,content);
-   var button=element('button','outline','Mark lesson complete');button.type='button';
-   button.onclick=async function(){
-    button.disabled=true;
-    try{await api('/api/training/progress',{method:'POST',body:JSON.stringify({courseId:course.id,moduleId:mod.id,status:'completed'})});note('Training progress saved to SBC.');}
-    catch(e){note('Could not save training progress: '+errorMessage(e),true);}
-    finally{button.disabled=false;}
+  if(!data.ok||!course.id||!Array.isArray(course.modules))throw Error('No readable course was returned by the training system.');
+  area.replaceChildren(element('h3',null,course.title||'SBC Academy Course'));
+  area.append(element('p','muted',(course.description||'')+' · '+course.modules.length+' lessons. Select Open lesson to read the complete material.'));
+  var statuses=new Map((data.summary?.modules||[]).map(function(m){return [String(m.id),m.status];}));
+  if(!course.modules.length){area.append(element('p','muted','No lessons have been published in this course.'));return;}
+  var modules=course.modules.filter(function(m){return m.status!=='archived'&&m.status!=='draft';}).slice().sort(function(a,b){return Number(a.order||0)-Number(b.order||0);});
+  if(!modules.length){area.append(element('p','muted','No active lessons have been published in this course.'));return;}
+  modules.forEach(function(mod,index){
+   var status=statuses.get(String(mod.id))||'not_started';
+   var row=element('div','course-module training-module'),head=element('div','training-module-head'),
+       title=element('div'),button=element('button','outline','Open lesson'),
+       content=element('div','training-lesson-content');
+   content.hidden=true;
+   title.append(element('strong',null,(index+1)+'. '+(mod.title||'Lesson')));
+   title.append(element('small',null,(mod.minutes||15)+' min · '+String(status).replace(/_/g,' ')));
+   button.type='button';button.setAttribute('aria-expanded','false');
+   button.onclick=function(){
+    var opening=content.hidden;
+    if(opening){
+     document.querySelectorAll('.training-lesson-content').forEach(function(el){el.hidden=true;});
+     document.querySelectorAll('.training-module-head button').forEach(function(el){el.textContent='Open lesson';el.setAttribute('aria-expanded','false');});
+     content.replaceChildren();lessonContent(content,mod,course.id,status);
+    }
+    content.hidden=!opening;button.textContent=opening?'Close lesson':'Open lesson';button.setAttribute('aria-expanded',opening?'true':'false');
    };
-   box.append(button);area.append(box);
+   head.append(title,button);row.append(head,content);area.append(row);
   });
- }catch(e){empty(area,'Course could not be opened: '+errorMessage(e));}
+  if(typeof area.scrollIntoView==='function')area.scrollIntoView({block:'start',behavior:'smooth'});
+ }catch(e){empty(area,'Course could not be opened: '+errorMessage(e));note('This course did not load; progress has not been changed.',true);}
 }
 async function loadClock(){
  try{
@@ -186,13 +349,13 @@ async function doClock(action){
 async function submitLead(event){
  event.preventDefault();if(busy)return;
  var form=event.target,fd=new FormData(form),data={source:'Lead Research'};
- ['businessName','contactName','phone','email','website','industry','address','notes'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
+ ['businessName','contactName','phone','email','website','industry','address','notes','verificationSource'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
  if(!data.businessName&&!data.phone&&!data.email){note('Enter a business name, phone or email.',true);return;}
  busy=true;$('save-lead').disabled=true;clearNote();
  try{
   var saved=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(data)});
   if(!saved.id||!saved.persistence||saved.persistence.verified!==true)throw Error('The backend did not provide verified CRM persistence evidence.');
-  form.reset();setTab('home');note('Lead saved and verified in the central SBC CRM. Reference: '+saved.id);
+  form.reset();setTab('home');note((saved.researchComplete?'Research-complete lead saved; it counts toward your daily research target.':'Lead saved. Add a real contact method and research source to qualify for the research target.')+' SBC Lead Assist will perform verification automatically. Reference: '+saved.id);
   await Promise.allSettled([loadLeads(),loadProgress()]);
  }catch(e){note('Lead not submitted: '+errorMessage(e),true);}
  finally{busy=false;$('save-lead').disabled=false;}
