@@ -12,6 +12,8 @@ assert.match(after,/SBC_RESEARCH_AUTO_HANDOFF_V4/);
 assert.match(after,/leadAssistQueue:Array\.isArray\(extra\.leadAssistQueue\)/,'queued work must survive MySQL reload');
 assert.match(after,/leadAssistQueue:\(db\.leadAssistQueue\|\|\[\]\)\.slice\(0,5000\)/,'queue must persist in existing workspace snapshot');
 assert.match(after,/c\.leadIntelligence\.autoVerificationStatus=c\.leadAssist\.status/,'machine outcome must persist with canonical customer');
+assert.match(after,/c\.leadIntelligence\.verificationStatus=c\.verificationStatus/,'sales-verification decision must survive MySQL restart');
+assert.match(after,/verificationStatus:\(\(\)=>\{try\{return safeJsonParse\(r\.lead_intelligence_json/,'relational hydration must restore verification decisions');
 assert.match(after,/c\.leadIntelligence\.autoVerificationStatus=job\.status/,'failed jobs must persist failure state');
 assert.match(after,/x\.status==='PROCESSING'&&Date\.now\(\)-Date\.parse/,'abandoned processing must be safely retried');
 assert.match(after,/recover_research_auto_check/,'queued CRM leads must be rehydrated automatically after a restart');
