@@ -106,6 +106,33 @@ jobs:
       - name: Recovery data preservation
         run: node scripts/data-recovery-guard-test.js
 
+  financial-vault-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local_ci_only_sbc_6682
+          MYSQL_DATABASE: sbc_v6682_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plocal_ci_only_sbc_6682"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Exact financial lock and vendor claim on isolated MySQL 8
+        env:
+          SBC_V6682_MYSQL_TEST: YES
+          SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
+        run: node scripts/v6682-mysql-concurrency-ci.test.cjs
+
   security-and-package:
     runs-on: ubuntu-latest
     timeout-minutes: 15
