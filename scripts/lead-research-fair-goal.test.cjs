@@ -14,6 +14,7 @@ assert.match(after,/leadAssistQueue:\(db\.leadAssistQueue\|\|\[\]\)\.slice\(0,50
 assert.match(after,/c\.leadIntelligence\.autoVerificationStatus=c\.leadAssist\.status/,'machine outcome must persist with canonical customer');
 assert.match(after,/c\.leadIntelligence\.autoVerificationStatus=job\.status/,'failed jobs must persist failure state');
 assert.match(after,/x\.status==='PROCESSING'&&Date\.now\(\)-Date\.parse/,'abandoned processing must be safely retried');
+assert.match(after,/recover_research_auto_check/,'queued CRM leads must be rehydrated automatically after a restart');
 
 const i=after.indexOf("app.get('/api/workforce/research-progress',auth,async(req,res)=>{");
 const j=after.indexOf("app.get('/api/v9/lead-verification',auth,(req,res)=>{",i);
@@ -34,7 +35,7 @@ assert.match(get,/leadAssistStatus:c\.leadAssist\?\.status/,'employee sees real 
 assert.match(get,/researchStatus:c\.leadIntelligence\?\.researchStatus/);
 const review=after.slice(after.indexOf("app.post('/api/v9/lead-verification/:id',auth,"),after.indexOf("app.post('/api/v9/assign',auth,"));
 assert.match(review,/\['Needs Verification','Owner Review'\]\.includes\(String\(req\.body\.verificationStatus\)\)/,'researcher cannot mark Verified');
-assert.match(review,/if\(researcher\)enqueueLeadAssist\(c\.id,'researcher_corrected_exception','high'\)/,'manual exception corrections must trigger auto recheck');
+assert.match(review,/enqueueLeadAssist\(c\.id,'researcher_corrected_exception','high'\)/,'manual exception corrections must trigger auto recheck');
 assert.match(review,/if\(!researcher&&c\.verificationStatus==='Verified'/,'owner sales rules retained');
 assert.match(source,/event_type='workforce_lead_created'/);
 assert.match(source,/meta\?\.researchComplete===true/);
