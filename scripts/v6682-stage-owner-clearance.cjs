@@ -4,6 +4,9 @@
  */
 const fs=require('node:fs'),path=require('node:path');
 const MARK='SBC_V6682_DURABLE_OWNER_CLEARANCE_BINDING';
+const ORDER_MARK='SBC_V6682_ORDER_AMOUNT_INTEGRITY';
+const submitBefore="  SBC_V6651_REQUIRE_PAID(sourceOrder,job?.tenantId);\n  const amount=Number(job?.value||0);";
+const submitAfter="  SBC_V6651_REQUIRE_PAID(sourceOrder,job?.tenantId);\n  // SBC_V6682_ORDER_AMOUNT_INTEGRITY: a paid $25k order cannot run as a $9k job.\n  const amount=V569_PRODUCTION_EXPANSION.financialAmountCents(job?.value)/100;\n  const orderAmount=V569_PRODUCTION_EXPANSION.financialAmountCents(sourceOrder?.price)/100;\n  if(amount!==orderAmount)throw new Error('FULFILLMENT_ORDER_AMOUNT_MISMATCH');";
 const before=`app.post('/api/v566/delivery/approve/:jobId',auth,ownerOnly,async(req,res)=>{
   try{
     const m=megaData();
@@ -37,6 +40,9 @@ const after=`app.post('/api/v566/delivery/approve/:jobId',auth,ownerOnly,async(r
     const approval=await V569_PRODUCTION_EXPANSION.authorizePersistentFinancialExecution(mysqlPool,job.financialLockId,approvedBy,{tenantId:tenant});
     if(String(approval.status)!=='OWNER_AUTHORIZED'||!approval.owner_authorized_by||!approval.owner_authorized_at)
       throw new Error('FINANCIAL_VAULT_APPROVAL_NOT_DURABLE');
+    // Retry/worker overlap must not reopen a processing or completed job.
+    if(!['ready','owner_clearance_required'].includes(String(job.status)))throw new Error('FULFILLMENT_JOB_NOT_APPROVABLE');
+    V569_PRODUCTION_EXPANSION.assertPersistentFinancialLockBinding(persisted,{tenantId:tenant,resourceId:job.id,action:'vendor_fulfillment',amount:job.value});
     // The worker still checks exact vault binding and holds an atomic ready->processing job claim.
     job.ownerClearanceAt=now();job.ownerClearanceBy=approvedBy;job.status='ready';job.vendorStatus='approved_for_execution';job.lastError='';job.updatedAt=now();
     await megaSave(m);
@@ -46,11 +52,13 @@ const after=`app.post('/api/v566/delivery/approve/:jobId',auth,ownerOnly,async(r
 });`;
 function patchSource(input){
   if(input.includes(MARK)){
-    if(!input.includes("clearancePersisted:true")||!input.includes('assertPersistentFinancialLockBinding(persisted,scope)'))throw Error('V6682_PARTIAL_OWNER_CLEARANCE_PATCH');
+    if(!input.includes("clearancePersisted:true")||!input.includes('assertPersistentFinancialLockBinding(persisted,scope)')||!input.includes(ORDER_MARK))throw Error('V6682_PARTIAL_OWNER_CLEARANCE_PATCH');
     return input;
   }
   if(input.split(before).length!==2)throw Error('V6682_OWNER_CLEARANCE_ROUTE_ANCHOR_MISMATCH');
-  return input.replace(before,after);
+  const updated=input.replace(before,after);
+  if(updated.split(submitBefore).length!==2)throw Error('V6682_FULFILLMENT_AMOUNT_ANCHOR_MISMATCH');
+  return updated.replace(submitBefore,submitAfter);
 }
 function apply(root){
   const file=path.join(root,'server.js'),source=fs.readFileSync(file,'utf8');
