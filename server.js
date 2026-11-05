@@ -6376,19 +6376,33 @@ app.get('/api/v9/lead-verification',auth,(req,res)=>{
   res.json({stats,leads:view,users:researcher?[]:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});
 });
 app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
-  const allowed=['owner','manager','lead_researcher']; if(!allowed.includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
+  const researcher=sbcLornaRole(req.user);if(!researcher&&!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
   const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)); if(!c)return res.status(404).json({error:'Lead not found.'});
+  // Security boundary must run before any mutable customer fields are assigned.
+  if(researcher){
+    const assigned=String(c.assignedTo||''),status=String(c.status||'Lead').trim().toLowerCase();
+    const permitted=Number(c.tenantId)===Number(requireRequestTenant(req))
+      &&(!assigned||assigned===String(req.user.id))
+      &&!['customer','lost','do not call','dnc','closed','duplicate'].includes(status)
+      &&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));
+    if(!permitted)return res.status(403).json({error:'Lead is outside your research queue.'});
+    if(req.body?.assignedTo!==undefined)return res.status(403).json({error:'Researchers cannot reassign leads.'});
+    if(req.body?.verificationStatus!==undefined&&!['Needs Verification','Verified','Owner Review'].includes(String(req.body.verificationStatus)))
+      return res.status(403).json({error:'Owner review required to mark a lead Sales Ready.'});
+  }
   const b=req.body||{};
   for(const k of ['businessName','contactName','phone','email','website','industry','city','zip','notes','source','verificationSource']) if(b[k]!==undefined)c[k]=String(b[k]||'');
-  if(req.user.role==='lead_researcher'&&b.assignedTo!==undefined&&String(b.assignedTo)!==String(req.user.id))return res.status(403).json({error:'Researchers may verify and submit leads, but only owner/manager may reassign them.'});
+  if(researcher&&b.assignedTo!==undefined)return res.status(403).json({error:'Researchers may verify and submit leads, but only owner/manager may reassign them.'});
   if(['owner','manager'].includes(req.user.role)&&b.assignedTo!==undefined){const uid=String(b.assignedTo||'');const u=uid?(db.users||[]).find(x=>x.id===uid&&x.active!==false&&['lead_researcher','caller'].includes(x.role)):null;if(uid&&!u)return res.status(400).json({error:'Select an active lead researcher or sales manager/caller.'});c.assignedTo=uid;c.assignedToName=u?.name||'';}
   if(b.verificationStatus!==undefined)c.verificationStatus=['Needs Verification','Verified','Owner Review','Sales Ready'].includes(String(b.verificationStatus))?String(b.verificationStatus):'Needs Verification';
   normalizeLeadQuality(c);
-  if(c.verificationStatus==='Verified'&&c.leadTemperature==='Hot')c.verificationStatus='Sales Ready';
+  if(!researcher&&c.verificationStatus==='Verified'&&c.leadTemperature==='Hot')c.verificationStatus='Sales Ready';
   if(c.verificationStatus==='Sales Ready'&&c.leadTemperature==='Cold')c.verificationStatus='Needs Verification';
   c.updatedAt=now();
   audit(req.user,'lead_verification_update',`Updated lead verification for ${c.businessName||c.phone||c.id}`,{customerId:c.id,verificationStatus:c.verificationStatus,leadTemperature:c.leadTemperature,assignedTo:c.assignedTo||''});
   await saveData();
+  res.setHeader('Cache-Control','no-store');
+  if(researcher)return res.json({ok:true,id:c.id,businessName:c.businessName,verificationStatus:c.verificationStatus,updatedAt:c.updatedAt});
   res.json(c);
 });
 app.post('/api/v9/assign',auth,ownerOnly,async(req,res)=>{const c=db.customers.find(x=>x.id===String(req.body?.customerId)),u=(db.users||[]).find(x=>x.id===String(req.body?.userId));if(!c)return res.status(404).json({error:'Lead not found.'});if(req.body?.userId&&(!u||!['caller','lead_researcher'].includes(u.role)))return res.status(400).json({error:'Select an active sales or lead-research user.'});c.assignedTo=String(req.body?.userId||'');c.updatedAt=now();audit(req.user,'lead_assignment',`Assigned ${c.businessName||c.contactName||c.phone} to ${u?.name||'Unassigned'}`,{customerId:c.id,userId:c.assignedTo});await saveData();res.json(c)})
