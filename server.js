@@ -6356,11 +6356,24 @@ app.post('/api/v9/time/clock',auth,async(req,res)=>{const action=String(req.body
 app.get('/api/v9/time/status',auth,(req,res)=>{const v=v9data();res.json({open:(v.timeEntries||[]).find(x=>x.userId===req.user.id&&!x.clockOut)||null,entries:(v.timeEntries||[]).filter(x=>x.userId===req.user.id).slice(0,200)})})
 app.post('/api/v9/assign-batch',auth,async(req,res)=>{if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Owner or manager access required.'});const uid=String(req.body?.userId||''),limit=Math.max(1,Math.min(500,Number(req.body?.amount||25)));const u=(db.users||[]).find(x=>x.id===uid&&x.active!==false&&x.role==='caller');if(!u)return res.status(400).json({error:'Select an active Sales Caller.'});const candidates=(db.customers||[]).filter(c=>!['Customer','Lost','DNC'].includes(c.status)&&c.assignedTo!==uid).filter(c=>!c.assignedTo||String(c.assignedTo)==='').slice(0,limit);candidates.forEach(c=>{c.assignedTo=u.id;c.assignedToName=u.name;c.updatedAt=now()});await saveData();audit(req.user,'lead_batch_assignment',`Assigned ${candidates.length} leads to ${u.name}`,{userId:u.id,amount:candidates.length});res.json({assigned:candidates.length,userId:u.id,userName:u.name,leadIds:candidates.map(x=>x.id)})});
 app.get('/api/v9/lead-verification',auth,(req,res)=>{
-  if(!['owner','manager','lead_researcher'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
+  const researcher=sbcLornaRole(req.user);
+  if(!researcher&&!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
   const all=(db.customers||[]).map(normalizeLeadQuality);
-  const mine=sbcLornaRole(req.user)?all.filter(c=>{const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');return !['customer','lost','do not call','dnc','closed','duplicate'].includes(status)&&(!assigned||assigned===String(req.user.id))&&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));}):all;
+  const tenantId=researcher?requireRequestTenant(req):null;
+  const mine=researcher?all.filter(c=>{
+    if(Number(c.tenantId)!==Number(tenantId))return false;
+    const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');
+    return !['customer','lost','do not call','dnc','closed','duplicate'].includes(status)
+      &&(!assigned||assigned===String(req.user.id))
+      &&(String(c.verificationStatus||'')!=='Sales Ready'||assigned===String(req.user.id));
+  }):all;
   const stats={total:mine.length,hot:mine.filter(c=>c.leadTemperature==='Hot').length,warm:mine.filter(c=>c.leadTemperature==='Warm').length,cold:mine.filter(c=>c.leadTemperature==='Cold').length,needsVerification:mine.filter(c=>['Needs Verification','Owner Review'].includes(c.verificationStatus)).length,salesReady:mine.filter(c=>c.verificationStatus==='Sales Ready').length};
-  res.json({stats,leads:mine.slice(0,1000),users:['owner','manager'].includes(req.user.role)?(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role})):[]});
+  const view=mine.slice(0,1000).map(c=>researcher?{
+    id:c.id,businessName:c.businessName||'',contactName:c.contactName||'',phone:c.phone||'',email:c.email||'',website:c.website||'',industry:c.industry||'',city:c.city||'',zip:c.zip||'',address:c.address||'',source:c.source||'',notes:c.notes||'',
+    verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||''
+  }:c);
+  res.setHeader('Cache-Control','no-store');
+  res.json({stats,leads:view,users:researcher?[]:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});
 });
 app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
   const allowed=['owner','manager','lead_researcher']; if(!allowed.includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
