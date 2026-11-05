@@ -77,6 +77,8 @@ function patchSource(src){
    "      c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=c.leadAssist.status;c.leadIntelligence.autoVerificationCheckedAt=c.leadAssist.checkedAt||now();\n      job.status='COMPLETE';job.result=");
  durableOnce("job.updatedAt=now();out.push({customerId:c.id,businessName:c.businessName,status:job.status,error:job.error});",
    "job.updatedAt=now();c.leadIntelligence=c.leadIntelligence||{};c.leadIntelligence.autoVerificationStatus=job.status;out.push({customerId:c.id,businessName:c.businessName,status:job.status,error:job.error});");
+ durableOnce("const q=leadAssistQueue();const work=q.filter",
+   "const q=leadAssistQueue();\n  const knownJobs=new Set(q.filter(j=>['QUEUED','PROCESSING','COMPLETE','FAILED'].includes(j.status)).map(j=>String(j.customerId)));\n  for(const c of (db.customers||[]))if(c.leadIntelligence?.autoVerificationStatus==='QUEUED'&&c.leadIntelligence?.researchSubmittedBy&&!knownJobs.has(String(c.id))){enqueueLeadAssist(c.id,'recover_research_auto_check','high');knownJobs.add(String(c.id));}\n  const work=q.filter");
  durableOnce("const work=q.filter(x=>x.status==='QUEUED'&&(",
    "const work=q.filter(x=>(x.status==='QUEUED'||(x.status==='PROCESSING'&&Date.now()-Date.parse(x.updatedAt||x.createdAt||0)>10*60*1000))&&(");
  // Editing a returned exception requeues the original verifier; do not self-certify.
