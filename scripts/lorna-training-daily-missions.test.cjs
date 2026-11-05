@@ -39,7 +39,7 @@ assert.match(js,/trainingParagraph\(parent,'Knowledge check'/);
 assert.match(js,/lesson\.learn\.forEach/);
 assert.match(js,/button\.textContent=opening\?'Close lesson':'Open lesson'/);
 assert.match(js,/if\(!lesson\.hasReadableContent\)/);
-assert.match(js,/if\(!check\.checked\|\|reflection\.value\.trim\(\)\.length<12\)/);
+assert.match(js,/if\(answer\.length<12\|\|!check\.checked\)return/);
 assert.match(js,/submit\.disabled=!check\.checked\|\|reflection\.value\.trim\(\)\.length<12/);
 assert.match(js,/api\('\/api\/training\/progress'/);
 assert.match(js,/courseId:courseId,moduleId:mod\.id,status:'completed',evidence:answer/);
