@@ -66,7 +66,7 @@ assert.match(route,/requireRequestTenant\(req\)/);
 assert.match(route,/db\.auditLog/);
 assert.match(route,/sbc_audit_log/);
 assert.match(route,/workforce_lead_created/);
-assert.match(route,/customerMap\.get\(customerId\)/);
+assert.match(route,/customerMap\.get\((?:customerId|id)\)/);
 assert.match(route,/America\/New_York/);
 assert.match(route,/todayCount:current\.length/);
 assert.match(route,/submittedLeadIds:(?:accepted|saved|all)\.map\(r=>r\.id\)/);
