@@ -78,6 +78,6 @@ function mk({lead={id:'lead1',phone:'3055550101'},durable=false}={}){
  const tokenLine=server.split('\n').find(x=>x.startsWith("app.get('/api/voice/token',auth,"));
  assert.ok(tokenLine,'exact canonical voice token route remains available for a separate security release');
  const script=read('public/index.html');
- assert.match(script,/app\.js\?v=66\.0\.89-voice-gate/,'browser reloads patched voice client');
+ assert.match(script,/app\.js\?v=66\.0\.91-voice-code/,'browser reloads patched voice client');
  console.log('[SBC V66.89 PHONE] PASS: no call when durable CRM unavailable, one connect with confirmed log, DNC and invalid number blocked, token refresh, native handset truth, callback signature guard, no live carrier calls');
 })().catch(e=>{console.error(e);process.exitCode=1});
