@@ -67,6 +67,7 @@ jobs:
           node scripts/v6614-voice-call-log-integrity-test.cjs
           node scripts/v6615-call-log-durable-test.cjs
           node scripts/v6689-business-phone-launch.test.cjs
+          node scripts/v6690-voice-role-authorization.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
           node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
@@ -124,6 +125,8 @@ jobs:
           SBC_V6682_ISOLATED_STAGE=YES node scripts/v6682-stage-owner-clearance.cjs --apply
           node scripts/v6681-safe-writer-handoff.test.cjs
           node scripts/v6682-financial-binding.test.cjs
+          SBC_V6690_ISOLATED_STAGE=YES node scripts/v6690-stage-voice-role-gate.cjs --apply
+          node scripts/v6690-voice-role-authorization.test.cjs --staged
           node scripts/lead-research-workspace.test.cjs
           node scripts/v6686-research-secondary-phone.test.cjs
           node scripts/lead-research-import-goals.test.cjs
@@ -257,6 +260,7 @@ jobs:
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
+            node "$tmp/scripts/v6690-voice-role-authorization.test.cjs" --staged
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
             node "$tmp/scripts/v6611-verify-stage-inventory.cjs" "$tmp"
