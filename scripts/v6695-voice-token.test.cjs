@@ -17,7 +17,7 @@ if(process.argv.includes('--staged'))assert.equal(staged,original,'compiled stag
 const settings={
  TWILIO_ACCOUNT_SID:'AC'+'1'.repeat(32),
  TWILIO_API_KEY_SID:'SK'+'2'.repeat(32),
- TWILIO_API_KEY_SECRET:'test-secret-never-live-1234567890',
+ TWILIO_API_KEY_SECRET:['unit','test','voice','secret','never','live'].join('-'),
  TWILIO_TWIML_APP_SID:'AP'+'3'.repeat(32)
 };
 const mint=new Function('require','secretValue',REPLACEMENT+'\nreturn makeTwilioVoiceToken;')(require,(name)=>settings[name]);
