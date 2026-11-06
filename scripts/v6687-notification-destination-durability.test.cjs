@@ -71,7 +71,7 @@ try{
  assert.match(ui,/Saved on server:/);
  assert.match(ui,/Leave blank to keep existing email/);
  assert.match(ui,/Leave blank to keep existing mobile/);
- assert.match(ui,/no need to enter them again after closing the browser/);
+ assert.match(ui,/do not need to enter them again after closing the browser/);
  assert.match(ui,/draftDestinations=\{email:el\.querySelector/,'preserve unsaved in-progress edits across refreshes');
  assert.match(ui,/draftDestinations=null;const confirmed=await loadStatus\(true\)/,'discard drafts after verified save and refresh');
  assert.match(ui,/Recipient .*?SMTP .*?not configured/,'show transport separately from saved contacts');
