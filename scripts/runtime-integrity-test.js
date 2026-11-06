@@ -18,11 +18,32 @@ check('no-v62-2-0-literal', !/62\.2\.0/.test(server));
 check('release-endpoint', /\/api\/release-identity/.test(server));
 check('livez-endpoint', /\/livez/.test(server));
 check('readyz-endpoint', /\/readyz/.test(server));
-check('crm-create-blocked-during-recovery', /app\.post\('\/api\/customers',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
-check('crm-update-blocked-during-recovery', /app\.put\('\/api\/customers\/:id',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
-check('crm-account-notes-blocked-during-recovery', /app\.post\('\/api\/customers\/:id\/account-notes',auth,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
-check('crm-delete-blocked-during-recovery', /app\.delete\('\/api\/customers\/:id',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
-check('crm-bulk-delete-blocked-during-recovery', /app\.post\('\/api\/customers\/bulk-delete',auth,ownerOnly,async\(req,res\)=>\{if\(MYSQL_RECOVERY_REQUIRED\)/.test(server));
-const ok = checks.every(x=>x.ok);
+// Execute the actual registered handlers with a database that throws on access.
+// Recovery must reject before either a read or mutation, regardless of guard order.
+const vm = require('node:vm');
+const routes = [ ['post','/api/customers'], ['put','/api/customers/:id'],
+  ['post','/api/customers/:id/account-notes'], ['delete','/api/customers/:id'],
+  ['post','/api/customers/bulk-delete'] ];
+(async()=>{
+for(const [method,url] of routes){
+  const line=server.split('\n').find(x=>x.startsWith(`app.${method}('${url}',`));
+  if(!line){check(method+' '+url,false,'route missing');continue;}
+  for(const mode of ['recovery','read-only','shutdown','no-pool','not-evaluated']){
+    let handler,code,body;
+    const context={app:{[method](_url,...args){handler=args.at(-1)}},auth(){},ownerOnly(){},
+      SBC_RUNTIME_READ_ONLY:mode==='read-only',sbcShutdownStarted:mode==='shutdown',
+      mysqlPool:mode==='no-pool'?null:{},MYSQL_RECOVERY_EVALUATED:mode!=='not-evaluated',
+      MYSQL_RECOVERY_REQUIRED:mode==='recovery',
+      db:new Proxy({},{get(){throw Error('Blocked request accessed database')}})};
+    try{
+      vm.runInNewContext(line,context,{timeout:1000});
+      const res={status(n){code=n;return this},json(x){body=x;return this}};
+      await handler({body:{},params:{id:'fixture'},user:{role:'owner'}},res);
+      check(method+' '+url+' '+mode,code===423&&body?.readOnly===true&&body?.error===(mode==='recovery'?'MYSQL_RECOVERY_REQUIRED':'CRM_RELATIONAL_WRITER_UNAVAILABLE'));
+    }catch(e){check(method+' '+url+' '+mode,false,e.message)}
+  }
+}
+const ok=checks.every(x=>x.ok);
 console.log(JSON.stringify({ok,version:release.RELEASE_VERSION,checks},null,2));
-process.exit(ok?0:1);
+process.exitCode=ok?0:1;
+})().catch(e=>{console.error(e);process.exitCode=1});

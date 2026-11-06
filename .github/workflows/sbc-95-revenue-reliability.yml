@@ -100,8 +100,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Writer lease heartbeat
         run: node scripts/v6617-writer-lease-heartbeat-test.cjs
-      - name: Historical V65 bootstrap lease test (advisory only; legacy bootstrap was retired in V66)
-        continue-on-error: true
+      - name: Compiled runtime lease lifecycle regression
         run: node hotfix-assets/v6564-mysql-lease-lifecycle-test.js
       - name: Lease session verification
         run: node hotfix-assets/v6570-lease-session-verification-test.js
@@ -182,8 +181,7 @@ jobs:
         run: node scripts/v6624-static-assets.test.cjs
       - name: Current V66 flat release and verified server identity
         run: node scripts/v6603-flat-release-contract.test.cjs
-      - name: Historical V65 literal route matcher (advisory; handlers moved)
-        continue-on-error: true
+      - name: CRM recovery and writer rejection behavior
         run: node scripts/runtime-integrity-test.js
       - name: Verify npm build command (prebuilt flat release; not a new ZIP build)
         run: npm run build
