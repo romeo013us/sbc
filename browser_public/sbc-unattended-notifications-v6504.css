@@ -18,6 +18,11 @@
 @media(max-width:720px){#sbcUnattendedNotificationsMount .sun-grid{grid-template-columns:1fr}#sbcUnattendedNotificationsMount .sun-head{align-items:flex-start}}
 
 #sbcUnattendedNotificationsMount .sun-config{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:0 20px 15px}
+/* SBC_V6688_NOTIFICATIONS_LAYOUT: separate the saved-state heading from helper text. */
+#sbcUnattendedNotificationsMount .sun-destination-summary{display:grid;gap:6px;flex:1 0 100%;width:100%;min-width:0;padding:8px 0 3px;color:#b5cce0;font-size:12px;line-height:1.5}
+#sbcUnattendedNotificationsMount .sun-destination-summary strong{display:block;color:#f3f9ff;font-size:13px;line-height:1.35}
+#sbcUnattendedNotificationsMount .sun-destination-summary span{display:block;overflow-wrap:anywhere}
+#sbcUnattendedNotificationsMount .sun-config label small{display:block;overflow-wrap:anywhere;font-size:11px;font-weight:500;line-height:1.4;color:#a9c1d8}
 #sbcUnattendedNotificationsMount .sun-config label{display:flex;flex-direction:column;gap:5px;min-width:210px;flex:1;color:#b5cce0;font-size:11px;font-weight:700}
 #sbcUnattendedNotificationsMount .sun-config input{width:100%;box-sizing:border-box;border:1px solid #31516a;border-radius:8px;background:#071522;color:#f4faff;padding:10px 11px;font-size:12px;outline:none}
 #sbcUnattendedNotificationsMount .sun-config input:focus{border-color:#3999e8;box-shadow:0 0 0 2px rgba(57,153,232,.18)}
