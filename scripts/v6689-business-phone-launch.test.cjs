@@ -69,6 +69,23 @@ function mk({lead={id:'lead1',phone:'3055550101'},durable=false}={}){
  assert.match(signed,/TWILIO_WEBHOOK_SIGNATURE_INVALID/);
  assert.match(signed,/TWILIO_WEBHOOK_SIGNATURE_REQUIRED/);
  assert.match(signed,/TWILIO_WEBHOOK_VERIFICATION_UNCONFIGURED/);
+ const server=read('server.js');
+ const prefixes=[
+  "app.get('/api/voice/status',auth,(req,res)=>{",
+  "app.get('/api/voice/token',auth,(req,res)=>{",
+  "app.get('/api/voice/logs',auth,(req,res)=>{",
+  "app.post('/api/voice/log',auth,async(req,res)=>{"
+ ];
+ const roleGuard="if(!['owner','manager','caller'].includes(String(req.user?.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'VOICE_OPERATOR_REQUIRED'});";
+ for(const prefix of prefixes)assert.ok(server.includes(prefix+roleGuard),'all voice status/token/CRM routes require an authorized operator: '+prefix);
+ const checkRole=new Function('req','res',roleGuard+"return 'allowed';");
+ for(const role of ['lead_researcher','researcher','demo','client','employee','']) {
+   const out={code:0,body:null,status(c){this.code=c;return this},json(o){this.body=o;return o}};
+   const result=checkRole({user:{role}},out);
+   assert.equal(out.code,403,'unauthorized role must be denied '+role);
+   assert.equal(result.error,'VOICE_OPERATOR_REQUIRED');
+ }
+ for(const role of ['owner','manager','caller'])assert.equal(checkRole({user:{role}},{}),'allowed','authorized phone operator '+role);
  const script=read('public/index.html');
  assert.match(script,/app\.js\?v=66\.0\.89-voice-gate/,'browser reloads patched voice client');
  console.log('[SBC V66.89 PHONE] PASS: no call when durable CRM unavailable, one connect with confirmed log, DNC and invalid number blocked, token refresh, native handset truth, callback signature guard, no live carrier calls');
