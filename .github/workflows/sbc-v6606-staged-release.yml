@@ -69,6 +69,7 @@ jobs:
           node scripts/v6689-business-phone-launch.test.cjs
           node scripts/v6690-voice-role-authorization.test.cjs
           node scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs
+          node scripts/v6695-voice-token.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
           node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
@@ -130,6 +131,8 @@ jobs:
           node scripts/v6690-voice-role-authorization.test.cjs --staged
           SBC_V6691_ISOLATED_STAGE=YES node scripts/v6691-stage-actionable-exceptions.cjs --apply
           node scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs --staged
+          SBC_V6695_ISOLATED_STAGE=YES node scripts/v6695-stage-voice-token.cjs --apply
+          node scripts/v6695-voice-token.test.cjs --staged
           node scripts/lead-research-workspace.test.cjs
           node scripts/v6686-research-secondary-phone.test.cjs
           node scripts/lead-research-import-goals.test.cjs
@@ -265,6 +268,7 @@ jobs:
             node --check "$tmp/server.js"
             node "$tmp/scripts/v6690-voice-role-authorization.test.cjs" --staged
             node "$tmp/scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs" --staged
+            NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$tmp/scripts/v6695-voice-token.test.cjs" --staged
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
             node "$tmp/scripts/v6611-verify-stage-inventory.cjs" "$tmp"

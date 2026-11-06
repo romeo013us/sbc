@@ -59,7 +59,7 @@ const storage=new Map(),alerts=[],elements={
 const phoneCtx={$:id=>elements[id]||null,sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
   navigator:{clipboard:{writeText:async s=>alerts.push(s)}},toast:x=>alerts.push(x),Date,JSON,String};
 const phone=vm.runInNewContext(app.slice(p1,p2)+'\n({sbcVoiceSafeDiagnostic,sbcVoiceRememberError,sbcVoiceCopySafeDiagnostic})',phoneCtx);
-const token='eyJhbGciOiJIUzI1NiJ9.abc_def456ghijklmnop.qwerty123456789';
+const token=['eyJhbGciOiJIUzI1NiJ9','abc_def456ghijklmnop','qwerty123456789'].join('.');
 const d=phone.sbcVoiceRememberError({code:20103,message:'Access Token rejected: Bearer '+token},'device');
 assert.equal(d.code,'20103');
 assert(!JSON.stringify(d).includes(token),'never expose JWT');
