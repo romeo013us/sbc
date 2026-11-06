@@ -34,9 +34,27 @@ class SBCUnattendedNotifications {
     if (email !== undefined && String(email).trim()) { if (!validEmail(email)) throw new Error('INVALID_OWNER_EMAIL'); next.email = String(email).trim().toLowerCase(); }
     if (phone !== undefined && String(phone).trim()) { if (!validE164(phone)) throw new Error('INVALID_OWNER_PHONE_E164'); next.phone = String(phone).trim(); }
     if (!next.email && !next.phone) throw new Error('AT_LEAST_ONE_DESTINATION_REQUIRED');
+    // SBC_V6687_DURABLE_DESTINATIONS: write in the linked persistent data
+    // directory, then prove readback before acknowledging a saved destination.
+    // Browser state and masked placeholders are never authoritative storage.
     fs.mkdirSync(path.dirname(this.destinationFile), { recursive: true });
-    fs.writeFileSync(this.destinationFile, JSON.stringify({ email: next.email || '', phone: next.phone || '', updatedAt: this.clock().toISOString(), updatedBy: 'owner' }, null, 2), { mode: 0o600 });
-    try { fs.chmodSync(this.destinationFile, 0o600); } catch {}
+    const target = { email: next.email || '', phone: next.phone || '', updatedAt: this.clock().toISOString(), updatedBy: 'owner' };
+    const tempFile = this.destinationFile + '.' + process.pid + '.' + require('crypto').randomBytes(8).toString('hex') + '.tmp';
+    let fd;
+    try {
+      fd = fs.openSync(tempFile, 'wx', 0o600);
+      fs.writeFileSync(fd, JSON.stringify(target, null, 2));
+      fs.fsyncSync(fd);
+      fs.closeSync(fd); fd = undefined;
+      fs.renameSync(tempFile, this.destinationFile);
+      try { fs.chmodSync(this.destinationFile, 0o600); } catch {}
+      const confirmed = this._loadDestinations();
+      if(confirmed.email!==target.email||confirmed.phone!==target.phone||confirmed.updatedAt!==target.updatedAt)
+        throw new Error('OWNER_DESTINATION_SAVE_UNCONFIRMED');
+    } finally {
+      if(fd!==undefined)try{fs.closeSync(fd)}catch{}
+      try{fs.rmSync(tempFile,{force:true})}catch{}
+    }
     return { ok: true, emailConfigured: Boolean(validEmail(next.email)), phoneConfigured: Boolean(validE164(next.phone)) };
   }
   _timezone() { return firstValue(this.env, ['SBC_BRIEFING_TIMEZONE']) || 'America/New_York'; }
@@ -72,9 +90,10 @@ class SBCUnattendedNotifications {
     return { configured: Boolean(accountSid && authToken && validE164(from)), accountSid, authToken, from };
   }
   status() {
-    const c = this._contacts(), smtp = this._smtpConfig(), twilio = this._twilioConfig();
+    const c = this._contacts(), smtp = this._smtpConfig(), twilio = this._twilioConfig(), saved = this._loadDestinations();
     return { ok: true, version: '65.0.5', enabled: true,
       destinationStatus: { email: c.email ? maskEmail(c.email) : '', phone: c.phone ? maskPhone(c.phone) : '' },
+      destinationStorage: { emailSaved: validEmail(saved.email), phoneSaved: validE164(saved.phone) },
       schedule: { type: 'daily', localTime: `${String(Number(firstValue(this.env, ['SBC_BRIEFING_HOUR']) || 7)).padStart(2,'0')}:00`, timezone: this._timezone() },
       recoveryRequired: Boolean(this.getRecoveryRequired?.()),
       channels: { email: { configured: smtp.configured && Boolean(c.email), transportConfigured: smtp.configured, recipientConfigured: Boolean(c.email) }, sms: { configured: twilio.configured && Boolean(c.phone), transportConfigured: twilio.configured, recipientConfigured: Boolean(c.phone) } },
