@@ -21,7 +21,7 @@ assert.match(guard,/SBC_V6613_PROFILE_STABILITY/);
 assert.doesNotMatch(guard,/\blocation\.(?:reload|replace|assign)\s*\(/,'never reload an active CRM automatically');
 assert.doesNotMatch(guard,/localStorage\.(?:clear|removeItem)|sessionStorage\.(?:clear|removeItem)|indexedDB\.deleteDatabase|document\.cookie\s*=/,
   'do not clear sessions, drafts, history or persistent customer state');
-assert.match(index,/\/app\.js\?v=66\.0\.15-persistent-repair/);
+assert.match(index,/\/app\.js\?v=66\.0\.89-voice-gate/);
 assert.match(index,/\/sbc-browser-view-repair-v6601\.js\?v=66\.0\.13-profile-stability/);
 assert.match(index,/SBC_V6613_PROFILE_STABILITY/);
 assert.ok((index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length>80,
