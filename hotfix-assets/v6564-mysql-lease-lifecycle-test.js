@@ -16,5 +16,7 @@ assert.ok(patch.includes('MYSQL_RECOVERY_REQUIRED=true'),'fails closed after lea
 assert.ok(patch.includes('authoritative recovery verification pass'),'keeps writes blocked until recovery is verified');
 assert.ok(patch.includes('await stale.destroy()'),'destroys stale dedicated lease connection');
 assert.ok(patch.includes('sbcWriterLeaseTimerHandles.push(sbcWriterLeaseTimer)'),'tracks heartbeat interval handles');
-assert.ok(bootstrap.includes("apply-v6564-mysql-lease-lifecycle.js')).apply(runtimeDir)"),'runtime bootstrap applies lifecycle patch');
+assert.ok(bootstrap.includes("require('./sbc-godaddy-flat-entrypoint.cjs')"),'legacy startup delegates to verified flat runtime');
+// Exercise the compiled heartbeat, including disconnect, backoff and foreign-owner denial.
+require('node:child_process').execFileSync(process.execPath,[path.join(root,'scripts/v6617-writer-lease-heartbeat-test.cjs')],{stdio:'inherit'});
 console.log('V65.1.64 MySQL lease lifecycle: 13/13 PASS');
