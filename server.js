@@ -2482,7 +2482,9 @@ function v23Alerts(req){
   const alerts=[];const orders=db.orders||[],customers=db.customers||[],tasks=db.tasks||[],quotes=db.quotes||[];
   const paidNoOrder=customers.filter(c=>String(c.notes||'').toUpperCase().includes('PAID')&&!orders.some(o=>String(o.customerId)===String(c.id))).slice(0,20);
   paidNoOrder.forEach(c=>alerts.push({level:'critical',icon:'💳',title:'Paid customer without linked order',detail:`${c.businessName||c.contactName||c.id} has a paid note but no linked order.`,customerId:c.id}));
-  orders.filter(o=>['Paid','PAID'].includes(String(o.paymentStatus||o.status))&&!['Completed','Delivered'].includes(String(o.fulfillmentStatus||''))).slice(0,20).forEach(o=>alerts.push({level:'warning',icon:'📦',title:'Paid order needs fulfillment',detail:`${o.customerName||o.id} — ${o.product||'Order'}`,orderId:o.id}));
+  // SBC_V6691_VERIFIED_ACTIONABLE_ALERTS: Square-proof, tenant-owned, no existing fulfillment job; system/QA tests excluded.
+  const exceptionTenantId=requireRequestTenant(req);
+  orders.filter(o=>Number(o.tenantId)===Number(exceptionTenantId)&&V56134_GOD_TIER.needsReconciliation(o,db.fulfillmentJobs||[])).slice(0,20).forEach(o=>alerts.push({level:'warning',icon:'📦',title:'Square-paid order needs reconciliation',detail:`${o.customerName||o.id} — ${o.product||'Order'}`,orderId:o.id}));
   tasks.filter(t=>t.status!=='Completed'&&t.dueAt&&new Date(t.dueAt)<new Date()).slice(0,20).forEach(t=>alerts.push({level:'warning',icon:'⏰',title:'Overdue task',detail:t.title||t.id,taskId:t.id}));
   quotes.filter(q=>q.status==='Sent'&&q.validUntil&&q.validUntil<today()).slice(0,20).forEach(q=>alerts.push({level:'info',icon:'📄',title:'Quote expired',detail:`${q.quoteNumber||q.id} — ${q.customerName||''}`,quoteId:q.id}));
   return alerts.slice(0,50);
