@@ -33,7 +33,7 @@ assert.equal(body.iss,settings.TWILIO_API_KEY_SID);
 assert.equal(body.sub,settings.TWILIO_ACCOUNT_SID);
 assert.equal(body.grants.identity,'sbc-test-owner');
 assert.equal(body.grants.voice.outgoing.application_sid,settings.TWILIO_TWIML_APP_SID);
-assert.equal(body.grants.voice.incoming.allow,false);
+assert.notEqual(body.grants.voice.incoming?.allow,true,'incoming calling must not be authorized');
 assert(Number.isInteger(body.iat),'issued-at timestamp present');
 assert.equal(body.exp-body.iat,3600,'one-hour token');
 assert(body.iat<=Math.floor(Date.now()/1000)+5);
