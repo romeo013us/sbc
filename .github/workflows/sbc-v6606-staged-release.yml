@@ -268,7 +268,7 @@ jobs:
             node --check "$tmp/server.js"
             node "$tmp/scripts/v6690-voice-role-authorization.test.cjs" --staged
             node "$tmp/scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs" --staged
-            node "$tmp/scripts/v6695-voice-token.test.cjs" --staged
+            NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$tmp/scripts/v6695-voice-token.test.cjs" --staged
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
             node "$tmp/scripts/v6611-verify-stage-inventory.cjs" "$tmp"
