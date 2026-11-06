@@ -62,3 +62,14 @@ Run `npm run test:v6504-notifications` in the app directory. Tests use mocked em
 - The legacy V12.0.5 reference remains only as a historical migration explanation.
 - The `sbc_settings.setting_value` type is checked first; an ALTER runs only when the existing column is not MEDIUMTEXT or LONGTEXT.
 - The recovery threshold is unchanged. This release does not clear recovery mode or write lead records.
+
+
+## V66.87 persistent destination save/reopen acceptance
+
+The email and SMS **recipient** fields are owner contact preferences, not SMTP/Twilio credentials. SBC writes them to the already-linked persistent \`data/sbc-notification-destinations.json\` file using an atomic replacement, 0600 file permissions and a read-after-write check. No additional GoDaddy secret is required.
+
+The owner-only status API returns masked addresses and \`destinationStorage.emailSaved/phoneSaved\` boolean indicators. After a browser close, fresh login or GoDaddy update, the Notification panel shows **Saved on server** with the masked contacts, while the edit fields remain empty deliberately. **Do not type the same address again unless changing it.** Blank edits leave the saved contact unchanged. Unsaved typed edits survive an automatic screen refresh while the user is editing.
+
+**Recipient saved** and **provider configured** are independent. If a recipient shows saved but the channel is \`NOT READY\`, inspect the owner-only status for \`transportConfigured\` (SMTP host/user/password/from or Twilio SID/token/sender), \`recipientConfigured\`, and the saved destination indicator. Do not invent placeholder credentials, disable the provider, or put tokens in the dashboard. Do not send an alert merely to check saved-contact state.
+
+For release acceptance, confirm masked saved entries survive a fresh login and full GoDaddy Published process restart; confirm the live provider transport status separately before running one explicit owner-initiated test delivery. The synthetic CI test \`scripts/v6687-notification-destination-durability.test.cjs\` proves restart behavior through a shared persistent directory but does not prove live GoDaddy persistence or actual message delivery.
