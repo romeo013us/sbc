@@ -16,6 +16,70 @@
     if(disabled){b.disabled=true;b.title=title||'Unavailable in the current safety state';}
     b.addEventListener('click',fn); parent.appendChild(b); return b;
   }
+  // SBC_V6684_SMART_BUSINESS_BRIEF: purely local, no API calls or writes.
+  // Prepared from already authorized CRM fields when a profile is opened.
+  const briefText=(v,n=160)=>String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,n);
+  function businessBrief(c){
+    const name=briefText(c.businessName||c.business_name||c.companyName||'This business',140);
+    const industry=briefText(c.industry||c.businessCategory||c.category||'',100);
+    const city=briefText(c.city||'',75),region=briefText(c.region||c.state||'',50);
+    const location=[city,region].filter(Boolean).join(', ');
+    const website=briefText(c.website||c.website_url||'',240);
+    const kind=industry.toLowerCase();
+    const segments=[
+      {match:/barber|salon|hair|beauty|nail|spa|groom/,audience:'Possibly nearby clients seeking grooming, styling, or beauty appointments',question:'Is it easy for someone new to find your services, hours and booking details online?'},
+      {match:/restaur|cafe|caf[eé]|food|bakery|cater|coffee/,audience:'Possibly residents and visitors looking for food, menus or catering',question:'Can customers easily find your current menu, hours and contact details online?'},
+      {match:/contract|plumb|electric|roof|repair|hvac|clean|landscap|paint|construct/,audience:'Possibly property owners looking for local service providers',question:'When someone gets your name from a referral, can they quickly see your services and request a quote?'},
+      {match:/auto|car|vehicle|detail|mechanic|dealership/,audience:'Possibly local drivers looking for vehicles or automotive services',question:'When people hear about your business, how easily can they find your services and contact you?'},
+      {match:/shop|store|boutique|retail|market/,audience:'Possibly local shoppers seeking your products',question:'Can new shoppers easily find your location, hours and what you sell?'},
+      {match:/real estate|insurance|account|tax|consult|professional/,audience:'Possibly individuals or businesses seeking professional assistance',question:'When a prospect is referred to you, does your online presence explain what you do and how to contact you?'}
+    ];
+    const segment=segments.find(s=>s.match.test(kind));
+    const currentYear=new Date().getFullYear();
+    const rawYear=briefText(c.establishedYear||c.foundedYear||c.yearFounded||'',8);
+    const year=/^\d{4}$/.test(rawYear)&&Number(rawYear)>=1800&&Number(rawYear)<=currentYear?rawYear:'';
+    return {
+      summary:industry?'CRM category: '+industry+(location?' · '+location:'')+'. Specific services and business history have not been independently checked.':
+        'The CRM has a record for '+name+(location?' in '+location:'')+', but the business category and services have not been verified.',
+      years:year?'Year on file: '+year+' (unverified)':'Not verified',
+      customers:segment?segment.audience+' (industry-based estimate)':'Unknown — ask the business owner',
+      website:website?'Website on file — not independently checked':'Not recorded — confirm before recommending a website',
+      question:segment?segment.question:'What services do you focus on, and how do new customers usually find you?',
+      offer:website?'Business Visibility · $99 (only if listing and printed materials are useful)':'Business Starter · $199 (only if a website is needed)',
+      attribution:'Prepared from existing SBC CRM fields only. No AI API, no web research, no purchase or outreach.'
+    };
+  }
+  function installBriefing(host,c){
+    host.querySelector('.v6684-business-brief')?.remove();
+    const brief=businessBrief(c);
+    const panel=document.createElement('section');panel.className='card section v6684-business-brief';
+    const head=document.createElement('div');head.className='card-head';
+    const heading=document.createElement('h2');heading.textContent='✦ Smart Business Briefing';
+    const flag=document.createElement('span');flag.className='badge blue';flag.textContent='FREE · CRM ONLY';
+    head.appendChild(heading);head.appendChild(flag);panel.appendChild(head);
+    const body=document.createElement('div');body.className='card-body';
+    const summary=document.createElement('p');summary.className='mini';summary.textContent=brief.summary;body.appendChild(summary);
+    const grid=document.createElement('div');grid.className='grid two';
+    for(const [label,value] of [
+      ['Years in business',brief.years],
+      ['Likely customer types',brief.customers],
+      ['Website',brief.website],
+      ['Suggested SBC offer',brief.offer]
+    ]){
+      const tile=document.createElement('div');tile.className='detail-box';
+      const title=document.createElement('strong');title.textContent=label;
+      const detail=document.createElement('div');detail.textContent=value;
+      tile.appendChild(title);tile.appendChild(detail);grid.appendChild(tile);
+    }
+    body.appendChild(grid);
+    const prompt=document.createElement('div');prompt.className='detail-box';
+    const promptLabel=document.createElement('strong');promptLabel.textContent='Suggested opening question';
+    const promptText=document.createElement('div');promptText.textContent=brief.question;
+    prompt.appendChild(promptLabel);prompt.appendChild(promptText);body.appendChild(prompt);
+    const source=document.createElement('p');source.className='mini';source.textContent=brief.attribution;body.appendChild(source);
+    panel.appendChild(body);
+    host.insertBefore(panel,host.firstChild||null);
+  }
   function installActions(id){
     const host=document.querySelector('#modalBody .v322-360'); const c=customerById(id);
     if(!host||!c)return;
@@ -30,6 +94,7 @@
     if(typeof window.generateWebsiteDemo==='function')addButton(bar,'Generate Demo','',()=>window.generateWebsiteDemo(c.id),locked,'Recovery/read-only mode blocks new actions.');
     if(typeof window.megaRequestRefund==='function')addButton(bar,'Request Refund','danger',()=>window.megaRequestRefund(c.id),locked,'Recovery/read-only mode blocks refund requests.');
     const before=host.querySelector(':scope > .actions');host.insertBefore(bar,before||null);
+    installBriefing(host,c);
   }
   const originalOpen360=window.openV322Customer360;
   if(typeof originalOpen360==='function'){
