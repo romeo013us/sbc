@@ -67,6 +67,7 @@ jobs:
           node --check routes/v56131-revenue-loop.js
           node --check scripts/v6611-verify-stage-inventory.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
+          node scripts/v6685-protected-qa-reconciliation.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
           node scripts/v6603-flat-release-contract.test.cjs
           node scripts/v6681-safe-writer-handoff.test.cjs
