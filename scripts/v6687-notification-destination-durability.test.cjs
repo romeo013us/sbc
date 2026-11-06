@@ -14,7 +14,7 @@ for(const dir of [runtimeA,runtimeB]){
 }
 const env={
  SBC_SMTP_HOST:'smtp.example.test',SBC_SMTP_USER:'test@example.test',SBC_SMTP_PASS:'fictional-test-password',
- SBC_SMTP_PORT:'465',TWILIO_ACCOUNT_SID:'ACtest',TWILIO_AUTH_TOKEN:'fictional-test-token',
+ SBC_SMTP_PORT:'465',TWILIO_ACCOUNT_SID:'ACtest',TWILIO_AUTH_TOKEN:'example-synthetic-token',
  TWILIO_PHONE_NUMBER:'+15555550123'
 };
 const mk=(runtime,settings=env)=>new SBCUnattendedNotifications({rootDir:runtime,env:settings,getDb:()=>({users:[]}),getRecoveryRequired:()=>false,logger:{warn(){},info(){}}});
