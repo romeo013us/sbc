@@ -8058,14 +8058,16 @@ app.post('/api/ai/team-meeting',auth,async(req,res)=>{
 });
 function base64url(v){return Buffer.from(v).toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_')}
 function makeTwilioVoiceToken(identity){
-  const accountSid=secretValue('TWILIO_ACCOUNT_SID','SBC_TWILIO_ACCOUNT_SID'),keySid=secretValue('TWILIO_API_KEY_SID','TWILIO_API_KEY_SID'),keySecret=secretValue('TWILIO_API_KEY_SECRET','TWILIO_API_KEY_SECRET'),appSid=secretValue('TWILIO_TWIML_APP_SID','TWILIO_TWIML_APP_SID');
+  // SBC_V6695_TWILIO_SDK_TOKEN: let the official Twilio helper generate the full authenticated JWT.
+  const accountSid=secretValue('TWILIO_ACCOUNT_SID','SBC_TWILIO_ACCOUNT_SID'),
+    keySid=secretValue('TWILIO_API_KEY_SID','TWILIO_API_KEY_SID'),
+    keySecret=secretValue('TWILIO_API_KEY_SECRET','TWILIO_API_KEY_SECRET'),
+    appSid=secretValue('TWILIO_TWIML_APP_SID','TWILIO_TWIML_APP_SID');
   if(!accountSid||!keySid||!keySecret||!appSid) throw new Error('Twilio Voice is not configured. Add TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET and TWILIO_TWIML_APP_SID in GoDaddy Secrets.');
-  const nowSec=Math.floor(Date.now()/1000);
-  const header={typ:'JWT',alg:'HS256'};
-  const payload={jti:`${keySid}-${nowSec}-${crypto.randomBytes(8).toString('hex')}`,iss:keySid,sub:accountSid,exp:nowSec+3600,grants:{identity:String(identity||'sbc-user'),voice:{outgoing:{application_sid:appSid},incoming:{allow:false}}}};
-  const body=base64url(JSON.stringify(header))+'.'+base64url(JSON.stringify(payload));
-  const sig=crypto.createHmac('sha256',keySecret).update(body).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-  return body+'.'+sig;
+  const AccessToken=require('twilio').jwt.AccessToken;
+  const token=new AccessToken(accountSid,keySid,keySecret,{identity:String(identity||'sbc-user'),ttl:3600});
+  token.addGrant(new AccessToken.VoiceGrant({outgoingApplicationSid:appSid,incomingAllow:false}));
+  return token.toJwt();
 }
 function xmlEsc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&apos;')}
 function normalizeDialNumber(v){let x=String(v||'').trim().replace(/[^0-9+]/g,'');if(/^\d{10}$/.test(x))x='+1'+x;if(/^1\d{10}$/.test(x))x='+'+x;return x}
