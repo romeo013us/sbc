@@ -60,6 +60,7 @@ jobs:
           node scripts/v6615-call-log-durable-test.cjs
           node scripts/v6689-business-phone-launch.test.cjs
           node scripts/v6690-voice-role-authorization.test.cjs
+          node scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
       - name: Protected $1 QA reconciliation contract
