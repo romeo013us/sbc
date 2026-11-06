@@ -1,0 +1,52 @@
+/* SBC 2026-11-06 global contrast rescue.
+   Presentation-only. No changes to checkout, CRM data, telephony, permissions or fulfillment.
+   Legacy component classes sometimes retain white backgrounds after switching themes. */
+:root { --sbc-contrast-paper:#ffffff; --sbc-contrast-ink:#17283a; --sbc-contrast-sub:#42586c; --sbc-contrast-night:#132234; --sbc-contrast-night-ink:#edf5ff; }
+/* White document previews are deliberately white in both themes (including print). */
+body #content .quote-preview,
+body #modal .quote-preview { background:#fff!important; color:#17283a!important; }
+body :is(#content,#modal) .quote-preview :is(h1,h2,h3,h4,h5,h6,p,span,div,strong,b,small,td,th,.title,.label,.value) {
+  color:#17283a!important;
+}
+/* All legacy white card types now get a matching foreground in LIGHT mode. */
+body[data-theme="light"] :is(#content,#modal) :is(
+ .card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.modal-card,
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card,.sbc-ai-msg.assistant .sbc-ai-bubble
+) { background:#fff!important; color:#17283a!important; border-color:#cbd7e3!important; }
+body[data-theme="light"] :is(#content,#modal) :is(
+ .card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.modal-card,
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card
+) :is(h1,h2,h3,h4,h5,h6,p,strong,b,.title,.label,.value,.price,.payment-price,.process-step-title)
+:not(.hero *):not(.btn *):not(.badge *) { color:#17283a!important; }
+body[data-theme="light"] :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
+:is(small,.mini,.meta,.sub,.muted,.description) { color:#42586c!important; }
+/* DARK mode: remove the unthemed legacy white surfaces rather than using white-on-white. */
+body[data-theme="dark"] :is(#content,#modal) :is(
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card,.sbc-ai-msg.assistant .sbc-ai-bubble
+) { background:#132234!important; color:#edf5ff!important; border-color:#38516c!important; }
+body[data-theme="dark"] :is(#content,#modal) :is(
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card
+) :is(h1,h2,h3,h4,h5,h6,p,strong,b,.title,.label,.value,.price,.payment-price,.process-step-title)
+:not(.btn *):not(.badge *) { color:#edf5ff!important; }
+body[data-theme="dark"] :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
+:is(small,.mini,.meta,.sub,.muted,.description) { color:#b7c9dc!important; }
+/* Colored instructional inset panels retain light surfaces, so use dark text inside them. */
+body :is(#content,#modal) :is(.process-if,.process-say,.process-then) { color:#17283a!important; }
+body :is(#content,#modal) :is(.process-if,.process-say,.process-then) :is(span,p,strong,b,small) { color:#17283a!important; }
+/* Form text stays visible; interactive action colors and state badges are not restyled. */
+body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea) { background:#fff!important; color:#17283a!important; }
+body[data-theme="dark"] :is(#content,#modal) :is(input,select,textarea) { background:#0e1c2d!important; color:#edf5ff!important; }
+body :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead) :is(a,button):focus-visible {
+ outline:2px solid #f47721!important; outline-offset:3px;
+}
+@media print {
+ body .quote-preview,body .quote-preview * { color:#111!important; background-color:#fff!important; }
+}
