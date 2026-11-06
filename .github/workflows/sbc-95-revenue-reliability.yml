@@ -54,6 +54,7 @@ jobs:
           node scripts/v6686-research-secondary-phone.test.cjs
           node scripts/v6504-unattended-notifications-test.js
           node scripts/v6673-owner-smtp-transport.test.cjs
+          node scripts/v6687-notification-destination-durability.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
       - name: Protected $1 QA reconciliation contract
