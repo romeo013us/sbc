@@ -7,6 +7,10 @@
  */
 const VERSION='56.13.5-CONSULTATIVE';
 const MAX_BUNDLE_ITEMS=8;
+// SBC_V6688_CONSULTATIVE_PAYMENT_TRUTH: share the revenue autopilot's exact
+// read-only Square evidence gate; legacy Paid/Fulfilled labels are not capture.
+const PAYMENT_EVIDENCE=require('./v6640-payment-evidence.cjs');
+const GOD_TIER_REVENUE=require('./v56134-god-tier-revenue.js');
 const BRAINS=Object.freeze([
   'PROSPECT_BRAIN','CONTEXT_BRAIN','OPENING_BRAIN','DISCOVERY_BRAIN','SOLUTION_BRAIN',
   'CLOSING_BRAIN','FULFILLMENT_BRAIN','ACCOUNT_MANAGER_BRAIN','RECOVERY_CONTROLLER_BRAIN','TELEMETRY_BRAIN'
@@ -152,10 +156,10 @@ function catalogSummary(catalog){
 function snapshot({db,catalog}={}){
   const customers=Array.isArray(db?.customers)?db.customers:[];
   const solutions=customers.filter(x=>x.consultativeSolution?.solutionProfile);
-  const paid=(Array.isArray(db?.orders)?db.orders:[]).filter(o=>/PAID|COMPLETED|FULFILLED/i.test(String(o.paymentStatus||o.status||'')));
+  const paid=(Array.isArray(db?.orders)?db.orders:[]).filter(o=>PAYMENT_EVIDENCE.providerCapturedSquare(o)&&!GOD_TIER_REVENUE.isSystemTestOrder(o));
   const revenue=paid.reduce((n,o)=>n+num(o.price??o.total),0);
   const recentSolutions=solutions.slice(0,6).map(x=>({customerId:String(x.id||''),company:String(x.businessName||x.contactName||'Account'),items:(x.consultativeSolution.solutionProfile||[]).slice(0,8).map(i=>({sku:i.sku,name:i.name})),upfrontSetup:num(x.consultativeSolution.upfrontSetup),monthlyRecurring:num(x.consultativeSolution.monthlyRecurring),updatedAt:x.consultativeSolution?.version?x.sbcConsultativeUpdatedAt||x.updatedAt||'':''}));
   const needCounts={}; for(const c of solutions){for(const n of (c.consultativeSolution.needs||[]))needCounts[n]=(needCounts[n]||0)+1;}
-  return {version:VERSION,catalog:catalogSummary(catalog),metrics:{prospects:customers.length,solutionsComposed:solutions.length,paidOrders:paid.length,recognizedRevenue:Number(revenue.toFixed(2)),revenuePer1000:Number((revenue/Math.max(1,num(process.env.SBC_REVENUE_PROSPECT_DENOMINATOR||1000))).toFixed(2))},needCounts,recentSolutions,truth:'Observed SBC state only; no synthetic sales or revenue.'};
+  return {version:VERSION,catalog:catalogSummary(catalog),metrics:{prospects:customers.length,solutionsComposed:solutions.length,paidOrders:paid.length,recognizedRevenue:Number(revenue.toFixed(2)),revenuePer1000:Number((revenue/Math.max(1,num(process.env.SBC_REVENUE_PROSPECT_DENOMINATOR||1000))).toFixed(2))},needCounts,recentSolutions,truth:'Paid-order count uses stored Square settlement evidence and excludes system tests. Protected $1 owner QA payments are included in the Square-backed order count, not customer sales. This is not independent provider or bank deposit verification.'};
 }
 module.exports={VERSION,BRAINS,MAX_BUNDLE_ITEMS,NEED_RULES,flattenCatalog,catalogIndex,discoverNeeds,composeSolution,catalogSummary,snapshot};
