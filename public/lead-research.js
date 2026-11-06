@@ -47,11 +47,52 @@ function leadAutomationStatus(c){
 function isException(c){
  return ['NEEDS_HUMAN_REVIEW','FAILED'].includes(String(c?.leadAssistStatus||''))||String(c?.verificationStatus||'')==='Owner Review';
 }
+// SBC_V6686_SECONDARY_PHONE: reuse the existing durable research-notes field.
+// One tagged JSON line preserves phone + source without a schema migration or
+// changing the canonical phone used by duplicate detection and calling.
+var SBC_SECOND_PHONE_TAG='[SBC_ALT_PHONE_V1] ';
+function splitSecondaryPhoneNotes(value){
+ var other={phone:'',source:''},lines=[];
+ String(value||'').split(/\r?\n/).forEach(function(line){
+  if(line.indexOf(SBC_SECOND_PHONE_TAG)===0){
+   try{
+    var candidate=JSON.parse(line.slice(SBC_SECOND_PHONE_TAG.length));
+    if(candidate&&typeof candidate.phone==='string'&&candidate.phone.trim()){
+     other.phone=candidate.phone.trim().slice(0,80);
+     other.source=String(candidate.source||'').trim().slice(0,120);
+     return;
+    }
+   }catch(_){}
+  }
+  lines.push(line);
+ });
+ return {notes:lines.join('\n').trim(),phone:other.phone,source:other.source};
+}
+function composeSecondaryPhoneNotes(notes,phone,source,primary,maxLength){
+ var clean=splitSecondaryPhoneNotes(notes).notes;
+ var second=String(phone||'').trim(),origin=String(source||'').trim();
+ if(second.length>80||origin.length>120)throw Error('The secondary phone or its source is too long.');
+ if(origin&&!second)throw Error('Enter the additional phone number before its source.');
+ if(second){
+  var digits=second.replace(/\D/g,'');
+  if(digits.length<7||digits.length>20)throw Error('Check the additional phone number before saving.');
+  var firstDigits=String(primary||'').replace(/\D/g,'');
+  if(firstDigits&&digits===firstDigits)throw Error('The additional number must differ from the primary phone.');
+  clean+=(clean?'\n':'')+SBC_SECOND_PHONE_TAG+JSON.stringify({phone:second,source:origin});
+ }
+ if(clean.length>maxLength)throw Error('Research notes are full. Shorten your notes before adding another phone number.');
+ return clean;
+}
+function secondaryPhoneLabel(lead){
+ var extra=splitSecondaryPhoneNotes(lead?.notes);
+ return extra.phone?'Secondary: '+extra.phone+(extra.source?' ('+extra.source+')':''):'';
+}
+
 function displayLead(c){
  var item=element('div','lead-row'),left=element('div'),right=element('div');
  var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
- left.append(element('small',null,[c.city||c.address,c.industry,c.phone,c.email].filter(Boolean).join(' · ')||'Contact details pending'));
+ left.append(element('small',null,[c.city||c.address,c.industry,c.phone,secondaryPhoneLabel(c),c.email].filter(Boolean).join(' · ')||'Contact details pending'));
  right.append(element('span','pill',leadAutomationStatus(c)));
  var actionable=own&&isException(c);
  var button=element('button','outline',actionable?'Correct information':'View details');
@@ -64,23 +105,26 @@ function openReview(item,lead,editable){
  form.append(element('h3',null,lead.businessName||'Lead details'));
  form.append(element('p','muted','Automation: '+leadAutomationStatus(lead)+(lead.leadAssistCheckedAt?' · Last check '+new Date(lead.leadAssistCheckedAt).toLocaleString():'')));
  form.append(element('p','muted','SBC handles verification. You only need to correct a record when its automatic check requests additional information.'));
+ var otherPhone=splitSecondaryPhoneNotes(lead.notes);
  if(!editable){
   form.append(element('p',null,'Research source: '+String(lead.researchSource||lead.source||'Not recorded')));
+  form.append(element('p',null,'Primary phone: '+String(lead.phone||'Not recorded')));
+  form.append(element('p',null,'Secondary phone: '+(otherPhone.phone||'Not recorded')+(otherPhone.source?' · Source: '+otherPhone.source:'')));
   var close=element('button','outline','Close');close.type='button';close.onclick=function(){form.remove();};form.append(close);item.append(form);return;
  }
  var fields=element('div','fields');
  var editableFields=[
   ['Business name','businessName'],['Contact person','contactName'],
-  ['Phone','phone'],['Email','email'],['Website','website'],
+  ['Phone','phone'],['Secondary phone','secondaryPhone'],['Secondary phone source','secondaryPhoneSource'],['Email','email'],['Website','website'],
   ['Industry','industry'],['City','city'],['Research source','verificationSource']
  ];
  editableFields.forEach(function(pair){
   var label=element('label',null,pair[0]),input=element('input');input.name=pair[1];
-  input.value=String(lead[pair[1]]||lead.researchSource&&pair[1]==='verificationSource'&&lead.researchSource||'').slice(0,500);
+  input.value=String(pair[1]==='secondaryPhone'?otherPhone.phone:pair[1]==='secondaryPhoneSource'?otherPhone.source:lead[pair[1]]||lead.researchSource&&pair[1]==='verificationSource'&&lead.researchSource||'').slice(0,500);
   input.maxLength=500;label.append(input);fields.append(label);
  });
  var notes=element('label','wide','Research notes'),textarea=element('textarea');
- textarea.name='notes';textarea.maxLength=3000;textarea.rows=3;textarea.value=String(lead.notes||'').slice(0,3000);notes.append(textarea);fields.append(notes);
+ textarea.name='notes';textarea.maxLength=3000;textarea.rows=3;textarea.value=otherPhone.notes.slice(0,3000);notes.append(textarea);fields.append(notes);
  var submitForm=element('form','research-correction'),actions=element('div','form-actions');
  var submit=element('button','primary','Save correction and recheck'),cancel=element('button','outline','Cancel');
  submit.type='submit';cancel.type='button';cancel.onclick=function(){form.remove();};
@@ -89,8 +133,9 @@ function openReview(item,lead,editable){
   event.preventDefault();submit.disabled=true;clearNote();
   var fd=new FormData(submitForm),data={};
   editableFields.forEach(function(pair){data[pair[1]]=String(fd.get(pair[1])||'').trim();});
-  data.notes=String(fd.get('notes')||'').trim();
   try{
+   data.notes=composeSecondaryPhoneNotes(String(fd.get('notes')||'').trim(),data.secondaryPhone,data.secondaryPhoneSource,data.phone,3000);
+   delete data.secondaryPhone;delete data.secondaryPhoneSource;
    await api('/api/v9/lead-verification/'+encodeURIComponent(String(lead.id)),{method:'POST',body:JSON.stringify(data)});
    note('Correction saved. SBC Lead Assist will automatically recheck the record.');
    form.remove();await Promise.allSettled([loadLeads(),loadProgress()]);
@@ -110,7 +155,7 @@ function drawLeads(){
  }
  var own=leads.filter(function(c){return submittedIds.has(String(c.id));});
  var attention=own.filter(isException);
- var chosen=attention.filter(function(c){return [c.businessName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
+ var chosen=attention.filter(function(c){return [c.businessName,c.phone,secondaryPhoneLabel(c),c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
  q.replaceChildren();m.replaceChildren();
  if(!chosen.length)empty(q,filter?'No matching exceptions from your submissions.':'No records currently need your corrections. SBC automatically checks submitted leads.');
  else chosen.forEach(function(c){q.append(displayLead(c));});
@@ -350,6 +395,8 @@ async function submitLead(event){
  event.preventDefault();if(busy)return;
  var form=event.target,fd=new FormData(form),data={source:'Lead Research'};
  ['businessName','contactName','phone','email','website','industry','address','notes','verificationSource'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
+ try{data.notes=composeSecondaryPhoneNotes(data.notes,fd.get('secondaryPhone'),fd.get('secondaryPhoneSource'),data.phone,2000);}
+ catch(e){note('Lead not submitted: '+errorMessage(e),true);return;}
  if(!data.businessName&&!data.phone&&!data.email){note('Enter a business name, phone or email.',true);return;}
  busy=true;$('save-lead').disabled=true;clearNote();
  try{
