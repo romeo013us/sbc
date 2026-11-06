@@ -19,8 +19,27 @@ function low(v){return String(v??'').trim().toLowerCase();}
 // SBC_V6658_PROVENANCE_REVENUE_FULFILLMENT: a paid label cannot cause an autonomous fulfillment attempt.
 function isPaid(order){return PAYMENT_EVIDENCE.providerCapturedSquare(order);}
 function isTerminal(order){return TERMINAL.has(String(order?.status||'').toUpperCase());}
+// SBC_V6685_QA_RECONCILIATION_EXCLUSION:
+// An owner-only $1 launch QA order must remain paid and permanently blocked
+// from vendor fulfillment. Reconciliation is for real unfulfilled orders,
+// NOT an invitation to create a job for a deliberately quarantined QA order.
+// Require the exact QA product + on-record QA tag + no-fulfillment hold + $1;
+// a generic "test", "QA", or "no fulfillment" label must not hide real orders.
+function isProtectedLaunchQaOrder(order){
+  if(!order||typeof order!=='object')return false;
+  const product=String(order.product||order.productName||'').trim().toLowerCase();
+  if(product!=='sbc launch qa - $1 test service')return false;
+  const hold=String(order.fulfillmentStatus||'').trim().toUpperCase().replace(/\s+/g,' ');
+  if(hold!=='QA VERIFIED - NO FULFILLMENT'&&hold!=='QA - NO VENDOR FULFILLMENT')return false;
+  const total=Number(order.price??order.total??NaN);
+  if(!Number.isFinite(total)||total!==1)return false;
+  let notes={};
+  try{notes=typeof order.notes==='string'?JSON.parse(order.notes):order.notes||{}}catch(_){notes={}}
+  const kind=order.sbcLaunchQa?.kind||order.metadata?.sbcLaunchQa?.kind||order.parsed?.sbcLaunchQa?.kind||notes?.sbcLaunchQa?.kind;
+  return kind==='OWNER_ONLY_ONE_DOLLAR_CHECKOUT';
+}
 function needsReconciliation(order,jobs){
-  if(!order||isSystemTestOrder(order)||!isPaid(order)||isTerminal(order)) return false;
+  if(!order||isSystemTestOrder(order)||isProtectedLaunchQaOrder(order)||!isPaid(order)||isTerminal(order)) return false;
   if(String(order?.fulfillmentStatus||'').toUpperCase()==='COMPLETE — TEST') return false;
   const rows=(jobs||[]).filter(j=>String(j.orderId)===String(order.id));
   // The existing Square/GodKim path owns job creation. The reconciliation worker
@@ -76,4 +95,4 @@ async function reconcilePaidOrders({db, godKim, createFulfillmentJobsForOrder, p
   return {ok:true,version:VERSION,processed:results.length,heldForOwner:held.length,candidates:candidates.length,results,generatedAt:new Date().toISOString()};
 }
 
-module.exports={VERSION,isPaid,isTerminal,needsReconciliation,orderRisk,snapshot,reconcilePaidOrders};
+module.exports={VERSION,isPaid,isTerminal,isProtectedLaunchQaOrder,needsReconciliation,orderRisk,snapshot,reconcilePaidOrders};
