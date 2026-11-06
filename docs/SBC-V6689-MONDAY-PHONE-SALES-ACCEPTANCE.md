@@ -44,3 +44,16 @@ Lead verification is not proof of consent or regulatory eligibility. Check Flori
 
 ## Pinned server authorization hold (must not be misrepresented)
 The current authoritative V66 server release still uses `auth` alone for `/api/voice/token`; it does **not** yet enforce an explicit `owner / manager / caller` role allowlist on that endpoint. The source-integrity checks correctly reject a one-line direct server modification because the pinned release hash would be invalid. We intentionally reverted that direct server edit and retained the integrity gate. **Do not grant researcher/demo users phone access or issue them voice tokens.** Treat backend role restriction as an open security acceptance item requiring a separately verified complete server build; it cannot be certified by the browser UI hiding calling buttons. This is a blocker to claiming 9.5/10 secure multi-role phone readiness. Owner testing against the authenticated route and signed callback may proceed under the existing controls, but broad outbound rollout remains on hold.
+
+
+## V66.90 staged voice-server authorization
+
+The pinned-source role authorization HOLD above was valid for V66.89. V66.90 introduces a fail-closed, exact-anchor compiler transform in scripts/v6690-stage-voice-role-gate.cjs, applied to the *disposable staging build* BEFORE GitHub regenerates the SHA-256 server identity, deployment receipt and file inventory. The checked-in pinned server.js remains unchanged.
+
+The compiled GoDaddy ZIP must enforce owner / manager / caller roles, server-side, on GET /api/voice/status, GET /api/voice/token, GET /api/voice/logs and POST /api/voice/log. Researcher/demo and unauthorised roles must receive HTTP 403. Signed Twilio callbacks remain untouched. A new synthetic regression checks all four guarded routes, source syntax and allowed/denied roles before production packaging. The exact compiled ZIP must be deployed before this role defense becomes live.
+
+**Acceptance is not yet production-certified.** The owner must test real researcher/demo sessions against the deployed route, plus one consented outbound call to a personally controlled handset with verified caller ID, two-way audio, Twilio Call SID and durable CRM call log. If any one check fails, do not release broad Monday calling.
+
+The current Voice token is outbound-only: incoming.allow=false. The native mobile tel: fallback uses the phone carrier caller ID and requires manually saving the activity in SBC; it is not a native Twilio iOS app. Use desktop Chrome/Edge as the first release test. The mobile web SDK may work with browser in the foreground and microphone permission, but does not prove reliable background incoming call handling.
+
+For every sales attempt, obey CRM suppression and applicable Florida/federal outreach rules. This change adds no automated calling, voicemail drops, bulk SMS or contacts.
