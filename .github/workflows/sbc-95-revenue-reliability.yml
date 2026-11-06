@@ -55,6 +55,7 @@ jobs:
           node scripts/v6673-owner-smtp-transport.test.cjs
       - name: Source-level economic and payment evidence contract
         run: node scripts/v6602-payment-evidence-contract.test.cjs
+          node scripts/v6685-protected-qa-reconciliation.test.cjs
       - name: Tenant economic cost and verified customer revenue contract
         run: node scripts/v6605-revenue-integrity.test.cjs
       - name: Shared 20 percent floor across governor, storefront and fulfillment
