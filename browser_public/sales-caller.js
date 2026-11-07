@@ -19,7 +19,7 @@ function canWrite(){return !preview&&me?.role==='caller';}
 function timeOpen(){return clock?.open&&!clock.open.clockOut?clock.open:null;}
 function readyCall(){return canWrite()&&Boolean(data?.canLiveCall)&&Boolean(timeOpen())&&!activeCall;}
 function setPage(name){
- const titles={attention:'Priority Follow-ups',today:'Four-Hour Shift Plan',leads:'Assigned Leads',call:'Call & Notes',scripts:'English / Español',training:'Training & Certification',time:'Clock & Breaks'};
+ const titles={attention:'Priority Follow-ups',today:'Daily Shift Plan',leads:'Assigned Leads',call:'Call & Notes',scripts:'English / Español',training:'Training & Certification',time:'Clock & Breaks'};
  if(!titles[name])return;current=name;
  document.querySelectorAll('[data-page]').forEach(x=>x.hidden=x.id!==name);
  document.querySelectorAll('[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===name));
