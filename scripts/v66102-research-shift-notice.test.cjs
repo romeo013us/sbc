@@ -7,7 +7,9 @@ const NOTICE=require('../enterprise/v66102-research-notice.cjs');
 const PATCH=require('./v66102-stage-research-notice.cjs');
 const base=ENGINE.template('lead_researcher');
 assert.equal(ENGINE.totalMinutes('lead_researcher'),240);
-assert.equal(base.filter(t=>/^research/.test(t.id)).reduce((n,t)=>n+t.minutes,0),180);
+assert.equal(base.filter(t=>/^research/.test(t.id)).reduce((n,t)=>n+t.minutes,0),215);
+assert.equal(base[0].minutes,2,'research clock in two minutes');
+assert.equal(base.at(-1).minutes,2,'research clock out two minutes');
 assert.equal(ENGINE.totalMinutes('caller'),240);
 assert.equal(ENGINE.totalMinutes('caller',{minutes:360}),360);
 assert.equal(ENGINE.schedule('sales',null,null,{minutes:360}).items.reduce((a,t)=>a+t.minutes,0),360);
@@ -75,5 +77,5 @@ function run(user,id){
  const again=await run(researcher,'lead-1');
  assert.equal(again.body.alreadyResolved,true);assert.equal(sql.length,2,'idempotent acknowledgment');
  if(process.argv.includes('--staged'))assert.equal(stage,raw);
- console.log('PASS V66.102: Lorna 180/240 focused research, flexible 4/6-hour sales shifts, tenant/role-isolated persistent notice acknowledgments without lead deletion');
+ console.log('PASS V66.102: Lorna 215/240 focused research, flexible 4/6-hour sales shifts, tenant/role-isolated persistent notice acknowledgments without lead deletion');
 })().catch(err=>{console.error(err);process.exitCode=1});

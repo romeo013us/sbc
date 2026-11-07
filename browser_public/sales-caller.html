@@ -6,13 +6,15 @@
 <title>SBC — Spanish Sales Caller Workspace</title>
 <link rel="icon" href="/assets/sbc-logo.jpg" type="image/jpeg">
 <link rel="stylesheet" href="/lead-research.css?v=7">
-<link rel="stylesheet" href="/sales-caller.css?v=2">
+<link rel="stylesheet" href="/sales-caller.css?v=3">
 <link rel="stylesheet" href="/sbc-workforce-theme-v6698.css?v=1">
 <script defer src="/sbc-role-shift-plan.js?v=1"></script>
 <script defer src="/sbc-workforce-theme-v6698.js?v=1"></script>
 <script defer src="/vendor/sbc-twilio-voice-sdk-2.18.5.min.js"></script>
 <script defer src="/sbc-followup-priority-v66103.js?v=1"></script>
-<script defer src="/sales-caller.js?v=1"></script>
+<script defer src="/sbc-research-lesson-reader.js?v=2"></script>
+<script defer src="/sbc-sales-workspace-locale-v66104.js?v=1"></script>
+<script defer src="/sales-caller.js?v=2"></script>
 </head>
 <body data-workspace-role="caller">
 <div id="loading" role="status">Verifying SBC employee access…</div>
@@ -29,10 +31,11 @@
    <button type="button" data-panel="training">🎓 <span>My Training</span></button>
    <button type="button" data-panel="time">◷ <span>Time Clock</span></button>
   </nav>
+  <div class="sales-research-links" aria-label="Research links"><strong>Research links</strong><a href="https://sbcmia.com" target="_blank" rel="noopener noreferrer" aria-label="Open SBC website">Official SBC website <span aria-hidden="true">↗</span></a><a href="https://sbcwebsites.com" target="_blank" rel="noopener noreferrer" aria-label="Open website storefront">Website plans and domains <span aria-hidden="true">↗</span></a><small>These are public reference sites. No staff access to owner settings or customer accounts is granted.</small></div>
   <div class="nav-bottom"><button class="signout" type="button" id="signout">Sign out</button></div>
  </aside>
  <main>
-  <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="panel-title">Sales Caller Desk</h1><p id="panel-hint">Work assigned prospects, document conversations, and escalate orders.</p></div><div class="actions header-actions"><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span id="clock-indicator">Clock status pending</span><button type="button" id="reload" class="outline">Refresh</button></div></header>
+  <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="panel-title">Sales Caller Desk</h1><p id="panel-hint">Work assigned prospects, document conversations, and escalate orders.</p></div><div class="actions header-actions"><div class="sbc-lang-switch" role="group" aria-label="Whole-workspace language"><span>Language</span><button type="button" id="lang-en" class="primary" aria-pressed="true">English</button><button type="button" id="lang-es" class="outline" aria-pressed="false">Español</button></div><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span id="clock-indicator">Clock status pending</span><button type="button" id="reload" class="outline">Refresh</button></div></header>
   <section id="preview-banner" class="warning" hidden><strong>OWNER PREVIEW — READ ONLY</strong><p>You are viewing a staff-scoped projection, not impersonating the employee. Calling, clocking, account changes and record edits are disabled.</p><a href="/">Return to Owner Command Center</a></section>
   <section id="alert" class="warning" role="status" hidden></section>
   <section class="metrics"><article><small>Assigned Leads</small><strong id="m-leads">—</strong></article><article><small>Callable</small><strong id="m-callable">—</strong></article><article><small>Priority Follow-ups</small><strong id="m-attention">—</strong></article><article><small>Calling Clearance</small><strong id="m-clearance">Checking…</strong></article></section>
@@ -71,11 +74,11 @@
   </section>
   <section id="scripts" data-page hidden>
    <h2>Consultative Sales Scripts / Guiones</h2>
-   <div class="actions"><button type="button" id="lang-en" class="outline">English</button><button type="button" id="lang-es" class="primary">Español</button></div>
+   <p class="muted">Whole-workspace language is controlled from the header, including these sales scripts.</p>
    <div id="script-list" class="list"></div><p class="muted">Use these as talking points, not guaranteed pricing or consent to call. Honor refusals and federal/state outreach rules.</p>
   </section>
   <section id="training" data-page hidden>
-   <h2>Assigned Training & Calling Clearance</h2><p id="training-status"></p><div id="training-list" class="list"></div>
+   <div class="academy-sales-hero"><div class="eyebrow">SBC Academy</div><h2>Assigned Training & Calling Clearance</h2><p id="training-status"></p><p>Read and complete each lesson; you cannot complete an unopened lesson.</p></div><div id="training-list" class="list academy-sales-catalog"></div><div id="training-detail" class="academy-sales-detail" hidden></div>
    <p class="muted">Complete assigned Academy training and have the owner verify onboarding and certification before live calling.</p>
   </section>
   <section id="time" data-page hidden>

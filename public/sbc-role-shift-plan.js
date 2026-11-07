@@ -11,13 +11,15 @@
  'use strict';
  var TEMPLATES={
   lead_researcher:[
-   ['triage',10,'Review only urgent returned leads','Check the Needs Attention queue, identify real blockers, and avoid repeating work already corrected.','queue'],
-   ['research1',90,'Lead research — focused block 1','Research qualified Miami and South Florida businesses; capture verified company, reachable phone, and original source.','add'],
-   ['quality1',10,'Verify saved leads and duplicates','Confirm new lead records saved, validate source/phone and remove duplicates from draft—not the CRM.','mine'],
-   ['research2',90,'Lead research — focused block 2','Continue new lead research and submit complete, unique prospects. Aim for 16 complete leads, with 20 as a stretch goal.','add'],
-   ['repair',20,'Handle genuine exceptions','Correct only unresolved flagged records; use the verified source. Dismiss an already-resolved notice without deleting its lead.','queue'],
-   ['review',10,'Final verification and brief Academy study','Verify the last saved batch; use any spare minutes for a short assigned lesson.','mine'],
-   ['handoff',10,'Owner handoff and clock review','Record completed submissions, unresolved blockers and tomorrow’s research focus. Check the official time clock.','mine']
+   ['clockin',2,'Clock in and confirm assignments','Log your actual start time and check the research focus. The time clock, not this plan, tracks payable hours.','clock'],
+   ['triage',5,'Review real, assigned corrections','Review only valid research records that SBC returned; unusable binary imports stay in the owner CRM for cleanup.','queue'],
+   ['research1',70,'Lead research — focused block 1','Find South Florida businesses with verifiable public contact details and record the original research source.','add'],
+   ['quality1',5,'Quick lead quality check','Confirm saved entries and source accuracy; remove duplicates from drafts, never delete CRM records.','mine'],
+   ['research2',75,'Lead research — focused block 2','Continue finding and submitting unique, complete businesses. Accuracy comes before a numeric quota.','add'],
+   ['repair',6,'Correct legitimate verification exceptions','Recheck only real records returned to you; resubmit corrections for automated verification.','queue'],
+   ['research3',70,'Lead research — focused block 3','Use the remaining focus period to research, validate and save additional qualified South Florida leads.','add'],
+   ['handoff',5,'Summarize research and owner handoff','Check today’s saves, flag blockers to the owner and note where the next research session starts.','mine'],
+   ['clockout',2,'Clock out and finish the shift','Review official time-clock status and record your actual clock-out.','clock']
   ],
   sales:[
    ['triage',10,'Review assigned callbacks and Do Not Call requests','Check your assigned leads, scheduled callbacks, and priority owner notes before starting calls.','queue'],

@@ -12,7 +12,7 @@ assert.match(html,/name="phone" type="tel"/);
 assert.match(html,/name="secondaryPhone" type="tel"/);
 assert.match(html,/name="secondaryPhoneSource"/);
 assert.match(html,/\/lead-research\.js\?v=(?:[5-9]|[1-9]\d+)\b/);
-assert.match(html,/\/sbc-role-shift-plan\.js\?v=1/);
+assert.match(html,/\/sbc-role-shift-plan\.js\?v=[1-9]\d*/);
 assert.match(js,/SBC_V6686_SECONDARY_PHONE/);
 assert.match(js,/composeSecondaryPhoneNotes\(data\.notes,fd\.get\('secondaryPhone'\),fd\.get\('secondaryPhoneSource'\),data\.phone,2000\)/);
 assert.match(js,/await api\('\/api\/workforce\/leads',\{method:'POST',body:JSON\.stringify\(data\)\}\)/);

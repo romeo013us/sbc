@@ -7,7 +7,8 @@ assert.equal(read('public/sbc-followup-priority-v66103.js'),read('browser_public
 assert.equal(read('public/sales-caller.js'),read('browser_public/sales-caller.js'),'sales UI must be mirrored');
 assert.equal(read('public/sales-caller.html'),read('browser_public/sales-caller.html'),'sales HTML must be mirrored');
 const html=read('public/sales-caller.html');
-assert(html.indexOf('/sbc-followup-priority-v66103.js?v=1')<html.indexOf('/sales-caller.js?v=1'),'load helper before caller');
+const callerScript=html.match(/\/sales-caller\.js\?v=\d+/)?.[0];
+assert(callerScript&&html.indexOf('/sbc-followup-priority-v66103.js?v=1')<html.indexOf(callerScript),'load helper before versioned caller');
 const ui=read('public/sales-caller.js');
 assert(ui.includes('SBCFollowupPriority?.buildQueue'),'caller UI must use callback prioritization');
 assert(ui.includes('Follow-up prioritization is unavailable.'),'missing helper must show a visible error');
