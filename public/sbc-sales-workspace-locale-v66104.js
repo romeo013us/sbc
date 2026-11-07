@@ -58,6 +58,7 @@
   'You are viewing a staff-scoped projection, not impersonating the employee. Calling, clocking, account changes and record edits are disabled.':'Estás viendo una vista limitada del empleado, sin suplantarlo. Las llamadas, el reloj y las ediciones están deshabilitados.',
   'Return to Owner Command Center':'Volver al centro de control del dueño',
   'Priority Follow-ups':'Seguimientos prioritarios','Four-Hour Shift Plan':'Plan de turno de cuatro horas',
+  'Daily Shift Plan':'Plan diario del turno',
   'Assigned Leads':'Prospectos asignados','Call & Notes':'Llamadas y notas',
   'English / Español':'Idioma de la plataforma','Training & Certification':'Capacitación y certificación','Clock & Breaks':'Horario y descansos',
   'Open lead':'Abrir prospecto','Select for call':'Seleccionar para llamar','View details':'Ver detalles',
