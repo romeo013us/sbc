@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "a108d4f4ca75f6909a592be8e6f82ea471a7afa1",
+  "sourceCommit": "3b57f64386a74cce527a768d675b1a467fcbbf40",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -108,7 +108,7 @@
     "RELEASE-V56.13.3-MIAMI-EXPANSION-IMPORT.md": "3a5548b250abade7babb9d89a2b37575038ad89123eda6eba7e4ba2cbc391be1",
     "RELEASE-VERIFICATION-V65.1.12.md": "92e8b34b4b5a7108847e21b042d6f737375876e652c1f501d772d3b64f1286fe",
     "RELEASE-VERIFICATION-V65.1.13.md": "d5a57729d5217bb7031fce462b2723dee78929f8bdc4f4f4cea85fa5722925e7",
-    "SBC-DEPLOY-RECEIPT.json": "fd4162703b0e853aac654f6b507d4d6a1a8eeca6a5737b4e1839264493d007a9",
+    "SBC-DEPLOY-RECEIPT.json": "59caf8a68ecfc48d2d288153191b5e033af73aca1eabb6c05c381e3dc15ee6e0",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "V56.1.0-BUILD-MANIFEST.json": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
     "V56.25.0-FILE-SHA256.txt": "3a6d2fa626a1604f7d5cd340cf0f8cf161539549c643e3e821ca0db0c2659ed1",
@@ -261,6 +261,7 @@
     "browser_public/sbc-v6638-compact-brains-kim.js": "6e113ca1dd08e6920ac9e2c187565563b5ce2dd5658c0e1d27c10fac845f24c5",
     "browser_public/sbc-v6667-private-owner-import.js": "aeb9ddcad1e4d1acec93141da7d4d5d698bf778e8998c7f7560e859e8a6f4ec3",
     "browser_public/sbc-v6675-payment-readback.js": "f2227d3b4411c16843ae252518ba0595fb3a7d3f889767d4b66bf91e480c4beb",
+    "browser_public/sbc-workforce-theme-v6698.js": "19fce7f019333d633b41179a74ae63a1ddbfc925380e4ab3e75ee0ebf474cbeb",
     "browser_public/styles.css": "0ef80203e44d7110ac643cf50ffe412d282415a2c905a1582455d4bfcc4a3ba6",
     "browser_public/supernova-demo.html": "2d74a00bd9f2c2df45f48fa2afaef36964bd0022a3c06d3051debd1a887f7b51",
     "browser_public/supernova.css": "f5d19ec355a249a075df31554078f347a79969bcc5fe2fa18ac11788cb35934c",
@@ -883,6 +884,7 @@
     "public/sbc-v6675-payment-readback.js": "f2227d3b4411c16843ae252518ba0595fb3a7d3f889767d4b66bf91e480c4beb",
     "public/sbc-workforce-academy-v6697.css": "8d037a61208d38ac4f67261ae4b2fcaf8feaf30c3b6b570f4246741f85033c69",
     "public/sbc-workforce-academy-v6697.js": "81ef78b285706122b417f9e0754e13d7f81a1dce30b644ebe4d0738a92b22fe3",
+    "public/sbc-workforce-theme-v6698.js": "19fce7f019333d633b41179a74ae63a1ddbfc925380e4ab3e75ee0ebf474cbeb",
     "public/styles.css": "0ef80203e44d7110ac643cf50ffe412d282415a2c905a1582455d4bfcc4a3ba6",
     "public/supernova-demo.html": "2d74a00bd9f2c2df45f48fa2afaef36964bd0022a3c06d3051debd1a887f7b51",
     "public/supernova.css": "f5d19ec355a249a075df31554078f347a79969bcc5fe2fa18ac11788cb35934c",
