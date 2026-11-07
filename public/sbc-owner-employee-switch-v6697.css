@@ -1,0 +1,22 @@
+#sbcOwnerStaffLauncher{position:fixed;bottom:24px;right:24px;z-index:11030;background:#163c65;border:2px solid #9cd4ff;border-radius:999px;padding:13px 18px;color:#fff;font:800 13px/1.3 system-ui;box-shadow:0 8px 25px #0005;cursor:pointer}
+#sbcOwnerStaffSwitch{position:fixed;inset:0;z-index:11040;background:#03101fdb;display:flex;align-items:center;justify-content:center;padding:12px;color:#eff8ff}
+#sbcOwnerStaffSwitch .staff-modal{width:min(900px,100%);max-height:95vh;overflow:auto;border:1px solid #6898b7;border-radius:16px;background:#10233c;padding:23px;font:14px/1.5 system-ui;color:#eef8ff;box-shadow:0 15px 70px #0009}
+#sbcOwnerStaffSwitch *{box-sizing:border-box}
+#sbcOwnerStaffSwitch h2{font-size:22px;color:#fff;margin:0 0 9px}
+#sbcOwnerStaffSwitch h3{color:#e9f7ff;margin:15px 0 8px;font-size:17px}
+#sbcOwnerStaffSwitch p{color:#d2e5f7}
+#sbcOwnerStaffSwitch .staff-top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+#sbcOwnerStaffSwitch button{padding:10px 12px;border:1px solid #749bbe;border-radius:8px;background:#224f7b;color:#fff;font-weight:750;cursor:pointer}
+#sbcOwnerStaffSwitch button:disabled{opacity:.6;cursor:not-allowed}
+#sbcOwnerStaffSwitch button.staff-create{background:#126944;border-color:#58ba91}
+#sbcOwnerStaffSwitch .staff-box{border:1px solid #4d6b86;border-radius:12px;padding:14px;margin-top:13px}
+#sbcOwnerStaffSwitch .staff-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #35516d;flex-wrap:wrap}
+#sbcOwnerStaffSwitch .staff-row:last-child{border:0}
+#sbcOwnerStaffSwitch .staff-row small{color:#b7d0e7;display:block}
+#sbcOwnerStaffSwitch input{background:#f8fbff;color:#132b43;border:1px solid #8aa6c2;border-radius:8px;padding:10px;width:100%;min-width:0}
+#sbcOwnerStaffSwitch label{display:block;color:#eaf4ff;margin:12px 0 5px;font-weight:700}
+#sbcOwnerStaffSwitch .staff-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#sbcOwnerStaffSwitch .staff-result{padding:15px;background:#1a4032;border:1px solid #64b29a;border-radius:10px;color:#ecfff7;white-space:pre-wrap;overflow-wrap:anywhere}
+#sbcOwnerStaffSwitch .staff-status{color:#ffd995;font-weight:700;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#sbcOwnerStaffSwitch .staff-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){#sbcOwnerStaffSwitch .staff-modal{padding:13px}#sbcOwnerStaffSwitch .staff-form{grid-template-columns:1fr}#sbcOwnerStaffLauncher{bottom:12px;right:12px}}
