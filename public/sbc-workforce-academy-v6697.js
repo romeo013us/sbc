@@ -64,12 +64,17 @@
   const pause=toolbar.querySelector('[data-academy-pause]');if(pause)pause.textContent='Pause';
  }
  function stop(){
+  if(W?.SBCWorkforceAudio?.stop)W.SBCWorkforceAudio.stop();
   if(supported())try{W.speechSynthesis.cancel();}catch(_){}
   speech=null;setStatus(activeToolbar,'Ready to read the current lesson aloud.');
   resetControls(activeToolbar);activeToolbar=null;
  }
  function enhanceLesson(content){
-  if(!content||content.querySelector('.academy-audio'))return;
+  if(!content)return;
+  // V66.109: delegate to the shared section navigation reader. Keep V66.97
+  // browser read-aloud code below as a safe fallback when the new file fails.
+  if(W?.SBCWorkforceAudio?.mount){W.SBCWorkforceAudio.mount(content,W);return;}
+  if(content.querySelector('.academy-audio'))return;
   const toolbar=make('div',undefined,'academy-audio');
   toolbar.setAttribute('aria-label','Read this Academy lesson aloud');
   const title=make('strong','🎧 Listen to this lesson');toolbar.append(title);
