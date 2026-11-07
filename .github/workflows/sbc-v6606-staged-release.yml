@@ -74,6 +74,7 @@ jobs:
           node scripts/v6695-voice-token.test.cjs
           node scripts/v6696-manual-dialer.test.cjs
           node scripts/v6697-sales-workspace.test.cjs
+          node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
           node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
@@ -141,6 +142,8 @@ jobs:
           node scripts/v6696-manual-dialer.test.cjs --staged
           SBC_V6697_ISOLATED_STAGE=YES node scripts/v6697-stage-sales-workspace.cjs --apply
           node scripts/v6697-sales-workspace.test.cjs --staged
+          SBC_V6699_ISOLATED_STAGE=YES node scripts/v6699-stage-outbound-suppression.cjs --apply
+          node scripts/v6699-outbound-suppression.test.cjs --staged
           node scripts/lead-research-workspace.test.cjs
           node scripts/workforce-brand-parity.test.cjs
           node scripts/workforce-theme-v6698.test.cjs
@@ -281,6 +284,7 @@ jobs:
             NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$tmp/scripts/v6695-voice-token.test.cjs" --staged
             node "$tmp/scripts/v6696-manual-dialer.test.cjs" --staged
             node "$tmp/scripts/v6697-sales-workspace.test.cjs" --staged
+            node "$tmp/scripts/v6699-outbound-suppression.test.cjs" --staged
             node "$tmp/scripts/workforce-theme-v6698.test.cjs"
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
