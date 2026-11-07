@@ -88,3 +88,28 @@
 .lead-row.needs-correction{border-left:4px solid #ffbf45}
 .lead-row .correction-reason{color:#ffe0a6;font-weight:700}
 @media (max-width:640px){.attention-priority{align-items:stretch}.attention-open{width:100%}}
+
+/* Daily role-based shift checklist: completion is a local browser indicator. */
+.shift-card{border:1px solid #37628a;border-top:4px solid #4eaaff;margin-bottom:18px}
+.shift-summary{display:grid;gap:3px;text-align:center;color:#e9f5ff}
+.shift-summary strong{font-size:23px}
+.shift-summary small{font-size:11px;color:#b1cee7}
+.shift-track{margin:18px 0 10px;background:#0c1728;border:1px solid #34546e;border-radius:99px;height:12px;overflow:hidden}
+#shift-progress-fill{height:100%;width:0;background:#68bdff;transition:width .2s}
+.shift-disclaimer{color:#a6bdd2;font-size:12px;line-height:1.5}
+.shift-task-list{display:grid;gap:11px;margin-top:18px}
+.shift-task{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:14px;align-items:start;padding:15px;border:1px solid #33475e;border-radius:12px;background:#15233a}
+.shift-task.active{border-color:#59c2ee;background:#153349;box-shadow:inset 4px 0 0 #65caff}
+.shift-task.done{opacity:.82}
+.shift-task.done .shift-task-title{text-decoration:line-through}
+.shift-task label{display:block}
+.shift-task input[type="checkbox"]{margin:4px 0 0;padding:0;width:21px;height:21px;accent-color:#43d3a1;cursor:pointer}
+.shift-task-title{font-weight:800;color:#f1f6fd}
+.shift-task-meta{font-size:12px;color:#8fc4fa;margin:6px 0}
+.shift-task-detail{font-size:13px;line-height:1.5;color:#bdd0e2}
+.shift-task-status{font-weight:750;color:#abe8ff;font-size:11px;text-transform:uppercase}
+.shift-task button{white-space:nowrap;font-size:12px;padding:8px 10px}
+.shift-home{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:17px 20px;margin:0 0 17px;border:1px solid #4183b4;border-radius:13px;background:#132c45}
+.shift-home strong{color:#e4f6ff}
+.shift-home p{margin:5px 0 0;color:#b2d1e8;font-size:13px}
+@media(max-width:700px){.shift-task{grid-template-columns:26px minmax(0,1fr)}.shift-task button{grid-column:2;justify-self:start}.shift-summary{text-align:left}}
