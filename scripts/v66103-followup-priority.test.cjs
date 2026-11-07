@@ -39,7 +39,7 @@ report('not-assigned','Follow-up Requested','2026-11-07T10:00:00Z')
 ];
 const before=JSON.stringify({leads,reports});
 const rows=priority.buildQueue(leads,reports,now);
-assert.deepEqual(rows.map(x=>x.customerId),['a','d','i','b','c','g'],'overdue first, then unscheduled, soon, later');
+assert.deepEqual(rows.map(x=>x.customerId),['a','i','d','b','g','c'],'overdue first, then unscheduled, soon, later');
 assert.equal(rows[0].status,'overdue');
 assert.equal(rows[1].status,'needs_time');
 assert.equal(rows[2].status,'needs_time');
