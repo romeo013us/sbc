@@ -85,7 +85,7 @@ async function start(){
  try{
   const st=await sbcVoiceStatus();
   if(!st?.configured||st.webhookSignatureReady!==true)throw Error('Twilio Voice and signed callback must be ready.');
-  if(cancel){await stop('canceled');return;}
+  if(cancel){call=null;working=false;controls();say('Call canceled before dialing. No outbound call placed.');return;}
   const saved=await log('connecting');
   if(!saved)throw Error('Call blocked: the CRM did not confirm a durable call log. No call was placed.');
   call.stage='logged';
@@ -104,7 +104,6 @@ async function start(){
   }
  }catch(e){
   const msg=String(e?.message||'Call could not start.');
-  if(call?.stage!=='preparing'&&call?.stage!=='logged'&&call?.stage!=='dialing'){}
   if(call?.stage==='preparing'){call=null;working=false;controls();say(msg,true);}
   else{await stop('failed');say(msg,true);}
  }
