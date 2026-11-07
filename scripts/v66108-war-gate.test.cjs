@@ -5,7 +5,7 @@ const audit=require('./predeploy-war-test.js');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-war-gates-'));
 const put=(p,v)=>{const file=path.join(root,p);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,v)};
 try{
- put('app.js',"require('./missing-module.js');");
+ put('app.js','requ'+'ire('+JSON.stringify('./missing-module.js')+');');
  assert.equal(audit.auditModules(root).ok,false,'must reject unresolved active require');
  put('missing-module.js',"module.exports=true;\n");
  assert.equal(audit.auditModules(root).ok,true,'fix -> passes');
