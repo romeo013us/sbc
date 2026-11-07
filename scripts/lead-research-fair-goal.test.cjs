@@ -63,6 +63,7 @@ const rows=[
 ];
 let handler;
 const context={
+ require:spec=>{if(spec==='./enterprise/v66102-research-notice.cjs')return require('../enterprise/v66102-research-notice.cjs');throw Error('UNEXPECTED_VM_MODULE:'+spec);},
  app:{get(p,auth,fn){assert.equal(p,'/api/workforce/research-progress');handler=fn;}},
  auth:()=>{},db:{customers,auditLog:[]},
  mysqlPool:{async query(sql,args){assert.match(sql,/sbc_audit_log/);assert.deepEqual(Array.from(args),['lorna']);return [rows];}},
