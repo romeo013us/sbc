@@ -41,6 +41,7 @@ jobs:
           node --check public/lead-research.js
           node --check public/lead-research-import-core.js
           node scripts/lead-research-workspace.test.cjs
+          node scripts/workforce-brand-parity.test.cjs
           node scripts/v6686-research-secondary-phone.test.cjs
           node scripts/lead-research-import-goals.test.cjs
           node --check public/sbc-research-lesson-reader.js
@@ -137,6 +138,7 @@ jobs:
           SBC_V6696_ISOLATED_STAGE=YES node scripts/v6696-stage-manual-dialer.cjs --apply
           node scripts/v6696-manual-dialer.test.cjs --staged
           node scripts/lead-research-workspace.test.cjs
+          node scripts/workforce-brand-parity.test.cjs
           node scripts/v6686-research-secondary-phone.test.cjs
           node scripts/lead-research-import-goals.test.cjs
           node scripts/lorna-training-daily-missions.test.cjs
