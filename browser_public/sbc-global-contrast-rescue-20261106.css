@@ -50,3 +50,56 @@ body :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead) :is(a,
 @media print {
  body .quote-preview,body .quote-preview * { color:#111!important; background-color:#fff!important; }
 }
+
+/* SBC V66.92: final targeted legibility safeguard (theme-aware, no layout changes).
+ * Historic commerce cards and inline white "paper" surfaces used inherited white text. */
+body[data-theme="light"] :is(#content,#modal) :is(
+ .payment-card,.price-card,.presentation-card,.sales-service-row,.sales-cart-row,
+ .sbc-product,.sbc-checkout-box,.catalog-grid>.card,.quote-line,.quote-total,.total-row
+) :is(.price,.payment-price,.value,.amount,.sales-total,.feature-list,.feature-list li,.product-name,.service-name,.service-price,.item-price,.cart-total) {
+  color:#17283a!important;
+}
+body[data-theme="light"] :is(#content,#modal) :is(
+ .payment-card,.price-card,.presentation-card,.sales-service-row,.sales-cart-row,
+ .sbc-product,.sbc-checkout-box,.catalog-grid>.card,.quote-line,.quote-total,.total-row
+) :is(.mini,.meta,.sub,.description,small,.feature-list li) {color:#44576c!important;}
+/* Explicit white inline panels stay white in either theme, including previews and print.
+ * Exclude controls and branded status surfaces so their meaning remains visible. */
+body :is(#content,#modal) :is(
+ [style*="background:#fff"],[style*="background: #fff"],
+ [style*="background-color:#fff"],[style*="background-color: #fff"],
+ [style*="background:white"],[style*="background: white"],
+ [style*="background-color:white"],[style*="background-color: white"],
+ [style*="background:rgb(255, 255, 255)"],[style*="background: rgb(255, 255, 255)"]
+):not(.btn):not(.badge):not(.pill):not(.hero):not(.onboard-hero) {
+  color:#17283a!important;
+}
+body :is(#content,#modal) :is(
+ [style*="background:#fff"],[style*="background: #fff"],
+ [style*="background-color:#fff"],[style*="background-color: #fff"],
+ [style*="background:white"],[style*="background: white"],
+ [style*="background-color:white"],[style*="background-color: white"],
+ [style*="background:rgb(255, 255, 255)"],[style*="background: rgb(255, 255, 255)"]
+):not(.btn):not(.badge):not(.pill):not(.hero):not(.onboard-hero)
+:is(h1,h2,h3,h4,h5,h6,p,span,div,small,strong,b,em,label,td,th,li,.price,.value)
+:not(.btn):not(.badge):not(.pill):not(.status):not(.alert):not(.hero *) {
+  color:#17283a!important;
+}
+/* Native options use the matching system palette and placeholders remain legible. */
+body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea,option) {
+  color-scheme:light;color:#17283a!important;
+}
+body[data-theme="dark"] :is(#content,#modal) :is(input,select,textarea,option) {
+  color-scheme:dark;color:#edf5ff!important;
+}
+body[data-theme="light"] :is(#content,#modal) :is(input,textarea)::placeholder {color:#667b8c!important;opacity:1;}
+body[data-theme="dark"] :is(#content,#modal) :is(input,textarea)::placeholder {color:#a5bacd!important;opacity:1;}
+/* Improve the previously 10px fine print in sales/product cards; no global font scaling. */
+body :is(#content,#modal) :is(.payment-card p,.feature-list,.feature-list li,
+ .sales-service-row span,.sales-cart-row span,.sbc-product span,.sales-group-title,
+ .payment-card small,.price-card small,.catalog-grid small) {
+  font-size:max(12px,.8rem)!important;line-height:1.5!important;
+}
+body :is(#content,#modal) :is(.payment-price,.price) {
+  font-size:max(22px,1.35rem)!important;line-height:1.25!important;
+}
