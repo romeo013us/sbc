@@ -50,8 +50,14 @@ function suspiciousResearchText(c){
   return /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]/.test(text)||/xl\/(?:workbook|styles)\.xml|\[Content_Types\]\.xml/i.test(text);
  });
 }
+function researchDisplayable(c){
+ // Malformed spreadsheet/binary blobs are preserved for owner data cleanup,
+ // never assigned as an action or forced correction on Lorna's employee desk.
+ return !suspiciousResearchText(c)&&(!window.SBCLornaQueueFilter||window.SBCLornaQueueFilter.displayable(c));
+}
 function isException(c){
- if(c?.researchNoticeResolved===true&&!suspiciousResearchText(c))return false;
+ if(!researchDisplayable(c))return false;
+ if(c?.researchNoticeResolved===true)return false;
  return ['NEEDS_HUMAN_REVIEW','FAILED','REWORK_REQUIRED','RETURNED_FOR_CORRECTION'].includes(String(c?.leadAssistStatus||''))||
   ['Owner Review','Needs Correction','Rework Required'].includes(String(c?.verificationStatus||''))||suspiciousResearchText(c);
 }
@@ -62,7 +68,7 @@ function correctionReason(c){
 }
 function myAttentionRecords(){
  if(!Array.isArray(leads)||!(submittedIds instanceof Set)||leadsLoadFailed||progressLoadFailed)return null;
- return leads.filter(function(c){return submittedIds.has(String(c.id))&&isException(c);});
+ return leads.filter(function(c){return submittedIds.has(String(c.id))&&researchDisplayable(c)&&isException(c);});
 }
 function updatePriorityIndicator(){
  var pending=myAttentionRecords(),panel=$('attention-priority'),nav=$('[data-tab="queue"]'),count=$('queue-nav-count');
@@ -208,7 +214,7 @@ function drawLeads(){
   updatePriorityIndicator();
   return;
  }
- var own=leads.filter(function(c){return submittedIds.has(String(c.id));});
+ var own=leads.filter(function(c){return submittedIds.has(String(c.id))&&researchDisplayable(c);});
  var attention=own.filter(isException);
  var chosen=attention.filter(function(c){return [c.businessName,c.phone,secondaryPhoneLabel(c),c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
  q.replaceChildren();m.replaceChildren();
