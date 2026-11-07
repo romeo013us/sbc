@@ -8,6 +8,8 @@
 })(typeof window==='undefined'?{}:window,function(){
  'use strict';
  const es={
+  'Real-World SBC Sales Playbook / Guiones de ventas':'Guía práctica de ventas de SBC',
+  'Choose a situation, read the short talk track, then listen. English / Español follows the header language.':'Elija una situación, lea el guion breve y escuche. El idioma sigue la selección del encabezado.',
   'Sales Caller Workspace':'Espacio de ventas y llamadas','Sales Caller':'Agente de ventas','Verified employee session':'Sesión de empleado verificada',
   'Needs Attention':'Requiere atención','Today’s Tasks':'Tareas de hoy','My Assigned Leads':'Mis prospectos asignados',
   'My Calling Desk':'Mi centro de llamadas','Sales Scripts / Español':'Guiones de venta',
