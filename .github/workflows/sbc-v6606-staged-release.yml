@@ -79,6 +79,7 @@ jobs:
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
+          node scripts/v66105-lorna-operations.test.cjs
           node scripts/v6672-site-checkout-stage.cjs
           node scripts/v6670-quote-order-stage.cjs
           node --check routes/v56131-revenue-finisher.js
@@ -151,6 +152,7 @@ jobs:
           SBC_V66101_ISOLATED_STAGE=YES node scripts/v66101-stage-caller-workstation.cjs --apply
           node scripts/v66101-caller-least-privilege.test.cjs --staged
           SBC_V66102_ISOLATED_STAGE=YES node scripts/v66102-stage-research-notice.cjs --apply
+          SBC_V66105_ISOLATED_STAGE=YES node scripts/v66105-stage-lorna-notice-role.cjs --apply
           node scripts/v66102-research-shift-notice.test.cjs --staged
           node scripts/lead-research-workspace.test.cjs
           node scripts/workforce-brand-parity.test.cjs
@@ -297,6 +299,7 @@ jobs:
             node "$tmp/scripts/v6699-outbound-suppression.test.cjs" --staged
             node "$tmp/scripts/v66101-caller-least-privilege.test.cjs" --staged
             node "$tmp/scripts/v66102-research-shift-notice.test.cjs" --staged
+            node "$tmp/scripts/v66105-lorna-operations.test.cjs" --staged
             node "$tmp/scripts/workforce-theme-v6698.test.cjs"
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
