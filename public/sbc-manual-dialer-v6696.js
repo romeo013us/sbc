@@ -33,7 +33,8 @@ function fields(){
 async function log(status,manual=false){
  if(!call)return false;
  fields();
- if(saving)return false;
+ for(let i=0;saving&&i<100;i++)await new Promise(resolve=>setTimeout(resolve,100));
+ if(saving){say('Call log is busy. Retry after current save finishes.',true);return false;}
  saving=true;
  try{
   const d=await api('/api/voice/log',{method:'POST',body:JSON.stringify(payload(call,status))});
@@ -94,8 +95,9 @@ async function start(){
   if(cancel){await stop('canceled');return;}
   call.stage='dialing';
   const conn=await device.connect({params:{To:to}});
+  // An End Call press while Twilio was connecting must not leave a live orphan call.
+  if(cancel||!call){try{conn?.disconnect?.();}catch{}if(call)await stop('canceled');return;}
   call.conn=conn;
-  if(cancel){await stop('canceled');return;}
   say('Calling '+to+'…');
   if(typeof conn.on==='function'){
    conn.on('accept',()=>{connected=true;controls();say('Live call to '+to+'. Enter notes as you talk.');log('in-progress').catch(()=>{});});
