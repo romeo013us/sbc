@@ -79,6 +79,7 @@ jobs:
           node scripts/v66106-sales-playbook.test.cjs
           node scripts/v66107-elite-academy.test.cjs
           node scripts/v66108-war-gate.test.cjs
+          node scripts/v66109-workforce-audio.test.cjs
           node scripts/predeploy-war-test.js
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
@@ -303,6 +304,7 @@ jobs:
             node "$tmp/scripts/v66106-sales-playbook.test.cjs"
             node "$tmp/scripts/v66107-elite-academy.test.cjs"
             node "$tmp/scripts/v66108-war-gate.test.cjs"
+            node "$tmp/scripts/v66109-workforce-audio.test.cjs"
             node "$tmp/scripts/predeploy-war-test.js"
             node "$tmp/scripts/v6699-outbound-suppression.test.cjs" --staged
             node "$tmp/scripts/v66101-caller-least-privilege.test.cjs" --staged
