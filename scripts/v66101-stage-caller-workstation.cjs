@@ -3,7 +3,22 @@
 const fs=require('node:fs'),path=require('node:path');
 const MARK='SBC_V66101_CALLER_FAIL_CLOSED';
 function replaceOnce(s,oldText,newText,label){const matches=s.split(oldText).length-1;if(matches!==1)throw Error('V66101_ANCHOR_'+label+'_'+matches);return s.replace(oldText,newText);}
-function patchServer(input){let s=String(input||'');if(s.includes(MARK))return s;
+function patchServer(input){let s=String(input||'');
+ const guardAnchor="app.use((req,res,next)=>{const name=";
+ // Earlier compiled releases accidentally inserted the employee redirect between
+ // the CSV privacy guard marker and its static middleware. Repair that layout.
+ if(s.includes(MARK)){
+  const stale=s.indexOf('// No caller or researcher is ever served the owner Command Center shell.');
+  const guard=s.indexOf(guardAnchor);
+  if(stale>guard&&guard>=0){
+   const end=s.indexOf('app.use(express.static(',stale);
+   if(end<0)throw Error('V66101_PREVIOUS_STATIC_ROUTE_MISSING');
+   const redirect=s.slice(stale,end);
+   s=s.slice(0,stale)+s.slice(end);
+   s=replaceOnce(s,guardAnchor,redirect+guardAnchor,'relocate-compiled-staff-redirect');
+  }
+  return s;
+ }
  s=replaceOnce(s,'async function auth(req,res,next){',
  "// "+MARK+": deny-by-default employee API and independent staff shell\nconst SBC_V66101_CALLER_POLICY=require('./enterprise/v66101-caller-access.cjs');\nasync function auth(req,res,next){",'auth-load');
  s=replaceOnce(s,
@@ -13,7 +28,7 @@ function patchServer(input){let s=String(input||'');if(s.includes(MARK))return s
  'caller-rbac');
  const statics="app.use(express.static(path.join(__dirname,'public'),{dotfiles:'ignore',setHeaders:";
  const routing="// No caller or researcher is ever served the owner Command Center shell.\napp.use(async(req,res,next)=>{\n if(req.method!=='GET'||!SBC_V66101_CALLER_POLICY.ownerShellPath(req.path))return next();\n let u=null;try{u=await sessionUser(req)}catch(e){return next()}\n if(u?.role==='caller')return res.redirect(302,'/sales-caller.html');\n if(u?.role==='lead_researcher')return res.redirect(302,'/lead-research.html');\n return next();\n});\n";
- s=replaceOnce(s,statics,routing+statics,'static-route');
+ s=replaceOnce(s,guardAnchor,routing+guardAnchor,'static-route');
  const voice="const manualTo=manualDial?normalizeDialNumber(b.to):'';";
  const guard="if(req.user.role==='caller'&&(manualDial||!customer||String(customer.assignedTo||'')!==String(req.user.id)||Number(customer.tenantId??customer.tenant_id)!==Number(tenantId)||SBC_V66101_CALLER_POLICY.suppressed(customer)))return res.status(403).json({ok:false,error:'CALLER_ASSIGNED_LEAD_REQUIRED'});";
  s=replaceOnce(s,voice,guard+voice,'voice-log');
