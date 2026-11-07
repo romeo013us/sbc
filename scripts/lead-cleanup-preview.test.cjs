@@ -10,7 +10,7 @@ assert(shell.includes('/sbc-crm-cleanup-preview.js?v=1'), 'owner page must load 
 assert(!/fetch\s*\(|XMLHttpRequest|\/api\/customers\/bulk-delete/.test(source), 'preview must not call the customer API');
 const csv='DATE,Business Name ,Phone,Email,Source,Research Notes,For Jonathan’s Verification\r\n'+
  '10/1/2026,"A, B Shop",1 (305) 555-0100,,https://example.org,"Site says ""closed""; double-check",\r\n'+
- '10/2/2026,Another Shop,786-555-0200,,,Verify ownership\r\n'+
+ '10/2/2026,Another Shop,786-555-0200,,,,Verify ownership\r\n'+
  '10/3/2026,,,,,,\r\n';
 const rows=preview.parseCSV(csv);
 assert.equal(rows.length,2);
