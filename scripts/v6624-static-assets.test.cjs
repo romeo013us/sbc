@@ -12,10 +12,17 @@ const patchSource=fs.readFileSync(path.join(root,'scripts/v6606-quote-server-har
 const marker='SBC_V6608_PROSPECT_CSV_PRIVACY_GATE';
 const anchor=serverSource.indexOf(marker);
 assert.ok(anchor>=0,'public CSV privacy guard must remain');
-assert.ok(serverSource.slice(anchor+marker.length).startsWith('\napp.use(express.static'),
-  'Express static handler must start after a REAL newline, never inside // comment');
+const afterGuard=serverSource.slice(anchor+marker.length);
+const staticAt=serverSource.indexOf('app.use(express.static(',anchor);
+assert.ok(afterGuard.startsWith('\n'),'CSV privacy guard must end at a REAL newline, never continue as a // comment');
+assert.ok(staticAt>anchor,'Express static handler must follow the CSV guard');
+assert.ok(serverSource.slice(anchor,staticAt).includes('\n'),'Static middleware must not be swallowed by the CSV guard line comment');
 assert.ok(!serverSource.includes(marker+'\\napp.use(express.static'),
   'literal backslash-n would comment out the entire static handler');
+// Since V66.101, staff-shell redirects intentionally run between the CSV
+// privacy guard and static middleware. Test route ordering rather than adjacency.
+const redirectAt=serverSource.indexOf('// No caller or researcher is ever served the owner Command Center shell.',anchor);
+if(redirectAt>=0)assert.ok(redirectAt<staticAt,'role-safe staff redirect must precede public static delivery');
 const generatorMarker=patchSource.lastIndexOf(marker);
 assert.ok(generatorMarker>=0,'source patch generator must retain CSV guard');
 const generated=patchSource.slice(generatorMarker+marker.length);
@@ -27,7 +34,8 @@ const begin=serverSource.lastIndexOf('app.use((req,res,next)=>{const name=',anch
 const end=serverSource.indexOf('// V65.1.3:',anchor);
 assert.ok(begin>=0&&end>anchor,'static guard and middleware extraction boundaries');
 const app=express();
-new Function('app','express','path','__dirname',serverSource.slice(begin,end))(app,express,path,root);
+new Function('app','express','path','__dirname','SBC_V66101_CALLER_POLICY','sessionUser',serverSource.slice(begin,end))(
+ app,express,path,root,{ownerShellPath:()=>false},async()=>null);
 app.get('*',(req,res)=>res.status(200).type('html').send('<!doctype html><title>SPA FALLBACK</title>'));
 async function run(){
  const listener=await new Promise(resolve=>{

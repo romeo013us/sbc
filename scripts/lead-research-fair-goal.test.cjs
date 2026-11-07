@@ -63,7 +63,8 @@ const rows=[
 ];
 let handler;
 const context={
- app:{get(p,auth,fn){assert.equal(p,'/api/workforce/research-progress');handler=fn;}},
+ require:spec=>{if(spec==='./enterprise/v66102-research-notice.cjs')return require('../enterprise/v66102-research-notice.cjs');throw Error('UNEXPECTED_VM_MODULE:'+spec);},
+ app:{get(p,auth,fn){assert.equal(p,'/api/workforce/research-progress');handler=fn;},post(p){assert.equal(p,'/api/v9/lead-verification/:id/resolve-notice','Only the V66.102 notice route may be registered in this scoped VM fixture');}},
  auth:()=>{},db:{customers,auditLog:[]},
  mysqlPool:{async query(sql,args){assert.match(sql,/sbc_audit_log/);assert.deepEqual(Array.from(args),['lorna']);return [rows];}},
  MYSQL_RECOVERY_REQUIRED:false,
