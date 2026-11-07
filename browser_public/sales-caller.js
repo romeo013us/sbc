@@ -136,29 +136,60 @@ function renderShift(){
   item.append(box,main,go);host.append(item);
  }
 }
-const scripts={
- en:{
-  'Opening':'Hello, my name is [name] calling from Successful By Choice in Miami. We help local businesses improve websites, online visibility, and business printing. Is now an appropriate time to speak briefly?',
-  'Discovery':'How do customers find you online today? What part of your website or business listing would you most like to improve?',
-  'Offer':'We have a $99 Business Visibility package and website packages starting at $199. I can have our owner confirm exactly what is included before you decide.',
-  'Objection':'That makes sense. Would it be helpful if we sent you the service details so you can review them without pressure?',
-  'Close':'May I arrange a short follow-up with our owner? I can record your preferred time and the service you are interested in.',
-  'Respect refusal':'Understood. I will record your request and make sure you are not contacted again if you do not wish to receive sales calls.'
- },
- es:{
-  'Saludo':'Hola, mi nombre es [nombre] y le llamo de Successful By Choice, aquí en Miami. Ayudamos a negocios locales con páginas web, visibilidad en internet e impresión comercial. ¿Es buen momento para hablar brevemente?',
-  'Descubrimiento':'¿Cómo encuentran sus clientes su negocio por internet actualmente? ¿Qué le gustaría mejorar de su página web o de su perfil comercial?',
-  'Oferta':'Ofrecemos un paquete de visibilidad comercial de $99 y paquetes de páginas web desde $199. Nuestro propietario puede confirmar todos los servicios incluidos antes de que usted decida.',
-  'Objeción':'Lo entiendo perfectamente. ¿Le gustaría recibir información de nuestros servicios para revisarla sin compromiso?',
-  'Cierre':'¿Podemos programar una llamada breve con nuestro propietario? Puedo anotar el horario que prefiere y el servicio que le interesa.',
-  'No llamar':'Entendido. Registraré su solicitud para que no reciba más llamadas comerciales si así lo desea.'
- }};
 function renderScripts(lang){
  const target=$('script-list');target.replaceChildren();
- for(const [label,copy] of Object.entries(scripts[lang]||scripts.es)){
-  const div=recordRow(label,copy,'Copy',()=>navigator.clipboard?.writeText(copy).catch(()=>notice('Could not copy text.')),false);target.append(div);
+ const library=window.SBCSalesPlaybook;
+ if(!library||typeof library.getSections!=='function'){
+  target.append(el('p',lang==='es'?'La guía de ventas no está disponible. Actualice la página.':'Sales playbook unavailable. Refresh the page.','warning'));
+  return;
  }
- $('lang-es').className=lang==='es'?'primary':'outline';$('lang-en').className=lang==='en'?'primary':'outline';
+ const spanish=lang==='es',sections=library.getSections(lang);
+ const intro=el('div',undefined,'sbc-script-intro');
+ intro.append(el('strong',spanish?'LA PRIMERA VENTA ES LA CONVERSACIÓN':'WIN THE CONVERSATION FIRST'));
+ intro.append(el('p',spanish?
+   'Identifíquese con su nombre completo y SBC. Dé un motivo concreto, haga una pregunta, escuche y acuerde un paso real. Use solo detalles verificados; no prometa resultados.' :
+   'Give your full name and SBC. State a specific reason, ask one question, listen, and agree on a real next step. Use only verified details; never guarantee outcomes.'));
+ const warning=el('p',spanish?
+   'Antes de marcar: compruebe autorización, exclusiones y horario local. Si piden no recibir llamadas, deténgase y registre «No llamar». Nunca envíe mensajes sin el consentimiento correspondiente.' :
+   'Before dialing: check calling clearance, suppression and local time. A do-not-call request means STOP and save the DNC outcome. Do not send messages without applicable consent.','muted');
+ intro.append(warning);target.append(intro);
+ const searchWrap=el('div',undefined,'sbc-script-search');
+ const label=el('label',spanish?'Buscar guiones por necesidad, sector u objeción':'Find a script by need, industry or objection');
+ const search=el('input');search.type='search';search.autocomplete='off';search.placeholder=spanish?'Ej.: Google, caro, salón, cita':'e.g. Google, price, salon, appointment';
+ search.setAttribute('aria-label',label.textContent);searchWrap.append(label,search);target.append(searchWrap);
+ const results=el('div',undefined,'sbc-script-results');target.append(results);
+ const render=(filter='')=>{
+  results.replaceChildren();let count=0;
+  const term=String(filter||'').toLocaleLowerCase().trim();
+  for(const section of sections){
+   const matching=section.items.filter(item=>!term||[item.title,item.say,item.coach,section.title].some(x=>x.toLocaleLowerCase().includes(term)));
+   if(!matching.length)continue;count+=matching.length;
+   const details=el('details',undefined,'sbc-script-section');details.open=!!term||section.id==='start';
+   const summary=el('summary',section.title+' · '+matching.length);
+   details.append(summary);
+   const cards=el('div',undefined,'sbc-script-cards');
+   for(const item of matching){
+    const card=el('article',undefined,'sbc-script-card');
+    card.append(el('h3',item.title));
+    card.append(el('p',item.say,'sbc-script-words'));
+    const coach=el('p',item.coach,'sbc-script-coach');card.append(coach);
+    const copy=el('button',spanish?'Copiar guion':'Copy talking points','outline');copy.type='button';
+    copy.setAttribute('aria-label',(spanish?'Copiar ':'Copy ')+item.title);
+    copy.onclick=()=>{
+     if(!navigator.clipboard?.writeText){notice(spanish?'No se puede copiar en este navegador.':'Clipboard unavailable in this browser.');return;}
+     navigator.clipboard.writeText(item.say).then(()=>{
+      copy.textContent=spanish?'Copiado ✓':'Copied ✓';
+     }).catch(()=>notice(spanish?'No se pudo copiar.':'Could not copy text.'));
+    };
+    card.append(copy);cards.append(card);
+   }
+   details.append(cards);results.append(details);
+  }
+  if(!count)results.append(el('p',spanish?'No hay guiones con ese filtro.':'No scripts match that search.','muted'));
+ };
+ search.addEventListener('input',()=>render(search.value));
+ render();
+ $('lang-es').className=spanish?'primary':'outline';$('lang-en').className=spanish?'outline':'primary';
 }
 function lessonPart(parent,heading,value){
  if(!value)return;

@@ -76,6 +76,7 @@ jobs:
           node scripts/v6697-sales-workspace.test.cjs
           node scripts/v66103-followup-priority.test.cjs
           node scripts/v66104-sales-workspace.test.cjs
+          node scripts/v66106-sales-playbook.test.cjs
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
@@ -296,6 +297,7 @@ jobs:
             node "$tmp/scripts/v6697-sales-workspace.test.cjs" --staged
             node "$tmp/scripts/v66103-followup-priority.test.cjs"
             node "$tmp/scripts/v66104-sales-workspace.test.cjs"
+            node "$tmp/scripts/v66106-sales-playbook.test.cjs"
             node "$tmp/scripts/v6699-outbound-suppression.test.cjs" --staged
             node "$tmp/scripts/v66101-caller-least-privilege.test.cjs" --staged
             node "$tmp/scripts/v66102-research-shift-notice.test.cjs" --staged

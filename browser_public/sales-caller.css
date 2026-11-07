@@ -127,3 +127,27 @@ html[data-sbc-theme="light"] #desk .academy-sales-detail .lesson-part h4{color:#
  #desk .academy-sales-detail .training-module-head{flex-wrap:wrap}
  #desk .academy-sales-detail .training-module-head button{width:100%}
 }
+
+/* V66.106 — Scoped sales-script panel only. Existing dialer, shift and training unchanged. */
+#desk #scripts .sbc-script-intro{padding:17px 19px;border:1px solid #3479a5;border-radius:14px;background:linear-gradient(125deg,#113657,#102941);margin:13px 0 16px}
+#desk #scripts .sbc-script-intro strong{color:#aadeff;letter-spacing:.04em;font-size:13px}
+#desk #scripts .sbc-script-intro p{margin:9px 0 0;line-height:1.55;color:#ecf5fc}
+#desk #scripts .sbc-script-intro .muted{color:#b9cbdc}
+#desk #scripts .sbc-script-search{margin:13px 0 17px}
+#desk #scripts .sbc-script-search label{display:block;margin-bottom:6px;font-weight:700}
+#desk #scripts .sbc-script-search input{width:100%;max-width:660px}
+#desk #scripts .sbc-script-section{margin:0 0 12px;border:1px solid #365674;border-radius:12px;overflow:hidden;background:#142b41}
+#desk #scripts .sbc-script-section summary{padding:14px 17px;cursor:pointer;font-weight:750;color:#e7f4ff}
+#desk #scripts .sbc-script-section[open] summary{border-bottom:1px solid #31516c;background:#183a58}
+#desk #scripts .sbc-script-cards{padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px}
+#desk #scripts .sbc-script-card{border:1px solid #426282;background:#0e2437;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:10px;min-width:0}
+#desk #scripts .sbc-script-card h3{font-size:16px;color:#b1deff;margin:0}
+#desk #scripts .sbc-script-words{font-size:15px;line-height:1.62;color:#f0f6fc;margin:0;white-space:pre-wrap}
+#desk #scripts .sbc-script-coach{font-size:13px;line-height:1.5;color:#b1c9da;margin:0}
+#desk #scripts .sbc-script-card button{align-self:flex-start;margin-top:auto}
+html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro,html[data-sbc-theme="light"] #desk #scripts .sbc-script-section{background:#eaf3fc;color:#12324b;border-color:#a5bfd5}
+html[data-sbc-theme="light"] #desk #scripts .sbc-script-section[open] summary{background:#d9eafa;color:#154365;border-color:#a5bfd5}
+html[data-sbc-theme="light"] #desk #scripts .sbc-script-card{background:white;border-color:#b5d0e4}
+html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro strong,html[data-sbc-theme="light"] #desk #scripts .sbc-script-card h3{color:#184e78}
+html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro p,html[data-sbc-theme="light"] #desk #scripts .sbc-script-words{color:#122f48}
+html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro .muted,html[data-sbc-theme="light"] #desk #scripts .sbc-script-coach{color:#34566f}
