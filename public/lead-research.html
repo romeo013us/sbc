@@ -7,9 +7,11 @@
 <meta name="robots" content="noindex,nofollow">
 <title>SBC | Lead Research Workspace</title>
 <link rel="stylesheet" href="/lead-research.css?v=7">
+<link rel="stylesheet" href="/sbc-workforce-academy-v6697.css?v=1">
 <script src="/lead-research-import-core.js?v=3" defer></script>
 <script src="/sbc-research-lesson-reader.js?v=3" defer></script>
 <script src="/sbc-role-shift-plan.js?v=1" defer></script>
+<script src="/sbc-workforce-academy-v6697.js?v=1" defer></script>
 <script src="/lead-research.js?v=8" defer></script>
 </head>
 <body>
@@ -96,7 +98,25 @@
 <p class="muted"><strong>Important:</strong> Imported names without phone, email or website can be saved but still need research. SBC Lead Assist automatically checks saved leads; Lorna does not manually approve them. Never fabricate missing information. Each business is saved individually with SBC's normal CRM safeguards—no automatic retries.</p>
 </div></section>
 <section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads and Auto-Verification Status</h2><p>Your submissions in the active SBC CRM, including queued checks, automatically verified results and items needing a specific correction. Not an all-time report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>
-<section class="pane" data-pane="training" hidden><div class="card"><h2>My Assigned Training</h2><p>Open a course, choose a lesson, read the actual Academy material, complete the practice and knowledge check, then explicitly record your progress. Course completion does not grant certification.</p><div id="training-list" class="list"><p class="muted">Loading training…</p></div><div id="training-detail" class="course-detail" hidden></div></div></section>
+<section class="pane" data-pane="training" hidden>
+<div class="academy-hero">
+ <div class="academy-brand">✦ SUCCESSFUL BY CHOICE · ACADEMY</div>
+ <div class="eyebrow">YOUR PROFESSIONAL DEVELOPMENT</div>
+ <h2>Learn confidently. Research accurately. Grow with SBC.</h2>
+ <p>Your training is built around real lessons, guided practice, knowledge checks and professional research standards. Work at your pace, listen to lessons, and track your study progress.</p>
+ <div class="academy-stats" aria-label="Training progress summary">
+  <div class="academy-stat"><strong id="academy-assigned">—</strong><small>Assigned courses</small></div>
+  <div class="academy-stat"><strong id="academy-completed">—</strong><small>Courses completed</small></div>
+  <div class="academy-stat"><strong id="academy-percent">—</strong><small>Average course progress</small><div class="academy-meter" aria-hidden="true"><span id="academy-total-progress"></span></div></div>
+ </div>
+</div>
+<div class="academy-section">
+ <div class="academy-section-head"><div><h3>My Learning Library</h3><p>Open an assigned course to read its published lessons, complete practice exercises, and submit your own knowledge-check response.</p></div><span class="pill">SBC Academy · Role-specific training</span></div>
+ <div id="training-list" class="list"><p class="muted">Loading your Academy courses…</p></div>
+ <div id="training-detail" class="course-detail" hidden></div>
+ <p class="muted">Your actual course completions are recorded by SBC Training. Listening to audio or checking a daily task does not automatically mark a lesson complete or grant certification.</p>
+</div>
+</section>
 <section class="pane" data-pane="clock" hidden><div class="card maxform"><h2>Time Clock</h2><p>Your individual time clock. No other employee's payroll, compensation, or time reports are available here.</p><div id="clock-summary" class="clock-summary">Loading time status…</div><div class="form-actions"><button type="button" class="primary" id="clock-in">Clock In</button><button type="button" class="outline" id="clock-out">Clock Out</button></div><p class="muted">Time is logged to the existing SBC workforce service. The current backend classifies this role's clock mode as training until a distinct research mode is implemented.</p></div></section>
 <footer>Successful By Choice · Because Why Not? · Research workspace v6</footer>
 </main>
