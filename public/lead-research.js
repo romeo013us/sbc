@@ -654,7 +654,7 @@ $('sign-out').addEventListener('click',async function(){try{await api('/api/logo
  try{
   var me=await api('/api/me');
   if(!me.authenticated||!me.user||!hasRole(me.user.role)){location.replace('/');return;}
-  user=me.user;txt('user-name',user.name||user.username||'Lead Researcher');
+  user=me.user;if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(user.role,user.id);txt('user-name',user.name||user.username||'Lead Researcher');
   await refresh();
   prioritizeAttention(true);
   renderShiftPlan();
