@@ -1,0 +1,53 @@
+/* SBC Workforce Academy V66.97 — isolated research/caller training experience */
+:root{--academy-border:#365574;--academy-soft:#13263d;--academy-ink:#f3f9ff;--academy-muted:#b3cbe1;--academy-gold:#efc36a}
+.pane[data-pane="training"] .academy-hero{position:relative;overflow:hidden;margin-bottom:18px;border:1px solid #3f668f;border-radius:19px;padding:27px 30px;background:linear-gradient(128deg,#224b7b 0%,#153558 50%,#0d233b 100%);box-shadow:0 15px 38px #0003}
+.pane[data-pane="training"] .academy-hero:before{content:"";position:absolute;right:-90px;top:-80px;width:310px;height:310px;background:radial-gradient(circle,#72baf633,transparent 68%);pointer-events:none}
+.pane[data-pane="training"] .academy-hero .eyebrow{color:#9edaff}
+.pane[data-pane="training"] .academy-hero h2{font-size:clamp(26px,3vw,36px);letter-spacing:-.03em;line-height:1.18;margin:9px 0}
+.pane[data-pane="training"] .academy-hero p{max-width:660px;color:#d4e8fb;line-height:1.65;font-size:14px}
+.pane[data-pane="training"] .academy-hero .academy-brand{font-weight:850;letter-spacing:.15em;font-size:12px;color:var(--academy-gold)}
+.pane[data-pane="training"] .academy-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:20px;max-width:720px}
+.pane[data-pane="training"] .academy-stat{padding:13px 15px;border:1px solid #6685ab;border-radius:12px;background:#091e3285}
+.pane[data-pane="training"] .academy-stat strong{display:block;font-size:24px;color:#fff;font-variant-numeric:tabular-nums}
+.pane[data-pane="training"] .academy-stat small{display:block;color:#bbd4ed;font-size:12px;margin-top:2px}
+.pane[data-pane="training"] .academy-stat .academy-meter{height:7px;background:#41607c;border-radius:99px;margin:11px 0 2px;overflow:hidden}
+.pane[data-pane="training"] .academy-stat .academy-meter span{display:block;background:linear-gradient(90deg,#4bcaa1,#c6d77c);height:100%;width:0;transition:width .2s}
+.pane[data-pane="training"] .academy-section{background:#101e32;border:1px solid #314c6b;border-radius:17px;padding:24px}
+.pane[data-pane="training"] .academy-section-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin:0 0 18px}
+.pane[data-pane="training"] .academy-section-head h3{font-size:20px;letter-spacing:-.02em;margin:0}
+.pane[data-pane="training"] .academy-section-head p{margin:5px 0 0;color:var(--academy-muted);font-size:13px;max-width:700px}
+.pane[data-pane="training"] #training-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:13px;margin-top:16px}
+.pane[data-pane="training"] #training-list>.course-row{position:relative;min-height:200px;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:15px;background:linear-gradient(160deg,#1c3654,#132942);border:1px solid #406083;border-radius:14px;padding:20px;box-shadow:0 4px 15px #0002}
+.pane[data-pane="training"] #training-list>.course-row:before{content:"SBC ACADEMY";letter-spacing:.12em;color:#81c4ff;font-size:10px;font-weight:850}
+.pane[data-pane="training"] #training-list>.course-row strong{font-size:18px;line-height:1.35;letter-spacing:-.01em;margin:0 0 8px;color:#f6faff}
+.pane[data-pane="training"] #training-list>.course-row small{font-size:12px;line-height:1.65;color:#b9d0e7}
+.pane[data-pane="training"] #training-list>.course-row button{width:100%;min-height:42px}
+.pane[data-pane="training"] .academy-course-meter{margin:11px 0 0;height:8px;border-radius:99px;background:#3b5573;overflow:hidden}
+.pane[data-pane="training"] .academy-course-meter>span{display:block;background:#6ee3a8;width:0;height:100%}
+.pane[data-pane="training"] .academy-course-badge{display:inline-block;margin:10px 0 0;border:1px solid #527a93;border-radius:99px;padding:3px 9px;font-size:11px;color:#cff2d9;background:#163e38}
+.pane[data-pane="training"] .academy-course-badge.pending{background:#263950;color:#c6dcf0}
+.pane[data-pane="training"] #training-detail{margin-top:25px;padding:25px;border-radius:17px;background:#101d31;border:1px solid #46729b}
+.pane[data-pane="training"] #training-detail>h3{font-size:clamp(23px,2.5vw,30px);letter-spacing:-.02em;color:#f7fbff;line-height:1.25;margin-top:10px}
+.pane[data-pane="training"] #training-detail>p{line-height:1.7;color:#c2d6ea}
+.pane[data-pane="training"] .academy-lesson-nav{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-bottom:14px;border-bottom:1px solid #3d5975}
+.pane[data-pane="training"] .academy-lesson-nav button{min-height:37px}
+.pane[data-pane="training"] .training-module{padding:16px 18px;background:#172b45;border:1px solid #385976;border-radius:12px;margin:13px 0}
+.pane[data-pane="training"] .training-module-head{min-height:48px}
+.pane[data-pane="training"] .training-module-head strong{font-size:15px;color:#f0f7ff}
+.pane[data-pane="training"] .training-module-head small{font-size:12px;color:#bbd3ec}
+.pane[data-pane="training"] .training-module-head button{min-width:112px}
+.pane[data-pane="training"] .training-lesson-content{padding:17px 0 3px;gap:15px}
+.pane[data-pane="training"] .lesson-part{background:#0e2036;border:1px solid #315270;border-radius:11px;padding:17px 19px}
+.pane[data-pane="training"] .lesson-part h4{font-size:14px;color:#91d3ff;margin-bottom:10px}
+.pane[data-pane="training"] .lesson-part p,.pane[data-pane="training"] .lesson-bullets{font-size:14px;line-height:1.85;color:#e2efff}
+.pane[data-pane="training"] .lesson-bullets li{margin:10px 0}
+.pane[data-pane="training"] .lesson-complete-form{background:#153551;border:1px solid #457ba7;padding:19px;border-radius:12px}
+.pane[data-pane="training"] .training-done{background:#183d32;color:#c0f9dc;border:1px solid #4c997c}
+.pane[data-pane="training"] .academy-audio{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:13px 15px;border:1px solid #427797;border-radius:11px;background:#102d45}
+.pane[data-pane="training"] .academy-audio strong{flex:1 1 150px;font-size:13px;color:#deefff}
+.pane[data-pane="training"] .academy-audio button{padding:8px 11px;font-size:12px}
+.pane[data-pane="training"] .academy-audio small{flex-basis:100%;color:#b7d6ef;font-size:11px}
+.pane[data-pane="training"] .academy-no-read{font-size:12px;color:#f7d39e}
+.pane[data-pane="training"] .academy-reading-note{color:#c4d9ed;font-size:12px}
+@media(max-width:720px){.pane[data-pane="training"] .academy-hero{padding:20px}.pane[data-pane="training"] .academy-stats{grid-template-columns:repeat(2,1fr)}.pane[data-pane="training"] .academy-section{padding:14px}.pane[data-pane="training"] #training-detail{padding:15px}.pane[data-pane="training"] .training-module{padding:13px}.pane[data-pane="training"] .academy-audio button{flex:1 1 90px}}
+@media(prefers-reduced-motion:reduce){.pane[data-pane="training"] .academy-meter span{transition:none}}
