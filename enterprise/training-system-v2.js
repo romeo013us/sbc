@@ -19,6 +19,7 @@
 
 const VERSION = '2.0.0';
 const SCHEMA_VERSION = 2;
+const SBC_V66107_ELITE_ACADEMY=require('./v66107-academy-2026.cjs');
 const now = () => new Date().toISOString();
 const uid = p => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const TRAINING_ROLES = ['owner','manager','caller','lead_researcher','fulfillment','kim_operator','system'];
@@ -128,9 +129,11 @@ function ensureState(db) {
       current.recovery.courseCatalogRestoredFrom='V55.8.10';
       db.settings.trainingCenterV2=current;
     }
+    SBC_V66107_ELITE_ACADEMY.install(current,normalizeCourse,now);
     return current;
   }
   const migrated=migrateLegacy(db);
+  SBC_V66107_ELITE_ACADEMY.install(migrated,normalizeCourse,now);
   db.settings.trainingCenterV2=migrated;
   return migrated;
 }
@@ -187,12 +190,12 @@ function ensureLornaTrainingAccess(db,s) {
     // role label or a previous catalog migration. Restore the approved published
     // employee/Lead Researcher courses and assign them directly to her account.
     const role=normalizedTrainingRole(u);
-    for(const desired of buildConsolidatedCatalog()){
+    for(const desired of (s.migration?.elite2026Applied?SBC_V66107_ELITE_ACADEMY.COURSES:buildConsolidatedCatalog())){
       if(desired.status!=='published') continue;
       if(!(desired.role==='all'||desired.role===role)) continue;
       let c=s.courses.find(x=>String(x.id)===String(desired.id));
       if(!c){ c=normalizeCourse(desired,'SBC Academy Lorna access recovery'); s.courses.push(c); changed=true; }
-      else if(c.status!=='published' && c.status!=='retired'){ c.status='published'; c.updatedAt=now(); changed=true; }
+      else if(!s.migration?.elite2026Applied && c.status!=='published' && c.status!=='retired'){ c.status='published'; c.updatedAt=now(); changed=true; }
       if(!assignmentFor(s,u.id,c.id)){
         s.assignments.push({id:uid('asg'),userId:u.id,courseId:c.id,required:true,status:'assigned',assignedAt:now(),assignedBy:'system-lorna-training-recovery',source:'V55.17.8'});
         changed=true;
@@ -223,7 +226,7 @@ function courseSummary(s,userId,course) {
 }
 function summarizeUser(db,s,userId) {
   const user=(db.users||[]).find(u=>String(u.id)===String(userId));
-  const assigned=s.assignments.filter(a=>String(a.userId)===String(userId)&&a.status!=='withdrawn');
+  const assigned=s.assignments.filter(a=>String(a.userId)===String(userId)&&a.status!=='withdrawn'&&(()=>{const c=findCourse(s,a.courseId);return c?.status==='published'&&(c.role==='all'||c.role===normalizedTrainingRole(user));})());
   const courseIds=new Set(assigned.map(a=>a.courseId));
   const published=s.courses.filter(c=>c.status==='published'&&(c.role==='all'||c.role===normalizedTrainingRole(user)));
   published.forEach(c=>courseIds.add(c.id));
@@ -238,7 +241,7 @@ function summarizeUser(db,s,userId) {
 
 function getForUser(db,user) {
   const s=ensureState(db); ensureAssignmentsForWorkforce(db,s); ensureLornaTrainingAccess(db,s);
-  const assignments=s.assignments.filter(a=>String(a.userId)===String(user.id)&&a.status!=='withdrawn').map(a=>{const c=findCourse(s,a.courseId);return c?{assignment:a,course:c,summary:courseSummary(s,user.id,c)}:null}).filter(Boolean);
+  const assignments=s.assignments.filter(a=>String(a.userId)===String(user.id)&&a.status!=='withdrawn').map(a=>{const c=findCourse(s,a.courseId);return c&&userCanSeeCourse(user,c)?{assignment:a,course:c,summary:courseSummary(s,user.id,c)}:null}).filter(Boolean);
   const available=s.courses.filter(c=>userCanSeeCourse(user,c)&&!assignments.some(x=>x.course.id===c.id));
   return {version:VERSION,user:{id:user.id,name:user.name,role:user.role},assigned:assignments,available,progress:s.progress.filter(p=>String(p.userId)===String(user.id)),attempts:s.attempts.filter(a=>String(a.userId)===String(user.id)),certifications:s.certifications.filter(c=>String(c.userId)===String(user.id)),history:s.events.filter(e=>String(e.userId)===String(user.id)).slice(-500).reverse(),notes:s.notes.filter(n=>String(n.userId)===String(user.id)).slice(-100).reverse()};
 }
@@ -367,7 +370,7 @@ function repairCourseCatalog(db){
   db.settings=db.settings||{};
   const s=ensureState(db);
   const catalog=buildConsolidatedCatalog();
-  let changed=false;
+  let changed=Boolean(s.migration?.elite2026PendingSave);
   if(!Array.isArray(s.courses)) s.courses=[];
   for(const desired of catalog){
     let current=s.courses.find(c=>String(c.id)===String(desired.id));
@@ -405,9 +408,10 @@ function repairCourseCatalog(db){
   }
   if(changed){
     s.recovery=s.recovery||{};
-    s.recovery.curriculumVersion=CURRICULUM_VERSION;
+    s.recovery.curriculumVersion=s.migration?.elite2026Applied?SBC_V66107_ELITE_ACADEMY.VERSION:CURRICULUM_VERSION;
     s.recovery.courseCatalogConsolidatedAt=now();
-    s.recovery.courseCatalogConsolidatedFrom='V55.8.14';
+    s.recovery.courseCatalogConsolidatedFrom=s.migration?.elite2026Applied?'V66.107':'V55.8.14';
+    if(s.migration?.elite2026PendingSave)delete s.migration.elite2026PendingSave;
     s.updatedAt=now();
   }
   return {state:s,changed};
