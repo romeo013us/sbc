@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,autoVerifiedToday=null,needsReviewToday=null,pendingAutoToday=null;
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,autoVerifiedToday=null,needsReviewToday=null,pendingAutoToday=null,leadsLoadFailed=false,progressLoadFailed=false;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -44,8 +44,43 @@ function leadAutomationStatus(c){
  if(String(c?.verificationStatus||'')==='Owner Review')return 'Owner review';
  return 'Awaiting SBC checks';
 }
+function suspiciousResearchText(c){
+ return [c?.businessName,c?.contactName,c?.phone,c?.email].some(function(value){
+  var text=String(value||'');
+  return /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]/.test(text)||/xl\/(?:workbook|styles)\.xml|\[Content_Types\]\.xml/i.test(text);
+ });
+}
 function isException(c){
- return ['NEEDS_HUMAN_REVIEW','FAILED'].includes(String(c?.leadAssistStatus||''))||String(c?.verificationStatus||'')==='Owner Review';
+ return ['NEEDS_HUMAN_REVIEW','FAILED','REWORK_REQUIRED','RETURNED_FOR_CORRECTION'].includes(String(c?.leadAssistStatus||''))||
+  ['Owner Review','Needs Correction','Rework Required'].includes(String(c?.verificationStatus||''))||suspiciousResearchText(c);
+}
+function correctionReason(c){
+ if(suspiciousResearchText(c))return 'Unreadable spreadsheet or corrupted data. Recheck the original research source.';
+ var reason=c?.reworkReason||c?.leadAssistReason||c?.verificationReason||c?.leadAssistMessage;
+ return String(reason||'SBC requested a correction or additional verification.').slice(0,280);
+}
+function myAttentionRecords(){
+ if(!Array.isArray(leads)||!(submittedIds instanceof Set)||leadsLoadFailed||progressLoadFailed)return null;
+ return leads.filter(function(c){return submittedIds.has(String(c.id))&&isException(c);});
+}
+function updatePriorityIndicator(){
+ var pending=myAttentionRecords(),panel=$('attention-priority'),nav=$('[data-tab="queue"]'),count=$('queue-nav-count');
+ if(!panel||!nav||!count)return;
+ var unknown=pending===null,failed=leadsLoadFailed||progressLoadFailed,num=unknown?null:pending.length;
+ panel.hidden=(!failed&&(unknown||num===0));
+ panel.classList.toggle('attention-unknown',unknown);
+ nav.classList.toggle('queue-has-items',unknown?failed:num>0);
+ count.hidden=unknown?!failed:num===0;
+ count.textContent=unknown?'!':String(num);
+ count.setAttribute('aria-label',unknown?'Correction count unavailable':num+' unresolved lead corrections');
+ txt('attention-priority-title',unknown?'Correction status cannot be verified':num+' lead'+(num===1?'':'s')+' returned for correction');
+ txt('attention-priority-detail',unknown?'The research queue could not be verified. Check Needs Attention before submitting new leads.':
+  'These are your SBC research records requiring correction. Review the reason, confirm the source, and resubmit for verification.');
+}
+function prioritizeAttention(forceHomeIfClear){
+ var pending=myAttentionRecords();
+ if(pending===null&&(leadsLoadFailed||progressLoadFailed)||pending&&pending.length)setTab('queue');
+ else if(forceHomeIfClear)setTab('home');
 }
 // SBC_V6686_SECONDARY_PHONE: reuse the existing durable research-notes field.
 // One tagged JSON line preserves phone + source without a schema migration or
@@ -89,10 +124,11 @@ function secondaryPhoneLabel(lead){
 }
 
 function displayLead(c){
- var item=element('div','lead-row'),left=element('div'),right=element('div');
+ var item=element('div','lead-row'+(isException(c)?' needs-correction':'')),left=element('div'),right=element('div');
  var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
  left.append(element('small',null,[c.city||c.address,c.industry,c.phone,secondaryPhoneLabel(c),c.email].filter(Boolean).join(' · ')||'Contact details pending'));
+ if(isException(c))left.append(element('small','correction-reason','Reason: '+correctionReason(c)));
  right.append(element('span','pill',leadAutomationStatus(c)));
  var actionable=own&&isException(c);
  var button=element('button','outline',actionable?'Correct information':'View details');
@@ -151,6 +187,7 @@ function drawLeads(){
   empty(q,'Loading your own SBC submissions and exception queue…');
   empty(m,'Loading your submission history…');
   ['metric-queue','metric-unverified','metric-mine'].forEach(function(id){txt(id,'—');});
+  updatePriorityIndicator();
   return;
  }
  var own=leads.filter(function(c){return submittedIds.has(String(c.id));});
@@ -164,18 +201,21 @@ function drawLeads(){
  txt('metric-queue',attention.length);
  txt('metric-unverified',own.filter(function(c){return ['QUEUED','PROCESSING','NOT_CHECKED'].includes(String(c.leadAssistStatus||'NOT_CHECKED'))&&!isException(c);}).length);
  txt('metric-mine',own.length);
+ updatePriorityIndicator();
 }
 async function loadLeads(){
  var notice=$('queue-error');notice.hidden=true;
  try{
   var response=await api('/api/v9/lead-verification');
   if(!Array.isArray(response.leads))throw Error('CRM returned no valid research queue.');
-  leads=response.leads;loadedAt=new Date();drawLeads();
+  leads=response.leads;loadedAt=new Date();leadsLoadFailed=false;drawLeads();
   txt('sync-label','CRM synced '+loadedAt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
  }catch(e){
+  leadsLoadFailed=true;
   notice.hidden=false;notice.textContent='Research queue unavailable: '+errorMessage(e);
   txt('sync-label',leads?'CRM data may be stale':'CRM unavailable');
   if(!leads){txt('metric-queue','—');txt('metric-unverified','—');txt('metric-mine','—');empty($('queue-list'),'Unable to load your queue. No zero counts are being assumed.');empty($('mine-list'),'Unable to load your submissions.');}
+  updatePriorityIndicator();
   throw e;
  }
 }
@@ -185,7 +225,7 @@ async function loadProgress(){
   if(!result.ok||result.source!=='research-intake-audit'||!Number.isInteger(result.todayCount)||result.todayCount<0)
    throw Error('SBC research progress endpoint is outdated or returned invalid counts. Update the verified server release.');
   if(!Array.isArray(result.submittedLeadIds))throw Error('SBC did not return auditable submission IDs.');
-  submittedIds=new Set(result.submittedLeadIds.map(String));
+  submittedIds=new Set(result.submittedLeadIds.map(String));progressLoadFailed=false;
   dailyAccepted=result.todayCount;
   autoVerifiedToday=Number.isInteger(result.autoVerifiedTodayCount)?result.autoVerifiedTodayCount:null;
   needsReviewToday=Number.isInteger(result.needsReviewTodayCount)?result.needsReviewTodayCount:null;
@@ -206,7 +246,7 @@ async function loadProgress(){
  }catch(e){
   ['goal-current','goal-seven','goal-all','goal-verified','goal-existing'].forEach(function(id){txt(id,'—');});
   dailyAccepted=null;autoVerifiedToday=null;needsReviewToday=null;pendingAutoToday=null;
-  submittedIds=null;drawLeads();renderDailyPlan();
+  submittedIds=null;progressLoadFailed=true;drawLeads();renderDailyPlan();updatePriorityIndicator();
   txt('goal-status','Could not load research totals: '+errorMessage(e));
   $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','SBC research totals unavailable');
  }
@@ -388,7 +428,9 @@ async function doClock(action){
  $('clock-in').disabled=true;$('clock-out').disabled=true;
  try{
   await api('/api/v9/time/clock',{method:'POST',body:JSON.stringify({action:action,mode:'training'})});
-  await loadClock();note(action==='in'?'Clocked in successfully.':'Clocked out successfully.');
+  await loadClock();
+  if(action==='in'){await Promise.allSettled([loadLeads(),loadProgress()]);prioritizeAttention(false);}
+  note(action==='in'?(active==='queue'?'Clocked in. Your corrections are your first priority.':'Clocked in successfully.'):'Clocked out successfully.');
  }catch(e){note('Time clock update failed: '+errorMessage(e),true);await loadClock();}
 }
 async function submitLead(event){
@@ -535,8 +577,9 @@ $('sign-out').addEventListener('click',async function(){try{await api('/api/logo
   var me=await api('/api/me');
   if(!me.authenticated||!me.user||!hasRole(me.user.role)){location.replace('/');return;}
   user=me.user;txt('user-name',user.name||user.username||'Lead Researcher');
-  $('access').hidden=true;$('workspace').hidden=false;
   await refresh();
+  prioritizeAttention(true);
+  $('access').hidden=true;$('workspace').hidden=false;
   setInterval(function(){if(document.visibilityState==='visible'&&!busy&&!importRunning)Promise.allSettled([loadLeads(),loadProgress()]);},60000);
  }catch(e){
   var msg=errorMessage(e);txt('access',msg);
