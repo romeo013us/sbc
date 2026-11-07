@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "957858673669406cf2c73fcee1f2af12d6760072",
+  "sourceCommit": "d77a01466621d2479be04127706f03497e364c52",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -108,7 +108,7 @@
     "RELEASE-V56.13.3-MIAMI-EXPANSION-IMPORT.md": "3a5548b250abade7babb9d89a2b37575038ad89123eda6eba7e4ba2cbc391be1",
     "RELEASE-VERIFICATION-V65.1.12.md": "92e8b34b4b5a7108847e21b042d6f737375876e652c1f501d772d3b64f1286fe",
     "RELEASE-VERIFICATION-V65.1.13.md": "d5a57729d5217bb7031fce462b2723dee78929f8bdc4f4f4cea85fa5722925e7",
-    "SBC-DEPLOY-RECEIPT.json": "be0c5983fa1e0fc4fcfcdf928d9b6102f6b1528a6d6d8b735818e57f78ba25d4",
+    "SBC-DEPLOY-RECEIPT.json": "af6540c93fd97ac8f68ad1da3e5f62fddc25a4b130c6428fad8d785a0b462917",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "V56.1.0-BUILD-MANIFEST.json": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
     "V56.25.0-FILE-SHA256.txt": "3a6d2fa626a1604f7d5cd340cf0f8cf161539549c643e3e821ca0db0c2659ed1",
@@ -1184,6 +1184,7 @@
     "scripts/v6695-voice-token.test.cjs": "2e0ae396b8f3f7f4f6d53f8b81e495a8e5abd0f281f51f72088ed4798281487a",
     "scripts/v6696-manual-dialer.test.cjs": "ba90109ed586d12cc3949be40852169df2481672ae835dfa2cb285c5516be7e9",
     "scripts/v6696-stage-manual-dialer.cjs": "e54ec477a598202f5edee488ddea043378bdf793996c89fc70386b95f55af501",
+    "scripts/v6697-stage-sales-workspace.cjs": "8561299fbfdc034d543018e57eae991a98f4f90e3e4eeea81723093d6bcfa615",
     "scripts/validate-federation.js": "106d5708848f4f7da1e07e1cfa7564537207902c892b4a9315efc706ede86511",
     "server.js": "756375c55a34285382cbc729613f031e41b95e1640a5a81659a47b0975f70771",
     "sql/20261006_010_product_catalog.sql": "987504d2a0b49670b471ab0e5343957268a129085131661077175161b33f0538",
