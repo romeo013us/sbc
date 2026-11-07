@@ -32,7 +32,20 @@ function patchServer(input){
   "audit(req.user,'dnc_suppression_requested','Customer requested no more sales calls',{customerId:c.id,callReportId:r.id});"+
   "}if(b.websiteDemoUrl)";
  report=replaceOnce(report,old,updated,'durable-dnc-report');
- return s.slice(0,start)+report+s.slice(end);
+ report=replaceOnce(report,
+  "}if(b.websiteDemoUrl)",
+  "}if(b.websiteDemoUrl&&!c.doNotContact&&!c.salesSuppressed)",'do-not-create-demo-on-dnc');
+ s=s.slice(0,start)+report+s.slice(end);
+ const approveStart=s.indexOf("app.post('/api/v9/call-report/:id/approve'");
+ const approveEnd=s.indexOf("app.post('/api/v9/users/:id/reset-certification'",approveStart);
+ if(approveStart<0||approveEnd<=approveStart)throw Error('V6699_REPORT_APPROVAL_MISSING');
+ let approval=s.slice(approveStart,approveEnd);
+ approval=replaceOnce(approval,
+ "if(r.outcome==='Interested'||r.outcome==='Appointment Requested'||r.orderReady)c.status=",
+ "if(!c.doNotContact&&!c.salesSuppressed&&String(c.status||'').trim().toLowerCase()!=='do not call'&&(r.outcome==='Interested'||r.outcome==='Appointment Requested'||r.orderReady))c.status=",
+ 'do-not-reactivate-suppressed-lead');
+ approval=replaceOnce(approval,"if(r.websiteDemoUrl){const v=v9data();","if(r.websiteDemoUrl&&!c.doNotContact&&!c.salesSuppressed){const v=v9data();",'do-not-send-demo-after-dnc');
+ return s.slice(0,approveStart)+approval+s.slice(approveEnd);
 }
 if(require.main===module){
  const root=path.resolve(__dirname,'..'),file=path.join(root,'server.js'),previous=fs.readFileSync(file,'utf8');
