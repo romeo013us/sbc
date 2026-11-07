@@ -6451,6 +6451,42 @@ app.get('/api/workforce/research-progress',auth,async(req,res)=>{
  }
 });
 
+// SBC_V66102_RESEARCH_NOTICE_ACK — owner/researcher resolution, no deletion.
+const SBC_V66102_RESEARCH_NOTICE=require('./enterprise/v66102-research-notice.cjs');
+app.post('/api/v9/lead-verification/:id/resolve-notice',auth,async(req,res)=>{
+ const researcher=sbcLornaRole(req.user);
+ if(!researcher&&req.user.role!=='owner')return res.status(403).json({ok:false,error:'NOTICE_RESOLUTION_ROLE_DENIED'});
+ const tenantId=requireRequestTenant(req);
+ const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenantId));
+ if(!c)return res.status(404).json({ok:false,error:'LEAD_NOT_FOUND_IN_TENANT'});
+ if(researcher){
+  const owns=String(c.researcherId||c.leadIntelligence?.researchSubmittedBy||'')===String(req.user.id)
+    ||String(c.assignedTo||'')===String(req.user.id);
+  if(!owns||['customer','lost','do not call','dnc','closed','duplicate'].includes(String(c.status||'').trim().toLowerCase()))
+   return res.status(403).json({ok:false,error:'NOT_YOUR_RESEARCH_RECORD'});
+ }
+ const proof=SBC_V66102_RESEARCH_NOTICE.eligible(c);
+ if(!proof.ok)return res.status(409).json({ok:false,error:proof.reason,message:'Fix the actual lead before clearing its correction notice.'});
+ if(SBC_V66102_RESEARCH_NOTICE.resolved(c))return res.json({ok:true,resolved:true,alreadyResolved:true,deleted:false});
+ if(!mysqlPool)return res.status(503).json({ok:false,error:'MYSQL_REQUIRED_FOR_DURABLE_NOTICE_RESOLUTION'});
+ const at=now(),notice=SBC_V66102_RESEARCH_NOTICE.markResolved(c,req.user.id,at);
+ const nextIntel={...(c.leadIntelligence||{}),researchNotice:notice};
+ try{
+  const [updated]=await mysqlPool.query('UPDATE sbc_customers SET lead_intelligence_json=?, updated_at=? WHERE id=? AND tenant_id=?',
+   [JSON.stringify(nextIntel),sqlDateTime(at),c.id,tenantId]);
+  if(Number(updated.affectedRows)!==1)return res.status(409).json({ok:false,error:'NO_DURABLE_LEAD_MATCH'});
+  const [rows]=await mysqlPool.query('SELECT lead_intelligence_json FROM sbc_customers WHERE id=? AND tenant_id=? LIMIT 1',[c.id,tenantId]);
+  const persisted=rows?.[0]?.lead_intelligence_json;
+  const obj=typeof persisted==='string'?JSON.parse(persisted):persisted;
+  if(!obj||obj.researchNotice?.fingerprint!==notice.fingerprint)return res.status(503).json({ok:false,error:'NOTICE_PERSISTENCE_NOT_VERIFIED'});
+  c.leadIntelligence=nextIntel;c.updatedAt=at;
+  audit(req.user,'research_notice_resolved','Resolved stale lead correction notice; customer retained',
+   {customerId:c.id,tenantId,resolvedAt:at,noticeFingerprint:notice.fingerprint});
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,id:c.id,resolved:true,deleted:false,retainedCustomer:true,resolvedAt:at});
+ }catch(err){console.error('[RESEARCH NOTICE] durable resolution failed',String(err?.code||err?.message||'unknown'));return res.status(503).json({ok:false,error:'NOTICE_RESOLUTION_UNAVAILABLE'});}
+});
+
 app.get('/api/v9/lead-verification',auth,(req,res)=>{
   const researcher=sbcLornaRole(req.user);
   if(!researcher&&!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
@@ -6466,7 +6502,7 @@ app.get('/api/v9/lead-verification',auth,(req,res)=>{
   const stats={total:mine.length,hot:mine.filter(c=>c.leadTemperature==='Hot').length,warm:mine.filter(c=>c.leadTemperature==='Warm').length,cold:mine.filter(c=>c.leadTemperature==='Cold').length,needsVerification:mine.filter(c=>['Needs Verification','Owner Review'].includes(c.verificationStatus)).length,salesReady:mine.filter(c=>c.verificationStatus==='Sales Ready').length};
   const view=mine.slice(0,1000).map(c=>researcher?{
     id:c.id,businessName:c.businessName||'',contactName:c.contactName||'',phone:c.phone||'',email:c.email||'',website:c.website||'',industry:c.industry||'',city:c.city||'',zip:c.zip||'',address:c.address||'',source:c.source||'',notes:c.notes||'',
-    verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||'',leadAssistStatus:c.leadAssist?.status||c.leadIntelligence?.autoVerificationStatus||'NOT_CHECKED',leadAssistCheckedAt:c.leadAssist?.checkedAt||c.leadIntelligence?.autoVerificationCheckedAt||'',researchStatus:c.leadIntelligence?.researchStatus||'NOT_RECORDED',researchSource:c.leadIntelligence?.researchSource||''
+    verificationStatus:c.verificationStatus||'Needs Verification',verificationSource:c.verificationSource||'',leadTemperature:c.leadTemperature||'',researcherId:c.researcherId||'',createdAt:c.createdAt||'',updatedAt:c.updatedAt||'',leadAssistStatus:c.leadAssist?.status||c.leadIntelligence?.autoVerificationStatus||'NOT_CHECKED',leadAssistCheckedAt:c.leadAssist?.checkedAt||c.leadIntelligence?.autoVerificationCheckedAt||'',researchStatus:c.leadIntelligence?.researchStatus||'NOT_RECORDED',researchSource:c.leadIntelligence?.researchSource||'',researchNoticeResolved:SBC_V66102_RESEARCH_NOTICE.resolved(c),researchNoticeResolvedAt:c.leadIntelligence?.researchNotice?.resolvedAt||''
   }:c);
   res.setHeader('Cache-Control','no-store');
   res.json({stats,leads:view,users:researcher?[]:(db.users||[]).filter(u=>u.active!==false&&['lead_researcher','caller','manager','owner'].includes(u.role)).map(u=>({id:u.id,name:u.name,role:u.role}))});
@@ -8908,7 +8944,6 @@ app.post('/api/supernova/fulfillment/route',auth,(req,res)=>{try{res.json({ok:tr
 app.get('/api/supernova/domain-map',auth,(req,res)=>res.json({ok:true,tenant:requireRequestTenant(req),host:req.get('host')||'',note:'Domain mapping is configuration-driven; no filesystem alias is changed by this read endpoint.'}));
 
 /* SBC_V6634_VERSIONED_ASSET_CACHE_FIX: only content-addressed filenames may be cached immutably. */
-app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\.csv$/i.test(name)||/(?:^|\/)starter-leads(?:\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE
 // No caller or researcher is ever served the owner Command Center shell.
 app.use(async(req,res,next)=>{
  if(req.method!=='GET'||!SBC_V66101_CALLER_POLICY.ownerShellPath(req.path))return next();
@@ -8917,6 +8952,7 @@ app.use(async(req,res,next)=>{
  if(u?.role==='lead_researcher')return res.redirect(302,'/lead-research.html');
  return next();
 });
+app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\.csv$/i.test(name)||/(?:^|\/)starter-leads(?:\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE
 app.use(express.static(path.join(__dirname,'public'),{dotfiles:'ignore',setHeaders:(res,file)=>{if(/\.[a-f0-9]{12,64}\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?)$/i.test(file))res.setHeader('Cache-Control','public,max-age=31536000,immutable');else{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');}}}));
 // V65.1.3: SPA fallback is registered after every API/HTML route so it cannot shadow later route registrations.
 
