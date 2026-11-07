@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta name="robots" content="noindex,nofollow">
+<title>SBC | Lead Research Workspace</title>
+<link rel="icon" href="/assets/sbc-logo.jpg" type="image/jpeg">
+<link rel="stylesheet" href="/lead-research.css?v=7">
+<link rel="stylesheet" href="/sbc-workforce-academy-v6697.css?v=1">
+<link rel="stylesheet" href="/sbc-workforce-audio-v66109.css?v=1">
+<link rel="stylesheet" href="/sbc-workforce-theme-v6698.css?v=1">
+<script src="/lead-research-import-core.js?v=3" defer></script>
+<script src="/sbc-research-lesson-reader.js?v=3" defer></script>
+<script src="/sbc-role-shift-plan.js?v=2" defer></script>
+<script src="/sbc-workforce-theme-v6698.js?v=1" defer></script>
+<script src="/sbc-workforce-audio-v66109.js?v=1" defer></script>
+<script src="/sbc-workforce-academy-v6697.js?v=1" defer></script>
+<script src="/sbc-lorna-queue-filter-v66105.js?v=1"></script>
+<script src="/lead-research.js?v=9" defer></script>
+</head>
+<body data-workspace-role="lead_researcher">
+<div id="access" role="status" class="access">Checking your SBC session…</div>
+<div id="workspace" hidden>
+<aside class="nav">
+<div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice official logo" width="48" height="48"><div><strong>Successful By Choice</strong><small>Lead Research Workspace</small></div></div>
+<div class="identity"><span class="dot"></span><div><strong id="user-name">Researcher</strong><small>Verified employee session</small></div></div>
+<nav aria-label="Research navigation">
+<button class="queue-nav" type="button" data-tab="queue">⚠ <span>Needs Attention</span><strong id="queue-nav-count" class="queue-nav-count" hidden aria-label="Outstanding corrections"></strong></button>
+<button class="active" type="button" data-tab="home">⌂ <span>My Dashboard</span></button>
+<button type="button" data-tab="today">☑ <span>Today’s Tasks</span></button>
+<button type="button" data-tab="add">＋ <span>Add Business Lead</span></button>
+<button type="button" data-tab="import">⇧ <span>CSV & List Import</span></button>
+<button type="button" data-tab="mine">✓ <span>My Submitted Leads</span></button>
+<button type="button" data-tab="training">🎓 <span>My Training</span></button>
+<button type="button" data-tab="clock">◷ <span>Time Clock</span></button>
+</nav>
+<div class="nav-bottom"><button class="signout" type="button" id="sign-out">Sign out</button></div>
+</aside>
+<main>
+<header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="page-title">My Dashboard</h1><p id="page-subtitle">Research businesses. Verify details. Send quality prospects to SBC.</p></div><div class="actions"><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span class="sync" id="sync-label">Connecting to CRM…</span><button type="button" class="outline" id="refresh">Refresh data</button></div></header>
+<div id="notice" class="notice" hidden role="status"></div>
+<section id="attention-priority" class="attention-priority" role="status" aria-live="polite" hidden>
+ <div><div class="eyebrow">PRIORITY 1 · CORRECTIONS FIRST</div><h2 id="attention-priority-title">Lead corrections need your attention</h2><p id="attention-priority-detail">Review returned leads and correct the details from a reliable source.</p></div>
+ <button type="button" class="attention-open" data-go="queue">Open Needs Attention</button>
+</section>
+<section class="pane" data-pane="home">
+<section class="shift-home" id="shift-home" aria-live="polite" hidden><div><strong id="shift-home-title">My current shift task</strong><p id="shift-home-detail">Clock in to start your four-hour plan.</p></div><button type="button" class="outline" data-go="today">Open Shift Checklist</button></section>
+<div class="welcome"><div class="eyebrow">YOUR DAILY MISSION</div><h2>Find the right businesses. Make every lead count.</h2><p>Find real businesses, document useful contact details and research sources, and submit them to SBC. Our existing automation handles the next verification step.</p><button class="primary" type="button" data-go="add">+ Submit a New Lead</button></div>
+<div class="daily-preview"><div><div class="eyebrow">TODAY’S ASSIGNMENTS</div><h3 id="daily-focus-title">Research, verification and training</h3><p id="daily-overview">A focused work plan will load for your business day.</p></div><button type="button" class="outline" data-go="today">Open My Tasks</button></div>
+<div class="goal-card" aria-label="Daily lead production goal">
+<div class="goal-top"><div><div class="eyebrow">RESEARCH SUBMISSIONS · DAILY TARGET · EASTERN TIME</div><h3><span id="goal-current">—</span> <small>of 16 research-complete leads</small></h3><p id="goal-status">Checking unique research-complete CRM submissions…</p></div><div class="goal-number"><strong>16–20</strong><small>Daily range</small></div></div>
+<div class="goal-track" id="goal-track" role="progressbar" aria-label="Progress toward daily stretch goal" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0"><div class="goal-fill" id="goal-fill"></div><span class="goal-min-marker" aria-hidden="true"></span></div>
+<div class="goal-bottom"><span>Base goal: <b>16</b></span><span>Stretch: <b>20</b></span><span id="goal-date">Business day · America/New_York</span></div>
+<div class="mini-kpis"><div><strong id="goal-seven">—</strong><small>Research-complete · 7 days</small></div><div><strong id="goal-all">—</strong><small>My total saved leads</small></div><div><strong id="goal-verified">—</strong><small>Auto-verified today</small></div><div><strong id="goal-existing">—</strong><small>My submissions need attention</small></div></div>
+<p class="muted">The 16–20 target measures unique, complete research submissions with a business name, usable contact method and documented research source. SBC then runs automated verification independently. Raw CSV rows, duplicates and unfinished research do not earn credit. Automation delays do not reduce your completed-work count.</p></div>
+<div class="stats">
+<div class="stat"><small>My attention queue</small><strong id="metric-queue">—</strong><span>My leads needing corrections</span></div>
+<div class="stat"><small>Automatic checks pending</small><strong id="metric-unverified">—</strong><span>My submitted leads in processing</span></div>
+<div class="stat"><small>My visible submissions</small><strong id="metric-mine">—</strong><span>Saved in active SBC CRM</span></div>
+<div class="stat"><small>Session status</small><strong id="metric-session">Verified</strong><span>Access scoped by server</span></div>
+</div>
+<div class="two">
+<div class="card"><h3>Today's research workflow</h3><ol><li>Find a real local business from a trustworthy public source.</li><li>Record its business name and reliable phone, email or website.</li><li>Record the source you actually consulted, and avoid duplicates.</li><li>Submit it to the existing SBC CRM and confirm the save.</li><li>SBC automatically checks the record. Fix only leads returned with a specific issue.</li></ol></div>
+<div class="card"><h3>Quality standard</h3><p>Never invent phone numbers, email addresses, decision makers or business information. If a fact cannot be confirmed, leave it blank and document the source.</p><p>SBC Lead Assist—not the employee—decides whether a record qualifies for automatic verification. Records without enough evidence stay for review; only an authorized person should resolve exceptions.</p></div>
+</div>
+</section>
+<section class="pane" data-pane="today" hidden>
+<div class="card shift-card" id="shift-card">
+ <div class="card-head"><div><div class="eyebrow">YOUR ROLE · 4-HOUR SHIFT</div><h2>Today's Shift Checklist</h2><p id="shift-clock-label">Time blocks will start when your verified clock-in is loaded.</p></div><div class="shift-summary"><strong id="shift-progress">0 of 8</strong><small>Checklist items complete</small></div></div>
+ <div class="shift-track" role="progressbar" aria-label="Shift checklist completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="shift-progress-track"><div id="shift-progress-fill"></div></div>
+ <p class="shift-disclaimer">Check off work you have actually completed. Scheduled minutes do not automatically verify work, and this checklist does not change your time clock, payroll, or CRM counts. Completion is saved in this browser for today's signed-in role.</p>
+ <div id="shift-task-list" class="shift-task-list"><p class="muted">Loading shift schedule…</p></div>
+</div>
+<div class="card daily-page"><div class="card-head"><div><div class="eyebrow">SBC · LEAD RESEARCH OPERATIONS</div><h2>Research tools and quick actions</h2><p id="daily-plan-date">Preparing today’s research, exception-follow-up and training plan…</p></div><span class="pill">16–20 complete research submissions</span></div><div id="daily-task-list" class="daily-task-list"></div><p class="muted">Use the action buttons to do the work in SBC. These are suggested daily priorities—not a claim that a task is complete. Lead submissions and training progress are verified through the existing SBC services.</p></div></section>
+<section class="pane" data-pane="queue" hidden>
+<div class="card priority-queue"><div class="card-head"><div><h2>⚠ Needs Attention · First Priority</h2><p>Only your submitted leads that SBC returned for more information are shown here. The owner retains the broader CRM. Save corrections to queue another automated check; do not manually mark a lead verified.</p></div><input id="search" aria-label="Search research queue" type="search" placeholder="Search business, phone, city…"></div><div id="queue-error" class="small-error" hidden></div><div id="queue-list" class="list"><p class="muted">Loading research queue…</p></div></div>
+</section>
+<section class="pane" data-pane="add" hidden>
+<div class="card maxform"><h2>Submit a Business Lead</h2><p>Saved directly to SBC CRM. Include the business name, a usable phone/email/website and the research source you consulted to count as research complete. SBC Lead Assist automatically performs verification after saving.</p>
+<form id="lead-form">
+<div class="fields"><label>Business name<input name="businessName" autocomplete="organization" maxlength="200" placeholder="Business name"></label><label>Contact person<input name="contactName" maxlength="150" placeholder="Verified contact name"></label>
+<label>Primary phone<input name="phone" type="tel" maxlength="80" placeholder="Google / business listing phone"></label><label>Email<input name="email" type="email" maxlength="250" placeholder="Business email"></label>
+<label>Secondary phone (optional)<input name="secondaryPhone" type="tel" maxlength="80" placeholder="Different number from LinkedIn or another source"></label><label>Secondary phone source (optional)<input name="secondaryPhoneSource" maxlength="120" placeholder="LinkedIn, business website, Google…"></label>
+<label>Website<input name="website" maxlength="300" placeholder="https://example.com"></label><label>Industry<input name="industry" maxlength="160" placeholder="Barber, restaurant, salon…"></label>
+<label class="wide">Business address / city<input name="address" maxlength="350" placeholder="Confirmed business location"></label>
+<label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label>
+<label class="wide">Research source<input name="verificationSource" maxlength="300" placeholder="Public business website, Google Business Profile, or directory you actually checked"></label></div>
+<div class="form-actions"><button id="save-lead" class="primary" type="submit">Submit to SBC CRM</button><button type="reset" class="outline">Clear form</button></div><p class="muted">Duplicate records are rejected by the backend. Submission is never automatically retried.</p></form></div>
+</section>
+<section class="pane" data-pane="import" hidden>
+<div class="card maxform import-card"><div class="card-head"><div><h2>Import Businesses in Bulk</h2><p>Upload a CSV or TXT file, or paste multiple businesses at once. Preview every batch before saving to the SBC CRM.</p></div><span class="pill">Up to 100 per batch</span></div>
+<div class="import-inputs"><label>Upload your list (.csv, .tsv, .txt)<input id="import-file" type="file" accept=".csv,.tsv,.txt,text/plain,text/csv" aria-describedby="import-file-hint"></label>
+<p class="muted" id="import-file-hint">Selecting a file uses that file for preview. To use pasted text instead, clear the file selection.</p>
+<label>Or paste a list<textarea id="import-text" rows="8" spellcheck="false" placeholder="Business Name,Contact,Phone,Email,Website,Industry,Address,Notes&#10;Carmen's Salon,Carmen,305-555-0100,,carmensalon.com,Salon,Miami FL,Found via Maps&#10;Ocean Barber Shop,James,305-555-0102,,oceanbarber.com,Barber,Miami FL,Website checked"></textarea></label>
+<label>Input format<select id="import-format"><option value="auto">Automatic detection (CSV, tabs or lines)</option><option value="csv">CSV — comma separated</option><option value="tsv">TSV — tab separated</option><option value="lines">One business name per line</option></select></label></div>
+<div class="form-actions"><button type="button" class="primary" id="import-preview">Preview list</button><button type="button" class="outline" id="import-reset">Clear</button></div>
+<div id="import-preview-panel" hidden><h3>Import Review</h3><p class="muted" id="import-details"></p><div class="import-counts"><span id="import-ready"></span><span id="import-invalid"></span><span id="import-saved"></span></div>
+<div id="import-preview-list" class="import-results"></div>
+<div class="form-actions"><button type="button" id="import-confirm" class="primary">Import valid rows for SBC automatic checks</button></div>
+<div id="import-run-status" class="import-run-status" role="status" aria-live="polite"></div>
+</div><p class="muted">Common column names are automatically mapped (Business Name, Contact, Phone, Email, Website, Industry, Address, Notes, Source). The CSV Source column becomes research evidence, not the CRM import channel. Long sources are preserved in Notes when space permits; otherwise the preview explains what to edit. Without a header, CSV columns use that order. One-name-per-line lists are also supported. Existing CRM duplicates are skipped by the server.</p>
+<p class="muted"><strong>Important:</strong> Imported names without phone, email or website can be saved but still need research. SBC Lead Assist automatically checks saved leads; Lorna does not manually approve them. Never fabricate missing information. Each business is saved individually with SBC's normal CRM safeguards—no automatic retries.</p>
+</div></section>
+<section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads and Auto-Verification Status</h2><p>Your submissions in the active SBC CRM, including queued checks, automatically verified results and items needing a specific correction. Not an all-time report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>
+<section class="pane" data-pane="training" hidden>
+<div class="academy-hero">
+ <div class="academy-brand">✦ SUCCESSFUL BY CHOICE · ACADEMY</div>
+ <div class="eyebrow">YOUR PROFESSIONAL DEVELOPMENT</div>
+ <h2>Learn confidently. Research accurately. Grow with SBC.</h2>
+ <p>Your training is built around real lessons, guided practice, knowledge checks and professional research standards. Work at your pace, listen to lessons, and track your study progress.</p>
+ <div class="academy-stats" aria-label="Training progress summary">
+  <div class="academy-stat"><strong id="academy-assigned">—</strong><small>Assigned courses</small></div>
+  <div class="academy-stat"><strong id="academy-completed">—</strong><small>Courses completed</small></div>
+  <div class="academy-stat"><strong id="academy-percent">—</strong><small>Average course progress</small><div class="academy-meter" aria-hidden="true"><span id="academy-total-progress"></span></div></div>
+ </div>
+</div>
+<div class="academy-section">
+ <div class="academy-section-head"><div><h3>My Learning Library</h3><p>Open an assigned course to read its published lessons, complete practice exercises, and submit your own knowledge-check response.</p></div><span class="pill">SBC Academy · Role-specific training</span></div>
+ <div id="training-list" class="list"><p class="muted">Loading your Academy courses…</p></div>
+ <div id="training-detail" class="course-detail" hidden></div>
+ <p class="muted">Your actual course completions are recorded by SBC Training. Listening to audio or checking a daily task does not automatically mark a lesson complete or grant certification.</p>
+</div>
+</section>
+<section class="pane" data-pane="clock" hidden><div class="card maxform"><h2>Time Clock</h2><p>Your individual time clock. No other employee's payroll, compensation, or time reports are available here.</p><div id="clock-summary" class="clock-summary">Loading time status…</div><div class="form-actions"><button type="button" class="primary" id="clock-in">Clock In</button><button type="button" class="outline" id="clock-out">Clock Out</button></div><p class="muted">Time is logged to the existing SBC workforce service. The current backend classifies this role's clock mode as training until a distinct research mode is implemented.</p></div></section>
+<footer>Successful By Choice · Because Why Not? · Research workspace v6</footer>
+</main>
+</div>
+</body></html>
