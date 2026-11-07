@@ -81,8 +81,7 @@ body :is(#content,#modal) :is(
  [style*="background-color:white"],[style*="background-color: white"],
  [style*="background:rgb(255, 255, 255)"],[style*="background: rgb(255, 255, 255)"]
 ):not(.btn):not(.badge):not(.pill):not(.hero):not(.onboard-hero)
-:is(h1,h2,h3,h4,h5,h6,p,span,div,small,strong,b,em,label,td,th,li,.price,.value)
-:not(.btn):not(.badge):not(.pill):not(.status):not(.alert):not(.hero *) {
+:is(h1,h2,h3,h4,h5,h6,p,span,div,small,strong,b,em,label,td,th,li,.price,.value):not(.btn):not(.badge):not(.pill):not(.status):not(.alert):not(.hero *) {
   color:#17283a!important;
 }
 /* Native options use the matching system palette and placeholders remain legible. */
@@ -102,4 +101,9 @@ body :is(#content,#modal) :is(.payment-card p,.feature-list,.feature-list li,
 }
 body :is(#content,#modal) :is(.payment-price,.price) {
   font-size:max(22px,1.35rem)!important;line-height:1.25!important;
+}
+
+/* Form helper labels on white surfaces must clear WCAG AA 4.5:1. */
+body[data-theme="light"] :is(#content,#modal) :is(.form-grid,.fields) small {
+  color:#4e6073!important;
 }
