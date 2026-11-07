@@ -1,0 +1,31 @@
+/* SBC V66.96 — accessible open dial pad in Sales / Calling */
+#sbcManualDialer{border:1px solid #5c80a0;border-radius:16px;background:#162c46;color:#f6fbff;padding:18px;margin:0 0 20px}
+#sbcManualDialer h3{margin:0 0 8px;color:inherit;font-size:19px}
+#sbcManualDialer p{color:#cee2f5;line-height:1.5}
+#sbcManualDialer .md-columns{display:grid;grid-template-columns:minmax(235px,340px) minmax(260px,1fr);gap:20px}
+#sbcManualDialer label{display:block;font-weight:700;color:#dfebf7;margin:10px 0 5px;font-size:13px}
+#sbcManualDialer :is(input,textarea,select){display:block;box-sizing:border-box;width:100%;min-height:38px;background:#0b1d32;color:#fff!important;border:1px solid #698bad;border-radius:9px;padding:9px 12px}
+#sbcManualDialer #sbcManualNumber{font-size:22px;min-height:48px;font-variant-numeric:tabular-nums}
+#sbcManualDialer .md-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+#sbcManualDialer .md-keys button{font-weight:800;font-size:19px;min-height:43px;border:1px solid #6e9bbd;border-radius:9px;background:#244464;color:#fff}
+#sbcManualDialer .md-keys button:hover{background:#356088}
+#sbcManualDialer .md-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#sbcManualDialer .md-call{background:#147e50;color:#fff;border:0;border-radius:9px;padding:10px 15px;font-weight:800}
+#sbcManualDialer .md-end{background:#af2d3e;color:#fff;border:0;border-radius:9px;padding:10px 15px;font-weight:800}
+#sbcManualDialer :is(button,input):disabled{opacity:.55;cursor:not-allowed}
+#sbcManualDialer .md-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#sbcManualDialer .md-note{font-size:12px;color:#c1d9ed;line-height:1.5}
+#sbcManualStatus{padding:10px;border-radius:8px;background:#28445e;color:#fff;min-height:26px;overflow-wrap:anywhere}
+#sbcManualStatus[data-error=true]{background:#5b2836;color:#fff1f3}
+#sbcManualHistory{max-height:165px;overflow:auto}
+#sbcManualHistory>div{padding:9px;border-bottom:1px solid #42607b;overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px}
+#sbcManualActiveBar{position:fixed;z-index:10060;bottom:18px;left:50%;transform:translateX(-50%);background:#14382e;color:white;border:2px solid #8fe3b7;border-radius:12px;padding:11px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 34px #0008;max-width:95vw}
+#sbcManualActiveBar[hidden]{display:none!important}
+#sbcManualActiveBar button{background:white;color:#16382c;border:0;border-radius:8px;padding:8px;font-weight:800}
+body[data-theme=light] #sbcManualDialer{background:#edf5ff;color:#193149}
+body[data-theme=light] #sbcManualDialer :is(p,label,.md-note){color:#344f68}
+body[data-theme=light] #sbcManualDialer :is(input,textarea,select){background:#fff;color:#17283a!important;border-color:#708ca4}
+body[data-theme=light] #sbcManualDialer .md-keys button{background:#dbeafd;color:#17344c;border-color:#769cb8}
+body[data-theme=light] #sbcManualStatus{background:#d5e5f4;color:#16334b}
+body[data-theme=light] #sbcManualStatus[data-error=true]{background:#ffe1e5;color:#802039}
+@media(max-width:760px){#sbcManualDialer .md-columns{grid-template-columns:1fr}#sbcManualActiveBar{width:95vw;flex-wrap:wrap;justify-content:center}}
