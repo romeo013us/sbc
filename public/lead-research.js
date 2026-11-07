@@ -450,6 +450,7 @@ async function loadTraining(){
    button.type='button';button.onclick=function(){loadCourse(course.id);};
    box.append(left,button);list.append(box);
   });
+  if(window.SBCWorkforceAcademy)window.SBCWorkforceAcademy.setCatalog(items);
  }catch(e){empty($('training-list'),'Training is unavailable: '+errorMessage(e));train=null;}
 }
 async function loadCourse(id){
@@ -484,6 +485,7 @@ async function loadCourse(id){
    };
    head.append(title,button);row.append(head,content);area.append(row);
   });
+  if(window.SBCWorkforceAcademy)window.SBCWorkforceAcademy.setCourse(course,data.summary);
   if(typeof area.scrollIntoView==='function')area.scrollIntoView({block:'start',behavior:'smooth'});
  }catch(e){empty(area,'Course could not be opened: '+errorMessage(e));note('This course did not load; progress has not been changed.',true);}
 }
