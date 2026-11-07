@@ -25,7 +25,8 @@ try{
  put('server.js','synthetic release');
  assert.equal(audit.auditRelease(root).ok,true,'restore and re-check should pass');
  const real=path.resolve(__dirname,'..');
- assert.equal(audit.auditModules(real).ok,true,'active source must resolve');
+ const sourceDeps=audit.auditModules(real);
+ assert.equal(sourceDeps.ok,true,'active source must resolve: '+sourceDeps.missing.slice(0,30).join(' | '));
  assert.equal(audit.auditAssets(real).ok,true,'actual employee assets exist');
  assert.equal(audit.auditRelease(real).ok,true,'verified GitHub candidate receipt must match server');
  assert.equal(audit.auditContracts(real).ok,true,'core financial and role protections must remain wired');
