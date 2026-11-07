@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "79c7b4fc912d40c8cb73a9f3e18d170a6fab4ea5",
-  "sourceFingerprint": "b5a15225ffcb423b5807b3158c19177a50cb357882f016b9e4e1933e16647dd7",
+  "sourceCommit": "591055584f6720dbe27a30f8c7d2fbec60bd8918",
+  "sourceFingerprint": "2829b7ccdc741c199e7b5b017d4dd9de5c322db6df7678a771eb14f68ef66f7b",
   "serverSha256": "923466d0ecf7a038dd208fbc130b93e084c041e8a9c409652f8462e8cc716e92",
   "runtimePatch": "v66.0.24-static-assets-routed",
   "runtimePatchFrom": "a-sbc-master",
-  "stagedInventorySha256": "e34970398da4b68d73dc455d7e8d4ddc9bb5d04d0e549f8000617c88db8e15ab"
+  "stagedInventorySha256": "3afa9815e92fbc8fecfe53358877a81a3b6ea3a7267bd0d5f61d761561cea047"
 }

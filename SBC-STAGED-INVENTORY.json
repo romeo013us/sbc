@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "79c7b4fc912d40c8cb73a9f3e18d170a6fab4ea5",
+  "sourceCommit": "591055584f6720dbe27a30f8c7d2fbec60bd8918",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -108,7 +108,7 @@
     "RELEASE-V56.13.3-MIAMI-EXPANSION-IMPORT.md": "3a5548b250abade7babb9d89a2b37575038ad89123eda6eba7e4ba2cbc391be1",
     "RELEASE-VERIFICATION-V65.1.12.md": "92e8b34b4b5a7108847e21b042d6f737375876e652c1f501d772d3b64f1286fe",
     "RELEASE-VERIFICATION-V65.1.13.md": "d5a57729d5217bb7031fce462b2723dee78929f8bdc4f4f4cea85fa5722925e7",
-    "SBC-DEPLOY-RECEIPT.json": "3b11775fca62b5efc762676a38c649151bd697f101d5a06c9f966d80210566f3",
+    "SBC-DEPLOY-RECEIPT.json": "4241f3fa2ff00c6c460be17f1c67edd66a82f3bd5439c33753a100afb6132668",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "V56.1.0-BUILD-MANIFEST.json": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
     "V56.25.0-FILE-SHA256.txt": "3a6d2fa626a1604f7d5cd340cf0f8cf161539549c643e3e821ca0db0c2659ed1",
@@ -632,6 +632,7 @@
     "enterprise/v6672-site-checkout-integrity.cjs": "902ca51544c3aee17bb5f474a1feadfea4b748f550a1d7117da3136c0a47189a",
     "enterprise/v6674-officebox-v2-handoff.cjs": "a520d65f8a2bf4d1842521ee37ec328bbd3abecce96989a213cac501f3d4e80d",
     "enterprise/v6681-safe-writer-handoff.cjs": "68743e1c9eb5393a3c9bbbe1820c190fd284dba965c7722b9e3d6ca2b11592d1",
+    "enterprise/v6699-outbound-authorization.cjs": "9fbe5e12ae56a0796122679061f604579fb9dd84bffe1c61f71895f93a7593ff",
     "enterprise/vendor-payout-ledger.js": "4fb52c70e954dee640215149d367b3ff111d560fd3480459d4287d844a3b08cd",
     "enterprise/wordpress-production-adapter.js": "cf31e677358ca9e67c1229cf443ea8c55f292233d6911ca0ba74612bf87faf85",
     "enterprise/world/package.json": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae",
@@ -1202,6 +1203,7 @@
     "scripts/v6696-stage-manual-dialer.cjs": "e54ec477a598202f5edee488ddea043378bdf793996c89fc70386b95f55af501",
     "scripts/v6697-sales-workspace.test.cjs": "554bef903cefcf922695c8893a8b047237f9eabc93cb800fd32026285b1fc2e0",
     "scripts/v6697-stage-sales-workspace.cjs": "8561299fbfdc034d543018e57eae991a98f4f90e3e4eeea81723093d6bcfa615",
+    "scripts/v6699-stage-outbound-suppression.cjs": "1967e1806c72bce56bf447e6c33f5e150771f65ba6dbb4c2e25b25c1cee4e1ba",
     "scripts/validate-federation.js": "106d5708848f4f7da1e07e1cfa7564537207902c892b4a9315efc706ede86511",
     "scripts/workforce-brand-parity.test.cjs": "25919caaf89188c173c2b8c0b4b70259da13055755b1f0ad74b01628c600d9b8",
     "scripts/workforce-theme-v6698.test.cjs": "90a17caa41513ed9f8f4d12c41134e5a52baed356b80ba5174ae3dd4b2a5d723",
