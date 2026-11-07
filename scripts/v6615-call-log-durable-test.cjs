@@ -7,7 +7,7 @@ const one=prefix=>{
  return found[0];
 };
 const app={handlers:new Map(),post(p,...args){this.handlers.set(p,args.at(-1))}};
-const db={customers:[{id:'lead-x',tenantId:1},{id:'lead-y',tenant_id:2}],callLogs:[],activities:[],auditLog:[]};
+const db={customers:[{id:'lead-x',tenantId:1,assignedTo:'operator'},{id:'lead-y',tenant_id:2}],callLogs:[],activities:[],auditLog:[]};
 let stored=[],failSave=false,skipMysqlWrite=false,saves=0,checks=[],counter=0;
 const mysqlPool={async query(sql,args){
  assert.match(sql,/JSON_CONTAINS\(payload/);
@@ -17,13 +17,14 @@ const mysqlPool={async query(sql,args){
 }};
 const routeSource=one("app.post('/api/voice/log',auth,");
 const mutexPrelude=one('let sbcVoiceLogCommitTailV6615=');
-const make=new Function('app','auth','db','requireRequestTenant','now','id','normalizeDialNumber','saveData','audit','addActivity','mysqlPool',mutexPrelude+'\n'+routeSource);
+const make=new Function('app','auth','db','requireRequestTenant','now','id','normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY',mutexPrelude+'\n'+routeSource);
 make(app,()=>{},db,r=>r.authTenant,()=>new Date('2026-10-24T17:00:00Z').toISOString(),
  prefix=>prefix+'-'+(++counter),v=>String(v??''),
  async()=>{saves++;await new Promise(done=>setTimeout(done,3));if(failSave)throw Error('SIMULATED_MYSQL_FAILURE');if(!skipMysqlWrite)stored=db.callLogs.map(x=>({...x}));},
  ()=>{db.auditLog.push({event:'voice_call'})},
  ()=>{db.activities.push({type:'call'})},
- mysqlPool);
+ mysqlPool,
+ require('../enterprise/v66101-caller-access.cjs'));
 const handler=app.handlers.get('/api/voice/log');assert.equal(typeof handler,'function');
 const res=()=>({code:200,body:null,status(x){this.code=x;return this},json(x){this.body=x;return this}});
 const req=(sessionId,notes,status='connecting',customerId='lead-x',tenant=1)=>({
