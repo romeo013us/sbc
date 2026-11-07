@@ -76,3 +76,54 @@ html[data-sbc-theme="light"] #desk .metrics article strong{color:#172e46!importa
 html[data-sbc-theme="light"] #desk .welcome{background:linear-gradient(125deg,#d8eafa,#c2ddf4 55%,#e7f4ff)!important;border-color:#8eb3d3!important}
 html[data-sbc-theme="light"] #desk .welcome :is(h2,p,.eyebrow){color:#153a5b!important}
 @media(max-width:720px){#desk .nav.sidebar{padding:12px;gap:8px}#desk .nav.sidebar nav{display:flex;overflow-x:auto;gap:6px;scrollbar-width:thin}#desk .nav.sidebar nav button{white-space:nowrap;font-size:12px;padding:10px 12px}#desk .nav.sidebar .identity{display:none}#desk main{padding:15px}#desk .welcome{padding:20px}}
+
+
+/* SBC V66.104 — bilingual caller shell, safe research links and real Academy reader. */
+#desk .sbc-lang-switch{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:5px 8px;border:1px solid #45617d;border-radius:12px}
+#desk .sbc-lang-switch span{font-size:12px;font-weight:750;color:#c8dcf3;margin-right:5px}
+#desk .sbc-lang-switch button{min-width:70px;border-radius:8px;padding:7px 10px;font-size:12px}
+#desk .nav.sidebar .sales-research-links{border:1px solid #324b67;background:#14283f;border-radius:12px;padding:12px;display:grid;gap:7px}
+#desk .sales-research-links strong{font-size:12px;color:#cce4ff}
+#desk .nav.sidebar .sales-research-links a{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:9px 10px;background:#1c3856;border:1px solid #446783;border-radius:8px;color:#d9edff;text-decoration:none;font-size:12px;font-weight:700}
+#desk .nav.sidebar .sales-research-links a:hover,#desk .nav.sidebar .sales-research-links a:focus-visible{background:#29527c;border-color:#89c2ff}
+#desk .sales-research-links small{color:#aec5da;line-height:1.5}
+#desk .academy-sales-hero{border-radius:15px;padding:22px;margin-bottom:16px;background:linear-gradient(125deg,#1b4270,#14283d);border:1px solid #42658b}
+#desk .academy-sales-hero h2{margin:8px 0 5px}
+#desk .academy-sales-hero p{color:#d5e7fb;line-height:1.55}
+#desk .academy-sales-catalog .academy-sales-course{background:#172f4b;border:1px solid #4d779d;gap:15px}
+#desk .academy-sales-course .academy-course-intro{min-width:220px;flex:1}
+#desk .academy-sales-detail{display:grid;gap:12px;border-radius:14px;border:1px solid #355476;padding:18px;background:#0f2138}
+#desk .academy-sales-detail>button{justify-self:start}
+#desk .academy-sales-detail>h3{font-size:23px;margin:8px 0 0}
+#desk .academy-sales-detail .training-module{border:1px solid #466581;border-radius:12px;background:#192f49;overflow:hidden}
+#desk .academy-sales-detail .training-module-head{padding:15px;display:flex;justify-content:space-between;align-items:center;gap:15px}
+#desk .academy-sales-detail .training-module-head strong{display:block;color:#f5faff;font-size:16px}
+#desk .academy-sales-detail .training-module-head small{display:block;color:#bcd4e8;margin-top:6px}
+#desk .academy-sales-detail .training-lesson-content{padding:17px;border-top:1px solid #486480;background:#13253c;line-height:1.6}
+#desk .academy-sales-detail .lesson-part{margin:13px 0 16px}
+#desk .academy-sales-detail .lesson-part h4{color:#a9dbff;font-size:15px;margin:0 0 7px}
+#desk .academy-sales-detail .lesson-part p{margin:0;color:#e7f1ff;white-space:pre-line}
+#desk .academy-sales-detail .lesson-bullets{padding-left:23px;color:#e1effd}
+#desk .academy-sales-detail .lesson-bullets li{margin:6px 0}
+#desk .academy-sales-detail .lesson-complete-form{display:grid;gap:11px;margin:18px 0 0;border-top:1px solid #426381;padding-top:17px}
+#desk .academy-sales-detail .lesson-complete-form textarea{min-height:105px}
+#desk .academy-sales-detail .lesson-ack{display:flex;align-items:start;gap:10px;line-height:1.5;font-weight:600}
+#desk .academy-sales-detail .lesson-ack input{margin-top:3px;width:19px;height:19px;flex:0 0 19px}
+#desk .academy-sales-detail .training-done{color:#7ee4b7;font-weight:800}
+#desk .academy-sales-detail .lesson-complete-form button{justify-self:start}
+html[data-sbc-theme="light"] #desk .sales-research-links{background:#eef5fb;border-color:#acc4db}
+html[data-sbc-theme="light"] #desk .sales-research-links strong,html[data-sbc-theme="light"] #desk .sales-research-links small{color:#204661}
+html[data-sbc-theme="light"] #desk .nav.sidebar .sales-research-links a{background:#d4e5f6!important;color:#14416e!important;border-color:#95b8d6!important}
+html[data-sbc-theme="light"] #desk .sbc-lang-switch{border-color:#8eacc7}
+html[data-sbc-theme="light"] #desk .sbc-lang-switch span{color:#234765}
+html[data-sbc-theme="light"] #desk .academy-sales-hero,html[data-sbc-theme="light"] #desk .academy-sales-detail,html[data-sbc-theme="light"] #desk .academy-sales-detail .training-lesson-content{background:#edf5fd!important;color:#16334d!important;border-color:#adcae2!important}
+html[data-sbc-theme="light"] #desk .academy-sales-detail .training-module,html[data-sbc-theme="light"] #desk .academy-sales-catalog .academy-sales-course{background:#fff!important;color:#16334d!important;border-color:#b7ccdc!important}
+html[data-sbc-theme="light"] #desk .academy-sales-detail .lesson-part p,html[data-sbc-theme="light"] #desk .academy-sales-detail .lesson-bullets,html[data-sbc-theme="light"] #desk .academy-sales-detail .training-module-head strong,html[data-sbc-theme="light"] #desk .academy-sales-hero p{color:#153a5b!important}
+html[data-sbc-theme="light"] #desk .academy-sales-detail .lesson-part h4{color:#215582!important}
+@media(max-width:720px){
+ #desk .sbc-lang-switch{width:100%;justify-content:center}
+ #desk .nav.sidebar .sales-research-links{padding:8px}
+ #desk .nav.sidebar .sales-research-links a{width:auto;padding:9px!important;font-size:12px}
+ #desk .academy-sales-detail .training-module-head{flex-wrap:wrap}
+ #desk .academy-sales-detail .training-module-head button{width:100%}
+}
