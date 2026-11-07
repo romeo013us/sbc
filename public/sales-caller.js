@@ -160,39 +160,136 @@ function renderScripts(lang){
  }
  $('lang-es').className=lang==='es'?'primary':'outline';$('lang-en').className=lang==='en'?'primary':'outline';
 }
+function lessonPart(parent,heading,value){
+ if(!value)return;
+ const section=el('section',undefined,'lesson-part');
+ section.append(el('h4',heading),el('p',value));
+ parent.append(section);
+}
+function showLesson(parent,module,courseId,status){
+ const reader=window.SBCResearchLessonReader;
+ if(!reader||typeof reader.normalize!=='function'){
+  parent.append(el('p','Lesson reader unavailable. Refresh the page. Completion is disabled.','warning'));return;
+ }
+ const lesson=reader.normalize(module);
+ if(!lesson.hasReadableContent){
+  parent.append(el('p','This lesson has no readable course material. Contact the SBC owner; completion is disabled.','warning'));return;
+ }
+ parent.append(el('p','Estimated lesson time: '+lesson.minutes+' minutes','muted'));
+ lessonPart(parent,'Lesson objective',lesson.objective);
+ if(lesson.learn.length){
+  const section=el('section',undefined,'lesson-part'),list=el('ul',undefined,'lesson-bullets');
+  section.append(el('h4','What you need to learn'));
+  for(const point of lesson.learn)list.append(el('li',point));
+  section.append(list);parent.append(section);
+ }
+ lessonPart(parent,'Practice exercise',lesson.practicePrompt);
+ lessonPart(parent,'Evidence to record',lesson.practiceEvidence);
+ lessonPart(parent,'Knowledge check',lesson.knowledgePrompt);
+ lessonPart(parent,'What a good answer demonstrates',lesson.passingRule);
+ if(lesson.questions.length){
+  const section=el('section',undefined,'lesson-part'),list=el('ol',undefined,'lesson-bullets');
+  section.append(el('h4','Assessment preparation'));
+  for(const question of lesson.questions)list.append(el('li',question));
+  section.append(list,el('p','These are review prompts, not an automatically graded assessment. Formal certification remains owner-controlled.','muted'));
+  parent.append(section);
+ }
+ parent.append(el('p','Source course lessons are provided as written by SBC Academy.','muted'));
+ if(['completed','passed'].includes(String(status||'').toLowerCase())){
+  parent.append(el('p','Lesson completed. You can reopen and review it at any time.','training-done'));return;
+ }
+ if(!canWrite()){
+  parent.append(el('p','Owner preview is read-only. No training progress can be submitted.','muted'));return;
+ }
+ const form=el('form',undefined,'lesson-complete-form'),reflection=el('textarea'),check=el('input');
+ reflection.rows=3;reflection.maxLength=1000;
+ reflection.placeholder='Write what you learned and how you would apply it to a real SBC lead.';
+ const label=el('label','Your answer to the knowledge check','lesson-reflection');label.append(reflection);
+ const attestation=el('label',undefined,'lesson-ack');check.type='checkbox';
+ check.setAttribute('aria-label','I have read and practiced this lesson');
+ attestation.append(check,el('span','I have read the lesson and completed the practice and knowledge check.'));
+ const save=el('button','Save Completed Lesson','primary');save.type='submit';save.disabled=true;
+ const validate=()=>{save.disabled=!check.checked||reflection.value.trim().length<12;};
+ check.addEventListener('change',validate);reflection.addEventListener('input',validate);
+ form.append(label,attestation,el('p','Write a short, specific reflection (at least 12 characters). This records lesson study, not a graded exam or certification.','muted'),save);
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();validate();if(save.disabled||!canWrite())return;
+  save.disabled=true;
+  try{
+   const response=await api('/api/training/progress',{method:'POST',body:JSON.stringify({
+    courseId,moduleId:module.id,status:'completed',evidence:reflection.value.trim(),notes:'Caller workstation Academy lesson'
+   })});
+   if(response?.ok===false)throw Error('Training server rejected the completion.');
+   notice('Lesson study progress saved.',false);
+   await openCourse(courseId,module.id);
+  }catch(e){notice('Training completion not saved: '+error(e));validate();}
+ });
+ parent.append(form);
+}
 async function renderTraining(){
+ const host=$('training-list'),detail=$('training-detail');
+ host.hidden=false;detail.hidden=true;detail.replaceChildren();
  $('training-status').textContent='Onboarding: '+data.onboarding.status+' · Certification: '+data.certification.status+' · Live calls '+(data.canLiveCall?'approved':'blocked until owner clearance');
- const host=$('training-list');host.replaceChildren();
+ host.replaceChildren();
  if(preview){host.append(recordRow('Owner preview','This view intentionally does not read the employee’s private lesson attempts.'));return;}
  try{
   training=await api('/api/training');
-  const assigned=Array.isArray(training.assigned)?training.assigned:[];
-  if(!assigned.length){host.append(recordRow('No courses assigned','Ask the owner to assign the appropriate training before calling.'));return;}
-  assigned.forEach(a=>{
-   const c=a.course||a;const id=c.id||a.id;if(!id)return;
-   host.append(recordRow(c.title||'Assigned course',(c.description||'')+' · '+(a.summary?.percent??0)+'% complete','Open lessons',()=>openCourse(id)));
-  });
+  if(!training||training.ok===false||!Array.isArray(training.assigned))throw Error('Unexpected SBC Academy response.');
+  const assigned=training.assigned.map(x=>({course:x.course||x,summary:x.summary||{}}))
+   .filter(x=>x.course?.id&&(!x.course.status||x.course.status==='published'));
+  if(!assigned.length){host.append(recordRow('No courses assigned','Ask the SBC owner to assign published learning material.'));return;}
+  for(const item of assigned){
+   const course=item.course,summary=item.summary||{};
+   const row=el('article',undefined,'item academy-sales-course');
+   const left=el('div',undefined,'academy-course-intro');
+   left.append(el('strong',course.title||'SBC Academy'));
+   left.append(el('small',[(course.description||''),(course.modules?.length||summary.moduleCount||0)+' lessons',Number(summary.percent||0)+'% complete'].filter(Boolean).join(' · ')));
+   const button=el('button','Open course','outline');button.type='button';
+   button.onclick=()=>openCourse(course.id);
+   row.append(left,button);host.append(row);
+  }
  }catch(e){host.append(recordRow('Training unavailable',error(e)));}
 }
-async function openCourse(id){
- const host=$('training-list');host.replaceChildren(recordRow('Loading course','Reading published lessons…'));
+async function openCourse(id,openLessonId=''){
+ if(!id){notice('Course identifier missing.');return;}
+ const host=$('training-list'),detail=$('training-detail');
+ host.hidden=true;detail.hidden=false;
+ detail.replaceChildren(el('p','Loading course and lesson material…','muted'));
  try{
-  const res=await api('/api/training/courses/'+encodeURIComponent(id)),c=res.course||{};
-  host.replaceChildren(recordRow(c.title||'Course',c.description||'Read the lesson content before recording completion.','Back',renderTraining));
-  const mods=Array.isArray(c.modules)?c.modules:[];
-  for(const m of mods.filter(x=>x.status!=='draft'&&x.status!=='archived')){
-   const row=el('div',undefined,'item'),body=el('div');
-   body.append(el('strong',m.title||'Lesson'));
-   const blocks=[m.objective,m.content,m.lesson,m.summary,m.practicePrompt,m.knowledgePrompt].filter(x=>typeof x==='string'&&x.trim()).join('\n\n');
-   body.append(el('small',blocks||'Open the course in SBC Training for complete learning material.'));
-   const completed=el('button','Mark lesson studied','outline');completed.type='button';
-   completed.onclick=async()=>{const evidence=prompt('Briefly describe what you learned (at least 12 characters):');if(!evidence||evidence.trim().length<12)return;
-    try{await api('/api/training/progress',{method:'POST',body:JSON.stringify({courseId:id,moduleId:m.id,status:'completed',evidence:evidence.trim(),notes:'Caller workstation study'})});notice('Lesson study progress saved.',false);await openCourse(id);}
-    catch(e){notice('Training completion not saved: '+error(e));}
+  const response=await api('/api/training/courses/'+encodeURIComponent(id)),course=response.course||{};
+  if(response?.ok===false||!course.id||!Array.isArray(course.modules))throw Error('SBC Academy did not return the published course materials.');
+  detail.replaceChildren();
+  const back=el('button','Back to courses','outline');back.type='button';back.onclick=renderTraining;
+  detail.append(back,el('h3',course.title||'SBC Academy'),el('p',(course.description||'')+' · '+course.modules.length+' lessons','muted'));
+  const statuses=new Map((response.summary?.modules||[]).map(x=>[String(x.id),String(x.status||'not_started')]));
+  const modules=course.modules.filter(x=>x.status!=='draft'&&x.status!=='archived')
+   .sort((a,b)=>Number(a.order||0)-Number(b.order||0));
+  if(!modules.length){detail.append(el('p','No active lessons have been published in this course.','muted'));return;}
+  for(const [index,module] of modules.entries()){
+   const status=statuses.get(String(module.id))||'not_started';
+   const row=el('article',undefined,'training-module'),heading=el('div',undefined,'training-module-head');
+   const title=el('div');
+   title.append(el('strong',(index+1)+'. '+(module.title||'Lesson')),
+    el('small',(module.minutes||15)+' min · '+String(status).replace(/_/g,' ')));
+   const button=el('button','Open lesson','outline'),content=el('div',undefined,'training-lesson-content');
+   button.type='button';content.hidden=true;button.setAttribute('aria-expanded','false');
+   button.onclick=()=>{
+    const opening=content.hidden;
+    for(const other of detail.querySelectorAll('.training-lesson-content'))other.hidden=true;
+    for(const other of detail.querySelectorAll('.training-module-head button')){
+     other.textContent='Open lesson';other.setAttribute('aria-expanded','false');
+    }
+    if(opening){content.replaceChildren();showLesson(content,module,course.id,status);}
+    content.hidden=!opening;button.textContent=opening?'Close lesson':'Open lesson';
+    button.setAttribute('aria-expanded',String(opening));
    };
-   row.append(body,completed);host.append(row);
+   heading.append(title,button);row.append(heading,content);detail.append(row);
+   if(String(module.id)===String(openLessonId))button.click();
   }
- }catch(e){host.replaceChildren(recordRow('Course unavailable',error(e),'Back',renderTraining));}
+ }catch(e){
+  detail.replaceChildren(recordRow('Course unavailable',error(e),'Back to courses',renderTraining));
+  notice('The course did not load; no training progress was changed.');
+ }
 }
 function callLog(s,status){
  return {sessionId:s.id,customerId:s.lead.id,to:s.to,status,startedAt:s.startedAt,endedAt:/^(completed|ended|failed|busy|no-answer|canceled)$/.test(status)?new Date().toISOString():'',direction:'outbound',durationSec:Math.max(0,Math.round((Date.now()-Date.parse(s.startedAt))/1000)),callSid:String(s.conn?.parameters?.CallSid||'').slice(0,120),notes:'',outcome:status};
@@ -264,6 +361,11 @@ async function clockAction(action){
  try{await api('/api/v9/time/clock',{method:'POST',body:JSON.stringify({action,mode:data.canLiveCall?'calling':'training'})});notice('Time clock: '+action.replace('_',' ')+' confirmed.',false);await loadClock();renderShift();}
  catch(e){notice('Time clock failed: '+error(e));await loadClock();}
 }
+function switchLanguage(next){
+ const chosen=window.SBCSalesLocale?.setLanguage(next)||next;
+ try{if(me?.id)localStorage.setItem('sbc-sales-language-v1:'+me.id,chosen);}catch(_){}
+ renderScripts(chosen);
+}
 function bind(){
  document.querySelectorAll('[data-panel]').forEach(b=>b.onclick=()=>setPage(b.dataset.panel));
  $('reload').onclick=()=>load().catch(e=>notice(error(e)));
@@ -273,7 +375,7 @@ function bind(){
  $('report-form').onsubmit=saveReport;
  $('clock-in').onclick=()=>clockAction('in');$('clock-out').onclick=()=>clockAction('out');
  $('break-start').onclick=()=>clockAction('break_start');$('break-end').onclick=()=>clockAction('break_end');
- $('lang-es').onclick=()=>renderScripts('es');$('lang-en').onclick=()=>renderScripts('en');
+ $('lang-es').onclick=()=>switchLanguage('es');$('lang-en').onclick=()=>switchLanguage('en');
  const shift=$('sales-shift-length');if(shift){shift.onchange=()=>{try{if(data?.user?.id)localStorage.setItem('sbc-sales-shift-minutes-v1:'+data.user.id,shift.value);}catch(_){ }renderShift();};}
  const keys=$('dtmf-keypad');for(const n of ['1','2','3','4','5','6','7','8','9','*','0','#']){
   const b=el('button',n);b.type='button';b.setAttribute('aria-label','Send tone '+n);b.onclick=()=>{if(!activeCall?.conn){notice('Keypad tones work during a connected call.');return;}try{activeCall.conn.sendDigits(n);}catch(e){notice('Cannot send keypad tone: '+error(e));}};keys.append(b);
@@ -285,7 +387,13 @@ function bind(){
   const auth=await api('/api/me');me=auth.user;
   preview=me?.role==='owner'&&Boolean(previewUserId);
   if(!preview&&me?.role!=='caller')throw Error('This desk requires a Sales Caller account or owner preview link.');
-  bind();await load();renderScripts('es');
+  bind();await load();
+  const locale=window.SBCSalesLocale;
+  if(locale){
+   let selected='en';
+   try{selected=localStorage.getItem('sbc-sales-language-v1:'+me.id)==='es'?'es':'en';}catch(_){}
+   locale.install($('desk'));locale.setLanguage(selected);renderScripts(selected);
+  }else renderScripts('en');
   $('loading').hidden=true;$('desk').hidden=false;setPage('attention');
  }catch(e){$('loading').textContent='Sales workspace unavailable: '+error(e)+' · Sign in with your assigned account.';}
 })();
