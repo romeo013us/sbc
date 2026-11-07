@@ -55,10 +55,22 @@
   row.push(value.trim());if(row.some(Boolean))rows.push(row);
   return rows;
  }
+ function containsInvalidChars(value){
+  return Array.from(String(value||'')).some(function(ch){
+   var n=ch.charCodeAt(0);
+   return n===65533||n===127||(n<32&&n!==9&&n!==10&&n!==13);
+  });
+ }
+ function looksLikeSpreadsheetBytes(value){
+  var str=String(value||'');
+  return (str.charCodeAt(0)===80&&str.charCodeAt(1)===75&&[3,5,7].includes(str.charCodeAt(2))) ||
+   /xl\/(?:workbook|styles|sharedStrings)\.xml|\[Content_Types\]\.xml/i.test(str);
+ }
  function preview(raw,options){
   options=options||{};
   if(typeof raw!=='string'||!raw.trim())throw Error('Paste a list or select a CSV file.');
   if(raw.length>600000)throw Error('File is too large. Use a CSV or list under 600 KB.');
+  if(looksLikeSpreadsheetBytes(raw))throw Error('This appears to be Excel/ZIP data, not a CSV or business list. Export the workbook as CSV UTF-8. No records were saved.');
   var format=options.format||'auto',delimiter=delimiterFor(raw,format),table=parseDelimited(raw,delimiter);
   if(!table.length)throw Error('No business rows found.');
   var first=table[0]||[],found=first.map(headerKey),recognized=found.filter(Boolean).length;
@@ -103,6 +115,10 @@
     }
    }
    if(!record.businessName)errors.push('Business name required');
+   Object.keys(record).forEach(function(key){
+    if(containsInvalidChars(record[key])||looksLikeSpreadsheetBytes(record[key]))
+      errors.push(key+' contains unreadable or binary spreadsheet data — correct the source file before saving');
+   });
    if(!record.phone&&!record.email&&!record.website)warnings.push('Add contact details when available');
    if(record.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email))errors.push('Email address appears invalid');
    var limit={businessName:200,contactName:150,phone:80,email:250,website:300,industry:160,address:350,notes:2000,source:160,verificationSource:300};
