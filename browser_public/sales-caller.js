@@ -44,7 +44,7 @@ async function load(){
  $('preview-banner').hidden=!preview;
  $('m-leads').textContent=result.metrics.assigned;
  $('m-callable').textContent=result.role==='caller'?result.metrics.callable:'—';
- $('m-attention').textContent=result.role==='caller'?priorityCalls().length:result.metrics.needsAttention;
+ $('m-attention').textContent=result.role==='caller'?(window.SBCFollowupPriority?priorityCalls().length:'Unavailable'):result.metrics.needsAttention;
  $('m-clearance').textContent=result.role==='caller'?(result.canLiveCall?'Approved':'Training required'):'Research only';
  if(preview){
   clock={open:result.time.find(x=>!x.clockOut)||null,entries:result.time};
@@ -62,18 +62,24 @@ async function loadClock(){
  updateCallButtons();
 }
 function priorityCalls(){
- return (data?.calls||[]).filter(r=>/callback|follow-up|appointment/i.test(String(r.outcome||''))||r.callbackAt)
-  .filter(r=>r.customerId).slice(0,25);
+ return window.SBCFollowupPriority?.buildQueue(data?.leads||[],data?.calls||[],Date.now())||[];
 }
 function renderAttention(){
  const target=$('attention-list');target.replaceChildren();
- const issues=priorityCalls();
- if(!issues.length&&!data.leads.some(x=>x.needsAttention)){target.append(recordRow('No scheduled callbacks recorded','Check assigned leads and notifications; do not assume follow-ups were completed.'));return;}
- for(const c of issues){
-  const lead=data.leads.find(x=>x.id===c.customerId);
-  target.append(recordRow(lead?.businessName||'Assigned prospect',c.outcome+' · '+stamp(c.callbackAt||c.createdAt),lead?'Open lead':'Unlinked report',()=>openLead(c.customerId),true));
+ if(data?.role==='caller'&&!window.SBCFollowupPriority){
+  target.textContent='Follow-up prioritization is unavailable. Refresh the workspace before acting on scheduled callbacks.';
+  return;
  }
- for(const c of data.leads.filter(x=>x.needsAttention).slice(0,20))target.append(recordRow(c.businessName,'Needs additional verification — owner review required',null,null,true));
+ const issues=data?.role==='caller'?priorityCalls():[];
+ const research=(data?.leads||[]).filter(x=>x.needsAttention);
+ if(!issues.length&&!research.length){target.append(recordRow('No follow-ups currently listed','Check assigned leads and notifications; absence here does not prove callbacks were completed.'));return;}
+ for(const item of issues.slice(0,50)){
+  const when=item.dueAt?stamp(item.dueAt):'Confirm a callback time with the owner';
+  const detail=[item.label,when,item.outcome,item.nextAction].filter(Boolean).join(' · ');
+  target.append(recordRow(item.businessName,detail,'Open lead',()=>openLead(item.customerId),item.status==='overdue'||item.status==='needs_time'));
+ }
+ if(issues.length>50)target.append(recordRow('More follow-ups available',String(issues.length-50)+' additional assigned follow-ups. Work this list and refresh to see the next items.'));
+ for(const c of research.slice(0,20))target.append(recordRow(c.businessName,'Needs additional verification — owner review required',null,null,true));
 }
 function renderLeads(){
  const target=$('lead-list'),q=$('search').value.toLowerCase().trim();target.replaceChildren();
