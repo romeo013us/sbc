@@ -1,0 +1,65 @@
+/* SBC V66.109 — narration controls scoped to training, never dialer, CRM or owner. */
+.training-lesson-content .academy-audio-v66109{
+ display:flex;flex-direction:column;align-items:stretch;gap:11px;
+ border:1px solid #4d8aa9;border-radius:14px;padding:16px 17px;
+ margin:6px 0 17px;background:linear-gradient(115deg,#113653,#142a48);
+ color:#edf7ff;max-width:100%;box-shadow:0 5px 16px #0002;
+}
+.training-lesson-content .academy-audio-v66109 strong{
+ display:block;flex:unset;font-size:15px;color:#d5efff;letter-spacing:.01em;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-actions{
+ display:flex;align-items:center;flex-wrap:wrap;gap:9px;width:100%;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-actions button{
+ flex:0 1 auto;white-space:nowrap;min-height:40px;padding:9px 12px;
+ border:1px solid #7394b8;border-radius:10px;background:#234d70;color:#f4faff;
+ font-weight:650;line-height:1.2;cursor:pointer;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-actions button:hover:not(:disabled){
+ background:#33698f;border-color:#91c8ef;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-actions button:focus-visible,
+.training-lesson-content .academy-audio-v66109 input:focus-visible{
+ outline:2px solid #92dbff;outline-offset:3px;
+}
+.training-lesson-content .academy-audio-v66109 button:disabled{
+ opacity:.43;cursor:not-allowed;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-seek{
+ display:flex;align-items:end;gap:14px;flex-wrap:wrap;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-seek label{
+ display:flex;flex:1 1 280px;gap:8px;flex-direction:column;
+ font-weight:650;font-size:12px;color:#d3eafb;
+}
+.training-lesson-content .academy-audio-v66109 input[type=range]{
+ width:100%;min-width:100px;accent-color:#67d5ff;cursor:pointer;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-mark{
+ font-size:12px;color:#e0f8ff;font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-status{
+ display:block;flex-basis:auto;color:#c5e7fd;font-size:12px;line-height:1.4;
+}
+.training-lesson-content .academy-audio-v66109 .academy-audio-note{
+ display:block;flex-basis:auto;color:#a8c5d9;font-size:11px;line-height:1.4;
+}
+html[data-sbc-theme="light"] .training-lesson-content .academy-audio-v66109{
+ background:#e4f1fb;border-color:#88b2d0;color:#18354a;
+}
+html[data-sbc-theme="light"] .training-lesson-content .academy-audio-v66109 strong,
+html[data-sbc-theme="light"] .training-lesson-content .academy-audio-v66109 .academy-audio-seek label,
+html[data-sbc-theme="light"] .training-lesson-content .academy-audio-v66109 .academy-audio-mark,
+html[data-sbc-theme="light"] .training-lesson-content .academy-audio-v66109 .academy-audio-status{
+ color:#184366;
+}
+html[data-sbc-theme="light"] .training-lesson-content .academy-audio-v66109 .academy-audio-note{color:#48677f}
+@media(max-width:660px){
+ .training-lesson-content .academy-audio-v66109{padding:13px}
+ .training-lesson-content .academy-audio-v66109 .academy-audio-actions button{flex:1 1 95px;font-size:12px}
+ .training-lesson-content .academy-audio-v66109 .academy-audio-seek{align-items:stretch}
+}
+@media(prefers-reduced-motion:reduce){
+ .training-lesson-content .academy-audio-v66109 *{transition:none!important}
+}
