@@ -31,6 +31,12 @@ const byId=id=>document.getElementById(id),status=byId('sbc-lead-import-status')
 let rows=[],preview=null;
 function setStatus(message,kind){status.className=kind||'';status.textContent=message;}
 function parseCsv(text){
+ const sample=String(text||'').slice(0,100000);
+ const binaryChars=Array.from(sample).some(ch=>{const n=ch.charCodeAt(0);return (n<32&&n!==9&&n!==10&&n!==13)||n===127||n===65533;});
+ const zipMagic=sample.charCodeAt(0)===80&&sample.charCodeAt(1)===75&&[3,5,7].includes(sample.charCodeAt(2));
+ if(binaryChars||zipMagic||sample.includes('xl/workbook.xml')||sample.includes('xl/styles.xml')||sample.includes('[Content_Types].xml')){
+  throw new Error('Binary or malformed spreadsheet detected. Export as CSV UTF-8 and try again. No records were written.');
+ }
  const out=[];let row=[],field='',quoted=false;
  for(let i=0;i<text.length;i++){const ch=text[i];
   if(quoted){if(ch==='"'&&text[i+1]==='"'){field+='"';i++;}else if(ch==='"')quoted=false;else field+=ch;}
@@ -45,7 +51,14 @@ function parseCsv(text){
  return out.map(values=>{const o={};headers.forEach((h,i)=>o[h]=String(values[i]||'').trim());return {
  business_name:o.business_name||o.businessname||o.business||'',contact_name:o.contact_name||o.contactname||o.contact||'',phone:o.phone||o.phone_number||'',email:o.email||'',website:o.website||'',website_status:o.website_status||'',lead_source:o.lead_source||o.source||'User-provided lead research',
  research_notes:[o.research_notes,o.decision_maker_notes,o.research_reference_url?('Research reference: '+o.research_reference_url):''].filter(Boolean).join(' | '),business_category:o.business_category||o.industry||'Barber Shop'
- };}).filter(r=>Object.values(r).some(v=>String(v).trim()));
+ };}).filter(r=>Object.values(r).some(v=>String(v).trim())).map((r,i)=>{
+  const fields=[r.business_name,r.contact_name,r.phone,r.email];
+  const broken=fields.some(field=>Array.from(String(field||'')).some(ch=>{const n=ch.charCodeAt(0);return (n<32&&n!==9&&n!==10&&n!==13)||n===127||n===65533;}));
+  if(!r.business_name||broken||fields.some(v=>String(v||'').includes('xl/workbook.xml')||String(v||'').includes('[Content_Types].xml'))){
+   throw new Error('Invalid lead data on CSV data row '+(i+2)+'. No records were written.');
+  }
+  return r;
+ });
 }
 async function request(body){
  const url='/api/crm/leads/import';
