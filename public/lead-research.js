@@ -34,7 +34,7 @@ function setTab(tab){
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
  if(tab==='clock'&&!clock)loadClock();
- if(tab==='today')renderDailyPlan();
+ if(tab==='today'){renderDailyPlan();renderShiftPlan();}
 }
 function leadAutomationStatus(c){
  var state=String(c?.leadAssistStatus||'NOT_CHECKED');
@@ -80,7 +80,7 @@ function updatePriorityIndicator(){
 function prioritizeAttention(forceHomeIfClear){
  var pending=myAttentionRecords();
  if(pending===null&&(leadsLoadFailed||progressLoadFailed)||pending&&pending.length)setTab('queue');
- else if(forceHomeIfClear)setTab('home');
+ else if(forceHomeIfClear)setTab('today');
 }
 // SBC_V6686_SECONDARY_PHONE: reuse the existing durable research-notes field.
 // One tagged JSON line preserves phone + source without a schema migration or
@@ -249,6 +249,76 @@ async function loadProgress(){
   submittedIds=null;progressLoadFailed=true;drawLeads();renderDailyPlan();updatePriorityIndicator();
   txt('goal-status','Could not load research totals: '+errorMessage(e));
   $('goal-fill').style.width='0%';$('goal-track').removeAttribute('aria-valuenow');$('goal-track').setAttribute('aria-valuetext','SBC research totals unavailable');
+ }
+}
+
+
+/* Display-only role scheduling. The MySQL time clock remains authoritative. */
+function shiftStorage(){
+ try{return window.localStorage;}catch(_){return null;}
+}
+function shiftAnchorKey(){
+ var plan=window.SBCRoleShiftPlan;
+ if(!plan||!user)return '';
+ return 'sbc-clock-verified-shift-v1:'+plan.key(user,user.role,plan.easternDay(new Date()));
+}
+function rememberVerifiedClockIn(){
+ var key=shiftAnchorKey(),value=clock?.open?.clockIn,storage=shiftStorage();
+ if(!key||!value||!storage)return;
+ var t=new Date(value);
+ if(!Number.isFinite(t.valueOf()))return;
+ try{
+  var old=storage.getItem(key),oldTime=old&&new Date(old);
+  // Preserve the earliest verified clock-in for this calendar day after breaks.
+  if(!old||!Number.isFinite(oldTime.valueOf())||t<oldTime)storage.setItem(key,t.toISOString());
+ }catch(_){}
+}
+function verifiedShiftAnchor(){
+ var current=clock?.open?.clockIn,storage=shiftStorage(),key=shiftAnchorKey();
+ try{
+  var old=storage&&key?storage.getItem(key):null;
+  var time=old&&Number.isFinite(new Date(old).valueOf())?new Date(old):null;
+  var live=current&&Number.isFinite(new Date(current).valueOf())?new Date(current):null;
+  return time&&live?(time<live?time:live):time||live||null;
+ }catch(_){return current&&Number.isFinite(new Date(current).valueOf())?new Date(current):null;}
+}
+function renderShiftPlan(){
+ var engine=window.SBCRoleShiftPlan,host=$('shift-task-list');
+ if(!engine||!host||!user)return;
+ var role=engine.kind(user.role),date=engine.easternDay(new Date()),anchor=verifiedShiftAnchor(),plan=engine.schedule(role,anchor),stored=new Set(engine.read(shiftStorage(),user,role,date));
+ var done=plan.items.filter(function(task){return stored.has(task.id);}).length;
+ txt('shift-progress',done+' of '+plan.items.length);
+ var bar=$('shift-progress-track'),fill=$('shift-progress-fill'),percent=Math.round(done/plan.items.length*100);
+ if(bar)bar.setAttribute('aria-valuenow',String(percent));
+ if(fill)fill.style.width=percent+'%';
+ var displayTime=function(timestamp){
+  return new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(timestamp))+' ET';
+ };
+ txt('shift-clock-label',anchor?'Scheduled from verified clock-in: '+displayTime(anchor)+'. Shift plan: '+plan.totalMinutes+' minutes.':'Clock in to activate timed tasks. Preview: '+plan.totalMinutes+' minutes · 4-hour shift.');
+ host.replaceChildren();
+ plan.items.forEach(function(task,i){
+  var row=element('div','shift-task'+(task.status==='current'?' active':'')+(stored.has(task.id)?' done':''));
+  var checkbox=element('input');checkbox.type='checkbox';checkbox.checked=stored.has(task.id);checkbox.setAttribute('aria-label','Mark '+task.title+' complete');
+  var body=element('div'),name=element('div','shift-task-title',(i+1)+'. '+task.title);
+  var range=task.startAt?displayTime(task.startAt)+' – '+displayTime(task.endAt):'Minute '+task.startOffset+' – '+task.endOffset+' from clock-in';
+  var status=stored.has(task.id)?'Complete':task.status==='current'?'Current block':task.status==='elapsed'?'Time block elapsed':task.status==='upcoming'?'Upcoming':'Pending clock-in';
+  body.append(name,element('div','shift-task-meta',range+' · '+task.minutes+' min'),element('div','shift-task-detail',task.detail),element('div','shift-task-status',status));
+  var open=element('button','outline','Open workspace');open.type='button';open.onclick=function(){setTab(task.tab);};
+  checkbox.onchange=function(){
+   var ok=engine.write(shiftStorage(),user,role,date,task.id,checkbox.checked);
+   if(!ok){checkbox.checked=!checkbox.checked;note('This browser cannot store task completion. Your CRM was not changed.',true);return;}
+   renderShiftPlan();
+  };
+  row.append(checkbox,body,open);host.append(row);
+ });
+ var next=plan.items.find(function(task){return !stored.has(task.id)&&(task.status==='current'||task.status==='upcoming');})||
+  plan.items.find(function(task){return !stored.has(task.id);});
+ var home=$('shift-home');
+ if(home){
+  home.hidden=false;
+  txt('shift-home-title',done===plan.items.length?'All shift checklist items marked complete':next?'Shift task: '+next.title:'Shift plan');
+  txt('shift-home-detail',anchor?(done+' of '+plan.items.length+' checked · '+(next?'Next: '+next.minutes+' min · '+next.detail:'Review your clock status before ending the shift.')):
+    'Clock in to start the schedule. '+done+' of '+plan.items.length+' checked today.');
  }
 }
 
@@ -422,6 +492,7 @@ async function loadClock(){
   clock=await api('/api/v9/time/status');
   txt('clock-summary',clock.open?'Clocked in since '+new Date(clock.open.clockIn).toLocaleString():'You are currently clocked out.');
   $('clock-in').disabled=!!clock.open;$('clock-out').disabled=!clock.open;
+  rememberVerifiedClockIn();renderShiftPlan();
  }catch(e){txt('clock-summary','Time clock unavailable: '+errorMessage(e));}
 }
 async function doClock(action){
@@ -429,7 +500,12 @@ async function doClock(action){
  try{
   await api('/api/v9/time/clock',{method:'POST',body:JSON.stringify({action:action,mode:'training'})});
   await loadClock();
-  if(action==='in'){await Promise.allSettled([loadLeads(),loadProgress()]);prioritizeAttention(false);}
+  if(action==='in'){
+   await Promise.allSettled([loadLeads(),loadProgress()]);
+   prioritizeAttention(false);
+   if(active!=='queue')setTab('today');
+  }
+  renderShiftPlan();
   note(action==='in'?(active==='queue'?'Clocked in. Your corrections are your first priority.':'Clocked in successfully.'):'Clocked out successfully.');
  }catch(e){note('Time clock update failed: '+errorMessage(e),true);await loadClock();}
 }
@@ -579,8 +655,9 @@ $('sign-out').addEventListener('click',async function(){try{await api('/api/logo
   user=me.user;txt('user-name',user.name||user.username||'Lead Researcher');
   await refresh();
   prioritizeAttention(true);
+  renderShiftPlan();
   $('access').hidden=true;$('workspace').hidden=false;
-  setInterval(function(){if(document.visibilityState==='visible'&&!busy&&!importRunning)Promise.allSettled([loadLeads(),loadProgress()]);},60000);
+  setInterval(function(){if(document.visibilityState==='visible'&&!busy&&!importRunning){renderShiftPlan();Promise.allSettled([loadLeads(),loadProgress()]);}},60000);
  }catch(e){
   var msg=errorMessage(e);txt('access',msg);
   if(/session|authentication|expired/i.test(msg)){location.replace('/');}
