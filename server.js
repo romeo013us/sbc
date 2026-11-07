@@ -317,6 +317,7 @@ function sbcLornaAllowedRequest(req,user){
  // Broad legacy bootstrap is not available to the Lead Researcher role.
  if(p==='/api/v9/lead-verification')return m==='GET';
  if(/^\/api\/v9\/lead-verification\/[^/]+$/.test(p))return m==='POST';
+ if(m==='POST'&&/^\/api\/v9\/lead-verification\/[^/]+\/resolve-notice$/.test(p))return true; // SBC_V66105_RESEARCH_NOTICE_ALLOWED
  if(p==='/api/v9/time/clock')return m==='POST';
  if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
