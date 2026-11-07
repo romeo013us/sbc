@@ -10,7 +10,7 @@ const css=read('public/sbc-manual-dialer-v6696.css'),mirrorCss=read('browser_pub
 const app=read('public/app.js'),mirrorApp=read('browser_public/app.js');
 assert.equal(html,mirrorHtml);assert.equal(js,mirrorJs);assert.equal(css,mirrorCss);assert.equal(app,mirrorApp);
 assert(html.includes('/sbc-manual-dialer-v6696.css?v=1')&&html.includes('/sbc-manual-dialer-v6696.js?v=1'));
-assert(app.includes("if(window.SBCManualDialer?.isBusy())"),'lead call must refuse simultaneous manual call');
+assert(app.includes("if(typeof window!=='undefined'&&window.SBCManualDialer?.isBusy())"),'lead call must refuse simultaneous manual call');
 assert.equal(front.cleanPhone('305 555 0188'),'+13055550188');
 assert.equal(front.cleanPhone('1-305-555-0188'),'+13055550188');
 assert.equal(front.cleanPhone('+442071234567'),'+442071234567');
