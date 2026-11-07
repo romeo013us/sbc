@@ -78,6 +78,28 @@ vm.runInNewContext(patched.slice(p,q),{
  assert.equal(status,201);assert.equal(lead.doNotContact,true);assert.equal(lead.salesSuppressed,true);
  assert.equal(lead.status,'Do Not Call');assert(saves>=1);
  assert.equal(AUTH.authorize({...base,customers:[lead],from:'client:sales1',to:'3055550101'}).code,'VOICE_DNC_BLOCKED');
+ const apStart=patched.indexOf("app.post('/api/v9/call-report/:id/approve'");
+ const apEnd=patched.indexOf("app.post('/api/v9/users/:id/reset-certification'",apStart);
+ assert(apStart>0&&apEnd>apStart);
+ const item={id:'ap-1',customerId:'a',outcome:'Interested',orderReady:true,
+   websiteDemoUrl:'https://example.org/preview',status:'Pending',notes:'Follow-up requested previously'};
+ let approve;const approvalDb={customers:[lead],callReports:[item]};
+ let ownerSaves=0,marketingCalls=0;
+ vm.runInNewContext(patched.slice(apStart,apEnd),{
+  app:{post(_path,_auth,_role,fn){approve=fn}},auth(){},ownerOnly(){},
+  db:approvalDb,now:()=>new Date().toISOString(),audit(){},
+  v9data(){marketingCalls++;return {websiteDemos:{}};},
+  async v9save(){marketingCalls++;},
+  async saveData(){ownerSaves++;},
+  megaData(){throw Error('Suppressed lead must not schedule a callback.');},
+  console
+ });
+ assert.equal(typeof approve,'function');
+ await approve({params:{id:'ap-1'},user:owner},response);
+ assert.equal(lead.status,'Do Not Call','Owner approval must not reactivate suppressed customer');
+ assert.equal(lead.doNotContact,true);assert.equal(lead.salesSuppressed,true);
+ assert.equal(marketingCalls,0,'No demo publication may occur for a suppressed lead');
+ assert(ownerSaves>0,'Reviewed report still commits without clearing suppression');
  if(process.argv.includes('--staged'))assert.equal(patched,src);
  console.log('PASS V66.99 '+cases+' outbound cases; signed route, assigned scope, DNC persistence');
 })().catch(e=>{console.error(e);process.exitCode=1});
