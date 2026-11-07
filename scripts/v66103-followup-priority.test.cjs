@@ -19,9 +19,9 @@ const leads=[
 {id:'d',canCall:true,businessName:'Unscheduled Company'},
 {id:'e',canCall:false,doNotContact:true,businessName:'Suppressed'},
 {id:'f',canCall:true,businessName:'Refused'},
-{id:'g',canCall:true,businessName:'Lead Scheduled',followUpAt:'2026-11-08T18:00:00Z'},
+{id:'g',canCall:true,businessName:'Lead Scheduled','followUpAt':'2026-11-08T18:00:00Z'},
 {id:'h',canCall:true,businessName:'Handled By Later Report'},
-{id:'i',canCall:true,businessName:'Date Only Follow Up',followUpAt:'2026-11-08'},
+{id:'i',canCall:true,businessName:'Date Only Follow Up','followUpAt':'2026-11-08'},
 {id:'j',canCall:true,businessName:'No Report'}
 ];
 const report=(customerId,outcome,callbackAt='',createdAt='2026-11-07T11:00:00Z')=>({customerId,outcome,callbackAt,createdAt});
