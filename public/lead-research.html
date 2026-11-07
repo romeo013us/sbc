@@ -6,10 +6,11 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <meta name="robots" content="noindex,nofollow">
 <title>SBC | Lead Research Workspace</title>
-<link rel="stylesheet" href="/lead-research.css?v=6">
+<link rel="stylesheet" href="/lead-research.css?v=7">
 <script src="/lead-research-import-core.js?v=3" defer></script>
 <script src="/sbc-research-lesson-reader.js?v=3" defer></script>
-<script src="/lead-research.js?v=7" defer></script>
+<script src="/sbc-role-shift-plan.js?v=1" defer></script>
+<script src="/lead-research.js?v=8" defer></script>
 </head>
 <body>
 <div id="access" role="status" class="access">Checking your SBC session…</div>
@@ -37,6 +38,7 @@
  <button type="button" class="attention-open" data-go="queue">Open Needs Attention</button>
 </section>
 <section class="pane" data-pane="home">
+<section class="shift-home" id="shift-home" aria-live="polite" hidden><div><strong id="shift-home-title">My current shift task</strong><p id="shift-home-detail">Clock in to start your four-hour plan.</p></div><button type="button" class="outline" data-go="today">Open Shift Checklist</button></section>
 <div class="welcome"><div class="eyebrow">YOUR DAILY MISSION</div><h2>Find the right businesses. Make every lead count.</h2><p>Find real businesses, document useful contact details and research sources, and submit them to SBC. Our existing automation handles the next verification step.</p><button class="primary" type="button" data-go="add">+ Submit a New Lead</button></div>
 <div class="daily-preview"><div><div class="eyebrow">TODAY’S ASSIGNMENTS</div><h3 id="daily-focus-title">Research, verification and training</h3><p id="daily-overview">A focused work plan will load for your business day.</p></div><button type="button" class="outline" data-go="today">Open My Tasks</button></div>
 <div class="goal-card" aria-label="Daily lead production goal">
@@ -56,7 +58,14 @@
 <div class="card"><h3>Quality standard</h3><p>Never invent phone numbers, email addresses, decision makers or business information. If a fact cannot be confirmed, leave it blank and document the source.</p><p>SBC Lead Assist—not the employee—decides whether a record qualifies for automatic verification. Records without enough evidence stay for review; only an authorized person should resolve exceptions.</p></div>
 </div>
 </section>
-<section class="pane" data-pane="today" hidden><div class="card daily-page"><div class="card-head"><div><div class="eyebrow">SBC · LEAD RESEARCH OPERATIONS</div><h2>My Daily Work Plan</h2><p id="daily-plan-date">Preparing today’s research, exception-follow-up and training plan…</p></div><span class="pill">16–20 complete research submissions</span></div><div id="daily-task-list" class="daily-task-list"></div><p class="muted">Use the action buttons to do the work in SBC. These are suggested daily priorities—not a claim that a task is complete. Lead submissions and training progress are verified through the existing SBC services.</p></div></section>
+<section class="pane" data-pane="today" hidden>
+<div class="card shift-card" id="shift-card">
+ <div class="card-head"><div><div class="eyebrow">YOUR ROLE · 4-HOUR SHIFT</div><h2>Today's Shift Checklist</h2><p id="shift-clock-label">Time blocks will start when your verified clock-in is loaded.</p></div><div class="shift-summary"><strong id="shift-progress">0 of 8</strong><small>Checklist items complete</small></div></div>
+ <div class="shift-track" role="progressbar" aria-label="Shift checklist completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="shift-progress-track"><div id="shift-progress-fill"></div></div>
+ <p class="shift-disclaimer">Check off work you have actually completed. Scheduled minutes do not automatically verify work, and this checklist does not change your time clock, payroll, or CRM counts. Completion is saved in this browser for today's signed-in role.</p>
+ <div id="shift-task-list" class="shift-task-list"><p class="muted">Loading shift schedule…</p></div>
+</div>
+<div class="card daily-page"><div class="card-head"><div><div class="eyebrow">SBC · LEAD RESEARCH OPERATIONS</div><h2>Research tools and quick actions</h2><p id="daily-plan-date">Preparing today’s research, exception-follow-up and training plan…</p></div><span class="pill">16–20 complete research submissions</span></div><div id="daily-task-list" class="daily-task-list"></div><p class="muted">Use the action buttons to do the work in SBC. These are suggested daily priorities—not a claim that a task is complete. Lead submissions and training progress are verified through the existing SBC services.</p></div></section>
 <section class="pane" data-pane="queue" hidden>
 <div class="card priority-queue"><div class="card-head"><div><h2>⚠ Needs Attention · First Priority</h2><p>Only your submitted leads that SBC returned for more information are shown here. The owner retains the broader CRM. Save corrections to queue another automated check; do not manually mark a lead verified.</p></div><input id="search" aria-label="Search research queue" type="search" placeholder="Search business, phone, city…"></div><div id="queue-error" class="small-error" hidden></div><div id="queue-list" class="list"><p class="muted">Loading research queue…</p></div></div>
 </section>
@@ -89,7 +98,7 @@
 <section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads and Auto-Verification Status</h2><p>Your submissions in the active SBC CRM, including queued checks, automatically verified results and items needing a specific correction. Not an all-time report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>
 <section class="pane" data-pane="training" hidden><div class="card"><h2>My Assigned Training</h2><p>Open a course, choose a lesson, read the actual Academy material, complete the practice and knowledge check, then explicitly record your progress. Course completion does not grant certification.</p><div id="training-list" class="list"><p class="muted">Loading training…</p></div><div id="training-detail" class="course-detail" hidden></div></div></section>
 <section class="pane" data-pane="clock" hidden><div class="card maxform"><h2>Time Clock</h2><p>Your individual time clock. No other employee's payroll, compensation, or time reports are available here.</p><div id="clock-summary" class="clock-summary">Loading time status…</div><div class="form-actions"><button type="button" class="primary" id="clock-in">Clock In</button><button type="button" class="outline" id="clock-out">Clock Out</button></div><p class="muted">Time is logged to the existing SBC workforce service. The current backend classifies this role's clock mode as training until a distinct research mode is implemented.</p></div></section>
-<footer>Successful By Choice · Because Why Not? · Research workspace v5</footer>
+<footer>Successful By Choice · Because Why Not? · Research workspace v6</footer>
 </main>
 </div>
 </body></html>
