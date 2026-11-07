@@ -51,6 +51,7 @@ function suspiciousResearchText(c){
  });
 }
 function isException(c){
+ if(c?.researchNoticeResolved===true&&!suspiciousResearchText(c))return false;
  return ['NEEDS_HUMAN_REVIEW','FAILED','REWORK_REQUIRED','RETURNED_FOR_CORRECTION'].includes(String(c?.leadAssistStatus||''))||
   ['Owner Review','Needs Correction','Rework Required'].includes(String(c?.verificationStatus||''))||suspiciousResearchText(c);
 }
@@ -123,7 +124,7 @@ function secondaryPhoneLabel(lead){
  return extra.phone?'Secondary: '+extra.phone+(extra.source?' ('+extra.source+')':''):'';
 }
 
-function displayLead(c){
+function displayLead(c,inQueue){
  var item=element('div','lead-row'+(isException(c)?' needs-correction':'')),left=element('div'),right=element('div');
  var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
@@ -133,7 +134,24 @@ function displayLead(c){
  var actionable=own&&isException(c);
  var button=element('button','outline',actionable?'Correct information':'View details');
  button.type='button';button.addEventListener('click',function(){openReview(item,c,actionable);});
- right.append(button);item.append(left,right);return item;
+ right.append(button);
+ if(inQueue&&actionable){
+  var clear=element('button','outline','Dismiss resolved notice');clear.type='button';
+  clear.setAttribute('aria-label','Dismiss corrected notification for '+String(c.businessName||'lead'));
+  clear.onclick=async function(){
+   if(!window.confirm('Only clear this alert if the business details and original source are already corrected. The CRM lead will NOT be deleted. Continue?'))return;
+   clear.disabled=true;clearNote();
+   try{
+    var result=await api('/api/v9/lead-verification/'+encodeURIComponent(String(c.id))+'/resolve-notice',{method:'POST',body:JSON.stringify({reason:'Lead already corrected and verified by researcher'})});
+    if(result?.ok!==true||result.resolved!==true||result.deleted!==false)throw Error('The CRM did not confirm a safe notice resolution.');
+    note('Resolved alert cleared. Your original CRM lead and history are preserved.');
+    await Promise.allSettled([loadLeads(),loadProgress()]);
+   }catch(e){note('This alert cannot be cleared yet: '+errorMessage(e)+'. Verify the lead source and contact information.',true);}
+   finally{clear.disabled=false;}
+  };
+  right.append(clear);
+ }
+ item.append(left,right);return item;
 }
 function openReview(item,lead,editable){
  document.querySelectorAll('.research-review').forEach(function(el){el.remove();});
@@ -195,9 +213,9 @@ function drawLeads(){
  var chosen=attention.filter(function(c){return [c.businessName,c.phone,secondaryPhoneLabel(c),c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
  q.replaceChildren();m.replaceChildren();
  if(!chosen.length)empty(q,filter?'No matching exceptions from your submissions.':'No records currently need your corrections. SBC automatically checks submitted leads.');
- else chosen.forEach(function(c){q.append(displayLead(c));});
+ else chosen.forEach(function(c){q.append(displayLead(c,true));});
  if(!own.length)empty(m,'No submitted leads currently visible in your active research CRM. Historical totals appear on your dashboard.');
- else own.forEach(function(c){m.append(displayLead(c));});
+ else own.forEach(function(c){m.append(displayLead(c,false));});
  txt('metric-queue',attention.length);
  txt('metric-unverified',own.filter(function(c){return ['QUEUED','PROCESSING','NOT_CHECKED'].includes(String(c.leadAssistStatus||'NOT_CHECKED'))&&!isException(c);}).length);
  txt('metric-mine',own.length);
