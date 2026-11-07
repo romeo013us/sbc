@@ -205,6 +205,7 @@ async function dial(){
   if(!token.token||!window.Twilio?.Device)throw Error('Twilio browser SDK or token unavailable.');
   if(session.canceled)return;
   if(!await saveCall('connecting'))throw Error('Call blocked: durable CRM log was not confirmed.');
+  session.logged=true;
   if(session.canceled)return;
   phoneDevice=new window.Twilio.Device(token.token,{codecPreferences:['opus','pcmu'],enableRingingState:true});
   const conn=await phoneDevice.connect({params:{To:phone}});
@@ -215,14 +216,14 @@ async function dial(){
   conn.on('disconnect',()=>finish('completed').catch(()=>{}));
   conn.on('error',e=>{notice('Twilio call error: '+error(e));finish('failed').catch(()=>{});});
  }catch(e){notice('No call placed / call failed: '+error(e));await finish('failed');}
- finally{running=false;}
+ finally{running=false;if(session.canceled&&activeCall===session)await finish('canceled');}
 }
 async function finish(status='ended'){
  const s=activeCall;if(!s)return;
  s.canceled=true;
  if(s.conn&&status!=='completed')try{s.conn.disconnect();}catch{}
  if(running&&!s.conn&&status==='ended'){$('call-status').textContent='Cancel requested; disconnecting any delayed call.';return;}
- const saved=await saveCall(status);activeCall=null;updateCallButtons();
+ const saved=s.logged?await saveCall(status):false;activeCall=null;updateCallButtons();
  $('call-status').textContent='Call '+status+(saved?' · logged in SBC':' · log needs review');
  try{phoneDevice?.destroy?.();}catch{}phoneDevice=null;
 }
@@ -245,6 +246,7 @@ async function saveReport(event){
 }
 async function clockAction(action){
  if(!canWrite())return;
+ if(action==='out'&&activeCall){notice('End the active call before clocking out.');return;}
  const allowed=['in','out','break_start','break_end'];if(!allowed.includes(action))return;
  const btn=$('clock-'+(action==='in'?'in':action==='out'?'out':action==='break_start'?'in':'out'));
  if(btn)btn.disabled=true;
