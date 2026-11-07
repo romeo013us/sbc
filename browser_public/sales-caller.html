@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store"><meta name="robots" content="noindex,nofollow">
+<title>SBC — Spanish Sales Caller Workspace</title>
+<link rel="stylesheet" href="/sales-caller.css?v=1">
+<script defer src="/sbc-role-shift-plan.js?v=1"></script>
+<script defer src="/vendor/sbc-twilio-voice-sdk-2.18.5.min.js"></script>
+<script defer src="/sales-caller.js?v=1"></script>
+</head>
+<body>
+<div id="loading" role="status">Verifying SBC employee access…</div>
+<div id="desk" hidden>
+ <aside class="sidebar">
+  <div class="brand">SBC <small>Successful By Choice<br>Sales Caller Workspace</small></div>
+  <div class="identity" id="employee-name">Sales Caller</div>
+  <nav aria-label="Sales desk navigation">
+   <button type="button" data-panel="attention">⚠ Priority Follow-ups <span id="attention-count">—</span></button>
+   <button type="button" data-panel="today">☑ 4-Hour Shift Plan</button>
+   <button type="button" data-panel="leads">☎ Assigned Leads</button>
+   <button type="button" data-panel="call">▦ Call & Notes</button>
+   <button type="button" data-panel="scripts">🌐 English / Español</button>
+   <button type="button" data-panel="training">🎓 Training & Certification</button>
+   <button type="button" data-panel="time">◷ Clock & Breaks</button>
+  </nav>
+  <a class="home-link" href="/">Command Center</a>
+  <button type="button" id="signout">Sign out</button>
+ </aside>
+ <main>
+  <header><div><div class="eyebrow">SBC · HUMAN-LED SALES</div><h1 id="panel-title">Sales Caller Desk</h1><p id="panel-hint">Work assigned prospects, document conversations, and escalate orders.</p></div><div class="header-actions"><span id="clock-indicator">Clock status pending</span><button type="button" id="reload" class="outline">Refresh</button></div></header>
+  <section id="preview-banner" class="warning" hidden><strong>OWNER PREVIEW — READ ONLY</strong><p>You are viewing a staff-scoped projection, not impersonating the employee. Calling, clocking, account changes and record edits are disabled.</p><a href="/">Return to Owner Command Center</a></section>
+  <section id="alert" class="warning" role="status" hidden></section>
+  <section class="metrics"><article><small>Assigned Leads</small><strong id="m-leads">—</strong></article><article><small>Callable</small><strong id="m-callable">—</strong></article><article><small>Priority Follow-ups</small><strong id="m-attention">—</strong></article><article><small>Calling Clearance</small><strong id="m-clearance">Checking…</strong></article></section>
+  <section id="attention" data-page>
+   <h2>Priority 1 — Callbacks & Notifications</h2><p>Review outstanding scheduled callbacks and unresolved follow-ups before new calls. Do not contact opted-out or suppressed numbers.</p>
+   <div id="attention-list" class="list">Loading follow-ups…</div>
+  </section>
+  <section id="today" data-page hidden>
+   <h2>My 4-Hour Shift Checklist</h2><p id="plan-clock">Clock in to begin the timed schedule.</p><div class="progress"><div id="task-progress"></div></div><p id="task-count">0 completed</p><div id="shift-tasks" class="list"></div><p class="muted">Checklist progress is saved in this browser. It does not change payroll or substitute for saved CRM call reports.</p>
+  </section>
+  <section id="leads" data-page hidden>
+   <h2>Assigned Sales Prospects</h2><label for="search">Search business, contact or phone</label><input id="search" type="search" placeholder="Type business name or phone…" autocomplete="off">
+   <div id="lead-list" class="list"></div><p class="muted">Only leads assigned to this employee in the tenant are displayed. Assignment changes require owner approval.</p>
+  </section>
+  <section id="call" data-page hidden>
+   <h2>Call & Document</h2>
+   <div class="columns"><div class="card">
+    <label for="call-target">Assigned prospect</label><select id="call-target"><option value="">Select an assigned lead</option></select>
+    <p id="lead-detail">Choose a prospect to view its verified contact number.</p>
+    <label for="dial-number">Business number</label><input id="dial-number" type="tel" autocomplete="off" readonly placeholder="Select an assigned prospect">
+    <div class="keys" id="dtmf-keypad"></div>
+    <p id="dtmf-hint" class="muted">Keypad digits send tones during connected calls.</p>
+    <div class="actions"><button type="button" id="call-button" class="primary" disabled>☎ Call with Twilio</button><button type="button" id="end-button" class="danger" disabled>■ End Call</button></div>
+    <p class="muted">Live calling requires completed onboarding, certification, an active employee clock-in and a configured Twilio browser connection. No automatic calls.</p>
+   </div><div class="card">
+    <h3>Call Notes / Report</h3><p id="call-status" role="status">Select an assigned lead first.</p>
+    <form id="report-form"><label for="contact">Person contacted</label><input id="contact" maxlength="140">
+    <label for="outcome">Result</label><select id="outcome">
+     <option value="No Answer">No answer</option><option value="Left Voicemail">Left voicemail</option><option value="Conversation">Conversation</option><option value="Interested">Interested</option><option value="Appointment Requested">Appointment requested</option><option value="Follow-up Requested">Follow-up requested</option><option value="Not Interested">Not interested</option><option value="Do Not Call">Do not call — escalate to owner</option>
+    </select><label for="callback">Callback time (if requested)</label><input id="callback" type="datetime-local">
+    <label for="notes">Conversation / objection notes</label><textarea id="notes" maxlength="3000" rows="5" placeholder="No private payment card details; document actual conversation only."></textarea>
+    <button type="submit" id="report-button" class="primary" disabled>Save Report for Owner Review</button></form>
+    <p class="muted">A call report is not a payment, verified sale, or approval. Pricing and fulfillment decisions remain owner-controlled.</p>
+   </div></div>
+  </section>
+  <section id="scripts" data-page hidden>
+   <h2>Consultative Sales Scripts / Guiones</h2>
+   <div class="actions"><button type="button" id="lang-en" class="outline">English</button><button type="button" id="lang-es" class="primary">Español</button></div>
+   <div id="script-list" class="list"></div><p class="muted">Use these as talking points, not guaranteed pricing or consent to call. Honor refusals and federal/state outreach rules.</p>
+  </section>
+  <section id="training" data-page hidden>
+   <h2>Assigned Training & Calling Clearance</h2><p id="training-status"></p><div id="training-list" class="list"></div>
+   <p class="muted">Complete assigned Academy training and have the owner verify onboarding and certification before live calling.</p>
+  </section>
+  <section id="time" data-page hidden>
+   <h2>Clock & Breaks</h2><p id="time-summary">Loading the official time clock…</p>
+   <div class="actions"><button type="button" class="primary" id="clock-in">Clock In</button><button type="button" class="outline" id="break-start">Start Break</button><button type="button" class="outline" id="break-end">End Break</button><button type="button" class="danger" id="clock-out">Clock Out</button></div>
+   <p class="muted">SBC's authoritative time entries determine payable time. This checklist does not record payroll hours.</p>
+  </section>
+ </main>
+</div>
+</body></html>
