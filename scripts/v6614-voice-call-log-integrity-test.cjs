@@ -18,8 +18,8 @@ const app={
 };
 const db={
  customers:[
-  {id:'lead-a',tenantId:1,businessName:'Tenant A'},
-  {id:'lead-a',tenantId:2,businessName:'Tenant B'},
+  {id:'lead-a',tenantId:1,assignedTo:'caller1',businessName:'Tenant A'},
+  {id:'lead-a',tenantId:2,assignedTo:'tenant2caller',businessName:'Tenant B'},
   {id:'orphan',businessName:'Legacy unowned'},
   {id:'tenant2-only',tenant_id:2,businessName:'Tenant B only'}
  ],
@@ -36,7 +36,7 @@ const mysqlPool={async query(sql,params){
 }};
 let serial=0;
 const load=new Function('app','auth','db','requireRequestTenant','now','id',
- 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool',serialPrelude+'\n'+getSource+'\n'+postSource);
+ 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY',serialPrelude+'\n'+getSource+'\n'+postSource);
 load(app,()=>{},db,
  req=>{if(!Number.isInteger(req.authTenant)||req.authTenant<1)throw Error('AUTHENTICATED_TENANT_REQUIRED');return req.authTenant},
  ()=>new Date('2026-10-24T14:05:09.000Z').toISOString(),
@@ -45,7 +45,8 @@ load(app,()=>{},db,
  async()=>{counters.saved++},
  ()=>{counters.audited++},
  ()=>{counters.activities++},
- mysqlPool
+ mysqlPool,
+ require('../enterprise/v66101-caller-access.cjs')
 );
 const post=app.handlers.get('POST /api/voice/log');
 const get=app.handlers.get('GET /api/voice/logs');
