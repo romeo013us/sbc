@@ -18,6 +18,7 @@ function safeTenantId(value){
 function targetUser(users,actor,previewUserId,tenantId){
  const t=safeTenantId(tenantId),owner=String(actor?.role)==='owner';
  if(!t)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{status:403});
+ if(!owner&&previewUserId)throw Object.assign(new Error('ROLE_ACCESS_DENIED'),{status:403});
  if(owner){
   if(!previewUserId)throw Object.assign(new Error('PREVIEW_USER_ID_REQUIRED'),{status:400});
   const u=(users||[]).find(x=>String(x.id)===String(previewUserId) && x.active!==false&&safeTenantId(x.tenantId??x.tenant_id)===t);
