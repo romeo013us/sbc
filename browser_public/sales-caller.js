@@ -38,6 +38,7 @@ async function load(){
  const result=await api(route);
  if(result.preview!==preview||!['caller','lead_researcher'].includes(result.role))throw Error('Role preview did not match verified session.');
  data=result;
+ const shiftSelector=$('sales-shift-length');if(shiftSelector){try{shiftSelector.value=localStorage.getItem('sbc-sales-shift-minutes-v1:'+result.user.id)==='360'?'360':'240';}catch(_){shiftSelector.value='240';}}
  if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(result.role,result.user.id);
  $('employee-name').textContent=(result.user?.name||'Employee')+' · '+result.role.replace('_',' ');
  $('preview-banner').hidden=!preview;
@@ -110,10 +111,13 @@ function renderShift(){
  const host=$('shift-tasks'),engine=window.SBCRoleShiftPlan;host.replaceChildren();
  if(!engine||!data)return;
  const day=engine.easternDay(new Date()),worker=data.user,role=data.role==='caller'?'sales':data.role,anchor=timeOpen()?.clockIn||null;
- const plan=engine.schedule(role,anchor),store=(()=>{try{return window.localStorage;}catch{return null;}})();
+ const store=(()=>{try{return window.localStorage;}catch{return null;}})();
+ const selector=$('sales-shift-length');if(selector)selector.hidden=role!=='sales';
+ const selected=role==='sales'&&selector&&selector.value==='360'?360:240;
+ const plan=engine.schedule(role,anchor,undefined,{minutes:selected});
  const marked=new Set(engine.read(store,worker,role,day)),completed=plan.items.filter(t=>marked.has(t.id)).length;
  $('task-count').textContent=completed+' of '+plan.items.length+' checked · '+plan.totalMinutes+' planned minutes';
- $('plan-clock').textContent=anchor?'Schedule anchored to verified clock-in: '+stamp(anchor):'Clock in to activate the schedule. Preview times are measured from clock-in.';
+ $('plan-clock').textContent=anchor?'Schedule anchored to verified clock-in: '+stamp(anchor)+' · '+(plan.totalMinutes/60)+'-hour plan.':'Clock in to activate the '+(plan.totalMinutes/60)+'-hour plan. This is a guide, not a payroll setting.';
  $('task-progress').style.width=Math.round(completed/Math.max(plan.items.length,1)*100)+'%';
  for(const t of plan.items){
   const item=el('div',undefined,'item'+(t.status==='current'?' now':'')+(marked.has(t.id)?' done':''));
@@ -264,6 +268,7 @@ function bind(){
  $('clock-in').onclick=()=>clockAction('in');$('clock-out').onclick=()=>clockAction('out');
  $('break-start').onclick=()=>clockAction('break_start');$('break-end').onclick=()=>clockAction('break_end');
  $('lang-es').onclick=()=>renderScripts('es');$('lang-en').onclick=()=>renderScripts('en');
+ const shift=$('sales-shift-length');if(shift){shift.onchange=()=>{try{if(data?.user?.id)localStorage.setItem('sbc-sales-shift-minutes-v1:'+data.user.id,shift.value);}catch(_){ }renderShift();};}
  const keys=$('dtmf-keypad');for(const n of ['1','2','3','4','5','6','7','8','9','*','0','#']){
   const b=el('button',n);b.type='button';b.setAttribute('aria-label','Send tone '+n);b.onclick=()=>{if(!activeCall?.conn){notice('Keypad tones work during a connected call.');return;}try{activeCall.conn.sendDigits(n);}catch(e){notice('Cannot send keypad tone: '+error(e));}};keys.append(b);
  }
