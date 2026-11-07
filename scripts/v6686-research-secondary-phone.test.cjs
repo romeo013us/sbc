@@ -21,7 +21,7 @@ assert.match(js,/secondaryPhoneLabel\(c\)/);
 assert.match(js,/splitSecondaryPhoneNotes\(lead\.notes\)/);
 assert.doesNotMatch(js,/\/api\/crm\/leads\/import|localStorage\./);
 const begin=js.indexOf("var SBC_SECOND_PHONE_TAG=");
-const end=js.indexOf("\nfunction displayLead(c){",begin);
+const end=js.search(/\nfunction displayLead\(c(?:,\s*inQueue)?\)\{/);
 assert.ok(begin>0&&end>begin,'isolated pure-phone helpers must exist in researcher workspace');
 const ctx=vm.createContext({});
 vm.runInContext(js.slice(begin,end),ctx,{timeout:1000});
