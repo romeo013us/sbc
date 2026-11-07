@@ -315,6 +315,7 @@ async function openSbcDialer(customerId){
 }
 
 async function startSbcBusinessCall(customerId){
+  if(window.SBCManualDialer?.isBusy()){toast('Finish the active manual phone call before dialing a CRM lead.');return;}
   // Preserve actionable, redacted Twilio details through asynchronous cleanup.
   const sbcVoiceFailure=e=>{
     const safe=value=>String(value??'').replace(/Bearer\s+\S+/gi,'Bearer [redacted]').replace(/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,'[redacted token]').slice(0,180);
