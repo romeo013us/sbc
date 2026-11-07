@@ -39,3 +39,40 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid #
 @media(max-width:1040px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
 @media(max-width:720px){#desk{grid-template-columns:minmax(0,1fr)}.sidebar{padding:12px;gap:8px}.sidebar nav{display:flex;overflow:auto;gap:6px}.sidebar nav button{white-space:nowrap;font-size:12px;padding:10px}.sidebar .identity,.sidebar .home-link{display:none}main{padding:15px}.metrics{gap:8px}.metrics article{padding:13px}.metrics article strong{font-size:22px}[data-page]{padding:15px}}
 @media(prefers-reduced-motion:reduce){#task-progress{transition:none}}
+
+
+/* V66.101 — align Sales Caller with Lorna's actual workforce shell, not owner Command Center. */
+#desk .nav.sidebar{background:#0f182b;border-right:1px solid #26344b;padding:22px 15px;display:flex;flex-direction:column;gap:27px}
+#desk .nav.sidebar .identity{display:flex;align-items:center;gap:10px;padding:15px 12px;background:#15233b;border:1px solid #273b55;border-radius:13px}
+#desk .nav.sidebar .identity .dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#38d59a}
+#desk .nav.sidebar .identity strong{display:block;font-size:14px;color:#f0f7ff}
+#desk .nav.sidebar .identity small{display:block;font-size:11px;color:#9cafc4}
+#desk .nav.sidebar nav{display:grid;gap:7px}
+#desk .nav.sidebar nav button{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;text-align:left;padding:12px 15px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c6d5e9;font-size:14px;font-weight:600}
+#desk .nav.sidebar nav button:hover,#desk .nav.sidebar nav button.active:not(.queue-nav){background:#1e3354;border-color:#395981;color:#fff}
+#desk .nav.sidebar nav button.queue-nav{background:#322a17;color:#ffe4a7;border:1px solid #a47b2e;font-weight:800}
+#desk .nav.sidebar nav button.queue-nav.active{background:#54401c;border-color:#e0ae47;color:#fff1c6}
+#desk .nav.sidebar nav .queue-nav-count{margin-left:auto;font-size:12px;min-width:20px;text-align:center}
+#desk .nav.sidebar .nav-bottom{margin-top:auto;display:grid;gap:12px}
+#desk .nav.sidebar .signout{display:flex;align-items:center;justify-content:flex-start;width:100%;padding:12px 15px;border:1px solid #41516a;border-radius:10px;background:transparent;color:#c6d5e9}
+#desk main{min-width:0;padding:29px clamp(16px,3vw,44px);max-width:1500px;width:100%;margin:0 auto}
+#desk header.top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px}
+#desk header.top h1{font-size:clamp(24px,2.5vw,34px);margin:7px 0}
+#desk header.top p{color:#9eafc7;margin:0;font-size:14px}
+#desk .welcome{padding:30px;margin:0 0 24px;border-radius:18px;background:linear-gradient(125deg,#183d72,#162842 55%,#122238);border:1px solid #2f5b93}
+#desk .welcome h2{font-size:clamp(23px,3vw,35px);line-height:1.17;max-width:640px;margin:11px 0;color:#f7fbff}
+#desk .welcome p{color:#bed1ea;max-width:630px;line-height:1.65}
+#desk .metrics{gap:14px}
+#desk .metrics article{background:#121e31;border:1px solid #2b3c56;border-radius:14px;padding:20px}
+#desk .metrics article strong{color:#f7fbff}
+html[data-sbc-theme="light"] #desk .nav.sidebar{background:#e7eef8!important;border-color:#b9cbe0!important}
+html[data-sbc-theme="light"] #desk .nav.sidebar .identity{background:#d6e5f5!important;color:#19334c!important;border-color:#a8c5dd!important}
+html[data-sbc-theme="light"] #desk .nav.sidebar .identity strong{color:#15314b!important}
+html[data-sbc-theme="light"] #desk .nav.sidebar nav button:not(.queue-nav){color:#1c3955!important}
+html[data-sbc-theme="light"] #desk .nav.sidebar nav button.active:not(.queue-nav){background:#cbdef4!important;border-color:#86b0d5!important;color:#103b68!important}
+html[data-sbc-theme="light"] #desk .nav.sidebar .signout{color:#214565!important;border-color:#9eb9d1!important}
+html[data-sbc-theme="light"] #desk .metrics article{background:#fff!important;color:#1c334a!important;border-color:#c6d5e8!important}
+html[data-sbc-theme="light"] #desk .metrics article strong{color:#172e46!important}
+html[data-sbc-theme="light"] #desk .welcome{background:linear-gradient(125deg,#d8eafa,#c2ddf4 55%,#e7f4ff)!important;border-color:#8eb3d3!important}
+html[data-sbc-theme="light"] #desk .welcome :is(h2,p,.eyebrow){color:#153a5b!important}
+@media(max-width:720px){#desk .nav.sidebar{padding:12px;gap:8px}#desk .nav.sidebar nav{display:flex;overflow-x:auto;gap:6px;scrollbar-width:thin}#desk .nav.sidebar nav button{white-space:nowrap;font-size:12px;padding:10px 12px}#desk .nav.sidebar .identity{display:none}#desk main{padding:15px}#desk .welcome{padding:20px}}
