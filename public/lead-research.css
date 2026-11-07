@@ -70,3 +70,21 @@
  .training-module-head button{width:100%}
  .lesson-part{padding:11px}
 }
+
+/* SBC researcher correction-first UX: amber is reserved for actionable exceptions. */
+.nav nav button.queue-nav{font-weight:800;border:1px solid #8c6620;color:#ffe6ad;background:#33270f}
+.nav nav button.queue-nav:hover,.nav nav button.queue-nav.active{background:#5e4013;border-color:#f5b94d;color:#fff9e8}
+.nav nav button.queue-nav.queue-has-items{box-shadow:inset 4px 0 0 #fbbf24}
+.queue-nav-count{margin-left:auto;min-width:26px;text-align:center;font-size:12px;line-height:1.6;border-radius:999px;background:#fbbf24;color:#231500;padding:1px 7px}
+.attention-priority{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:20px 23px;margin:0 0 20px;border:2px solid #f4b73d;border-left:7px solid #ffbe38;border-radius:14px;background:#30240e;color:#fff4d1}
+.attention-priority h2{color:#fff8e8;font-size:21px;margin:6px 0 4px}
+.attention-priority p{color:#ffdfac;margin:0;max-width:780px}
+.attention-priority .eyebrow{color:#ffd46b}
+.attention-priority.attention-unknown{border-color:#d7973d;background:#312c21}
+.attention-open{border:1px solid #f6bf57;background:#ffca69;color:#251500;border-radius:10px;padding:11px 15px;font-weight:800}
+.attention-open:hover{background:#ffe19a}
+.priority-queue{border-color:#937034;border-top:4px solid #ffc556}
+.priority-queue h2{color:#ffe5a7}
+.lead-row.needs-correction{border-left:4px solid #ffbf45}
+.lead-row .correction-reason{color:#ffe0a6;font-weight:700}
+@media (max-width:640px){.attention-priority{align-items:stretch}.attention-open{width:100%}}
