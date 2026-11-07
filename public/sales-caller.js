@@ -38,6 +38,7 @@ async function load(){
  const result=await api(route);
  if(result.preview!==preview||!['caller','lead_researcher'].includes(result.role))throw Error('Role preview did not match verified session.');
  data=result;
+ if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(result.role,result.user.id);
  $('employee-name').textContent=(result.user?.name||'Employee')+' · '+result.role.replace('_',' ');
  $('preview-banner').hidden=!preview;
  $('m-leads').textContent=result.metrics.assigned;
