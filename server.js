@@ -2274,14 +2274,20 @@ async function saveData(){
   return saveDataInFlight;
 }
 
-async function mergeAsyncIngestResult(job,result){
+// SBC_V66111_TENANT_SAFE_ASYNC_LEAD_MERGE
+let sbcV66111MergeTail=Promise.resolve();
+async function mergeAsyncIngestResultUnlocked(job,result){
+  const tenantId=Number(job?.tenantId);
+  if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Object.assign(new Error('INGEST_TENANT_REQUIRED'),{code:'INGEST_TENANT_REQUIRED'});
   if(!result?.resultPath)return {ok:false,error:job.error||'Worker result missing.'};
   const stream=fs.createReadStream(result.resultPath,{encoding:'utf8'});
   const rl=readline.createInterface({input:stream,crlfDelay:Infinity});
-  const customers=Array.isArray(db.customers)?db.customers:[];
+  const originalCustomers=Array.isArray(db.customers)?db.customers:[];
+  const customers=originalCustomers.map(c=>({...c}));
   const byEmail=new Map(),byPhone=new Map(),byBusiness=new Map();
-  for(const c of customers){const e=LEAD_INTAKE_ENGINE.normalizeEmail(c.email);if(e)byEmail.set(e,c);const ph=LEAD_INTAKE_ENGINE.normalizePhone(c.phone);if(ph)byPhone.set(ph.replace(/\D/g,''),c);const b=String(c.businessName||'').trim().toLowerCase();if(b)byBusiness.set(b,c);}
+  for(const c of customers){if(Number(c?.tenantId)!==tenantId)continue;const e=LEAD_INTAKE_ENGINE.normalizeEmail(c.email);if(e)byEmail.set(e,c);const ph=LEAD_INTAKE_ENGINE.normalizePhone(c.phone);if(ph)byPhone.set(ph.replace(/\D/g,''),c);const b=String(c.businessName||'').trim().toLowerCase();if(b)byBusiness.set(b,c);}
   let added=0,updated=0,duplicates=0,count=0,quarantined=0,enrichmentQueue=[];
+  let initialSaveCommitted=false;
   try{
     for await(const line of rl){if(!line.trim())continue;let lead;try{lead=JSON.parse(line)}catch{continue}count++;
       if(String(lead.intakeDisposition||'')==='QUARANTINE'){
@@ -2291,17 +2297,28 @@ async function mergeAsyncIngestResult(job,result){
       }
       const existing=byEmail.get(LEAD_INTAKE_ENGINE.normalizeEmail(lead.email))||byPhone.get(LEAD_INTAKE_ENGINE.normalizePhone(lead.phone).replace(/\D/g,''))||byBusiness.get(String(lead.businessName||'').trim().toLowerCase());
       if(existing){duplicates++;if(!existing.contactName&&lead.contactName)existing.contactName=lead.contactName;if(!existing.email&&lead.email)existing.email=lead.email;if(!existing.phone&&lead.phone)existing.phone=lead.phone;if(!existing.website&&lead.website)existing.website=lead.website;if(!existing.industry&&lead.industry)existing.industry=lead.industry;existing.leadScore=Math.max(Number(existing.leadScore||0),Number(lead.leadScore||0));existing.leadTemperature=Number(existing.leadScore||0)>=80?'hot':Number(existing.leadScore||0)>=55?'warm':String(existing.leadTemperature||'cold');existing.updatedAt=now();}
-      else {const customer={id:'lead_'+crypto.randomBytes(8).toString('hex'),...lead,createdAt:now(),updatedAt:now()};customers.push(customer);added++;if(customer.email)byEmail.set(LEAD_INTAKE_ENGINE.normalizeEmail(customer.email),customer);if(customer.phone)byPhone.set(LEAD_INTAKE_ENGINE.normalizePhone(customer.phone).replace(/\D/g,''),customer);if(customer.businessName)byBusiness.set(String(customer.businessName).trim().toLowerCase(),customer);if(customer.website&&enrichmentQueue.length<10)enrichmentQueue.push(customer);}
+      else {const customer={id:'lead_'+crypto.randomBytes(8).toString('hex'),...lead,tenantId,createdAt:now(),updatedAt:now()};customers.push(customer);added++;if(customer.email)byEmail.set(LEAD_INTAKE_ENGINE.normalizeEmail(customer.email),customer);if(customer.phone)byPhone.set(LEAD_INTAKE_ENGINE.normalizePhone(customer.phone).replace(/\D/g,''),customer);if(customer.businessName)byBusiness.set(String(customer.businessName).trim().toLowerCase(),customer);if(customer.website&&enrichmentQueue.length<10)enrichmentQueue.push(customer);}
       if(count%250===0)await new Promise(r=>setImmediate(r));
     }
     db.customers=customers;
     await saveData();
+    initialSaveCommitted=true;
     for(const lead of enrichmentQueue){try{await PUBLIC_ENRICH.enrichCustomer(lead,{timeoutMs:7000});}catch(e){lead.enrichmentStatus='ERROR';lead.enrichmentError=String(e.message||'enrichment failed').slice(0,220);}}
     if(enrichmentQueue.length)await saveData();
     audit({id:'system',name:'SBC Async Ingestion Worker',role:'system'},'async_lead_ingestion_completed',`Async lead ingestion completed: ${count} processed`,{jobId:job.id,batchId:job.batchId,added,updated,duplicates,quarantined,enrichmentQueued:enrichmentQueue.length});
     try{await fs.promises.writeFile(path.join(job.dir,'merged.ok'),JSON.stringify({jobId:job.id,count,added,updated,duplicates,quarantined,completedAt:now()}));}catch{}
     return {ok:true,count,added,updated,duplicates,quarantined};
-  }catch(e){audit({id:'system',name:'SBC Async Ingestion Worker',role:'system'},'async_lead_ingestion_failed',`Async lead ingestion failed: ${e.message}`,{jobId:job.id});throw e;}
+  }catch(e){if(!initialSaveCommitted&&db.customers===customers)db.customers=originalCustomers;audit({id:'system',name:'SBC Async Ingestion Worker',role:'system'},'async_lead_ingestion_failed',`Async lead ingestion failed: ${e.message}`,{jobId:job.id});throw e;}
+}
+
+async function mergeAsyncIngestResult(job,result){
+  // Serialize overlapping worker completions to avoid duplicate lead insertion.
+  const previous=sbcV66111MergeTail;
+  let release;
+  sbcV66111MergeTail=new Promise(resolve=>{release=resolve});
+  await previous;
+  try{return await mergeAsyncIngestResultUnlocked(job,result)}
+  finally{release()}
 }
 ASYNC_INGEST.configure({onComplete:mergeAsyncIngestResult});
 
