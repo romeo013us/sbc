@@ -24,7 +24,8 @@ for(const name of pinned){
 }
 assert(job.includes('node scripts/v6611-verify-stage-inventory.cjs .'),'release inventory must be checked against actual staged repository');
 assert(job.includes('node --check browser_public/app.js'),'desktop/mobile compiled browser bundle must parse');
-assert(job.includes("['public/app.js','browser_public/app.js','SBC-DEPLOY-RECEIPT.json'")&&job.includes('.every(p=>paths.includes(p))'),'publisher must refuse if pinned UI is not committed');
+assert(job.includes("['server.js','SBC-DEPLOY-RECEIPT.json'")&&job.includes('.every(p=>paths.includes(p))'),'publisher must require the upgraded server and all three release attestations');
+assert(job.includes('node scripts/v6611-verify-stage-inventory.cjs .'),'unchanged UI bundles must still be content-verified by full inventory');
 assert.equal((job.match(/git add server\.js enterprise\/v56150-revenue-autopilot\.js/g)||[]).length,1,'exactly one controlled publisher git-add step');
 const addLine=job.split('\n').find(x=>x.includes('git add server.js'));
 const filesLine=job.split('\n').find(x=>x.includes("const files=['server.js'"));
