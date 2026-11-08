@@ -18,6 +18,7 @@ function fixture(){
   put:(path,auth,owner,handler)=>{handlers['PUT '+path]=handler;},
   delete:(path,auth,owner,handler)=>{handlers['DELETE '+path]=handler;}};
  const ctx={app,auth:'AUTH',ownerOnly:'OWNER',db,Number,String,Object,Array,JSON,Set,
+  SBC_V66120_OB_COMMERCE:require('../enterprise/v66120-officebox-commerce-boundary.cjs'),
   sbcV6606QuoteWriterReady:()=>true,requireRequestTenant:req=>req.tenantId,
   orderParsed:o=>{try{return JSON.parse(o.notes||'{}')}catch{return {}}},
   addActivity:()=>{},now:()=>new Date().toISOString(),id:()=> 'synthetic_new_order',saveData:async()=>{events.push('save')}};
@@ -37,6 +38,8 @@ function fixture(){
  assert.equal((await x.invoke('POST','/api/orders',1,{customerName:'A',product:'Cards',status:'Paid'})).code,409);
  assert.equal((await x.invoke('POST','/api/orders',1,{customerName:'A',product:'Cards',customerId:'c2'})).code,404);
  assert.equal((await x.invoke('POST','/api/orders',1,{customerName:'A',product:'Cards',notes:JSON.stringify({squarePaymentStatus:'PAID'})})).code,409);
+ assert.equal((await x.invoke('POST','/api/orders',1,{customerName:'A',product:'Cards',notes:JSON.stringify({officeBoxSku:'OFFICE_BOX_BUSINESS'})})).code,409);
+ assert.equal((await x.invoke('POST','/api/orders',1,{customerName:'A',product:'Cards',notes:JSON.stringify({items:[{id:'office_box_team',name:'Office Box Team'}]})})).code,409);
  assert.equal((await x.invoke('POST','/api/orders',1,{customerName:'A',product:'Cards',price:12,customerId:'c1'})).code,201);
  assert.equal((await x.invoke('PUT','/api/orders/:id',1,{product:'Intercepted'},'o2')).code,404);
  assert.equal(x.db.orders.find(o=>o.id==='o2').product,'Hosting');

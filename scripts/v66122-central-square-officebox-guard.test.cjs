@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const stage=require('./v66122-stage-central-square-officebox-guard.cjs');
+const policy=require('../enterprise/v66120-officebox-commerce-boundary.cjs');
+const source=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8');
+const patched=stage.patchServer(source);
+assert.equal(stage.patchServer(patched),patched);
+assert(patched.includes(stage.MARK));
+const start=patched.indexOf('async function createSquarePaymentLinkForOrder(o,req)');
+const pre=patched.slice(start,start+2100);
+assert(pre.includes('SBC_V66120_OB_COMMERCE.guardOneTimeSquareSale'));
+assert(pre.indexOf(stage.MARK)<pre.indexOf('squarePaymentLink?.url'),'must refuse even when stale Square link already exists');
+assert(policy.guardOneTimeSquareSale({name:'Office Box Business'},[]).ok===false);
+assert(policy.guardOneTimeSquareSale({name:'SBC Business Starter',items:[{id:'website'}]},[{id:'website'}]).ok===true);
+if(process.argv.includes('--staged'))assert.equal(source,patched);
+console.log('[SBC V66.122] PASS: all order-based Square link paths blocked for recurring Office Box; normal SBC packages unaffected');

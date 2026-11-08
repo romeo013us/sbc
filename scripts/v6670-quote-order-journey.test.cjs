@@ -39,7 +39,7 @@ const scope={
  app:{post:(url,...args)=>{handlers[url]=args.at(-1)}},
  auth:()=>{},v25SalesAccess:()=>{},
  FINANCIAL_GOVERNOR:{middleware:()=>()=>{}},
- SBC_V6670_QUOTE_ORDER:helper,db,Math,JSON,String,Number,Boolean,
+ SBC_V6670_QUOTE_ORDER:helper,SBC_V66120_OB_COMMERCE:require('../enterprise/v66120-officebox-commerce-boundary.cjs'),db,Math,JSON,String,Number,Boolean,
  v25OrderItems:a=>Array.isArray(a)?a:[],
  totals:a=>a.reduce((n,i)=>n+Number(i.unitPrice||0)*Number(i.qty||1),0),
  v25BundleMatch:()=>null,requireRequestTenant:req=>req.tenantId,
@@ -80,7 +80,12 @@ async function post(body,tenantId=1){
   assert.equal(writes,0,'invalid requests never save data');
   assert.equal(payLinks,0,'invalid requests never attempt payment');
  }
- const good=await post({...base,clientRequestId:'REQ_CUST_JOURNEY_001'});
+ const blocked=await post({...base,items:[{id:'office_box_business',name:'Office Box Business',qty:1,unitPrice:99}]});
+ assert.equal(blocked.code,422);
+ assert.equal(blocked.payload.code,'OFFICEBOX_RECURRING_CHECKOUT_REQUIRED');
+ assert.equal(db.orders.length,0,'refused recurring plan cannot create an SBC sales order');
+ assert.equal(payLinks,0,'refused recurring plan cannot create a Square payment link');
+  const good=await post({...base,clientRequestId:'REQ_CUST_JOURNEY_001'});
  assert.equal(good.code,201);
  assert.equal(db.orders.length,1);
  assert.equal(payLinks,1);
