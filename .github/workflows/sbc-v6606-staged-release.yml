@@ -86,6 +86,7 @@ jobs:
           node scripts/v66112-officebox-postcommit.test.cjs
           node scripts/v66120-officebox-commerce-boundary.test.cjs
           node scripts/v66122-central-square-officebox-guard.test.cjs
+          node scripts/v66123-activity-text-safety.test.cjs
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66115-dropzone-launch-truth.test.cjs
           node scripts/v66117-stage-print-desk.cjs
@@ -197,6 +198,7 @@ jobs:
           node scripts/v66112-officebox-postcommit.test.cjs
           node scripts/v66120-officebox-commerce-boundary.test.cjs --staged
           node scripts/v66122-central-square-officebox-guard.test.cjs --staged
+          node scripts/v66123-activity-text-safety.test.cjs
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs --staged
           node scripts/v66110-stage-safe-launch-activation.cjs --verify-staged
@@ -339,6 +341,7 @@ jobs:
             node "$tmp/scripts/v66112-officebox-postcommit.test.cjs"
             node "$tmp/scripts/v66120-officebox-commerce-boundary.test.cjs" --staged
             node "$tmp/scripts/v66122-central-square-officebox-guard.test.cjs" --staged
+            node "$tmp/scripts/v66123-activity-text-safety.test.cjs"
             node "$tmp/scripts/v66115-dropzone-launch-truth.test.cjs" --staged
             node "$tmp/scripts/v66117-print-desk.test.cjs" --staged
             node "$tmp/scripts/v66117-stage-print-desk-ui.cjs" --verify-staged
