@@ -1,6 +1,16 @@
 'use strict';
 const assert=require('node:assert/strict');
 const api=require('../enterprise/v66112-officebox-postcommit.cjs');
+const fs=require('node:fs'),path=require('node:path');
+const stage=require('./v66112-stage-officebox-postcommit.cjs');
+const stageSource=fs.readFileSync(path.resolve(__dirname,'..','server.js'),'utf8');
+const stageTarget=stage.patchServer(stageSource);
+assert.equal(stage.patchServer(stageTarget),stageTarget,'Office Box V2 staged patch must be idempotent');
+assert(stageTarget.includes('SBC_V66112_PAID_ORDER_AUTO_V2'));
+assert(stageTarget.includes('SBC_V66112_OFFICEBOX_COMMITTED_OWNER_RECONCILIATION'));
+assert(stageTarget.indexOf('records.splice(5000); await saveData();')<stageTarget.indexOf('SBC_V66112_PAID_ORDER_AUTO_V2'),'auto-dispatch must follow committed payment');
+assert(stageTarget.includes("if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED)"));
+if(process.argv.includes('--staged'))assert.equal(stageTarget,stageSource,'staged runtime must contain V2 post-commit automation');
 const crypto=require('node:crypto');
 const order={id:'ord_officebox_abc123',customer_id:'cust_officebox_abc123',product:'Office Box Business',status:'Paid',price:349,notes:JSON.stringify({officeBoxSku:'OFFICE_BOX_BUSINESS',squareOrderId:'square_order_abc123',squarePaymentId:'square_payment_abc123',squarePaymentStatus:'PAID'})};
 const customer={id:'cust_officebox_abc123',business_name:'Synthetic Auto Detail',email:'synthetic@example.com',industry:'Auto Detailing'};
