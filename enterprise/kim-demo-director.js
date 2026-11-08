@@ -44,7 +44,14 @@ async function callOpenAI(prompt){
   try{
     const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(Number(process.env.SBC_DEMO_AI_TIMEOUT_MS||6500)),body:JSON.stringify({model,instructions:'You are Kim, SBC Demo Director and senior website strategist. Design sales-ready websites for real businesses. Return JSON only. Never invent certifications, awards, years in business, testimonials, guarantees, prices, credentials, or other factual claims not supplied. Make the design specific to the industry, audience, business personality and supplied brand assets. Avoid generic blue SaaS templates.',input:[{role:'user',content:prompt}],reasoning:{effort:'low'},max_output_tokens:1400})});
     const j=await r.json(); if(!r.ok)return null;
-    let raw=String(j.output_text||'').trim().replace(/^```json\s*|\s*```$/g,'');
+    // The raw REST Responses API returns text in output[].content[]; the
+    // SDK-only output_text convenience field is not always present.
+    const rawText=typeof j.output_text==='string'?j.output_text:
+      (Array.isArray(j.output)?j.output:[]).filter(item=>item?.type==='message')
+        .flatMap(item=>Array.isArray(item.content)?item.content:[])
+        .filter(chunk=>chunk?.type==='output_text'&&typeof chunk.text==='string')
+        .map(chunk=>chunk.text).join('');
+    let raw=String(rawText||'').trim().replace(/^\`\`\`json\s*|\s*\`\`\`$/g,'');
     return JSON.parse(raw);
   }catch{return null}
 }
