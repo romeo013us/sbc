@@ -11,7 +11,7 @@ function styleFor(demo){
   if(['archival','swiss','editorial','property','culinary','care','immersive'].includes(requested)) return 'editorial';
   if(requested==='minimal') return 'minimal';
   if(['authority','professional'].includes(requested)) return 'professional';
-  if(['tactile','glass','glassmorphism','technology','modern-tech','bento','automotive','industrial','bold','split','asymmetric','bold-service'].includes(requested)) return 'tactile';
+  if(['tactile','glass','glassmorphism','technology','modern-tech','bento','storefront','automotive','industrial','bold','split','asymmetric','bold-service'].includes(requested)) return 'tactile';
   return 'generative';
 }
 
