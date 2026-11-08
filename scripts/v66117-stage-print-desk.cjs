@@ -19,7 +19,7 @@ function patchServer(source){
  "   const print=require('./enterprise/v66117-print-fulfillment-truth.cjs');",
  "   const payment=require('./enterprise/v6640-payment-evidence.cjs');",
  "   const summary=print.summarize({tenantId,orders:db.orders,jobs:megaData().fulfillmentJobs,",
- "      paymentConfirmed:order=>payment.confirmedPaid(order),limit:req.query.limit||100});",
+ "      paymentConfirmed:order=>payment.providerCapturedSquare(order),limit:req.query.limit||100});",
  "   res.setHeader('Cache-Control','no-store');",
  "   return res.json({ok:true,...summary});",
  "  }catch(e){return res.status(Number(e?.status)||400).json({ok:false,code:String(e?.code||'PRINT_DESK_UNAVAILABLE')});}",
@@ -42,7 +42,7 @@ function patchServer(source){
 function verify(code){
  assert(code.includes(MARK),'staged truth patch missing');
  assert(code.includes("app.get('/api/owner/print-desk',auth,ownerOnly"),'print desk must be owner-only');
- assert(code.includes("payment.confirmedPaid(order)"),'use actual payment proof predicate');
+ assert(code.includes("payment.providerCapturedSquare(order)"),'use existing strict Square capture proof predicate');
  assert(!code.includes('vendorOrderId||'+String.fromCharCode(96)+'MANUAL-'),'synthetic receipt must be removed');
  assert(code.includes("code:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED'"),'invalid receipt must fail explicitly');
  assert(code.includes("async function handleSquarePaymentEvent("),'must preserve Square payment handler');
