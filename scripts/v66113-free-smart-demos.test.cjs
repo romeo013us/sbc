@@ -16,9 +16,9 @@ const {buildInquiry}=require('../enterprise/sbc-demo-interactive-v1');
    ['salon and beauty','Explore Services','editorial'],
    ['pressure washing contractor','Service Overview','tactile'],
    ['restaurant','Menu & Offerings','editorial'],
-   ['mobile notary','Document Services','generative'],
-   ['legal services','Service Areas','editorial'],
-   ['retail','Product Categories','generative']
+   ['mobile notary','Document Services','tactile'],
+   ['legal services','Service Areas','professional'],
+   ['retail','Product Categories','tactile']
   ];
   const layouts=new Set();
   for(const [industry,service,expectedStyle]of cases){
