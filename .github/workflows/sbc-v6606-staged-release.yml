@@ -84,6 +84,7 @@ jobs:
           node scripts/v66111-tenant-safe-ingest-war.test.cjs
           node scripts/v66112-stage-officebox-postcommit.cjs
           node scripts/v66112-officebox-postcommit.test.cjs
+          node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
@@ -175,10 +176,15 @@ jobs:
           SBC_V66111_ISOLATED_STAGE=YES node scripts/v66111-stage-tenant-safe-ingest.cjs --apply
           SBC_V66112_ISOLATED_STAGE=YES node scripts/v66112-stage-officebox-postcommit.cjs --apply
           node scripts/v66112-officebox-postcommit.test.cjs
+          node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs --staged
           node scripts/v66110-stage-safe-launch-activation.cjs --verify-staged
           node scripts/v66110-gateway.test.cjs --staged
           node --check enterprise/v56150-revenue-autopilot.js
+          node --check enterprise/kim-demo-director.js
+          node --check enterprise/sbc-site-design-engine.js
+          node --check enterprise/sbc-demo-interactive-v1.js
+          node --check public/sbc-demo-interactive-v1.js
           node --check server.js
           node --check public/app.js
           node --check browser_public/app.js
