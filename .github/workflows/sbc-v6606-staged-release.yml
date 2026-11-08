@@ -86,6 +86,9 @@ jobs:
           node scripts/v66112-officebox-postcommit.test.cjs
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66115-dropzone-launch-truth.test.cjs
+          node scripts/v66117-stage-print-desk.cjs
+          node scripts/v66117-print-desk.test.cjs
+          node --check enterprise/v66117-print-fulfillment-truth.cjs
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
@@ -177,6 +180,9 @@ jobs:
           SBC_V66111_ISOLATED_STAGE=YES node scripts/v66111-stage-tenant-safe-ingest.cjs --apply
           SBC_V66112_ISOLATED_STAGE=YES node scripts/v66112-stage-officebox-postcommit.cjs --apply
           SBC_V66115_ISOLATED_STAGE=YES node scripts/v66115-stage-dropzone-launch-truth.cjs --apply
+          SBC_V66117_ISOLATED_STAGE=YES node scripts/v66117-stage-print-desk.cjs --apply
+          node scripts/v66117-stage-print-desk.cjs --verify-staged
+          node scripts/v66117-print-desk.test.cjs --staged
           node scripts/v66115-stage-dropzone-launch-truth.cjs --verify-staged
           node scripts/v66115-dropzone-launch-truth.test.cjs --staged
           node scripts/v66112-officebox-postcommit.test.cjs
@@ -321,6 +327,7 @@ jobs:
             node "$tmp/scripts/v66111-tenant-safe-ingest-war.test.cjs" --staged
             node "$tmp/scripts/v66112-officebox-postcommit.test.cjs"
             node "$tmp/scripts/v66115-dropzone-launch-truth.test.cjs" --staged
+            node "$tmp/scripts/v66117-print-desk.test.cjs" --staged
             node "$tmp/scripts/v66110-gateway.test.cjs" --staged
             node "$tmp/scripts/v6690-voice-role-authorization.test.cjs" --staged
             node "$tmp/scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs" --staged
