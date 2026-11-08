@@ -10,6 +10,7 @@ const INDUSTRY_PLAYBOOK = [
   {match:/account|bookkeep|tax|finance|insurance|financial/i,style:'professional',primary:'#123047',accent:'#19a974',layout:'structured',sections:['services','expertise','about','faq','consultation','contact'],cta:'Talk With Us',tone:'clear, dependable, modern professional'},
   {match:/medical|dental|clinic|therapy|health|chiropract|wellness/i,style:'care',primary:'#155e75',accent:'#14b8a6',layout:'calm',sections:['services','providers','patient-info','faq','booking','contact'],cta:'Book an Appointment',tone:'calm, reassuring, accessible, trustworthy'},
   {match:/auto|mechanic|tire|collision|detailing|car wash/i,style:'automotive',primary:'#111827',accent:'#ef4444',layout:'bold',sections:['services','work','reviews','service-area','quote','contact'],cta:'Book Service',tone:'bold, technical, high-confidence, visual'},
+  {match:/retail|e-commerce|boutique|local store/i,style:'storefront',primary:'#17233a',accent:'#ea7a36',layout:'bento',sections:['categories','featured','store-info','customer-inquiry','contact'],cta:'Explore Products',tone:'welcoming, product-forward, clear, local'},
   {match:/agency|marketing|software|saas|tech|ai|cyber|digital/i,style:'technology',primary:'#111827',accent:'#7c3aed',layout:'generative',sections:['capabilities','work','process','about','faq','contact'],cta:'Start a Conversation',tone:'sharp, innovative, sophisticated, minimal'},
 ];
 
@@ -35,28 +36,56 @@ function safePlan(input, fallback){
 }
 
 async function callOpenAI(prompt){
+  // Explicit opt-in: missing/empty API credits must never slow down demo creation.
+  if(String(process.env.SBC_DEMO_AI_ENABLED||'false').toLowerCase()!=='true')return null;
   const key=process.env.OPENAI_API_KEY;if(!key)return null;
-  const model=process.env.SBC_DEMO_AI_MODEL||process.env.SBC_AI_MODEL||'gpt-5.6-luna';
+  // Demo-specific low-cost model; do not inherit a costly global reasoning model.
+  const model=process.env.SBC_DEMO_AI_MODEL||'gpt-6-luna';
   try{
     const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(Number(process.env.SBC_DEMO_AI_TIMEOUT_MS||6500)),body:JSON.stringify({model,instructions:'You are Kim, SBC Demo Director and senior website strategist. Design sales-ready websites for real businesses. Return JSON only. Never invent certifications, awards, years in business, testimonials, guarantees, prices, credentials, or other factual claims not supplied. Make the design specific to the industry, audience, business personality and supplied brand assets. Avoid generic blue SaaS templates.',input:[{role:'user',content:prompt}],reasoning:{effort:'low'},max_output_tokens:1400})});
     const j=await r.json(); if(!r.ok)return null;
-    let raw=String(j.output_text||'').trim().replace(/^```json\s*|\s*```$/g,'');
+    // The raw REST Responses API returns text in output[].content[]; the
+    // SDK-only output_text convenience field is not always present.
+    const rawText=typeof j.output_text==='string'?j.output_text:
+      (Array.isArray(j.output)?j.output:[]).filter(item=>item?.type==='message')
+        .flatMap(item=>Array.isArray(item.content)?item.content:[])
+        .filter(chunk=>chunk?.type==='output_text'&&typeof chunk.text==='string')
+        .map(chunk=>chunk.text).join('');
+    let raw=String(rawText||'').trim().replace(/^\`\`\`json\s*|\s*\`\`\`$/g,'');
     return JSON.parse(raw);
   }catch{return null}
 }
 
+// SBC V66.113: deterministic, zero-token demo content for every industry.
+// Industry examples are concepts, NEVER claims about an unverified business.
+const SERVICE_EXAMPLES=[
+ {match:/auto|mechanic|tire|collision|detailing|car wash/i,items:[['Vehicle Service','A clear service overview with an easy path to request an appointment.'],['Tires & Maintenance','Example categories that can be replaced with verified services.'],['Get a Service Estimate','A simple way for a customer to describe what their vehicle needs.']],headline:name=>name+' — Make your next service easy'},
+ {match:/salon|beauty|barber|spa|nail|lash/i,items:[['Explore Services','A simple overview of available appointment categories.'],['Book a Consultation','Help visitors choose a next step before an appointment.'],['Client Care','Make contact information and follow-up easy to find.']],headline:name=>name+' — Your next appointment starts here'},
+ {match:/roof|contractor|construction|hvac|plumb|electric|handyman|clean|landscap|pressure/i,items:[['Service Overview','Show the work your business accepts and the areas it serves.'],['Request an Estimate','Let customers describe a project before a consultation.'],['Project Scheduling','Make the next step clear from the first inquiry.']],headline:name=>name+' — Start your next project'},
+ {match:/restaurant|cafe|bakery|food|cater|grill/i,items:[['Menu & Offerings','A clear place for current menu details when provided.'],['Hours & Location','Make verified operating information easy to discover.'],['Event or Table Inquiry','A focused next step for customers looking to visit or book.']],headline:name=>name+' — Discover what is on offer'},
+ {match:/notary|apostille/i,items:[['Document Services','Help customers understand which document types can be reviewed.'],['Appointments','Make scheduling an appointment easier.'],['Service Area','Explain where appointments can be arranged.']],headline:name=>name+' — Make the next step simple'},
+ {match:/law|legal|attorney|finance|account|insurance|adjust/i,items:[['Service Areas','Introduce the categories relevant to the practice.'],['Consultation Requests','Give prospective clients a clear next step.'],['Document Preparation','Explain what information to have ready for a conversation.']],headline:name=>name+' — Start with a conversation'},
+ {match:/retail|store|shop|e-commerce/i,items:[['Product Categories','Organize product highlights for faster browsing.'],['Store Information','Show location, hours, and ways to get in touch.'],['Customer Inquiries','Make product questions easy to submit.']],headline:name=>name+' — Explore what is available'}
+];
+function freeSmartServices(demo,industry){
+ const provided=Array.isArray(demo.services)?demo.services:[];
+ const explicit=provided.map(s=>typeof s==='string'?{name:cleanString(s,80),text:'Learn about this service and request more information.'}:{name:cleanString(s?.name||s?.title,80),text:cleanString(s?.text||s?.description,220)||'Contact the business to learn more.'}).filter(s=>s.name);
+ if(explicit.length)return {services:explicit.slice(0,6),verifiedFromUser:true};
+ const kind=SERVICE_EXAMPLES.find(t=>t.match.test(industry));
+ const rows=kind?.items||[['Service Information','Introduce the services this business confirms it offers.'],['Request Details','Create a clear path for inquiries or quotes.'],['Contact & Location','Make business contact details easy to find.']];
+ return {services:rows.map(([name,text])=>({name,text})),verifiedFromUser:false};
+}
+function freeSmartHeadline(name,industry){const k=SERVICE_EXAMPLES.find(t=>t.match.test(industry));return k?.headline(name)||name+' — See what is possible';}
+
 async function direct(demo){
   const c=demo.customer||{}; const industry=cleanString(demo.industry||'Local Business',100); const pb=playbook(industry);
-  const services=Array.isArray(demo.services)&&demo.services.length?demo.services.slice(0,6):[
-    {name:'Core Services',text:'Clear information about the services this business provides.'},
-    {name:'Why Customers Choose Us',text:'A focused explanation of the customer experience and value.'},
-    {name:'Easy Next Step',text:'A simple path for visitors to contact, book or request a quote.'}
-  ];
-  const fallback={businessName:cleanString(c.businessName||c.contactName||'Your Business',120),industry,primaryColor:pb.primary,accentColor:pb.accent,style:pb.style,layout:pb.layout,tone:pb.tone,sections:pb.sections,cta:pb.cta,headline:cleanString(demo.headline,180)||`${c.businessName||'Your Business'} — ${pb.cta}`,subheadline:cleanString(demo.subheadline,320)||`A ${pb.tone} digital experience built around what ${c.businessName||'this business'} actually does.`,about:cleanString(demo.about,700)||`${c.businessName||'This business'} serves customers${c.city?` in ${c.city}`:''} with a focused, professional experience.`,services};
+  const free=freeSmartServices(demo,industry);
+  const services=free.services;
+  const fallback={businessName:cleanString(c.businessName||c.contactName||'Your Business',120),industry,primaryColor:pb.primary,accentColor:pb.accent,style:pb.style,layout:pb.layout,tone:pb.tone,sections:pb.sections,cta:pb.cta,headline:cleanString(demo.headline,180)||freeSmartHeadline(cleanString(c.businessName||c.contactName||'Your Business',120),industry),subheadline:cleanString(demo.subheadline,320)||`Explore services, request the next step, and reach ${c.businessName||'the business'} easily from any device.`,about:cleanString(demo.about,700)||`A proposed online experience for ${c.businessName||'this business'}${c.city?` in ${c.city}`:''}, with service information and a clearer path to contact. Details should be confirmed with the business before publication.`,services};
   const intelligence=demo.leadIntelligence||{};
   const prompt=`Business profile:\n${JSON.stringify({businessName:fallback.businessName,industry,city:c.city||'',services,about:demo.about||'',headline:demo.headline||'',subheadline:demo.subheadline||'',brandColors:{primary:demo.primaryColor||'',accent:demo.accentColor||''},contactName:c.contactName||''})}\n\nLIVE BUSINESS INTELLIGENCE (public-web audit only):\n${JSON.stringify({websiteStatus:intelligence.websiteStatus||'',opportunities:intelligence.opportunities||[],strengths:intelligence.strengths||[],serviceHints:intelligence.serviceHints||[],websiteAudit:intelligence.websiteAudit?{title:intelligence.websiteAudit.title,description:intelligence.websiteAudit.description,headings:intelligence.websiteAudit.headings,ctas:intelligence.websiteAudit.ctas,gaps:intelligence.websiteAudit.gaps,themeColor:intelligence.websiteAudit.themeColor,socials:intelligence.websiteAudit.socials}:null})}\n\nIndustry playbook:\n${JSON.stringify(pb)}\n\nCreate a premium website blueprint. Return these JSON keys only: businessName, industry, primaryColor, accentColor, style, layout, tone, sections, cta, headline, subheadline, about, services (array of {name,text}). Keep unsupported factual claims out.`;
-  const ai=await callOpenAI(prompt);
-  const plan=safePlan(ai,fallback); plan.visualSystem=plan.visualSystem||visualSystemFor(industry); plan.mediaIntent={hero:true,gallery:true,motion:true,video:'customer-supplied-or-motion-fallback'}; return {plan,aiUsed:Boolean(ai),playbook:pb};
+  const ai=await callOpenAI(prompt); // Skipped entirely unless the owner expressly enables paid AI.
+  const plan=safePlan(ai,fallback); plan.examplesOnly=!free.verifiedFromUser; plan.visualSystem=plan.visualSystem||visualSystemFor(industry); plan.mediaIntent={hero:true,gallery:true,motion:true,video:'customer-supplied-or-motion-fallback'}; return {plan,aiUsed:Boolean(ai),playbook:pb,source:ai?'paid-ai':'free-industry-rules',serviceClaimsConfirmed:free.verifiedFromUser};
 }
 
 function visualSystemFor(industry=''){
@@ -70,4 +99,4 @@ function visualSystemFor(industry=''){
   return 'premium-hybrid';
 }
 
-module.exports={direct,playbook};
+module.exports={direct,playbook,freeSmartServices,freeSmartHeadline};
