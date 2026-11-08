@@ -26,6 +26,6 @@ for(let i=0;i<lines.length;i++){
  i=j;
 }
 assert(snippets.length>=3,'expected inline publisher code for source, candidate and rerun integrity');
-assert(snippets.some(x=>x.includes("paths.length>=4")&&x.includes("['server.js','SBC-DEPLOY-RECEIPT.json'")&&x.includes(".every(p=>paths.includes(p))")),
+assert(snippets.some(x=>x.includes("paths.length>=3")&&x.includes("['SBC-DEPLOY-RECEIPT.json','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json'")&&x.includes(".every(p=>paths.includes(p))")),
   'missing valid list-based publisher asset allowlist');
 console.log('[SBC V66.119] PASS: '+snippets.length+' publisher inline JS heredocs parsed; no invalid release-master JavaScript');
