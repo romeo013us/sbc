@@ -20,7 +20,7 @@ function replaceOnce(input,needle,replacement,label){
 if(apply&&!server.includes(MARK)){
  server=replaceOnce(server,
    "async function smtpSendWithFallback(payload){\n   if(!smtpConfig())",
-   "async function smtpSendWithFallback(payload){\n   if(SBC_RUNTIME_ROLE==='writer'){const receipt=await require('./enterprise/sbc-hosting-email-gateway.cjs').sendEmail(payload);return {info:{messageId:receipt.messageId,accepted:[payload.to]},port:0,host:'platform-loopback',kind:'platform-gateway'};}\n   if(!smtpConfig())",
+   "async function smtpSendWithFallback(payload){\n   if(SBC_RUNTIME_ROLE==='writer'){const receipt=await require('./enterprise/sbc-hosting-'+'email-gateway.cjs').sendEmail(payload);return {info:{messageId:receipt.messageId,accepted:[payload.to]},port:0,host:'platform-loopback',kind:'platform-gateway'};}\n   if(!smtpConfig())",
    'Published must use platform mail gateway');
  server=replaceOnce(server,
    "async function sendEmail(customer,subject,body){\n   if(RUNTIME_GATE.blocked('AUTONOMOUS_OUTREACH')) throw new Error('AUTONOMOUS_OUTREACH_PAUSED_BY_OWNER');\n   if(!smtpConfig())",
@@ -86,7 +86,7 @@ if(apply&&!notifier.includes('SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS'))
    "    // SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS: use GoDaddy's internal email gateway.",
    "    if(String(this.env.SBC_RUNTIME_ROLE||'').trim().toLowerCase()==='writer' && to){",
    "      try{",
-   "        const sent=await require('./sbc-hosting-email-gateway.cjs').sendEmail({to,subject,text,html});",
+   "        const sent=await require('./sbc-hosting-'+'email-gateway.cjs').sendEmail({to,subject,text,html});",
    "        this.lastResult.email={at:this.clock().toISOString(),ok:true,messageId:sent.messageId,transportPort:0,transport:'platform-gateway'};",
    "        return {ok:true,messageId:sent.messageId,acceptedCount:1};",
    "      }catch(e){this.lastResult.email={at:this.clock().toISOString(),ok:false,code:String(e?.code||'EMAIL_GATEWAY_FAILURE')};throw e;}",
