@@ -81,6 +81,7 @@ jobs:
           node scripts/v66108-war-gate.test.cjs
           node scripts/v66109-workforce-audio.test.cjs
           node scripts/predeploy-war-test.js
+          node scripts/v66111-tenant-safe-ingest-war.test.cjs
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
@@ -169,6 +170,8 @@ jobs:
           node scripts/lorna-training-daily-missions.test.cjs
           node scripts/lead-research-fair-goal.test.cjs
           node scripts/v66110-stage-safe-launch-activation.cjs --apply
+          SBC_V66111_ISOLATED_STAGE=YES node scripts/v66111-stage-tenant-safe-ingest.cjs --apply
+          node scripts/v66111-tenant-safe-ingest-war.test.cjs --staged
           node scripts/v66110-stage-safe-launch-activation.cjs --verify-staged
           node scripts/v66110-gateway.test.cjs --staged
           node --check enterprise/v56150-revenue-autopilot.js
@@ -301,6 +304,7 @@ jobs:
           NODE
             node --check "$tmp/server.js"
             node "$tmp/scripts/v66110-stage-safe-launch-activation.cjs" --verify-staged
+            node "$tmp/scripts/v66111-tenant-safe-ingest-war.test.cjs" --staged
             node "$tmp/scripts/v66110-gateway.test.cjs" --staged
             node "$tmp/scripts/v6690-voice-role-authorization.test.cjs" --staged
             node "$tmp/scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs" --staged
