@@ -58,6 +58,15 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   createFulfillmentJobsForOrder:async()=>[],processReadyFulfillmentJobs:async()=>{},
   vendorCapabilities:()=>({}),audit:()=>{},CATALOG:{},
   sendBig3OfficeBoxHandoff:async()=>{events.push('handoff');return {ok:true,skipped:true}},
+  require:(specifier)=>{
+   // The isolated VM has no Node require. Model the new post-commit V2
+   // adapter as unavailable without contacting any real provider.
+   if(specifier==='./enterprise/v66112-officebox-postcommit.cjs')return {
+     skuFor:notes=>/^(OFFICE_BOX_)/.test(String(notes?.officeBoxSku||notes?.items?.[0]?.sku||''))?'OFFICE_BOX_BUSINESS':'',
+     reconcile:async()=>{events.push('v2-postcommit-attempt');throw Error('SYNTHETIC_V2_PROVIDER_UNAVAILABLE')}
+   };
+   throw Error('UNEXPECTED_LIVE_DEPENDENCY_'+specifier);
+  },
   sendOrderIntake:async()=>{events.push('intake');return {sent:false}},
   TENANT_DEFAULT_ID:7,ensureProjectForCustomer:()=>{throw Error('no customer provisioning')},
   V566_RAILS:{subscriptionRecovery:()=>({eligible:false})},V562NEXT:{billingFriction:()=>null},
@@ -80,6 +89,10 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   assert.equal(f.order.paymentStatus,'Paid');
   assert.equal(f.events.filter(x=>x==='save').length,1,'payment is still saved exactly once');
   assert.equal(f.events.filter(x=>x==='provider-readback').length,1,'Square payment must be independently retrieved before settlement');
+  // V2 may be attempted only post-commit for an explicitly sold Office Box SKU;
+  // its fake provider always rejects and makes no network call.
+  assert.equal(f.events.filter(x=>x==='v2-postcommit-attempt').length<=1,true,'V2 must not be called twice per payment');
+  if(index===4)assert.equal(f.events.includes('v2-postcommit-attempt'),false,'normal website sale is not Office Box');
   const calls=f.events.filter(x=>x==='handoff').length;
   assert.equal(calls,index===4?1:0,
    'explicit Office Box order cannot use legacy pre-commit handoff: '+JSON.stringify(options));
