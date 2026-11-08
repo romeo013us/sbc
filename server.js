@@ -1182,7 +1182,33 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
       }catch(e){addActivity('subscription_recovery_error',`Payment recovery could not be queued for ${order.id}: ${e.message}`,{orderId:order.id});}
     }
   } else if(status){order.paymentStatus=status;updateOrderParsed(order,{squarePaymentStatus:status});}
-  records.splice(5000); await saveData(); return {ok:true,orderId:order.id,status:rec.status,squarePaymentId:rec.squarePaymentId};
+  records.splice(5000); await saveData();
+// SBC_V66112_PAID_ORDER_AUTO_V2: after committed Square capture, no new payments or vendor purchases.
+if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED){
+  const obv2=require('./enterprise/v66112-officebox-postcommit.cjs');
+  const details=orderParsed(order);
+  if(obv2.skuFor(details) && !details.sbcLaunchQa && !details.officeBoxV2CorrelationId){
+    try{
+      const handoff=await obv2.reconcile({tenantId:Number(order.tenantId||TENANT_DEFAULT_ID),orderId:order.id},{
+        pool:mysqlPool,squareApi,fetch:globalThis.fetch,baseUrl:process.env.SBC_OFFICE_BOX_URL,
+        secret:process.env.SBC_WEBHOOK_SECRET,locationId:process.env.SQUARE_LOCATION_ID
+      });
+      if(handoff.activationUrl){
+        updateOrderParsed(order,{officeBoxV2CorrelationId:handoff.correlationId,officeBoxV2Status:handoff.status,officeBoxActivationUrl:handoff.activationUrl,officeBoxV2ReconciledAt:now()});
+        await saveData();
+        const buyer=(db.customers||[]).find(c=>String(c.id)===handoff.customerId&&Number(c.tenantId)===Number(order.tenantId||TENANT_DEFAULT_ID));
+        if(buyer?.email && !orderParsed(order).officeBoxActivationSentAt){
+          try{
+            await require('./enterprise/sbc-hosting-email-gateway.cjs').sendEmail({to:buyer.email,subject:'Activate your Successful By Choice Office Box',text:'Your Office Box account is ready for secure activation. Your private, single-use link: '+handoff.activationUrl});
+            updateOrderParsed(order,{officeBoxActivationSentAt:now()});await saveData();
+          }catch(error){addActivity('office_box_v2_activation_email_held','Paid Office Box activation email needs delivery review for '+order.id,{orderId:order.id,reason:String(error?.code||'GATEWAY_DELIVERY_FAILED').slice(0,80)});}
+        }
+        addActivity('office_box_v2_postcommit_provisioned','Paid Office Box activation invitation created for '+order.id,{orderId:order.id,correlationId:handoff.correlationId});
+      }else addActivity('office_box_v2_replay_requires_reconcile','Office Box accepted an earlier V2 handoff; owner reconciliation needed for '+order.id,{orderId:order.id});
+    }catch(error){addActivity('office_box_v2_postcommit_retry_needed','Paid Office Box activation needs attention for '+order.id,{orderId:order.id,reason:String(error?.code||'OFFICEBOX_RECONCILE_FAILED').slice(0,120)});}
+  }
+}
+return {ok:true,orderId:order.id,status:rec.status,squarePaymentId:rec.squarePaymentId};
 }
 
 /* SBC_V6675_SQUARE_699_OWNER_LINK */
@@ -3518,6 +3544,53 @@ function SBC_V6649_REQUIRE_WRITER(){
 }
 function SBC_V6649_ERROR_STATUS(e){const c=String(e?.code||e?.message||'');return c==='SBC_F4_PERSISTENCE_NOT_READY'?423:c==='TENANT_CONTEXT_REQUIRED'?403:/MYSQL_RELATIONAL_COMMIT_FAILED|MYSQL_RECOVERY/.test(c)?503:400;}
 function SBC_V6649_SAFE_ERROR(e){const c=String(e?.code||e?.message||'');return /MYSQL_RELATIONAL_COMMIT_FAILED|MYSQL_RECOVERY|SBC_F4_PERSISTENCE_NOT_READY/.test(c)?'The action was not committed. Check production database health and retry only after verification.':String(e?.message||'Action blocked.').slice(0,250);}
+ // SBC_V66112_OFFICEBOX_COMMITTED_OWNER_RECONCILIATION
+ app.post('/api/owner/officebox/reconcile/:orderId',auth,ownerOnly,async(req,res)=>{
+   try{
+     SBC_V6649_REQUIRE_WRITER();
+     const tenantId=requireRequestTenant(req),orderId=String(req.params.orderId||'');
+     // Refuse cross-tenant or missing in-memory projections BEFORE any external request.
+     const liveOrder=(db.orders||[]).find(o=>String(o.id)===orderId&&Number(o.tenantId)===Number(tenantId));
+     if(!liveOrder)return res.status(404).json({ok:false,error:'OFFICEBOX_ORDER_NOT_FOUND_IN_ACTIVE_TENANT'});
+     const handoff=await require('./enterprise/v66112-officebox-postcommit.cjs').reconcile({tenantId,orderId},{
+       pool:mysqlPool,squareApi,fetch:globalThis.fetch,baseUrl:process.env.SBC_OFFICE_BOX_URL,
+       secret:process.env.SBC_WEBHOOK_SECRET,locationId:process.env.SQUARE_LOCATION_ID
+     });
+     // A repeated handoff does not return a token. Recover only a previously committed, identical correlation.
+     const prior=orderParsed(liveOrder);
+     let activationUrl=handoff.activationUrl||null;
+     if(!activationUrl && handoff.duplicate && prior.officeBoxV2CorrelationId===handoff.correlationId){
+       try{const saved=new URL(String(prior.officeBoxActivationUrl||''));const origin=new URL(String(process.env.SBC_OFFICE_BOX_URL||''));
+         if(saved.protocol==='https:' && saved.origin===origin.origin && saved.searchParams.has('token'))activationUrl=saved.toString();
+       }catch(e){}
+     }
+     if(activationUrl){
+       updateOrderParsed(liveOrder,{officeBoxV2CorrelationId:handoff.correlationId,officeBoxV2Status:handoff.status,
+         officeBoxActivationUrl:activationUrl,officeBoxV2ReconciledAt:now()});
+       await saveData();
+     }
+     let notification='NOT_SENT';
+     if(activationUrl){
+       const customer=(db.customers||[]).find(c=>String(c.id)===handoff.customerId&&Number(c.tenantId)===Number(tenantId));
+       if(customer?.email&&orderParsed(liveOrder).officeBoxActivationSentAt){notification='ALREADY_SENT';}
+       else if(customer?.email){
+         try{await require('./enterprise/sbc-hosting-email-gateway.cjs').sendEmail({
+           to:customer.email,subject:'Activate your Successful By Choice Office Box',
+           text:'Your Office Box account is ready for secure activation. Use your private link: '+activationUrl+'\n\nThis is a single-use activation invitation.'
+         });
+           notification='SENT';
+           updateOrderParsed(liveOrder,{officeBoxActivationSentAt:now()});await saveData();
+         }catch(e){notification='HELD_EMAIL_DELIVERY_FAILED';addActivity('office_box_v2_notification_held','Office Box invitation email held for '+orderId,{orderId,reason:String(e.code||e.message).slice(0,120)});}
+       }else notification='HELD_CUSTOMER_EMAIL_UNAVAILABLE';
+     }
+     audit(req.user,'office_box_v2_reconciled','Verified Office Box paid handoff and durable invitation status',{orderId,tenantId,status:handoff.status,notification});
+     return res.json({ok:true,orderId,correlationId:handoff.correlationId,status:handoff.status,
+       activationUrl,notification});
+   }catch(e){
+     const status=Number(e?.status)||SBC_V6649_ERROR_STATUS(e);
+     return res.status(status>=400&&status<600?status:503).json({ok:false,error:String(e?.code||'OFFICEBOX_RECONCILIATION_FAILED')});
+   }
+ });
 app.get('/api/fantastic4/summary',auth,(req,res)=>res.json({ok:true,...F4.summary(db.fantastic4,process.env)}));
 app.get('/api/fantastic4/blueprints',auth,(req,res)=>res.json({ok:true,blueprints:[...Object.entries(F4.BLUEPRINTS).map(([key,v])=>({key,...v})),...(db.fantastic4.blueprints||[])]}));
 app.post('/api/fantastic4/demo-provision',auth,async(req,res)=>{let sbcPrior=null;try{SBC_V6649_REQUIRE_WRITER();sbcPrior=structuredClone(db.fantastic4);const row=F4.demoRun(db.fantastic4,req.body||{});await saveData();audit(req.user,'fantastic4_demo_provisioned','Generated a demo WordPress blueprint/staging artifact',{demoId:row.id});res.status(201).json({ok:true,demo:row});}catch(e){if(sbcPrior){for(const key of Object.keys(db.fantastic4))delete db.fantastic4[key];Object.assign(db.fantastic4,sbcPrior);}res.status(SBC_V6649_ERROR_STATUS(e)).json({ok:false,error:SBC_V6649_SAFE_ERROR(e)})}});
