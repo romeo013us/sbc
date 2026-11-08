@@ -39,7 +39,8 @@ async function callOpenAI(prompt){
   // Explicit opt-in: missing/empty API credits must never slow down demo creation.
   if(String(process.env.SBC_DEMO_AI_ENABLED||'false').toLowerCase()!=='true')return null;
   const key=process.env.OPENAI_API_KEY;if(!key)return null;
-  const model=process.env.SBC_DEMO_AI_MODEL||process.env.SBC_AI_MODEL||'gpt-6-astra';
+  // Demo-specific low-cost model; do not inherit a costly global reasoning model.
+  const model=process.env.SBC_DEMO_AI_MODEL||'gpt-6-luna';
   try{
     const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(Number(process.env.SBC_DEMO_AI_TIMEOUT_MS||6500)),body:JSON.stringify({model,instructions:'You are Kim, SBC Demo Director and senior website strategist. Design sales-ready websites for real businesses. Return JSON only. Never invent certifications, awards, years in business, testimonials, guarantees, prices, credentials, or other factual claims not supplied. Make the design specific to the industry, audience, business personality and supplied brand assets. Avoid generic blue SaaS templates.',input:[{role:'user',content:prompt}],reasoning:{effort:'low'},max_output_tokens:1400})});
     const j=await r.json(); if(!r.ok)return null;
