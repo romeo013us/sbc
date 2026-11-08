@@ -23,8 +23,8 @@ if(apply&&!server.includes(MARK)){
    "async function smtpSendWithFallback(payload){\n   if(SBC_RUNTIME_ROLE==='writer'){const receipt=await require('./enterprise/sbc-hosting-email-gateway.cjs').sendEmail(payload);return {info:{messageId:receipt.messageId,accepted:[payload.to]},port:0,host:'platform-loopback',kind:'platform-gateway'};}\n   if(!smtpConfig())",
    'Published must use platform mail gateway');
  server=replaceOnce(server,
-   "if(!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');",
-   "if(SBC_RUNTIME_ROLE!=='writer'&&!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');",
+   "async function sendEmail(customer,subject,body){\n   if(RUNTIME_GATE.blocked('AUTONOMOUS_OUTREACH')) throw new Error('AUTONOMOUS_OUTREACH_PAUSED_BY_OWNER');\n   if(!smtpConfig())",
+   "async function sendEmail(customer,subject,body){\n   if(RUNTIME_GATE.blocked('AUTONOMOUS_OUTREACH')) throw new Error('AUTONOMOUS_OUTREACH_PAUSED_BY_OWNER');\n   if(SBC_RUNTIME_ROLE!=='writer'&&!smtpConfig())",
    'Published manual email must work without SMTP credentials');
  server=replaceOnce(server,
    "autoDemo:String(process.env.SBC_AUTOPILOT_DEMO_ENABLED||'true').toLowerCase()!=='false',autoOutbound:false",
