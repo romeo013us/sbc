@@ -34,7 +34,7 @@ const {buildInquiry}=require('../enterprise/sbc-demo-interactive-v1');
     assert.equal(site.style,expectedStyle,industry+' needs its own design family');
     assert(site.html.includes('<form id="sbcDemoRequest"'));
     assert(site.html.includes('NOT')||site.html.includes('does not send'));
-    assert(site.html.includes(service));
+    assert(site.html.includes(service.replaceAll('&','&amp;')),industry+' service must appear safely escaped');
     assert(site.html.includes('/sbc-demo-interactive-v1.js'));
     assert(site.html.includes('Illustrative service categories.'));
     assert(site.html.includes('id="contact"'));
