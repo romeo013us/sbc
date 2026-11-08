@@ -90,6 +90,7 @@ jobs:
           node --check routes/v56131-revenue-finisher.js
           node --check routes/v56131-revenue-loop.js
           node --check scripts/v6611-verify-stage-inventory.cjs
+          node --check scripts/v66110-stage-safe-launch-activation.cjs
           node scripts/v6602-payment-evidence-contract.test.cjs
           node scripts/v6685-protected-qa-reconciliation.test.cjs
           node scripts/v6605-crm-tenant-barrier-test.js
@@ -166,6 +167,9 @@ jobs:
           node scripts/lead-research-import-goals.test.cjs
           node scripts/lorna-training-daily-missions.test.cjs
           node scripts/lead-research-fair-goal.test.cjs
+          node scripts/v66110-stage-safe-launch-activation.cjs --apply
+          node scripts/v66110-stage-safe-launch-activation.cjs --verify-staged
+          node --check enterprise/v56150-revenue-autopilot.js
           node --check server.js
           node --check public/app.js
           node --check browser_public/app.js
@@ -294,6 +298,7 @@ jobs:
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
             node --check "$tmp/server.js"
+            node "$tmp/scripts/v66110-stage-safe-launch-activation.cjs" --verify-staged
             node "$tmp/scripts/v6690-voice-role-authorization.test.cjs" --staged
             node "$tmp/scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs" --staged
             NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$tmp/scripts/v6695-voice-token.test.cjs" --staged
