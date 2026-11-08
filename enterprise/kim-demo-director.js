@@ -10,6 +10,7 @@ const INDUSTRY_PLAYBOOK = [
   {match:/account|bookkeep|tax|finance|insurance|financial/i,style:'professional',primary:'#123047',accent:'#19a974',layout:'structured',sections:['services','expertise','about','faq','consultation','contact'],cta:'Talk With Us',tone:'clear, dependable, modern professional'},
   {match:/medical|dental|clinic|therapy|health|chiropract|wellness/i,style:'care',primary:'#155e75',accent:'#14b8a6',layout:'calm',sections:['services','providers','patient-info','faq','booking','contact'],cta:'Book an Appointment',tone:'calm, reassuring, accessible, trustworthy'},
   {match:/auto|mechanic|tire|collision|detailing|car wash/i,style:'automotive',primary:'#111827',accent:'#ef4444',layout:'bold',sections:['services','work','reviews','service-area','quote','contact'],cta:'Book Service',tone:'bold, technical, high-confidence, visual'},
+  {match:/retail|e-commerce|boutique|local store/i,style:'storefront',primary:'#17233a',accent:'#ea7a36',layout:'bento',sections:['categories','featured','store-info','customer-inquiry','contact'],cta:'Explore Products',tone:'welcoming, product-forward, clear, local'},
   {match:/agency|marketing|software|saas|tech|ai|cyber|digital/i,style:'technology',primary:'#111827',accent:'#7c3aed',layout:'generative',sections:['capabilities','work','process','about','faq','contact'],cta:'Start a Conversation',tone:'sharp, innovative, sophisticated, minimal'},
 ];
 
