@@ -508,7 +508,7 @@ jobs:
           const git=(...args)=>cp.execFileSync('git',args,{encoding:'utf8',maxBuffer:8*1024*1024});
           assert.equal(git('rev-parse',remote+'^').trim(),source,
             'Branch moved to another source/release; refusing to overwrite');
-          const files=['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
+          const files=['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','public/app.js','browser_public/app.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
           for(const file of files){
             assert.equal(git('show',remote+':'+file),fs.readFileSync(file,'utf8'),
               'Previously published release differs from this exact verified ZIP: '+file);
