@@ -1184,7 +1184,7 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
   } else if(status){order.paymentStatus=status;updateOrderParsed(order,{squarePaymentStatus:status});}
   records.splice(5000); await saveData();
 // SBC_V66112_PAID_ORDER_AUTO_V2: after committed Square capture, no new payments or vendor purchases.
-if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED){
+if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED && typeof require==='function'){
   const obv2=require('./enterprise/v66112-officebox-postcommit.cjs');
   const details=orderParsed(order);
   if(obv2.skuFor(details) && !details.sbcLaunchQa && !details.officeBoxV2CorrelationId){
