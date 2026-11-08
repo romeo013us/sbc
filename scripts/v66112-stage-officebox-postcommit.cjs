@@ -50,7 +50,7 @@ const route=[
 ].join('\n');
 function patchServer(s){
  if(s.includes(MARK))return s;
- const anchor=" app.get('/api/fantastic4/summary',auth,";
+ const anchor="app.get('/api/fantastic4/summary',auth,";
  assert.equal(s.split(anchor).length-1,1,'must locate unique owner-safe Fantastic 4 anchor');
  assert(s.includes("function SBC_V6649_REQUIRE_WRITER()"),'writer guard must exist');
  assert(s.includes("async function sendBig3OfficeBoxHandoff("),'existing legacy flow must remain untouched');
