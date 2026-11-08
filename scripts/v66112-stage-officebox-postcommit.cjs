@@ -54,7 +54,40 @@ function patchServer(s){
  assert.equal(s.split(anchor).length-1,1,'must locate unique owner-safe Fantastic 4 anchor');
  assert(s.includes("function SBC_V6649_REQUIRE_WRITER()"),'writer guard must exist');
  assert(s.includes("async function sendBig3OfficeBoxHandoff("),'existing legacy flow must remain untouched');
- return s.replace(anchor,route+anchor);
+ let out=s.replace(anchor,route+anchor);
+ const postCommitAnchor="records.splice(5000); await saveData(); return {ok:true,orderId:order.id,status:rec.status,squarePaymentId:rec.squarePaymentId};";
+ assert.equal(out.split(postCommitAnchor).length-1,1,'exact paid-order post-commit anchor required');
+ const postCommit=[
+   "records.splice(5000); await saveData();",
+   "// SBC_V66112_PAID_ORDER_AUTO_V2: after committed Square capture, no new payments or vendor purchases.",
+   "if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED){",
+   "  const obv2=require('./enterprise/v66112-officebox-postcommit.cjs');",
+   "  const details=orderParsed(order);",
+   "  if(obv2.skuFor(details) && !details.sbcLaunchQa && !details.officeBoxV2CorrelationId){",
+   "    try{",
+   "      const handoff=await obv2.reconcile({tenantId:Number(order.tenantId||TENANT_DEFAULT_ID),orderId:order.id},{",
+   "        pool:mysqlPool,squareApi,fetch:globalThis.fetch,baseUrl:process.env.SBC_OFFICE_BOX_URL,",
+   "        secret:process.env.SBC_WEBHOOK_SECRET,locationId:process.env.SQUARE_LOCATION_ID",
+   "      });",
+   "      if(handoff.activationUrl){",
+   "        updateOrderParsed(order,{officeBoxV2CorrelationId:handoff.correlationId,officeBoxV2Status:handoff.status,officeBoxActivationUrl:handoff.activationUrl,officeBoxV2ReconciledAt:now()});",
+   "        await saveData();",
+   "        const buyer=(db.customers||[]).find(c=>String(c.id)===handoff.customerId&&Number(c.tenantId)===Number(order.tenantId||TENANT_DEFAULT_ID));",
+   "        if(buyer?.email && !orderParsed(order).officeBoxActivationSentAt){",
+   "          try{",
+   "            await require('./enterprise/sbc-hosting-email-gateway.cjs').sendEmail({to:buyer.email,subject:'Activate your Successful By Choice Office Box',text:'Your Office Box account is ready for secure activation. Your private, single-use link: '+handoff.activationUrl});",
+   "            updateOrderParsed(order,{officeBoxActivationSentAt:now()});await saveData();",
+   "          }catch(error){addActivity('office_box_v2_activation_email_held','Paid Office Box activation email needs delivery review for '+order.id,{orderId:order.id,reason:String(error?.code||'GATEWAY_DELIVERY_FAILED').slice(0,80)});}",
+   "        }",
+   "        addActivity('office_box_v2_postcommit_provisioned','Paid Office Box activation invitation created for '+order.id,{orderId:order.id,correlationId:handoff.correlationId});",
+   "      }else addActivity('office_box_v2_replay_requires_reconcile','Office Box accepted an earlier V2 handoff; owner reconciliation needed for '+order.id,{orderId:order.id});",
+   "    }catch(error){addActivity('office_box_v2_postcommit_retry_needed','Paid Office Box activation needs attention for '+order.id,{orderId:order.id,reason:String(error?.code||'OFFICEBOX_RECONCILE_FAILED').slice(0,120)});}",
+   "  }",
+   "}",
+   "return {ok:true,orderId:order.id,status:rec.status,squarePaymentId:rec.squarePaymentId};"
+ ].join('\n');
+ out=out.replace(postCommitAnchor,postCommit);
+ return out;
 }
 if(require.main===module){
  const existing=fs.readFileSync(file,'utf8');
