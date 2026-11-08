@@ -41,7 +41,7 @@ if(apply&&!server.includes(MARK)){
  const anchor="  await pulse();\n  sbcNoDdlAdvisoryTimer=setInterval(pulse,";
  const insert=[
  "  // "+MARK+": one verified writer, no database DDL, external outreach, or auto-demo.",
- "  if(String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'').trim().toLowerCase()==='true'){",
+ "  if(String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'true').trim().toLowerCase()!=='false'){",
  "    try {",
  "      REVENUE_AUTOPILOT_V56150.configure({",
  "        db,mysqlPool,asyncIngest:ASYNC_INGEST,saveData,audit,sqlDateTime,",
@@ -50,7 +50,7 @@ if(apply&&!server.includes(MARK)){
  "      REVENUE_AUTOPILOT_V56150.start({dropzoneOnly:true});",
  "      console.log('[SBC_V66110] verified-writer dropzone-only watcher started; no DDL, demo or outbound');",
  "    }catch(e){console.warn('[SBC_V66110] watcher held:',String(e?.code||e?.message||e).slice(0,160));}",
- "  }else console.log('[SBC_V66110] dropzone watcher held until explicit SBC_AUTOPILOT_DROPZONE_ENABLED=true');",
+ "  }else console.log('[SBC_V66110] dropzone watcher explicitly disabled by SBC_AUTOPILOT_DROPZONE_ENABLED=false');",
  ""
  ].join('\n');
  server=replaceOnce(server,anchor,insert+anchor,'DDL-free startup anchor');
@@ -106,7 +106,7 @@ assert(notifier.includes('SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS'),'own
 assert(auto.includes(MARK),'bounded watcher mark missing');
 assert(server.includes("autoDemo:false,autoOutbound:false"),'automatic demo/outbound must be off');
 assert(server.includes("SBC_SMTP_RELAY_ENABLED||'false'"),'SMTP relay default must be off');
-assert(server.includes("SBC_AUTOPILOT_DROPZONE_ENABLED||''"),'require explicit opt-in');
+assert(server.includes("SBC_AUTOPILOT_DROPZONE_ENABLED||'true'"),'default-on safe lead intake requires healthy verified writer');
 assert(server.includes("!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED || !sbcWriterLeaseReady"),'must retain recovery/lease gates');
 assert(auto.includes("if(!dropzoneOnly)runOnce().catch(()=>{})"),'dropzone-only cannot execute sales');
 assert(auto.includes('autoDemo:ctx?.config?.autoDemo===true'),'demo default must be off');
