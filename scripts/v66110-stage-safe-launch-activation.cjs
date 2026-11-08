@@ -4,18 +4,28 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const root=path.resolve(__dirname,'..');
 const serverPath=path.join(root,'server.js');
 const autopilotPath=path.join(root,'enterprise/v56150-revenue-autopilot.js');
+const notifierPath=path.join(root,'enterprise/sbc-unattended-notifications-v6504.cjs');
 const MARK='SBC_V66110_DDL_FREE_DROPZONE_ONLY_LAUNCH';
 const verify=process.argv.includes('--verify-staged');
 const apply=process.argv.includes('--apply');
 if(!verify&&!apply)throw Error('Specify --apply or --verify-staged');
 let server=fs.readFileSync(serverPath,'utf8');
 let auto=fs.readFileSync(autopilotPath,'utf8');
+let notifier=fs.readFileSync(notifierPath,'utf8');
 function replaceOnce(input,needle,replacement,label){
  const n=input.split(needle).length-1;
  assert.equal(n,1,label+': expected one anchor; found '+n);
  return input.replace(needle,replacement);
 }
 if(apply&&!server.includes(MARK)){
+ server=replaceOnce(server,
+   "async function smtpSendWithFallback(payload){\n   if(!smtpConfig())",
+   "async function smtpSendWithFallback(payload){\n   if(SBC_RUNTIME_ROLE==='writer'){const receipt=await require('./enterprise/sbc-hosting-email-gateway.cjs').sendEmail(payload);return {info:{messageId:receipt.messageId,accepted:[payload.to]},port:0,host:'platform-loopback',kind:'platform-gateway'};}\n   if(!smtpConfig())",
+   'Published must use platform mail gateway');
+ server=replaceOnce(server,
+   "if(!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');",
+   "if(SBC_RUNTIME_ROLE!=='writer'&&!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');",
+   'Published manual email must work without SMTP credentials');
  server=replaceOnce(server,
    "autoDemo:String(process.env.SBC_AUTOPILOT_DEMO_ENABLED||'true').toLowerCase()!=='false',autoOutbound:false",
    "autoDemo:false,autoOutbound:false",
@@ -67,7 +77,32 @@ if(apply&&!auto.includes(MARK)){
    "scanDropzone().catch(()=>{});if(!dropzoneOnly)runOnce().catch(()=>{})",
    'Never run sales cycle in dropzone-only mode');
 }
+
+if(apply&&!notifier.includes('SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS')){
+ notifier=replaceOnce(notifier,
+   "    const cfg = this._smtpConfig(), to = this._contacts().email;\n    if (!cfg.configured",
+   [
+   "    const cfg = this._smtpConfig(), to = this._contacts().email;",
+   "    // SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS: use GoDaddy's internal email gateway.",
+   "    if(String(this.env.SBC_RUNTIME_ROLE||'').trim().toLowerCase()==='writer' && to){",
+   "      try{",
+   "        const sent=await require('./sbc-hosting-email-gateway.cjs').sendEmail({to,subject,text,html});",
+   "        this.lastResult.email={at:this.clock().toISOString(),ok:true,messageId:sent.messageId,transportPort:0,transport:'platform-gateway'};",
+   "        return {ok:true,messageId:sent.messageId,acceptedCount:1};",
+   "      }catch(e){this.lastResult.email={at:this.clock().toISOString(),ok:false,code:String(e?.code||'EMAIL_GATEWAY_FAILURE')};throw e;}",
+   "    }",
+   "    if (!cfg.configured"
+   ].join('\n'),
+   'Owner notification GoDaddy gateway');
+ notifier=replaceOnce(notifier,
+   "channels: { email: { configured: smtp.configured && Boolean(c.email), transportConfigured: smtp.configured, recipientConfigured: Boolean(c.email) }",
+   "channels: { email: { configured: (smtp.configured || String(this.env.SBC_RUNTIME_ROLE||'').toLowerCase()==='writer') && Boolean(c.email), transportConfigured: smtp.configured || String(this.env.SBC_RUNTIME_ROLE||'').toLowerCase()==='writer', recipientConfigured: Boolean(c.email) }",
+   'Published platform gateway availability status (not delivery verification)');
+}
+
 assert(server.includes(MARK),'DDL-free activation mark missing');
+assert(server.includes("kind:'platform-gateway'"),'Published customer email gateway not staged');
+assert(notifier.includes('SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS'),'owner mail gateway not staged');
 assert(auto.includes(MARK),'bounded watcher mark missing');
 assert(server.includes("autoDemo:false,autoOutbound:false"),'automatic demo/outbound must be off');
 assert(server.includes("SBC_SMTP_RELAY_ENABLED||'false'"),'SMTP relay default must be off');
@@ -75,5 +110,5 @@ assert(server.includes("SBC_AUTOPILOT_DROPZONE_ENABLED||''"),'require explicit o
 assert(server.includes("!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED || !sbcWriterLeaseReady"),'must retain recovery/lease gates');
 assert(auto.includes("if(!dropzoneOnly)runOnce().catch(()=>{})"),'dropzone-only cannot execute sales');
 assert(auto.includes('autoDemo:ctx?.config?.autoDemo===true'),'demo default must be off');
-if(apply){fs.writeFileSync(serverPath,server);fs.writeFileSync(autopilotPath,auto);}
+if(apply){fs.writeFileSync(serverPath,server);fs.writeFileSync(autopilotPath,auto);fs.writeFileSync(notifierPath,notifier);}
 console.log('[SBC V66.110] '+(apply?'STAGED':'VERIFIED')+': DDL-free intake; demos/outbound off; STARTTLS required');
