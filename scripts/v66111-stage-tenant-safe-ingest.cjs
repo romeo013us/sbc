@@ -47,8 +47,8 @@ function patchServer(src){
    "db.customers=customers;\n    await saveData();\n    initialSaveCommitted=true;",
    'Durable save proof');
  part=once(part,
-   "}catch(e){audit({id:'system',name:'SBC Async Ingestion Worker'},",
-   "}catch(e){if(!initialSaveCommitted&&db.customers===customers)db.customers=originalCustomers;audit({id:'system',name:'SBC Async Ingestion Worker'},",
+   "}catch(e){audit({id:'system',name:'SBC Async Ingestion Worker',role:'system'},",
+   "}catch(e){if(!initialSaveCommitted&&db.customers===customers)db.customers=originalCustomers;audit({id:'system',name:'SBC Async Ingestion Worker',role:'system'},",
    'Rollback uncommitted projection');
  part+=[
   '',
