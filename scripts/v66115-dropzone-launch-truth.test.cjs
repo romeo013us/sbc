@@ -10,7 +10,7 @@ assert(verify(fixed),'staged release must pass');
 assert.equal(fixed.split(NEW).length-1,1,'exactly one no-DDL guarded default-on expression');
 const block=fixed.slice(fixed.indexOf('SBC_V66110_DDL_FREE_DROPZONE_ONLY_LAUNCH'),fixed.indexOf('  await pulse();',fixed.indexOf('SBC_V66110_DDL_FREE_DROPZONE_ONLY_LAUNCH')));
 assert(!block.includes(OLD),'legacy default-off expression remains');
-const expression=NEW.slice(3,-1);
+const expression=NEW.slice(3,-2);
 for(const [value,expected]of [[undefined,true],['',true],['true',true],['false',false],['FALSE',false]]){
  const sandbox={process:{env:{SBC_AUTOPILOT_DROPZONE_ENABLED:value}}};
  const result=vm.runInNewContext(expression,sandbox);
