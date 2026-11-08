@@ -5021,8 +5021,10 @@ function squareBuyerPreflight(customer){
 }
 app.post('/api/kim/square/preflight',auth,ownerOnly,(req,res)=>{res.json({ok:true,version:BUILD_VERSION,preflight:squareBuyerPreflight(req.body||{})});});
 /* SBC_V6670_QUOTE_ORDER_TRANSACTION_INTEGRITY */
+/* SBC_V66120_OFFICEBOX_RECURRING_SQUARE_BOUNDARY */
+const SBC_V66120_OB_COMMERCE=require('./enterprise/v66120-officebox-commerce-boundary.cjs');
 const SBC_V6670_QUOTE_ORDER=require('./enterprise/v6670-quote-order-integrity.cjs');
-app.post('/api/sales-orders',auth,v25SalesAccess,FINANCIAL_GOVERNOR.middleware('sales_order'),async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{},items=v25OrderItems(b.items);if(!String(b.customerName||'').trim())return res.status(400).json({error:'Customer name is required.'});if(!String(b.customerEmail||'').trim()||!String(b.customerPhone||'').trim())return res.status(400).json({error:'Customer email and phone are required before checkout.'});if(!items.length)return res.status(400).json({error:'Add at least one service or package.'});const subtotal=totals(items),discount=Math.max(0,Number(b.discount||0)),taxRate=Math.max(0,Number(b.taxRate??db.settings.taxRate??0)),tax=Math.max(0,subtotal-discount)*taxRate/100,total=Math.max(0,subtotal-discount)+tax;if(total<=0)return res.status(400).json({error:'Order total must be greater than $0.'});const bundle=v25BundleMatch(items.map(x=>x.id));const product=bundle?bundle.name:items.length===1?items[0].name:'Custom SBC Service Bundle';const review=SBC_V6670_QUOTE_ORDER.examine({
+app.post('/api/sales-orders',auth,v25SalesAccess,FINANCIAL_GOVERNOR.middleware('sales_order'),async(req,res)=>{const tenantId=requireRequestTenant(req);const b=req.body||{},items=v25OrderItems(b.items);const obSale=SBC_V66120_OB_COMMERCE.guardOneTimeSquareSale(b,items);if(!obSale.ok)return res.status(obSale.status).json({ok:false,code:obSale.code,noNewOrder:true,noNewPaymentLink:true,requiresRecurringCheckout:true,message:'Office Box subscription plans must use verified recurring subscription checkout; this Square order was not created.'});if(!String(b.customerName||'').trim())return res.status(400).json({error:'Customer name is required.'});if(!String(b.customerEmail||'').trim()||!String(b.customerPhone||'').trim())return res.status(400).json({error:'Customer email and phone are required before checkout.'});if(!items.length)return res.status(400).json({error:'Add at least one service or package.'});const subtotal=totals(items),discount=Math.max(0,Number(b.discount||0)),taxRate=Math.max(0,Number(b.taxRate??db.settings.taxRate??0)),tax=Math.max(0,subtotal-discount)*taxRate/100,total=Math.max(0,subtotal-discount)+tax;if(total<=0)return res.status(400).json({error:'Order total must be greater than $0.'});const bundle=v25BundleMatch(items.map(x=>x.id));const product=bundle?bundle.name:items.length===1?items[0].name:'Custom SBC Service Bundle';const review=SBC_V6670_QUOTE_ORDER.examine({
  tenantId,customerId:b.customerId,quoteId:b.quoteId,clientRequestId:b.clientRequestId,
  total,quotes:db.quotes,orders:db.orders,customers:db.customers,email:b.customerEmail
 });
@@ -5179,6 +5181,7 @@ function sbcV6630ProtectedNotes(v){
  if(typeof v!=='string')return true;
  let n={};try{n=JSON.parse(v)}catch{return false}
  if(!n||typeof n!=='object')return false;
+ if(SBC_V66120_OB_COMMERCE.protectedNotes(n))return true;
  return ['squareOrderId','squarePaymentId','squarePaymentStatus','squarePaymentLinkId',
    'squarePaymentCompletedAt','sbcLaunchQa','manualPaymentEvidence',
    'manualPaymentConfirmation','sbcLaunchQaPaidVerified'].some(k=>Object.prototype.hasOwnProperty.call(n,k));
