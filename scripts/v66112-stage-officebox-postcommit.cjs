@@ -57,7 +57,15 @@ const route=[
  ""
 ].join('\n');
 function patchServer(s){
- if(s.includes(MARK))return s;
+ if(s.includes(MARK)){
+  // Previously compiled launch releases already carry V2. Keep the upgrade
+  // idempotent while applying this isolated-VM compatibility fix in staging.
+  const pre="if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED){";
+  const post="if(status==='COMPLETED' && sbcWriterLeaseReady && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED && typeof require==='function'){";
+  if(s.includes(post))return s;
+  assert.equal(s.split(pre).length-1,1,'pinned compiled Office Box auto-handoff anchor must be unique');
+  return s.replace(pre,post);
+ }
  const anchor="app.get('/api/fantastic4/summary',auth,";
  assert.equal(s.split(anchor).length-1,1,'must locate unique owner-safe Fantastic 4 anchor');
  assert(s.includes("function SBC_V6649_REQUIRE_WRITER()"),'writer guard must exist');
