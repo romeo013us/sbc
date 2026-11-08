@@ -432,8 +432,10 @@ jobs:
           for(const token of ['SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE','owner-verified-zero-vendor-cost','SBC_V6670_QUOTE_ORDER_TRANSACTION_INTEGRITY'])
             assert.ok(fs.readFileSync(path.join(temp,'server.js'),'utf8').includes(token),'Missing runtime guard: '+token);
           NODE
-          # Four pinned release assets: this receipt MUST overwrite any old /app copy.
+          # Six pinned release assets: include both modified enterprise modules as well as server/receipt.
           cp "$temp/server.js" server.js
+          cp "$temp/enterprise/v56150-revenue-autopilot.js" enterprise/v56150-revenue-autopilot.js
+          cp "$temp/enterprise/sbc-unattended-notifications-v6504.cjs" enterprise/sbc-unattended-notifications-v6504.cjs
           cp "$temp/SBC-FLAT-RELEASE-IDENTITY.json" SBC-FLAT-RELEASE-IDENTITY.json
           cp "$temp/SBC-STAGED-INVENTORY.json" SBC-STAGED-INVENTORY.json
           cp "$temp/SBC-DEPLOY-RECEIPT.json" SBC-DEPLOY-RECEIPT.json
@@ -442,11 +444,11 @@ jobs:
           node --check sbc-godaddy-flat-entrypoint.cjs
           BRANCH='a-sbc-master'
           git switch -c "sbc-master-verified-$(printf '%.12s' "$GITHUB_SHA")"
-          git add server.js SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json SBC-DEPLOY-RECEIPT.json
+          git add server.js enterprise/v56150-revenue-autopilot.js enterprise/sbc-unattended-notifications-v6504.cjs SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json SBC-DEPLOY-RECEIPT.json
           node - <<'NODE'
           const cp=require('node:child_process'),assert=require('node:assert/strict');
           const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
-          const allowed=new Set(['server.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
+          const allowed=new Set(['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
           assert.ok(paths.length>=3&&paths.includes('SBC-DEPLOY-RECEIPT.json')&&paths.includes('SBC-FLAT-RELEASE-IDENTITY.json')&&paths.includes('SBC-STAGED-INVENTORY.json')&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
           NODE
           git config user.name "github-actions[bot]"
@@ -471,7 +473,7 @@ jobs:
           const git=(...args)=>cp.execFileSync('git',args,{encoding:'utf8',maxBuffer:8*1024*1024});
           assert.equal(git('rev-parse',remote+'^').trim(),source,
             'Branch moved to another source/release; refusing to overwrite');
-          const files=['server.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
+          const files=['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
           for(const file of files){
             assert.equal(git('show',remote+':'+file),fs.readFileSync(file,'utf8'),
               'Previously published release differs from this exact verified ZIP: '+file);
