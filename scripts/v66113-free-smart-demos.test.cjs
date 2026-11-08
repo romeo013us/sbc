@@ -53,6 +53,32 @@ const {buildInquiry}=require('../enterprise/sbc-demo-interactive-v1');
   assert(js.includes('event.preventDefault()'));
   assert(!/\bfetch\(|XMLHttpRequest|navigator\.sendBeacon|localStorage|sessionStorage/.test(js),'browser demo must not send/store visitor details');
   assert.equal(networkCalls,0,'zero OpenAI/API calls in free demo mode');
+
+  // Opt-in paid path is also mocked: prove REST output shape is parsed and
+  // that an expensive global model cannot silently override cheap demo Luna.
+  const oldModel=process.env.SBC_DEMO_AI_MODEL;
+  process.env.SBC_DEMO_AI_ENABLED='true';
+  delete process.env.SBC_DEMO_AI_MODEL;
+  let paidMockCalls=0,submitted;
+  globalThis.fetch=async(_url,options)=>{
+    paidMockCalls++;
+    submitted=JSON.parse(options.body);
+    return {ok:true,json:async()=>({id:'response-synthetic',status:'completed',output:[
+      {type:'reasoning',id:'reasoning-not-text'},
+      {type:'message',content:[{type:'output_text',text:JSON.stringify({
+        headline:'Mocked AI-enhanced business headline',industry:'Auto Repair',
+        services:[{name:'Brake Repair',text:'Customer-supplied service description'}]
+      })}]}
+    ]})};
+  };
+  const paid=await direct({customer:{businessName:'Synthetic Garage'},industry:'Auto Repair',services:[{name:'Brake Repair',text:'Customer-supplied service description'}]});
+  assert.equal(paidMockCalls,1,'explicit opt-in performs exactly one mocked AI call');
+  assert.equal(submitted.model,'gpt-6-luna','demo must not inherit expensive global model');
+  assert.equal(submitted.max_output_tokens,1400);
+  assert.equal(paid.aiUsed,true,'REST output[] must parse without SDK output_text');
+  assert.equal(paid.plan.headline,'Mocked AI-enhanced business headline');
+  if(oldModel===undefined)delete process.env.SBC_DEMO_AI_MODEL;else process.env.SBC_DEMO_AI_MODEL=oldModel;
+
   console.log('[SBC V66.113] PASS: zero paid AI, seven tailored industries, three layout families, verified service copy, service request demo, XSS escaping, no network or data storage');
  }finally{globalThis.fetch=oldFetch;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;if(prior===undefined)delete process.env.SBC_DEMO_AI_ENABLED;else process.env.SBC_DEMO_AI_ENABLED=prior}
 })().catch(e=>{console.error(e);process.exitCode=1});
