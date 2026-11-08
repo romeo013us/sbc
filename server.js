@@ -964,6 +964,10 @@ app.get('/api/owner/launch-qa/reconcile/:orderId',auth,ownerOnly,async(req,res)=
 async function createSquarePaymentLinkForOrder(o,req){
   if(RUNTIME_GATE.blocked('NEW_CHECKOUTS')){const e=new Error('NEW_CHECKOUTS_PAUSED_BY_OWNER');e.status=423;throw e;}
   if(!o) throw new Error('Order not found.');
+  // SBC_V66122_OFFICEBOX_CENTRAL_SQUARE_LINK_GUARD
+  const officeBoxSaleNotes=orderParsed(o);
+  const officeBoxSaleResult=SBC_V66120_OB_COMMERCE.guardOneTimeSquareSale({...officeBoxSaleNotes,name:String(o.product||''),items:officeBoxSaleNotes.items},officeBoxSaleNotes.items);
+  if(!officeBoxSaleResult.ok||o.officeBoxSku){const e=new Error('OFFICEBOX_RECURRING_CHECKOUT_REQUIRED');e.status=422;throw e;}
   if(Number(o.price||0)<=0) throw new Error('Order total must be greater than $0.');
   if(o.squarePaymentLink?.url || orderParsed(o).squarePaymentLinkUrl) return {existing:true,url:o.squarePaymentLink?.url||orderParsed(o).squarePaymentLinkUrl,order:o};
   if(Number(o.price)===1&&String(o.product||'')==='SBC Launch QA - $1 Test Service'&&
