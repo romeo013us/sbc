@@ -90,6 +90,7 @@ jobs:
           node scripts/v66117-print-desk.test.cjs
           node scripts/v66117-stage-print-desk-ui.cjs
           node scripts/v66118-master-release-parity.test.cjs
+          node scripts/v66119-publisher-inline-js-syntax.test.cjs
           node --check enterprise/v66117-print-fulfillment-truth.cjs
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
@@ -485,7 +486,7 @@ jobs:
           const cp=require('node:child_process'),assert=require('node:assert/strict');
           const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
           const allowed=new Set(['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','public/app.js','browser_public/app.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
-          assert.ok(paths.length>=5&&paths.includes('public/app.js')&&paths.includes('browser_public/app.js')&&paths.includes('SBC-DEPLOY-RECEIPT.json'&&paths.includes('SBC-FLAT-RELEASE-IDENTITY.json')&&paths.includes('SBC-STAGED-INVENTORY.json')&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
+          assert.ok(paths.length>=5&&['public/app.js','browser_public/app.js','SBC-DEPLOY-RECEIPT.json','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json'].every(p=>paths.includes(p))&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
           NODE
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
