@@ -38,7 +38,7 @@ const clean=(v,n=500)=>String(v??'').replace(/\s+/g,' ').trim().slice(0,n);
 const sha=v=>crypto.createHash('sha256').update(v).digest('hex');
 const now=()=>new Date().toISOString();
 
-function status(){return {version:VERSION,dropzoneRoot:DROPZONE_ROOT,watcher:Boolean(watcher),running,dropzoneEnabled:ctx?.config?.dropzoneEnabled!==false,autoDemo:ctx?.config?.autoDemo!==false,autoOutbound:ctx?.config?.autoOutbound===true,consentGatedOutbound:true};}
+function status(){return {version:VERSION,dropzoneRoot:DROPZONE_ROOT,watcher:Boolean(watcher),running,dropzoneEnabled:ctx?.config?.dropzoneEnabled!==false,autoDemo:ctx?.config?.autoDemo===true,autoOutbound:ctx?.config?.autoOutbound===true,consentGatedOutbound:true};}
 function ensureDirs(){return Promise.all([fsp.mkdir(DROPZONE_ROOT,{recursive:true}),fsp.mkdir(DROPZONE_ARCHIVE,{recursive:true}),fsp.mkdir(DROPZONE_FAILED,{recursive:true})]);}
 function eligible(c){
   const temp=String(c?.leadTemperature||c?.leadIntelligence?.leadTemperature||'').toLowerCase();
@@ -102,7 +102,7 @@ async function processLead(c){
   if(!eligible(c))return {ok:true,skipped:true,reason:'not_qualified'};
   const results=[];
   await event('qualified',c.id,{tenantId:__sbcRequireTenantId(c.tenantId),score:Number(c.leadScore||0),temperature:c.leadTemperature||c.leadIntelligence?.leadTemperature||''});
-  if(ctx?.config?.autoDemo!==false){try{results.push(await buildDemoForCustomer(c));}catch(e){const err=String(e.message||e);results.push({ok:false,step:'demo',error:err});await raiseAlert('ERROR','DEMO_BUILD_FAILED',`Demo generation failed for ${c.businessName||c.id}: ${err}`,{customerId:c.id,tenantId:__sbcRequireTenantId(c.tenantId)});}}
+  if(ctx?.config?.autoDemo===true){try{results.push(await buildDemoForCustomer(c));}catch(e){const err=String(e.message||e);results.push({ok:false,step:'demo',error:err});await raiseAlert('ERROR','DEMO_BUILD_FAILED',`Demo generation failed for ${c.businessName||c.id}: ${err}`,{customerId:c.id,tenantId:__sbcRequireTenantId(c.tenantId)});}}
   try{results.push(await prepareOutreach(c));}catch(e){const err=String(e.message||e);results.push({ok:false,step:'outreach',error:err});await raiseAlert('WARN','OUTREACH_PREP_FAILED',`Outreach preparation failed for ${c.businessName||c.id}: ${err}`,{customerId:c.id,tenantId:__sbcRequireTenantId(c.tenantId)});}
   if(results.some(x=>x?.ok===false))return {ok:false,customerId:c.id,results};
   c.autopilotProcessedAt=now();
@@ -131,6 +131,7 @@ async function ingestFile(file){
   return {ok:true,batchId,jobId:queued.id,filename};
 }
 async function scanDropzone(){
+  if(!ctx||!ctx.asyncIngest)return {ok:false,skipped:true,reason:'not_configured'};
   if(ctx?.config?.dropzoneEnabled===false)return {ok:true,skipped:true,reason:'disabled'};
   await ensureDirs();const names=await fsp.readdir(DROPZONE_ROOT);let processed=0,failed=0,skipped=0;
   for(const name of names.filter(n=>!n.startsWith('.')&&!['processed','failed'].includes(n)).slice(0,MAX_FILES_PER_SCAN)){
@@ -139,8 +140,8 @@ async function scanDropzone(){
   }
   return {ok:true,processed,failed,skipped};
 }
-function start(){if(watcher||!ctx)return status();try{fs.mkdirSync(DROPZONE_ROOT,{recursive:true});fs.mkdirSync(DROPZONE_ARCHIVE,{recursive:true});fs.mkdirSync(DROPZONE_FAILED,{recursive:true});}catch{};const debounce=new Map();try{watcher=fs.watch(DROPZONE_ROOT,{persistent:false},(eventType,name)=>{if(!name)return;clearTimeout(debounce.get(name));const t=setTimeout(()=>{scanDropzone().catch(()=>{});debounce.delete(name)},350);debounce.set(name,t);});}catch(e){watcher=null;}
-  scanTimer=setInterval(()=>{scanDropzone().catch(()=>{});runOnce().catch(()=>{})},Math.max(30000,Number(process.env.SBC_AUTOPILOT_INTERVAL_MS||60000)));scanTimer.unref?.();scanDropzone().catch(()=>{});return status();}
+function start({dropzoneOnly=false}={}){if(watcher||scanTimer||!ctx||ctx?.config?.dropzoneEnabled===false)return status(); /* SBC_V66110_DDL_FREE_DROPZONE_ONLY_LAUNCH */try{fs.mkdirSync(DROPZONE_ROOT,{recursive:true});fs.mkdirSync(DROPZONE_ARCHIVE,{recursive:true});fs.mkdirSync(DROPZONE_FAILED,{recursive:true});}catch{};const debounce=new Map();try{watcher=fs.watch(DROPZONE_ROOT,{persistent:false},(eventType,name)=>{if(!name)return;clearTimeout(debounce.get(name));const t=setTimeout(()=>{scanDropzone().catch(()=>{});debounce.delete(name)},350);debounce.set(name,t);});}catch(e){watcher=null;}
+  scanTimer=setInterval(()=>{scanDropzone().catch(()=>{});if(!dropzoneOnly)runOnce().catch(()=>{})},Math.max(30000,Number(process.env.SBC_AUTOPILOT_INTERVAL_MS||60000)));scanTimer.unref?.();scanDropzone().catch(()=>{});return status();}
 function stop(){try{watcher?.close()}catch{};watcher=null;if(scanTimer)clearInterval(scanTimer);scanTimer=null;return status();}
 function configure(input={}){ctx=input;return {ok:true,...status()};}
 async function dunningSnapshot(){

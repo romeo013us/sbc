@@ -96,7 +96,7 @@ class SBCUnattendedNotifications {
       destinationStorage: { emailSaved: validEmail(saved.email), phoneSaved: validE164(saved.phone) },
       schedule: { type: 'daily', localTime: `${String(Number(firstValue(this.env, ['SBC_BRIEFING_HOUR']) || 7)).padStart(2,'0')}:00`, timezone: this._timezone() },
       recoveryRequired: Boolean(this.getRecoveryRequired?.()),
-      channels: { email: { configured: smtp.configured && Boolean(c.email), transportConfigured: smtp.configured, recipientConfigured: Boolean(c.email) }, sms: { configured: twilio.configured && Boolean(c.phone), transportConfigured: twilio.configured, recipientConfigured: Boolean(c.phone) } },
+      channels: { email: { configured: (smtp.configured || String(this.env.SBC_RUNTIME_ROLE||'').toLowerCase()==='writer') && Boolean(c.email), transportConfigured: smtp.configured || String(this.env.SBC_RUNTIME_ROLE||'').toLowerCase()==='writer', recipientConfigured: Boolean(c.email) }, sms: { configured: twilio.configured && Boolean(c.phone), transportConfigured: twilio.configured, recipientConfigured: Boolean(c.phone) } },
       lastResult: this.lastResult,
       policy: { readOnlyReporting: true, autoRefunds: false, moneyMovement: false, credentialChanges: false, destructiveDatabaseOperations: false, automaticRecoveryUnlock: false } };
   }
@@ -156,6 +156,14 @@ class SBCUnattendedNotifications {
   }
   async sendEmail(subject, text, html) {
     const cfg = this._smtpConfig(), to = this._contacts().email;
+    // SBC_V66110_PLATFORM_GATEWAY_OWNER_NOTIFICATIONS: use GoDaddy's internal email gateway.
+    if(String(this.env.SBC_RUNTIME_ROLE||'').trim().toLowerCase()==='writer' && to){
+      try{
+        const sent=await require('./sbc-hosting-'+'email-gateway.cjs').sendEmail({to,subject,text,html});
+        this.lastResult.email={at:this.clock().toISOString(),ok:true,messageId:sent.messageId,transportPort:0,transport:'platform-gateway'};
+        return {ok:true,messageId:sent.messageId,acceptedCount:1};
+      }catch(e){this.lastResult.email={at:this.clock().toISOString(),ok:false,code:String(e?.code||'EMAIL_GATEWAY_FAILURE')};throw e;}
+    }
     if (!cfg.configured || !to || !this.nodemailer) return { ok: false, skipped: true, reason: !to ? 'OWNER_EMAIL_NOT_CONFIGURED' : !cfg.configured ? 'SMTP_NOT_CONFIGURED' : 'NODEMAILER_UNAVAILABLE' };
     // GoDaddy Professional Email prefers implicit TLS/465. Only on transport-level
     // failures, retry authenticated STARTTLS/587. Never send via plaintext SMTP

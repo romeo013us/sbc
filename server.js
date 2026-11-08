@@ -3255,7 +3255,7 @@ function smtpTransportCandidates(){
   // of the relay connection. The sender must be an address whose DNS is managed
   // by the SBC domain and SPF must include secureserver.net.
   const relayHost=String(process.env.SBC_SMTP_RELAY_HOST||'relay-hosting.secureserver.net').trim();
-  const relayEnabled=String(process.env.SBC_SMTP_RELAY_ENABLED||'true').toLowerCase()!=='false';
+  const relayEnabled=String(process.env.SBC_SMTP_RELAY_ENABLED||'false').toLowerCase()==='true';
   if(relayEnabled) candidates.push({kind:'godaddy-relay',host:relayHost,port:25,secure:false,auth:false});
   return candidates;
 }
@@ -3271,6 +3271,7 @@ function createSmtpTransportForCandidate(candidate){
     socketTimeout:10000
   };
   if(candidate.auth!==false) options.auth={user:cfg.user,pass:cfg.pass};
+  if(Number(candidate.port)===587 && candidate.auth!==false){options.requireTLS=true;options.tls={minVersion:'TLSv1.2',servername:cfg.host};}
   return nodemailer.createTransport(options);
 }
 async function smtpVerifyWithFallback(){
@@ -3292,7 +3293,8 @@ async function smtpVerifyWithFallback(){
   return {ok:false,configured:true,error:lastError,attempts};
 }
 async function smtpSendWithFallback(payload){
-  if(!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');
+  if(SBC_RUNTIME_ROLE==='writer'){const receipt=await require('./enterprise/sbc-hosting-'+'email-gateway.cjs').sendEmail(payload);return {info:{messageId:receipt.messageId,accepted:[payload.to]},port:0,host:'platform-loopback',kind:'platform-gateway'};}
+   if(!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');
   let lastError=null;
   for(const candidate of smtpTransportCandidates()){
     const transport=createSmtpTransportForCandidate(candidate);
@@ -3310,7 +3312,7 @@ async function smtpSendWithFallback(payload){
 function mergeTemplate(text,c){return String(text||'').replace(/{{\s*contact_name\s*}}/gi,c?.contactName||'').replace(/{{\s*business_name\s*}}/gi,c?.businessName||'').replace(/{{\s*phone\s*}}/gi,c?.phone||'').replace(/{{\s*website\s*}}/gi,c?.website||'').replace(/{{\s*email\s*}}/gi,c?.email||'');}
 async function sendEmail(customer,subject,body){
   if(RUNTIME_GATE.blocked('AUTONOMOUS_OUTREACH')) throw new Error('AUTONOMOUS_OUTREACH_PAUSED_BY_OWNER');
-  if(!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');
+  if(SBC_RUNTIME_ROLE!=='writer'&&!smtpConfig()) throw new Error('Email is not configured. Add SBC_SMTP_HOST, SBC_SMTP_USER and SBC_SMTP_PASS in GoDaddy Secrets.');
   if(!customer?.email) throw new Error('This lead does not have an email address.');
   const from=process.env.SBC_MAIL_FROM||String(db.settings?.email||'j@sbcmia.com').trim()||process.env.SBC_SMTP_USER;
   const payload={from,to:customer.email,subject:mergeTemplate(subject,customer),text:mergeTemplate(body,customer)};
@@ -9451,6 +9453,17 @@ async function sbcStartExistingSchemaAdvisory(){
     }catch(e){console.warn('[SBC_V6624] advisory pulse error:',String(e?.code||e?.message||e).slice(0,120));}
     finally{sbcNoDdlAdvisoryRunning=false;}
   };
+  // SBC_V66110_DDL_FREE_DROPZONE_ONLY_LAUNCH: one verified writer, no database DDL, external outreach, or auto-demo.
+  if(String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'').trim().toLowerCase()==='true'){
+    try {
+      REVENUE_AUTOPILOT_V56150.configure({
+        db,mysqlPool,asyncIngest:ASYNC_INGEST,saveData,audit,sqlDateTime,
+        config:{dropzoneEnabled:true,autoDemo:false,autoOutbound:false}
+      });
+      REVENUE_AUTOPILOT_V56150.start({dropzoneOnly:true});
+      console.log('[SBC_V66110] verified-writer dropzone-only watcher started; no DDL, demo or outbound');
+    }catch(e){console.warn('[SBC_V66110] watcher held:',String(e?.code||e?.message||e).slice(0,160));}
+  }else console.log('[SBC_V66110] dropzone watcher held until explicit SBC_AUTOPILOT_DROPZONE_ENABLED=true');
   await pulse();
   sbcNoDdlAdvisoryTimer=setInterval(pulse,Math.max(300000,Number(process.env.SBC_ADVISORY_INTERVAL_MS||900000)));
   sbcNoDdlAdvisoryTimer.unref?.();
@@ -9553,7 +9566,7 @@ const startOperationalRuntime=async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('[
     const kimMissionEnabled=String(process.env.SBC_KIM_AUTONOMOUS_ROUTINE||'false').toLowerCase()==='true' && String(process.env.SBC_AUTOMATION_TENANT_ID||'').trim()!==''; /* SBC_V6624_EXISTING_SCHEMA_TENANT_AUTONOMY: explicit tenant and opt-in required */
     const kimMissionIntervalMs=Math.max(120000,Number(process.env.SBC_KIM_MISSION_INTERVAL_MS||300000));
   V464_FORTRESS.startStateSync({scope:'operational',intervalMs:Number(process.env.SBC_V464_STATE_SYNC_MS||10000),getState:async()=>({buildVersion:BUILD_VERSION,architectureVersion:ARCHITECTURE_VERSION,savedAt:new Date().toISOString(),process:{pid:process.pid,uptimeSeconds:Math.floor(process.uptime())},resource:V464_FORTRESS.adaptivePolicy(),database:{customers:Array.isArray(db.customers)?db.customers.length:0,quotes:Array.isArray(db.quotes)?db.quotes.length:0,orders:Array.isArray(db.orders)?db.orders.length:0,renewals:Array.isArray(db.renewals)?db.renewals.length:0,activities:Array.isArray(db.activities)?db.activities.length:0},sessionStore:await SESSION_STORE.redisHealth().catch(()=>({configured:false,ready:false}))})}).catch(e=>console.warn('[SBC V46.4] state sync startup:',e.message)); const v452MemoryWatch=async()=>{const m=V452.memoryWatchdog();if(m.pressure){V452.telemetry('memory_pressure',m);try{await saveData();}catch(e){console.warn('[SBC V452] pre-limit state flush:',e.message)}}}; v452MemoryWatch(); sbcBackgroundTimers.push(setInterval(v452MemoryWatch,15000)); syncAllSalesQueues().catch(e=>console.warn('Sales queue startup sync:',e.message)); const workerLeader=await acquireWorkerLeader();if(workerLeader){
-      REVENUE_AUTOPILOT_V56150.configure({db,mysqlPool,asyncIngest:ASYNC_INGEST,createWebsiteDemo,saveData,audit,sqlDateTime,eventBroker:REVENUE_EVENT_BROKER_V56160,config:{dropzoneEnabled:String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'true').toLowerCase()!=='false',autoDemo:String(process.env.SBC_AUTOPILOT_DEMO_ENABLED||'true').toLowerCase()!=='false',autoOutbound:false}});
+      REVENUE_AUTOPILOT_V56150.configure({db,mysqlPool,asyncIngest:ASYNC_INGEST,createWebsiteDemo,saveData,audit,sqlDateTime,eventBroker:REVENUE_EVENT_BROKER_V56160,config:{dropzoneEnabled:String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'true').toLowerCase()!=='false',autoDemo:false,autoOutbound:false}});
       REVENUE_AUTOPILOT_V56150.start();
       REVENUE_EVENT_BROKER_V56160.configure({db,mysqlPool,saveData,audit,sqlDateTime});
       REVENUE_EVENT_BROKER_V56160.start();
