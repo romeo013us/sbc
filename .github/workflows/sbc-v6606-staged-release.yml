@@ -90,6 +90,7 @@ jobs:
           node scripts/v66117-print-desk.test.cjs
           node scripts/v66117-stage-print-desk-ui.cjs
           node scripts/v66118-master-release-parity.test.cjs
+          node scripts/v66119-publisher-inline-js-syntax.test.cjs
           node --check enterprise/v66117-print-fulfillment-truth.cjs
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
