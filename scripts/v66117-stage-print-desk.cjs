@@ -31,7 +31,7 @@ function patchServer(source){
   readOnly+"app.get('/api/fulfillment/provider-center',auth,requireCapability('fulfillment.manage')",
   'owner print desk insertion');
  const bt=String.fromCharCode(96);
- const old="const staged=V400.markVendorReady(req.params.id,normalized,req.user);const vendorOrderId=String(req.body?.vendorOrderId||'').trim();const vendor=V400.submitVendor(req.params.id,vendorOrderId||"+bt+"MANUAL-"+'1794160228897'+bt+",req.user);";
+ const old="const staged=V400.markVendorReady(req.params.id,normalized,req.user);const vendorOrderId=String(req.body?.vendorOrderId||'').trim();const vendor=V400.submitVendor(req.params.id,vendorOrderId||"+bt+"MANUAL-"+'${Date.now()}'+bt+",req.user);";
  const next="const vendorOrderId=String(req.body?.vendorOrderId||'').trim();if(!require('./enterprise/v66117-print-fulfillment-truth.cjs').validVendorOrderId(vendorOrderId))return res.status(422).json({ok:false,code:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED',error:'Enter a real supplier order number before marking a purchase submitted. No vendor order was placed by this action.'});const staged=V400.markVendorReady(req.params.id,normalized,req.user);const vendor=V400.submitVendor(req.params.id,vendorOrderId,req.user);";
  code=replaceExactlyOnce(code,old,next,'remove fabricated supplier order number');
  const recordOld="if(!provider||!vendorOrderId)return res.status(400).json({error:'Provider and vendor order number are required.'});";
