@@ -9544,7 +9544,7 @@ async function sbcStartExistingSchemaAdvisory(){
     finally{sbcNoDdlAdvisoryRunning=false;}
   };
   // SBC_V66110_DDL_FREE_DROPZONE_ONLY_LAUNCH: one verified writer, no database DDL, external outreach, or auto-demo.
-  if(String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'').trim().toLowerCase()==='true'){
+  if(String(process.env.SBC_AUTOPILOT_DROPZONE_ENABLED||'true').trim().toLowerCase()!=='false'){
     try {
       REVENUE_AUTOPILOT_V56150.configure({
         db,mysqlPool,asyncIngest:ASYNC_INGEST,saveData,audit,sqlDateTime,
@@ -9553,7 +9553,7 @@ async function sbcStartExistingSchemaAdvisory(){
       REVENUE_AUTOPILOT_V56150.start({dropzoneOnly:true});
       console.log('[SBC_V66110] verified-writer dropzone-only watcher started; no DDL, demo or outbound');
     }catch(e){console.warn('[SBC_V66110] watcher held:',String(e?.code||e?.message||e).slice(0,160));}
-  }else console.log('[SBC_V66110] dropzone watcher held until explicit SBC_AUTOPILOT_DROPZONE_ENABLED=true');
+  }else console.log('[SBC_V66110] dropzone watcher explicitly disabled by SBC_AUTOPILOT_DROPZONE_ENABLED=false');
   await pulse();
   sbcNoDdlAdvisoryTimer=setInterval(pulse,Math.max(300000,Number(process.env.SBC_ADVISORY_INTERVAL_MS||900000)));
   sbcNoDdlAdvisoryTimer.unref?.();
