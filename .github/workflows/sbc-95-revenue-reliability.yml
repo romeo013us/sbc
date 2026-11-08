@@ -32,6 +32,7 @@ jobs:
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66115-dropzone-launch-truth.test.cjs
           node scripts/v66117-print-desk.test.cjs
+          node scripts/v66117-stage-print-desk-ui.cjs
           node --check enterprise/v66117-print-fulfillment-truth.cjs
           node --check browser_public/app.js
           node --check public/sbc-customer360-workspace-v6525.js
