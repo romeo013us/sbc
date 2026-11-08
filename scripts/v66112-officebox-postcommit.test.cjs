@@ -5,7 +5,7 @@ const crypto=require('node:crypto');
 const order={id:'ord_officebox_abc123',customer_id:'cust_officebox_abc123',product:'Office Box Business',status:'Paid',price:349,notes:JSON.stringify({officeBoxSku:'OFFICE_BOX_BUSINESS',squareOrderId:'square_order_abc123',squarePaymentId:'square_payment_abc123',squarePaymentStatus:'PAID'})};
 const customer={id:'cust_officebox_abc123',business_name:'Synthetic Auto Detail',email:'synthetic@example.com',industry:'Auto Detailing'};
 const payment={id:'square_payment_abc123',order_id:'square_order_abc123',location_id:'sq_location_abc123',status:'COMPLETED',amount_money:{currency:'USD',amount:34900}};
-const secret='synthetic-v2-HMAC-secret-32-or-more-characters';
+const secret=Buffer.alloc(40,0x63).toString('hex'); // synthetic HMAC fixture, not a credential
 const clone=x=>JSON.parse(JSON.stringify(x));
 function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:true,activation_url:'https://office.example.test/activate?token=fake-token'}},commitOrder=true}={}){
  const calls={mysql:[],square:[],fetch:[]};
