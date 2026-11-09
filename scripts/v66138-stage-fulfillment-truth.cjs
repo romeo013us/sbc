@@ -17,6 +17,7 @@ function patchServer(source){
  if(p<0||q<p||s.indexOf(start,p+1)!==-1)throw Error('FULFILLMENT_APPLY_STAGE_BOUNDARY_MISSING');
  const replacement=`
 const SBC_V66138_FULFILLMENT_TRUTH=require('./enterprise/v66138-fulfillment-truth.cjs');
+const SBC_V66140_BUNDLE_COVERAGE=require('./enterprise/v66140-fulfillment-bundle-coverage.cjs'); // SBC_V66140_BUNDLE_CLOSE_GATE
 // ${MARK}
 async function v400ApplyOrderStage(req,id,stage){
  const tenantId=requireRequestTenant(req);
@@ -38,6 +39,14 @@ async function v400CommitAction(req,stage,mutate){
   if(!V400_PAYMENT_EVIDENCE.confirmedPaid(order))throw Error('PAYMENT_EVIDENCE_REQUIRED');
   if(!mysqlPool||SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
     throw Object.assign(Error('FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'),{code:'FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'});
+  if(stage==='FULFILLED'){
+   const parts=fulfillmentItemsForOrder(order);
+   if(parts.length>1){
+    const [jobs]=await mysqlPool.query('SELECT item_id,product,vendor,status,vendor_status,vendor_order_number,tracking_number FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_id=?',[Number(tenantId),String(order.id)]);
+    const coverage=SBC_V66140_BUNDLE_COVERAGE.summary({components:parts,jobs});
+    if(!coverage.ready)throw Object.assign(Error('BUNDLE_CHILD_JOBS_NOT_DELIVERED: '+coverage.missing.map(x=>x.itemName+' ('+x.reason+')').slice(0,6).join('; ')),{code:'BUNDLE_CHILD_JOBS_NOT_DELIVERED'});
+   }
+  }
   snapshot=V400.capture(req.params.id);
   const result=mutate();
   const receipt=await v400ApplyOrderStage(req,req.params.id,stage);
@@ -81,6 +90,26 @@ app.post('/api/kim400/orders/:id/vendor/record',auth,requireCapability('fulfillm
 });
 `;
  s=s.slice(0,rs)+record+s.slice(re);
+ const coverageRoute=`
+app.get('/api/kim400/orders/:id/coverage',auth,requireCapability('fulfillment.manage'),async(req,res)=>{
+ try{
+  const tenantId=requireRequestTenant(req);
+  const order=v400Orders().find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenantId));
+  if(!order)return res.status(404).json({ok:false,error:'FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'});
+  const components=fulfillmentItemsForOrder(order);
+  let jobs=[];
+  if(components.length>1){
+   if(!mysqlPool)return res.status(503).json({ok:false,error:'FULFILLMENT_MYSQL_UNAVAILABLE'});
+   const [rows]=await mysqlPool.query('SELECT item_id,product,vendor,status,vendor_status,vendor_order_number,tracking_number FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_id=?',[Number(tenantId),String(order.id)]);
+   jobs=rows||[];
+  }
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,source:'EXISTING_MYSQL_FULFILLMENT_JOBS',...SBC_V66140_BUNDLE_COVERAGE.summary({components,jobs})});
+ }catch(e){return res.status(503).json({ok:false,error:'FULFILLMENT_COVERAGE_UNAVAILABLE'})}
+});
+`;
+ s=once(s,"app.get('/api/kim400/summary',auth,",coverageRoute+"app.get('/api/kim400/summary',auth,",'coverage-read');
+
  s=once(s,
  "const next=String(req.body?.stage||'');const result=V400.advance(req.params.id,next,req.user,{manual:true});v400ApplyOrderStage(req.params.id,next);res.json({ok:true,order:result});",
  "const next=String(req.body?.stage||'');const {result,receipt}=await v400CommitAction(req,next,()=>V400.advance(req.params.id,next,req.user,{manual:true}));res.json({ok:true,order:result,receipt});",
