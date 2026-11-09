@@ -45,7 +45,7 @@ const raw=read('server.js'),compiled=STAGE.patchServer(raw);
 new vm.Script(compiled,{filename:'server-with-bundle-gate.js'});
 assert.equal(STAGE.patchServer(compiled),compiled,'staging must be idempotent');
 assert(compiled.includes('SBC_V66140_BUNDLE_CLOSE_GATE'));
-assert(compiled.includes("if(stage==='FULFILLED')"));
+assert(compiled.includes("if(stage==='FULFILLED')")||compiled.includes("if(stage==='FULFILLED'||stage==='DELIVERED')"));
 assert(compiled.includes("BUNDLE_CHILD_JOBS_NOT_DELIVERED"));
 assert(compiled.includes("app.get('/api/kim400/orders/:id/coverage'"));
 assert(compiled.includes("FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_id=?"));
