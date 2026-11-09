@@ -1,0 +1,26 @@
+name: Revenue First - safe read-side tests
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/revenue-first-daily-brief.cjs'
+      - 'enterprise/v6640-payment-evidence.cjs'
+      - 'enterprise/sales-caller-workspace-v6697.cjs'
+      - 'enterprise/v6648-revenue-tenant.cjs'
+      - 'routes/v56133-revenue-sprint.js'
+      - 'scripts/revenue-first-daily-brief.test.cjs'
+      - '.github/workflows/sbc-revenue-first.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  revenue-first-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check enterprise/revenue-first-daily-brief.cjs
+      - run: node --check routes/v56133-revenue-sprint.js
+      - run: node --test scripts/revenue-first-daily-brief.test.cjs
