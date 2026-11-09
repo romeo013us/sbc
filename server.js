@@ -3548,6 +3548,21 @@ function SBC_V6649_REQUIRE_WRITER(){
 }
 function SBC_V6649_ERROR_STATUS(e){const c=String(e?.code||e?.message||'');return c==='SBC_F4_PERSISTENCE_NOT_READY'?423:c==='TENANT_CONTEXT_REQUIRED'?403:/MYSQL_RELATIONAL_COMMIT_FAILED|MYSQL_RECOVERY/.test(c)?503:400;}
 function SBC_V6649_SAFE_ERROR(e){const c=String(e?.code||e?.message||'');return /MYSQL_RELATIONAL_COMMIT_FAILED|MYSQL_RECOVERY|SBC_F4_PERSISTENCE_NOT_READY/.test(c)?'The action was not committed. Check production database health and retry only after verification.':String(e?.message||'Action blocked.').slice(0,250);}
+ // SBC_V66127_SIGNED_READONLY_OFFICEBOX_FEDERATION
+ app.get('/api/owner/officebox/federation-preflight',auth,ownerOnly,async(req,res)=>{
+   res.setHeader('Cache-Control','no-store');
+   try{
+     const info=await require('./enterprise/v66127-officebox-federation-probe.cjs').probe({
+       origin:process.env.SBC_OFFICE_BOX_URL,
+       secret:process.env.SBC_WEBHOOK_SECRET,
+       transport:globalThis.fetch
+     });
+     return res.json({ok:true,version:BUILD_VERSION,...info});
+   }catch(e){
+     return res.status(Number(e?.status||503)).json({ok:false,readOnly:true,chargeAmount:0,
+       error:String(e?.code||'OFFICEBOX_PROBE_UNAVAILABLE')});
+   }
+ });
  // SBC_V66112_OFFICEBOX_COMMITTED_OWNER_RECONCILIATION
  app.post('/api/owner/officebox/reconcile/:orderId',auth,ownerOnly,async(req,res)=>{
    try{
