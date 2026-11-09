@@ -1,5 +1,6 @@
 // SBC_V6648_TENANT_SCOPED_REVENUE
 const {scopeRevenueDb}=require('../enterprise/v6648-revenue-tenant.cjs');
+const {brief:revenueFirstBrief}=require('../enterprise/revenue-first-daily-brief.cjs');
 'use strict';
 
 /*
@@ -102,6 +103,18 @@ function revenueProof(db) {
 }
 
 module.exports = function registerRevenueSprint(app, { auth, ownerOnly, getContext }) {
+  // Revenue-first owner view: no AI calls, payment changes, or outreach.
+  app.get('/api/v56133/revenue-sprint/today', auth, ownerOnly, (req,res) => {
+    try {
+      const ctx=getContext();
+      const tenantId=global.__SBC_REQUIRE_TENANT(req);
+      const result=revenueFirstBrief(ctx.db||{}, {tenantId});
+      res.json({ok:true,...result});
+    } catch(e) {
+      res.status(e.status||500).json({ok:false,error:e.code||'REVENUE_DAILY_BRIEF_UNAVAILABLE'});
+    }
+  });
+
   app.get('/api/v56133/revenue-sprint/status', auth, ownerOnly, (req,res) => {
     try {
       const ctx = getContext();
