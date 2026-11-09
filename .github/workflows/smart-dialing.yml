@@ -1,0 +1,39 @@
+name: Smart Dialing Engine
+on:
+  pull_request:
+    paths:
+      - 'lib/smart-dialing-*.js'
+      - 'enterprise/sbc-smart-dialing-projection-v1.cjs'
+      - 'enterprise/sales-caller-workspace-v6697.cjs'
+      - 'public/sales-caller.js'
+      - 'browser_public/sales-caller.js'
+      - 'scripts/v6697-sales-workspace.test.cjs'
+      - 'test/smart-dialing-*.test.js'
+      - '.github/workflows/smart-dialing.yml'
+  push:
+    branches:
+      - 'feature/sbc-smart-dialing-engine-20261109'
+    paths:
+      - 'lib/smart-dialing-*.js'
+      - 'enterprise/sbc-smart-dialing-projection-v1.cjs'
+      - 'enterprise/sales-caller-workspace-v6697.cjs'
+      - 'public/sales-caller.js'
+      - 'browser_public/sales-caller.js'
+      - 'scripts/v6697-sales-workspace.test.cjs'
+      - 'test/smart-dialing-*.test.js'
+      - '.github/workflows/smart-dialing.yml'
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify smart dialing policies
+        run: node --test test/smart-dialing-engine.test.js test/smart-dialing-workspace.test.js test/smart-dialing-disposition.test.js test/smart-dialing-crm-integration.test.js test/smart-dialing-projection.test.js
+      - name: Verify existing employee workspace and pinned protections
+        run: node scripts/v6697-sales-workspace.test.cjs
