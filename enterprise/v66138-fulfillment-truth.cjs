@@ -20,7 +20,7 @@ function fail(code){const e=new Error(code);e.code=code;return e;}
 function validReceipt(raw){
  const s=String(raw||'').trim();
  return /^[A-Za-z0-9][A-Za-z0-9._:/#-]{3,119}$/.test(s)&&
-  !/^(?:test(?:ing)?|demo|fake|pending|unknown|none|n\/a|tbd|no.?order|manual[-_]\d+|placeholder)(?:[-_:].*)?$/i.test(s);
+  !/^(?:test(?:ing)?|demo|fake|pending|unknown|none|n\/a|tbd|no.?order|manual[-_]\d+|placeholder)(?:\d+|[-_:].*)?$/i.test(s);
 }
 function requireReceipt(raw){if(!validReceipt(raw))throw fail('REAL_VENDOR_ORDER_REFERENCE_REQUIRED');return String(raw).trim();}
 function validShipping(carrier,number){
