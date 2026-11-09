@@ -1,0 +1,26 @@
+name: SBC SMS Delivery Truth
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/v66137-sms-delivery-truth.cjs'
+      - 'scripts/v66137-stage-sms-delivery-truth.cjs'
+      - 'scripts/v66137-sms-delivery-truth.test.cjs'
+      - 'public/app.js'
+      - 'browser_public/app.js'
+      - '.github/workflows/sbc-v66137-sms-delivery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sms-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check enterprise/v66137-sms-delivery-truth.cjs
+      - run: node --check scripts/v66137-stage-sms-delivery-truth.cjs
+      - run: node scripts/v66137-sms-delivery-truth.test.cjs
+      - run: node scripts/secret-audit.js
