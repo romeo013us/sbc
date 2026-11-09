@@ -17,14 +17,15 @@ const mysqlPool={async query(sql,args){
 }};
 const routeSource=one("app.post('/api/voice/log',auth,");
 const mutexPrelude=one('let sbcVoiceLogCommitTailV6615=');
-const make=new Function('app','auth','db','requireRequestTenant','now','id','normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY',mutexPrelude+'\n'+routeSource);
+const make=new Function('app','auth','db','requireRequestTenant','now','id','normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY','SBC_PHONE_RECOVERY',mutexPrelude+'\n'+routeSource);
 make(app,()=>{},db,r=>r.authTenant,()=>new Date('2026-10-24T17:00:00Z').toISOString(),
  prefix=>prefix+'-'+(++counter),v=>String(v??''),
  async()=>{saves++;await new Promise(done=>setTimeout(done,3));if(failSave)throw Error('SIMULATED_MYSQL_FAILURE');if(!skipMysqlWrite)stored=db.callLogs.map(x=>({...x}));},
  ()=>{db.auditLog.push({event:'voice_call'})},
  ()=>{db.activities.push({type:'call'})},
  mysqlPool,
- require('../enterprise/v66101-caller-access.cjs'));
+ require('../enterprise/v66101-caller-access.cjs'),
+ require('../enterprise/sbc-phone-recovery-v66137.cjs'));
 const handler=app.handlers.get('/api/voice/log');assert.equal(typeof handler,'function');
 const res=()=>({code:200,body:null,status(x){this.code=x;return this},json(x){this.body=x;return this}});
 const req=(sessionId,notes,status='connecting',customerId='lead-x',tenant=1)=>({
