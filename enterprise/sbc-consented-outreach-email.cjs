@@ -42,7 +42,7 @@ function prepared(c,draft,env=process.env){
  if(text.includes('[Verified'))throw Object.assign(Error('EMAIL_UNVERIFIED_PLACEHOLDER'),{status:422});
  text=text.replace('To stop receiving marketing emails from SBC, reply unsubscribe.',
    'Advertisement: SBC business services.\nPrivacy policy: '+privacy+
-   '\nTo unsubscribe from SBC marketing emails, use the unsubscribe link in this message or reply "unsubscribe".');
+   '\nUnsubscribe from SBC marketing emails: <%asm_group_unsubscribe_raw_url%>\nYou may also reply "unsubscribe".');
  const escapeHtml=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  const html='<div style="font:15px/1.6 Arial,Helvetica,sans-serif;max-width:640px">'+
     escapeHtml(text).replace(/\n/g,'<br>')+
