@@ -14,7 +14,7 @@ function dayKey(value){
 }
 function money(n){return Math.round(n*100)/100;}
 function goodNumber(value){const n=Number(value);return Number.isFinite(n)&&n>=0&&n<10000000?n:null;}
-function verified(c){return c?.verified===true||['verified','sales ready','research complete'].includes(String(c?.verificationStatus||'').trim().toLowerCase());}
+function verified(c){return c?.verified===true||['verified','sales ready'].includes(String(c?.verificationStatus||'').trim().toLowerCase());}
 function isHumanCallCandidate(c){
  const status=String(c?.status||'lead').trim().toLowerCase();
  return c&&verified(c)&&!isSuppressed(c)&&!['customer','active_customer','closed','duplicate','lost','not qualified'].includes(status)&&Boolean(cleanPhone(c.phone));
@@ -22,14 +22,14 @@ function isHumanCallCandidate(c){
 function isQA(o){
  if(!o||o.testOnly===true||o.isTest===true||o.qaMode===true||isLab(o))return true;
  const value=[o.status,o.product,o.customerName,o.source,o.notes].map(x=>String(x??'')).join(' ');
- return /SBC SYSTEM TEST|SBC Launch QA|DO NOT SERVICE|owner checkout lab|QA - NO VENDOR|\\binternal[ -]?test\\b|\\btest checkout\\b/i.test(value);
+ return /SBC SYSTEM TEST|SBC Launch QA|DO NOT SERVICE|owner checkout lab|QA - NO VENDOR|\binternal[ -]?test\b|\btest checkout\b/i.test(value);
 }
 function squareSettledAt(o){const p=o?.parsed||{},m=o?.metadata||{};let notes={};try{notes=JSON.parse(String(o?.notes||'{}'))}catch{}
  return o?.squarePaymentCompletedAt||p.squarePaymentCompletedAt||m.squarePaymentCompletedAt||notes.squarePaymentCompletedAt||null;
 }
 function rankLead(c,today){
  const followAt=c.followUpAt||c.followUp||null;
- const due=followAt&&Number.isFinite(Date.parse(followAt))&&Date.parse(followAt)<=Date.parse(today+'T23:59:59-05:00');
+ const due=followAt&&Number.isFinite(Date.parse(followAt))&&dayKey(followAt)<=today;
  const temp=String(c.leadTemperature||'').toLowerCase();
  const score=(due?50:0)+(temp==='hot'?20:temp==='warm'?10:0)+(c.email?5:0)+(c.website?2:0);
  return {score,due:Boolean(due)};
