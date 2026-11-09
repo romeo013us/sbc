@@ -64,6 +64,7 @@ jobs:
           node scripts/v66127-signed-federation-probe.test.cjs
           node scripts/v66128-owner-while-away.test.cjs
           node scripts/v66129-owner-checkout-lab.test.cjs
+          python3 scripts/v66131-published-f4-smoke.py --self-test
           node scripts/v6675-payment-center-readback.test.cjs
           node scripts/v6677-service-offer-clarity.test.cjs
           node scripts/v6678-square-card-catalog-stage.cjs
