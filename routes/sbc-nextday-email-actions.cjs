@@ -8,6 +8,7 @@ const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
 const NEXTDAY=require('./sbc-nextday-outbound-v1.cjs');
 const EVENTS=require('../enterprise/sbc-outbound-signed-events.cjs');
 const LEDGER=require('../enterprise/sbc-outreach-consent-ledger.cjs');
+const RELAY=require('../enterprise/sbc-outreach-signed-mailbox-relay.cjs');
 const compact=(v,n=500)=>String(v??'').trim().slice(0,n);
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,
@@ -23,6 +24,7 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
   return {...s,optedIn:eligible.filter(mail.hasConsent).length,
    availableVerifiedLeads:eligible.length,autoSendEnabled:false,replyIntegration:'MANUAL_RECORD_ONLY',
    signedDeliveryWebhookConfigured:!!process.env.SBC_SENDGRID_EVENT_PUBLIC_KEY,
+   signedMailboxRelayConfigured:String(process.env.SBC_MAIL_RELAY_SECRET||'').length>=32,
    deliveryTracking:'PROVIDER_ACCEPTED_ONLY_UNTIL_SIGNED_WEBHOOK'};
  }
  app.get('/api/owner/nextday/email-status',auth,ownerOnly,(req,res)=>{
@@ -180,6 +182,41 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    try{if(result.changed.length)await saveData()}
    catch(e){result.undo();throw e}
    return res.json({ok:true,accepted:result.changed.length});
+  }catch(e){fail(res,e)}finally{changing=false}
+ });
+
+ // Mailbox relay for info@sbcmia.com. Configure a TRUSTED server-side inbox
+ // connector (e.g. Microsoft 365 flow) to sign raw JSON before posting.
+ // No changes to MX/DNS; fail closed when secret or valid signature is absent.
+ app.post('/api/nextday/mailbox/reply',async(req,res)=>{
+  const raw=req.rawBody;
+  const signature=req.get?.('x-sbc-mail-relay-signature')||
+   req.headers?.['x-sbc-mail-relay-signature'];
+  const timestamp=req.get?.('x-sbc-mail-relay-timestamp')||
+   req.headers?.['x-sbc-mail-relay-timestamp'];
+  if(!RELAY.verify(raw,{signature,timestamp}))
+   return res.status(401).json({ok:false,error:'SIGNED_MAILBOX_RELAY_REQUIRED'});
+  if(changing)return res.status(503).json({ok:false,error:'MAILBOX_RETRY_LATER'});
+  changing=true;
+  try{
+   requireWriter();
+   const db=getDb(),result=RELAY.apply(db,req.body,{now,makeId});
+   if(result.changed){
+    try{await saveData()}catch(e){result.undo?.();throw e}
+    let ownerNotified=false;
+    if(typeof notifyOwner==='function'){
+     try{const c=(db.customers||[]).find(x=>String(x.id)===String(result.customerId));
+      const notify=await notifyOwner({subject:'SBC new email reply · '+compact(c?.businessName||'Lead',80),
+       text:'A new reply was received through the authenticated SBC mailbox connector.\nType: '+result.kind+
+        '\nBusiness: '+compact(c?.businessName||'Lead',120)+
+        '\nOpen Command Center → Prepare Tomorrow → Due work to review it. No appointment was automatically booked.'});
+      ownerNotified=notify?.ok===true;
+     }catch(_){}
+    }
+    return res.json({ok:true,accepted:1,kind:result.kind,reviewTaskId:result.reviewTaskId,
+      ownerNotificationAccepted:ownerNotified});
+   }
+   return res.json({ok:true,duplicate:true,accepted:0});
   }catch(e){fail(res,e)}finally{changing=false}
  });
 }
