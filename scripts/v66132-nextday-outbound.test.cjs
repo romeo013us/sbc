@@ -5,7 +5,7 @@ const path=require('node:path');
 const P=require('../routes/sbc-nextday-outbound-v1.cjs');
 function mock(){
  const routes=new Map(),db={customers:[
-  {id:'lead1',tenantId:1,businessName:'Real Repair Shop',industry:'Auto repair',phone:'3055550112',email:'hello@example.com',source:'Public business listing',status:'Lead',verificationStatus:'Verified'},
+  {id:'lead1',tenantId:1,businessName:'Real Repair Shop',industry:'Auto repair',phone:'3055550112',email:'hello@example.com',source:'Public business listing',status:'Lead',leadTemperature:'Warm',verificationStatus:'Verified'},
   {id:'lead2',tenantId:2,businessName:'Other Tenant',industry:'Food',phone:'3055550199',email:'other@example.com',status:'Lead',verificationStatus:'Verified'},
   {id:'lead3',tenantId:1,businessName:'Opted Out',phone:'3055550123',status:'Do Not Call',email:'dnc@example.com'}
  ],users:[{id:'caller1',tenantId:1,role:'caller',name:'Caller One',active:true}],tasks:[],appointments:[],callReports:[],
