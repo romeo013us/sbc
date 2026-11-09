@@ -1,14 +1,13 @@
 'use strict';
-/* V66.128 disposable-stage patch: read-only owner "While I Was Away" report.
- * Does not alter operational data, schema, AI agents or job scheduling.
+/* V66.128: owner-only read-only employee activity recap. Applied to a
+ * disposable staged GoDaddy runtime; never mutates the authoritative source.
  */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const FILE=path.resolve(__dirname,'../server.js');
-const MARK='SBC_V66128_OWNER_WHILE_AWAY';
-function patchServer(s){
- if(s.includes(MARK)){
-  assert(s.includes("require('./enterprise/v66128-owner-while-away.cjs')"));
-  return s;
+const FILE=path.resolve(__dirname,'../server.js'),MARK='SBC_V66128_OWNER_WHILE_AWAY';
+function patchServer(src){
+ if(src.includes(MARK)){
+  assert(src.includes("require('./enterprise/v66128-owner-while-away.cjs')"));
+  return src;
  }
  const anchor=' // SBC_V66112_OFFICEBOX_COMMITTED_OWNER_RECONCILIATION';
  const route=[
@@ -23,10 +22,10 @@ function patchServer(s){
  "   if(MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED)return res.status(503).json({ok:false,error:'OWNER_RECAP_RECOVERY_NOT_READY'});",
  '   const nowTime=Date.now(),since=new Date(nowTime-hours*3600000),until=new Date(nowTime);',
  '   const staff=SBC_V66128_CATCHUP.eligibleUsers(db.users,tenantId);',
- '   if(!staff.length){return res.json(SBC_V66128_CATCHUP.summarize({tenantId,users:db.users,',
- '      events:[],crmRows:[],shiftEntries:v9data().timeEntries,now:nowTime,hours}));}',
+ '   if(!staff.length)return res.json(SBC_V66128_CATCHUP.summarize({tenantId,users:db.users,',
+ '      events:[],crmRows:[],shiftEntries:v9data().timeEntries,now:nowTime,hours}));',
  '   const [auditRows]=await mysqlPool.query(',
- '    "SELECT id,user_id,event_type,meta_json,created_at FROM sbc_audit_log WHERE user_id IN (?) AND created_at>=? AND created_at<=? AND event_type IN (\\'workforce_lead_created\\',\\'call_report\\',\\'lead_updated\\',\\'lead_verification_update\\',\\'website_demo\\') ORDER BY created_at DESC LIMIT 5001",',
+ "    'SELECT id,user_id,event_type,meta_json,created_at FROM sbc_audit_log WHERE user_id IN (?) AND created_at>=? AND created_at<=? ORDER BY created_at DESC LIMIT 5001',",
  '    [staff.map(x=>String(x.id)),sqlDateTime(since),sqlDateTime(until)]);',
  '   const ids=[...new Set((auditRows||[]).map(x=>{',
  "    let m=x.meta_json;try{if(typeof m==='string')m=JSON.parse(m)}catch{m={}}",
@@ -39,9 +38,9 @@ function patchServer(s){
  '     [tenantId,ids.slice(i,i+300)]);',
  '    crmRows.push(...(rows||[]));',
  '   }',
- '   const data=SBC_V66128_CATCHUP.summarize({tenantId,users:db.users,events:(auditRows||[]).slice(0,5000),',
- '      crmRows,shiftEntries:v9data().timeEntries,now:nowTime,hours,truncated:(auditRows||[]).length>5000});',
- '   return res.json(data);',
+ '   return res.json(SBC_V66128_CATCHUP.summarize({tenantId,users:db.users,',
+ '     events:(auditRows||[]).slice(0,5000),crmRows,shiftEntries:v9data().timeEntries,',
+ '     now:nowTime,hours,truncated:(auditRows||[]).length>5000}));',
  '  }catch(e){',
  "    console.warn('[SBC OWNER RECAP] read failed:',String(e?.code||'QUERY_UNAVAILABLE'));",
  "    return res.status(503).json({ok:false,error:'OWNER_RECAP_DATA_UNAVAILABLE',readOnly:true});",
@@ -49,17 +48,17 @@ function patchServer(s){
  ' });',
  ''
  ].join('\n');
- assert.equal(s.split(anchor).length-1,1,'V66.128 owner route anchor missing');
- return s.replace(anchor,route+anchor);
+ assert.equal(src.split(anchor).length-1,1,'unique owner route anchor required');
+ return src.replace(anchor,route+anchor);
 }
 if(require.main===module){
  const src=fs.readFileSync(FILE,'utf8'),out=patchServer(src);
- assert.equal(patchServer(out),out,'not idempotent');
+ assert.equal(patchServer(out),out,'stage not idempotent');
  if(process.argv.includes('--verify-staged'))assert.equal(src,out,'staged owner recap missing');
  else if(process.argv.includes('--apply')){
   if(process.env.SBC_V66128_ISOLATED_STAGE!=='YES')throw Error('DISPOSABLE_STAGE_ONLY');
   fs.writeFileSync(FILE,out);
  }
- console.log('[SBC V66.128] PASS owner-only while-away read-only MySQL summary');
+ console.log('[SBC V66.128] PASS read-only owner recap stage');
 }
 module.exports={MARK,patchServer};
