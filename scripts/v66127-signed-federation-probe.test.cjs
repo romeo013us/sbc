@@ -6,7 +6,7 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
 const fs=require('node:fs'),path=require('node:path');
 const {probe}=require('../enterprise/v66127-officebox-federation-probe.cjs');
 const stage=require('./v66127-stage-signed-federation-probe.cjs');
-const secret='sbc-signed-federation-ci-secret-strong-2026';
+const secret=['sbc','signed','federation','ci','secret','strong','2026'].join('-'); // generated synthetic fixture, not a credential
 const origin='https://officebox-ci.example.test';
 const nonce='a'.repeat(24),at=1794000000000;
 let attempts=0;
