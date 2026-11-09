@@ -64,10 +64,12 @@ function compile({tenantId,orderId,sku,services}={}){
   const invalid=services.filter(s=>!s||typeof s!=='object'||!Object.hasOwn(SERVICE_STEPS,s.code)||!Number.isSafeInteger(Number(s.quantity??1))||Number(s.quantity??1)<1||Number(s.quantity??1)>10000);
   if(invalid.length)return {version:VERSION,tenantId:t,orderId:oid,sku:product,status:'NEEDS_CATALOG_MAPPING',unmappedCodes:invalid.map(s=>String(s?.code??'').slice(0,80)),steps:[],executionAllowed:false};
   const steps=[];
+  const sharedIntake=services.length>1;
+  if(sharedIntake)steps.push({id:'shared_customer_intake',serviceCode:'shared',line:0,quantity:1,lane:'customer',description:'Confirm customer and business contact details once for the entire package',dependsOn:[],status:'PLANNED'});
   for(let i=0;i<services.length;i++){
     const item=services[i],prefix='line'+(i+1)+'_'+item.code;
     for(const [key,lane,description,previous] of SERVICE_STEPS[item.code]){
-      steps.push({id:prefix+'_'+key,serviceCode:item.code,line:i+1,quantity:Number(item.quantity??1),lane,description,dependsOn:previous.map(k=>prefix+'_'+k),status:'PLANNED'});
+      steps.push({id:prefix+'_'+key,serviceCode:item.code,line:i+1,quantity:Number(item.quantity??1),lane,description,dependsOn:previous.length?previous.map(k=>prefix+'_'+k):sharedIntake?['shared_customer_intake']:[],status:'PLANNED'});
     }
   }
   return {version:VERSION,tenantId:t,orderId:oid,sku:product,status:'PLANNED',steps,executionAllowed:false,
