@@ -89,7 +89,7 @@ jobs:
           node scripts/v66122-central-square-officebox-guard.test.cjs
           node scripts/v66123-activity-text-safety.test.cjs
           node scripts/v66126-crm-audit-safe.test.cjs
-          node --test test/crm-text-integrity-v66140.test.cjs test/v66140-crm-integrity-stage.test.cjs
+          node --test test/crm-text-integrity-v66140.test.cjs test/v66140-crm-integrity-stage.test.cjs test/v66140-crm-route-prewrite.test.cjs
           node scripts/v66127-signed-federation-probe.test.cjs
           node scripts/v66128-owner-while-away.test.cjs
           node scripts/v66129-owner-checkout-lab.test.cjs
