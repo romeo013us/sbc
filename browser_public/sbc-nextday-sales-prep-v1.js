@@ -112,5 +112,22 @@ async function load(){
   $('sbc-nextday-submit')?.addEventListener('click',prepare);
   load();
  };
+
+ // Low-cost in-app due alert: read-only; does not email, text or auto-dial anyone.
+ async function refreshDueAlert(){
+  const nav=$('sbc-nextday-nav-link');
+  if(!nav||$('app')?.classList.contains('hidden'))return;
+  try{
+   const p=await api('/api/owner/nextday/priorities');
+   if(!p?.ok)return;
+   const n=Number(p.dueCount||0)+Number(p.appointmentRequests||0);
+   nav.textContent=n>0?'☎ Prepare Tomorrow · '+n+' need review':'☎ Prepare Tomorrow';
+   nav.setAttribute('aria-label',n>0?n+' SBC sales items need review':'Prepare tomorrow sales');
+  }catch(_){ /* no false zero on failed status read */ }
+ }
+ window.addEventListener('focus',refreshDueAlert);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDueAlert();});
+ setInterval(refreshDueAlert,300000);
+ setTimeout(refreshDueAlert,4000);
  document.addEventListener('click',e=>{const b=e.target?.closest?.('#sbc-nextday-nav-link');if(b){e.preventDefault();window.sbcOpenNextDaySalesPrep();}});
 })();
