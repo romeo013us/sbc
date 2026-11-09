@@ -60,6 +60,7 @@ jobs:
           node scripts/v66120-officebox-commerce-boundary.test.cjs
           node scripts/v66122-central-square-officebox-guard.test.cjs
           node scripts/v66123-activity-text-safety.test.cjs
+          node scripts/v66126-crm-audit-safe.test.cjs
           node scripts/v6675-payment-center-readback.test.cjs
           node scripts/v6677-service-offer-clarity.test.cjs
           node scripts/v6678-square-card-catalog-stage.cjs
