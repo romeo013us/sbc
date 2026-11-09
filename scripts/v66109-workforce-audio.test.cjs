@@ -80,7 +80,7 @@ const htmls=['lead-research.html','sales-caller.html'];
 for(const filename of htmls){
  const html=read('public/'+filename);
  const scriptAt=html.indexOf('/sbc-workforce-audio-v66109.js?v=1');
- const pageCode=html.indexOf(filename==='lead-research.html'?'/lead-research.js?v=9':'/sales-caller.js?v=3');
+ const pageCode=filename==='lead-research.html'?html.search(/\/lead-research\.js\?v=\d+/):html.indexOf('/sales-caller.js?v=3');
  assert(scriptAt>0&&pageCode>scriptAt,'shared reader loads before lesson renderer in '+filename);
  assert(html.includes('/sbc-workforce-audio-v66109.css?v=1'),'control styles included in '+filename);
  assert.equal(html,read('browser_public/'+filename),'served mirror '+filename);

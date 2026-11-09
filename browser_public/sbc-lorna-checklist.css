@@ -1,0 +1,15 @@
+.sbc-research-audit{border:1px solid var(--border,rgba(128,128,128,.35));border-radius:14px;padding:16px;margin:16px 0;background:var(--card,#fff)}
+.sbc-research-audit legend{font-size:1.05rem;font-weight:750;padding:0 8px}
+.sbc-research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.sbc-research-grid label{display:flex;flex-direction:column;gap:5px;min-width:0}
+.sbc-research-grid .wide{grid-column:1/-1}
+.sbc-research-grid input,.sbc-research-grid select,.sbc-research-grid textarea{width:100%;max-width:100%;box-sizing:border-box}
+#sbc-research-quality{border:1px solid var(--border,rgba(128,128,128,.3));border-radius:12px;padding:12px;margin:12px 0;line-height:1.4}
+.sbc-quality-heading{margin:10px 0 4px;font-weight:650}
+.sbc-quality-list{padding-left:20px;margin:0}
+.sbc-quality-list li{padding:2px 0}
+.sbc-positive li::marker{color:#26855a}
+.sbc-negative li::marker{color:#b54c40}
+.sbc-opportunity li::marker{color:#ae7d26}
+.sbc-unknown li::marker{color:#6b7280}
+@media(max-width:680px){.sbc-research-audit{padding:12px}.sbc-research-grid{grid-template-columns:1fr}}

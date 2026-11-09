@@ -6,6 +6,7 @@
  */
 const crypto=require('node:crypto');
 const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
+const CANDIDATES=require('../enterprise/sbc-nextday-candidate-readiness-v1.cjs');
 const MAIL=require('../enterprise/sbc-consented-outreach-email.cjs');
 const MAX=20;
 const emailRx=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,12 +29,7 @@ function easternCallSlot(date,hour=10){
 
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function leadsFor(db,tenantId) {
- return (db.customers||[]).filter(c=>tenantOf(c)===tenantId && !blocked(c) &&
-  !READINESS.suppressed(c) && READINESS.verified(c) &&
-  ['warm','hot'].includes(clean(c.leadTemperature,20).toLowerCase()) &&
-  !/sbc system test|sbc full-cycle test|v47 full-cycle test|do not service/i.test([c.source,c.notes].join(' ')) &&
-  !/@example\.invalid$/i.test(String(c.email||'')) &&
-  c.id && clean(c.businessName||c.business_name||c.contactName) && phone(c.phone));
+ return (db.customers||[]).filter(c=>tenantOf(c)===tenantId&&CANDIDATES.analyze(c).eligible);
 }
 function pitch(c){
  const i=clean(c.industry||c.businessCategory||c.type||'',100).toLowerCase();
@@ -63,7 +59,7 @@ function item(c,db){
  email:emailRx.test(clean(c.email,254))?clean(c.email,254):'',
  industry:clean(c.industry||c.businessCategory||'',100),
  source:clean(c.source||c.leadSource||'',160),assignedTo:clean(c.assignedTo||'',100),
- temperature:clean(c.leadTemperature||'',30),
+ temperature:CANDIDATES.quality(c).temperature,
  emailStatus:'DRAFT_ONLY_NO_SEND',marketingConsentVerified:MAIL.hasConsent(c),draft,demo,callOpening:'Hello, this is Jonathan Jones with Successful By Choice in Miami. I wanted to introduce SBC and see whether '+draft.benefit+' is a priority for your business.'};
 }
 function register(app,deps){
@@ -73,13 +69,17 @@ function register(app,deps){
  app.get('/api/owner/nextday/preview',auth,ownerOnly,(req,res)=>{
   try{
    const t=get(req),db=getDb(),n=Math.min(MAX,Math.max(1,Number(req.query.limit)||10));
-   const eligible=leadsFor(db,t),existing=new Set((db.tasks||[]).filter(x=>x.type==='SBC Next-Day Call'&&x.status!=='Completed').map(x=>String(x.customerId)));
-   const rows=eligible.filter(x=>!existing.has(String(x.id))).slice(0,n).map(c=>item(c,db));
+   const existing=new Set((db.tasks||[]).filter(x=>tenantOf(x)===t&&x.type==='SBC Next-Day Call'&&
+     !['completed','cancelled','canceled'].includes(clean(x.status,60).toLowerCase())).map(x=>String(x.customerId)));
+   const candidateData=CANDIDATES.report(db.customers||[],t,existing,n);
+   const eligible=leadsFor(db,t),rows=candidateData.candidates.map(c=>item(c,db));
    const callers=(db.users||[]).filter(u=>tenantOf(u)===t&&u.active!==false&&u.role==='caller')
     .map(u=>({id:String(u.id),name:clean(u.name||u.username,100)}));
    res.setHeader('Cache-Control','no-store');
    res.json({ok:true,mode:'OWNER_REVIEW_NO_AUTOMATIC_EMAIL',available:eligible.length,
     leadReadiness:READINESS.inspect(db.customers||[],t,{limit:20}),
+    candidateDiagnostics:candidateData.summary,researchReview:candidateData.research,
+    availableUnqueued:candidateData.summary.ready-candidateData.summary.queued,
     candidates:rows,callers,maxBatch:MAX,sender:'info@sbcmia.com'});
   }catch(e){fail(res,e);}
  });

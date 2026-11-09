@@ -31,6 +31,32 @@ function targetUser(users,actor,previewUserId,tenantId){
   throw Object.assign(new Error('ROLE_ACCESS_DENIED'),{status:403});
  return {user:actor,preview:false};
 }
+
+function researchBriefProjection(c){
+ const src=c?.leadIntelligence?.researchBrief;
+ const r=src&&typeof src==='object'&&!Array.isArray(src)?src:{};
+ const safe=(v,n)=>String(v??'').slice(0,n);
+ const status=v=>['found','not_found','not_checked'].includes(v)?v:'not_checked';
+ return {
+  websitePresence:status(r.websitePresence),
+  googleBusinessPresence:status(r.googleBusinessPresence),
+  googleBusinessUrl:/^https?:\/\//i.test(String(r.googleBusinessUrl||''))?safe(r.googleBusinessUrl,500):'',
+  ownerContactVerified:r.ownerContactVerified===true,
+  yearsInBusiness:safe(r.yearsInBusiness||'Not verified',65),
+  specificServices:safe(r.specificServices,500),
+  servicesVerified:r.servicesVerified===true,
+  businessHistory:safe(r.businessHistory,500),
+  likelyCustomerTypes:safe(r.likelyCustomerTypes,500),
+  likelyCustomerTypesStatus:r.likelyCustomerTypesStatus==='source_verified'?'source_verified':'industry_estimate',
+  suggestedSbcOffer:safe(r.suggestedSbcOffer,180),
+  offerCondition:safe(r.offerCondition,260),
+  openingQuestion:safe(r.openingQuestion,350),
+  researchEvidenceUrl:/^https?:\/\//i.test(String(r.researchEvidenceUrl||''))?safe(r.researchEvidenceUrl,1200):'',
+  originalBrief:safe(r.originalBrief,3500),
+  researchSource:safe(c?.leadIntelligence?.researchSource||c?.source,300),
+  originalNotes:safe(c?.notes,2800)
+ };
+}
 function projectAssigned(customers,user,tenantId){
  const t=safeTenantId(tenantId);
  return (customers||[]).filter(c=>String(c.assignedTo||'')===String(user.id) && safeTenantId(c.tenantId??c.tenant_id)===t)
@@ -44,6 +70,7 @@ function projectAssigned(customers,user,tenantId){
   nextAction:String(c.nextAction||'').slice(0,500),
   followUpAt:String(c.followUpAt||c.followUp||'').slice(0,40),
   demoUrl:/^\/demo\/[a-z0-9-]+$/.test(String(c.websiteDemoUrl||''))?String(c.websiteDemoUrl):'',
+  researchBrief:researchBriefProjection(c),
   canCall:!!cleanPhone(c.phone) && !isSuppressed(c) && !PHONE_RECOVERY.isHeld(c),reason:isSuppressed(c)?'SUPPRESSED_OR_NOT_A_PROSPECT':PHONE_RECOVERY.isHeld(c)?'PHONE_RECOVERY_HOLD':!cleanPhone(c.phone)?'MISSING_VALID_PHONE':'',
  }))
  .sort((a,b)=>{
