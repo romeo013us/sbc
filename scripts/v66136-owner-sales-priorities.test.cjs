@@ -25,5 +25,24 @@ const {SBCUnattendedNotifications}=require('../enterprise/sbc-unattended-notific
  assert.doesNotMatch(brief,/Cancelled Business/);
  assert.doesNotMatch(brief,/Old task/);
  assert.match(brief,/LOCAL READ MODEL/);
+ const alerts=new SBCUnattendedNotifications({
+  env:{SBC_RUNTIME_ROLE:'writer',SBC_OWNER_SALES_ALERTS_ENABLED:'true'},
+  getPool:()=>null,getRecoveryRequired:()=>false,clock:()=>now,
+  getDb:()=>({customers:[{id:'lead1',businessName:'Example Barber Shop'}],
+   callReports:[{id:'report-1',customerId:'lead1',appointmentRequested:true,
+    notes:'Customer asked for next-day consultation',createdAt:'2026-11-09T12:00:00.000Z'}]}),
+  rootDir:'/nonexistent/sbc-test-state',logger:{warn(){}}
+ });
+ alerts._saveState=()=>{};
+ let sent=0;
+ alerts.sendEmail=async(subject,text)=>{sent++;assert.match(subject,/appointment request/);assert.match(text,/Example Barber Shop/);return {ok:true}};
+ let result=await alerts.notifyPendingSalesAppointments();
+ assert.equal(result.accepted,1);
+ result=await alerts.notifyPendingSalesAppointments();
+ assert.equal(result.accepted,0,'one call report alerts the owner once');
+ assert.equal(sent,1,'no repeat alerts on second tick');
+ alerts.env.SBC_OWNER_SALES_ALERTS_ENABLED='false';
+ result=await alerts.notifyPendingSalesAppointments();
+ assert.equal(result.skipped,true,'feature-gated by default');
  console.log('PASS SBC owner daily briefing: due-first appointment and reply tasks, cancelled/closed excluded, local-read caveat');
 })().catch(e=>{console.error(e);process.exitCode=1});
