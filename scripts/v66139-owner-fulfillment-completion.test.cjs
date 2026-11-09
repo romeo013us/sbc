@@ -53,7 +53,7 @@ try{
   assert(ui.includes(token),'missing owner workflow control '+token);
  const html=read('public/index.html');
  assert.equal(html,read('browser_public/index.html'),'both owner pages use identical release asset URLs');
- assert(html.includes('/v40-fulfillment.js?v=66.139-owner-completion'),'browser must load latest fulfillment UI');
+ assert(html.includes('/v40-fulfillment.js?v=66.140-service-coverage'),'browser must load latest fulfillment UI');
  console.log('PASS V66.139: digital activation without fake shipping, vendor print proof, manual closure, owner UI, mirror, and cache');
 }finally{
  for(const snapshot of before)V400.restore(snapshot);
