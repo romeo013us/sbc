@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ROOT=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
 const COVER=require('../enterprise/v66140-fulfillment-bundle-coverage.cjs'),V400=require('../enterprise/kim-fulfillment-control-v400.js');
-const STAGE=require('./v66138-stage-fulfillment-truth.cjs');
+const STAGE=require('./v66140-stage-bundle-coverage.cjs');
 const cleanItem=name=>({id:'line-1',name,qty:1});
 for(const name of ['Office Box','Office Box Subscription','Microsoft 365 Setup','Domain Registration','Business Email Mailbox','SSL Certificate','Web Hosting']){
  assert.equal(COVER.noArtworkService({items:[cleanItem(name)]}),true,name+' must not require fake print artwork');
