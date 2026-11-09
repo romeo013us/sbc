@@ -14,7 +14,7 @@ assert.equal(EVENTS.verified(Buffer.from('[]'),{timestamp:time,signature},env),f
 assert.equal(EVENTS.verified(body,{timestamp:'1234567890',signature},env),false);
 const db={tasks:[{id:'taskA',tenantId:1,type:'SBC Next-Day Call',customerId:'lead1',
  outboundEmailStatus:'PROVIDER_ACCEPTED_NOT_DELIVERED'}],
- customers:[{id:'lead1',tenantId:1,email:'hello@example.org',marketingEmailConsent:true,marketingEmailConsentAt:new Date().toISOString(),marketingEmailConsentSource:'SBC direct signup form record'}]};
+ customers:[{id:'lead1',tenantId:1,email:'hello@example.org',leadIntelligence:{sbcOutreach:{marketingEmailConsent:true,marketingEmailConsentAt:new Date().toISOString(),marketingEmailConsentSource:'SBC direct signup form record'}}}]};
 const delivered=JSON.parse(body.toString());
 let result=EVENTS.apply(db,delivered);
 assert.deepEqual(result.changed,[{taskId:'taskA',event:'delivered'}]);
@@ -26,8 +26,8 @@ assert.equal(result.changed.length,0,'cross-tenant rejected');
 result=EVENTS.apply(db,[{...delivered[0],email:'other@example.org',sg_event_id:'ev3'}]);
 assert.equal(result.changed.length,0,'wrong email rejected');
 result=EVENTS.apply(db,[{...delivered[0],event:'group_unsubscribe',sg_event_id:'ev4'}]);
-assert.equal(db.customers[0].emailUnsubscribed,true);
-assert.equal(db.customers[0].marketingEmailConsent,false);
+assert.equal(db.customers[0].leadIntelligence.sbcOutreach.emailUnsubscribed,true);
+assert.equal(db.customers[0].leadIntelligence.sbcOutreach.marketingEmailConsent,false);
 assert.match(db.tasks[0].outboundEmailStatus,/SUPPRESSED/);
 result=EVENTS.apply(db,[{...delivered[0],event:'delivered',sg_event_id:'ev5'}]);
 assert.match(db.tasks[0].outboundEmailStatus,/SUPPRESSED/,'late delivery cannot undo unsubscribe');
