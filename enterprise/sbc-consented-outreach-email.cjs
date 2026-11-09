@@ -26,14 +26,8 @@ function envStatus(env=process.env){
   settings.unsubscribeGroupReady&&settings.postalAddressReady&&settings.privacyPolicyReady;
  return settings;
 }
-function hasConsent(c){
- if(!c||c.marketingEmailConsent!==true||c.marketingEmailOptOut===true||
-   c.emailUnsubscribed===true||c.doNotContact===true||c.salesSuppressed===true)return false;
- const at=Date.parse(String(c.marketingEmailConsentAt||''));
- if(!Number.isFinite(at)||at>Date.now()||at<Date.UTC(2020,0,1))return false;
- const evidence=clean(c.marketingEmailConsentSource,250);
- return evidence.length>=8&&!/^(unknown|none|imported|scraped|purchased|public\s*listing|google\s*maps)$/i.test(evidence);
-}
+const {hasConsent}=require('./sbc-outreach-consent-ledger.cjs');
+
 function prepared(c,draft,env=process.env){
  const status=envStatus(env);
  if(!status.ready)throw Object.assign(Error('MARKETING_PROVIDER_NOT_READY'),{status:503});
