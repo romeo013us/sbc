@@ -5,6 +5,7 @@
  * Reuses authoritative CRM + Tasks persistence and current employee assignments.
  */
 const crypto=require('node:crypto');
+const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
 const MAX=20;
 const emailRx=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clean=(v,n=240)=>String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,n);
@@ -27,6 +28,10 @@ function easternCallSlot(date,hour=10){
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function leadsFor(db,tenantId) {
  return (db.customers||[]).filter(c=>tenantOf(c)===tenantId && !blocked(c) &&
+  !READINESS.suppressed(c) && READINESS.verified(c) &&
+  ['warm','hot'].includes(clean(c.leadTemperature,20).toLowerCase()) &&
+  !/sbc system test|sbc full-cycle test|v47 full-cycle test|do not service/i.test([c.source,c.notes].join(' ')) &&
+  !/@example\\.invalid$/i.test(String(c.email||'')) &&
   c.id && clean(c.businessName||c.business_name||c.contactName) && phone(c.phone));
 }
 function pitch(c){
@@ -72,7 +77,9 @@ function register(app,deps){
    const callers=(db.users||[]).filter(u=>tenantOf(u)===t&&u.active!==false&&u.role==='caller')
     .map(u=>({id:String(u.id),name:clean(u.name||u.username,100)}));
    res.setHeader('Cache-Control','no-store');
-   res.json({ok:true,mode:'OWNER_REVIEW_NO_AUTOMATIC_EMAIL',available:eligible.length,candidates:rows,callers,maxBatch:MAX,sender:'info@sbcmia.com'});
+   res.json({ok:true,mode:'OWNER_REVIEW_NO_AUTOMATIC_EMAIL',available:eligible.length,
+    leadReadiness:READINESS.inspect(db.customers||[],t,{limit:20}),
+    candidates:rows,callers,maxBatch:MAX,sender:'info@sbcmia.com'});
   }catch(e){fail(res,e);}
  });
  app.get('/api/owner/nextday/queue',auth,ownerOnly,(req,res)=>{
