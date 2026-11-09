@@ -1,0 +1,39 @@
+name: SBC Fantastic 4 Published Smoke (read-only)
+on:
+  push:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-public-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout immutable workflow source
+        uses: actions/checkout@v4
+      - name: Check no-mutation smoke contract
+        run: |
+          python3 scripts/v66131-published-f4-smoke.py --self-test
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast
+          s=Path('scripts/v66131-published-f4-smoke.py').read_text()
+          ast.parse(s)
+          assert 'Request(' in s and 'method="GET"' in s
+          assert 'SQUARE_ACCESS_TOKEN' not in s and 'STRIPE_SECRET_KEY' not in s
+          assert 'Authorization' not in s and 'Cookie' not in s
+          print('Read-only outbound smoke contract PASS')
+          PY
+      - name: Check GoDaddy Published public health and current UI
+        run: python3 scripts/v66131-published-f4-smoke.py
+      - name: Preserve exact safe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-f4-published-public-smoke
+          path: f4-published-smoke-results.json
+          if-no-files-found: warn
+          retention-days: 30
