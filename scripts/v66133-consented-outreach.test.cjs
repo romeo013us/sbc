@@ -52,6 +52,7 @@ function mock(){
   obtainedAt:new Date().toISOString(),confirm:'OWNER_HAS_DIRECT_OPT_IN_PROOF'});
  assert.equal(x.body.ok,true);
  assert.equal(MAIL.hasConsent(c),true);
+ assert.equal(c.leadIntelligence.sbcOutreach.marketingEmailConsent,true,'consent persisted inside SQL-backed leadIntelligence');
  const payload=MAIL.prepared(c,NEXT.intro(c),env);
  assert.match(payload.text,/13995 NW 7th Ave/);
  assert.match(payload.html,/asm_group_unsubscribe_raw_url/);
@@ -84,7 +85,7 @@ function mock(){
  x=await m.invoke('POST','/api/owner/nextday/reply/:taskId',{taskId:'task1'},
   {kind:'UNSUBSCRIBE',notes:'Customer asked to stop',confirm:'OWNER_VERIFIED_REAL_REPLY'});
  assert.equal(x.body.ok,true);
- assert.equal(c.emailUnsubscribed,true);
+ assert.equal(c.leadIntelligence.sbcOutreach.emailUnsubscribed,true);
  assert.equal(MAIL.hasConsent(c),false);
  assert.ok(m.saveCount()>3);
  console.log('PASS SBC consented email: evidence gate, provider no-send default, compliant footer, 202 not delivery, no duplicate, reply/appointment and opt-out');
