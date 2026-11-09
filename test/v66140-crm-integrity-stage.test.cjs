@@ -18,7 +18,8 @@ test('both CSV and API inbound reject malformed identities before write',()=>{
  assert(compiled.includes("SBC_CRM_TEXT.inspectBatch(normalized)"));
  assert(compiled.includes("SBC_CRM_TEXT.invalidFields(c)"));
  assert(compiled.indexOf("SBC_CRM_TEXT.inspectBatch(normalized)")<compiled.indexOf("if(!dryRun&&(SBC_RUNTIME_READ_ONLY"));
- assert(compiled.indexOf("SBC_CRM_TEXT.invalidFields(c)")<compiled.indexOf("db.customers.unshift(c)"));
+ const inbound=compiled.slice(compiled.indexOf("app.post('/api/crm/inbound/:key'"));
+ assert(inbound.indexOf("SBC_CRM_TEXT.invalidFields(c)")>=0 && inbound.indexOf("SBC_CRM_TEXT.invalidFields(c)")<inbound.indexOf("db.customers.unshift(c)"));
 });
 test('CSV check yields field-level offending-row evidence',()=>{
  const result=guard.inspectBatch([{businessName:'Café Señor'},{businessName:'PK\x03\x04 xl/workbook.xml'},{businessName:'Bangkok ร้านค้า'}]);
