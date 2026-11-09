@@ -32,6 +32,10 @@ function patchServer(input){
   s=replaceOnce(s,report,"db.callReports.unshift(r);if(String(r.outcome).trim().toLowerCase()==='bad number'){SBC_PHONE_RECOVERY.flag(c,{at:now(),actor:String(req.user.id)});c.verificationStatus='Needs Verification';}if(String(r.outcome).trim().toLowerCase()==='do not call'){",'workforce-call-report');
   const lornaRequest="if(p==='/api/v9/lead-verification')return m==='GET';";
   s=replaceOnce(s,lornaRequest,lornaRequest+"\n if(p==='/api/v9/phone-recovery')return m==='GET';\n if(m==='POST'&&/^\\/api\\/v9\\/phone-recovery\\/[^/]+\\/review$/.test(p))return true;",'lorna-recovery-access');
+    const gate="const verdict=SBC_V6699_OUTBOUND_AUTH.authorize({from:req.body?.From,to:req.body?.To||req.body?.to,users:db.users||[],customers:db.customers||[],canLiveCall:v9CanLiveCall});";
+  s=replaceOnce(s,gate,"const verdict=SBC_V6699_OUTBOUND_AUTH.authorize({from:req.body?.From,to:req.body?.To||req.body?.to,users:db.users||[],customers:db.customers||[],canLiveCall:v9CanLiveCall,badCallLogs:db.callLogs||[]});",'voice-signed-callback-hold');
+  const ack="res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt})";
+  s=replaceOnce(s,ack,"res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt,phoneHoldApplied:!!customer&&SBC_PHONE_RECOVERY.isHeld(customer)})",'voice-phone-hold-receipt');
   const beforeVerify="app.get('/api/v9/lead-verification',auth,(req,res)=>{";
   const routes=[
     "// SBC PHONE RECOVERY: owner/researcher scoped. No phone calls or AI requests.",
