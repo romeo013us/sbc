@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Read-only public production smoke test for SBC Fantastic 4.
+
+Uses urllib (no installed third-party packages) and only HTTP GET.
+Reports live observations, never asserts paid subscription/federation proof.
+Can run on GitHub-hosted runner to separate Cloud Browser DNS limitations.
+"""
+import datetime as dt
+import json
+import os
+import socket
+import ssl
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+TIMEOUT = 12
+UA = "SBC-F4-Published-ReadOnly-Smoke/1.0 (+https://sbcmia.com)"
+ENDPOINTS = {
+    "cc_health": "https://tyvrqnjz57.c24.airoapp.ai/healthz",
+    "cc_ready": "https://tyvrqnjz57.c24.airoapp.ai/readyz",
+    "cc_api": "https://tyvrqnjz57.c24.airoapp.ai/api/health",
+    "cc_checkout_ui": "https://tyvrqnjz57.c24.airoapp.ai/v66-129-owner-checkout-lab.js?v=66.0.129",
+    "cc_workforce_ui": "https://tyvrqnjz57.c24.airoapp.ai/v66-128-owner-while-away.js?v=66.0.128",
+    "office_health": "https://31qflm5uk6.c24.airoapp.ai/healthz",
+    "office_api": "https://31qflm5uk6.c24.airoapp.ai/api/health",
+    "office_i18n": "https://31qflm5uk6.c24.airoapp.ai/officebox-languages-v1556.js?v=15.5.6",
+    "public_sbc": "https://sbcmia.com/",
+    "public_reseller": "https://sbcwebsites.com/",
+}
+REQUIRED = {
+    "cc_health", "cc_ready", "cc_api", "cc_checkout_ui", "cc_workforce_ui",
+    "office_health", "office_api", "office_i18n",
+}
+# "public_reseller" is a GoDaddy reseller redirect to secureserver.net.
+# A third-party fetch restriction does not necessarily mean it is down.
+# Neither public website proves integration or money movements.
+
+
+def fetch(name: str, url: str, transport=None):
+    """One GET; bound response size; no cookies, authentication, or writes."""
+    request = urllib.request.Request(
+        url, method="GET", headers={"User-Agent": UA, "Accept": "application/json,text/javascript,text/html;q=.8"}
+    )
+    try:
+        if transport is None:
+            with urllib.request.urlopen(request, timeout=TIMEOUT, context=ssl.create_default_context()) as r:
+                status = r.status
+                effective_url = r.url
+                body = r.read(384 * 1024 + 1)
+                headers = dict(r.headers)
+        else:
+            status, effective_url, body, headers = transport(name, request)
+        if len(body) > 384 * 1024:
+            return {"name": name, "status": "INCONCLUSIVE", "reason": "RESPONSE_TOO_LARGE", "http": status}
+        if not isinstance(body, bytes):
+            return {"name": name, "status": "INCONCLUSIVE", "reason": "INVALID_RESPONSE_TYPE", "http": status}
+        return evaluate(name, status, body, headers, effective_url)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, socket.timeout, ssl.SSLError) as exc:
+        # Don't emit provider response bodies, tokens or headers.
+        err = type(exc).__name__
+        code = getattr(exc, "code", None)
+        return {"name": name, "status": "UNVERIFIED", "reason": err, "http": code}
+    except Exception as exc:
+        return {"name": name, "status": "UNVERIFIED", "reason": type(exc).__name__, "http": None}
+
+
+def evaluate(name, status, body, headers, url):
+    result = {"name": name, "status": "UNVERIFIED", "http": int(status), "reason": ""}
+    if status != 200:
+        result["reason"] = "NON_200_RESPONSE"
+        return result
+    if name.startswith("cc_") and name.endswith(("_health", "_ready", "_api")):
+        try:
+            obj = json.loads(body)
+            if not isinstance(obj, dict) or obj.get("ok") is not True:
+                result["reason"] = "UNHEALTHY_OR_INVALID_JSON"
+                return result
+            if name == "cc_health":
+                db = obj.get("database") or {}
+                if db.get("reachable") is not True:
+                    result["reason"] = "MYSQL_NOT_REACHABLE"
+                    return result
+            elif name == "cc_ready":
+                if obj.get("writePrerequisitesReported") is not True:
+                    result["reason"] = "WRITER_NOT_VERIFIED_IN_PUBLISHED"
+                    return result
+            else:
+                if obj.get("writerLeaseReady") is not True or obj.get("recoveryRequired") is True:
+                    result["reason"] = "WRITER_OR_RECOVERY_NOT_READY"
+                    return result
+            result["version"] = str(obj.get("version", ""))[:32]
+        except (ValueError, TypeError, AttributeError):
+            result["reason"] = "INVALID_JSON"
+            return result
+    elif name.startswith("office_") and name in ("office_health", "office_api"):
+        try:
+            obj = json.loads(body)
+            if not isinstance(obj, dict) or obj.get("ok") is not True:
+                result["reason"] = "UNHEALTHY_OR_INVALID_JSON"
+                return result
+            data = obj.get("data") if name == "office_api" else obj
+            if not isinstance(data, dict):
+                result["reason"] = "MISSING_OFFICE_HEALTH_DATA"
+                return result
+            version = str(data.get("version") or "")[:32]
+            result["version"] = version
+            if version != "15.5.0":
+                result["reason"] = "OFFICE_VERSION_MISMATCH"
+                return result
+            if name == "office_health" and data.get("persistence") != "mysql":
+                result["reason"] = "OFFICE_MYSQL_NOT_VERIFIED"
+                return result
+            if name == "office_api":
+                result["release"] = str(data.get("release") or "")[:80]
+                if data.get("databaseVerified") is not True or data.get("sessionConfigured") is not True:
+                    result["reason"] = "OFFICE_DATABASE_OR_SESSION_NOT_READY"
+                    return result
+                if data.get("release") != "OFFICE-BOX-V15.5-CUSTOMER-OWNED-WORKSPACE":
+                    result["reason"] = "OFFICE_RELEASE_MISMATCH"
+                    return result
+        except (ValueError, TypeError, AttributeError):
+            result["reason"] = "INVALID_JSON"
+            return result
+    elif name == "cc_checkout_ui":
+        if b"sbcOpenOwnerCheckoutLab" not in body or b"CREATE_ZERO_DOLLAR_QA" not in body:
+            result["reason"] = "LATEST_CHECKOUT_UI_NOT_FOUND"
+            return result
+    elif name == "cc_workforce_ui":
+        if b"sbcOpenWhileAway" not in body or b"while-away" not in body:
+            result["reason"] = "LATEST_WORKFORCE_UI_NOT_FOUND"
+            return result
+    elif name == "office_i18n":
+        if b"officebox" not in body.lower() and b"spanish" not in body.lower() and b"es" not in body.lower():
+            result["reason"] = "OFFICE_ASSET_NOT_RECOGNIZED"
+            return result
+    elif name == "public_sbc":
+        if b"Successful By Choice" not in body:
+            result["reason"] = "SBC_PUBLIC_BRAND_NOT_FOUND"
+            return result
+    elif name == "public_reseller":
+        # A clean provider redirect is a useful observation, not integration proof.
+        # Following to Secureserver is allowed but recorded as a separate brand check.
+        if not url.startswith("https://") or not any(host in url.lower() for host in ("sbcwebsites.com", "secureserver.net")):
+            result["reason"] = "UNRECOGNIZED_RESELLER_DESTINATION"
+            return result
+    result["status"] = "VERIFIED"
+    result["reason"] = "PUBLIC_GET_OK"
+    return result
+
+
+def selftest():
+    assert set(ENDPOINTS) == REQUIRED | {"public_sbc", "public_reseller"}
+    for url in ENDPOINTS.values():
+        assert url.startswith("https://")
+        assert "?" not in url or "?v=" in url
+    assert evaluate("cc_checkout_ui", 200, b"sbcOpenOwnerCheckoutLab CREATE_ZERO_DOLLAR_QA", {}, "")["status"] == "VERIFIED"
+    assert evaluate("cc_checkout_ui", 200, b"<html>login</html>", {}, "")["status"] == "UNVERIFIED"
+    assert evaluate("cc_ready", 200, json.dumps({"ok": True, "writePrerequisitesReported": False}).encode(), {}, "")["status"] == "UNVERIFIED"
+    assert evaluate("cc_ready", 200, json.dumps({"ok": True, "writePrerequisitesReported": True}).encode(), {}, "")["status"] == "VERIFIED"
+    assert evaluate("office_api", 200, json.dumps({
+        "ok": True, "data": {"version": "15.5.0", "release": "OFFICE-BOX-V15.5-CUSTOMER-OWNED-WORKSPACE",
+                              "databaseVerified": True, "sessionConfigured": True}
+    }).encode(), {}, "")["status"] == "VERIFIED"
+    assert evaluate("office_health", 503, b"", {}, "")["status"] == "UNVERIFIED"
+    assert fetch("cc_health", ENDPOINTS["cc_health"], transport=lambda n, r: (
+        200, r.full_url, json.dumps({"ok": True, "database": {"reachable": True}}).encode(), {}
+    ))["status"] == "VERIFIED"
+    assert fetch("office_health", ENDPOINTS["office_health"], transport=lambda n, r: (
+        401, r.full_url, b"", {}
+    ))["status"] == "UNVERIFIED"
+    print("[SBC F4 LIVE PUBLIC SMOKE] SELFTEST PASS: GET only, provider-independent, fail-closed and diagnostic-safe")
+
+
+def run():
+    observations = [fetch(name, url) for name, url in ENDPOINTS.items()]
+    ok = all(obs["status"] == "VERIFIED" for obs in observations if obs["name"] in REQUIRED)
+    results = {
+        "test": "SBC F4 published public READ-ONLY smoke",
+        "observedAtUtc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "requiredPublicChecksPassed": ok,
+        "forbiddenOperationsPerformed": 0,
+        "providerCharges": 0,
+        "liveOfficeBoxFederationAuthenticated": "NOT_TESTED_OWNER_AUTH_REQUIRED",
+        "recurringProviderSubscriptionVerified": "NOT_TESTED_PROVIDER_AUTH_REQUIRED",
+        "ownerCheckoutLabCompletedAgainstPublishedMysql": "NOT_TESTED_OWNER_AUTH_REQUIRED",
+        "actualPublishedGitCommit": "NOT_PROVABLE_BY_PUBLIC_HEALTH_ROUTES",
+        "checks": observations,
+    }
+    Path("f4-published-smoke-results.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf8")
+    summary = [
+        "## SBC Fantastic 4 — public Published smoke check",
+        "Only public GETs; no payments, credentials, orders or subscriptions.",
+        "",
+        "| Check | Result | HTTP | Evidence |",
+        "|---|---|---|---|",
+    ]
+    for x in observations:
+        summary.append(f"| {x['name']} | {x['status']} | {x.get('http') or '—'} | {x['reason']} |")
+    summary += [
+        "",
+        f"**Required app checks:** {'PASS' if ok else 'NOT VERIFIED'}.",
+        "**Still unverified:** authenticated Command Center ⇄ Office Box federation, GoDaddy Published exact commit,",
+        "owner $0 persisted checkout/manual completion, and real recurring billing provider.",
+        "",
+    ]
+    text = "\n".join(summary)
+    print(text)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf8") as f:
+            f.write(text + "\n")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "--self-test":
+        selftest()
+        sys.exit(0)
+    sys.exit(run())
