@@ -54,6 +54,7 @@ function mock(){
  assert.equal(c.leadIntelligence.sbcOutreach.marketingEmailConsent,true,'consent persisted inside SQL-backed leadIntelligence');
  const payload=MAIL.prepared(c,NEXT.intro(c),env);
  assert.match(payload.text,/13995 NW 7th Ave/);
+ assert.match(payload.text,/asm_group_unsubscribe_raw_url/,'plain-text unsubscribe link exists');
  assert.match(payload.html,/asm_group_unsubscribe_raw_url/);
  assert.equal(payload.from.email,'info@sbcmia.com');
  let captured;
