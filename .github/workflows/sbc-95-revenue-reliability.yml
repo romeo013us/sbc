@@ -39,6 +39,10 @@ jobs:
           node --check browser_public/app.js
           node --check public/sbc-customer360-workspace-v6525.js
           node --check browser_public/sbc-customer360-workspace-v6525.js
+      - name: Check dashboard assets, handlers and API routes
+        run: npm run audit:ui
+      - name: Block high severity production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
       - name: Recent quote-save and light-mode regression
         run: node scripts/v6601-ui-revenue-resilience.test.cjs
       - name: Browser profile/role stability no-reload regression

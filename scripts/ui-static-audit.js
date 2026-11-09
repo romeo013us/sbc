@@ -6,7 +6,10 @@ const fs=require('fs'),path=require('path');
 const root=path.resolve(__dirname,'..'),pub=path.join(root,'public');
 const read=f=>fs.readFileSync(f,'utf8');
 const html=read(path.join(pub,'index.html'));
-const srv=[read(path.join(root,'server.js'))].concat(fs.existsSync(path.join(root,'routes'))?fs.readdirSync(path.join(root,'routes')).filter(f=>f.endsWith('.js')).map(f=>read(path.join(root,'routes',f))):[]).join('\n');
+const readModules=dir=>fs.existsSync(dir)
+  ? fs.readdirSync(dir).filter(f=>/\.(?:c?js)$/.test(f)).map(f=>read(path.join(dir,f)))
+  : [];
+const srv=[read(path.join(root,'server.js')),...readModules(path.join(root,'routes'))].join('\n');
 const routes=[...srv.matchAll(/\b(?:app|router)\.(?:get|post|put|patch|delete|all|use)\(\s*['"`]([^'"`]+)['"`]/g)].map(m=>m[1]);
 const toRe=r=>new RegExp('^'+r.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replace(/:[A-Za-z_]+/g,'[^/]+').replace(/\*/g,'.*')+'/?$');
 // Catch-all routes (containing '*' or mounted at '/') would make EVERY path look valid, so they are excluded.
@@ -26,7 +29,7 @@ const calls=new Set([...allpub.matchAll(/['"`](\/api\/[A-Za-z0-9_\/\-\.:]+)(?:\?
 // Routes mounted through routers/enterprise modules can't be resolved purely from app.get(...) text, so an API path
 // also counts as defined when its last two segments appear literally in server/routes/enterprise source (heuristic).
 const entDir=path.join(root,'enterprise');
-const allSrc=srv+'\n'+(fs.existsSync(entDir)?fs.readdirSync(entDir).filter(f=>f.endsWith('.js')).map(f=>read(path.join(entDir,f))).join('\n'):'');
+const allSrc=[srv,...readModules(entDir)].join('\n');
 const apiDefined=c=>isRoute(c)||allSrc.includes(c.split('/').slice(-2).join('/'));
 for(const c of calls)if(!apiDefined(c))fail('frontend calls an API path with no server route: '+c);
 console.log(`UI static audit: ${refs.length} asset refs, ${handlers.size} inline handlers, ${calls.size} API paths, ${routes.length} server routes, ${bad} problems`);

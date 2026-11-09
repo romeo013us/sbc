@@ -14,6 +14,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 TIMEOUT = 12
 UA = "SBC-F4-Published-ReadOnly-Smoke/1.0 (+https://sbcmia.com)"
@@ -23,6 +24,7 @@ ENDPOINTS = {
     "cc_api": "https://tyvrqnjz57.c24.airoapp.ai/api/health",
     "cc_checkout_ui": "https://tyvrqnjz57.c24.airoapp.ai/v66-129-owner-checkout-lab.js?v=66.0.129",
     "cc_workforce_ui": "https://tyvrqnjz57.c24.airoapp.ai/v66-128-owner-while-away.js?v=66.0.128",
+    "cc_lorna_ui": "https://tyvrqnjz57.c24.airoapp.ai/sbc-lorna-checklist.js?v=1",
     "office_health": "https://31qflm5uk6.c24.airoapp.ai/healthz",
     "office_api": "https://31qflm5uk6.c24.airoapp.ai/api/health",
     "office_i18n": "https://31qflm5uk6.c24.airoapp.ai/officebox-languages-v1556.js?v=15.5.6",
@@ -32,13 +34,13 @@ ENDPOINTS = {
 REQUIRED = {
     "cc_health", "cc_ready", "cc_api", "cc_checkout_ui", "cc_workforce_ui",
     "office_health", "office_api", "office_i18n",
+    "public_sbc", "public_reseller",
 }
-# "public_reseller" is a GoDaddy reseller redirect to secureserver.net.
-# A third-party fetch restriction does not necessarily mean it is down.
-# Neither public website proves integration or money movements.
+# Report new UI separately so a source build can run before its GoDaddy deployment.
+LATEST_UI = {"cc_lorna_ui"}
 
 
-def fetch(name: str, url: str, transport=None):
+def fetch_once(name: str, url: str, transport=None):
     """One GET; bound response size; no cookies, authentication, or writes."""
     request = urllib.request.Request(
         url, method="GET", headers={"User-Agent": UA, "Accept": "application/json,text/javascript,text/html;q=.8"}
@@ -64,6 +66,13 @@ def fetch(name: str, url: str, transport=None):
         return {"name": name, "status": "UNVERIFIED", "reason": err, "http": code}
     except Exception as exc:
         return {"name": name, "status": "UNVERIFIED", "reason": type(exc).__name__, "http": None}
+
+
+def fetch(name: str, url: str, transport=None):
+    result = fetch_once(name, url, transport)
+    if result["http"] in (502, 503, 504):
+        result = {**fetch_once(name, url, transport), "attempts": 2}
+    return result
 
 
 def evaluate(name, status, body, headers, url):
@@ -131,6 +140,11 @@ def evaluate(name, status, body, headers, url):
         if b"sbcOpenWhileAway" not in body or b"while-away" not in body:
             result["reason"] = "LATEST_WORKFORCE_UI_NOT_FOUND"
             return result
+    elif name == "cc_lorna_ui":
+        content_type = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+        if "javascript" not in content_type.lower() or b"SBC Lorna" not in body:
+            result["reason"] = "LORNA_CHECKLIST_SCRIPT_NOT_SERVED"
+            return result
     elif name == "office_i18n":
         if b"Office Box v15.5.6" not in body or b"Krey" not in body:
             result["reason"] = "OFFICE_ASSET_NOT_RECOGNIZED"
@@ -140,10 +154,17 @@ def evaluate(name, status, body, headers, url):
             result["reason"] = "SBC_PUBLIC_BRAND_NOT_FOUND"
             return result
     elif name == "public_reseller":
-        # A clean provider redirect is a useful observation, not integration proof.
-        # Following to Secureserver is allowed but recorded as a separate brand check.
-        if not url.startswith("https://") or not any(host in url.lower() for host in ("sbcwebsites.com", "secureserver.net")):
+        dest = urlsplit(url)
+        if dest.scheme != "https" or dest.hostname not in {
+            "sbcwebsites.com", "www.sbcwebsites.com", "secureserver.net", "www.secureserver.net"
+        }:
             result["reason"] = "UNRECOGNIZED_RESELLER_DESTINATION"
+            return result
+        if dest.hostname in {"secureserver.net", "www.secureserver.net"} and parse_qs(dest.query).get("pl_id") != ["591874"]:
+            result["reason"] = "SBC_RESELLER_ID_NOT_PRESENT"
+            return result
+        if b"Successful By Choice" not in body:
+            result["reason"] = "SBC_RESELLER_BRAND_NOT_FOUND"
             return result
     result["status"] = "VERIFIED"
     result["reason"] = "PUBLIC_GET_OK"
@@ -151,7 +172,7 @@ def evaluate(name, status, body, headers, url):
 
 
 def selftest():
-    assert set(ENDPOINTS) == REQUIRED | {"public_sbc", "public_reseller"}
+    assert set(ENDPOINTS) == REQUIRED | LATEST_UI
     for url in ENDPOINTS.values():
         assert url.startswith("https://")
         assert "?" not in url or "?v=" in url
@@ -164,6 +185,13 @@ def selftest():
                               "databaseVerified": True, "sessionConfigured": True}
     }).encode(), {}, "")["status"] == "VERIFIED"
     assert evaluate("office_health", 503, b"", {}, "")["status"] == "UNVERIFIED"
+    assert evaluate("cc_lorna_ui", 200, b"<html>SBC Lorna</html>", {"Content-Type": "text/html"}, "")["status"] == "UNVERIFIED"
+    assert evaluate("cc_lorna_ui", 200, b"// SBC Lorna", {"Content-Type": "application/javascript"}, "")["status"] == "VERIFIED"
+    assert evaluate("public_reseller", 200, b"Successful By Choice", {}, "https://www.secureserver.net/?pl_id=591874")["status"] == "VERIFIED"
+    assert evaluate("public_reseller", 200, b"Successful By Choice", {}, "https://example.com/?dest=secureserver.net")["status"] == "UNVERIFIED"
+    attempts = iter([(503, "", b"", {}), (200, "", b"Successful By Choice", {})])
+    retried = fetch("public_sbc", ENDPOINTS["public_sbc"], transport=lambda n, r: next(attempts))
+    assert retried["status"] == "VERIFIED" and retried["attempts"] == 2
     assert fetch("cc_health", ENDPOINTS["cc_health"], transport=lambda n, r: (
         200, r.full_url, json.dumps({"ok": True, "database": {"reachable": True}}).encode(), {}
     ))["status"] == "VERIFIED"
@@ -176,10 +204,12 @@ def selftest():
 def run():
     observations = [fetch(name, url) for name, url in ENDPOINTS.items()]
     ok = all(obs["status"] == "VERIFIED" for obs in observations if obs["name"] in REQUIRED)
+    latest_ui = all(obs["status"] == "VERIFIED" for obs in observations if obs["name"] in LATEST_UI)
     results = {
         "test": "SBC F4 published public READ-ONLY smoke",
         "observedAtUtc": dt.datetime.now(dt.timezone.utc).isoformat(),
         "requiredPublicChecksPassed": ok,
+        "latestUiAssetsServed": latest_ui,
         "forbiddenOperationsPerformed": 0,
         "providerCharges": 0,
         "liveOfficeBoxFederationAuthenticated": "NOT_TESTED_OWNER_AUTH_REQUIRED",
@@ -200,7 +230,8 @@ def run():
         summary.append(f"| {x['name']} | {x['status']} | {x.get('http') or '—'} | {x['reason']} |")
     summary += [
         "",
-        f"**Required app checks:** {'PASS' if ok else 'NOT VERIFIED'}.",
+        f"**Required public checks across all four products:** {'PASS' if ok else 'NOT VERIFIED'}.",
+        f"**New Lorna checklist asset:** {'SERVED' if latest_ui else 'NOT VERIFIED'}.",
         "**Still unverified:** authenticated Command Center ⇄ Office Box federation, GoDaddy Published exact commit,",
         "owner $0 persisted checkout/manual completion, and real recurring billing provider.",
         "",

@@ -2,12 +2,12 @@
 // SBC V66.140. Read-only eligibility + all-lines-complete check. No AI/provider I/O.
 const DONE=new Set(['completed','complete','fulfilled','delivered']);
 const PRINT=/\b(business\s+cards?|flyers?|brochures?|postcards?|banners?|door\s*hangers?|print(?:ing|ed)?|labels?|stickers?|dtf|shirts?|apparel)\b/i;
-const NO_ARTWORK=/^(?:office\s*box(?:\s+(?:subscription|service|account|access|plan))?|(?:microsoft\s*365|m365)(?:\s+(?:email|setup|license|mailbox))?|(?:business\s+)?email(?:\s+(?:mailbox|setup|account))?|domain\s+(?:registration|renewal|setup)|(?:web\s+)?hosting(?:\s+(?:renewal|setup|subscription))?|ssl\s+(?:certificate|renewal|setup))$/i;
+const NO_ARTWORK=/^(?:office\s*box(?:\s+(?:starter|business|professional|team|subscription|service|account|access|plan))?|(?:microsoft\s*365|m365)(?:\s+(?:email|setup|license|mailbox))?|(?:business\s+)?email(?:\s+(?:mailbox|setup|account))?|domain\s+(?:registration|renewal|setup)|(?:web\s+)?hosting(?:\s+(?:renewal|setup|subscription))?|ssl\s+(?:certificate|renewal|setup))$/i;
 function noArtworkService(order){
  const items=Array.isArray(order?.items)?order.items:[];
  if(items.length!==1)return false;
  const name=String(items[0]?.name||'').trim();
- if(PRINT.test(name)||/\b(bundle|starter|complete|essentials|growth|website|design|wordpress|package|launch)\b/i.test(name))return false;
+ // Exact catalog labels only. A bundled or extended name never skips artwork review.
  return NO_ARTWORK.test(name);
 }
 function validTracking(number){

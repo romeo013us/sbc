@@ -94,7 +94,13 @@ function notify(orderId,channel,message,actor){const x=state.orders[String(order
 function reconcile(orderId,actualCost,actor){const x=state.orders[String(orderId)];if(!x)throw Error('Fulfillment order not found.');if(!x.checklist.payment)throw Error('PAYMENT_EVIDENCE_REQUIRED');x.financial.cost=Number(actualCost||0);x.financial.margin=Number((x.financial.revenue-x.financial.cost).toFixed(2));event('FINANCIAL_RECONCILED',x.id,actor,{revenue:x.financial.revenue,cost:x.financial.cost,margin:x.financial.margin});save();return clone(x.financial);}
 function kimSweep(orders,actor){sync(orders);const actions=[];for(const x of Object.values(state.orders)){
   if(x.stage==='PAID'){advance(x.id,'INTAKE',actor,{automatic:true});actions.push(`${x.orderNumber}: intake opened`);}
-  if(x.stage==='INTAKE'&&FULFILLMENT_COVERAGE.noArtworkService(x)){advance(x.id,'PREFLIGHT',actor,{automatic:true});actions.push(`${x.orderNumber}: no print artwork required`);}else if(x.stage==='INTAKE'&&x.assets.length===0){advance(x.id,'ASSET_REQUIRED',actor,{automatic:true});actions.push(`${x.orderNumber}: waiting for assets`);}
+  if(['INTAKE','ASSET_REQUIRED'].includes(x.stage)&&FULFILLMENT_COVERAGE.noArtworkService(x)){
+    advance(x.id,'PREFLIGHT',actor,{automatic:true});
+    actions.push(`${x.orderNumber}: no print artwork required`);
+  }else if(x.stage==='INTAKE'&&x.assets.length===0){
+    advance(x.id,'ASSET_REQUIRED',actor,{automatic:true});
+    actions.push(`${x.orderNumber}: waiting for assets`);
+  }
   if(x.stage==='PREFLIGHT'&&x.checklist.preflight){advance(x.id,x.proofs.length?'PROOF_PENDING':'PRODUCTION_READY',actor,{automatic:true});actions.push(`${x.orderNumber}: preflight complete`);}
   if(x.stage==='PROOF_APPROVED'){advance(x.id,'PRODUCTION_READY',actor,{automatic:true});actions.push(`${x.orderNumber}: proof approved`);}
   if(x.stage==='VENDOR_STAGED'&&x.vendor.status==='READY'){actions.push(`${x.orderNumber}: vendor ready; submission remains gated to authorized action`);}

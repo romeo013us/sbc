@@ -4,10 +4,10 @@ const ROOT=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(ROOT,p
 const COVER=require('../enterprise/v66140-fulfillment-bundle-coverage.cjs'),V400=require('../enterprise/kim-fulfillment-control-v400.js');
 const STAGE=require('./v66140-stage-bundle-coverage.cjs');
 const cleanItem=name=>({id:'line-1',name,qty:1});
-for(const name of ['Office Box','Office Box Subscription','Microsoft 365 Setup','Domain Registration','Business Email Mailbox','SSL Certificate','Web Hosting']){
+for(const name of ['Office Box','Office Box Starter','Office Box Business','Office Box Professional','Office Box Team','Office Box Subscription','Microsoft 365 Setup','Domain Registration','Business Email Mailbox','SSL Certificate','Web Hosting']){
  assert.equal(COVER.noArtworkService({items:[cleanItem(name)]}),true,name+' must not require fake print artwork');
 }
-for(const name of ['100 Business Cards','Website Design','Business Starter Package','Business Essentials','Managed WordPress','Office Box + Business Cards']){
+for(const name of ['100 Business Cards','Website Design','Business Starter Package','Business Essentials','Managed WordPress','Office Box + Business Cards','Office Box Starter Bundle']){
  assert.equal(COVER.noArtworkService({items:[cleanItem(name)]}),false,name+' requires service-specific review');
 }
 assert.equal(COVER.noArtworkService({items:[cleanItem('Office Box'),cleanItem('Business Cards')]}),false,'bundles always use per-line QA');
@@ -26,7 +26,7 @@ v=COVER.summary({components:parts,jobs:[site,print,print]});
 assert.equal(v.ready,false,'duplicate jobs must never certify a single line');
 v=COVER.summary({components:[{id:'x',name:'A'},{id:'x',name:'B'}],jobs:[site,print]});
 assert.equal(v.ready,false);assert.equal(v.status,'MAPPING_REQUIRED');
-const synthetic='sbc_v66140_internal_digital_qa',original=V400.capture(synthetic);
+const synthetic='sbc_v66140_internal_digital_qa',original=V400.capture(synthetic),orders=V400.state.orders;
 try{
  const x={id:synthetic,orderNumber:'Synthetic Office Box',stage:'PAID',items:[cleanItem('Office Box Subscription')],
   customerId:'synthetic',vendor:{provider:'internal',status:'NOT_STAGED'},shipping:{status:'NOT_SHIPPED'},
@@ -40,7 +40,12 @@ try{
  V400.advance(synthetic,'PRODUCTION_READY',{name:'Owner'});
  assert.equal(x.stage,'PRODUCTION_READY');
  assert.equal(x.blockedReason,'','Office Box must not be blocked for missing print assets');
-}finally{V400.restore(original)}
+ V400.state.orders={[synthetic]:{...x,stage:'ASSET_REQUIRED',items:[cleanItem('Office Box Starter')]}};
+ V400.kimSweep([],{name:'Owner'});
+ const recovered=V400.state.orders[synthetic];
+ assert.equal(recovered.stage,'PRODUCTION_READY','existing Office Box plans must leave a stale artwork hold');
+ assert.equal(recovered.vendor.status,'NOT_STAGED','repair must stop before vendor submission');
+}finally{V400.state.orders=orders;V400.restore(original)}
 const raw=read('server.js'),compiled=STAGE.patchServer(raw);
 new vm.Script(compiled,{filename:'server-with-bundle-gate.js'});
 assert.equal(STAGE.patchServer(compiled),compiled,'staging must be idempotent');
