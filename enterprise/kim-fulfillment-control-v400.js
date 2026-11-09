@@ -84,8 +84,8 @@ function digitalEligible(x){
  if(!['internal','godaddy'].includes(supplier))return false;
  const lines=Array.isArray(x?.items)?x.items:[];
  const all=lines.map(it=>String(it?.name||'')).join(' | ');
- const physical=/\\b(business cards?|flyers?|banners?|brochures?|postcards?|print(?:ing|ed)?|stickers?|dtf|shirts?|apparel|signs?)\\b/i;
- const digital=/\\b(domain|hosting|wordpress|website|web site|email|microsoft 365|ssl|seo|google business profile|office box|subscription|digital)\\b/i;
+ const physical=/\b(business cards?|flyers?|banners?|brochures?|postcards?|print(?:ing|ed)?|stickers?|dtf|shirts?|apparel|signs?)\b/i;
+ const digital=/\b(domain|hosting|wordpress|website|web site|email|microsoft 365|ssl|seo|google business profile|office box|subscription|digital)\b/i;
  return !physical.test(all)&&digital.test(all);
 }
 function deliver(orderId,actor,evidence={}){const x=state.orders[String(orderId)];if(!x)throw Error('Fulfillment order not found.');if(!x.checklist.payment)throw Error('PAYMENT_EVIDENCE_REQUIRED');if(!FULFILLMENT_TRUTH.validDelivery(evidence))throw Error('DELIVERY_PROOF_REQUIRED');if(evidence.type==='digital_activation'&&(!digitalEligible(x)||x.stage!=='IN_PRODUCTION'))throw Error('DIGITAL_ACTIVATION_NOT_ELIGIBLE');if(evidence.type!=='digital_activation'&&x.stage!=='SHIPPED')throw Error('PHYSICAL_DELIVERY_MUST_FOLLOW_SHIPPING');x.deliveryEvidence={type:String(evidence.type),reference:String(evidence.reference),confirmedAt:String(evidence.confirmedAt),recordedBy:actorName(actor)};x.shipping.status=evidence.type==='digital_activation'?'NOT_APPLICABLE_DIGITAL':'DELIVERED';x.shipping.deliveredAt=now();advance(orderId,'DELIVERED',actor);return {shipping:clone(x.shipping),deliveryEvidence:clone(x.deliveryEvidence),digital:evidence.type==='digital_activation'};}
