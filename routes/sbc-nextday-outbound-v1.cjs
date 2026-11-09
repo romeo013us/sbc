@@ -122,5 +122,89 @@ function register(app,deps){
      emailSent:0,externalCalls:0,note:'Drafts and call tasks saved. No emails or calls sent.'});
   }catch(e){fail(res,e);}finally{saving=false;}
  });
+
+ // Owner's due-first view: existing appointments, scheduled follow-ups, and
+ // explicitly requested appointments from structured caller reports.
+ // No free-text classification, no outbound notifications and no auto-booking.
+ app.get('/api/owner/nextday/priorities',auth,ownerOnly,(req,res)=>{
+  try{
+   const t=get(req),db=getDb(),nowMs=Date.now();
+   const contacts=new Map((db.customers||[]).filter(c=>tenantOf(c)===t).map(c=>[String(c.id),c]));
+   const belongs=(customerId,tenantId)=>tenantId===t||contacts.has(String(customerId));
+   const records=[];
+   for(const a of db.appointments||[]){
+    if(!belongs(a.customerId,tenantOf(a)))continue;
+    if(['cancelled','canceled','completed'].includes(clean(a.status,50).toLowerCase()))continue;
+    const at=Date.parse(a.startAt||'');if(!Number.isFinite(at))continue;
+    records.push({kind:'APPOINTMENT',id:String(a.id),customerId:String(a.customerId||''),
+     businessName:clean(a.customerName||contacts.get(String(a.customerId))?.businessName||'Appointment',140),
+     dueAt:new Date(at).toISOString(),description:clean(a.title,200),status:clean(a.status,50)||'Scheduled'});
+   }
+   for(const task of db.tasks||[]){
+    if(!belongs(task.customerId,tenantOf(task)))continue;
+    if(['completed','cancelled','canceled'].includes(clean(task.status,50).toLowerCase()))continue;
+    const at=Date.parse(task.dueAt||'');if(!Number.isFinite(at))continue;
+    records.push({kind:/appointment/i.test(String(task.type||''))?'APPOINTMENT_REMINDER':'FOLLOW_UP',
+     id:String(task.id),customerId:String(task.customerId||''),
+     businessName:clean(task.customerName||contacts.get(String(task.customerId))?.businessName||'Lead',140),
+     dueAt:new Date(at).toISOString(),description:clean(task.title,200),status:clean(task.status,50)||'Open'});
+   }
+   const appointmentContacts=new Set((db.appointments||[]).filter(a=>
+    belongs(a.customerId,tenantOf(a))&&!['cancelled','canceled'].includes(clean(a.status,60).toLowerCase())).map(a=>String(a.customerId)));
+   for(const r of (db.callReports||[]).slice(0,500)){
+    if(r.appointmentRequested!==true||appointmentContacts.has(String(r.customerId))||!contacts.has(String(r.customerId)))continue;
+    records.push({kind:'APPOINTMENT_REQUEST',id:String(r.id),customerId:String(r.customerId),
+     businessName:clean(contacts.get(String(r.customerId)).businessName||'',140),
+     dueAt:new Date(r.createdAt||Date.now()).toISOString(),
+     description:'Confirm the requested appointment time with the customer',status:'Needs owner scheduling'});
+   }
+   records.sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt)||
+    String(a.kind).localeCompare(String(b.kind)));
+   res.setHeader('Cache-Control','no-store');
+   res.json({ok:true,records:records.slice(0,100),
+    dueCount:records.filter(r=>Date.parse(r.dueAt)<=nowMs).length,
+    appointmentRequests:records.filter(r=>r.kind==='APPOINTMENT_REQUEST').length,
+    note:'Owner in-app due list; no external notifications or invitations were sent.'});
+  }catch(e){fail(res,e)}
+ });
+ // A structured appointment request does not equal a confirmed booking.
+ // Owner may schedule only after confirming the specific time with the customer.
+ app.post('/api/owner/nextday/appointment',auth,ownerOnly,async(req,res)=>{
+  if(saving)return res.status(409).json({ok:false,error:'APPOINTMENT_WRITE_IN_PROGRESS'});
+  saving=true;
+  try{
+   requireWriter();
+   const t=get(req),db=getDb(),b=req.body||{};
+   const c=(db.customers||[]).find(x=>String(x.id)===String(b.customerId||'')&&tenantOf(x)===t);
+   const raw=String(b.startAt||''),at=Date.parse(raw);
+   if(!c||b.customerConfirmed!==true||!Number.isFinite(at)||at<=Date.now()||at>Date.now()+366*86400000)
+    return res.status(422).json({ok:false,error:'CONFIRMED_CUSTOMER_AND_FUTURE_TIME_REQUIRED'});
+   if(!/(Z|[+-]\d{2}:\d{2})$/i.test(raw))
+    return res.status(422).json({ok:false,error:'TIMEZONE_OFFSET_REQUIRED'});
+   const title=clean(b.title||'SBC business consultation',160),startAt=new Date(at).toISOString();
+   if((db.appointments||[]).some(a=>String(a.customerId)===String(c.id)&&
+      String(a.startAt)===startAt&&!['cancelled','canceled'].includes(clean(a.status,50).toLowerCase())))
+     return res.status(409).json({ok:false,error:'APPOINTMENT_ALREADY_EXISTS'});
+   const nowTs=now();
+   const appt={id:makeId('appt'),tenantId:t,customerId:String(c.id),
+    customerName:clean(c.businessName||c.contactName,140),title,startAt,
+    endAt:'',location:clean(b.location||'Phone / online',140),
+    notes:'Owner confirmed time with customer. Prepared from SBC Next-Day Sales Prep.',
+    status:'Scheduled',createdAt:nowTs,updatedAt:nowTs};
+   const task={id:makeId('task'),tenantId:t,customerId:String(c.id),
+    customerName:appt.customerName,title:'Appointment reminder · '+title,
+    dueAt:startAt,type:'Appointment Reminder',priority:'High',status:'Open',notes:'SBC appointment '+appt.id+
+    '. Check customer confirmation and preparation before meeting.',
+    assignedTo:'',assignedToName:'Owner',createdBy:String(req.user.id),
+    createdAt:nowTs,updatedAt:nowTs};
+   if(!Array.isArray(db.appointments))db.appointments=[];
+   if(!Array.isArray(db.tasks))db.tasks=[];
+   db.appointments.unshift(appt);db.tasks.unshift(task);
+   try{await saveData();}catch(e){db.appointments.shift();db.tasks.shift();throw e;}
+   res.status(201).json({ok:true,appointment:{id:appt.id,customerId:appt.customerId,
+    customerName:appt.customerName,startAt:appt.startAt,title:appt.title},
+    reminderTaskId:task.id,externalNotificationsSent:0});
+  }catch(e){fail(res,e)}finally{saving=false;}
+ });
 }
 module.exports={register,blocked,phone,leadsFor,intro,item};
