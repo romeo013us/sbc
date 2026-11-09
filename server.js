@@ -9495,8 +9495,10 @@ async function v400CommitAction(req,stage,mutate){
   if(!V400_PAYMENT_EVIDENCE.confirmedPaid(order))throw Error('PAYMENT_EVIDENCE_REQUIRED');
   if(!mysqlPool||SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
     throw Object.assign(Error('FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'),{code:'FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'});
-  if(stage==='FULFILLED'){
+  // SBC_V66141_ORDER_DELIVERY_AND_MAPPING_GUARD
+  if(stage==='FULFILLED'||stage==='DELIVERED'){
    const parts=fulfillmentItemsForOrder(order);
+   if(SBC_V66140_COVERAGE.needsMapping(order,parts))throw Object.assign(Error('BUNDLE_COMPONENT_MAPPING_REQUIRED'),{code:'BUNDLE_COMPONENT_MAPPING_REQUIRED'});
    if(parts.length>1){
     const [jobs]=await mysqlPool.query('SELECT item_id,product,vendor,status,vendor_status,vendor_order_number,tracking_number FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_id=?',[Number(tenantId),String(order.id)]);
     const coverage=SBC_V66140_COVERAGE.summary({components:parts,jobs});
@@ -9565,6 +9567,7 @@ app.get('/api/kim400/orders/:id/coverage',auth,requireCapability('fulfillment.ma
   const order=v400Orders().find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenantId));
   if(!order)return res.status(404).json({ok:false,error:'FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'});
   const components=fulfillmentItemsForOrder(order);
+  if(SBC_V66140_COVERAGE.needsMapping(order,components))return res.json({ok:true,source:'CATALOG_RECIPE_REQUIRED',...SBC_V66140_COVERAGE.mappingHold(order,components)});
   let jobs=[];
   if(components.length>1){
    if(!mysqlPool)return res.status(503).json({ok:false,error:'FULFILLMENT_MYSQL_UNAVAILABLE'});
