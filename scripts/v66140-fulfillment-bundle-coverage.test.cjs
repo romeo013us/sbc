@@ -52,7 +52,7 @@ assert(compiled.includes("FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_
 const ui=read('public/v40-fulfillment.js');
 assert.equal(ui,read('browser_public/v40-fulfillment.js'));
 new vm.Script(ui,{filename:'v40-fulfillment.js'});
-assert(ui.includes('Check All Services')&&ui.includes('v400Coverage=coverage'));
+assert(ui.includes('Check All Services')&&ui.includes('v400Coverage=coverage')&&ui.includes('Start Digital Service'));
 assert.equal(read('public/index.html'),read('browser_public/index.html'));
 assert(read('public/index.html').includes('/v40-fulfillment.js?v=66.140-service-coverage'));
 if(process.argv.includes('--staged'))assert.equal(compiled,raw);
