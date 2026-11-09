@@ -87,7 +87,6 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    r.outboundEmailAttemptAt=now();
    // Reserve attempt DURABLY before contacting provider; never auto-retry an unknown outcome.
    try{await saveData()}catch(e){delete r.outboundEmailStatus;delete r.outboundEmailAttemptAt;throw e}
-   changing=false;
    let result;
    try{result=await mail.submit(c,draft)}
    catch(e){
@@ -145,7 +144,8 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
     db.tasks.unshift(item);created.push(item);
    }
    try{await saveData()}catch(e){
-    for(const [k,v]of Object.entries(original)){if(k in r)r[k]=v;else c[k]=v}
+    for(const k of ['replyStatus','replyAt','replyNotes'])r[k]=original[k];
+    for(const k of ['emailUnsubscribed','marketingEmailOptOut','marketingEmailConsent','nextAction'])c[k]=original[k];
     if(created.length)db.tasks.splice(0,created.length);
     throw e;
    }
