@@ -57,7 +57,7 @@ assert.equal(truth.validDelivery({type:'confirmed_by_ai',reference:'USPS-2026-07
  const V400=require('../enterprise/kim-fulfillment-control-v400.js');
  const sid='sbc_v66138_synthetic_check',beforeSnapshot=V400.capture(sid);
  try{
-  V400.state.orders[sid]={id:sid,stage:'PRODUCTION_READY',vendor:{status:'READY',provider:'vistaprint',orderId:'PO-2026-8844'},checklist:{payment:true,assets:true,preflight:true,proof:false},proofs:[],assets:[],history:[],shipping:{status:'NOT_SHIPPED'},financial:{revenue:199,cost:0,margin:null},updatedAt:new Date().toISOString()};
+  V400.state.orders[sid]={id:sid,stage:'PRODUCTION_READY',vendor:{status:'READY',provider:'vistaprint',orderId:'PO-2026-8844'},checklist:{payment:true,customer:true,items:true,assets:true,preflight:true,proof:false},proofs:[],assets:[{id:'synthetic-asset',preflightStatus:'PASS'}],history:[],shipping:{status:'NOT_SHIPPED'},financial:{revenue:199,cost:0,margin:null},updatedAt:new Date().toISOString()};
   assert.throws(()=>V400.submitVendor(sid,'',{}),/REAL_VENDOR_ORDER_REFERENCE_REQUIRED/);
  }finally{V400.restore(beforeSnapshot)}
  if(process.argv.includes('--staged'))assert.equal(compiled,raw,'compiled release must include P0 fulfillment durability');
