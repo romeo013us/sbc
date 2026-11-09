@@ -6,7 +6,7 @@ const base={tenantId:1,orderId:'ord_2026_1001',sku:'sbc_starter_199'};
 test('one order creates coordinated website and print jobs',()=>{
  const p=compile({...base,services:[{code:'starter_website'},{code:'business_cards',quantity:100}]});
  assert.equal(p.status,'PLANNED');assert.equal(p.executionAllowed,false);
- assert.equal(p.steps.length,SERVICE_STEPS.starter_website.length+SERVICE_STEPS.business_cards.length);
+ assert.equal(p.steps.length,1+SERVICE_STEPS.starter_website.length+SERVICE_STEPS.business_cards.length);
  assert(p.steps.some(x=>x.id==='line2_business_cards_submit_order'));
  assert(p.steps.some(x=>x.id==='line1_starter_website_launch'));
  assert(p.steps.every(x=>x.dependsOn.every(id=>p.steps.some(y=>y.id===id))));
@@ -19,3 +19,5 @@ test('plan cannot execute purchases',()=>{for(const services of [[{code:'busines
 test('duplicate service lines remain distinct',()=>{const p=compile({...base,services:[{code:'business_cards',quantity:100},{code:'business_cards',quantity:500}]});assert.equal(new Set(p.steps.map(s=>s.id)).size,p.steps.length)});
 test('vendor submission always depends on approval',()=>{const p=compile({...base,services:[{code:'business_cards'}]});const submit=p.steps.find(x=>x.id.endsWith('_submit_order'));assert.deepEqual(submit.dependsOn,['line1_business_cards_vendor_purchase_approval'])});
 test('all declared recipes are dependency-consistent',()=>{for(const code of Object.keys(SERVICE_STEPS)){const p=compile({...base,services:[{code}]});assert(p.steps.every(x=>x.dependsOn.every(y=>p.steps.some(z=>z.id===y))))}});
+
+test('one shared customer intake for multi-service bundles',()=>{const p=compile({...base,services:[{code:'starter_website'},{code:'business_cards'}]});assert.equal(p.steps.filter(x=>x.id==='shared_customer_intake').length,1);assert(p.steps.filter(x=>x.line>0&&!x.id.endsWith('approval')).some(x=>x.dependsOn.includes('shared_customer_intake')))});
