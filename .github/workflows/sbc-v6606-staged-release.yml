@@ -97,6 +97,17 @@ jobs:
           node scripts/v66134-signed-email-events.test.cjs
           node scripts/v66135-outreach-durability.test.cjs
           node scripts/v66136-owner-sales-priorities.test.cjs
+          node scripts/v66137-research-brief-nextday.test.cjs
+          node --check enterprise/sbc-nextday-candidate-readiness-v1.cjs
+          node --check routes/sbc-nextday-outbound-v1.cjs
+          node --check enterprise/sales-caller-workspace-v6697.cjs
+          node --check public/sbc-lorna-checklist.js
+          node --check browser_public/sbc-lorna-checklist.js
+          node --check public/lead-research.js
+          node --check public/sbc-nextday-sales-prep-v1.js
+          node --check browser_public/sbc-nextday-sales-prep-v1.js
+          node --check public/sales-caller.js
+          node --check browser_public/sales-caller.js
           node --check enterprise/sbc-outreach-consent-ledger.cjs
           node --check enterprise/sbc-outreach-signed-mailbox-relay.cjs
           node --check enterprise/sbc-unattended-notifications-v6504.cjs

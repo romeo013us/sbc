@@ -19,7 +19,9 @@
 <script src="/sbc-workforce-academy-v6697.js?v=1" defer></script>
 <script src="/sbc-lorna-queue-filter-v66105.js?v=1"></script>
 <script src="/sbc-lorna-phone-recovery-v66137.js?v=1" defer></script>
-<script src="/lead-research.js?v=9" defer></script>
+<link rel="stylesheet" href="/sbc-lorna-checklist.css?v=1">
+<script src="/sbc-lorna-checklist.js?v=1" defer></script>
+<script src="/lead-research.js?v=10" defer></script>
 </head>
 <body data-workspace-role="lead_researcher">
 <div id="access" role="status" class="access">Checking your SBC session…</div>
@@ -88,6 +90,71 @@
 <label class="wide">Business address / city<input name="address" maxlength="350" placeholder="Confirmed business location"></label>
 <label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label>
 <label class="wide">Research source<input name="verificationSource" maxlength="300" placeholder="Public business website, Google Business Profile, or directory you actually checked"></label></div>
+<fieldset class="sbc-research-audit" id="sbc-research-checklist">
+ <legend>Business research checklist</legend>
+ <p class="muted">Check each item from a real source. “Not checked” is different from “Not found.” Missing website or Google Business Profile can be a sales opportunity; it does not make a business a bad lead.</p>
+ <div class="sbc-research-grid">
+  <label>Business website<select name="websitePresence" id="sbc-website-presence">
+   <option value="not_checked">Not checked</option>
+   <option value="found">Found</option>
+   <option value="not_found">Checked — not found</option>
+  </select></label>
+  <label>Google Business Profile<select name="googleBusinessPresence" id="sbc-google-presence">
+   <option value="not_checked">Not checked</option>
+   <option value="found">Found</option>
+   <option value="not_found">Checked — not found</option>
+  </select></label>
+  <label class="wide">Google Business Profile link (when found)
+   <input name="googleBusinessUrl" type="url" maxlength="500" placeholder="https://maps.google.com/... or Google profile link">
+  </label>
+ </div>
+
+ <div class="sbc-research-grid">
+  <label>Owner / contact name checked against a source?
+   <select name="ownerContactVerified"><option value="not_checked">Not verified</option><option value="yes">Checked against a source</option></select>
+  </label>
+  <label>Years in business
+   <input name="yearsInBusiness" maxlength="65" placeholder="Not verified, or verified number"/>
+  </label>
+  <label class="wide">Services offered — only confirmed facts
+   <textarea name="specificServices" maxlength="500" rows="2" placeholder="List independently checked services; otherwise leave blank"></textarea>
+  </label>
+  <label>Specific services verified?
+   <select name="servicesVerified"><option value="not_checked">Not independently verified</option><option value="verified">Verified against source</option></select>
+  </label>
+  <label class="wide">Business history / years evidence
+   <textarea name="businessHistory" maxlength="500" rows="2" placeholder="What is known, what remains unverified, and source"></textarea>
+  </label>
+  <label class="wide">Likely customers / practical use case
+   <input name="likelyCustomers" maxlength="500" placeholder="E.g., local drivers — clearly label estimate"/>
+  </label>
+  <label>Customer type evidence
+   <select name="likelyCustomersStatus"><option value="industry_estimate">Industry-based estimate</option><option value="source_verified">Verified from research source</option></select>
+  </label>
+  <label>Possible SBC offer
+   <input name="suggestedOffer" maxlength="180" placeholder="Business Starter · $199 (only if needed)"/>
+  </label>
+  <label class="wide">When this offer makes sense
+   <input name="offerCondition" maxlength="260" placeholder="Only after confirming the prospect's need"/>
+  </label>
+  <label class="wide">Suggested conversation opening
+   <textarea name="openingQuestion" maxlength="350" rows="2" placeholder="When people hear about your business, how easily can they find you?"></textarea>
+  </label>
+  <label class="wide">Original research link / business registry
+   <input name="researchEvidenceUrl" type="url" maxlength="1200" placeholder="https://search.sunbiz.org/..."/>
+  </label>
+  <label class="wide">Paste complete existing business brief (optional)
+   <textarea name="originalResearchBrief" maxlength="3500" rows="5" placeholder="Paste research details here. They will be saved with the lead, not presented as independently verified facts."></textarea>
+  </label>
+ </div>
+ <button type="button" class="outline" id="sbc-brief-paste-apply">Extract known fields from pasted brief</button>
+ <div id="sbc-research-quality" role="status" aria-live="polite">
+  <strong>Research quality check</strong>
+  <p>Enter the business details above to see what's complete and what's still missing.</p>
+ </div>
+ <p class="muted">This is a researcher-reported checklist. SBC Lead Assist still performs its independent verification; the checklist never automatically authorizes an outbound call or email.</p>
+</fieldset>
+
 <div class="form-actions"><button id="save-lead" class="primary" type="submit">Submit to SBC CRM</button><button type="reset" class="outline">Clear form</button></div><p class="muted">Duplicate records are rejected by the backend. Submission is never automatically retried.</p></form></div>
 </section>
 <section class="pane" data-pane="import" hidden>

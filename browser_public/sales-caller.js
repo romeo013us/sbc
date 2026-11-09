@@ -118,6 +118,52 @@ function renderCallSelection(){
    preview.append(link);
   }else preview.textContent='No prepared website preview for this prospect.';
  }
+
+ const briefHost=$('sbc-caller-research-content'),sourceHost=$('sbc-caller-research-source');
+ if(briefHost){
+  const r=c?.researchBrief||{},label=v=>v==='found'?'Found (researcher-reported)':v==='not_found'?'Checked; not found':'Not checked / not recorded';
+  const text=v=>String(v||'').trim()||'Not verified / not recorded';
+  briefHost.textContent=c?[
+   'CONTACT & BUSINESS',
+   'Business: '+text(c.businessName),
+   'Contact: '+text(c.contactName)+(r.ownerContactVerified?' (source checked)':' (name not independently verified)'),
+   'Phone: '+text(c.phone),
+   'Email: '+text(c.email),
+   'Category: '+text(c.industry),
+   'Website URL: '+text(c.website),
+   'Website check: '+label(r.websitePresence),
+   'Google Business Profile: '+label(r.googleBusinessPresence),
+   '',
+   'RESEARCH FACTS',
+   'Years in business: '+text(r.yearsInBusiness),
+   'Specific services: '+(r.servicesVerified?text(r.specificServices):'Not independently verified'+(r.specificServices?' — researcher notes: '+r.specificServices:'')),
+   'Business history: '+text(r.businessHistory),
+   'Likely customers: '+text(r.likelyCustomerTypes)+(r.likelyCustomerTypesStatus==='source_verified'?' (researcher claims source verification)':' (industry-based estimate)'),
+   '',
+   'SALES PREPARATION — CONDITIONAL',
+   'Suggested SBC offer: '+text(r.suggestedSbcOffer),
+   'Only appropriate when: '+text(r.offerCondition),
+   'Opening question: '+text(r.openingQuestion),
+   'Research source: '+text(r.researchSource),
+   '',
+   'ORIGINAL CRM NOTES',
+   text(r.originalNotes),
+   '',
+   'ORIGINAL PASTED BRIEF',
+   text(r.originalBrief),
+   '',
+   'All research details are researcher-supplied. Lead Assist/owner verification and DNC restrictions still apply.'
+  ].join('\n'):'Select a lead to see their research.';
+ }
+ if(sourceHost){
+  sourceHost.replaceChildren();
+  const r=c?.researchBrief||{};
+  const link=r.researchEvidenceUrl||r.googleBusinessUrl;
+  if(link&&/^https:\/\/[^\s]+$/i.test(link)){
+   const a=document.createElement('a');a.href=link;a.target='_blank';a.rel='noopener noreferrer';
+   a.textContent='Open original research source';sourceHost.append(a);
+  }else sourceHost.textContent='No verified research URL attached.';
+ }
  $('report-button').disabled=!canWrite()||!c;
  updateCallButtons();
 }

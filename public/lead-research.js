@@ -170,6 +170,10 @@ function openReview(item,lead,editable){
   form.append(element('p',null,'Research source: '+String(lead.researchSource||lead.source||'Not recorded')));
   form.append(element('p',null,'Primary phone: '+String(lead.phone||'Not recorded')));
   form.append(element('p',null,'Secondary phone: '+(otherPhone.phone||'Not recorded')+(otherPhone.source?' · Source: '+otherPhone.source:'')));
+  form.append(element('p',null,'Category: '+String(lead.industry||'Not recorded')));
+  form.append(element('p',null,'Website: '+String(lead.website||'Not recorded — requires checking')));
+  form.append(element('p',null,'Original CRM research notes: '+String(lead.notes||'Not recorded')));
+  form.append(element('p','muted','Full structured research from newly submitted leads is saved with the CRM record and available in the assigned caller view.')); 
   var close=element('button','outline','Close');close.type='button';close.onclick=function(){form.remove();};form.append(close);item.append(form);return;
  }
  var fields=element('div','fields');
@@ -539,6 +543,19 @@ async function submitLead(event){
  event.preventDefault();if(busy)return;
  var form=event.target,fd=new FormData(form),data={source:'Lead Research'};
  ['businessName','contactName','phone','email','website','industry','address','notes','verificationSource'].forEach(function(key){data[key]=String(fd.get(key)||'').trim();});
+ // The optional full research brief is stored in the existing SQL-backed
+ // leadIntelligence JSON. Its fields are researcher notes, not AI verification.
+ if(window.SBCResearchBriefV1){
+  var audit=window.SBCResearchBriefV1.score(form);
+  var brief=window.SBCResearchBriefV1.collect(form);
+  data.leadIntelligence={researchBrief:brief};
+  if(!data.verificationSource&&brief.researchEvidenceUrl)
+   data.verificationSource=brief.researchEvidenceUrl.slice(0,300);
+  if(!data.businessName&&!data.contactName&&brief.originalBrief)
+   note('Enter the business name from the original brief before submitting.',true);
+  if(audit.needed.length)window.SBCResearchBriefV1.render(form);
+ }
+
  try{data.notes=composeSecondaryPhoneNotes(data.notes,fd.get('secondaryPhone'),fd.get('secondaryPhoneSource'),data.phone,2000);}
  catch(e){note('Lead not submitted: '+errorMessage(e),true);return;}
  if(!data.businessName&&!data.phone&&!data.email){note('Enter a business name, phone or email.',true);return;}
@@ -574,7 +591,11 @@ function importRowElement(row){
  var name=element('strong',null,row.record.businessName||'Missing business name');
  var detail=element('small',null,[row.record.contactName,row.record.phone,row.record.email,row.record.website].filter(Boolean).join(' · ')||'No verified contact details supplied');
  var result=element('span','result',rowResult(row));
- div.append(index,name,detail,result);return div;
+ var missing=[!row.record.contactName?'contact person missing':null,!row.record.phone?'phone missing for calls':null,
+  !row.record.website?'website not checked':null,'Google profile not checked by CSV import',
+  !row.record.source&&!row.record.verificationSource?'research source missing':null].filter(Boolean);
+ var quality=element('small','muted','Research review: '+missing.join(' · '));
+ div.append(index,name,detail,quality,result);return div;
 }
 function drawImportPreview(){
  var panel=$('import-preview-panel'),list=$('import-preview-list');
@@ -631,7 +652,24 @@ async function confirmImport(){
    if(!user){stopped=true;break;}
    attempts++;importStatus('Saving '+attempts+' of '+ready.length+' · '+saved+' accepted · '+duplicates+' duplicates…');
    try{
-    var result=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(row.record)});
+    // Bulk imports use the same stored brief schema, without claiming that
+    // an unlisted website or Google profile has been checked.
+    var record=row.record||{};
+    var importBrief={
+      version:1,websitePresence:record.website?'found':'not_checked',
+      googleBusinessPresence:'not_checked',googleBusinessUrl:'',
+      yearsInBusiness:'Not verified',businessHistory:'',specificServices:'',
+      servicesVerified:false,likelyCustomerTypes:'',likelyCustomerTypesStatus:'industry_estimate',
+      suggestedSbcOffer:'',offerCondition:'',openingQuestion:'',
+      researchEvidenceUrl:'',originalBrief:'',ownerContactVerified:false,
+      claimedBusinessFactsVerified:false,submittedFrom:'researcher_bulk_import'
+    };
+    var importPayload=Object.assign({},record,{
+      leadIntelligence:Object.assign({},record.leadIntelligence||{},{
+        researchBrief:importBrief
+      })
+    });
+    var result=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(importPayload)});
     if(!result||!result.id||result.persistence?.verified!==true)
       throw Error('CRM save could not be verified. Stop and check SBC before importing again.');
     row.status='saved';row.reference=String(result.id);saved++;

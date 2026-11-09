@@ -33,7 +33,7 @@ assert(ui.includes('researchDisplayable(c)&&isException(c)'),'attention queue mu
 assert(ui.includes('submittedIds.has(String(c.id))&&researchDisplayable(c)'),'only researcher submissions and human readable leads');
 assert(ui.includes('function researchDisplayable(c)'),'filter must fail without removing the lead from CRM');
 assert(html.includes('sbc-lorna-queue-filter-v66105.js?v=1'),'filter must load before research UI');
-assert(html.indexOf('sbc-lorna-queue-filter-v66105.js?v=1')<html.indexOf('lead-research.js?v=9'),'filter load order');
+assert(html.indexOf('sbc-lorna-queue-filter-v66105.js?v=1')<html.search(/\/lead-research\.js\?v=\d+/),'filter load order');
 assert(html.includes('sbc-role-shift-plan.js?v=2'),'updated schedule cache bust');
 assert(!/DELETE|fetch\(|XMLHttpRequest|localStorage|sessionStorage/.test(read('public/sbc-lorna-queue-filter-v66105.js')),'filter cannot mutate data');
 const raw=read('server.js'),patched=stage.patchServer(raw);

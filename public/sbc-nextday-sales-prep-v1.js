@@ -21,7 +21,7 @@
    (r.email?'<button type="button" class="btn" data-sbc-copy-draft="'+esc(r.id)+'">Copy individual email draft</button>':'');
  }
  function fill(){
-  const list=$('sbc-nextday-candidates');if(list)list.innerHTML=rows.length?rows.map(candidate).join(''):'<p>No eligible unqueued leads in this sample. Check lead verification, assignments, and suppression before preparing a batch.</p>';
+  const list=$('sbc-nextday-candidates');if(list)list.innerHTML=rows.length?rows.map(candidate).join(''):'<p>No verified, call-ready leads currently available in this selection. Review the CRM reasons below. No leads were deleted or contacted.</p>';
   const select=$('sbc-nextday-caller');if(select)select.innerHTML='<option value="">Owner / unassigned</option>'+callers.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');
   const preview=$('sbc-nextday-email-draft');if(preview)preview.value=rows[0]?'Subject: '+rows[0].draft.subject+'\n\n'+rows[0].draft.text:'No email draft available.';
  }
@@ -61,6 +61,35 @@ async function load(){
    const [v,q,p,em]=await Promise.all([api('/api/owner/nextday/preview?limit='+n),api('/api/owner/nextday/queue'),api('/api/owner/nextday/priorities'),api('/api/owner/nextday/email-status')]);
    if(!v?.ok||!q?.ok||!p?.ok||!em?.ok)throw Error('Production data unavailable');
    rows=v.candidates||[];callers=v.callers||[];emailStatus=em;fill();
+   const stats=v.candidateDiagnostics||{},summary=$('sbc-nextday-lead-diagnostics'),review=$('sbc-nextday-review-list');
+   if(summary){
+    const labels=[
+      ['total','CRM records'],['ready','Verified + call-ready'],['queued','Already in outbound queue'],
+      ['needs_verification','Need Lead Assist/owner verification'],
+      ['needs_research','Need more business details'],
+      ['phone_missing','Missing usable phone'],['suppressed','Suppressed / do-not-contact'],
+      ['synthetic','Internal test records'],['identity_missing','Missing business identity']
+    ];
+    summary.replaceChildren();
+    labels.forEach(([key,label])=>{
+      const div=document.createElement('div');div.style.padding='6px 10px';
+      const num=document.createElement('strong');num.textContent=String(Number(stats[key]||0));
+      div.append(num,document.createTextNode(' · '+label));summary.append(div);
+    });
+   }
+   if(review){
+    const pending=v.researchReview||[];
+    review.replaceChildren();
+    if(!pending.length){review.textContent='No research/verification exceptions in the sampled list.';}
+    else pending.forEach(item=>{
+     const p=document.createElement('p');p.style.margin='8px 0';
+     const strong=document.createElement('strong');strong.textContent=item.businessName||'Unnamed lead';
+     p.append(strong,document.createTextNode(' — '+(item.nextAction||item.reason||'Review CRM')+
+       ' · '+(item.quality||'Not classified')));
+     review.append(p);
+    });
+   }
+
    $('sbc-nextday-candidates')?.querySelectorAll('[data-sbc-copy-draft]').forEach(btn=>
      btn.addEventListener('click',async()=>{
        const lead=rows.find(x=>String(x.id)===String(btn.dataset.sbcCopyDraft));
@@ -178,7 +207,9 @@ async function load(){
    '<button type="button" class="btn" id="sbc-nextday-refresh">Refresh candidates</button>'+
    '<p id="sbc-nextday-email-readiness" role="status">Checking email provider readiness…</p>'+ 
    '<h3>Appointments, callbacks and due work</h3><div id="sbc-nextday-priorities"></div>'+ 
-   '<h3>New prospects</h3><div id="sbc-nextday-candidates"></div>'+
+   '<h3>CRM readiness overview</h3><div id="sbc-nextday-lead-diagnostics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:4px;border:1px solid var(--border,#64748b);border-radius:8px;padding:8px"></div>'+ 
+   '<h3>Verified prospects ready for owner review</h3><div id="sbc-nextday-candidates"></div>'+ 
+   '<details><summary>Research and verification needed</summary><div id="sbc-nextday-review-list"></div></details>'+
    '<h3>Example email · preview only</h3><textarea id="sbc-nextday-email-draft" readonly rows="12" style="width:100%"></textarea>'+
    '<p><label><input id="sbc-nextday-reviewed" type="checkbox"> I reviewed lead sources, DNC/opt-outs, applicable calling permissions, and next-business-day timing.</label></p>'+
    '<button type="button" class="btn primary" id="sbc-nextday-submit">Prepare Next-Day Call Tasks</button>'+
