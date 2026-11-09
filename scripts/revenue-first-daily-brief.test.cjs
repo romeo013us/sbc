@@ -52,3 +52,12 @@ test('read-side report does not modify source CRM',()=>{
  const before=JSON.stringify(db);brief(db,{tenantId:1,now:'2026-11-09T20:00:00Z'});
  assert.equal(JSON.stringify(db),before);
 });
+
+test('protected $1 owner checkout is excluded from customer sales',()=>{
+ const qa=square({id:'ord_mvxhmq7f_b777aafa',price:1,product:'SBC Launch QA - $1 Test Service',
+ fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',notes:JSON.stringify({sbcLaunchQa:{kind:'OWNER_ONLY_ONE_DOLLAR_CHECKOUT'}})});
+ const r=brief(scope([],[qa,square()]),{tenantId:1,now:'2026-11-09T20:00:00Z'});
+ assert.equal(r.commerce.squareEvidencedCustomerOrders,1);
+ assert.equal(r.commerce.excludedInternalQaOrders,1);
+ assert.equal(r.commerce.squareEvidencedCustomerRevenue,199);
+});
