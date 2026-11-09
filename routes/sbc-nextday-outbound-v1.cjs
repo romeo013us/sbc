@@ -13,6 +13,17 @@ const blocked=c=>Boolean(c && (c.doNotContact===true||c.salesSuppressed===true||
  ['dnc','do not contact','do not call','unsubscribe','opt out','lost','customer','duplicate','closed'].includes(clean(c.status,80).toLowerCase())));
 const phone=v=>{let p=String(v||'').trim().replace(/[\s().-]/g,'');if(/^\d{10}$/.test(p))p='+1'+p;else if(/^1\d{10}$/.test(p))p='+'+p;return /^\+[1-9]\d{7,14}$/.test(p)?p:'';};
 const validDate=v=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;const x=new Date(v+'T12:00:00Z');return !Number.isNaN(x.getTime())&&x.toISOString().slice(0,10)===v;};
+function easternCallSlot(date,hour=10){
+ const probe=new Date(date+'T12:00:00Z');
+ const zone=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'})
+  .formatToParts(probe).find(p=>p.type==='timeZoneName')?.value||'';
+ const match=/^GMT([+-]\d{1,2})(?::(\d{2}))?$/.exec(zone);
+ if(!match)throw Error('EASTERN_TIMEZONE_OFFSET_UNAVAILABLE');
+ const sign=match[1].startsWith('-')?-1:1;
+ const minutes=Number(match[1])*60+sign*Number(match[2]||0);
+ return new Date(Date.parse(date+'T'+String(hour).padStart(2,'0')+':00:00Z')-minutes*60000).toISOString();
+}
+
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function leadsFor(db,tenantId) {
  return (db.customers||[]).filter(c=>tenantOf(c)===tenantId && !blocked(c) &&
@@ -109,14 +120,15 @@ function register(app,deps){
       '\n\nCALL OPENING:\nHello, this is Jonathan Jones with Successful By Choice here in Miami. I wanted to introduce SBC and see whether '+d.benefit+' is relevant to your business.\n\nCheck DNC, consent, local time and latest replies before dialing.';
     const task={id,tenantId:t,customerId:String(c.id),customerName:clean(c.businessName||c.business_name||c.contactName,160),
       title:'Next-Day Outbound · '+clean(c.businessName||c.business_name||c.contactName,120),
-      dueAt:date+'T10:00:00',type:'SBC Next-Day Call',priority:'Normal',status:'Open',
+      dueAt:easternCallSlot(date),type:'SBC Next-Day Call',priority:'Normal',status:'Open',
       assignedTo:caller?.id||'',assignedToName:caller?.name||'Owner review',createdBy:req.user.id,
       notes,createdAt:ts,updatedAt:ts};
-    const old={assignedTo:c.assignedTo,nextAction:c.nextAction,followUpAt:c.followUpAt};
+    const old={assignedTo:c.assignedTo,nextAction:c.nextAction,followUpAt:c.followUpAt,followUp:c.followUp};
     changed.push({c,old});
     if(caller)c.assignedTo=caller.id;
     c.nextAction='Next-day outbound call planned '+date+'; introductory email DRAFT ONLY (not sent). Review CRM and contact restrictions.';
     c.followUpAt=date;
+    c.followUp=date;
     newRecords.push(task);
    }
    db.tasks=Array.isArray(db.tasks)?db.tasks:[];
@@ -213,4 +225,4 @@ function register(app,deps){
   }catch(e){fail(res,e)}finally{saving=false;}
  });
 }
-module.exports={register,blocked,phone,leadsFor,intro,item,existingDemo};
+module.exports={register,blocked,phone,leadsFor,intro,item,existingDemo,easternCallSlot};
