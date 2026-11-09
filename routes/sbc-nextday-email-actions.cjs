@@ -7,6 +7,7 @@ const MAIL=require('../enterprise/sbc-consented-outreach-email.cjs');
 const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
 const NEXTDAY=require('./sbc-nextday-outbound-v1.cjs');
 const EVENTS=require('../enterprise/sbc-outbound-signed-events.cjs');
+const LEDGER=require('../enterprise/sbc-outreach-consent-ledger.cjs');
 const compact=(v,n=500)=>String(v??'').trim().slice(0,n);
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,
@@ -42,14 +43,12 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
     !Number.isFinite(date)||date>Date.now()||date<Date.UTC(2020,0,1)||
     /scrap|purchas|third.party|public listing|google maps|unknown|n\/a/i.test(source))
      return res.status(422).json({ok:false,error:'DIRECT_CONSENT_SOURCE_AND_DATE_REQUIRED'});
-   const previous={marketingEmailConsent:c.marketingEmailConsent,
-    marketingEmailConsentAt:c.marketingEmailConsentAt,
-    marketingEmailConsentSource:c.marketingEmailConsentSource};
-   c.marketingEmailConsent=true;c.marketingEmailConsentAt=new Date(date).toISOString();
-   c.marketingEmailConsentSource=method+': '+source;
-   try{await saveData()}catch(e){Object.assign(c,previous);throw e}
+   const previous=LEDGER.snapshot(c);
+   let info;try{info=LEDGER.record(c,{date:new Date(date).toISOString(),source,method})}
+   catch(e){return res.status(422).json({ok:false,error:e.message})}
+   try{await saveData()}catch(e){LEDGER.restore(c,previous);throw e}
    res.json({ok:true,customerId:c.id,consentRecorded:true,
-    evidenceAt:c.marketingEmailConsentAt,source:c.marketingEmailConsentSource,
+    evidenceAt:info.marketingEmailConsentAt,source:info.marketingEmailConsentSource,
     note:'Consent proof recorded from owner attestation; not independently verified by the email provider.'});
   }catch(e){fail(res,e)}finally{changing=false}
  });
@@ -59,10 +58,9 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
   try{
    requireWriter();const t=getTenant(req),db=getDb(),c=lead(db,t,req.params.customerId);
    if(!c)return res.status(404).json({ok:false,error:'CONTACT_NOT_FOUND'});
-   const previous={marketingEmailOptOut:c.marketingEmailOptOut,
-    emailUnsubscribed:c.emailUnsubscribed,marketingEmailConsent:c.marketingEmailConsent};
-   c.marketingEmailOptOut=true;c.emailUnsubscribed=true;c.marketingEmailConsent=false;
-   try{await saveData()}catch(e){Object.assign(c,previous);throw e}
+   const previous=LEDGER.snapshot(c);
+   LEDGER.suppress(c,{reason:'OWNER_MARKETING_OPT_OUT',at:now()});
+   try{await saveData()}catch(e){LEDGER.restore(c,previous);throw e}
    res.json({ok:true,customerId:c.id,marketingSuppressed:true});
   }catch(e){fail(res,e)}finally{changing=false}
  });
@@ -127,12 +125,12 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
      !['INTERESTED','APPOINTMENT_REQUEST','NOT_INTERESTED','UNSUBSCRIBE','BOUNCE'].includes(b.kind))
     return res.status(422).json({ok:false,error:'REAL_REPLY_EVIDENCE_REQUIRED'});
    const kind=b.kind,at=now(),notes=compact(b.notes,600);
-   const original={replyStatus:r.replyStatus,replyAt:r.replyAt,replyNotes:r.replyNotes,
-    emailUnsubscribed:c.emailUnsubscribed,marketingEmailOptOut:c.marketingEmailOptOut,
-    marketingEmailConsent:c.marketingEmailConsent,nextAction:c.nextAction};
+   const original={replyStatus:r.replyStatus,replyAt:r.replyAt,replyNotes:r.replyNotes,nextAction:c.nextAction};
+   const previous=LEDGER.snapshot(c);
    r.replyStatus=kind;r.replyAt=at;r.replyNotes=notes;
+   LEDGER.mutate(c,{lastReplyKind:kind,lastReplyAt:at});
    if(kind==='UNSUBSCRIBE'||kind==='BOUNCE'){
-    c.emailUnsubscribed=true;c.marketingEmailOptOut=true;c.marketingEmailConsent=false;
+    LEDGER.suppress(c,{reason:'OWNER_RECORDED_'+kind,at});
    }
    if(kind==='INTERESTED')c.nextAction='Positive email reply. Respond before placing another outbound call.';
    if(kind==='APPOINTMENT_REQUEST')c.nextAction='Email appointment request received; confirm specific date/time before booking.';
@@ -147,7 +145,8 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    }
    try{await saveData()}catch(e){
     for(const k of ['replyStatus','replyAt','replyNotes'])r[k]=original[k];
-    for(const k of ['emailUnsubscribed','marketingEmailOptOut','marketingEmailConsent','nextAction'])c[k]=original[k];
+    c.nextAction=original.nextAction;
+    LEDGER.restore(c,previous);
     if(created.length)db.tasks.splice(0,created.length);
     throw e;
    }
