@@ -17,7 +17,8 @@
   return '<label style="display:block;padding:10px;border:1px solid var(--border,#64748b);border-radius:8px;margin-bottom:7px">'+
    '<input type="checkbox" data-sbc-nextday-lead="'+esc(r.id)+'" checked> <strong>'+esc(r.businessName)+'</strong> · '+esc(r.phone)+
    '<div style="opacity:.8;font-size:12px;padding-left:24px">Source: '+esc(r.source||'Not recorded')+' · '+esc(r.industry||'Business')+
-   ' · '+(r.email?'Email draft available':'No valid email')+' · '+(r.marketingConsentVerified?'Marketing opt-in on record':'No marketing opt-in recorded')+' · '+(r.demo?.ready?'Website preview ready':'Demo not recorded')+'</div></label>';
+   ' · '+(r.email?'Email draft available':'No valid email')+' · '+(r.marketingConsentVerified?'Marketing opt-in on record':'No marketing opt-in recorded')+' · '+(r.demo?.ready?'Website preview ready':'Demo not recorded')+'</div></label>'+ 
+   (r.email?'<button type="button" class="btn" data-sbc-copy-draft="'+esc(r.id)+'">Copy individual email draft</button>':'');
  }
  function fill(){
   const list=$('sbc-nextday-candidates');if(list)list.innerHTML=rows.length?rows.map(candidate).join(''):'<p>No eligible unqueued leads in this sample. Check lead verification, assignments, and suppression before preparing a batch.</p>';
@@ -60,6 +61,15 @@ async function load(){
    const [v,q,p,em]=await Promise.all([api('/api/owner/nextday/preview?limit='+n),api('/api/owner/nextday/queue'),api('/api/owner/nextday/priorities'),api('/api/owner/nextday/email-status')]);
    if(!v?.ok||!q?.ok||!p?.ok||!em?.ok)throw Error('Production data unavailable');
    rows=v.candidates||[];callers=v.callers||[];emailStatus=em;fill();
+   $('sbc-nextday-candidates')?.querySelectorAll('[data-sbc-copy-draft]').forEach(btn=>
+     btn.addEventListener('click',async()=>{
+       const lead=rows.find(x=>String(x.id)===String(btn.dataset.sbcCopyDraft));
+       if(!lead?.email||!lead.draft)return;
+       const draft='To: '+lead.email+'\nSubject: '+lead.draft.subject+'\n\n'+lead.draft.text;
+       try{await navigator.clipboard.writeText(draft);msg('Copied an individual draft for manual review. Nothing was sent. Check current opt-outs, address and compliance before sending.')}
+       catch(_){window.prompt('Copy this individual draft; no email has been sent:',draft)}
+     }));
+
    const readiness=$('sbc-nextday-email-readiness');if(readiness)readiness.textContent=em.ready?
     'Marketing sender configured for consented campaigns. Owner approval still required.':
     'Automatic marketing send disabled: '+[!em.enabled?'disabled':null,!em.apiKeyReady?'provider key':null,!em.senderAttested?'sender verification':null,!em.unsubscribeGroupReady?'unsubscribe group':null,!em.postalAddressReady?'postal address':null,!em.privacyPolicyReady?'privacy policy':null].filter(Boolean).join(', ')+'. Drafts and call prep still work.';
