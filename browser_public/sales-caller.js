@@ -86,7 +86,7 @@ function renderLeads(){
  const rows=(data?.leads||[]).filter(c=>[c.businessName,c.contactName,c.phone,c.city].join(' ').toLowerCase().includes(q));
  if(!rows.length){target.append(recordRow('No matching assigned leads','Ask the owner to assign a reviewed lead batch.'));return;}
  rows.slice(0,150).forEach(c=>{
-  const state=c.canCall?'Callable with clearance':c.reason||'Not callable';
+  const state=c.canCall?'Callable with clearance':(c.queueReason||c.reason||'Not callable');
   target.append(recordRow(c.businessName||'Unnamed lead',[c.contactName,c.phone,c.city,c.status,c.followUpAt?('Due '+stamp(c.followUpAt)):'',c.demoUrl?'Website preview ready':'',state].filter(Boolean).join(' · '),
    data.role==='caller'?'Select for call':'View details',()=>openLead(c.id),!c.canCall));
  });
@@ -97,13 +97,17 @@ function openLead(id){
 function renderCallTarget(){
  const selector=$('call-target'),selected=selector.value;selector.replaceChildren(new Option('Select an assigned lead',''));
  for(const c of data?.leads||[])selector.add(new Option(c.businessName+' — '+(c.phone||'no phone'),c.id));
- selector.value=selected;if(!selector.value)selector.selectedIndex=0;
+ // Prefer the highest-priority eligible lead, but preserve an explicitly selected
+ // eligible lead. Deferred leads remain visible below in the assigned-leads list.
+ const selectedLead=(data?.leads||[]).find(c=>c.id===selected);
+ const nextEligible=(data?.leads||[]).find(c=>c.canCall===true);
+ selector.value=selectedLead?.canCall?selected:(nextEligible?.id||'');
  renderCallSelection();
 }
 function renderCallSelection(){
  const id=$('call-target').value,c=data?.leads.find(x=>x.id===id);
  $('dial-number').value=c?.phone||'';
- $('lead-detail').textContent=c?([c.businessName,c.contactName,c.status,c.reason||''].filter(Boolean).join(' · ')):'Select an assigned lead to call.';
+ $('lead-detail').textContent=c?([c.businessName,c.contactName,c.status,c.queueReason||c.reason||''].filter(Boolean).join(' · ')):'Select an assigned lead to call.';
  const preview=$('sbc-caller-demo-link');
  if(preview){
   preview.replaceChildren();
@@ -388,6 +392,8 @@ async function saveReport(event){
   const saved=await api('/api/v9/call-report',{method:'POST',body:JSON.stringify(body)});
   if(!saved.id)throw Error('No saved report ID returned.');
   if(outcome==='Do Not Call')sessionDnc.add(lead.id);
+  // A successful disposition must advance the desk; never advance on failed writes.
+  $('call-target').value='';
   $('notes').value='';notice('Report '+saved.id+' submitted for owner review. '+(outcome==='Do Not Call'?'Escalate DNC suppression to owner immediately.':''),false);
   await load();
  }catch(e){notice('Report not saved: '+error(e));}

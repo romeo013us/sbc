@@ -1,5 +1,7 @@
 'use strict';
 /* SBC Spanish Sales Workspace: pure projection, no persistence or token elevation. */
+const SMART_QUEUE = require('./sbc-smart-dialing-projection-v1.cjs');
+const PHONE_RECOVERY = require('./sbc-phone-recovery-v66137.cjs');
 const {cleanPhone, isSuppressed}=(()=>{
  const cleanPhone=value=>{
    let v=String(value??'').trim().replace(/[\s().-]/g,'');
@@ -42,7 +44,7 @@ function projectAssigned(customers,user,tenantId){
   nextAction:String(c.nextAction||'').slice(0,500),
   followUpAt:String(c.followUpAt||c.followUp||'').slice(0,40),
   demoUrl:/^\/demo\/[a-z0-9-]+$/.test(String(c.websiteDemoUrl||''))?String(c.websiteDemoUrl):'',
-  canCall:!!cleanPhone(c.phone) && !isSuppressed(c),reason:isSuppressed(c)?'SUPPRESSED_OR_NOT_A_PROSPECT':!cleanPhone(c.phone)?'MISSING_VALID_PHONE':'',
+  canCall:!!cleanPhone(c.phone) && !isSuppressed(c) && !PHONE_RECOVERY.isHeld(c),reason:isSuppressed(c)?'SUPPRESSED_OR_NOT_A_PROSPECT':PHONE_RECOVERY.isHeld(c)?'PHONE_RECOVERY_HOLD':!cleanPhone(c.phone)?'MISSING_VALID_PHONE':'',
  }))
  .sort((a,b)=>{
    const ad=Date.parse(a.followUpAt||''),bd=Date.parse(b.followUpAt||'');
@@ -68,7 +70,8 @@ function workspace({users,actor,previewUserId,tenantId,customers,reports,timeEnt
  const {user,preview}=targetUser(users,actor,previewUserId,tenantId);
  const role=String(user.role);
  const isCaller=role==='caller';
- const leads=isCaller?projectAssigned(customers,user,tenantId):projectResearch(customers,user,tenantId);
+ const assigned=isCaller?projectAssigned(customers,user,tenantId):projectResearch(customers,user,tenantId);
+ const leads=isCaller?SMART_QUEUE.rank(assigned.map(c=>SMART_QUEUE.evaluate(c,reports||[],{userId:user.id,tenantId},new Date()))):assigned;
  const calls=isCaller?(reports||[]).filter(r=>String(r.callerId)===String(user.id)).slice(0,50).map(r=>({
   id:String(r.id||''),customerId:String(r.customerId||''),outcome:String(r.outcome||'').slice(0,140),
   notes:String(r.notes||'').slice(0,500),createdAt:String(r.createdAt||'').slice(0,60),

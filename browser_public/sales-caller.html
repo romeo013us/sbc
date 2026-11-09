@@ -69,7 +69,7 @@
     <h3>Call Notes / Report</h3><p id="call-status" role="status">Select an assigned lead first.</p>
     <form id="report-form"><label for="contact">Person contacted</label><input id="contact" maxlength="140">
     <label for="outcome">Result</label><select id="outcome">
-     <option value="No Answer">No answer</option><option value="Left Voicemail">Left voicemail</option><option value="Conversation">Conversation</option><option value="Interested">Interested</option><option value="Appointment Requested">Appointment requested</option><option value="Follow-up Requested">Follow-up requested</option><option value="Not Interested">Not interested</option><option value="Do Not Call">Do not call — escalate to owner</option>
+     <option value="No Answer">No answer</option><option value="Left Voicemail">Left voicemail</option><option value="Conversation">Conversation</option><option value="Interested">Interested</option><option value="Appointment Requested">Appointment requested</option><option value="Follow-up Requested">Follow-up requested</option><option value="Not Interested">Not interested</option><option value="Do Not Call">Do not call — suppress immediately</option><option value="Bad Number">Bad number — hold for phone recovery</option>
     </select><label for="callback">Callback time (if requested)</label><input id="callback" type="datetime-local">
     <label for="notes">Conversation / objection notes</label><textarea id="notes" maxlength="3000" rows="5" placeholder="No private payment card details; document actual conversation only."></textarea>
     <button type="submit" id="report-button" class="primary" disabled>Save Report for Owner Review</button></form>
