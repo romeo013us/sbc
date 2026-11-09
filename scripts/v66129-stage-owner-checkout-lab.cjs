@@ -7,10 +7,6 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const FILE=path.resolve(__dirname,'../server.js');
 const MARK='SBC_V66129_OWNER_ZERO_CHARGE_CHECKOUT_LAB';
 function patchServer(src){
- if(src.includes(MARK)){
-  assert(src.includes("require('./enterprise/v66129-owner-checkout-lab.cjs')"));
-  return src;
- }
  const anchor='/* SBC_V6630_CUSTOMER_JOURNEY_ORDER_GUARDS: legacy CRUD cannot mint financial proof. */';
  const route=[
  '// '+MARK,
@@ -100,6 +96,16 @@ function patchServer(src){
  '});',
  ''
  ].join('\n');
+ // The published flat release may already contain the previous V66.129 route.
+ // Upgrade it in place instead of accepting an older in-memory-only readback.
+ if(src.includes(MARK)){
+  const start=src.indexOf('// '+MARK),end=src.indexOf(anchor,start);
+  assert(start>=0&&end>start,'existing internal QA route boundaries not found');
+  const prior=src.slice(start,end);
+  if(prior.includes('async function sbcV66129Committed(tenantId)')&&
+     prior.includes('const records=(await sbcV66129Committed(t))'))return src;
+  return src.slice(0,start)+route+src.slice(end);
+ }
  assert.equal(src.split(anchor).length-1,1,'unique secured checkout anchor expected');
  return src.replace(anchor,route+anchor);
 }
