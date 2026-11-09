@@ -9466,11 +9466,37 @@ function v400VendorReady(provider){
   const reqs=map[p]||[];
   return reqs.length>0&&reqs.every(k=>Boolean(process.env[k]||secretCache?.has?.(k)));
 }
-function v400ApplyOrderStage(id,stage){
-  const o=v400Orders().find(x=>String(x.id)===String(id)); if(!o)return;
-  if(!V400_PAYMENT_EVIDENCE.confirmedPaid(o))throw Object.assign(new Error('PAYMENT_EVIDENCE_REQUIRED'),{code:'PAYMENT_EVIDENCE_REQUIRED'});
-  const map={PAID:['Paid','Ready for Fulfillment'],INTAKE:['Paid','Fulfillment Intake'],ASSET_REQUIRED:['Paid','Awaiting Assets'],PREFLIGHT:['Paid','Preflight'],PROOF_PENDING:['Paid','Proof Pending'],PROOF_APPROVED:['Paid','Proof Approved'],PRODUCTION_READY:['Paid','Ready for Production'],VENDOR_STAGED:['Paid','Vendor Staged'],VENDOR_SUBMITTED:['In Progress','Submitted to Vendor'],IN_PRODUCTION:['In Progress','In Production'],SHIPPED:['Dispatched','Shipped'],DELIVERED:['Delivered','Delivered'],FULFILLED:['Delivered','Fulfilled'],BLOCKED:['Paid','Fulfillment Blocked']};
-  const vals=map[stage]||['Paid',stage]; o.status=vals[0];o.fulfillmentStatus=vals[1];o.updatedAt=now();saveData().catch(()=>{});
+
+const SBC_V66138_FULFILLMENT_TRUTH=require('./enterprise/v66138-fulfillment-truth.cjs');
+// SBC_V66138_FULFILLMENT_COMMIT_AND_PROVIDER_TRUTH
+async function v400ApplyOrderStage(req,id,stage){
+ const tenantId=requireRequestTenant(req);
+ const order=v400Orders().find(x=>String(x.id)===String(id)&&Number(x.tenantId??x.tenant_id)===Number(tenantId));
+ if(!order)throw Object.assign(Error('FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'),{code:'FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'});
+ return SBC_V66138_FULFILLMENT_TRUTH.commitStage({order,stage,pool:mysqlPool,saveData,
+   paid:V400_PAYMENT_EVIDENCE.confirmedPaid,stamp:now()});
+}
+let sbcV66138CommitTail=Promise.resolve();
+async function v400CommitAction(req,stage,mutate){
+ const prior=sbcV66138CommitTail;
+ let release;sbcV66138CommitTail=new Promise(resolve=>{release=resolve});
+ await prior;
+ let snapshot=null;
+ try{
+  const tenantId=requireRequestTenant(req);
+  const order=v400Orders().find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenantId));
+  if(!order)throw Object.assign(Error('FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'),{code:'FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'});
+  if(!V400_PAYMENT_EVIDENCE.confirmedPaid(order))throw Error('PAYMENT_EVIDENCE_REQUIRED');
+  if(!mysqlPool||SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
+    throw Object.assign(Error('FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'),{code:'FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'});
+  snapshot=V400.capture(req.params.id);
+  const result=mutate();
+  const receipt=await v400ApplyOrderStage(req,req.params.id,stage);
+  return {result,receipt};
+ }catch(e){
+  if(snapshot){try{V400.restore(snapshot)}catch(err){console.error('[SBC FULFILLMENT] rollback projection failed; manual reconciliation required',String(err.code||err.message||err))}}
+  throw e;
+ }finally{release()}
 }
 // SBC_V6641_FULFILLMENT_PAYMENT_EVIDENCE: authorize and verify BEFORE V400 order changes.
 app.use('/api/kim400/orders/:id',auth,(req,res,next)=>{
@@ -9494,22 +9520,45 @@ app.use('/api/kim400/orders/:id',auth,(req,res,next)=>{
   }catch(e){return res.status(Number(e?.status)||400).json({ok:false,code:String(e?.code||'PRINT_DESK_UNAVAILABLE')});}
  });
 app.get('/api/fulfillment/provider-center',auth,requireCapability('fulfillment.manage'),(req,res)=>res.json({ok:true,version:BUILD_VERSION,providers:fulfillmentProviderCenter(),capabilities:vendorCapabilities()}));
-app.post('/api/kim400/orders/:id/vendor/manual-submit',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const provider=String(req.body?.provider||'').trim();if(!['four_over_four','4over4','vistaprint','godaddy','internal'].includes(provider.toLowerCase()))return res.status(400).json({error:'Unsupported fulfillment provider.'});const normalized=provider.toLowerCase()==='4over4'||provider==='four_over_four'?'four_over_four':provider.toLowerCase();const order=V400.get(req.params.id,v400Orders());if(!order)return res.status(404).json({error:'Fulfillment order not found.'});if(!['PRODUCTION_READY','VENDOR_STAGED'].includes(order.stage))return res.status(409).json({error:`Order must be production-ready before manual vendor handoff. Current stage: ${order.stage}.`});const vendorOrderId=String(req.body?.vendorOrderId||'').trim();if(!require('./enterprise/v66117-print-fulfillment-truth.cjs').validVendorOrderId(vendorOrderId))return res.status(422).json({ok:false,code:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED',error:'Enter a real supplier order number before marking a purchase submitted. No vendor order was placed by this action.'});const staged=V400.markVendorReady(req.params.id,normalized,req.user);const vendor=V400.submitVendor(req.params.id,vendorOrderId,req.user);v400ApplyOrderStage(req.params.id,'VENDOR_SUBMITTED');audit(req.user,'fulfillment_manual_vendor_handoff',`Manual ${normalized} fulfillment handoff recorded for ${req.params.id}`,{orderId:req.params.id,provider:normalized,vendorOrderId:vendor.orderId});res.json({ok:true,manual:true,provider:normalized,vendor,staged});}catch(e){res.status(400).json({error:e.message})}});
-app.post('/api/kim400/orders/:id/vendor/record',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const provider=String(req.body?.provider||'').trim();const vendorOrderId=String(req.body?.vendorOrderId||'').trim();if(!provider||!require('./enterprise/v66117-print-fulfillment-truth.cjs').validVendorOrderId(vendorOrderId))return res.status(422).json({ok:false,code:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED',error:'A real supplier order reference is required; no simulated vendor receipt may be saved.'});const order=V400.get(req.params.id,v400Orders());if(!order)return res.status(404).json({error:'Fulfillment order not found.'});if(!['VENDOR_STAGED','VENDOR_SUBMITTED','IN_PRODUCTION','SHIPPED'].includes(order.stage))return res.status(409).json({error:`Vendor record cannot be attached at ${order.stage}.`});const vendor=V400.markVendorReady(req.params.id,provider,req.user);vendor.orderId=vendorOrderId;vendor.status='SUBMITTED';V400.state.orders[String(req.params.id)].vendor=vendor;V400.state.orders[String(req.params.id)].updatedAt=now();V400.state.orders[String(req.params.id)].history.unshift({id:id('fh'),from:order.stage,to:order.stage,actor:req.user.name||'Owner',at:now(),meta:{manualVendorRecord:true,provider,vendorOrderId}});V400.state.orders[String(req.params.id)].stage='VENDOR_SUBMITTED';V400.state.orders[String(req.params.id)].checklist.vendor=true;v400ApplyOrderStage(req.params.id,'VENDOR_SUBMITTED');audit(req.user,'fulfillment_vendor_recorded',`Recorded ${provider} vendor order ${vendorOrderId}`,{orderId:req.params.id,provider,vendorOrderId});res.json({ok:true,order:V400.get(req.params.id,v400Orders())});}catch(e){res.status(400).json({error:e.message})}});
+app.post('/api/kim400/orders/:id/vendor/manual-submit',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const provider=String(req.body?.provider||'').trim();if(!['four_over_four','4over4','vistaprint','godaddy','internal'].includes(provider.toLowerCase()))return res.status(400).json({error:'Unsupported fulfillment provider.'});const normalized=provider.toLowerCase()==='4over4'||provider==='four_over_four'?'four_over_four':provider.toLowerCase();const order=V400.get(req.params.id,v400Orders());if(!order)return res.status(404).json({error:'Fulfillment order not found.'});if(!['PRODUCTION_READY','VENDOR_STAGED'].includes(order.stage))return res.status(409).json({error:`Order must be production-ready before manual vendor handoff. Current stage: ${order.stage}.`});const vendorOrderId=String(req.body?.vendorOrderId||'').trim();if(!require('./enterprise/v66117-print-fulfillment-truth.cjs').validVendorOrderId(vendorOrderId))return res.status(422).json({ok:false,code:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED',error:'Enter a real supplier order number before marking a purchase submitted. No vendor order was placed by this action.'});const {result:{staged,vendor}}=await v400CommitAction(req,'VENDOR_SUBMITTED',()=>{const staged=V400.markVendorReady(req.params.id,normalized,req.user);const vendor=V400.submitVendor(req.params.id,vendorOrderId,req.user);return {staged,vendor}});audit(req.user,'fulfillment_manual_vendor_handoff',`Manual ${normalized} fulfillment handoff recorded for ${req.params.id}`,{orderId:req.params.id,provider:normalized,vendorOrderId:vendor.orderId});res.json({ok:true,manual:true,provider:normalized,vendor,staged});}catch(e){res.status(400).json({error:e.message})}});
+
+app.post('/api/kim400/orders/:id/vendor/record',auth,requireCapability('fulfillment.manage'),async(req,res)=>{
+ try{
+  const provider=String(req.body?.provider||'').trim(),vendorOrderId=String(req.body?.vendorOrderId||'').trim();
+  if(!provider||!SBC_V66138_FULFILLMENT_TRUTH.validReceipt(vendorOrderId))
+   return res.status(422).json({ok:false,code:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED',error:'A real supplier receipt is required; no purchase is made by recording it.'});
+  const current=V400.get(req.params.id,v400Orders());
+  if(!current)return res.status(404).json({ok:false,error:'Fulfillment order not found.'});
+  if(!['VENDOR_STAGED','VENDOR_SUBMITTED'].includes(current.stage))
+   return res.status(409).json({ok:false,error:'Supplier record cannot change a completed or in-production stage.'});
+  const {result:order,receipt}=await v400CommitAction(req,'VENDOR_SUBMITTED',()=>{
+   const vendor=V400.markVendorReady(req.params.id,provider,req.user);
+   vendor.orderId=vendorOrderId;vendor.status='SUBMITTED';
+   const item=V400.state.orders[String(req.params.id)];
+   item.vendor=vendor;item.stage='VENDOR_SUBMITTED';item.checklist.vendor=true;
+   item.updatedAt=now();item.history.unshift({id:id('fh'),from:current.stage,to:'VENDOR_SUBMITTED',
+    actor:req.user.name||'Owner',at:now(),meta:{manualVendorRecord:true,provider,vendorOrderId}});
+   return V400.get(req.params.id,v400Orders());
+  });
+  audit(req.user,'fulfillment_vendor_recorded','Recorded existing manual supplier purchase after durable stage commit',
+   {orderId:req.params.id,provider,vendorOrderId});
+  return res.json({ok:true,order,receipt,providerSubmissionPerformed:false,manualReceipt:true});
+ }catch(e){return res.status(409).json({ok:false,error:String(e.code||e.message||'FULFILLMENT_COMMIT_FAILED'),durable:false})}
+});
 app.get('/api/kim400/summary',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.json({ok:true,...V400.summary(v400Orders())});}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/kim400/orders',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.json({ok:true,orders:V400.sync(v400Orders()).slice(0,500)});}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/kim400/orders/:id',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{const order=V400.get(req.params.id,v400Orders());if(!order)return res.status(404).json({error:'Fulfillment order not found.'});res.json({ok:true,order,events:V400.events(req.params.id)});}catch(e){res.status(500).json({error:e.message})}});
 app.post('/api/kim400/sweep',auth,requireCapability('automation.execute'),(req,res)=>{try{res.json(V400.kimSweep(v400Orders(),req.user));}catch(e){res.status(400).json({error:e.message})}});
-app.post('/api/kim400/orders/:id/advance',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const next=String(req.body?.stage||'');const result=V400.advance(req.params.id,next,req.user,{manual:true});v400ApplyOrderStage(req.params.id,next);res.json({ok:true,order:result});}catch(e){res.status(400).json({error:e.message})}});
+app.post('/api/kim400/orders/:id/advance',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const next=String(req.body?.stage||'');const {result,receipt}=await v400CommitAction(req,next,()=>V400.advance(req.params.id,next,req.user,{manual:true}));res.json({ok:true,order:result,receipt});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/assets',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.status(201).json({ok:true,asset:V400.addAsset(req.params.id,req.body||{},req.user)});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/assets/:assetId/preflight',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.json({ok:true,asset:V400.preflight(req.params.id,req.params.assetId,req.body?.passed===true,req.user)});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/proofs',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.status(201).json({ok:true,proof:V400.addProof(req.params.id,req.body||{},req.user)});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/proofs/:proofId/approve',auth,requireCapability('fulfillment.manage'),(req,res)=>{if(!['owner','manager','kim_operator','system'].includes(req.user.role))return res.status(403).json({error:'Proof approval is restricted to management or Kim.'});try{res.json({ok:true,proof:V400.approveProof(req.params.id,req.params.proofId,req.user)});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/vendor/stage',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{const provider=String(req.body?.provider||'');if(!provider)return res.status(400).json({error:'Provider is required.'});res.json({ok:true,vendor:V400.stageVendor(req.params.id,provider,req.user)});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/vendor/ready',auth,requireCapability('vendor.submit'),(req,res)=>{try{const provider=String(req.body?.provider||'');if(!v400VendorReady(provider))return res.status(409).json({error:'Provider is not externally verified READY. Configure the authorized provider credentials/endpoints first.'});res.json({ok:true,vendor:V400.markVendorReady(req.params.id,provider,req.user)});}catch(e){res.status(400).json({error:e.message})}});
-app.post('/api/kim400/orders/:id/vendor/submit',auth,requireCapability('vendor.submit'),(req,res)=>{try{const provider=String(req.body?.provider||'');if(!v400VendorReady(provider))return res.status(409).json({error:'Live vendor submission is fail-closed until provider credentials/endpoints are verified.'});const staged=V400.markVendorReady(req.params.id,provider,req.user);const vendor=V400.submitVendor(req.params.id,req.body?.vendorOrderId||'',req.user);v400ApplyOrderStage(req.params.id,'VENDOR_SUBMITTED');res.json({ok:true,provider,vendor});}catch(e){res.status(400).json({error:e.message})}});
-app.post('/api/kim400/orders/:id/shipping',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{const shipping=V400.shipping(req.params.id,req.body||{},req.user);v400ApplyOrderStage(req.params.id,'SHIPPED');res.json({ok:true,shipping});}catch(e){res.status(400).json({error:e.message})}});
-app.post('/api/kim400/orders/:id/deliver',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{const shipping=V400.deliver(req.params.id,req.user);v400ApplyOrderStage(req.params.id,'DELIVERED');res.json({ok:true,shipping});}catch(e){res.status(400).json({error:e.message})}});
+app.post('/api/kim400/orders/:id/vendor/submit',auth,requireCapability('vendor.submit'),async(req,res)=>{try{const provider=String(req.body?.provider||'');const vendorOrderId=String(req.body?.vendorOrderId||'').trim();if(!v400VendorReady(provider))return res.status(409).json({ok:false,error:'Provider is not externally verified READY. No vendor order was placed.'});if(!SBC_V66138_FULFILLMENT_TRUTH.validReceipt(vendorOrderId))return res.status(422).json({ok:false,error:'REAL_VENDOR_ORDER_REFERENCE_REQUIRED'});const {result:{vendor},receipt}=await v400CommitAction(req,'VENDOR_SUBMITTED',()=>{V400.markVendorReady(req.params.id,provider,req.user);const vendor=V400.submitVendor(req.params.id,vendorOrderId,req.user);return {vendor}});res.json({ok:true,provider,vendor,receipt,providerSubmissionPerformed:false,manualReceipt:true});}catch(e){res.status(409).json({ok:false,error:String(e.code||e.message),durable:false})}});
+app.post('/api/kim400/orders/:id/shipping',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const {result:shipping,receipt}=await v400CommitAction(req,'SHIPPED',()=>V400.shipping(req.params.id,req.body||{},req.user));res.json({ok:true,shipping,receipt});}catch(e){res.status(409).json({ok:false,error:String(e.code||e.message),durable:false})}});
+app.post('/api/kim400/orders/:id/deliver',auth,requireCapability('fulfillment.manage'),async(req,res)=>{try{const {result:shipping,receipt}=await v400CommitAction(req,'DELIVERED',()=>V400.deliver(req.params.id,req.user,req.body?.evidence||req.body||{}));res.json({ok:true,shipping,receipt});}catch(e){res.status(409).json({ok:false,error:String(e.code||e.message),durable:false})}});
 app.post('/api/kim400/orders/:id/notify',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.status(201).json({ok:true,notification:V400.notify(req.params.id,req.body?.channel,req.body?.message,req.user)});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/kim400/orders/:id/reconcile',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.json({ok:true,financial:V400.reconcile(req.params.id,req.body?.actualCost,req.user)});}catch(e){res.status(400).json({error:e.message})}});
 
