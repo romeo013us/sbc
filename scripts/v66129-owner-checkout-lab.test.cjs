@@ -74,7 +74,7 @@ async function call(route,request){const fn=handlers.get(route);assert(fn,'missi
  assert.equal(result.statusCode,200);assert.equal(result.body.record.stage,'COMPLETED');assert.equal(writes,3);
  result=await call('GET /api/owner/checkout-lab/orders',req({},2));
  assert.equal(result.body.records.length,0);
- console.log('[SBC OWNER QA PROBE ROUTE]',JSON.stringify({hasCommitted:route.includes('sbcV66129Committed'),source:route.slice(route.indexOf("app.get('/api/owner/checkout-lab/orders'"),route.indexOf("app.get('/api/owner/checkout-lab/orders'")+500)}));
+ assert.equal(stage.patchServer(patched.replace('const records=(await sbcV66129Committed(t))','const records=sbcV66129List(t)')),patched,'legacy staged route must be upgraded');
  assert(route.includes('const records=(await sbcV66129Committed(t))'),'GET ledger must read MySQL');
  const originalQuery=ctx.mysqlPool.query;
  ctx.mysqlPool.query=async()=>{throw Error('SIMULATED_MYSQL_OFFLINE')};
