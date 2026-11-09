@@ -11,6 +11,21 @@ function cleanPhone(v){
 function recovery(c){const p=c?.leadIntelligence?.phoneRecovery;return p&&typeof p==='object'?p:null;}
 function isHeld(c){return ACTIVE_HOLDS.has(String(recovery(c)?.state||''));}
 function when(v){const d=Date.parse(String(v||''));return Number.isFinite(d)?d:0;}
+function fromLogs(c,logs){
+ const phone=cleanPhone(c?.phone);if(!phone)return null;
+ if(recovery(c)?.state==='CLEARED')return null;
+ const rows=(Array.isArray(logs)?logs:[]).filter(x=>String(x.customerId||'')===String(c.id||'') &&
+   Number(x.tenantId||0)===Number(c.tenantId??c.tenant_id) && cleanPhone(x.to)===phone)
+   .sort((a,b)=>when(b.updatedAt||b.createdAt||b.startedAt)-when(a.updatedAt||a.createdAt||a.startedAt));
+ const latest=rows[0];
+ if(!latest||String(latest.outcome||'').trim().toLowerCase()!=='bad number')return null;
+ const start=when(latest.updatedAt||latest.endedAt||latest.createdAt||latest.startedAt)||Date.now();
+ return {version:1,state:'HOLD',originalPhone:phone,flaggedAt:new Date(start).toISOString(),
+   reviewAt:new Date(start+15*DAY_MS).toISOString(),lastCallLogId:String(latest.id||''),researchAttempts:0,
+   candidatePhone:'',candidateSource:'',reason:'Historical unreachable-number call; review only after 15 days.'};
+}
+function hasUnreachableLog(c,logs){return !!fromLogs(c,logs);}
+
 function flag(c,{at=new Date().toISOString(),actor='',callLogId=''}={}){
   if(!c||typeof c!=='object')throw Error('PHONE_RECOVERY_CUSTOMER_REQUIRED');
   const phone=cleanPhone(c.phone);
@@ -59,4 +74,4 @@ function approve(c,{actor='',at=new Date().toISOString()}={}){
   c.verificationStatus='Needs Verification';c.updatedAt=stamp;
   return c.leadIntelligence.phoneRecovery;
 }
-module.exports={cleanPhone,recovery,isHeld,flag,reviewDue,needsOwner,review,approve};
+module.exports={cleanPhone,recovery,isHeld,fromLogs,hasUnreachableLog,flag,reviewDue,needsOwner,review,approve};
