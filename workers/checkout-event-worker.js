@@ -81,6 +81,24 @@ class CheckoutEventWorker {
       const needsOwner=mappingRequired||orderReferenceMissing;
       const requirements={checkoutLedgerId:Number(checkout.id),sku:String(checkout.sku),amount:Number(checkout.amount||0),currency:String(checkout.currency||'USD'),vendorCost:Number(checkout.vendor_cost||0),contributionMargin:Number(checkout.contribution_margin||0),marginPct:Number(checkout.margin_pct||0),catalogType:String(catalog.product_type||''),catalogMetadata:metadata,providerMappingRequired:mappingRequired,orderReferenceMissing};
       await connection.query(`INSERT INTO sbc_fulfillment_jobs (id,tenant_id,order_id,customer_id,customer_name,item_id,product,quantity,vendor,status,vendor_status,vendor_order_number,tracking_number,cost,value,requirements_json,attempts,last_error,idempotency_key,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE updated_at=VALUES(updated_at)`,[jobId,Number(tenantRows[0].id),String(checkout.order_id||''),String(checkout.customer_id||''),'',String(checkout.sku),String(catalog.product_name||checkout.sku),quantity,canonicalVendor,needsOwner?'owner_clearance_required':'ready',mappingRequired?'provider_mapping_required':orderReferenceMissing?'order_reference_required':'not_submitted','','',Number(checkout.vendor_cost||0),Number(checkout.amount||0),JSON.stringify(requirements),0,'',idempotencyKey,new Date().toISOString().slice(0,19).replace('T',' '),new Date().toISOString().slice(0,19).replace('T',' ')]);
+      // V2 shadow planning: only explicitly allowlisted SKUs. Existing fulfillment
+      // remains authoritative; new plan steps cannot purchase, notify, or provision.
+      const v2AllowedSkus=String(process.env.SBC_FULFILLMENT_V2_SKUS||'').split(',').map(x=>x.trim()).filter(Boolean);
+      let v2PlanStatus='DISABLED';
+      if(String(process.env.SBC_FULFILLMENT_V2_PLAN_STEPS||'').toLowerCase()==='true'
+         &&v2AllowedSkus.includes(String(checkout.sku))){
+        if(checkout.order_id){
+          const result=await require('../enterprise/fulfillment-v2-durable-plan.cjs')
+            .stagePaidCheckoutPlan(connection,{tenantId:Number(tenantRows[0].id),
+              checkoutLedgerId:Number(checkout.id),orderId:String(checkout.order_id),
+              sku:String(checkout.sku),catalogMetadata:metadata});
+          v2PlanStatus=result.status;
+          if(result.status==='NEEDS_CATALOG_MAPPING'){
+            await connection.query("UPDATE sbc_fulfillment_jobs SET status='owner_clearance_required',vendor_status='catalog_mapping_required',updated_at=NOW() WHERE id=? AND tenant_id=?",
+              [jobId,Number(tenantRows[0].id)]);
+          }
+        }else v2PlanStatus='NEEDS_ORDER_REFERENCE';
+      }
       await connection.query(
         `UPDATE sbc_checkout_event_ledger
             SET status = 'FULFILLMENT_QUEUED'
@@ -89,7 +107,7 @@ class CheckoutEventWorker {
       );
 
       await connection.commit();
-      return { status: 'FULFILLMENT_QUEUED', checkout_id: checkout.id, fulfillment_id: fulfillmentId };
+      return { status: 'FULFILLMENT_QUEUED', checkout_id: checkout.id, fulfillment_id: fulfillmentId, v2_plan_status: v2PlanStatus };
     } catch (err) {
       try { await connection.rollback(); } catch (_) {}
       throw err;
