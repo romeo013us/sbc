@@ -12,7 +12,7 @@ const blocked=c=>Boolean(c && (c.doNotContact===true||c.salesSuppressed===true||
  c.isSuppressed===true||c.doNotCall===true||c.emailUnsubscribed===true||
  ['dnc','do not contact','do not call','unsubscribe','opt out','lost','customer','duplicate','closed'].includes(clean(c.status,80).toLowerCase())));
 const phone=v=>{let p=String(v||'').trim().replace(/[\s().-]/g,'');if(/^\d{10}$/.test(p))p='+1'+p;else if(/^1\d{10}$/.test(p))p='+'+p;return /^\+[1-9]\d{7,14}$/.test(p)?p:'';};
-const validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v;
+const validDate=v=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;const x=new Date(v+'T12:00:00Z');return !Number.isNaN(x.getTime())&&x.toISOString().slice(0,10)===v;};
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function leadsFor(db,tenantId) {
  return (db.customers||[]).filter(c=>tenantOf(c)===tenantId && !blocked(c) &&
@@ -78,7 +78,9 @@ function register(app,deps){
    if(b.confirm!=='OWNER_REVIEWED_PREP' || ids.length<1 || ids.length>MAX || new Set(ids).size!==ids.length)
      return res.status(422).json({ok:false,error:'OWNER_REVIEW_OR_BATCH_INVALID'});
    const date=clean(b.callDate,10);
-   const dayNow=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const dateParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+   const dm=Object.fromEntries(dateParts.map(p=>[p.type,p.value]));
+   const dayNow=dm.year+'-'+dm.month+'-'+dm.day;
    if(!validDate(date)||date<=dayNow||Date.parse(date+'T12:00:00Z')-Date.parse(dayNow+'T12:00:00Z')>10*86400000)
      return res.status(422).json({ok:false,error:'NEXT_10_DAYS_DATE_REQUIRED'});
    const callerId=clean(b.assignedTo||'',100);
