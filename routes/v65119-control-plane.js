@@ -34,6 +34,23 @@ function createController({getContext}){
 }
 function register(app,{auth,ownerOnly,getContext}){
  const C=createController({getContext});
+ // SBC Next-Day Sales Prep: reuse authenticated owner + tenant-scoped CRM and existing writer.
+ // Only reviewed task drafts are saved; NO outbound email, telephony or external contact.
+ const nextDayDeps={
+   auth,ownerOnly,getDb:()=>getContext().db,
+   saveData:()=>getContext().saveData(),
+   requireTenant:tenantFrom,
+   requireWriter:()=>{
+     const c=getContext();
+     if(!c.mysqlPool||c.recoveryRequired?.())throw Object.assign(
+       Error('NEXTDAY_WRITER_OR_RECOVERY_NOT_READY'),{status:423});
+   },
+   makeId:p=>p+'_'+Date.now().toString(36)+'_'+crypto.randomBytes(5).toString('hex'),
+   now:()=>new Date().toISOString()
+ };
+ require('./sbc-nextday-outbound-v1.cjs').register(app,nextDayDeps);
+ require('./sbc-nextday-email-actions.cjs').register(app,nextDayDeps);
+
  global.__SBC_V65119_CONTROL_PLANE={claimWebhookEvent:C.claimWebhookEvent,completeWebhookEvent:C.completeWebhookEvent,statusRank:canonicalWebhookStatusRank};
  const owner=[auth,ownerOnly];
  app.get('/api/ops/v65119/status',...owner,async(req,res)=>{try{const c=getContext(),tenant=tenantFrom(req);await C.ensure(c.mysqlPool);const [[faults],[tasks],[mfa],[ledger],[margin]]=await Promise.all([c.mysqlPool.query("SELECT status,COUNT(*) count FROM sbc_ops_fault_queue WHERE tenant_id=? GROUP BY status",[tenant]),c.mysqlPool.query("SELECT state,COUNT(*) count FROM sbc_ops_workflow_tasks WHERE tenant_id=? GROUP BY state",[tenant]),c.mysqlPool.query('SELECT enabled FROM sbc_ops_owner_mfa WHERE tenant_id=? AND owner_id=?',[tenant,actorFrom(req)]),c.mysqlPool.query("SELECT COUNT(*) total, SUM(state='FAILED') failed FROM sbc_ops_webhook_ledger"),c.mysqlPool.query('SELECT COALESCE(SUM(revenue),0) revenue,COALESCE(SUM(direct_cost),0) direct_cost FROM sbc_ops_margin_entries WHERE tenant_id=? AND entry_date>=DATE_SUB(CURDATE(),INTERVAL 30 DAY)',[tenant])]);res.json({ok:true,version:c.buildVersion,mode:c.recoveryRequired?.()?'RECOVERY_SAFE':'GOVERNED',ownerMfaEnabled:Boolean(mfa[0]?.enabled),faults,tasks,webhooks:ledger[0]||{},margin30d:{revenue:Number(margin[0]?.revenue||0),directCost:Number(margin[0]?.direct_cost||0),grossProfit:Number(margin[0]?.revenue||0)-Number(margin[0]?.direct_cost||0)},mutations:'OWNER_APPROVAL_REQUIRED'});}catch(e){sendError(res,e);}});

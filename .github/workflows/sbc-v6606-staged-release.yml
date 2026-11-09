@@ -91,6 +91,13 @@ jobs:
           node scripts/v66127-signed-federation-probe.test.cjs
           node scripts/v66128-owner-while-away.test.cjs
           node scripts/v66129-owner-checkout-lab.test.cjs
+          node scripts/v66132-nextday-outbound.test.cjs
+          node scripts/v66133-consented-outreach.test.cjs
+          node --check enterprise/sbc-consented-outreach-email.cjs
+          node --check routes/sbc-nextday-email-actions.cjs
+          node --check routes/sbc-nextday-outbound-v1.cjs
+          node --check public/sbc-nextday-sales-prep-v1.js
+          node --check browser_public/sbc-nextday-sales-prep-v1.js
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66115-dropzone-launch-truth.test.cjs
           node scripts/v66117-stage-print-desk.cjs

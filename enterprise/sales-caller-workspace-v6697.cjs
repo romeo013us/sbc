@@ -40,10 +40,16 @@ function projectAssigned(customers,user,tenantId){
   status:String(c.status||'Lead').slice(0,70),verificationStatus:String(c.verificationStatus||'').slice(0,80),
   leadTemperature:String(c.leadTemperature||'').slice(0,30),assignedTo:String(c.assignedTo||''),
   nextAction:String(c.nextAction||'').slice(0,500),
-  followUpAt:String(c.followUpAt||'').slice(0,40),
+  followUpAt:String(c.followUpAt||c.followUp||'').slice(0,40),
+  demoUrl:/^\/demo\/[a-z0-9-]+$/.test(String(c.websiteDemoUrl||''))?String(c.websiteDemoUrl):'',
   canCall:!!cleanPhone(c.phone) && !isSuppressed(c),reason:isSuppressed(c)?'SUPPRESSED_OR_NOT_A_PROSPECT':!cleanPhone(c.phone)?'MISSING_VALID_PHONE':'',
  }))
- .sort((a,b)=>String(a.businessName).localeCompare(String(b.businessName))).slice(0,500);
+ .sort((a,b)=>{
+   const ad=Date.parse(a.followUpAt||''),bd=Date.parse(b.followUpAt||'');
+   if(Number.isFinite(ad)&&Number.isFinite(bd)&&ad!==bd)return ad-bd;
+   if(Number.isFinite(ad)!==Number.isFinite(bd))return Number.isFinite(ad)?-1:1;
+   return String(a.businessName).localeCompare(String(b.businessName));
+  }).slice(0,500);
 }
 function projectResearch(customers,user,tenantId){
  const t=safeTenantId(tenantId);
