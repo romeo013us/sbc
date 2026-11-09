@@ -6,6 +6,7 @@ const {scopeRevenueDb,requireTenant}=require('./v6648-revenue-tenant.cjs');
 const {cleanPhone,isSuppressed}=require('./sales-caller-workspace-v6697.cjs');
 const {providerCapturedSquare}=require('./v6640-payment-evidence.cjs');
 const {isLab}=require('./v66129-owner-checkout-lab.cjs');
+const {isProtectedLaunchQaOrder}=require('./v56134-god-tier-revenue.js');
 const VERSION='1.0.0';
 const ZONE='America/New_York';
 function dayKey(value){
@@ -20,7 +21,7 @@ function isHumanCallCandidate(c){
  return c&&verified(c)&&!isSuppressed(c)&&!['customer','active_customer','closed','duplicate','lost','not qualified'].includes(status)&&Boolean(cleanPhone(c.phone));
 }
 function isQA(o){
- if(!o||o.testOnly===true||o.isTest===true||o.qaMode===true||isLab(o))return true;
+ if(!o||o.testOnly===true||o.isTest===true||o.qaMode===true||isLab(o)||isProtectedLaunchQaOrder(o))return true;
  const value=[o.status,o.product,o.customerName,o.source,o.notes].map(x=>String(x??'')).join(' ');
  return /SBC SYSTEM TEST|SBC Launch QA|DO NOT SERVICE|owner checkout lab|QA - NO VENDOR|\binternal[ -]?test\b|\btest checkout\b/i.test(value);
 }
@@ -60,6 +61,7 @@ function brief(db,{tenantId,now=new Date().toISOString(),callTarget=20,monthlyEx
   if(['APPOINTMENT','APPOINTMENT_SET'].includes(key))counts.appointments++;
  }
  const paid=(scoped.orders||[]).filter(o=>providerCapturedSquare(o)&&!isQA(o));
+ const qaCapturedCount=(scoped.orders||[]).filter(o=>providerCapturedSquare(o)&&isQA(o)).length;
  const evidenceRevenue=money(paid.reduce((n,o)=>n+(goodNumber(o.price??o.total??o.amount)||0),0));
  const paidToday=paid.filter(o=>dayKey(squareSettledAt(o))===date);
  const dailyRevenue=money(paidToday.reduce((n,o)=>n+(goodNumber(o.price??o.total??o.amount)||0),0));
@@ -70,7 +72,7 @@ function brief(db,{tenantId,now=new Date().toISOString(),callTarget=20,monthlyEx
    calling:{target:cap,eligibleCount:candidates.length,queue:candidates.slice(0,cap),
      records:counts,remainingAttempts:Math.max(0,cap-counts.attempts),
      caution:'Contact eligibility is not legal consent or DNC clearance; no automatic calling or texting.'},
-   commerce:{squareEvidencedCustomerOrders:paid.length,squareEvidencedCustomerRevenue:evidenceRevenue,
+   commerce:{squareEvidencedCustomerOrders:paid.length,excludedInternalQaOrders:qaCapturedCount,squareEvidencedCustomerRevenue:evidenceRevenue,
      squareEvidencedToday:paidToday.length,squareEvidencedRevenueToday:dailyRevenue,
      observedFulfillmentCost:costs,contributionAfterObservedCost:costs===null?null:money(evidenceRevenue-costs),
      caveat:'Square settlement metadata in SBC records, not independent Square or bank verification. Synthetic/QA orders excluded; missing costs are not guessed.'},
