@@ -89,6 +89,7 @@ jobs:
           node scripts/v66123-activity-text-safety.test.cjs
           node scripts/v66126-crm-audit-safe.test.cjs
           node scripts/v66127-signed-federation-probe.test.cjs
+          node scripts/v66128-owner-while-away.test.cjs
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66115-dropzone-launch-truth.test.cjs
           node scripts/v66117-stage-print-desk.cjs
@@ -191,6 +192,7 @@ jobs:
           SBC_V66122_ISOLATED_STAGE=YES node scripts/v66122-stage-central-square-officebox-guard.cjs --apply
           SBC_V66126_ISOLATED_STAGE=YES node scripts/v66126-stage-crm-audit-safe.cjs --apply
           SBC_V66127_ISOLATED_STAGE=YES node scripts/v66127-stage-signed-federation-probe.cjs --apply
+          SBC_V66128_ISOLATED_STAGE=YES node scripts/v66128-stage-while-away.cjs --apply
           SBC_V66115_ISOLATED_STAGE=YES node scripts/v66115-stage-dropzone-launch-truth.cjs --apply
           SBC_V66117_ISOLATED_STAGE=YES node scripts/v66117-stage-print-desk.cjs --apply
           SBC_V66117_ISOLATED_STAGE=YES node scripts/v66117-stage-print-desk-ui.cjs --apply
@@ -205,6 +207,7 @@ jobs:
           node scripts/v66123-activity-text-safety.test.cjs
           node scripts/v66126-crm-audit-safe.test.cjs --staged
           node scripts/v66127-signed-federation-probe.test.cjs --staged
+          node scripts/v66128-owner-while-away.test.cjs --staged
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs --staged
           node scripts/v66110-stage-safe-launch-activation.cjs --verify-staged
@@ -350,6 +353,7 @@ jobs:
             node "$tmp/scripts/v66123-activity-text-safety.test.cjs"
             node "$tmp/scripts/v66126-crm-audit-safe.test.cjs" --staged
             node "$tmp/scripts/v66127-signed-federation-probe.test.cjs" --staged
+            node "$tmp/scripts/v66128-owner-while-away.test.cjs" --staged
             node "$tmp/scripts/v66115-dropzone-launch-truth.test.cjs" --staged
             node "$tmp/scripts/v66117-print-desk.test.cjs" --staged
             node "$tmp/scripts/v66117-stage-print-desk-ui.cjs" --verify-staged
