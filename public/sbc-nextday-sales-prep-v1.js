@@ -3,7 +3,7 @@
  'use strict';
  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const $=id=>document.getElementById(id);
- let rows=[],callers=[],busy=false;
+ let rows=[],callers=[],busy=false,emailStatus={ready:false};
  const api=(p,o)=>window.api(p,o?{method:'POST',body:JSON.stringify(o),timeoutMs:20000}:{timeoutMs:20000});
  function tomorrow(){
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -17,7 +17,7 @@
   return '<label style="display:block;padding:10px;border:1px solid var(--border,#64748b);border-radius:8px;margin-bottom:7px">'+
    '<input type="checkbox" data-sbc-nextday-lead="'+esc(r.id)+'" checked> <strong>'+esc(r.businessName)+'</strong> · '+esc(r.phone)+
    '<div style="opacity:.8;font-size:12px;padding-left:24px">Source: '+esc(r.source||'Not recorded')+' · '+esc(r.industry||'Business')+
-   ' · '+(r.email?'Email draft available':'No valid email')+' · '+(r.demo?.ready?'Website preview ready':'Demo not recorded')+'</div></label>';
+   ' · '+(r.email?'Email draft available':'No valid email')+' · '+(r.marketingConsentVerified?'Marketing opt-in on record':'No marketing opt-in recorded')+' · '+(r.demo?.ready?'Website preview ready':'Demo not recorded')+'</div></label>';
  }
  function fill(){
   const list=$('sbc-nextday-candidates');if(list)list.innerHTML=rows.length?rows.map(candidate).join(''):'<p>No eligible unqueued leads in this sample. Check lead verification, assignments, and suppression before preparing a batch.</p>';
@@ -57,22 +57,89 @@ async function load(){
   msg('Loading eligible CRM leads and existing call tasks…');
   try{
    const n=Math.max(1,Math.min(20,Number($('sbc-nextday-limit')?.value||10)));
-   const [v,q,p]=await Promise.all([api('/api/owner/nextday/preview?limit='+n),api('/api/owner/nextday/queue'),api('/api/owner/nextday/priorities')]);
-   if(!v?.ok||!q?.ok||!p?.ok)throw Error('Production data unavailable');
-   rows=v.candidates||[];callers=v.callers||[];fill();
+   const [v,q,p,em]=await Promise.all([api('/api/owner/nextday/preview?limit='+n),api('/api/owner/nextday/queue'),api('/api/owner/nextday/priorities'),api('/api/owner/nextday/email-status')]);
+   if(!v?.ok||!q?.ok||!p?.ok||!em?.ok)throw Error('Production data unavailable');
+   rows=v.candidates||[];callers=v.callers||[];emailStatus=em;fill();
+   const readiness=$('sbc-nextday-email-readiness');if(readiness)readiness.textContent=em.ready?
+    'Marketing sender configured for consented campaigns. Owner approval still required.':
+    'Automatic marketing send disabled: '+[!em.enabled?'disabled':null,!em.apiKeyReady?'provider key':null,!em.senderAttested?'sender verification':null,!em.unsubscribeGroupReady?'unsubscribe group':null,!em.postalAddressReady?'postal address':null,!em.privacyPolicyReady?'privacy policy':null].filter(Boolean).join(', ')+'. Drafts and call prep still work.';
    const due=$('sbc-nextday-priorities');
    if(due)due.innerHTML='<p><strong>'+p.dueCount+' due or overdue</strong> · '+p.appointmentRequests+' appointment requests need review. Earliest due first.</p>'+
     ((p.records||[]).slice(0,30).map(priorityLine).join('')||'<p>No scheduled appointments or follow-ups found.</p>');
    due?.querySelectorAll('[data-apt-create]').forEach(el=>el.addEventListener('click',()=>scheduleAppointment(el.dataset.aptCreate)));
    const queue=$('sbc-nextday-queue');
-   if(queue)queue.innerHTML=(q.records||[]).slice(0,12).map(t=>
-    '<div style="padding:8px;border-top:1px solid var(--border,#64748b)"><strong>'+esc(t.customerName)+
-    '</strong> · '+esc(t.dueAt?.slice(0,10))+' · '+esc(t.status)+' · '+esc(t.assignedToName||'Unassigned')+
-    '<details><summary>Call instructions and unsent email draft</summary><pre style="white-space:pre-wrap;font:inherit;font-size:12px">'+esc(t.notes||'')+'</pre></details></div>').join('')||
+   if(queue)queue.innerHTML=(q.records||[]).slice(0,25).map(outreachTask).join('')||
     '<p>No previously prepared calls.</p>';
-   msg(rows.length+' eligible leads shown. Email drafts are NOT sent. Review before preparing.');
+   queue?.querySelectorAll('[data-sbc-send-task]').forEach(b=>b.addEventListener('click',()=>sendOne(b.dataset.sbcSendTask)));
+   queue?.querySelectorAll('[data-sbc-record-consent]').forEach(b=>b.addEventListener('click',()=>recordConsent(b.dataset.sbcRecordConsent)));
+   queue?.querySelectorAll('[data-sbc-record-reply]').forEach(b=>b.addEventListener('click',()=>recordReply(b.dataset.sbcRecordReply)));
+   msg(rows.length+' eligible leads shown. Consent and email provider checks remain enforced.');
   }catch(e){msg('Unable to load authoritative CRM data: '+String(e.message||e),true);}
  }
+
+ function outreachTask(t){
+  const status=t.outboundEmailStatus||'DRAFT_ONLY',eligible=t.marketingConsentVerified&&emailStatus.ready;
+  const send=eligible&&!/^(PROVIDER_ACCEPTED|SUBMISSION_)/.test(status)?
+   '<button type="button" class="btn" data-sbc-send-task="'+esc(t.id)+'">Send approved email (consented)</button>':
+   '<small>'+esc(t.marketingConsentVerified?'Sending blocked or already attempted: '+status:'No direct marketing opt-in evidence on record')+'</small>';
+  return '<div style="padding:10px;border-top:1px solid var(--border,#64748b)"><strong>'+esc(t.customerName)+
+   '</strong> · '+esc(t.dueAt?.slice(0,10))+' · '+esc(t.status)+' · '+esc(t.assignedToName||'Unassigned')+
+   '<div><small>Email: '+esc(status)+' · Reply: '+esc(t.replyStatus||'not recorded')+'</small></div>'+
+   '<details><summary>Draft, contact history & actions</summary>'+
+   '<pre style="white-space:pre-wrap;font:inherit;font-size:12px">'+esc(t.notes||'')+'</pre>'+
+   '<div style="padding:8px 0">'+send+'</div>'+
+   '<details><summary>Record documented marketing opt-in</summary>'+
+   '<p><small>Record only permission SBC directly obtained. Publicly listed addresses, scraped emails and assumed consent do not qualify.</small></p>'+
+   '<label>Consent source / evidence<input type="text" data-sbc-consent-source="'+esc(t.customerId)+'" placeholder="e.g. SBC signup form submission record"></label>'+
+   '<label>Date consent obtained<input type="date" data-sbc-consent-date="'+esc(t.customerId)+'"></label>'+
+   '<label>Method<select data-sbc-consent-method="'+esc(t.customerId)+'"><option value="signup_form">Our signup form</option><option value="customer_request">Customer explicitly requested emails</option><option value="documented_opt_in">Other documented direct opt-in</option></select></label>'+
+   '<label><input type="checkbox" data-sbc-consent-proof="'+esc(t.customerId)+'"> I verified direct affirmative consent and have supporting evidence.</label>'+
+   '<button type="button" class="btn" data-sbc-record-consent="'+esc(t.customerId)+'">Record consent evidence</button></details>'+
+   '<details><summary>Record an actual email reply</summary><p><small>This does NOT read the inbox. Confirm you have seen the reply.</small></p>'+
+   '<select data-sbc-reply-kind="'+esc(t.id)+'"><option value="INTERESTED">Interested</option><option value="APPOINTMENT_REQUEST">Requests appointment</option><option value="NOT_INTERESTED">Not interested</option><option value="UNSUBSCRIBE">Unsubscribe</option><option value="BOUNCE">Bounced</option></select>'+
+   '<textarea data-sbc-reply-notes="'+esc(t.id)+'" rows="2" placeholder="Short factual note about the real reply"></textarea>'+
+   '<button type="button" class="btn" data-sbc-record-reply="'+esc(t.id)+'">Record verified reply</button></details>'+
+   '</details></div>';
+ }
+ async function sendOne(taskId){
+  if(busy)return;
+  if(!window.confirm('Approve one marketing email from info@sbcmia.com to this customer? Requires documented direct opt-in, authenticated sender, provider readiness and opt-out support. Provider acceptance is not delivery.'))return;
+  busy=true;
+  try{
+   const out=await api('/api/owner/nextday/send/'+encodeURIComponent(taskId),
+    {confirm:'OWNER_APPROVES_CONSENTED_EMAIL'});
+   if(!out?.ok)throw Error(out?.error||'Email not confirmed');
+   await load();msg('Email ACCEPTED by provider, delivery unconfirmed. Check actual reply/delivery status.');
+  }catch(e){msg('Email was not confirmed: '+String(e.message||e)+'. Inspect provider status; do not blindly retry.',true)}
+  finally{busy=false}
+ }
+ async function recordConsent(customerId){
+  const src=document.querySelector('[data-sbc-consent-source="'+customerId+'"]')?.value||'';
+  const date=document.querySelector('[data-sbc-consent-date="'+customerId+'"]')?.value||'';
+  const method=document.querySelector('[data-sbc-consent-method="'+customerId+'"]')?.value||'';
+  const verified=document.querySelector('[data-sbc-consent-proof="'+customerId+'"]')?.checked;
+  if(!verified||!src||!date)return msg('Direct opt-in evidence, date, and confirmation are required.',true);
+  if(!window.confirm('Confirm SBC has actual direct opt-in proof for this contact? Do not record consent from a scraped/publicly listed address alone.'))return;
+  try{
+   const out=await api('/api/owner/nextday/consent/'+encodeURIComponent(customerId),
+    {source:src,method,obtainedAt:new Date(date+'T12:00:00Z').toISOString(),
+     confirm:'OWNER_HAS_DIRECT_OPT_IN_PROOF'});
+   if(!out?.ok)throw Error(out?.error||'Consent not recorded');
+   await load();msg('Consent evidence saved. Send remains owner-approved and provider-gated.');
+  }catch(e){msg('Consent not saved: '+String(e.message||e),true)}
+ }
+ async function recordReply(taskId){
+  const kind=document.querySelector('[data-sbc-reply-kind="'+taskId+'"]')?.value;
+  const notes=document.querySelector('[data-sbc-reply-notes="'+taskId+'"]')?.value||'';
+  if(!window.confirm('Confirm you actually received this email reply and classify it as '+kind+'? No customer email is generated.'))return;
+  try{
+   const out=await api('/api/owner/nextday/reply/'+encodeURIComponent(taskId),
+    {kind,notes,confirm:'OWNER_VERIFIED_REAL_REPLY'});
+   if(!out?.ok)throw Error(out?.error||'Reply not saved');
+   await load();msg('Reply recorded in the CRM; appointment requests appear in due-first review.');
+  }catch(e){msg('Reply not recorded: '+String(e.message||e),true)}
+ }
+
  async function prepare(){
   if(busy)return;
   const chosen=Array.from(document.querySelectorAll('input[data-sbc-nextday-lead]:checked')).map(x=>x.getAttribute('data-sbc-nextday-lead'));
@@ -99,6 +166,7 @@ async function load(){
    '<label>Call day<input id="sbc-nextday-date" type="date" required></label>'+
    '<label>Assign to<select id="sbc-nextday-caller"></select></label></div>'+
    '<button type="button" class="btn" id="sbc-nextday-refresh">Refresh candidates</button>'+
+   '<p id="sbc-nextday-email-readiness" role="status">Checking email provider readiness…</p>'+ 
    '<h3>Appointments, callbacks and due work</h3><div id="sbc-nextday-priorities"></div>'+ 
    '<h3>New prospects</h3><div id="sbc-nextday-candidates"></div>'+
    '<h3>Example email · preview only</h3><textarea id="sbc-nextday-email-draft" readonly rows="12" style="width:100%"></textarea>'+
