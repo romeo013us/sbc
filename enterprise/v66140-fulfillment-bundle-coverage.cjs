@@ -23,7 +23,7 @@ function summary({components=[],jobs=[]}={}){
  const checked=Array.isArray(jobs)?jobs:[];
  const multi=parts.length>1;
  const ids=parts.map(x=>String(x?.id||'').trim());
- if(!multi)return {requiresAllLines:false,ready:true,total:parts.length,complete:0,missing:[],status:'SINGLE_SERVICE'};
+ if(!multi)return {requiresAllLines:false,ready:false,total:parts.length,complete:0,missing:[],status:'SINGLE_SERVICE_EVIDENCE_NOT_EVALUATED'};
  if(ids.some(x=>!x)||new Set(ids).size!==ids.length)return {requiresAllLines:true,ready:false,total:parts.length,complete:0,missing:ids,status:'MAPPING_REQUIRED'};
  let completed=0;
  const entries=parts.map(x=>{
