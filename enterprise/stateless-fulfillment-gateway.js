@@ -40,6 +40,7 @@ class StatelessFulfillmentGateway{
     return {ok:true,status:'READY_TO_DISPATCH',provider:'4over4',endpoint:this.env.FOUROVER4_ORDER_ENDPOINT||this.env.FOUR_OVER_FOUR_API_URL,idempotencyKey:clean(job.idempotencyKey||`sbc:${job.id}`,200),payload:{schema:'sbc.vendor-order.v1',jobId:clean(job.id,120),orderId:clean(job.orderId,120),tenantId:Number(__sbcRequireTenantId(job.tenantId)),product:clean(job.product,255),quantity:Number(job.quantity||1),requirements:job.requirements||{},artwork:job.artwork||null}};
   }
   async dispatchToVendor(job,provider='4over4'){
+    require('./fulfillment-v2-dispatch-guard.cjs').assertVendorDispatchAuthorized(job);
     const plan=this.buildDispatchPlan(job,provider);
     if(!plan.ok)return plan;
     const response=await fetch(plan.endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${this.env.FOUROVER4_API_KEY||this.env.FOUROVER4_API_TOKEN}`,'Idempotency-Key':plan.idempotencyKey,'X-SBC-Contract':'sbc.vendor-order.v1'},body:JSON.stringify(plan.payload),signal:AbortSignal.timeout(Number(this.env.SBC_VENDOR_TIMEOUT_MS||30000))});
