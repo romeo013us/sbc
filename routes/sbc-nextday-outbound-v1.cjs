@@ -67,7 +67,7 @@ function item(c,db){
  emailStatus:'DRAFT_ONLY_NO_SEND',marketingConsentVerified:MAIL.hasConsent(c),draft,demo,callOpening:'Hello, this is Jonathan Jones with Successful By Choice in Miami. I wanted to introduce SBC and see whether '+draft.benefit+' is a priority for your business.'};
 }
 function register(app,deps){
- const {auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,makeId,now}=deps;
+ const {auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,makeId,now,notifyOwner}=deps;
  const get=(req)=>{const t=Number(requireTenant(req));if(!Number.isSafeInteger(t)||t<1)throw Error('TENANT_REQUIRED');return t;};
  const fail=(res,e)=>res.status(e.status||503).json({ok:false,error:clean(e.code||e.message||'UNAVAILABLE',150)});
  app.get('/api/owner/nextday/preview',auth,ownerOnly,(req,res)=>{
@@ -234,9 +234,15 @@ function register(app,deps){
    if(!Array.isArray(db.tasks))db.tasks=[];
    db.appointments.unshift(appt);db.tasks.unshift(task);
    try{await saveData();}catch(e){db.appointments.shift();db.tasks.shift();throw e;}
+   let alert={ok:false,skipped:true};
+   if(typeof notifyOwner==='function'){
+    try{alert=await notifyOwner({subject:'SBC appointment confirmed · '+appt.customerName,
+      text:'Appointment: '+appt.title+'\nBusiness: '+appt.customerName+'\nTime (UTC): '+appt.startAt+'\nLocation: '+appt.location+'\nOpen Command Center to view your due-sorted reminders.\nSBC appointment ID: '+appt.id})||alert}
+    catch(e){alert={ok:false,reason:'OWNER_NOTIFY_NOT_CONFIRMED'}}
+   }
    res.status(201).json({ok:true,appointment:{id:appt.id,customerId:appt.customerId,
     customerName:appt.customerName,startAt:appt.startAt,title:appt.title},
-    reminderTaskId:task.id,externalNotificationsSent:0});
+    reminderTaskId:task.id,ownerNotificationAccepted:alert.ok===true,ownerNotificationStatus:alert.ok===true?'ACCEPTED':alert.reason||'NOT_CONFIGURED'});
   }catch(e){fail(res,e)}finally{saving=false;}
  });
 }
