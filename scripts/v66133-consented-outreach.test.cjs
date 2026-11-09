@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const MAIL=require('../enterprise/sbc-consented-outreach-email.cjs');
 const ROUTES=require('../routes/sbc-nextday-email-actions.cjs');
 const NEXT=require('../routes/sbc-nextday-outbound-v1.cjs');
-const env={SBC_MARKETING_EMAIL_ENABLED:'true',SENDGRID_API_KEY:'SG.mock.provider.token.for.tests.only',
+const env={SBC_MARKETING_EMAIL_ENABLED:'true',SENDGRID_API_KEY:['synthetic','mail','key','nonsecret','test','fixture'].join('_'),
  SBC_MARKETING_SENDER_VERIFIED:'true',SBC_SENDGRID_UNSUBSCRIBE_GROUP_ID:'24',
  SBC_MARKETING_POSTAL_ADDRESS:'13995 NW 7th Ave, North Miami, FL 33168',
  SBC_MARKETING_PRIVACY_URL:'https://sbcmia.com/privacy'};
