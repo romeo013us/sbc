@@ -233,6 +233,7 @@ jobs:
           node scripts/v66137-phone-recovery.test.cjs --staged
           SBC_V66138_ISOLATED_STAGE=YES node scripts/v66138-stage-fulfillment-truth.cjs --apply
           node scripts/v66138-fulfillment-truth.test.cjs --staged
+          SBC_V66140_ISOLATED_STAGE=YES node scripts/v66140-stage-bundle-coverage.cjs --apply
           node scripts/v66140-fulfillment-bundle-coverage.test.cjs --staged
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs --staged
