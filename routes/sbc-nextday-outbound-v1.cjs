@@ -130,12 +130,13 @@ function register(app,deps){
       dueAt:easternCallSlot(date),type:'SBC Next-Day Call',priority:'Normal',status:'Open',
       assignedTo:caller?.id||'',assignedToName:caller?.name||'Owner review',createdBy:req.user.id,
       notes,createdAt:ts,updatedAt:ts};
-    const old={assignedTo:c.assignedTo,nextAction:c.nextAction,followUpAt:c.followUpAt,followUp:c.followUp};
+    const old={assignedTo:c.assignedTo,nextAction:c.nextAction,followUpAt:c.followUpAt,followUp:c.followUp,websiteDemoUrl:c.websiteDemoUrl};
     changed.push({c,old});
     if(caller)c.assignedTo=caller.id;
     c.nextAction='Next-day outbound call planned '+date+'; introductory email DRAFT ONLY (not sent). Review CRM and contact restrictions.';
     c.followUpAt=date;
     c.followUp=date;
+    if(demo?.ready)c.websiteDemoUrl=demo.url;
     newRecords.push(task);
    }
    db.tasks=Array.isArray(db.tasks)?db.tasks:[];
