@@ -36,7 +36,7 @@ function register(app,{auth,ownerOnly,getContext}){
  const C=createController({getContext});
  // SBC Next-Day Sales Prep: reuse authenticated owner + tenant-scoped CRM and existing writer.
  // Only reviewed task drafts are saved; NO outbound email, telephony or external contact.
- require('./sbc-nextday-outbound-v1.cjs').register(app,{
+ const nextDayDeps={
    auth,ownerOnly,getDb:()=>getContext().db,
    saveData:()=>getContext().saveData(),
    requireTenant:tenantFrom,
@@ -47,7 +47,9 @@ function register(app,{auth,ownerOnly,getContext}){
    },
    makeId:p=>p+'_'+Date.now().toString(36)+'_'+crypto.randomBytes(5).toString('hex'),
    now:()=>new Date().toISOString()
- });
+ };
+ require('./sbc-nextday-outbound-v1.cjs').register(app,nextDayDeps);
+ require('./sbc-nextday-email-actions.cjs').register(app,nextDayDeps);
 
  global.__SBC_V65119_CONTROL_PLANE={claimWebhookEvent:C.claimWebhookEvent,completeWebhookEvent:C.completeWebhookEvent,statusRank:canonicalWebhookStatusRank};
  const owner=[auth,ownerOnly];
