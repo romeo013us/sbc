@@ -74,11 +74,12 @@ async function call(route,request){const fn=handlers.get(route);assert(fn,'missi
  assert.equal(result.statusCode,200);assert.equal(result.body.record.stage,'COMPLETED');assert.equal(writes,3);
  result=await call('GET /api/owner/checkout-lab/orders',req({},2));
  assert.equal(result.body.records.length,0);
- dbOnline=false;
+ assert(route.includes('const records=(await sbcV66129Committed(t))'),'GET ledger must read MySQL');
+ const originalQuery=ctx.mysqlPool.query;
+ ctx.mysqlPool.query=async()=>{throw Error('SIMULATED_MYSQL_OFFLINE')};
  result=await call('GET /api/owner/checkout-lab/orders',req());
- console.log('[SBC QA SQL OUTAGE DIAGNOSTIC]',JSON.stringify({dbOnline,statusCode:result.statusCode,body:result.body}));
  assert.equal(result.statusCode,503,'SQL outage must never present stale in-memory checkout as committed');
- dbOnline=true;
+ ctx.mysqlPool.query=originalQuery;
  const phantom=lab.create({tenantId:1,product:catalog.services[0],requestId:'phantom_browser_12345',actor:owner,orderId:'qaorder_phantom_12345',at,customerName:'INTERNAL QA'});
  db.settings.ownerCheckoutLab.push(phantom);
  result=await call('POST /api/owner/checkout-lab/order',req({...body,requestId:'phantom_browser_12345'}));
