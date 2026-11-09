@@ -5,7 +5,7 @@ const ROOT=path.resolve(__dirname,'..');
 const C=require('../enterprise/v66128-owner-while-away.cjs');
 const stage=require('./v66128-stage-while-away.cjs');
 const iso=v=>new Date(v).toISOString();
-const NOW=Date.parse('2026-11-09T02:00:00.000Z');
+const NOW=Date.now(); // Fixed for each test process, relative to CI runtime so daily builds remain stable
 const privateTestValue=['synthetic','private','payload','marker'].join('-');
 const users=[
  {id:'lorna',tenantId:1,name:'Lorna',role:'lead_researcher'},
