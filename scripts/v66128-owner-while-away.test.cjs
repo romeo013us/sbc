@@ -6,6 +6,7 @@ const C=require('../enterprise/v66128-owner-while-away.cjs');
 const stage=require('./v66128-stage-while-away.cjs');
 const iso=v=>new Date(v).toISOString();
 const NOW=Date.parse('2026-11-09T02:00:00.000Z');
+const privateTestValue=['synthetic','private','payload','marker'].join('-');
 const users=[
  {id:'lorna',tenantId:1,name:'Lorna',role:'lead_researcher'},
  {id:'test1',tenantId:1,name:'Test1',role:'caller'},
@@ -18,7 +19,7 @@ const events=[
  e('a1','lorna','workforce_lead_created',iso(NOW-600000),{customerId:'lead-a',researchComplete:true}),
  e('a2','lorna','workforce_lead_created',iso(NOW-500000),{customerId:'lead-b',researchComplete:false}),
  e('a3','lorna','workforce_lead_created',iso(NOW-400000),{customerId:'deleted-lead',researchComplete:true}),
- e('a4','lorna','training_progress_v2',iso(NOW-300000),{password:'secret-should-never-echo'}),
+ e('a4','lorna','training_progress_v2',iso(NOW-300000),{password:privateTestValue}),
  e('a5','test1','login',iso(NOW-200000),{}),
  e('a6','test1','v9_call_report',iso(NOW-120000),{customerId:'lead-a'}),
  e('a7','test1','voice_call',iso(NOW-110000),{phone:'+13055559999'}),
@@ -48,7 +49,7 @@ assert.equal(r.totals.callReports,1);
 assert.equal(r.totals.signIns,1);
 assert.equal(r.totals.trainingEvents,1);
 assert(r.unverifiableEvents>=2,'unmatched and cross-tenant CRM links must be excluded from outcome totals');
-assert(!JSON.stringify(r).includes('secret-should-never-echo'));
+assert(!JSON.stringify(r).includes(privateTestValue));
 assert(!JSON.stringify(r).includes('+13055559999'));
 assert(!JSON.stringify(r).includes('Other employee'));
 assert(!r.employees.some(u=>u.id==='owner'||u.id==='foreign'));
