@@ -30,14 +30,19 @@ const first=patched.indexOf("const SBC_V66129_LAB=require("),last=patched.indexO
 assert(first>0&&last>first);
 const route=patched.slice(first,last);
 assert(!/squareApi\(|createSquarePaymentLinkForOrder\(|sendOrderIntake\(|twilioFactory\(|stripe\b/i.test(route));
-const handlers=new Map(),db={settings:{ownerCheckoutLab:[]},orders:[],customers:[]};let writes=0,writer=true;const audits=[];
+const handlers=new Map(),db={settings:{ownerCheckoutLab:[]},orders:[],customers:[]};let writes=0,writer=true,dbOnline=true,committedState=[];const audits=[];
 const ctx={require:()=>lab,db,CATALOG:catalog,auth:'AUTH',ownerOnly:'OWNER',Array,Number,String,JSON,Object,Error,Date,
  app:{get:(u,a,o,h)=>{assert.equal(a,'AUTH');assert.equal(o,'OWNER');handlers.set('GET '+u,h)},
  post:(u,a,o,h)=>{assert.equal(a,'AUTH');assert.equal(o,'OWNER');handlers.set('POST '+u,h)}},
  requireRequestTenant:req=>req.tenantId,
- MYSQL_RECOVERY_REQUIRED:false,MYSQL_RECOVERY_EVALUATED:true,mysqlPool:{},
+ MYSQL_RECOVERY_REQUIRED:false,MYSQL_RECOVERY_EVALUATED:true,mysqlPool:{query:async(sql,args)=>{
+  assert(/^SELECT setting_value FROM sbc_settings WHERE setting_key=\? LIMIT 1$/.test(sql));
+  assert.equal(args[0],'ownerCheckoutLab');
+  if(!dbOnline)throw Error('SIMULATED_MYSQL_OFFLINE');
+  return [[{setting_value:JSON.stringify(committedState)}]];
+ }},
  SBC_V6649_REQUIRE_WRITER:()=>{if(!writer)throw Object.assign(Error('WRITER_LOCKED'),{code:'WRITER_LOCKED',status:423})},
- saveData:async()=>{writes++},audit:(u,t,m,n)=>audits.push(t),
+ saveData:async()=>{writes++;committedState=JSON.parse(JSON.stringify(db.settings.ownerCheckoutLab))},audit:(u,t,m,n)=>audits.push(t),
  id:()=> 'qaorder_'+String(writes+1).padStart(10,'0'),now:()=>new Date().toISOString()};
 vm.runInNewContext(route,ctx,{timeout:2500});
 const req=(body={},tenantId=1,orderId='')=>({body,tenantId,user:owner,params:{orderId},query:{}}),res=()=>({statusCode:200,body:null,headers:{},status(c){this.statusCode=c;return this},setHeader(k,v){this.headers[k]=v;return this},json(x){this.body=x;return this}});
@@ -69,6 +74,15 @@ async function call(route,request){const fn=handlers.get(route);assert(fn,'missi
  assert.equal(result.statusCode,200);assert.equal(result.body.record.stage,'COMPLETED');assert.equal(writes,3);
  result=await call('GET /api/owner/checkout-lab/orders',req({},2));
  assert.equal(result.body.records.length,0);
+ dbOnline=false;
+ result=await call('GET /api/owner/checkout-lab/orders',req());
+ assert.equal(result.statusCode,503,'SQL outage must never present stale in-memory checkout as committed');
+ dbOnline=true;
+ const phantom=lab.create({tenantId:1,product:catalog.services[0],requestId:'phantom_browser_12345',actor:owner,orderId:'qaorder_phantom_12345',at,customerName:'INTERNAL QA'});
+ db.settings.ownerCheckoutLab.push(phantom);
+ result=await call('POST /api/owner/checkout-lab/order',req({...body,requestId:'phantom_browser_12345'}));
+ assert.equal(result.statusCode,503,'uncommitted in-memory record must never be presented as saved');
+ db.settings.ownerCheckoutLab.pop();
  writer=false;result=await call('POST /api/owner/checkout-lab/order',req({...body,requestId:'newbrowser12345678'}));
  assert.equal(result.statusCode,423);assert.equal(writes,3);
  assert(audits.includes('owner_checkout_lab_created')&&audits.includes('owner_checkout_lab_stage'));
