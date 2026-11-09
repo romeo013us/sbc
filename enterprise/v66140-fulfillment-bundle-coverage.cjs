@@ -18,6 +18,21 @@ function validReceipt(number){
  const n=String(number||'').trim();
  return /^[A-Za-z0-9][A-Za-z0-9._:/#-]{3,119}$/.test(n)&&!/^(?:test|demo|fake|pending|unknown|none|placeholder|tbd)/i.test(n);
 }
+// Missing package recipes cannot be certified by a single partial service.
+function needsMapping(order,components){
+ const parts=Array.isArray(components)?components:[];
+ if(parts.length>1)return false;
+ let meta=order?.parsed&&typeof order.parsed==='object'?order.parsed:{};
+ if(typeof order?.notes==='string'&&order.notes.trim().startsWith('{')){try{meta={...meta,...JSON.parse(order.notes)}}catch{}}
+ if(String(meta.bundleId||'').trim())return true;
+ const label=String(order?.product||order?.productName||'').trim();
+ return /^(?:SBC\s+)?(?:Business\s+(?:Visibility|Starter|Basic|Essentials|Growth)(?:\s+Package)?|Complete\s+Business\s+Launch|E-?commerce\s+(?:Starter|Pro|Complete))(?:\s|$)/i.test(label);
+}
+function mappingHold(order,components){
+ return {requiresAllLines:true,ready:false,total:Array.isArray(components)?components.length:0,complete:0,
+  missing:[{itemId:'catalog',itemName:String(order?.product||'SBC package').slice(0,120),reason:'CATALOG_COMPONENT_MAPPING_REQUIRED'}],
+  status:'CATALOG_COMPONENT_MAPPING_REQUIRED'};
+}
 function summary({components=[],jobs=[]}={}){
  const parts=Array.isArray(components)?components:[];
  const checked=Array.isArray(jobs)?jobs:[];
@@ -46,4 +61,4 @@ function summary({components=[],jobs=[]}={}){
  return {requiresAllLines:true,ready:completed===parts.length,total:parts.length,complete:completed,
    missing:entries.filter(x=>!x.ready),status:completed===parts.length?'ALL_LINES_COMPLETE':'BUNDLE_ITEMS_OPEN'};
 }
-module.exports={noArtworkService,summary,PRINT};
+module.exports={noArtworkService,needsMapping,mappingHold,summary,PRINT};
