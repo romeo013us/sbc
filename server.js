@@ -3369,7 +3369,10 @@ async function sendEmail(customer,subject,body){
   addActivity('email',`Email sent to ${customer.businessName||customer.contactName}`,{customerId:customer.id,to:customer.email,subject,smtpPort:sent.port});
   return {messageId:sent.info.messageId,to:customer.email,smtpPort:sent.port};
 }
+// SBC_V66137_SMS_DELIVERY_TRUTH
+const SBC_V66137_SMS_TRUTH=require('./enterprise/v66137-sms-delivery-truth.cjs');
 function acquisitionMessagingAllowed(customer){
+  if(SBC_V66137_SMS_TRUTH.isSuppressed(customer))return {allowed:false,reason:'sms_opt_out_or_suppressed'};
   const source=String(customer?.source||'').toLowerCase();
   const status=String(customer?.status||'').toLowerCase();
   const acquisitionLike=source.includes('findr')||source.includes('acquisition')||source.includes('prospect')||status==='lead';
@@ -3388,12 +3391,14 @@ async function sendSms(customer,body){
   const authToken=secretValue('SBC_TWILIO_AUTH_TOKEN','SBC_TWILIO_AUTH_TOKEN','TWILIO_AUTH_TOKEN');
   if(!sid||!from||!(authToken||(keySid&&keySecret))) throw new Error('SMS is not configured. Add the Twilio Account SID, API key SID/secret (or Auth Token), and Twilio phone number in GoDaddy Secrets.');
   if(!customer?.phone) throw new Error('This lead does not have a phone number.');
-  const params=new URLSearchParams({To:customer.phone,From:from,Body:mergeTemplate(body,customer)});
+  const normalizedTo=SBC_V66137_SMS_TRUTH.destination(customer.phone);
+  const params=new URLSearchParams({To:normalizedTo,From:from,Body:mergeTemplate(body,customer)});
   const credentialUser=keySid&&keySecret?keySid:sid, credentialPass=keySid&&keySecret?keySecret:authToken;
   const r=await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`,{method:'POST',headers:{Authorization:'Basic '+Buffer.from(`${credentialUser}:${credentialPass}`).toString('base64'),'Content-Type':'application/x-www-form-urlencoded'},body:params,signal:AbortSignal.timeout(Number(process.env.SBC_TWILIO_TIMEOUT_MS||20000))});
-  const data=await r.json(); if(!r.ok) throw new Error(data.message||'Twilio SMS failed.');
-  addActivity('sms',`SMS sent to ${customer.businessName||customer.contactName}`,{customerId:customer.id,to:customer.phone,sid:data.sid});
-  return {sid:data.sid,to:customer.phone};
+  const data=await r.json().catch(()=>({})); if(!r.ok)throw SBC_V66137_SMS_TRUTH.providerError(data,r.status);
+  const providerResult=SBC_V66137_SMS_TRUTH.receipt(data);
+  addActivity('sms',`SMS submitted to Twilio for ${customer.businessName||customer.contactName}`,{customerId:customer.id,to:normalizedTo,sid:providerResult.sid,providerStatus:providerResult.providerStatus,deliveryConfirmed:providerResult.deliveryConfirmed});
+  return {...providerResult,to:normalizedTo};
 }
 function calendarIcs(a){
   const escIcs=v=>String(v||'').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
@@ -5982,7 +5987,7 @@ app.get('/api/communications/status',auth,ownerOnly,async(req,res)=>{
   if(smtpConfigured){const v=await smtpVerifyWithFallback();smtp={configured:true,verified:Boolean(v.ok),kind:v.kind||'',port:v.port||null,error:v.ok?'':String(v.attempts?.at(-1)?.error||v.error?.message||'SMTP verification failed').slice(0,300)};}
   ensureRevenueEmailTemplates(db);
   const revenueTemplates=(db.emailTemplates||[]).filter(t=>String(t?.purpose||'').startsWith('revenue_'));
-  res.json({email:{configured:smtpConfigured,verified:smtp.verified,verifyKind:smtp.kind,verifyPort:smtp.port,verifyError:smtp.error,provider:process.env.SBC_MAIL_PROVIDER||'SMTP',from:process.env.SBC_MAIL_FROM||process.env.SBC_SMTP_USER||''},sms:{configured:smsConfigured,provider:'Twilio',missing:[!twilioSid?'Account SID':null,!twilioFrom?'Twilio phone number':null,!twilioAuth&&!twilioKeySid?'Auth Token or API Key SID':null,!twilioAuth&&!twilioKeySecret?'Auth Token or API Key Secret':null].filter(Boolean)},automation:{enabled:db.settings.automationEnabled!==false},templates:{total:(db.emailTemplates||[]).length,revenue:revenueTemplates.length,activeRevenue:revenueTemplates.filter(t=>t.active!==false).length}});
+  res.json({email:{configured:smtpConfigured,verified:smtp.verified,verifyKind:smtp.kind,verifyPort:smtp.port,verifyError:smtp.error,provider:process.env.SBC_MAIL_PROVIDER||'SMTP',from:process.env.SBC_MAIL_FROM||process.env.SBC_SMTP_USER||''},sms:{configured:smsConfigured,provider:'Twilio',deliveryVerified:false,a2pRegistration:'NOT_VERIFIED_BY_SBC',missing:[!twilioSid?'Account SID':null,!twilioFrom?'Twilio phone number':null,!twilioAuth&&!twilioKeySid?'Auth Token or API Key SID':null,!twilioAuth&&!twilioKeySecret?'Auth Token or API Key Secret':null].filter(Boolean)},automation:{enabled:db.settings.automationEnabled!==false},templates:{total:(db.emailTemplates||[]).length,revenue:revenueTemplates.length,activeRevenue:revenueTemplates.filter(t=>t.active!==false).length}});
 });
 app.post('/api/communications/email',auth,ownerOnly,async(req,res)=>{try{if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY)return res.status(423).json({error:'SBC_RECOVERY_OR_READ_ONLY_BLOCK',message:'Outbound communications are disabled until recovery is evaluated and the Published writer is active.'});const c=db.customers.find(x=>x.id===req.body?.customerId);if(!c)return res.status(404).json({error:'Lead not found.'});const result=await sendEmail(c,req.body.subject||'',req.body.body||'');await saveData();res.json({ok:true,...result});}catch(e){res.status(400).json({error:e.message})}});
 app.post('/api/communications/email/verify',auth,ownerOnly,async(req,res)=>{try{const v=await smtpVerifyWithFallback();res.json({ok:Boolean(v.ok),configured:Boolean(v.configured),kind:v.kind||'',port:v.port||null,host:v.host||'',error:v.ok?'':String(v.attempts?.at(-1)?.error||v.error?.message||'SMTP verification failed').slice(0,500)});}catch(e){res.status(400).json({ok:false,error:e.message||'SMTP verification failed.'});}});
