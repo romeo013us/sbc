@@ -132,7 +132,7 @@ def evaluate(name, status, body, headers, url):
             result["reason"] = "LATEST_WORKFORCE_UI_NOT_FOUND"
             return result
     elif name == "office_i18n":
-        if b"officebox" not in body.lower() and b"spanish" not in body.lower() and b"es" not in body.lower():
+        if b"Office Box v15.5.6" not in body or b"Krey" not in body:
             result["reason"] = "OFFICE_ASSET_NOT_RECOGNIZED"
             return result
     elif name == "public_sbc":
