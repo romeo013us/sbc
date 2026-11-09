@@ -12,7 +12,7 @@ const compact=(v,n=500)=>String(v??'').trim().slice(0,n);
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,
  makeId=p=>p+'_'+Date.now().toString(36),now=()=>new Date().toISOString(),
- mail=MAIL}={}){
+ mail=MAIL,notifyOwner}={}){
  const getTenant=req=>{const t=Number(requireTenant(req));if(!Number.isSafeInteger(t)||t<1)throw Object.assign(Error('TENANT_REQUIRED'),{status:403});return t};
  const fail=(res,e)=>res.status(e.status||503).json({ok:false,error:compact(e.code||e.message||'REQUEST_FAILED',130)});
  function lead(db,t,id){return (db.customers||[]).find(c=>String(c.id)===String(id)&&tenantOf(c)===t)||null;}
@@ -150,8 +150,14 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
     if(created.length)db.tasks.splice(0,created.length);
     throw e;
    }
+   let alert={ok:false,skipped:true};
+   if(created.length&&typeof notifyOwner==='function'){
+    try{alert=await notifyOwner({subject:kind==='APPOINTMENT_REQUEST'?'SBC appointment request · '+compact(c.businessName,70):'SBC interested email reply · '+compact(c.businessName,70),
+      text:'Business: '+compact(c.businessName,120)+'\nAction: '+kind+'\nNotes: '+notes+'\nOpen Command Center → Prepare Tomorrow to confirm the appointment or reply. No customer appointment has been automatically booked.'})||alert}
+    catch(e){alert={ok:false,reason:'OWNER_NOTIFY_NOT_CONFIRMED'}}
+   }
    res.json({ok:true,kind,taskId:r.id,ownerActionCreated:created.map(x=>x.id),
-    automaticEmailProcessing:false,automaticAppointmentBooking:false});
+    ownerNotificationAccepted:alert.ok===true,automaticEmailProcessing:false,automaticAppointmentBooking:false});
   }catch(e){fail(res,e)}finally{changing=false}
  });
 
