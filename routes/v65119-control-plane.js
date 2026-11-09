@@ -46,7 +46,12 @@ function register(app,{auth,ownerOnly,getContext}){
        Error('NEXTDAY_WRITER_OR_RECOVERY_NOT_READY'),{status:423});
    },
    makeId:p=>p+'_'+Date.now().toString(36)+'_'+crypto.randomBytes(5).toString('hex'),
-   now:()=>new Date().toISOString()
+   now:()=>new Date().toISOString(),
+   notifyOwner: async({subject,text})=>{
+     const svc=global.__SBC_UNATTENDED_NOTIFICATIONS;
+     if(!svc||typeof svc.sendEmail!=='function')return {ok:false,skipped:true,reason:'OWNER_NOTIFICATION_SERVICE_UNAVAILABLE'};
+     return svc.sendEmail(String(subject||'SBC Sales Alert').slice(0,150),String(text||'').slice(0,1800));
+   }
  };
  require('./sbc-nextday-outbound-v1.cjs').register(app,nextDayDeps);
  require('./sbc-nextday-email-actions.cjs').register(app,nextDayDeps);
