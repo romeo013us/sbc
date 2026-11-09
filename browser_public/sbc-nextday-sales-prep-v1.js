@@ -17,20 +17,53 @@
   return '<label style="display:block;padding:10px;border:1px solid var(--border,#64748b);border-radius:8px;margin-bottom:7px">'+
    '<input type="checkbox" data-sbc-nextday-lead="'+esc(r.id)+'" checked> <strong>'+esc(r.businessName)+'</strong> · '+esc(r.phone)+
    '<div style="opacity:.8;font-size:12px;padding-left:24px">Source: '+esc(r.source||'Not recorded')+' · '+esc(r.industry||'Business')+
-   ' · '+(r.email?'Email draft available':'No valid email')+'</div></label>';
+   ' · '+(r.email?'Email draft available':'No valid email')+' · '+(r.demo?.ready?'Website preview ready':'Demo not recorded')+'</div></label>';
  }
  function fill(){
   const list=$('sbc-nextday-candidates');if(list)list.innerHTML=rows.length?rows.map(candidate).join(''):'<p>No eligible unqueued leads in this sample. Check lead verification, assignments, and suppression before preparing a batch.</p>';
   const select=$('sbc-nextday-caller');if(select)select.innerHTML='<option value="">Owner / unassigned</option>'+callers.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');
   const preview=$('sbc-nextday-email-draft');if(preview)preview.value=rows[0]?'Subject: '+rows[0].draft.subject+'\n\n'+rows[0].draft.text:'No email draft available.';
  }
- async function load(){
+ 
+ function priorityLine(p){
+  const label=p.kind==='APPOINTMENT_REQUEST'?'Appointment requested — schedule review':p.kind==='APPOINTMENT'?'Scheduled appointment':'Follow-up';
+  const at=new Date(p.dueAt);
+  const when=Number.isFinite(at.getTime())?at.toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}):p.dueAt;
+  const late=Number.isFinite(at.getTime())&&at.getTime()<=Date.now();
+  const mark=late?'<strong style="color:#c16927">Due / overdue</strong> · ':'';
+  const scheduler=p.kind==='APPOINTMENT_REQUEST'?
+   '<details><summary>Confirm customer appointment</summary>'+
+   '<label>Confirmed start (your device time zone)<input type="datetime-local" data-apt-start="'+esc(p.customerId)+'"></label>'+
+   '<label><input type="checkbox" data-apt-confirm="'+esc(p.customerId)+'"> Customer explicitly confirmed the time</label>'+
+   '<button type="button" class="btn" data-apt-create="'+esc(p.customerId)+'">Schedule appointment</button></details>':'';
+  return '<div style="padding:10px;margin:8px 0;border:1px solid var(--border,#64748b);border-radius:8px">'+
+   mark+'<strong>'+esc(label)+'</strong> · '+esc(p.businessName)+'<div>'+esc(when)+' · '+esc(p.description)+'</div>'+scheduler+'</div>';
+ }
+ async function scheduleAppointment(id){
+  const raw=document.querySelector('input[data-apt-start="'+id+'"]')?.value;
+  const agreed=document.querySelector('input[data-apt-confirm="'+id+'"]')?.checked;
+  if(!raw||!agreed)return msg('Confirm an agreed appointment time with the customer before booking.',true);
+  const iso=new Date(raw);
+  if(!Number.isFinite(iso.getTime())||iso.getTime()<=Date.now())return msg('Choose a valid future time.',true);
+  if(!window.confirm('Record a CONFIRMED appointment at '+iso.toLocaleString()+'? This saves a calendar appointment and owner reminder task but does not invite the customer.'))return;
+  try{
+   const r=await api('/api/owner/nextday/appointment',{customerId:id,startAt:iso.toISOString(),customerConfirmed:true});
+   if(!r?.ok)throw Error(r?.error||'Appointment was not saved');
+   msg('Appointment saved and reminder task added. No customer notification was sent.');
+   await load();
+  }catch(e){msg('No appointment confirmed: '+String(e.message||e),true);}
+ }
+async function load(){
   msg('Loading eligible CRM leads and existing call tasks…');
   try{
    const n=Math.max(1,Math.min(20,Number($('sbc-nextday-limit')?.value||10)));
-   const [v,q]=await Promise.all([api('/api/owner/nextday/preview?limit='+n),api('/api/owner/nextday/queue')]);
-   if(!v?.ok||!q?.ok)throw Error('Production data unavailable');
+   const [v,q,p]=await Promise.all([api('/api/owner/nextday/preview?limit='+n),api('/api/owner/nextday/queue'),api('/api/owner/nextday/priorities')]);
+   if(!v?.ok||!q?.ok||!p?.ok)throw Error('Production data unavailable');
    rows=v.candidates||[];callers=v.callers||[];fill();
+   const due=$('sbc-nextday-priorities');
+   if(due)due.innerHTML='<p><strong>'+p.dueCount+' due or overdue</strong> · '+p.appointmentRequests+' appointment requests need review. Earliest due first.</p>'+
+    ((p.records||[]).slice(0,30).map(priorityLine).join('')||'<p>No scheduled appointments or follow-ups found.</p>');
+   due?.querySelectorAll('[data-apt-create]').forEach(el=>el.addEventListener('click',()=>scheduleAppointment(el.dataset.aptCreate)));
    const queue=$('sbc-nextday-queue');
    if(queue)queue.innerHTML=(q.records||[]).slice(0,12).map(t=>
     '<div style="padding:8px;border-top:1px solid var(--border,#64748b)"><strong>'+esc(t.customerName)+
@@ -66,7 +99,8 @@
    '<label>Call day<input id="sbc-nextday-date" type="date" required></label>'+
    '<label>Assign to<select id="sbc-nextday-caller"></select></label></div>'+
    '<button type="button" class="btn" id="sbc-nextday-refresh">Refresh candidates</button>'+
-   '<h3>Prospects</h3><div id="sbc-nextday-candidates"></div>'+
+   '<h3>Appointments, callbacks and due work</h3><div id="sbc-nextday-priorities"></div>'+ 
+   '<h3>New prospects</h3><div id="sbc-nextday-candidates"></div>'+
    '<h3>Example email · preview only</h3><textarea id="sbc-nextday-email-draft" readonly rows="12" style="width:100%"></textarea>'+
    '<p><label><input id="sbc-nextday-reviewed" type="checkbox"> I reviewed lead sources, DNC/opt-outs, applicable calling permissions, and next-business-day timing.</label></p>'+
    '<button type="button" class="btn primary" id="sbc-nextday-submit">Prepare Next-Day Call Tasks</button>'+
