@@ -9,8 +9,7 @@ const env={SBC_MARKETING_EMAIL_ENABLED:'true',SENDGRID_API_KEY:['synthetic','mai
  SBC_MARKETING_PRIVACY_URL:'https://sbcmia.com/privacy'};
 const c={id:'lead1',tenantId:1,businessName:'SBC Test Demo Repair',phone:'3055550108',
  status:'Lead',leadTemperature:'Warm',verificationStatus:'Verified',industry:'Auto Repair',
- email:'opted@example.org',marketingEmailConsent:false,marketingEmailConsentSource:'',
- marketingEmailConsentAt:''};
+ email:'opted@example.org',leadIntelligence:{sbcOutreach:{marketingEmailConsent:false}}};
 function mock(){
  const db={customers:[c],tasks:[{id:'task1',customerId:c.id,customerName:c.businessName,
   tenantId:1,type:'SBC Next-Day Call',status:'Open',notes:'EMAIL NOT SENT. OWNER REVIEW REQUIRED.\nDRAFT EMAIL (NOT SENT):'}],appointments:[],users:[],callReports:[]};
