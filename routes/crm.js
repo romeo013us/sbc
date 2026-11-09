@@ -3,6 +3,7 @@ const RAILS = require('../enterprise/v566-scale-revenue-rails');
 const { createCustomerRepository, positiveTenantId } = require('../enterprise/repositories/customer-repository.cjs');
 const { requireTenantContext } = require('../enterprise/tenant-context.cjs');
 const { revisionOfLead } = require('../enterprise/crm-revision-v6607.cjs');
+const CRM_TEXT = require('../enterprise/crm-text-integrity-v66140.cjs');
 // SBC_V6605_CRM_TENANT_BARRIER: authenticated AsyncLocalStorage is the only tenant authority.
 function tenantForRead(req) {
   const tenant = positiveTenantId(requireTenantContext().tenantId);
@@ -207,6 +208,8 @@ module.exports = function registerCRM(app, { auth, getContext }) {
       const industry = clean(body.industry, 120);
       const source = clean(body.source || 'SBC Lead Workspace', 100);
       const notes = clean(body.notes, 4000);
+      const invalidFields = CRM_TEXT.invalidFields({businessName,contactName,phone,email,website,address,industry,source,notes});
+      if(invalidFields.length) return res.status(400).json({ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',fields:invalidFields,message:'Invalid or binary-looking customer text was rejected. No lead was saved.'});
       const assignedTo = clean(body.assignedTo || req.user?.username || req.user?.name || '', 80);
       const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
       const crypto = require('node:crypto');
