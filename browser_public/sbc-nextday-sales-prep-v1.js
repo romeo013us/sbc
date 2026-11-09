@@ -91,7 +91,7 @@ async function load(){
   finally{busy=false;if(b)b.disabled=false;}
  }
  window.sbcOpenNextDaySalesPrep=function(){
-  if(String((window.state||{})?.me?.role||'')!=='owner')return;
+  // The server enforces authenticated owner-only endpoints; don't rely on a client global for authorization.
   if(typeof window.openModal!=='function'||typeof window.api!=='function')return;
   window.openModal('Prepare Tomorrow · SBC Sales',
    '<p><strong>Owner-reviewed lead preparation.</strong> Select verified prospects, assign a caller, and create tomorrow’s tasks. Introductory emails are only drafts; no mass emails or auto calls are sent.</p>'+
