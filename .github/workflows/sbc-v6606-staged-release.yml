@@ -113,6 +113,7 @@ jobs:
           node scripts/v66119-publisher-inline-js-syntax.test.cjs
           node --check enterprise/v66117-print-fulfillment-truth.cjs
           node scripts/v6699-outbound-suppression.test.cjs
+          node scripts/v66137-phone-recovery.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -224,6 +225,8 @@ jobs:
           node scripts/v66127-signed-federation-probe.test.cjs --staged
           node scripts/v66128-owner-while-away.test.cjs --staged
           node scripts/v66129-owner-checkout-lab.test.cjs --staged
+          SBC_V66137_ISOLATED_STAGE=YES node scripts/v66137-stage-phone-recovery.cjs --apply
+          node scripts/v66137-phone-recovery.test.cjs --staged
           node scripts/v66113-free-smart-demos.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs --staged
           node scripts/v66110-stage-safe-launch-activation.cjs --verify-staged
@@ -356,7 +359,8 @@ jobs:
           assert.ok(code.includes('SBC_V6672_SIGNED_WEBSITE_CHECKOUT'), 'compiled signed website checkout guard missing');
           assert.ok(code.includes('SBC_V6675_SQUARE_699_OWNER_LINK'), 'verified $699 hosted Square link absent from staged runtime');
           assert.ok(code.includes('SBC_V6678_OWNER_CONFIRMED_250_CARDS'), 'confirmed 250-card Square catalog not in packaged runtime');
-          assert.ok(code.includes('SBC_V6682_DURABLE_OWNER_CLEARANCE_BINDING'), 'durable owner approval route missing');
+          assert.ok(code.includes('SBC_V66137_PHONE_RECOVERY'), 'safe phone recovery lifecycle missing');
+           assert.ok(code.includes('SBC_V6682_DURABLE_OWNER_CLEARANCE_BINDING'), 'durable owner approval route missing');
           assert.ok(read('enterprise/v569-production-expansion.js').toString().includes('SBC_V6682_FINANCIAL_LOCK_BINDING'), 'finance binding module missing');
           console.log('[SBC RELEASE PASS] manifest/server/quote boundaries verified');
           NODE
@@ -388,6 +392,7 @@ jobs:
             node "$tmp/scripts/v66109-workforce-audio.test.cjs"
             node "$tmp/scripts/predeploy-war-test.js"
             node "$tmp/scripts/v6699-outbound-suppression.test.cjs" --staged
+            node "$tmp/scripts/v66137-phone-recovery.test.cjs" --staged
             node "$tmp/scripts/v66101-caller-least-privilege.test.cjs" --staged
             node "$tmp/scripts/v66102-research-shift-notice.test.cjs" --staged
             node "$tmp/scripts/v66105-lorna-operations.test.cjs" --staged
