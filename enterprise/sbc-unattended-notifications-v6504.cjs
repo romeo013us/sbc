@@ -119,10 +119,29 @@ class SBCUnattendedNotifications {
       }
     } else for (const key of Object.keys(sql)) available[key] = false;
     const local = this.getDb?.() || {};
+    const ts=this.clock().getTime(),next48h=ts+48*60*60*1000;
+    const active=x=>!['completed','cancelled','canceled'].includes(String(x?.status||'').toLowerCase());
+    const salesPriorities=[];
+    for(const a of (local.appointments||[])){
+      const date=Date.parse(a.startAt||'');
+      if(active(a)&&Number.isFinite(date)&&date<=next48h)
+       salesPriorities.push({kind:'APPOINTMENT',when:date,business:String(a.customerName||'Business').slice(0,90),
+         title:String(a.title||'Appointment').slice(0,100)});
+    }
+    for(const task of (local.tasks||[])){
+      const date=Date.parse(task.dueAt||'');
+      if(active(task)&&Number.isFinite(date)&&date<=next48h&&
+       /appointment|reply|follow.?up|next.day|callback/i.test(String(task.type||task.title||'')))
+       salesPriorities.push({kind:'TASK',when:date,business:String(task.customerName||'Business').slice(0,90),
+         title:String(task.title||'Follow up').slice(0,100)});
+    }
+    salesPriorities.sort((a,b)=>a.when-b.when);
     return { generatedAt: this.clock().toISOString(), version: String(this.env.SBC_RELEASE_VERSION || '65.0.4'), recoveryRequired,
       operatingState: recoveryRequired ? 'RECOVERY_LOCKED — MUTATIONS SUSPENDED' : 'RECOVERY LOCK CLEAR — OPERATIONAL TESTING STILL REQUIRED',
       storage: pool ? 'mysql-connection-present' : 'mysql-unavailable', metrics, metricAvailability: available,
       localReadModel: { customers: Array.isArray(local.customers) ? local.customers.length : null, quotes: Array.isArray(local.quotes) ? local.quotes.length : null, orders: Array.isArray(local.orders) ? local.orders.length : null, renewals: Array.isArray(local.renewals) ? local.renewals.length : null },
+      salesPriorities:{source:'LOCAL_READ_MODEL_NOT_SQL_CERTIFIED',dueOrUpcoming:salesPriorities.length,
+        preview:salesPriorities.slice(0,12).map(x=>({...x,dueAt:new Date(x.when).toISOString()}))},
       approvalsRequired: [], safety: { financialMutationsAllowed: false, ownerVeto: true } };
   }
   _briefText(report) {
@@ -144,6 +163,9 @@ class SBCUnattendedNotifications {
       `Quotes: ${v(report.localReadModel.quotes)}`,
       `Orders: ${v(report.localReadModel.orders)}`,
       `Renewals: ${v(report.localReadModel.renewals)}`,
+      '', 'SALES PRIORITIES NEXT 48 HOURS (LOCAL READ MODEL — VERIFY IN COMMAND CENTER)',
+      `Appointments, follow-ups and reply tasks: ${v(report.salesPriorities?.dueOrUpcoming)}`,
+      ...(report.salesPriorities?.preview||[]).map(p=>`${p.dueAt} · ${p.kind} · ${p.business} · ${p.title}`),
       '', 'GUARDRAILS',
       'No refunds, money movement, credential changes, destructive database operations, or automatic recovery unlocks are permitted.',
       report.recoveryRequired ? 'ACTION REQUIRED: authoritative recovery remains locked. Keep Revenue PLAY and mutation workers suspended.' : 'Recovery lock is clear; complete the controlled end-to-end acceptance test before unattended operation.',
@@ -231,9 +253,42 @@ class SBCUnattendedNotifications {
     try { await pool.query('SELECT 1 AS sbc_health'); this.lastResult.database = { at: this.clock().toISOString(), ok: true }; if (this.getRecoveryRequired?.()) await this.sendCriticalAlert('mysql-recovery-lock', 'Authoritative MySQL recovery lock is active. CRM mutations, Revenue PLAY, and Kim mutation workers must remain suspended.').catch(() => {}); return { ok: true }; }
     catch (e) { this.lastResult.database = { at: this.clock().toISOString(), ok: false, reason: 'MYSQL_QUERY_FAILED' }; await this.sendCriticalAlert('mysql-connectivity', `MySQL health check failed: ${String(e.message || e).slice(0,300)}. Keep mutation workers suspended until the database is verified healthy.`).catch(() => {}); return { ok: false, reason: 'MYSQL_QUERY_FAILED' }; }
   }
+  // Human caller checked "appointment requested" in an authoritative CRM call report.
+  // Alert the owner with the existing transport; no customer is contacted or booked.
+  async notifyPendingSalesAppointments(){
+    if(this.env.SBC_OWNER_SALES_ALERTS_ENABLED!=='true'||
+       String(this.env.SBC_RUNTIME_ROLE||'').toLowerCase()!=='writer'||
+       this.getRecoveryRequired?.())return {ok:false,skipped:true,reason:'SALES_ALERTS_DISABLED_OR_READ_ONLY'};
+    const db=this.getDb?.()||{},nowMs=this.clock().getTime();
+    const seen=this.state.salesAppointmentAlertIds||{};
+    let accepted=0;
+    const reports=(Array.isArray(db.callReports)?db.callReports:[]).filter(r=>{
+      const d=Date.parse(r?.createdAt||'');
+      return r?.appointmentRequested===true&&r.id&&Number.isFinite(d)&&
+       d<=nowMs&&nowMs-d<48*60*60*1000&&!seen[String(r.id)];
+    }).slice(-5);
+    for(const r of reports){
+      const customer=(db.customers||[]).find(c=>String(c.id)===String(r.customerId));
+      const name=String(customer?.businessName||customer?.contactName||'Customer').slice(0,90);
+      try{
+        const sent=await this.sendEmail('SBC appointment request from sales call · '+name,
+         'An SBC caller marked an appointment request.\nBusiness: '+name+
+         '\nCall report ID: '+String(r.id).slice(0,120)+
+         '\nNotes: '+String(r.notes||'').slice(0,400)+
+         '\nOpen Command Center → Prepare Tomorrow to verify the requested appointment and schedule it. No appointment has been automatically confirmed.');
+        if(sent?.ok){
+          seen[String(r.id)]=nowMs;
+          this.state.salesAppointmentAlertIds=Object.fromEntries(Object.entries(seen).slice(-200));
+          this._saveState();accepted++;
+        }else break;
+      }catch(e){this.logger.warn?.('[SBC SALES ALERT] owner email not confirmed:',String(e.message||e).slice(0,150));break}
+    }
+    return {ok:true,accepted};
+  }
   async _tick() {
     const nowMs = this.clock().getTime();
     if (nowMs - this.lastHealthCheckAt >= 5 * 60 * 1000) { this.lastHealthCheckAt = nowMs; await this.checkDatabaseHealth(); }
+    await this.notifyPendingSalesAppointments();
     const parts = this._localParts();
     const day = `${parts.year}-${parts.month}-${parts.day}`;
     const hour = Number(firstValue(this.env, ['SBC_BRIEFING_HOUR']) || 7);

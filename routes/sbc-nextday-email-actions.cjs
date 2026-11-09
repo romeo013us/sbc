@@ -7,11 +7,13 @@ const MAIL=require('../enterprise/sbc-consented-outreach-email.cjs');
 const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
 const NEXTDAY=require('./sbc-nextday-outbound-v1.cjs');
 const EVENTS=require('../enterprise/sbc-outbound-signed-events.cjs');
+const LEDGER=require('../enterprise/sbc-outreach-consent-ledger.cjs');
+const RELAY=require('../enterprise/sbc-outreach-signed-mailbox-relay.cjs');
 const compact=(v,n=500)=>String(v??'').trim().slice(0,n);
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,
  makeId=p=>p+'_'+Date.now().toString(36),now=()=>new Date().toISOString(),
- mail=MAIL}={}){
+ mail=MAIL,notifyOwner}={}){
  const getTenant=req=>{const t=Number(requireTenant(req));if(!Number.isSafeInteger(t)||t<1)throw Object.assign(Error('TENANT_REQUIRED'),{status:403});return t};
  const fail=(res,e)=>res.status(e.status||503).json({ok:false,error:compact(e.code||e.message||'REQUEST_FAILED',130)});
  function lead(db,t,id){return (db.customers||[]).find(c=>String(c.id)===String(id)&&tenantOf(c)===t)||null;}
@@ -22,6 +24,7 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
   return {...s,optedIn:eligible.filter(mail.hasConsent).length,
    availableVerifiedLeads:eligible.length,autoSendEnabled:false,replyIntegration:'MANUAL_RECORD_ONLY',
    signedDeliveryWebhookConfigured:!!process.env.SBC_SENDGRID_EVENT_PUBLIC_KEY,
+   signedMailboxRelayConfigured:String(process.env.SBC_MAIL_RELAY_SECRET||'').length>=32,
    deliveryTracking:'PROVIDER_ACCEPTED_ONLY_UNTIL_SIGNED_WEBHOOK'};
  }
  app.get('/api/owner/nextday/email-status',auth,ownerOnly,(req,res)=>{
@@ -42,14 +45,12 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
     !Number.isFinite(date)||date>Date.now()||date<Date.UTC(2020,0,1)||
     /scrap|purchas|third.party|public listing|google maps|unknown|n\/a/i.test(source))
      return res.status(422).json({ok:false,error:'DIRECT_CONSENT_SOURCE_AND_DATE_REQUIRED'});
-   const previous={marketingEmailConsent:c.marketingEmailConsent,
-    marketingEmailConsentAt:c.marketingEmailConsentAt,
-    marketingEmailConsentSource:c.marketingEmailConsentSource};
-   c.marketingEmailConsent=true;c.marketingEmailConsentAt=new Date(date).toISOString();
-   c.marketingEmailConsentSource=method+': '+source;
-   try{await saveData()}catch(e){Object.assign(c,previous);throw e}
+   const previous=LEDGER.snapshot(c);
+   let info;try{info=LEDGER.record(c,{date:new Date(date).toISOString(),source,method})}
+   catch(e){return res.status(422).json({ok:false,error:e.message})}
+   try{await saveData()}catch(e){LEDGER.restore(c,previous);throw e}
    res.json({ok:true,customerId:c.id,consentRecorded:true,
-    evidenceAt:c.marketingEmailConsentAt,source:c.marketingEmailConsentSource,
+    evidenceAt:info.marketingEmailConsentAt,source:info.marketingEmailConsentSource,
     note:'Consent proof recorded from owner attestation; not independently verified by the email provider.'});
   }catch(e){fail(res,e)}finally{changing=false}
  });
@@ -59,10 +60,9 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
   try{
    requireWriter();const t=getTenant(req),db=getDb(),c=lead(db,t,req.params.customerId);
    if(!c)return res.status(404).json({ok:false,error:'CONTACT_NOT_FOUND'});
-   const previous={marketingEmailOptOut:c.marketingEmailOptOut,
-    emailUnsubscribed:c.emailUnsubscribed,marketingEmailConsent:c.marketingEmailConsent};
-   c.marketingEmailOptOut=true;c.emailUnsubscribed=true;c.marketingEmailConsent=false;
-   try{await saveData()}catch(e){Object.assign(c,previous);throw e}
+   const previous=LEDGER.snapshot(c);
+   LEDGER.suppress(c,{reason:'OWNER_MARKETING_OPT_OUT',at:now()});
+   try{await saveData()}catch(e){LEDGER.restore(c,previous);throw e}
    res.json({ok:true,customerId:c.id,marketingSuppressed:true});
   }catch(e){fail(res,e)}finally{changing=false}
  });
@@ -127,12 +127,12 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
      !['INTERESTED','APPOINTMENT_REQUEST','NOT_INTERESTED','UNSUBSCRIBE','BOUNCE'].includes(b.kind))
     return res.status(422).json({ok:false,error:'REAL_REPLY_EVIDENCE_REQUIRED'});
    const kind=b.kind,at=now(),notes=compact(b.notes,600);
-   const original={replyStatus:r.replyStatus,replyAt:r.replyAt,replyNotes:r.replyNotes,
-    emailUnsubscribed:c.emailUnsubscribed,marketingEmailOptOut:c.marketingEmailOptOut,
-    marketingEmailConsent:c.marketingEmailConsent,nextAction:c.nextAction};
+   const original={replyStatus:r.replyStatus,replyAt:r.replyAt,replyNotes:r.replyNotes,nextAction:c.nextAction};
+   const previous=LEDGER.snapshot(c);
    r.replyStatus=kind;r.replyAt=at;r.replyNotes=notes;
+   LEDGER.mutate(c,{lastReplyKind:kind,lastReplyAt:at});
    if(kind==='UNSUBSCRIBE'||kind==='BOUNCE'){
-    c.emailUnsubscribed=true;c.marketingEmailOptOut=true;c.marketingEmailConsent=false;
+    LEDGER.suppress(c,{reason:'OWNER_RECORDED_'+kind,at});
    }
    if(kind==='INTERESTED')c.nextAction='Positive email reply. Respond before placing another outbound call.';
    if(kind==='APPOINTMENT_REQUEST')c.nextAction='Email appointment request received; confirm specific date/time before booking.';
@@ -147,12 +147,19 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    }
    try{await saveData()}catch(e){
     for(const k of ['replyStatus','replyAt','replyNotes'])r[k]=original[k];
-    for(const k of ['emailUnsubscribed','marketingEmailOptOut','marketingEmailConsent','nextAction'])c[k]=original[k];
+    c.nextAction=original.nextAction;
+    LEDGER.restore(c,previous);
     if(created.length)db.tasks.splice(0,created.length);
     throw e;
    }
+   let alert={ok:false,skipped:true};
+   if(created.length&&typeof notifyOwner==='function'){
+    try{alert=await notifyOwner({subject:kind==='APPOINTMENT_REQUEST'?'SBC appointment request · '+compact(c.businessName,70):'SBC interested email reply · '+compact(c.businessName,70),
+      text:'Business: '+compact(c.businessName,120)+'\nAction: '+kind+'\nNotes: '+notes+'\nOpen Command Center → Prepare Tomorrow to confirm the appointment or reply. No customer appointment has been automatically booked.'})||alert}
+    catch(e){alert={ok:false,reason:'OWNER_NOTIFY_NOT_CONFIRMED'}}
+   }
    res.json({ok:true,kind,taskId:r.id,ownerActionCreated:created.map(x=>x.id),
-    automaticEmailProcessing:false,automaticAppointmentBooking:false});
+    ownerNotificationAccepted:alert.ok===true,automaticEmailProcessing:false,automaticAppointmentBooking:false});
   }catch(e){fail(res,e)}finally{changing=false}
  });
 
@@ -175,6 +182,41 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    try{if(result.changed.length)await saveData()}
    catch(e){result.undo();throw e}
    return res.json({ok:true,accepted:result.changed.length});
+  }catch(e){fail(res,e)}finally{changing=false}
+ });
+
+ // Mailbox relay for info@sbcmia.com. Configure a TRUSTED server-side inbox
+ // connector (e.g. Microsoft 365 flow) to sign raw JSON before posting.
+ // No changes to MX/DNS; fail closed when secret or valid signature is absent.
+ app.post('/api/nextday/mailbox/reply',async(req,res)=>{
+  const raw=req.rawBody;
+  const signature=req.get?.('x-sbc-mail-relay-signature')||
+   req.headers?.['x-sbc-mail-relay-signature'];
+  const timestamp=req.get?.('x-sbc-mail-relay-timestamp')||
+   req.headers?.['x-sbc-mail-relay-timestamp'];
+  if(!RELAY.verify(raw,{signature,timestamp}))
+   return res.status(401).json({ok:false,error:'SIGNED_MAILBOX_RELAY_REQUIRED'});
+  if(changing)return res.status(503).json({ok:false,error:'MAILBOX_RETRY_LATER'});
+  changing=true;
+  try{
+   requireWriter();
+   const db=getDb(),result=RELAY.apply(db,req.body,{now,makeId});
+   if(result.changed){
+    try{await saveData()}catch(e){result.undo?.();throw e}
+    let ownerNotified=false;
+    if(typeof notifyOwner==='function'){
+     try{const c=(db.customers||[]).find(x=>String(x.id)===String(result.customerId));
+      const notify=await notifyOwner({subject:'SBC new email reply · '+compact(c?.businessName||'Lead',80),
+       text:'A new reply was received through the authenticated SBC mailbox connector.\nType: '+result.kind+
+        '\nBusiness: '+compact(c?.businessName||'Lead',120)+
+        '\nOpen Command Center → Prepare Tomorrow → Due work to review it. No appointment was automatically booked.'});
+      ownerNotified=notify?.ok===true;
+     }catch(_){}
+    }
+    return res.json({ok:true,accepted:1,kind:result.kind,reviewTaskId:result.reviewTaskId,
+      ownerNotificationAccepted:ownerNotified});
+   }
+   return res.json({ok:true,duplicate:true,accepted:0});
   }catch(e){fail(res,e)}finally{changing=false}
  });
 }

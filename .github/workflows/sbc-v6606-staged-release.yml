@@ -93,6 +93,12 @@ jobs:
           node scripts/v66129-owner-checkout-lab.test.cjs
           node scripts/v66132-nextday-outbound.test.cjs
           node scripts/v66133-consented-outreach.test.cjs
+          node scripts/v66134-signed-email-events.test.cjs
+          node scripts/v66135-outreach-durability.test.cjs
+          node scripts/v66136-owner-sales-priorities.test.cjs
+          node --check enterprise/sbc-outreach-consent-ledger.cjs
+          node --check enterprise/sbc-outreach-signed-mailbox-relay.cjs
+          node --check enterprise/sbc-unattended-notifications-v6504.cjs
           node --check enterprise/sbc-consented-outreach-email.cjs
           node --check routes/sbc-nextday-email-actions.cjs
           node --check routes/sbc-nextday-outbound-v1.cjs

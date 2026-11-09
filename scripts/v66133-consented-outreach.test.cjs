@@ -9,8 +9,7 @@ const env={SBC_MARKETING_EMAIL_ENABLED:'true',SENDGRID_API_KEY:['synthetic','mai
  SBC_MARKETING_PRIVACY_URL:'https://sbcmia.com/privacy'};
 const c={id:'lead1',tenantId:1,businessName:'SBC Test Demo Repair',phone:'3055550108',
  status:'Lead',leadTemperature:'Warm',verificationStatus:'Verified',industry:'Auto Repair',
- email:'opted@example.org',marketingEmailConsent:false,marketingEmailConsentSource:'',
- marketingEmailConsentAt:''};
+ email:'opted@example.org',leadIntelligence:{sbcOutreach:{marketingEmailConsent:false}}};
 function mock(){
  const db={customers:[c],tasks:[{id:'task1',customerId:c.id,customerName:c.businessName,
   tenantId:1,type:'SBC Next-Day Call',status:'Open',notes:'EMAIL NOT SENT. OWNER REVIEW REQUIRED.\nDRAFT EMAIL (NOT SENT):'}],appointments:[],users:[],callReports:[]};
@@ -52,8 +51,10 @@ function mock(){
   obtainedAt:new Date().toISOString(),confirm:'OWNER_HAS_DIRECT_OPT_IN_PROOF'});
  assert.equal(x.body.ok,true);
  assert.equal(MAIL.hasConsent(c),true);
+ assert.equal(c.leadIntelligence.sbcOutreach.marketingEmailConsent,true,'consent persisted inside SQL-backed leadIntelligence');
  const payload=MAIL.prepared(c,NEXT.intro(c),env);
  assert.match(payload.text,/13995 NW 7th Ave/);
+ assert.match(payload.text,/asm_group_unsubscribe_raw_url/,'plain-text unsubscribe link exists');
  assert.match(payload.html,/asm_group_unsubscribe_raw_url/);
  assert.equal(payload.from.email,'info@sbcmia.com');
  let captured;
@@ -84,7 +85,7 @@ function mock(){
  x=await m.invoke('POST','/api/owner/nextday/reply/:taskId',{taskId:'task1'},
   {kind:'UNSUBSCRIBE',notes:'Customer asked to stop',confirm:'OWNER_VERIFIED_REAL_REPLY'});
  assert.equal(x.body.ok,true);
- assert.equal(c.emailUnsubscribed,true);
+ assert.equal(c.leadIntelligence.sbcOutreach.emailUnsubscribed,true);
  assert.equal(MAIL.hasConsent(c),false);
  assert.ok(m.saveCount()>3);
  console.log('PASS SBC consented email: evidence gate, provider no-send default, compliant footer, 202 not delivery, no duplicate, reply/appointment and opt-out');

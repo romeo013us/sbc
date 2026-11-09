@@ -26,14 +26,8 @@ function envStatus(env=process.env){
   settings.unsubscribeGroupReady&&settings.postalAddressReady&&settings.privacyPolicyReady;
  return settings;
 }
-function hasConsent(c){
- if(!c||c.marketingEmailConsent!==true||c.marketingEmailOptOut===true||
-   c.emailUnsubscribed===true||c.doNotContact===true||c.salesSuppressed===true)return false;
- const at=Date.parse(String(c.marketingEmailConsentAt||''));
- if(!Number.isFinite(at)||at>Date.now()||at<Date.UTC(2020,0,1))return false;
- const evidence=clean(c.marketingEmailConsentSource,250);
- return evidence.length>=8&&!/^(unknown|none|imported|scraped|purchased|public\s*listing|google\s*maps)$/i.test(evidence);
-}
+const {hasConsent}=require('./sbc-outreach-consent-ledger.cjs');
+
 function prepared(c,draft,env=process.env){
  const status=envStatus(env);
  if(!status.ready)throw Object.assign(Error('MARKETING_PROVIDER_NOT_READY'),{status:503});
@@ -48,7 +42,7 @@ function prepared(c,draft,env=process.env){
  if(text.includes('[Verified'))throw Object.assign(Error('EMAIL_UNVERIFIED_PLACEHOLDER'),{status:422});
  text=text.replace('To stop receiving marketing emails from SBC, reply unsubscribe.',
    'Advertisement: SBC business services.\nPrivacy policy: '+privacy+
-   '\nTo unsubscribe from SBC marketing emails, use the unsubscribe link in this message or reply "unsubscribe".');
+   '\nUnsubscribe from SBC marketing emails: <%asm_group_unsubscribe_raw_url%>\nYou may also reply "unsubscribe".');
  const escapeHtml=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  const html='<div style="font:15px/1.6 Arial,Helvetica,sans-serif;max-width:640px">'+
     escapeHtml(text).replace(/\n/g,'<br>')+
