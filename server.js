@@ -5973,7 +5973,7 @@ app.post('/api/crm/leads/audit',auth,async(req,res)=>{
    return res.json(result);
   }catch(e){return res.status(403).json({ok:false,error:'CRM_AUDIT_TENANT_REQUIRED',readOnly:true});}
 });
-app.post('/api/crm/inbound/:key',async(req,res)=>{if(!db.settings.crmApiKey||req.params.key!==db.settings.crmApiKey)return res.status(401).json({error:'Invalid CRM API key.'});let tenantId;try{tenantId=requireMappedRequestTenant(req)}catch(e){return res.status(403).json({ok:false,error:e.code||'TENANT_CONTEXT_REQUIRED',message:e.message})}const r=req.body||{},c={id:id('cust'),tenantId,businessName:String(r.businessName||r.company||''),contactName:String(r.contactName||r.name||''),phone:String(r.phone||''),email:String(r.email||''),status:'Lead',source:String(r.source||'API'),followUp:'',notes:String(r.notes||''),website:String(r.website||''),address:String(r.address||''),industry:String(r.industry||''),dealValue:Number(r.dealValue||0),createdAt:now(),updatedAt:now()};if(!c.businessName&&!c.contactName)return res.status(400).json({error:'businessName or contactName required.'});db.customers.unshift(c);addActivity('api',`Received API lead ${c.businessName||c.contactName}`,{customerId:c.id});try{SUPERNOVA_V2.appendWrite('lead.inbound',{event:'lead.created',businessName:c.businessName,contactName:c.contactName,phone:c.phone,email:c.email,source:c.source,customerId:c.id},tenantId)}catch{}await saveData();res.status(201).json({ok:true,id:c.id});});
+app.post('/api/crm/inbound/:key',async(req,res)=>{const SBC_CRM_TEXT=require('./enterprise/crm-text-integrity-v66140.cjs');if(!db.settings.crmApiKey||req.params.key!==db.settings.crmApiKey)return res.status(401).json({error:'Invalid CRM API key.'});let tenantId;try{tenantId=requireMappedRequestTenant(req)}catch(e){return res.status(403).json({ok:false,error:e.code||'TENANT_CONTEXT_REQUIRED',message:e.message})}const r=req.body||{},c={id:id('cust'),tenantId,businessName:String(r.businessName||r.company||''),contactName:String(r.contactName||r.name||''),phone:String(r.phone||''),email:String(r.email||''),status:'Lead',source:String(r.source||'API'),followUp:'',notes:String(r.notes||''),website:String(r.website||''),address:String(r.address||''),industry:String(r.industry||''),dealValue:Number(r.dealValue||0),createdAt:now(),updatedAt:now()};const badText=SBC_CRM_TEXT.invalidFields(c);if(badText.length)return res.status(400).json({ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',fields:badText,error:'Invalid lead text; no record saved.'});if(!c.businessName&&!c.contactName)return res.status(400).json({error:'businessName or contactName required.'});db.customers.unshift(c);addActivity('api',`Received API lead ${c.businessName||c.contactName}`,{customerId:c.id});try{SUPERNOVA_V2.appendWrite('lead.inbound',{event:'lead.created',businessName:c.businessName,contactName:c.contactName,phone:c.phone,email:c.email,source:c.source,customerId:c.id},tenantId)}catch{}await saveData();res.status(201).json({ok:true,id:c.id});});
 
 app.get('/api/communications/status',auth,ownerOnly,async(req,res)=>{
   const twilioSid=secretValue('SBC_TWILIO_ACCOUNT_SID','TWILIO_ACCOUNT_SID');
@@ -9473,6 +9473,7 @@ function v400VendorReady(provider){
 }
 
 const SBC_V66138_FULFILLMENT_TRUTH=require('./enterprise/v66138-fulfillment-truth.cjs');
+const SBC_V66140_COVERAGE=require('./enterprise/v66140-fulfillment-bundle-coverage.cjs'); // SBC_V66140_BUNDLE_CLOSE_GATE
 // SBC_V66138_FULFILLMENT_COMMIT_AND_PROVIDER_TRUTH
 async function v400ApplyOrderStage(req,id,stage){
  const tenantId=requireRequestTenant(req);
@@ -9494,6 +9495,14 @@ async function v400CommitAction(req,stage,mutate){
   if(!V400_PAYMENT_EVIDENCE.confirmedPaid(order))throw Error('PAYMENT_EVIDENCE_REQUIRED');
   if(!mysqlPool||SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
     throw Object.assign(Error('FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'),{code:'FULFILLMENT_AUTHORITATIVE_WRITER_UNAVAILABLE'});
+  if(stage==='FULFILLED'){
+   const parts=fulfillmentItemsForOrder(order);
+   if(parts.length>1){
+    const [jobs]=await mysqlPool.query('SELECT item_id,product,vendor,status,vendor_status,vendor_order_number,tracking_number FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_id=?',[Number(tenantId),String(order.id)]);
+    const coverage=SBC_V66140_COVERAGE.summary({components:parts,jobs});
+    if(!coverage.ready)throw Object.assign(Error('BUNDLE_CHILD_JOBS_NOT_DELIVERED: '+coverage.missing.map(x=>x.itemName+' ('+x.reason+')').slice(0,6).join('; ')),{code:'BUNDLE_CHILD_JOBS_NOT_DELIVERED'});
+   }
+  }
   snapshot=V400.capture(req.params.id);
   const result=mutate();
   const receipt=await v400ApplyOrderStage(req,req.params.id,stage);
@@ -9549,6 +9558,22 @@ app.post('/api/kim400/orders/:id/vendor/record',auth,requireCapability('fulfillm
    {orderId:req.params.id,provider,vendorOrderId});
   return res.json({ok:true,order,receipt,providerSubmissionPerformed:false,manualReceipt:true});
  }catch(e){return res.status(409).json({ok:false,error:String(e.code||e.message||'FULFILLMENT_COMMIT_FAILED'),durable:false})}
+});
+app.get('/api/kim400/orders/:id/coverage',auth,requireCapability('fulfillment.manage'),async(req,res)=>{
+ try{
+  const tenantId=requireRequestTenant(req);
+  const order=v400Orders().find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenantId));
+  if(!order)return res.status(404).json({ok:false,error:'FULFILLMENT_ORDER_NOT_FOUND_IN_TENANT'});
+  const components=fulfillmentItemsForOrder(order);
+  let jobs=[];
+  if(components.length>1){
+   if(!mysqlPool)return res.status(503).json({ok:false,error:'FULFILLMENT_MYSQL_UNAVAILABLE'});
+   const [rows]=await mysqlPool.query('SELECT item_id,product,vendor,status,vendor_status,vendor_order_number,tracking_number FROM sbc_fulfillment_jobs WHERE tenant_id=? AND order_id=?',[Number(tenantId),String(order.id)]);
+   jobs=rows||[];
+  }
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,source:'EXISTING_MYSQL_FULFILLMENT_JOBS',...SBC_V66140_COVERAGE.summary({components,jobs})});
+ }catch(e){return res.status(503).json({ok:false,error:'FULFILLMENT_COVERAGE_UNAVAILABLE'})}
 });
 app.get('/api/kim400/summary',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.json({ok:true,...V400.summary(v400Orders())});}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/kim400/orders',auth,requireCapability('fulfillment.manage'),(req,res)=>{try{res.json({ok:true,orders:V400.sync(v400Orders()).slice(0,500)});}catch(e){res.status(500).json({error:e.message})}});
@@ -9964,11 +9989,12 @@ const startOperationalRuntime=async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('[
 }).catch(e=>{console.error('[SBC STARTUP] production startup blocked:',e.message);process.exitCode=1;});
 // SBC_V66_IMPORT_ROUTING_HOTFIX: mount owner-only import routes for readonly Preview and Published writer independently of autonomous-worker initialization.
 // SBC_V6541_LEAD_IMPORT: authenticated CSV lead import with preview, tenant scoping, duplicate checks, and recovery-safe writes.
-app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{
+app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{/* SBC_V66140_CORRUPT_CRM_TEXT_GATE */const SBC_CRM_TEXT=require('./enterprise/crm-text-integrity-v66140.cjs');
  const requestedDryRun=req.body?.dryRun;const dryRun=!(requestedDryRun===false||String(requestedDryRun).toLowerCase()==='false'||req.body?.mode==='import');const rows=Array.isArray(req.body?.rows)?req.body.rows:[];
  if(!rows.length||rows.length>500)return res.status(400).json({ok:false,error:'Provide between 1 and 500 lead rows.'});
  const clean=(v,max=1000)=>String(v==null?'':v).trim().slice(0,max),normPhone=v=>clean(v,80).replace(/\D/g,''),normEmail=v=>clean(v,254).toLowerCase(),normName=v=>clean(v,255).toLowerCase().replace(/\s+/g,' ');
  const normalized=rows.map((r,i)=>({row:i+1,businessName:clean(r.business_name||r.businessName,255),contactName:clean(r.contact_name||r.contactName,255),phone:clean(r.phone,80),email:clean(r.email,254),website:clean(r.website,1000),websiteStatus:clean(r.website_status||r.websiteStatus,120),source:clean(r.lead_source||r.source,255)||'User-provided lead research',notes:clean(r.research_notes||r.notes,4000),industry:clean(r.business_category||r.industry,255)||'Barber Shop'}));
+ const textGate=SBC_CRM_TEXT.inspectBatch(normalized);if(!textGate.ok)return res.status(400).json({ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',invalidRows:textGate.invalid,error:'Binary-looking or malformed lead text rejected. No rows imported.'});
  if(normalized.some(r=>!r.businessName))return res.status(400).json({ok:false,error:'Every row must include a business name.',invalidRows:normalized.filter(r=>!r.businessName).map(r=>r.row)});
  if(!dryRun&&(SBC_RUNTIME_READ_ONLY||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady))return res.status(423).json({ok:false,code:'SBC_IMPORT_WRITE_LOCKED',error:'Preview is available, but saving is blocked while SBC is read-only, recovery is unevaluated/required, or the exclusive writer lease is unavailable. No records were written.'});
  let conn;
