@@ -31,7 +31,7 @@ function leadsFor(db,tenantId) {
   !READINESS.suppressed(c) && READINESS.verified(c) &&
   ['warm','hot'].includes(clean(c.leadTemperature,20).toLowerCase()) &&
   !/sbc system test|sbc full-cycle test|v47 full-cycle test|do not service/i.test([c.source,c.notes].join(' ')) &&
-  !/@example\\.invalid$/i.test(String(c.email||'')) &&
+  !/@example\.invalid$/i.test(String(c.email||'')) &&
   c.id && clean(c.businessName||c.business_name||c.contactName) && phone(c.phone));
 }
 function pitch(c){
