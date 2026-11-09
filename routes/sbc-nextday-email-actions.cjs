@@ -6,6 +6,7 @@
 const MAIL=require('../enterprise/sbc-consented-outreach-email.cjs');
 const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
 const NEXTDAY=require('./sbc-nextday-outbound-v1.cjs');
+const EVENTS=require('../enterprise/sbc-outbound-signed-events.cjs');
 const compact=(v,n=500)=>String(v??'').trim().slice(0,n);
 const tenantOf=v=>Number(v?.tenantId??v?.tenant_id);
 function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,
@@ -20,6 +21,7 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
   const eligible=NEXTDAY.leadsFor(db,t);
   return {...s,optedIn:eligible.filter(mail.hasConsent).length,
    availableVerifiedLeads:eligible.length,autoSendEnabled:false,replyIntegration:'MANUAL_RECORD_ONLY',
+   signedDeliveryWebhookConfigured:!!process.env.SBC_SENDGRID_EVENT_PUBLIC_KEY,
    deliveryTracking:'PROVIDER_ACCEPTED_ONLY_UNTIL_SIGNED_WEBHOOK'};
  }
  app.get('/api/owner/nextday/email-status',auth,ownerOnly,(req,res)=>{
@@ -88,7 +90,7 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    // Reserve attempt DURABLY before contacting provider; never auto-retry an unknown outcome.
    try{await saveData()}catch(e){delete r.outboundEmailStatus;delete r.outboundEmailAttemptAt;throw e}
    let result;
-   try{result=await mail.submit(c,draft)}
+   try{result=await mail.submit(c,draft,{taskId:r.id,tenantId:t})}
    catch(e){
     r.outboundEmailStatus='SUBMISSION_UNCONFIRMED_REVIEW_REQUIRED';
     r.outboundEmailLastError=compact(e.code||e.message||'PROVIDER_ERROR',130);
@@ -151,6 +153,28 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    }
    res.json({ok:true,kind,taskId:r.id,ownerActionCreated:created.map(x=>x.id),
     automaticEmailProcessing:false,automaticAppointmentBooking:false});
+  }catch(e){fail(res,e)}finally{changing=false}
+ });
+
+ // Signed provider delivery receipts. This is NOT an inbox or a cold-email sender.
+ app.post('/api/nextday/sendgrid/events',async(req,res)=>{
+  const raw=req.rawBody;
+  const signature=req.get?.('x-twilio-email-event-webhook-signature')||
+   req.headers?.['x-twilio-email-event-webhook-signature'];
+  const timestamp=req.get?.('x-twilio-email-event-webhook-timestamp')||
+   req.headers?.['x-twilio-email-event-webhook-timestamp'];
+  if(!EVENTS.verified(raw,{signature,timestamp}))
+   return res.status(401).json({ok:false,error:'INVALID_SIGNED_EMAIL_EVENT'});
+  if(changing)return res.status(503).json({ok:false,error:'EMAIL_EVENT_RETRY_LATER'});
+  changing=true;
+  try{
+   requireWriter();const db=getDb();
+   const events=Array.isArray(req.body)?req.body:null;
+   if(!events)return res.status(422).json({ok:false,error:'INVALID_EMAIL_EVENT_ARRAY'});
+   const result=EVENTS.apply(db,events);
+   try{if(result.changed.length)await saveData()}
+   catch(e){result.undo();throw e}
+   return res.json({ok:true,accepted:result.changed.length});
   }catch(e){fail(res,e)}finally{changing=false}
  });
 }
