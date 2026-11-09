@@ -87,7 +87,7 @@ function renderLeads(){
  if(!rows.length){target.append(recordRow('No matching assigned leads','Ask the owner to assign a reviewed lead batch.'));return;}
  rows.slice(0,150).forEach(c=>{
   const state=c.canCall?'Callable with clearance':c.reason||'Not callable';
-  target.append(recordRow(c.businessName||'Unnamed lead',[c.contactName,c.phone,c.city,c.status,state].filter(Boolean).join(' · '),
+  target.append(recordRow(c.businessName||'Unnamed lead',[c.contactName,c.phone,c.city,c.status,c.followUpAt?('Due '+stamp(c.followUpAt)):'',c.demoUrl?'Website preview ready':'',state].filter(Boolean).join(' · '),
    data.role==='caller'?'Select for call':'View details',()=>openLead(c.id),!c.canCall));
  });
 }
@@ -104,6 +104,16 @@ function renderCallSelection(){
  const id=$('call-target').value,c=data?.leads.find(x=>x.id===id);
  $('dial-number').value=c?.phone||'';
  $('lead-detail').textContent=c?([c.businessName,c.contactName,c.status,c.reason||''].filter(Boolean).join(' · ')):'Select an assigned lead to call.';
+ const preview=$('sbc-caller-demo-link');
+ if(preview){
+  preview.replaceChildren();
+  if(c?.demoUrl&&/^\/demo\/[a-z0-9-]+$/.test(c.demoUrl)){
+   const link=document.createElement('a');
+   link.href=c.demoUrl;link.target='_blank';link.rel='noopener noreferrer';
+   link.textContent='Open this prospect’s prepared SBC website preview';
+   preview.append(link);
+  }else preview.textContent='No prepared website preview for this prospect.';
+ }
  $('report-button').disabled=!canWrite()||!c;
  updateCallButtons();
 }
