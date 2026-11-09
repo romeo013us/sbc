@@ -26,22 +26,28 @@ function pitch(c){
  if(/store|retail|boutique|shop/.test(i))return 'helping nearby shoppers find and contact your business';
  return 'making it easier for local customers to find and contact your business';
 }
-function intro(c){
+function existingDemo(db,c){
+ const m=db.megaOpsStore||db.settings?.megaOps||{};
+ const d=(m.websiteDemos||[]).find(x=>String(x.customerId)===String(c.id)&&x.archived!==true&&String(x.status)==='Ready'&&/^[a-z0-9-]+$/.test(String(x.slug||'')));
+ return d?{ready:true,slug:d.slug,url:'/demo/'+encodeURIComponent(d.slug),generatedAt:d.updatedAt||d.createdAt||''}:null;
+}
+function intro(c,demo){
  const name=clean(c.businessName||c.business_name||c.contactName,100);
  const benefit=pitch(c);
  const subject='A quick idea for '+name;
- const text='Hello '+name+' team,\n\nMy name is Jonathan Jones, owner of Successful By Choice LLC here in Miami.\n\nWe help local businesses strengthen their professional presence, with websites, Google Business Profiles, branding, and practical business services.\n\nI wanted to introduce SBC and ask whether you would be interested in a short, no-obligation recommendation about '+benefit+'.\n\nI may follow up with a brief call on the next business day. If email is better, feel free to reply here.\n\nBest,\nJonathan Jones\nOwner | Successful By Choice LLC\ninfo@sbcmia.com\nhttps://sbcmia.com\n\n[Verified physical mailing address required before sending]\nTo stop receiving marketing emails from SBC, reply unsubscribe.';
+ const preview=demo?.ready?'We have also prepared a sample website preview for '+name+'. If you would like to see it, reply to this email and I can send a link or show you during our call.\n\n':'';
+ const text='Hello '+name+' team,\n\nMy name is Jonathan Jones, owner of Successful By Choice LLC here in Miami.\n\nWe help local businesses strengthen their professional presence, with websites, Google Business Profiles, branding, and practical business services.\n\nI wanted to introduce SBC and ask whether you would be interested in a short, no-obligation recommendation about '+benefit+'.\n\n'+preview+'I may follow up with a brief call on the next business day. If email is better, feel free to reply here.\n\nBest,\nJonathan Jones\nOwner | Successful By Choice LLC\ninfo@sbcmia.com\nhttps://sbcmia.com\n\n[Verified physical mailing address required before sending]\nTo stop receiving marketing emails from SBC, reply unsubscribe.';
  return {subject,text,benefit};
 }
-function item(c){
- const draft=intro(c);
+function item(c,db){
+ const demo=existingDemo(db,c),draft=intro(c,demo);
  return {id:String(c.id),businessName:clean(c.businessName||c.business_name||c.contactName,160),
  contactName:clean(c.contactName||c.ownerName||'',120),phone:phone(c.phone),
  email:emailRx.test(clean(c.email,254))?clean(c.email,254):'',
  industry:clean(c.industry||c.businessCategory||'',100),
  source:clean(c.source||c.leadSource||'',160),assignedTo:clean(c.assignedTo||'',100),
  temperature:clean(c.leadTemperature||'',30),
- emailStatus:'DRAFT_ONLY_NO_SEND',draft,callOpening:'Hello, this is Jonathan Jones with Successful By Choice in Miami. I wanted to introduce SBC and see whether '+draft.benefit+' is a priority for your business.'};
+ emailStatus:'DRAFT_ONLY_NO_SEND',draft,demo,callOpening:'Hello, this is Jonathan Jones with Successful By Choice in Miami. I wanted to introduce SBC and see whether '+draft.benefit+' is a priority for your business.'};
 }
 function register(app,deps){
  const {auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,makeId,now}=deps;
@@ -51,7 +57,7 @@ function register(app,deps){
   try{
    const t=get(req),db=getDb(),n=Math.min(MAX,Math.max(1,Number(req.query.limit)||10));
    const eligible=leadsFor(db,t),existing=new Set((db.tasks||[]).filter(x=>x.type==='SBC Next-Day Call'&&x.status!=='Completed').map(x=>String(x.customerId)));
-   const rows=eligible.filter(x=>!existing.has(String(x.id))).slice(0,n).map(item);
+   const rows=eligible.filter(x=>!existing.has(String(x.id))).slice(0,n).map(c=>item(c,db));
    const callers=(db.users||[]).filter(u=>tenantOf(u)===t&&u.active!==false&&u.role==='caller')
     .map(u=>({id:String(u.id),name:clean(u.name||u.username,100)}));
    res.setHeader('Cache-Control','no-store');
@@ -95,10 +101,10 @@ function register(app,deps){
    for(const c of selected){
     if((db.tasks||[]).some(q=>q.type==='SBC Next-Day Call'&&String(q.customerId)===String(c.id)&&
       String(q.dueAt||'').slice(0,10)===date&&q.status!=='Completed'))continue;
-    const d=intro(c),id=makeId('task'),ts=now();
+    const demo=existingDemo(db,c),d=intro(c,demo),id=makeId('task'),ts=now();
     // Draft text lives in existing persisted task.notes, no second data store or migration.
     const notes='EMAIL NOT SENT. OWNER REVIEW REQUIRED.\nEmail: '+clean(c.email,254)+
-      '\nLead source: '+clean(c.source||'',160)+'\n\nSUBJECT:\n'+d.subject+
+      '\nLead source: '+clean(c.source||'',160)+'\nDemo link (preview only): '+(demo?.url||'None verified')+'\n\nSUBJECT:\n'+d.subject+
       '\n\nDRAFT EMAIL (NOT SENT):\n'+d.text+
       '\n\nCALL OPENING:\nHello, this is Jonathan Jones with Successful By Choice here in Miami. I wanted to introduce SBC and see whether '+d.benefit+' is relevant to your business.\n\nCheck DNC, consent, local time and latest replies before dialing.';
     const task={id,tenantId:t,customerId:String(c.id),customerName:clean(c.businessName||c.business_name||c.contactName,160),
@@ -207,4 +213,4 @@ function register(app,deps){
   }catch(e){fail(res,e)}finally{saving=false;}
  });
 }
-module.exports={register,blocked,phone,leadsFor,intro,item};
+module.exports={register,blocked,phone,leadsFor,intro,item,existingDemo};
