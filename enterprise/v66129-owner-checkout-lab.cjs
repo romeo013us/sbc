@@ -6,10 +6,11 @@
 const KIND='SBC_OWNER_ZERO_DOLLAR_CHECKOUT_QA_V1';
 const STEPS=Object.freeze(['PLACED','READY_FOR_MANUAL_REVIEW','COMPLETED']);
 const ID=/^[a-zA-Z0-9._:-]{8,120}$/;
+const PRODUCT_ID=/^[a-zA-Z0-9._:-]{2,120}$/;
 function fail(code,status=422){throw Object.assign(Error(code),{code,status})}
 function price(product){
  const n=Number(product?.price);
- if(!product||!ID.test(String(product.id||''))||!Number.isFinite(n)||n<=0||n>100000||Math.round(n*100)!==n*100)
+ if(!product||!PRODUCT_ID.test(String(product.id||''))||!Number.isFinite(n)||n<=0||n>100000||Math.round(n*100)!==n*100)
   fail('QA_PRODUCT_PRICE_INVALID');
  return Math.round(n*100);
 }
