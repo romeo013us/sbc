@@ -253,9 +253,42 @@ class SBCUnattendedNotifications {
     try { await pool.query('SELECT 1 AS sbc_health'); this.lastResult.database = { at: this.clock().toISOString(), ok: true }; if (this.getRecoveryRequired?.()) await this.sendCriticalAlert('mysql-recovery-lock', 'Authoritative MySQL recovery lock is active. CRM mutations, Revenue PLAY, and Kim mutation workers must remain suspended.').catch(() => {}); return { ok: true }; }
     catch (e) { this.lastResult.database = { at: this.clock().toISOString(), ok: false, reason: 'MYSQL_QUERY_FAILED' }; await this.sendCriticalAlert('mysql-connectivity', `MySQL health check failed: ${String(e.message || e).slice(0,300)}. Keep mutation workers suspended until the database is verified healthy.`).catch(() => {}); return { ok: false, reason: 'MYSQL_QUERY_FAILED' }; }
   }
+  // Human caller checked "appointment requested" in an authoritative CRM call report.
+  // Alert the owner with the existing transport; no customer is contacted or booked.
+  async notifyPendingSalesAppointments(){
+    if(this.env.SBC_OWNER_SALES_ALERTS_ENABLED!=='true'||
+       String(this.env.SBC_RUNTIME_ROLE||'').toLowerCase()!=='writer'||
+       this.getRecoveryRequired?.())return {ok:false,skipped:true,reason:'SALES_ALERTS_DISABLED_OR_READ_ONLY'};
+    const db=this.getDb?.()||{},nowMs=this.clock().getTime();
+    const seen=this.state.salesAppointmentAlertIds||{};
+    let accepted=0;
+    const reports=(Array.isArray(db.callReports)?db.callReports:[]).filter(r=>{
+      const d=Date.parse(r?.createdAt||'');
+      return r?.appointmentRequested===true&&r.id&&Number.isFinite(d)&&
+       d<=nowMs&&nowMs-d<48*60*60*1000&&!seen[String(r.id)];
+    }).slice(-5);
+    for(const r of reports){
+      const customer=(db.customers||[]).find(c=>String(c.id)===String(r.customerId));
+      const name=String(customer?.businessName||customer?.contactName||'Customer').slice(0,90);
+      try{
+        const sent=await this.sendEmail('SBC appointment request from sales call · '+name,
+         'An SBC caller marked an appointment request.\nBusiness: '+name+
+         '\nCall report ID: '+String(r.id).slice(0,120)+
+         '\nNotes: '+String(r.notes||'').slice(0,400)+
+         '\nOpen Command Center → Prepare Tomorrow to verify the requested appointment and schedule it. No appointment has been automatically confirmed.');
+        if(sent?.ok){
+          seen[String(r.id)]=nowMs;
+          this.state.salesAppointmentAlertIds=Object.fromEntries(Object.entries(seen).slice(-200));
+          this._saveState();accepted++;
+        }else break;
+      }catch(e){this.logger.warn?.('[SBC SALES ALERT] owner email not confirmed:',String(e.message||e).slice(0,150));break}
+    }
+    return {ok:true,accepted};
+  }
   async _tick() {
     const nowMs = this.clock().getTime();
     if (nowMs - this.lastHealthCheckAt >= 5 * 60 * 1000) { this.lastHealthCheckAt = nowMs; await this.checkDatabaseHealth(); }
+    await this.notifyPendingSalesAppointments();
     const parts = this._localParts();
     const day = `${parts.year}-${parts.month}-${parts.day}`;
     const hour = Number(firstValue(this.env, ['SBC_BRIEFING_HOUR']) || 7);
