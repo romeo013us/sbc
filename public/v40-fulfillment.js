@@ -10,7 +10,16 @@
   async function asset(id){const name=prompt('Asset name','Production Artwork');if(!name)return;try{await call(`/api/kim400/orders/${encodeURIComponent(id)}/assets`,{method:'POST',body:JSON.stringify({name,preflightStatus:'PENDING'})});toast('Asset attached');render();}catch(e){toast(e.message)}}
   async function approve(id){try{const d=await call(`/api/kim400/orders/${encodeURIComponent(id)}`);const p=d.order?.proofs?.find(x=>x.status==='PENDING');if(!p)return toast('No pending proof');await call(`/api/kim400/orders/${encodeURIComponent(id)}/proofs/${encodeURIComponent(p.id)}/approve`,{method:'POST',body:'{}'});toast('Proof approved');render();}catch(e){toast(e.message)}}
   async function stageVendor(id){const provider=prompt('Provider: 4over4, vistaprint, godaddy, internal','vistaprint');if(!provider)return;try{await call(`/api/kim400/orders/${encodeURIComponent(id)}/vendor/stage`,{method:'POST',body:JSON.stringify({provider})});toast('Provider staged');render();}catch(e){toast(e.message)}}
-  async function manualHandoff(id,provider){const vendorOrderId=prompt(`${provider} order number (leave blank if not available yet):`,'');if(vendorOrderId===null)return;try{const r=await call(`/api/kim400/orders/${encodeURIComponent(id)}/vendor/manual-submit`,{method:'POST',body:JSON.stringify({provider,vendorOrderId})});toast(`Manual ${provider} handoff recorded${r.vendor?.orderId?' · '+r.vendor.orderId:''}`);render();}catch(e){toast(e.message)}}
+  async function manualHandoff(id,provider){
+    const vendorOrderId=prompt(provider+' real supplier order number (required; recording does NOT place a purchase):','');
+    if(!vendorOrderId||!vendorOrderId.trim())return;
+    try{
+      const r=await call('/api/kim400/orders/'+encodeURIComponent(id)+'/vendor/manual-submit',
+        {method:'POST',body:JSON.stringify({provider,vendorOrderId:vendorOrderId.trim()})});
+      if(r?.ok!==true)throw Error('Supplier receipt was not confirmed saved.');
+      toast('Verified supplier reference recorded: '+(r.vendor?.orderId||vendorOrderId));render();
+    }catch(e){toast('Supplier receipt was not recorded: '+e.message)}
+  }
   async function recordVendor(id){const provider=prompt('Provider','vistaprint');if(!provider)return;const vendorOrderId=prompt('Vendor order number');if(!vendorOrderId)return;try{await call(`/api/kim400/orders/${encodeURIComponent(id)}/vendor/record`,{method:'POST',body:JSON.stringify({provider,vendorOrderId})});toast('Vendor order recorded');render();}catch(e){toast(e.message)}}
   async function shipping(id){const carrier=prompt('Carrier','USPS');if(!carrier)return;const trackingNumber=prompt('Tracking number');if(!trackingNumber)return;try{await call(`/api/kim400/orders/${encodeURIComponent(id)}/shipping`,{method:'POST',body:JSON.stringify({carrier,trackingNumber})});toast('Shipping recorded');render();}catch(e){toast(e.message)}}
   async function reconcile(id){const cost=prompt('Actual vendor/fulfillment cost','0');if(cost===null)return;try{await call(`/api/kim400/orders/${encodeURIComponent(id)}/reconcile`,{method:'POST',body:JSON.stringify({actualCost:Number(cost)})});toast('Actual cost recorded');render();}catch(e){toast(e.message)}}
