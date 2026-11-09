@@ -115,6 +115,7 @@ jobs:
           node scripts/v6699-outbound-suppression.test.cjs
           node scripts/v66137-phone-recovery.test.cjs
           node scripts/v66138-fulfillment-truth.test.cjs
+          node scripts/v66139-owner-fulfillment-completion.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -398,6 +399,7 @@ jobs:
             node "$tmp/scripts/v6699-outbound-suppression.test.cjs" --staged
             node "$tmp/scripts/v66137-phone-recovery.test.cjs" --staged
             node "$tmp/scripts/v66138-fulfillment-truth.test.cjs" --staged
+            node "$tmp/scripts/v66139-owner-fulfillment-completion.test.cjs" --staged
             node "$tmp/scripts/v66101-caller-least-privilege.test.cjs" --staged
             node "$tmp/scripts/v66102-research-shift-notice.test.cjs" --staged
             node "$tmp/scripts/v66105-lorna-operations.test.cjs" --staged
