@@ -58,7 +58,7 @@ function prepared(c,draft,env=process.env){
   reply_to:{email:'info@sbcmia.com',name:'Successful By Choice'},
   asm:{group_id:group},settings:status};
 }
-async function submit(c,draft,{env=process.env,transport=globalThis.fetch}={}){
+async function submit(c,draft,{env=process.env,transport=globalThis.fetch,taskId='',tenantId=''}={}){
  const m=prepared(c,draft,env);
  if(typeof transport!=='function')throw Object.assign(Error('EMAIL_HTTPS_UNAVAILABLE'),{status:503});
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
@@ -67,7 +67,7 @@ async function submit(c,draft,{env=process.env,transport=globalThis.fetch}={}){
    method:'POST',redirect:'error',signal:controller.signal,
    headers:{Authorization:'Bearer '+env.SENDGRID_API_KEY,'Content-Type':'application/json'},
    body:JSON.stringify({
-    personalizations:[{to:[{email:m.to}]}],
+    personalizations:[{to:[{email:m.to}],custom_args:{sbc_task_id:clean(taskId,120),sbc_tenant_id:clean(tenantId,30)}}],
     from:m.from,reply_to:m.reply_to,subject:m.subject,
     content:[{type:'text/plain',value:m.text},{type:'text/html',value:m.html}],
     asm:m.asm,tracking_settings:{open_tracking:{enable:false},click_tracking:{enable:false}},
