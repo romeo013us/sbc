@@ -89,6 +89,7 @@ jobs:
           node scripts/v66122-central-square-officebox-guard.test.cjs
           node scripts/v66123-activity-text-safety.test.cjs
           node scripts/v66126-crm-audit-safe.test.cjs
+          node --test test/crm-text-integrity-v66140.test.cjs test/v66140-crm-integrity-stage.test.cjs
           node scripts/v66127-signed-federation-probe.test.cjs
           node scripts/v66128-owner-while-away.test.cjs
           node scripts/v66129-owner-checkout-lab.test.cjs
@@ -260,6 +261,11 @@ jobs:
         run: |
           node scripts/v66137-stage-sms-delivery-truth.cjs --apply
           node scripts/v66137-sms-delivery-truth.test.cjs
+          node --check server.js
+      - name: Stage CRM input integrity on disposable source only
+        run: |
+          SBC_V66140_ISOLATED_STAGE=YES node scripts/v66140-stage-crm-integrity.cjs --apply
+          node test/v66140-crm-integrity-stage.test.cjs --staged
           node --check server.js
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
