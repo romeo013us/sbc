@@ -3,6 +3,7 @@ const crypto=require('node:crypto');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
 const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');
 const {revisionOfLead}=require('../enterprise/crm-revision-v6607.cjs');
+const CRM_TEXT=require('../enterprise/crm-text-integrity-v66140.cjs');
 // SBC_V6607_LEAD_REVISION_GUARD
 const FIELDS=Object.freeze({contactName:['contact_name',255],phone:['phone',80],email:['email',255],status:['status',40],notes:['notes',4000]});
 const STATUS=new Set(['Lead','Prospect','Contacted','Follow Up','Qualified','Interested','Not Interested','Appointment Set','Customer','Not Qualified','Do Not Call','Lost']);
@@ -42,6 +43,7 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
     const [column,max]=FIELDS[key];
     if(typeof body[key]!=='string'||body[key].length>max)throw Object.assign(new Error('INVALID_EDIT_VALUE'),{code:'INVALID_EDIT_VALUE'});
     const value=body[key].trim();
+    if(CRM_TEXT.invalidText(value,{allowLineBreaks:key==='notes'}))throw Object.assign(new Error('CORRUPT_CRM_TEXT_REJECTED'),{code:'CORRUPT_CRM_TEXT_REJECTED'});
     if(key==='status'&&!STATUS.has(value))throw Object.assign(new Error('INVALID_LEAD_STATUS'),{code:'INVALID_LEAD_STATUS'});
     if(key==='email'&&value&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))throw Object.assign(new Error('INVALID_EMAIL'),{code:'INVALID_EMAIL'});
     return {key,column,value:key==='email'?value.toLowerCase():value};
