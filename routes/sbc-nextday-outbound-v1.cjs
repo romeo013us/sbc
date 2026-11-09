@@ -6,6 +6,7 @@
  */
 const crypto=require('node:crypto');
 const READINESS=require('../enterprise/v6625-lead-readiness-audit.cjs');
+const MAIL=require('../enterprise/sbc-consented-outreach-email.cjs');
 const MAX=20;
 const emailRx=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clean=(v,n=240)=>String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,n);
@@ -63,7 +64,7 @@ function item(c,db){
  industry:clean(c.industry||c.businessCategory||'',100),
  source:clean(c.source||c.leadSource||'',160),assignedTo:clean(c.assignedTo||'',100),
  temperature:clean(c.leadTemperature||'',30),
- emailStatus:'DRAFT_ONLY_NO_SEND',draft,demo,callOpening:'Hello, this is Jonathan Jones with Successful By Choice in Miami. I wanted to introduce SBC and see whether '+draft.benefit+' is a priority for your business.'};
+ emailStatus:'DRAFT_ONLY_NO_SEND',marketingConsentVerified:MAIL.hasConsent(c),draft,demo,callOpening:'Hello, this is Jonathan Jones with Successful By Choice in Miami. I wanted to introduce SBC and see whether '+draft.benefit+' is a priority for your business.'};
 }
 function register(app,deps){
  const {auth,ownerOnly,getDb,saveData,requireTenant,requireWriter,makeId,now}=deps;
@@ -85,10 +86,12 @@ function register(app,deps){
  app.get('/api/owner/nextday/queue',auth,ownerOnly,(req,res)=>{
   try{
    const t=get(req),db=getDb();
+   const crm=new Map((db.customers||[]).filter(c=>tenantOf(c)===t).map(c=>[String(c.id),c]));
    const records=(db.tasks||[]).filter(x=>x.type==='SBC Next-Day Call'&&tenantOf(x)===t)
     .slice(0,100).map(x=>({id:x.id,customerId:x.customerId,customerName:x.customerName,
     assignedTo:x.assignedTo,assignedToName:x.assignedToName,dueAt:x.dueAt,status:x.status,
-    notes:x.notes,createdAt:x.createdAt}));
+    notes:x.notes,createdAt:x.createdAt,marketingConsentVerified:MAIL.hasConsent(crm.get(String(x.customerId))),
+    outboundEmailStatus:x.outboundEmailStatus||'DRAFT_ONLY',replyStatus:x.replyStatus||''}));
    res.setHeader('Cache-Control','no-store');res.json({ok:true,records});
   }catch(e){fail(res,e);}
  });
@@ -158,6 +161,9 @@ function register(app,deps){
    const contacts=new Map((db.customers||[]).filter(c=>tenantOf(c)===t).map(c=>[String(c.id),c]));
    const belongs=(customerId,tenantId)=>tenantId===t||contacts.has(String(customerId));
    const records=[];
+   const bookedContacts=new Set((db.appointments||[]).filter(a=>
+    belongs(a.customerId,tenantOf(a))&&!['cancelled','canceled'].includes(clean(a.status,50).toLowerCase()))
+    .map(a=>String(a.customerId)));
    for(const a of db.appointments||[]){
     if(!belongs(a.customerId,tenantOf(a)))continue;
     if(['cancelled','canceled','completed'].includes(clean(a.status,50).toLowerCase()))continue;
@@ -168,15 +174,16 @@ function register(app,deps){
    }
    for(const task of db.tasks||[]){
     if(!belongs(task.customerId,tenantOf(task)))continue;
+    if(task.type==='SBC Appointment Request'&&bookedContacts.has(String(task.customerId)))continue;
     if(['completed','cancelled','canceled'].includes(clean(task.status,50).toLowerCase()))continue;
     const at=Date.parse(task.dueAt||'');if(!Number.isFinite(at))continue;
-    records.push({kind:/appointment/i.test(String(task.type||''))?'APPOINTMENT_REMINDER':'FOLLOW_UP',
+    records.push({kind:task.type==='SBC Appointment Request'?'APPOINTMENT_REQUEST':
+     /appointment/i.test(String(task.type||''))?'APPOINTMENT_REMINDER':'FOLLOW_UP',
      id:String(task.id),customerId:String(task.customerId||''),
      businessName:clean(task.customerName||contacts.get(String(task.customerId))?.businessName||'Lead',140),
      dueAt:new Date(at).toISOString(),description:clean(task.title,200),status:clean(task.status,50)||'Open'});
    }
-   const appointmentContacts=new Set((db.appointments||[]).filter(a=>
-    belongs(a.customerId,tenantOf(a))&&!['cancelled','canceled'].includes(clean(a.status,60).toLowerCase())).map(a=>String(a.customerId)));
+   const appointmentContacts=bookedContacts;
    for(const r of (db.callReports||[]).slice(0,500)){
     if(r.appointmentRequested!==true||appointmentContacts.has(String(r.customerId))||!contacts.has(String(r.customerId)))continue;
     records.push({kind:'APPOINTMENT_REQUEST',id:String(r.id),customerId:String(r.customerId),
