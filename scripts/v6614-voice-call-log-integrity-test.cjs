@@ -36,7 +36,7 @@ const mysqlPool={async query(sql,params){
 }};
 let serial=0;
 const load=new Function('app','auth','db','requireRequestTenant','now','id',
- 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY',serialPrelude+'\n'+getSource+'\n'+postSource);
+ 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY','SBC_PHONE_RECOVERY',serialPrelude+'\n'+getSource+'\n'+postSource);
 load(app,()=>{},db,
  req=>{if(!Number.isInteger(req.authTenant)||req.authTenant<1)throw Error('AUTHENTICATED_TENANT_REQUIRED');return req.authTenant},
  ()=>new Date('2026-10-24T14:05:09.000Z').toISOString(),
@@ -46,7 +46,8 @@ load(app,()=>{},db,
  ()=>{counters.audited++},
  ()=>{counters.activities++},
  mysqlPool,
- require('../enterprise/v66101-caller-access.cjs')
+ require('../enterprise/v66101-caller-access.cjs'),
+ require('../enterprise/sbc-phone-recovery-v66137.cjs')
 );
 const post=app.handlers.get('POST /api/voice/log');
 const get=app.handlers.get('GET /api/voice/logs');
@@ -70,7 +71,7 @@ async function run(){
  const args={customerId:'lead-a',sessionId:'s-1',status:'connecting',notes:'Initial customer note',to:'+13055550101'};
  const connect=await invokePost(request(1,'caller1','caller',args));
  check('new connecting call succeeds as one CRM session',()=>{
-  assert.equal(connect.statusCode,201);assert.equal(db.callLogs.length,1);assert.equal(db.callLogs[0].status,'connecting')
+  assert.equal(connect.statusCode,201);assert.equal(connect.body.phoneHoldApplied,false);assert.equal(db.callLogs.length,1);assert.equal(db.callLogs[0].status,'connecting')
  });
  check('connecting call is not erroneously marked ended',()=>{
   assert.equal(db.callLogs[0].endedAt,'');assert.equal(counters.audited,0)
@@ -121,7 +122,14 @@ async function run(){
  check('failed call closes with its own terminal timestamp',()=>{
   assert.equal(queued.statusCode,200);assert.ok(db.callLogs[0].endedAt)
  });
- check('only valid persisted updates invoke saveData',()=>assert.equal(counters.saved,6));
+ const bad=await invokePost(request(1,'caller1','caller',{...args,sessionId:'s-bad-phone',status:'failed',outcome:'Bad number'}));
+ check('bad-number outcome persists a phone hold and retains the original lead',()=>{
+  assert.equal(bad.statusCode,201);assert.equal(bad.body.phoneHoldApplied,true);
+  const lead=db.customers.find(c=>c.id==='lead-a'&&c.tenantId===1);
+  assert.equal(lead.salesQueueState,'phone_hold');assert.equal(lead.status||'Lead','Lead');
+  assert.equal(require('../enterprise/sbc-phone-recovery-v66137.cjs').isHeld(lead),true);
+ });
+ check('only valid persisted updates invoke saveData',()=>assert.equal(counters.saved,7));
  console.log(JSON.stringify({
   status:'PASS_V6614_VOICE_CALL_LOG_INTEGRITY',
   checks:checks.length,
