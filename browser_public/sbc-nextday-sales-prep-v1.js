@@ -120,7 +120,7 @@ async function load(){
   try{
    const p=await api('/api/owner/nextday/priorities');
    if(!p?.ok)return;
-   const n=Number(p.dueCount||0)+Number(p.appointmentRequests||0);
+   const n=Number(p.dueCount||0);
    nav.textContent=n>0?'☎ Prepare Tomorrow · '+n+' need review':'☎ Prepare Tomorrow';
    nav.setAttribute('aria-label',n>0?n+' SBC sales items need review':'Prepare tomorrow sales');
   }catch(_){ /* no false zero on failed status read */ }
