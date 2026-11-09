@@ -5,7 +5,7 @@ const lead=(changes={})=>({id:'lead_a',tenantId:1,businessName:'Neighborhood Sho
 const square=(changes={})=>({id:'paid_a',tenantId:1,product:'SBC Service',customerName:'Real Customer',price:199,paymentStatus:'PAID',squareOrderId:'sqord_A',squarePaymentId:'sqpay_A',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-11-09T20:00:00Z',...changes});
 const scope=(customers=[],orders=[],revenueContactEvents=[])=>({customers,orders,revenueContactEvents});
 test('prioritizes verified prospects without making calls',()=>{
- const db=scope([lead(),lead({id:'lead_b',leadTemperature:'Warm',followUpAt:'2026-11-09T13:00:00Z'})]);
+ const db=scope([lead(),lead({id:'lead_b',leadTemperature:'Warm',followUp:'2026-11-09T13:00:00Z'})]);
  const r=brief(db,{tenantId:1,now:'2026-11-09T20:00:00Z'});assert.equal(r.calling.eligibleCount,2);
  assert.equal(r.calling.queue[0].id,'lead_b');
  assert.equal(r.calling.records.attempts,0);assert.equal(r.calling.queue.length,2);
