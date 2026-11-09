@@ -36,7 +36,7 @@ function patchServer(input){
   s=replaceOnce(s,gate,"const verdict=SBC_V6699_OUTBOUND_AUTH.authorize({from:req.body?.From,to:req.body?.To||req.body?.to,users:db.users||[],customers:db.customers||[],canLiveCall:v9CanLiveCall,badCallLogs:db.callLogs||[]});",'voice-signed-callback-hold');
   const ack="res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt})";
   s=replaceOnce(s,ack,"res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt,phoneHoldApplied:!!customer&&SBC_PHONE_RECOVERY.isHeld(customer)})",'voice-phone-hold-receipt');
-  const beforeVerify="app.get('/api/v9/lead-verification',auth,(req,res)=>{";
+  const beforeVerify="app.post('/api/v9/assign',auth,ownerOnly,async(req,res)=>{";
   const routes=[
     "// SBC PHONE RECOVERY: owner/researcher scoped. No phone calls or AI requests.",
     "app.get('/api/v9/phone-recovery',auth,(req,res)=>{",
