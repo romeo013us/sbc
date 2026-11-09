@@ -3,6 +3,7 @@
  * verified on ORIGINAL request bytes before any CRM mutation.
  */
 const crypto=require('node:crypto');
+const LEDGER=require('./sbc-outreach-consent-ledger.cjs');
 const norm=v=>String(v||'').trim();
 const tenant=v=>Number(v?.tenantId??v?.tenant_id);
 function keyFrom(raw){
@@ -49,9 +50,9 @@ function apply(db,events){
   t.outboundEmailEventIds=[...seen,eventId].slice(-32);
   t.outboundEmailLastEventAt=new Date().toISOString();
   if(['bounce','dropped','blocked','spamreport','unsubscribe','group_unsubscribe'].includes(event)){
-   if(!c.emailUnsubscribed){
-    snapshot(c,['emailUnsubscribed','marketingEmailOptOut','marketingEmailConsent']);
-    c.emailUnsubscribed=true;c.marketingEmailOptOut=true;c.marketingEmailConsent=false;
+   if(!LEDGER.outbound(c).emailUnsubscribed){
+    snapshot(c,['leadIntelligence']);
+    LEDGER.suppress(c,{reason:'SENDGRID_'+event.toUpperCase()});
    }
    t.outboundEmailStatus='PROVIDER_'+event.toUpperCase()+'_SUPPRESSED';
   }else if(event==='delivered'&&!t.outboundEmailStatus.includes('SUPPRESSED')){
