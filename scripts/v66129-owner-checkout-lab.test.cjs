@@ -76,6 +76,7 @@ async function call(route,request){const fn=handlers.get(route);assert(fn,'missi
  assert.equal(result.body.records.length,0);
  dbOnline=false;
  result=await call('GET /api/owner/checkout-lab/orders',req());
+ console.log('[SBC QA SQL OUTAGE DIAGNOSTIC]',JSON.stringify({dbOnline,statusCode:result.statusCode,body:result.body}));
  assert.equal(result.statusCode,503,'SQL outage must never present stale in-memory checkout as committed');
  dbOnline=true;
  const phantom=lab.create({tenantId:1,product:catalog.services[0],requestId:'phantom_browser_12345',actor:owner,orderId:'qaorder_phantom_12345',at,customerName:'INTERNAL QA'});
