@@ -55,13 +55,13 @@ function sbcOpenOwnerAcceptanceDesk(){
  '<div style="display:grid;gap:16px">'+
  '<p class="mini">Evidence only. No changes to customers, payment, suppliers or subscriptions.</p>'+
  '<section class="card"><div class="card-body"><h3>🔎 CRM history &amp; recovery evidence</h3>'+
- '<p class="mini">All statuses, including archived; search by name, email, source, phone last four, or Square reference.</p>'+
+ '<p class="mini">Active and archived records; SQL Deleted tombstones are intentionally excluded from loaded CRM. Search by name, email, source, phone last four, or Square reference.</p>'+
  '<input id="sbcAcceptSearch" maxlength="140" placeholder="Name, source or Square ID" style="width:100%;margin:6px 0">'+
  '<button type="button" class="btn" onclick="sbcAcceptCrmLookup()">Search CRM evidence</button>'+
  '<div id="sbcAcceptCrmResult" role="status" aria-live="polite" class="mini" style="margin-top:10px"></div></div></section>'+
  
 '<section class="card"><div class="card-body"><h3>🧩 CRM integrity diagnostics</h3>'+
-'<p class="mini">Read-only SQL vs loaded-record IDs, not a restore. Inspect the 9 suspect records by stable ID. Counts may shift during imports.</p>'+
+'<p class="mini">Read-only SQL vs loaded-record IDs, not a restore. Inspect suspect records by stable ID. SQL-only records may be intentionally retained Deleted tombstones. Counts may shift during imports.</p>'+
 '<button type="button" class="btn ghost" onclick="sbcAcceptCrmDiagnostics()">Inspect SQL/CRM differences</button>'+
 '<div id="sbcAcceptIdDiffResult" role="status" aria-live="polite" class="mini" style="margin-top:10px"></div></div></section>'+
 
@@ -89,7 +89,12 @@ async function sbcAcceptCrmLookup(){
   out.innerHTML='<p><strong>'+esc(String(d.pagination?.totalMatches??0))+' matches</strong> · '+
    esc(String(d.totalTenantCustomers??0))+' tenant records · '+
    esc(String(d.suspiciousTextRecords??0))+' suspicious · '+esc(String(d.orphanOrderCount??0))+' orphan orders</p>'+
-   (d.projectionCountMismatch?'<p>⚠ MySQL count differs from loaded CRM — search misses are not proof of absence.</p>':'')+
+   (d.sqlEvidence==='TENANT_SCOPED_VISIBLE_AND_ALL_SELECT_ONLY'?
+    '<p>MySQL customer rows: '+esc(String(d.sqlTenantCustomers??'?'))+
+    ' · Retained Deleted tombstones: '+esc(String(d.sqlDeletedCustomerTombstones??'?'))+
+    ' · Visible SQL rows: '+esc(String(d.sqlVisibleTenantCustomers??'?'))+'</p>':'')+
+   (d.projectionCountMismatch?'<p>⚠ Non-deleted MySQL record count differs from loaded CRM — investigate IDs and backups.</p>':'')+
+   (d.sqlEvidence==='QUERY_UNAVAILABLE'?'<p>⚠ SQL count unavailable; absence in this view proves nothing.</p>':'')+
    rows.map(c=>'<div style="padding:7px 0;border-bottom:1px solid #ccc">'+
     '<strong>'+esc(c.businessName||'Unnamed')+'</strong>'+(c.suspiciousText?' ⚠ Suspect text':'')+
     '<div>'+esc(c.status||'')+' · '+esc(c.source||'')+
@@ -102,6 +107,7 @@ async function sbcAcceptCrmLookup(){
 }
 
 /* SBC_V66146_OWNER_CRM_DIAGNOSTICS_UI */
+/* SBC_V66148_SOFT_DELETED_CRM_TRUTH_UI */
 async function sbcAcceptCrmDiagnostics(){
  if(state.me?.role!=='owner')return;
  const out=document.getElementById('sbcAcceptIdDiffResult');
@@ -119,6 +125,11 @@ async function sbcAcceptCrmDiagnostics(){
      '<div>SQL-only IDs: '+esc(String(x.sqlOnlyCount??0))+
      ' · Loaded-only IDs: '+esc(String(x.projectionOnlyCount??0))+'</div>'+
      '<div>SQL-only sample: '+esc((x.sqlOnlySample||[]).join(', ')||'None')+'</div>'+
+     '<div>Retained Deleted tombstones: '+esc(String(x.sqlOnlyDeletedTombstones??'unverified'))+
+      ' · SQL-only NOT marked Deleted: '+esc(String(x.sqlOnlyUnexplained??'unverified'))+'</div>'+
+     (x.sqlOnlyUnexplained>0?'<div>Non-Deleted SQL-only IDs for owner review: '+
+      esc((x.sqlOnlyUnexplainedSample||[]).join(', ')||'None')+'</div>':'')+
+     (x.expectedSoftDeleteExclusionOnly?'<p>Expected retained Deleted records are intentionally absent from the active CRM; do NOT automatically restore.</p>':'')+
      '<div>Loaded-only sample: '+esc((x.projectionOnlySample||[]).join(', ')||'None')+'</div>':
      '<p>More than 2,000 records or non-atomic query count discrepancy. No exhaustive conclusions.</p>')+
    '</div>';
@@ -128,7 +139,9 @@ async function sbcAcceptCrmDiagnostics(){
    '<p><strong>Text-integrity review: '+esc(String(d.suspiciousTextRecords??0))+' flagged records</strong></p>'+
    suspect.map(x=>'<div>ID '+esc(x.id||'missing-id')+' · Fields: '+
     esc((x.fields||[]).join(', '))+' · Status: '+esc(x.status||'')+'</div>').join('')+
-   (d.mismatchDetected?'<p>⚠ Do not delete, reimport or merge records without backup and author audit.</p>':
+   (d.explainedBySoftDeletedTombstones?
+    '<p>SQL-only rows are marked Deleted and intentionally not loaded. No recovery action indicated for those tombstones. Review corrupt text separately.</p>':
+    d.mismatchDetected?'<p>⚠ Unexplained SQL/CRM differences: do not delete, reimport or merge without backup and author audit.</p>':
     '<p>No ID discrepancy observed at this read time. This does not certify backup recovery.</p>')+
    '<p class="mini">This snapshot is not atomic with active employee imports. Repeat after imports stop.</p>';
  }catch(e){if(out.isConnected)out.textContent='Read-only CRM diagnostics unavailable: '+String(e?.message||e);}

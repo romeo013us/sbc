@@ -2008,7 +2008,17 @@ async function writeRelational({includeSettings=true}={}){
       orders:Number(beforeCore?.orders||0),
       renewals:Number(beforeCore?.renewals||0)
     };
-    const safety=assessPersistenceSafety(authoritativeCore,sourceCore);
+    // SBC_V66148_VISIBLE_CORE_PERSISTENCE_GUARD: compare like-for-like loaded vs SQL.
+    const [[visibleCoreRow]]=await conn.query(`
+      SELECT
+       (SELECT COUNT(*) FROM sbc_customers WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS customers,
+       (SELECT COUNT(*) FROM sbc_quotes WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS quotes,
+       (SELECT COUNT(*) FROM sbc_orders WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS orders,
+       (SELECT COUNT(*) FROM sbc_renewals WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS renewals
+    `,[TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID]);
+    const visibleCore={customers:Number(visibleCoreRow?.customers||0),quotes:Number(visibleCoreRow?.quotes||0),
+      orders:Number(visibleCoreRow?.orders||0),renewals:Number(visibleCoreRow?.renewals||0)};
+    const safety=assessPersistenceSafety(visibleCore,sourceCore);
     if(!safety.ok){
       MYSQL_RECOVERY_REQUIRED=true;
       storageMode='mysql-recovery-required';
@@ -2033,6 +2043,7 @@ async function writeRelational({includeSettings=true}={}){
       capturedAt:new Date().toISOString(),
       tenantId:TENANT_DEFAULT_ID,
       counts:authoritativeCore,
+      visibleCounts:visibleCore,
       sourceCounts:sourceCore,
       tables:{}
     };
@@ -4171,18 +4182,27 @@ app.get('/api/owner/crm/forensics',auth,ownerOnly,async(req,res)=>{
    status:req.query?.status,from:req.query?.from,to:req.query?.to,
    limit:req.query?.limit,offset:req.query?.offset
   });
+  // SBC_V66148_SQL_SOFT_DELETE_ACCOUNTING: visible SQL rows and in-memory CRM must use the same Deleted filter.
   result.sqlTenantCustomers=null;result.sqlTenantOrders=null;
+  result.sqlVisibleTenantCustomers=null;result.sqlVisibleTenantOrders=null;
+  result.sqlDeletedCustomerTombstones=null;result.sqlDeletedOrderTombstones=null;
   result.sqlEvidence='UNAVAILABLE';
   if(mysqlPool){try{
    const [[customers]]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_customers WHERE tenant_id=?',[tid]);
    const [[orders]]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_orders WHERE tenant_id=?',[tid]);
+   const [[visibleCustomers]]=await mysqlPool.query("SELECT COUNT(*) AS n FROM sbc_customers WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted'",[tid]);
+   const [[visibleOrders]]=await mysqlPool.query("SELECT COUNT(*) AS n FROM sbc_orders WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted'",[tid]);
    result.sqlTenantCustomers=Number(customers?.n||0);
    result.sqlTenantOrders=Number(orders?.n||0);
-   result.sqlEvidence='TENANT_SCOPED_SELECT_ONLY';
+   result.sqlVisibleTenantCustomers=Number(visibleCustomers?.n||0);
+   result.sqlVisibleTenantOrders=Number(visibleOrders?.n||0);
+   result.sqlDeletedCustomerTombstones=result.sqlTenantCustomers-result.sqlVisibleTenantCustomers;
+   result.sqlDeletedOrderTombstones=result.sqlTenantOrders-result.sqlVisibleTenantOrders;
+   result.sqlEvidence='TENANT_SCOPED_VISIBLE_AND_ALL_SELECT_ONLY';
   }catch(_){result.sqlEvidence='QUERY_UNAVAILABLE';}}
-  result.projectionCountMismatch=result.sqlTenantCustomers!==null&&
-   (result.sqlTenantCustomers!==result.totalTenantCustomers||result.sqlTenantOrders!==result.totalTenantOrders);
-  if(result.projectionCountMismatch||result.sqlEvidence!=='TENANT_SCOPED_SELECT_ONLY')
+  result.projectionCountMismatch=result.sqlVisibleTenantCustomers===null?null:
+   (result.sqlVisibleTenantCustomers!==result.totalTenantCustomers||result.sqlVisibleTenantOrders!==result.totalTenantOrders);
+  if(result.projectionCountMismatch||result.sqlEvidence!=='TENANT_SCOPED_VISIBLE_AND_ALL_SELECT_ONLY')
    result.notFoundInCurrentProjection=null;
   return res.json(result);
  }catch(e){return res.status(Number(e?.status)||503).json({ok:false,readOnly:true,error:String(e?.code||'CRM_FORENSICS_UNAVAILABLE')});}
@@ -4213,8 +4233,8 @@ app.get('/api/owner/delivery/acceptance/:orderId',auth,ownerOnly,async(req,res)=
    if(!mysqlPool)return res.status(503).json({ok:false,readOnly:true,error:'MYSQL_REQUIRED_FOR_ID_RECONCILIATION'});
    const [cc]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_customers WHERE tenant_id=?',[tid]);
    const [oc]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_orders WHERE tenant_id=?',[tid]);
-   const [customers]=await mysqlPool.query('SELECT id FROM sbc_customers WHERE tenant_id=? ORDER BY id LIMIT 2001',[tid]);
-   const [orders]=await mysqlPool.query('SELECT id FROM sbc_orders WHERE tenant_id=? ORDER BY id LIMIT 2001',[tid]);
+   const [customers]=await mysqlPool.query('SELECT id,status FROM sbc_customers WHERE tenant_id=? ORDER BY id LIMIT 2001',[tid]);
+   const [orders]=await mysqlPool.query('SELECT id,status FROM sbc_orders WHERE tenant_id=? ORDER BY id LIMIT 2001',[tid]);
    const result=require('./enterprise/v66146-crm-id-reconciliation.cjs').inspect({
     tenantId:tid,customers:db.customers||[],orders:db.orders||[],
     sqlCustomers:customers||[],sqlOrders:orders||[],sqlCustomerCount:Number(cc?.[0]?.n),sqlOrderCount:Number(oc?.[0]?.n)
