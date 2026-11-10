@@ -4205,6 +4205,23 @@ app.get('/api/owner/delivery/acceptance/:orderId',auth,ownerOnly,async(req,res)=
   return res.json(result);
  }catch(e){return res.status(Number(e?.status)||503).json({ok:false,readOnly:true,error:String(e?.code||'DELIVERY_ACCEPTANCE_UNAVAILABLE')});}
 });
+ // SBC_V66146_OWNER_CRM_ID_RECONCILIATION; only tenant-scoped SELECT, no customer modification.
+ app.get('/api/owner/crm/reconcile-ids',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const tid=requireRequestTenant(req);
+   if(!mysqlPool)return res.status(503).json({ok:false,readOnly:true,error:'MYSQL_REQUIRED_FOR_ID_RECONCILIATION'});
+   const [cc]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_customers WHERE tenant_id=?',[tid]);
+   const [oc]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_orders WHERE tenant_id=?',[tid]);
+   const [customers]=await mysqlPool.query('SELECT id FROM sbc_customers WHERE tenant_id=? ORDER BY id LIMIT 2001',[tid]);
+   const [orders]=await mysqlPool.query('SELECT id FROM sbc_orders WHERE tenant_id=? ORDER BY id LIMIT 2001',[tid]);
+   const result=require('./enterprise/v66146-crm-id-reconciliation.cjs').inspect({
+    tenantId:tid,customers:db.customers||[],orders:db.orders||[],
+    sqlCustomers:customers||[],sqlOrders:orders||[],sqlCustomerCount:Number(cc?.[0]?.n),sqlOrderCount:Number(oc?.[0]?.n)
+   });
+   return res.json(result);
+  }catch(e){return res.status(503).json({ok:false,readOnly:true,error:'CRM_ID_RECONCILIATION_READ_UNAVAILABLE'});}
+ });
 app.get('/api/owner/lead-readiness',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{const tenantId=requireRequestTenant(req);

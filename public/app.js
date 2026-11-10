@@ -59,7 +59,12 @@ function sbcOpenOwnerAcceptanceDesk(){
  '<input id="sbcAcceptSearch" maxlength="140" placeholder="Name, source or Square ID" style="width:100%;margin:6px 0">'+
  '<button type="button" class="btn" onclick="sbcAcceptCrmLookup()">Search CRM evidence</button>'+
  '<div id="sbcAcceptCrmResult" role="status" aria-live="polite" class="mini" style="margin-top:10px"></div></div></section>'+
- '<section class="card"><div class="card-body"><h3>📦 Delivery acceptance</h3>'+
+ 
+'<section class="card"><div class="card-body"><h3>🧩 CRM integrity diagnostics</h3>'+
+'<p class="mini">Read-only SQL vs loaded-record IDs, not a restore. Inspect the 9 suspect records by stable ID. Counts may shift during imports.</p>'+
+'<button type="button" class="btn ghost" onclick="sbcAcceptCrmDiagnostics()">Inspect SQL/CRM differences</button>'+
+'<div id="sbcAcceptIdDiffResult" role="status" aria-live="polite" class="mini" style="margin-top:10px"></div></div></section>'+
+'<section class="card"><div class="card-body"><h3>📦 Delivery acceptance</h3>'+
  '<p class="mini">Real sales order ID only; $0 internal QA is not customer revenue.</p>'+
  '<input id="sbcAcceptOrder" maxlength="100" placeholder="Order ID" style="width:100%;margin:6px 0">'+
  '<button type="button" class="btn" onclick="sbcAcceptOrderLookup()">Check delivery evidence</button>'+
@@ -90,6 +95,40 @@ async function sbcAcceptCrmLookup(){
    '<p>Read-only: no records corrected or recreated.</p>';
  }catch(e){if(out.isConnected)out.textContent='CRM evidence unavailable: '+String(e?.message||e)}
 }
+
+/* SBC_V66146_OWNER_CRM_DIAGNOSTICS_UI */
+async function sbcAcceptCrmDiagnostics(){
+ if(state.me?.role!=='owner')return;
+ const out=document.getElementById('sbcAcceptIdDiffResult');
+ if(!out)return;
+ out.textContent='Comparing SQL IDs to loaded CRM IDs (read only)…';
+ try{
+  const d=await api('/api/owner/crm/reconcile-ids',{timeoutMs:20000});
+  if(!out.isConnected)return;
+  const fmt=(label,x)=>'<div style="padding:8px 0;border-bottom:1px solid #ddd"><strong>'+esc(label)+'</strong>'+
+   '<div>MySQL '+esc(String(x?.sqlCount??'unavailable'))+' · Loaded '+
+   esc(String(x?.projectionCount??'unavailable'))+' · Delta '+
+   esc(String(x?.recordCountDelta??'unavailable'))+'</div>'+
+   '<div>'+esc(x?.evidenceState||'NO_EVIDENCE')+'</div>'+
+   (x?.completeIdComparison?
+     '<div>SQL-only IDs: '+esc(String(x.sqlOnlyCount??0))+
+     ' · Loaded-only IDs: '+esc(String(x.projectionOnlyCount??0))+'</div>'+
+     '<div>SQL-only sample: '+esc((x.sqlOnlySample||[]).join(', ')||'None')+'</div>'+
+     '<div>Loaded-only sample: '+esc((x.projectionOnlySample||[]).join(', ')||'None')+'</div>':
+     '<p>More than 2,000 records or non-atomic query count discrepancy. No exhaustive conclusions.</p>')+
+   '</div>';
+  const suspect=Array.isArray(d.suspiciousSample)?d.suspiciousSample:[];
+  out.innerHTML='<p><strong>Tenant-scoped ID reconciliation</strong> — no records were changed.</p>'+
+   fmt('Customer records',d.customerIds)+fmt('Order records',d.orderIds)+
+   '<p><strong>Text-integrity review: '+esc(String(d.suspiciousTextRecords??0))+' flagged records</strong></p>'+
+   suspect.map(x=>'<div>ID '+esc(x.id||'missing-id')+' · Fields: '+
+    esc((x.fields||[]).join(', '))+' · Status: '+esc(x.status||'')+'</div>').join('')+
+   (d.mismatchDetected?'<p>⚠ Do not delete, reimport or merge records without backup and author audit.</p>':
+    '<p>No ID discrepancy observed at this read time. This does not certify backup recovery.</p>')+
+   '<p class="mini">This snapshot is not atomic with active employee imports. Repeat after imports stop.</p>';
+ }catch(e){if(out.isConnected)out.textContent='Read-only CRM diagnostics unavailable: '+String(e?.message||e);}
+}
+
 async function sbcAcceptOrderLookup(){
  if(state.me?.role!=='owner')return;
  const out=document.getElementById('sbcAcceptOrderResult'),input=document.getElementById('sbcAcceptOrder');
