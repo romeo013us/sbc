@@ -40,6 +40,7 @@ const calls=[],edits=[],s={me:{role:'owner'}},ctx={
  }
 };
 vm.runInNewContext(ui,ctx,{filename:'v66147-ui-functions.js'});
+ctx.sbcAcceptOrderLookup=()=>calls.push('checked-order');
 assert.equal(typeof ctx.sbcAcceptActivationReview,'function');
 assert.equal(typeof ctx.sbcV66147ReviewLeadAt,'function');
 assert.equal(typeof ctx.sbcV66147ReviewOrderAt,'function');
