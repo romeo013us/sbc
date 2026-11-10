@@ -40,9 +40,9 @@ test('workstation submission rejects corrupt aliases before accessing CRM data',
 test('lead correction paths reject unreadable fields without editing the record',async()=>{
  const compiled=stage.patchServer(server);
  for(const [method,url,field] of [['post','/api/v9/lead-verification/:id','verificationSource'],['put','/api/workforce/leads/:id','contactName']]){
-  const lead={id:'synthetic',businessName:'Café Señor'};
+  const lead={id:'synthetic',tenantId:1,businessName:'Café Señor'};
   const correct=workforceHandler(compiled,method,url,{
-   canEditResearchLead:()=>true,sbcLornaRole:()=>false,db:{customers:[lead]}
+   canEditResearchLead:()=>true,sbcLornaRole:()=>false,requireRequestTenant:()=>1,db:{customers:[lead]}
   });
   const res=response();
   await correct({user:{role:'owner'},params:{id:lead.id},body:{businessName:'Different business',[field]:'Broken\uFFFD text'}},res);
@@ -51,6 +51,79 @@ test('lead correction paths reject unreadable fields without editing the record'
   assert.equal(lead.businessName,'Café Señor');
   assert.equal(lead[field],undefined);
  }
+});
+test('a valid foreign lead ID cannot be read or changed through the workforce routes',async()=>{
+ const compiled=stage.patchServer(server);
+ const foreign={id:'synthetic',tenantId:9,businessName:'Private tenant record'};
+ for(const [method,url] of [['get','/api/workforce/leads/:id'],['put','/api/workforce/leads/:id'],['post','/api/v9/lead-verification/:id']]){
+  const handler=workforceHandler(compiled,method,url,{
+   canEditResearchLead:()=>true,sbcLornaRole:()=>false,requireRequestTenant:()=>1,db:{customers:[foreign]}
+  });
+  const res=response();
+  await handler({user:{role:'manager'},params:{id:foreign.id},body:{businessName:'Overwritten'}},res);
+  assert.equal(res.statusCode,404);
+  assert.equal(foreign.businessName,'Private tenant record');
+ }
+});
+test('workforce edits update memory only after tenant-scoped durable readback',async()=>{
+ const compiled=stage.patchServer(server);
+ const lead={id:'synthetic',tenantId:7,businessName:'Original'};
+ const calls=[];
+ let readback=[];
+ const handler=workforceHandler(compiled,'put','/api/workforce/leads/:id',{
+  canEditResearchLead:()=>true,requireRequestTenant:()=>7,db:{customers:[lead]},
+  leadIntel:()=>({}),sanitizeLeadIntel:x=>x,now:()=>new Date().toISOString(),sqlDateTime:x=>x,audit(){},
+  mysqlPool:{async query(sql,args){calls.push({sql,args});return [sql.startsWith('SELECT')?readback:{affectedRows:1}];}}
+ });
+ const req={user:{role:'owner'},params:{id:lead.id},body:{businessName:'Updated'}};
+ const failed=response();
+ await handler(req,failed);
+ assert.equal(failed.statusCode,503);
+ assert.equal(lead.businessName,'Original');
+ readback=[{id:lead.id}];
+ const saved=response();
+ await handler(req,saved);
+ assert.equal(saved.body.persistence.verified,true);
+ assert.equal(lead.businessName,'Updated');
+ for(const {sql,args} of calls){
+  assert.match(sql,/WHERE tenant_id=\? AND id=\?/);
+  assert.deepEqual(Array.from(args).slice(-2),[7,lead.id]);
+ }
+});
+test('overlapping workforce edits to one tenant lead preserve both accepted changes',async()=>{
+ const compiled=stage.patchServer(server);
+ const lead={id:'serial-synthetic',tenantId:7,businessName:'Original',phone:'3050000000'};
+ let releaseFirst,announceFirst;
+ const firstStarted=new Promise(resolve=>{announceFirst=resolve;});
+ const firstBlocked=new Promise(resolve=>{releaseFirst=resolve;});
+ const updates=[];
+ const handler=workforceHandler(compiled,'put','/api/workforce/leads/:id',{
+  canEditResearchLead:()=>true,requireRequestTenant:()=>7,db:{customers:[lead]},
+  leadIntel:()=>({}),sanitizeLeadIntel:x=>x,now:()=>new Date().toISOString(),sqlDateTime:x=>x,audit(){},
+  mysqlPool:{async query(sql,args){
+   if(sql.startsWith('UPDATE')){
+    updates.push(Array.from(args));
+    if(updates.length===1){announceFirst();await firstBlocked;}
+    return [{affectedRows:1}];
+   }
+   return [[{id:lead.id}]];
+  }}
+ });
+ const nameResult=response(),phoneResult=response();
+ const saveName=handler({user:{role:'owner'},params:{id:lead.id},body:{businessName:'Updated'}},nameResult);
+ await firstStarted;
+ const savePhone=handler({user:{role:'owner'},params:{id:lead.id},body:{phone:'3055550100'}},phoneResult);
+ await Promise.resolve();
+ assert.equal(updates.length,1,'second request must wait for first durable update');
+ releaseFirst();
+ await Promise.all([saveName,savePhone]);
+ assert.equal(updates.length,2);
+ assert.equal(updates[1][0],'Updated','second full-row write must retain committed business name');
+ assert.equal(updates[1][2],'3055550100');
+ assert.equal(lead.businessName,'Updated');
+ assert.equal(lead.phone,'3055550100');
+ assert.equal(nameResult.body.persistence.verified,true);
+ assert.equal(phoneResult.body.persistence.verified,true);
 });
 function response(){
  return {statusCode:200,status(code){this.statusCode=code;return this;},json(body){this.body=body;return this;}};
@@ -63,7 +136,7 @@ function workforceHandler(compiled,method,url,context){
  let handler;
  const app={[method]:(_url,_auth,fn)=>{handler=fn;}};
  vm.runInNewContext(compiled.slice(start,end+4),{
-  ...context,app,auth(){},require:(name)=>{
+  SBC_WORKFORCE_LEAD_EDIT_TAILS:new Map(),...context,app,auth(){},require:(name)=>{
    assert.equal(name,'./enterprise/crm-text-integrity-v66140.cjs');
    return guard;
   }

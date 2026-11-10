@@ -273,6 +273,10 @@ jobs:
           SBC_V66140_ISOLATED_STAGE=YES node scripts/v66140-stage-crm-integrity.cjs --apply
           node test/v66140-crm-integrity-stage.test.cjs --staged
           node --check server.js
+      - name: Verify deployed build identity and missing asset behavior
+        run: |
+          SBC_ISOLATED_BUILD_PROOF_STAGE=YES node scripts/stage-deployed-build-proof.cjs --apply
+          node test/deployed-build-proof.test.cjs --staged
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
           node - <<'NODE'
@@ -395,6 +399,7 @@ jobs:
           assert.ok(code.includes('SBC_V66141_ORDER_DELIVERY_AND_MAPPING_GUARD'), 'order Delivered and mapping guard missing');
            assert.ok(code.includes('SBC_V66140_BUNDLE_CLOSE_GATE'), 'bundle closure gate missing from release');
           assert.ok(code.includes('SBC_WORKFORCE_CRM_TEXT_GATE'), 'workforce CRM validation missing from release');
+          assert.ok(code.includes('SBC_DEPLOYED_BUILD_PROOF'), 'deployed build proof missing from release');
            assert.ok(code.includes('SBC_V66138_FULFILLMENT_COMMIT_AND_PROVIDER_TRUTH'), 'durable supplier/CRM evidence gate missing');
            assert.ok(code.includes('SBC_V66137_PHONE_RECOVERY'), 'safe phone recovery lifecycle missing');
            assert.ok(code.includes('SBC_V6682_DURABLE_OWNER_CLEARANCE_BINDING'), 'durable owner approval route missing');
