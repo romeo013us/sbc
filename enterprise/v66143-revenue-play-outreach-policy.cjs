@@ -4,6 +4,7 @@
  * Legacy batch PLAY must never send promotional email via transactional SMTP.
  */
 const MARKETING=require('./sbc-consented-outreach-email.cjs');
+const CRM_FORENSICS=require('./v66144-crm-forensics.cjs');
 const CLOSED=new Set(['do not contact','do not call','unsubscribe','unsubscribed','opt out','opt-out','lost','closed','duplicate','not qualified']);
 function notesSuppressed(c){
  const text=[c?.notes,c?.accountNotes,c?.followUp].filter(v=>typeof v==='string').join('\n');
@@ -11,6 +12,8 @@ function notesSuppressed(c){
 }
 function suppressed(c){
  if(!c||typeof c!=='object')return true;
+ // Unsafe historical binary/ciphertext-looking lead records must never enter outreach.
+ if(CRM_FORENSICS.suspicious(c))return true;
  if(CLOSED.has(String(c.status||'').trim().toLowerCase()))return true;
  if(c.doNotContact===true||c.doNotCall===true||c.salesSuppressed===true||
     c.isSuppressed===true||c.smsOptOut===true&&c.doNotContact===true)return true;
