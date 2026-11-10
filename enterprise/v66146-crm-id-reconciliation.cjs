@@ -33,14 +33,27 @@ function summarize(kind,tenantId,projectionRows,sqlRows,sqlCount){
  const sql=unique(observed),projection=unique(projected);
  const sqlOnly=[...sql.seen].filter(id=>!projection.seen.has(id)).sort();
  const projectionOnly=[...projection.seen].filter(id=>!sql.seen.has(id)).sort();
+ // MySQL deliberately preserves "Deleted" tombstones. readRelational excludes
+ // them from the loaded CRM and orders; do NOT mislabel these as lost rows.
+ const sqlStatus=new Map(observed.map(r=>[key(r?.id),String(r?.status??'').trim().toLowerCase()]));
+ const deleted=sqlOnly.filter(id=>sqlStatus.get(id)==='deleted');
+ // Unknown or missing status must never be assumed soft-deleted.
+ const unexplained=sqlOnly.filter(id=>sqlStatus.get(id)!=='deleted');
+ const onlyTombstones=!truncation&&deleted.length>0&&unexplained.length===0&&
+   projectionOnly.length===0&&projection.duplicates.length===0&&projection.missingIdCount===0;
  return {entity:kind,sqlCount:total,projectionCount:projected.length,
   recordCountDelta:total-projected.length,completeIdComparison:!truncation,
   sqlOnlyCount:truncation?null:sqlOnly.length,projectionOnlyCount:truncation?null:projectionOnly.length,
   sqlOnlySample:truncation?[]:sqlOnly.slice(0,SAMPLE_LIMIT),
   projectionOnlySample:truncation?[]:projectionOnly.slice(0,SAMPLE_LIMIT),
+  sqlOnlyDeletedTombstones:truncation?null:deleted.length,
+  sqlOnlyUnexplained:truncation?null:unexplained.length,
+  sqlOnlyUnexplainedSample:truncation?[]:unexplained.slice(0,SAMPLE_LIMIT),
+  expectedSoftDeleteExclusionOnly:onlyTombstones,
   duplicateProjectionIds:projection.duplicates.slice(0,SAMPLE_LIMIT),
   blankProjectionIds:projection.missingIdCount,
   evidenceState:truncation?'INCOMPLETE_SQL_ID_WINDOW':
+   onlyTombstones?'SQL_DELETED_TOMBSTONES_EXCLUDED_AS_DESIGNED':
    sqlOnly.length||projectionOnly.length||projection.duplicates.length||projection.missingIdCount?'ID_RECONCILIATION_REQUIRED':
    'PROJECTION_SQL_IDS_AGREE_AT_READ_TIME'};
 }
@@ -52,14 +65,17 @@ function inspect({tenantId,customers=[],orders=[],sqlCustomers=[],sqlOrders=[],s
  const fields=suspect.map(x=>({id:key(x.id),
   fields:invalidFields(x).length?invalidFields(x):['legacy_identity_pattern'],
   status:key(x.status).slice(0,50)})).sort((a,b)=>a.id.localeCompare(b.id));
- const clean=c.evidenceState==='PROJECTION_SQL_IDS_AGREE_AT_READ_TIME'&&
-   o.evidenceState==='PROJECTION_SQL_IDS_AGREE_AT_READ_TIME';
+ const clean=['PROJECTION_SQL_IDS_AGREE_AT_READ_TIME','SQL_DELETED_TOMBSTONES_EXCLUDED_AS_DESIGNED'];
+ const expectedOnly=clean.includes(c.evidenceState)&&clean.includes(o.evidenceState);
+ const rawCountMismatch=c.sqlCount!==c.projectionCount||o.sqlCount!==o.projectionCount;
  return {ok:true,readOnly:true,noRecordsChanged:true,tenantId:tid,checkedAt:new Date().toISOString(),
   source:'TENANT_SCOPED_SQL_SELECT_VS_IN_MEMORY_PROJECTION',
   comparisonIsAtomic:false, sqlLimit:ID_QUERY_LIMIT, customerIds:c,orderIds:o,
   suspiciousTextRecords:suspect.length,suspiciousSample:fields.slice(0,SAMPLE_LIMIT),
-  mismatchDetected:!clean,
-  risk:clean?'NO_ID_MISMATCH_OBSERVED':'DO_NOT_ASSUME_SQL_OR_MEMORY_IS_AUTHORITATIVE_WITHOUT_BACKUP_REVIEW',
-  note:'One live read can race with imports. This neither confirms a missing record nor repairs any record. Recheck after imports settle; compare immutable backups and audit before any recovery.'};
+  mismatchDetected:!expectedOnly,rawCountMismatchDetected:rawCountMismatch,
+  explainedBySoftDeletedTombstones:expectedOnly&&rawCountMismatch,
+  risk:expectedOnly?(rawCountMismatch?'SOFT_DELETED_RECORDS_RETAINED_IN_SQL_EXCLUDED_FROM_CRM_BY_DESIGN':'NO_ID_MISMATCH_OBSERVED'):
+    'DO_NOT_ASSUME_SQL_OR_MEMORY_IS_AUTHORITATIVE_WITHOUT_BACKUP_REVIEW',
+  note:'SQL retains soft-deleted rows while the application intentionally omits them. Only statuses read from SQL can prove expected exclusions. Concurrent imports can race this read. Never bulk-restore or auto-contact historical records; verify an immutable backup and audit before any owner-approved recovery.'};
 }
 module.exports={inspect,summarize,tenant,ID_QUERY_LIMIT};
