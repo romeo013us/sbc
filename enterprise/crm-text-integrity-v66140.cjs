@@ -3,7 +3,10 @@
 // No mutation or cross-record inference. Unicode letters/accents are valid.
 // Newlines and tabs are permitted in notes, not in business identity fields.
 const BINARY=/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\uFFFD]|\bxl\/(?:styles|workbook|sharedStrings)\.xml\b|\[Content_Types\]\.xml|PK\x03\x04/u;
-const IDENTITY_FIELDS=Object.freeze(['businessName','contactName','phone','email','source','website','address','industry']);
+const IDENTITY_FIELDS=Object.freeze([
+ 'businessName','business_name','company','contactName','contact_name','phone','email',
+ 'source','researchSource','verificationSource','website','websiteStatus','address','industry','city','zip'
+]);
 const NOTES_FIELDS=Object.freeze(['notes']);
 function invalidText(value,{allowLineBreaks=false}={}){
  const s=String(value??'');
