@@ -135,6 +135,8 @@ jobs:
           node scripts/v66143-revenue-play-outreach-safety.test.cjs
           node scripts/v66144-crm-forensics.test.cjs
           node scripts/v66144-order-delivery-acceptance.test.cjs
+          node scripts/v66146-crm-id-reconciliation.test.cjs
+          node scripts/v66146-crm-id-ui.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -281,9 +283,13 @@ jobs:
           SBC_V66144_ISOLATED_STAGE=YES node scripts/v66144-stage-crm-forensics.cjs --apply
           node scripts/v66144-crm-forensics.test.cjs --staged
           node scripts/v66144-order-delivery-acceptance.test.cjs --staged
+          SBC_V66146_ISOLATED_STAGE=YES node scripts/v66146-stage-crm-id-reconciliation.cjs --apply
+          node scripts/v66146-crm-id-reconciliation.test.cjs --staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
+          SBC_V66146_ISOLATED_STAGE=YES node scripts/v66146-stage-crm-id-ui.cjs --apply
+          node scripts/v66146-crm-id-ui.test.cjs --staged
           node --check public/app.js
           node --check browser_public/app.js
           node --check server.js
