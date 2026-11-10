@@ -65,7 +65,11 @@ const handler=handlers['/api/owner/crm/forensics'];assert.equal(typeof handler,'
  assert.equal(status,200);assert.equal(payload.rows[0].id,'c1');
  assert.equal(payload.sqlTenantCustomers,3);assert.equal(payload.sqlTenantOrders,2);
  assert.equal(payload.projectionCountMismatch,false);
- assert.equal(statements.length,2);
+ assert([2,4].includes(statements.length),'both historical and status-aware staged SQL are SELECT-only');
+ if(statements.length===4){
+   assert.equal(payload.sqlVisibleTenantCustomers,3);
+   assert.equal(payload.sqlDeletedCustomerTombstones,0);
+ }
  assert(statements.every(s=>/^SELECT COUNT\(\*\)/.test(s)));
  console.log('PASS V66.144: owner read-only CRM search, corrupt suppression, temporal and tenant proof');
 })().catch(e=>{console.error(e);process.exitCode=1});
