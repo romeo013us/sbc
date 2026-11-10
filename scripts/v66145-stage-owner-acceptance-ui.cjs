@@ -73,8 +73,7 @@ function patchApp(raw){
  let s=String(raw||'');
  if(s.includes(MARK))return s;
  s=once(s,DASH,DASH+'<button type="button" class="btn ghost" onclick="sbcOpenOwnerAcceptanceDesk()">🛡️ Owner Acceptance Desk</button>','dashboard');
- s=once(s,MODAL,MODAL+'
-'+UI,'modal');
+ s=once(s,MODAL,MODAL+'\n'+UI,'modal');
  return s;
 }
 function patchFiles({root=path.resolve(__dirname,'..'),apply=false}={}){
