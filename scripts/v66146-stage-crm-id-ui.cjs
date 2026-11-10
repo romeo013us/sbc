@@ -56,8 +56,7 @@ function patchApp(raw){
  if(s.includes(MARK))return s;
  if(!s.includes('SBC_V66145_OWNER_ACCEPTANCE_DESK_UI'))throw Error('CRM_DIAGNOSTICS_REQUIRES_OWNER_DESK');
  s=one(s,HTML_ANCHOR,SECTION+HTML_ANCHOR,'html');
- s=one(s,FUNCTION_ANCHOR,FUNCTION+'
-'+FUNCTION_ANCHOR,'script');
+ s=one(s,FUNCTION_ANCHOR,FUNCTION+'\n'+FUNCTION_ANCHOR,'script');
  return s;
 }
 function patchFiles({root=path.resolve(__dirname,'..'),apply=false}={}){
