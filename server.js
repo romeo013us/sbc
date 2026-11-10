@@ -4222,6 +4222,27 @@ app.get('/api/owner/delivery/acceptance/:orderId',auth,ownerOnly,async(req,res)=
    return res.json(result);
   }catch(e){return res.status(503).json({ok:false,readOnly:true,error:'CRM_ID_RECONCILIATION_READ_UNAVAILABLE'});}
  });
+// SBC_V66147_OWNER_REVENUE_ACTIVATION_REVIEW owner-only, tenant-scoped read-side launch candidates.
+app.get('/api/owner/revenue/activation-review',auth,ownerOnly,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const tid=requireRequestTenant(req);
+  const d=require('./enterprise/v66147-owner-sales-delivery-evidence.cjs').inspect({
+   tenantId:tid,customers:db.customers||[],orders:db.orders||[],limit:req.query?.limit
+  });
+  d.sqlTenantCustomers=null;d.sqlTenantOrders=null;d.sqlEvidence='UNAVAILABLE';
+  if(mysqlPool){try{
+   const [[c]]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_customers WHERE tenant_id=?',[tid]);
+   const [[o]]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_orders WHERE tenant_id=?',[tid]);
+   d.sqlTenantCustomers=Number(c?.n||0);d.sqlTenantOrders=Number(o?.n||0);
+   d.sqlEvidence='TENANT_SCOPED_SELECT_ONLY';
+  }catch(_){d.sqlEvidence='QUERY_UNAVAILABLE';}}
+  d.projectionMatchesSql=d.sqlTenantCustomers===null?null:
+   d.sqlTenantCustomers===(db.customers||[]).filter(c=>c&&Number(c.tenantId??c.tenant_id)===tid).length&&
+   d.sqlTenantOrders===(db.orders||[]).filter(o=>o&&Number(o.tenantId??o.tenant_id)===tid).length;
+  return res.json(d);
+ }catch(e){return res.status(Number(e?.status)||503).json({ok:false,readOnly:true,error:String(e?.code||'OWNER_ACTIVATION_REVIEW_UNAVAILABLE')});}
+});
 app.get('/api/owner/lead-readiness',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{const tenantId=requireRequestTenant(req);

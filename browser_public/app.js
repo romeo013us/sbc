@@ -64,6 +64,11 @@ function sbcOpenOwnerAcceptanceDesk(){
 '<p class="mini">Read-only SQL vs loaded-record IDs, not a restore. Inspect the 9 suspect records by stable ID. Counts may shift during imports.</p>'+
 '<button type="button" class="btn ghost" onclick="sbcAcceptCrmDiagnostics()">Inspect SQL/CRM differences</button>'+
 '<div id="sbcAcceptIdDiffResult" role="status" aria-live="polite" class="mini" style="margin-top:10px"></div></div></section>'+
+
+'<section class="card"><div class="card-body"><h3>🎯 Owner sales and delivery activation</h3>'+
+'<p class="mini">Review up to 20 existing CRM prospects for source, phone and DNC verification. No automatic calling, email, SMS or lead-status changes. Separately inspect genuine payment-record candidates excluding internal QA.</p>'+
+'<button type="button" class="btn" onclick="sbcAcceptActivationReview()">Review next 20 leads &amp; paid orders</button>'+
+'<div id="sbcAcceptActivationResult" role="status" aria-live="polite" class="mini" style="margin-top:10px"></div></div></section>'+
 '<section class="card"><div class="card-body"><h3>📦 Delivery acceptance</h3>'+
  '<p class="mini">Real sales order ID only; $0 internal QA is not customer revenue.</p>'+
  '<input id="sbcAcceptOrder" maxlength="100" placeholder="Order ID" style="width:100%;margin:6px 0">'+
@@ -127,6 +132,64 @@ async function sbcAcceptCrmDiagnostics(){
     '<p>No ID discrepancy observed at this read time. This does not certify backup recovery.</p>')+
    '<p class="mini">This snapshot is not atomic with active employee imports. Repeat after imports stop.</p>';
  }catch(e){if(out.isConnected)out.textContent='Read-only CRM diagnostics unavailable: '+String(e?.message||e);}
+}
+
+
+/* SBC_V66147_OWNER_SALES_DELIVERY_REVIEW_UI */
+async function sbcAcceptActivationReview(){
+ if(state.me?.role!=='owner')return;
+ const out=document.getElementById('sbcAcceptActivationResult');
+ if(!out)return;
+ out.textContent='Reading CRM and stored Square evidence…';
+ try{
+  const d=await api('/api/owner/revenue/activation-review?limit=20',{timeoutMs:20000});
+  if(!out.isConnected)return;
+  const leads=Array.isArray(d.leadShortlist)?d.leadShortlist:[];
+  const paid=Array.isArray(d.paidOrderCandidates)?d.paidOrderCandidates:[];
+  state.sbcV66147LeadIds=leads.map(x=>String(x.id||''));
+  state.sbcV66147OrderIds=paid.map(x=>String(x.orderId||''));
+  const heads='<p><strong>'+esc(String(d.counts?.reviewEligible??0))+
+   ' eligible for human verification review</strong> · '+esc(String(d.counts?.needsSourceVerification??0))+
+   ' not yet verified · '+esc(String(d.counts?.missingCallablePhone??0))+
+   ' missing usable phone in active leads</p>'+
+   (d.projectionMatchesSql===false?
+    '<p>⚠ Loaded CRM and MySQL counts differ. This shortlist may omit SQL-only records. Investigate CRM integrity first.</p>':'')+
+   '<p class="mini">These are NOT approved calling tasks. Check source, decision maker, number ownership, DNC/consent, time zone and owner approval on each record.</p>';
+  const leadsHtml=leads.map((c,i)=>
+   '<div style="padding:7px 0;border-bottom:1px solid #ddd"><strong>'+
+   esc(c.businessName||'Unknown')+'</strong> · '+esc(c.temperature||'unranked')+
+   ' · Phone ending '+esc(c.phoneLast4||'—')+
+   '<div>Source: '+esc(c.source||'not recorded')+
+   ' · '+esc(c.reviewReason||'REVIEW_REQUIRED')+'</div>'+
+   '<div>ID '+esc(c.id||'')+' · <button type="button" class="btn small" onclick="sbcV66147ReviewLeadAt('+i+')">Open CRM record for review</button></div></div>'
+  ).join('');
+  const paidHtml=paid.map((o,i)=>
+   '<div style="padding:7px 0;border-bottom:1px solid #ddd"><strong>'+
+   esc(o.product||'Unnamed service')+'</strong> · $'+esc(String(o.recordedAmount??0))+
+   '<div>ID '+esc(o.orderId||'')+
+   ' · SBC-recorded Square payment only · <button type="button" class="btn small" onclick="sbcV66147ReviewOrderAt('+i+')">Check delivery evidence</button></div></div>'
+  ).join('');
+  out.innerHTML=heads+'<h4>Leads to verify manually ('+leads.length+')</h4>'+
+   (leadsHtml||'<p>No source-review candidates found. No call tasks were created.</p>')+
+   '<h4>Recorded paid customer-order candidates ('+esc(String(d.paidOrderCandidateCount??0))+')</h4>'+
+   (paidHtml||'<p>No non-QA Square-capture orders observed in loaded CRM. This does NOT prove no external sale occurred.</p>')+
+   '<p class="mini">Internal QA orders excluded: '+esc(String(d.excludedQaOrders??0))+
+   '. Status-only paid labels needing proof: '+esc(String(d.statusOnlyOrdersNeedIndependentPaymentProof??0))+'.</p>'+
+   '<p class="mini">Read-only preview; no lead was verified, contacted or changed. Provider settlement and delivery remain independently unverified.</p>';
+ }catch(e){if(out.isConnected)out.textContent='Activation review unavailable: '+String(e?.message||e);}
+}
+function sbcV66147ReviewLeadAt(i){
+ if(state.me?.role!=='owner')return;
+ const id=state.sbcV66147LeadIds?.[i];
+ if(!id)return toast('No lead selected');
+ editCustomer(id);
+}
+function sbcV66147ReviewOrderAt(i){
+ if(state.me?.role!=='owner')return;
+ const id=state.sbcV66147OrderIds?.[i],input=document.getElementById('sbcAcceptOrder');
+ if(!id||!input)return toast('No order selected');
+ input.value=id;
+ return sbcAcceptOrderLookup();
 }
 
 async function sbcAcceptOrderLookup(){
