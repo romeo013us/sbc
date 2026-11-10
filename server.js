@@ -3770,7 +3770,7 @@ function revenueVerificationCandidate(c){
   if(!c || isSbcSyntheticTestRecord(c) || ['customer','lost','do not call','closed','duplicate','not qualified'].includes(String(c.status||'').trim().toLowerCase())) return false;
   return ['warm','hot'].includes(revenueTemperature(c));
 }
-function revenueVerificationOptedOut(c){
+function revenueVerificationOptedOut(c){ if(require('./enterprise/v66143-revenue-play-outreach-policy.cjs').suppressed(c))return true;
   const text=[c?.status,c?.notes,c?.followUp,c?.email].map(x=>String(x||'')).join(' ').toLowerCase();
   return /\b(do not contact|do not call|unsubscribe|opt[ -]?out|stop)\b/.test(text);
 }
@@ -3849,6 +3849,9 @@ function revenueTemperature(c){
 }
 function routeRevenueLead(c){
   if(!c) return {route:'NO_VALID_CONTACT_METHOD',reason:'NO_RECORD'};
+  /* SBC_V66143_REVENUE_PLAY_OUTREACH_GUARD */
+  const outreachGuard=require('./enterprise/v66143-revenue-play-outreach-policy.cjs');
+  if(outreachGuard.suppressed(c))return {route:'SUPPRESSED',reason:'DURABLE_DO_NOT_CONTACT_OR_OPT_OUT'};
   if(isSbcSyntheticTestRecord(c)) return {route:'SUPPRESSED',reason:'SYNTHETIC_SYSTEM_TEST_RECORD'};
   const status=String(c.status||'').trim().toLowerCase();
   if(['customer','lost'].includes(status)) return {route:'SUPPRESSED',reason:'NON_REVENUE_STATUS'};
@@ -3860,9 +3863,13 @@ function routeRevenueLead(c){
   if(!['hot','warm'].includes(temperature)) return {route:'NOT_WARM_HOT',reason:'TEMPERATURE_NOT_ACTIONABLE'};
   const email=String(c.email||'').trim();
   const phone=String(c.phone||'').trim();
-  if(email && revenueEmailShape(email)) return {route:'ROUTED_EMAIL',reason:'VALID_EMAIL'};
-  if(phone && REVENUE_SUPERVISOR.smsEligible(c)) return {route:'ROUTED_SMS',reason:'RECORDED_SMS_CONSENT'};
-  if(phone) return {route:'ROUTED_HUMAN_CALL',reason:'PHONE_ONLY_NO_SMS_CONSENT'};
+  if(email && revenueEmailShape(email)){
+    const emailReview=outreachGuard.emailReview(c,process.env);
+    if(!phone||!revenuePhoneShape(phone))return {route:'HELD_EMAIL_OWNER_REVIEW',reason:emailReview.reason};
+    // A phone number is actionable only as a manually reviewed call or consented SMS; no legacy marketing SMTP.
+  }
+  if(phone && revenuePhoneShape(phone) && REVENUE_SUPERVISOR.smsEligible(c)) return {route:'ROUTED_SMS',reason:'RECORDED_SMS_CONSENT'};
+  if(phone && revenuePhoneShape(phone)) return {route:'ROUTED_HUMAN_CALL',reason:'NO_AUTOMATED_MARKETING_PERMISSION_REVIEW_CALL'};
   return {route:'NO_VALID_CONTACT_METHOD',reason:'NO_VALID_CONTACT_METHOD'};
 }
 function revenueLeadEligible(c){
@@ -3918,6 +3925,9 @@ function revenueFollowupCopy(c,stage){
 }
 async function processRevenueFollowups({tenantId}={}){
   const sbcRevenueTenant=requireTenantValue(tenantId);
+  // V66.143: legacy unattended marketing followups cannot use transactional SMTP.
+  // The separately governed consented-email rail requires individual owner task approval.
+  return {processed:0,sent:0,blocked:0,skipped:0,reason:'LEGACY_MARKETING_FOLLOWUPS_HELD_FOR_REVIEW'};
   if(!revenueMarketingReady()) return {processed:0,sent:0,blocked:0,skipped:0,reason:'SBC_MARKETING_POSTAL_ADDRESS_NOT_CONFIGURED'};
   const nowMs=Date.now(), maxTouches=Math.max(1,Number(process.env.SBC_REVENUE_MAX_TOUCHES||3));
   let processed=0,sent=0,blocked=0,skipped=0,changed=false;
@@ -4054,6 +4064,7 @@ app.get('/api/fantastic4/revenue/status',auth,ownerOnly,(req,res)=>{
     const verifiedWarmHot=customers.filter(c=>['verified','sales ready'].includes(revenueVerificationState(c))&&['warm','hot'].includes(revenueTemperature(c)));
     const needsVerification=routes.filter(x=>x.route==='NEEDS_VERIFICATION').length;
     const emailReady=routes.filter(x=>x.route==='ROUTED_EMAIL').length;
+    const emailReviewHeld=routes.filter(x=>x.route==='HELD_EMAIL_OWNER_REVIEW').length;
     const smsReady=routes.filter(x=>x.route==='ROUTED_SMS').length;
     const humanCallReady=routes.filter(x=>x.route==='ROUTED_HUMAN_CALL').length;
     const noValidContact=routes.filter(x=>x.route==='NO_VALID_CONTACT_METHOD').length;
@@ -4064,9 +4075,9 @@ app.get('/api/fantastic4/revenue/status',auth,ownerOnly,(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.json({ok:true,version:BUILD_VERSION,productionOn:!Boolean(db.fantastic4?.autonomous?.paused),
       eligibleLeads:eligible.length,verifiedOrSalesReady:verifiedOrReady.length,warmOrHot:warmHot.length,
-      eligibilityBreakdown:{verifiedOrSalesReady:verifiedOrReady.length,warmOrHot:warmHot.length,verifiedWarmHot:verifiedWarmHot.length,withContact:withContact.length,cooldownBlocked:cooldown.length,needsVerification,eligible:eligible.length,emailReady,smsReady,humanCallReady,autonomousActionable,actionable,verifiedWarmHotWithContact,unroutable},
+      eligibilityBreakdown:{verifiedOrSalesReady:verifiedOrReady.length,warmOrHot:warmHot.length,verifiedWarmHot:verifiedWarmHot.length,withContact:withContact.length,cooldownBlocked:cooldown.length,needsVerification,eligible:eligible.length,emailReady,emailReviewHeld,smsReady,humanCallReady,autonomousActionable,actionable,verifiedWarmHotWithContact,unroutable},
       playBatchDefault:10,playBatchCap:20,
-      note:'Revenue PLAY never infers verification from Warm/Hot. Every verified Warm/Hot lead with a valid email or phone must route to exactly one action path: email, consented SMS, or human Revenue Call. Human-call fallback does not place an automatic voice call; it creates an idempotent task for the sales caller. unroutable should remain 0.'
+      note:'Revenue PLAY uses automated contact-record checks, not human identity verification. Legacy promotional SMTP and its followup loop are held. Only consented SMS or human-reviewed phone tasks can enter batch PLAY; email-only contacts are held for individual owner review in the separate consented marketing channel. SMS is not sent without recorded consent.'
     });
   }catch(e){res.status(500).json({ok:false,error:e.message||'Revenue status unavailable.'});}
 });
