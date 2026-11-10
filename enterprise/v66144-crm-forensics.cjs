@@ -2,7 +2,9 @@
 /* Owner-only forensic view: read current tenant-scoped CRM/paid-order projections,
  * flag suspect text, and expose reconciliation targets WITHOUT mutating anything.
  */
-const {suspicious}=require('./v66126-crm-audit-preview.cjs');
+const AUDIT=require('./v66126-crm-audit-preview.cjs');
+const {invalidFields}=require('./crm-text-integrity-v66140.cjs');
+const suspicious=c=>AUDIT.suspicious(c)||invalidFields(c).length>0;
 const {providerCapturedSquare,proofFields}=require('./v6640-payment-evidence.cjs');
 const norm=v=>String(v??'').normalize('NFKC').trim().toLocaleLowerCase('en-US').replace(/\s+/gu,' ');
 const dig=v=>String(v??'').replace(/\D/g,'');
@@ -60,8 +62,8 @@ function inspect({customers=[],orders=[],tenantId,query='',source='',createdBy='
  const page=candidates.slice(skip,skip+cap).map(c=>{
   const entries=linked.get(String(c.id))||[];
   const bad=suspicious(c);
-  return {id:String(c.id||''),businessName:String(c.businessName||'').slice(0,160),
-   contactName:String(c.contactName||'').slice(0,120),email:String(c.email||'').slice(0,180),
+  return {id:String(c.id||''),businessName:bad?'[Review text integrity]':String(c.businessName||'').slice(0,160),
+   contactName:bad?'[Review text integrity]':String(c.contactName||'').slice(0,120),email:bad?'[Review text integrity]':String(c.email||'').slice(0,180),
    phoneLast4:dig(c.phone).slice(-4),status:String(c.status||''),
    source:String(c.source||''),createdBy:creator(c),createdAt:String(c.createdAt||c.created_at||''),
    updatedAt:String(c.updatedAt||c.updated_at||''),suspiciousText:bad,
