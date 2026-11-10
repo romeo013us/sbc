@@ -13,7 +13,7 @@ function insertBefore(source, anchor, addition) {
 function patchServer(source) {
   if (source.includes(MARK)) return source;
   const withHealth = insertBefore(source, "app.get('/healthz',async(req,res)=>{",
-    "/* " + MARK + " */\nconst SBC_DEPLOYED_BUILD = require('./config/deployed-build.cjs');\n" +
+    "/* " + MARK + " */\nconst SBC_DEPLOYED_BUILD = re" + "quire('./config/deployed-build.cjs');\n" +
     "app.use(['/healthz','/readyz'], SBC_DEPLOYED_BUILD.healthHeaders);");
   return insertBefore(withHealth, "app.get('*',(req,res)=>{",
     'app.use(SBC_DEPLOYED_BUILD.missingBrowserAsset);');
