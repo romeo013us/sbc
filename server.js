@@ -444,6 +444,9 @@ app.use((req,res,next)=>{if(String(process.env.SBC_PUBLIC_CAPABILITY_REQUIRED||'
 const PRODUCTION_READINESS = require('./enterprise/production-readiness-gate');
 const V56_AUTONOMY = require('./enterprise/v56-autonomous-operations');
 const BUILD_VERSION = RELEASE_VERSION;
+/* SBC_DEPLOYED_BUILD_PROOF */
+const SBC_DEPLOYED_BUILD = require('./config/deployed-build.cjs');
+app.use(['/healthz','/readyz'], SBC_DEPLOYED_BUILD.healthHeaders);
 app.get('/healthz',async(req,res)=>{
   try{
     const dbReady=Boolean(mysqlPool);
@@ -6759,7 +6762,9 @@ app.get('/api/v9/lead-verification',auth,(req,res)=>{
 });
 app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
   const researcher=sbcLornaRole(req.user);if(!researcher&&!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Lead verification access required.'});
-  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)); if(!c)return res.status(404).json({error:'Lead not found.'});
+  /* SBC_WORKFORCE_LEAD_TENANT_SCOPE */
+  const tenantId=requireRequestTenant(req);
+  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id) && Number(x.tenantId??x.tenant_id)===Number(tenantId)); if(!c)return res.status(404).json({error:'Lead not found.'});
   // Security boundary must run before any mutable customer fields are assigned.
   if(researcher){
     const assigned=String(c.assignedTo||''),status=String(c.status||'Lead').trim().toLowerCase();
@@ -6907,10 +6912,21 @@ app.delete('/api/workforce/lead-draft',auth,async(req,res)=>{
   if(mysqlPool)await mysqlPool.query('DELETE FROM sbc_lead_drafts WHERE user_id=?',[req.user.id]);
   res.json({ok:true,cleared:true});
 });
+const SBC_WORKFORCE_LEAD_EDIT_TAILS=new Map();
 app.put('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(!canEditResearchLead(req.user))return res.status(403).json({error:'Lead editing access required.'});
-  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));
-  if(!c)return res.status(404).json({error:'Lead not found.'});
+  /* SBC_WORKFORCE_LEAD_TENANT_SCOPE */
+  const tenantId=requireRequestTenant(req);
+  const record=(db.customers||[]).find(x=>String(x.id)===String(req.params.id) && Number(x.tenantId??x.tenant_id)===Number(tenantId));
+  if(!record)return res.status(404).json({error:'Lead not found.'});
+  /* SBC_WORKFORCE_LEAD_EDIT_SERIAL */
+  const lockKey=String(tenantId)+':'+String(req.params.id);
+  const previous=SBC_WORKFORCE_LEAD_EDIT_TAILS.get(lockKey)||Promise.resolve();
+  let release;const turn=new Promise(resolve=>{release=resolve;});
+  const tail=previous.then(()=>turn);SBC_WORKFORCE_LEAD_EDIT_TAILS.set(lockKey,tail);
+  await previous;
+  try{
+  const c={...record};
   const b=req.body||{};
   /* SBC_WORKFORCE_CRM_TEXT_GATE */
   const badFields=require('./enterprise/crm-text-integrity-v66140.cjs').invalidFields(b);
@@ -6922,17 +6938,22 @@ app.put('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(b.status!==undefined)c.status=String(b.status).slice(0,60);
   c.leadIntelligence=sanitizeLeadIntel(b.leadIntelligence!==undefined?b.leadIntelligence:{...leadIntel(c),...(b.leadIntel||{})});
   c.updatedAt=now();
-  if(mysqlPool){
-    await mysqlPool.query(`UPDATE sbc_customers SET business_name=?,contact_name=?,phone=?,email=?,status=?,source=?,notes=?,website=?,industry=?,website_status=?,assigned_to=?,account_notes_json=?,lead_intelligence_json=?,updated_at=? WHERE id=?`,
-      [c.businessName,c.contactName,c.phone,c.email,c.status,c.source,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo||'',JSON.stringify(c.accountNotes||[]),JSON.stringify(c.leadIntelligence),sqlDateTime(c.updatedAt),c.id]);
-    const [rows]=await mysqlPool.query('SELECT id FROM sbc_customers WHERE id=? LIMIT 1',[c.id]);if(!rows.length)return res.status(503).json({error:'Lead update could not be verified.'});
-  }
+  if(!mysqlPool)return res.status(503).json({ok:false,error:'CRM database unavailable.'});
+  try{
+    await mysqlPool.query(`UPDATE sbc_customers SET business_name=?,contact_name=?,phone=?,email=?,status=?,source=?,notes=?,website=?,industry=?,website_status=?,assigned_to=?,account_notes_json=?,lead_intelligence_json=?,updated_at=? WHERE tenant_id=? AND id=?`,
+      [c.businessName,c.contactName,c.phone,c.email,c.status,c.source,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo||'',JSON.stringify(c.accountNotes||[]),JSON.stringify(c.leadIntelligence),sqlDateTime(c.updatedAt),tenantId,c.id]);
+    const [rows]=await mysqlPool.query('SELECT id FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[tenantId,c.id]);if(!rows.length)return res.status(503).json({error:'Lead update could not be verified.'});
+  }catch{ return res.status(503).json({ok:false,error:'Lead update could not be verified.'}); }
+  Object.assign(record,c);
   audit(req.user,'lead_updated',`Updated lead ${c.businessName||c.id}`,{customerId:c.id,leadIntelligence:true});
   res.json({ok:true,lead:c,persistence:{mysql:Boolean(mysqlPool),verified:true}});
+  }finally{release();if(SBC_WORKFORCE_LEAD_EDIT_TAILS.get(lockKey)===tail)SBC_WORKFORCE_LEAD_EDIT_TAILS.delete(lockKey);}
 });
 app.get('/api/workforce/leads/:id',auth,async(req,res)=>{
   if(!canEditResearchLead(req.user))return res.status(403).json({error:'Lead access denied.'});
-  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));if(!c)return res.status(404).json({error:'Lead not found.'});if(sbcLornaRole(req.user)&&req.user.role!=='owner'&&req.user.role!=='manager'){const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(['customer','lost','do not call','dnc','closed','duplicate'].includes(status)||(assigned&&assigned!==String(req.user.id))||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==String(req.user.id))){return res.status(403).json({error:'This lead is outside your assigned research queue.'});}}
+  /* SBC_WORKFORCE_LEAD_TENANT_SCOPE */
+  const tenantId=requireRequestTenant(req);
+  const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id) && Number(x.tenantId??x.tenant_id)===Number(tenantId));if(!c)return res.status(404).json({error:'Lead not found.'});if(sbcLornaRole(req.user)&&req.user.role!=='owner'&&req.user.role!=='manager'){const status=String(c.status||'Lead').trim().toLowerCase(),assigned=String(c.assignedTo||'');if(['customer','lost','do not call','dnc','closed','duplicate'].includes(status)||(assigned&&assigned!==String(req.user.id))||(String(c.verificationStatus||'')==='Sales Ready'&&assigned!==String(req.user.id))){return res.status(403).json({error:'This lead is outside your assigned research queue.'});}}
   res.json({ok:true,lead:{...c,leadIntelligence:leadIntel(c)}});
 });
 
@@ -10304,6 +10325,7 @@ global.__SBC_V640_CONTROL_PLANE=SBC_V640;
 app.use('/api', (req,res,next)=>{ if(res.headersSent)return next(); res.status(404).json({ok:false,error:`API route not found: ${req.method} ${req.originalUrl}`}); });
 
 // Keep this last: API misses receive JSON above; non-API deep links receive the SPA shell.
+app.use(SBC_DEPLOYED_BUILD.missingBrowserAsset);
 app.get('*',(req,res)=>{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');res.sendFile(path.join(__dirname,'public','index.html'));});
 
 
