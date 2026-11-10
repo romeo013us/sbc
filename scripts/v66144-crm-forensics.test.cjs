@@ -49,15 +49,15 @@ if(process.argv.includes('--staged'))assert.equal(patched,source,'compiled stage
 const a=patched.indexOf("app.get('/api/owner/crm/forensics'");
 const b=patched.indexOf("app.get('/api/owner/lead-readiness'",a);
 assert(a>0&&b>a);
-let handler;let statements=[];
+const handlers={};let statements=[];
 vm.runInNewContext(patched.slice(a,b),{
- app:{get(_path,_auth,_owner,cb){handler=cb}},auth(){},ownerOnly(){},
+ app:{get(route,_auth,_owner,cb){handlers[route]=cb}},auth(){},ownerOnly(){},
  requireRequestTenant:()=>1,
  db:{customers:rows,orders},
  mysqlPool:{async query(sql,args){statements.push(sql);assert.deepEqual(Array.from(args),[1]);return [[{n:sql.includes('sbc_customers')?3:2}]]}},
  require:()=>FORENSICS
 });
-assert.equal(typeof handler,'function');
+const handler=handlers['/api/owner/crm/forensics'];assert.equal(typeof handler,'function');
 (async()=>{
  let payload,status=200;
  const res={setHeader(){},json(v){payload=v;return this},status(n){status=n;return this}};
