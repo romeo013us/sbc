@@ -59,6 +59,26 @@ function patchServer(raw){
  s=one(s,OLD_FORENSICS,NEW_FORENSICS,'forensic-visible-count');
  s=one(s,"result.sqlEvidence!=='TENANT_SCOPED_SELECT_ONLY'",
    "result.sqlEvidence!=='TENANT_SCOPED_VISIBLE_AND_ALL_SELECT_ONLY'",'forensics-reliability');
+ // Preserve raw counts and immutable prewrite snapshot, but compare the same
+ // visible (not status='Deleted') set the runtime actually hydrated. Without
+ // this, an increasing historical tombstone fraction can lock genuine CRM writes.
+ const oldSafety='    const safety=assessPersistenceSafety(authoritativeCore,sourceCore);';
+ const visibleSafety=[
+  '    // SBC_V66148_VISIBLE_CORE_PERSISTENCE_GUARD: compare like-for-like loaded vs SQL.',
+  '    const [[visibleCoreRow]]=await conn.query(`',
+  '      SELECT',
+  "       (SELECT COUNT(*) FROM sbc_customers WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS customers,",
+  "       (SELECT COUNT(*) FROM sbc_quotes WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS quotes,",
+  "       (SELECT COUNT(*) FROM sbc_orders WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS orders,",
+  "       (SELECT COUNT(*) FROM sbc_renewals WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted') AS renewals",
+  '    `,[TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID]);',
+  '    const visibleCore={customers:Number(visibleCoreRow?.customers||0),quotes:Number(visibleCoreRow?.quotes||0),',
+  '      orders:Number(visibleCoreRow?.orders||0),renewals:Number(visibleCoreRow?.renewals||0)};',
+  '    const safety=assessPersistenceSafety(visibleCore,sourceCore);'
+ ].join('\\n');
+ s=one(s,oldSafety,visibleSafety,'visible-persistence-safety');
+ s=one(s,'      counts:authoritativeCore,\\n      sourceCounts:sourceCore,',
+   '      counts:authoritativeCore,\\n      visibleCounts:visibleCore,\\n      sourceCounts:sourceCore,','preserve-raw-backup-census');
  return s;
 }
 if(require.main===module){
