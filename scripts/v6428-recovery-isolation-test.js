@@ -8,7 +8,10 @@ const pkg=require('../package.json');
 const release=require('../config/release-identity');
 const checks=[]; const check=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 check('package-release-matches-manifest',pkg.version===release.RELEASE_VERSION);
-check('authoritative-release-identity',release.RELEASE_VERSION===pkg.version&&release.RELEASE.major===65&&release.RELEASE.minor===1&&release.RELEASE.patch===26);
+check('authoritative-release-identity',
+  release.RELEASE.version===pkg.version&&
+  [release.RELEASE.major,release.RELEASE.minor,release.RELEASE.patch].join('.')===pkg.version&&
+  fs.readFileSync(path.join(root,'VERSION'),'utf8').trim()===pkg.version);
 check('recovery-guard-active',server.includes('MYSQL_RECOVERY_REQUIRED=true;')&&server.includes('createRecoveryWriteGuard({isRecoveryRequired:()=>!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED})')&&server.includes('startup mutation pipeline remains suspended'));
 check('pipeline-read-isolated',server.includes("/api/v24/production/pipeline")&&server.includes('READ endpoint. Never persist'));
 check('243-lead-projection-read-only',server.includes('sbc_lead_mesh recovery projection')&&server.includes('readOnlyRecoveryProjection:true'));
