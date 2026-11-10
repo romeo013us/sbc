@@ -60,7 +60,7 @@ function patchServer(input){
  " }catch(e){return res.status(Number(e?.status)||503).json({ok:false,readOnly:true,error:String(e?.code||'DELIVERY_ACCEPTANCE_UNAVAILABLE')});}",
  "});",
  ""
- ].join('\\n');
+ ].join('\n');
  return s.replace(ANCHOR,route+delivery+ANCHOR);
 }
 if(require.main===module){
