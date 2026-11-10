@@ -90,6 +90,41 @@ test('workforce edits update memory only after tenant-scoped durable readback',a
   assert.deepEqual(Array.from(args).slice(-2),[7,lead.id]);
  }
 });
+test('overlapping workforce edits to one tenant lead preserve both accepted changes',async()=>{
+ const compiled=stage.patchServer(server);
+ const lead={id:'serial-synthetic',tenantId:7,businessName:'Original',phone:'3050000000'};
+ let releaseFirst,announceFirst;
+ const firstStarted=new Promise(resolve=>{announceFirst=resolve;});
+ const firstBlocked=new Promise(resolve=>{releaseFirst=resolve;});
+ const updates=[];
+ const handler=workforceHandler(compiled,'put','/api/workforce/leads/:id',{
+  canEditResearchLead:()=>true,requireRequestTenant:()=>7,db:{customers:[lead]},
+  leadIntel:()=>({}),sanitizeLeadIntel:x=>x,now:()=>new Date().toISOString(),sqlDateTime:x=>x,audit(){},
+  mysqlPool:{async query(sql,args){
+   if(sql.startsWith('UPDATE')){
+    updates.push(Array.from(args));
+    if(updates.length===1){announceFirst();await firstBlocked;}
+    return [{affectedRows:1}];
+   }
+   return [[{id:lead.id}]];
+  }}
+ });
+ const nameResult=response(),phoneResult=response();
+ const saveName=handler({user:{role:'owner'},params:{id:lead.id},body:{businessName:'Updated'}},nameResult);
+ await firstStarted;
+ const savePhone=handler({user:{role:'owner'},params:{id:lead.id},body:{phone:'3055550100'}},phoneResult);
+ await Promise.resolve();
+ assert.equal(updates.length,1,'second request must wait for first durable update');
+ releaseFirst();
+ await Promise.all([saveName,savePhone]);
+ assert.equal(updates.length,2);
+ assert.equal(updates[1][0],'Updated','second full-row write must retain committed business name');
+ assert.equal(updates[1][2],'3055550100');
+ assert.equal(lead.businessName,'Updated');
+ assert.equal(lead.phone,'3055550100');
+ assert.equal(nameResult.body.persistence.verified,true);
+ assert.equal(phoneResult.body.persistence.verified,true);
+});
 function response(){
  return {statusCode:200,status(code){this.statusCode=code;return this;},json(body){this.body=body;return this;}};
 }
@@ -101,7 +136,7 @@ function workforceHandler(compiled,method,url,context){
  let handler;
  const app={[method]:(_url,_auth,fn)=>{handler=fn;}};
  vm.runInNewContext(compiled.slice(start,end+4),{
-  ...context,app,auth(){},require:(name)=>{
+  SBC_WORKFORCE_LEAD_EDIT_TAILS:new Map(),...context,app,auth(){},require:(name)=>{
    assert.equal(name,'./enterprise/crm-text-integrity-v66140.cjs');
    return guard;
   }
