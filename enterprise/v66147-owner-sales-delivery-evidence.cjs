@@ -21,7 +21,8 @@ function assertTenant(t){
 }
 function eligible(c){
  if(!c||!LIVE.has(tag(c.status)))return {ok:false,reason:'NOT_ACTIVE_LEAD'};
- if(LEAD.synthetic(c)||QA.isQaCustomer(c))return {ok:false,reason:'INTERNAL_TEST'};
+ if(QA.isQaCustomer(c)||c.sbcTest===true||c.testMode===true||c.testPayment?.realCharge===false||
+  /@example\.invalid$/i.test(norm(c.email))||/sbc (?:v\d+ )?full-cycle test|do not service/i.test(norm(c.source)+' '+norm(c.notes)))return {ok:false,reason:'INTERNAL_TEST'};
  if(OUTREACH.suppressed(c)||FORENSICS.suspicious(c))return {ok:false,reason:'SUPPRESSED_OR_TEXT_INTEGRITY'};
  const name=norm(c.businessName);
  if(name.length<3||PLACEHOLDER.test(name))return {ok:false,reason:'BUSINESS_IDENTITY_MISSING'};
