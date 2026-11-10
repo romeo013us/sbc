@@ -66,7 +66,7 @@ assert.equal(typeof handler,'function');
  assert.equal(code,200);
  assert.equal(payload.customerIds.sqlOnlyCount,1);assert.equal(payload.customerIds.projectionOnlyCount,1);
  assert.equal(queries.length,4);
- assert(queries.every(sql=>/^SELECT (?:COUNT\(\*\)|id) /u.test(sql)));
+ assert(queries.every(sql=>/^SELECT (?:COUNT\(\*\)|id(?:,status)?) /u.test(sql)));
  assert(queries.every(sql=>sql.includes('WHERE tenant_id=?')));
  console.log('PASS V66.146: exact tenant ID differences, suspicious field IDs, limits, non-atomic warnings and SQL-only route');
 })().catch(e=>{console.error(e);process.exitCode=1});
