@@ -281,6 +281,11 @@ jobs:
           SBC_V66144_ISOLATED_STAGE=YES node scripts/v66144-stage-crm-forensics.cjs --apply
           node scripts/v66144-crm-forensics.test.cjs --staged
           node scripts/v66144-order-delivery-acceptance.test.cjs --staged
+          node scripts/v66145-owner-acceptance-ui.test.cjs
+          SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
+          node scripts/v66145-owner-acceptance-ui.test.cjs --staged
+          node --check public/app.js
+          node --check browser_public/app.js
           node --check server.js
       - name: Verify deployed build identity and missing asset behavior
         run: |
