@@ -20,6 +20,7 @@ const path=require('path');
 const crypto=require('crypto');
 const ACQ=require('./sbc-customer-acquisition-v1');
 const V567=require('./v567-nine-nine');
+const REVENUE_TRUTH=require('./sbc-revenue-reporting-truth-v66142.cjs');
 const VERSION='56.16.0';
 const DROPZONE_ROOT=path.resolve(process.env.SBC_DROPZONE_ROOT||path.join(__dirname,'..','data','dropzone'));
 const DROPZONE_ARCHIVE=path.join(DROPZONE_ROOT,'processed');
@@ -151,7 +152,8 @@ async function dunningSnapshot(){
 }
 async function controlTower(){
   const customers=Array.isArray(ctx?.db?.customers)?ctx.db.customers:[];const orders=Array.isArray(ctx?.db?.orders)?ctx.db.orders:[];
-  const base={version:VERSION,generatedAt:now(),automation:status(),funnel:{leads:customers.length,qualified:customers.filter(eligible).length,demos:customers.filter(c=>c.autopilotDemoId).length,paidOrders:orders.filter(o=>/PAID|COMPLETED|FULFILLED/i.test(String(o.paymentStatus||o.status||''))).length}};
+  const paid=REVENUE_TRUTH.paidSummary(orders.filter(o=>Number(o.tenantId??o.tenant_id)===1),customers);
+  const base={version:VERSION,generatedAt:now(),automation:status(),funnel:{leads:customers.length,qualified:customers.filter(eligible).length,demos:customers.filter(c=>c.autopilotDemoId).length,paidOrders:paid.orderCount,paidRevenue:paid.revenue,paidEvidence:paid.proof,qualifiedEstimateOnly:true}};
   if(!ctx?.mysqlPool)return {...base,durable:false};
   const [funnel]=await ctx.mysqlPool.query(`SELECT event_type,COUNT(*) count FROM sbc_revenue_funnel_events WHERE tenant_id=1 GROUP BY event_type ORDER BY count DESC`);
   const [aff]=await ctx.mysqlPool.query(`SELECT COALESCE(SUM(amount_cents),0) cents,COUNT(*) entries FROM sbc_affiliate_ledger WHERE tenant_id=1`);
