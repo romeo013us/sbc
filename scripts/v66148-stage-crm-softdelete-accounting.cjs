@@ -75,10 +75,10 @@ function patchServer(raw){
   '    const visibleCore={customers:Number(visibleCoreRow?.customers||0),quotes:Number(visibleCoreRow?.quotes||0),',
   '      orders:Number(visibleCoreRow?.orders||0),renewals:Number(visibleCoreRow?.renewals||0)};',
   '    const safety=assessPersistenceSafety(visibleCore,sourceCore);'
- ].join('\\n');
+ ].join('\n');
  s=one(s,oldSafety,visibleSafety,'visible-persistence-safety');
- s=one(s,'      counts:authoritativeCore,\\n      sourceCounts:sourceCore,',
-   '      counts:authoritativeCore,\\n      visibleCounts:visibleCore,\\n      sourceCounts:sourceCore,','preserve-raw-backup-census');
+ s=one(s,'      counts:authoritativeCore,\n      sourceCounts:sourceCore,',
+   '      counts:authoritativeCore,\n      visibleCounts:visibleCore,\n      sourceCounts:sourceCore,','preserve-raw-backup-census');
  return s;
 }
 if(require.main===module){
