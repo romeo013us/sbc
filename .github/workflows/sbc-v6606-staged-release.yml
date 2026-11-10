@@ -137,6 +137,8 @@ jobs:
           node scripts/v66144-order-delivery-acceptance.test.cjs
           node scripts/v66146-crm-id-reconciliation.test.cjs
           node scripts/v66146-crm-id-ui.test.cjs
+          node scripts/v66147-owner-sales-delivery-evidence.test.cjs
+          node scripts/v66147-owner-activation-ui.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -285,11 +287,15 @@ jobs:
           node scripts/v66144-order-delivery-acceptance.test.cjs --staged
           SBC_V66146_ISOLATED_STAGE=YES node scripts/v66146-stage-crm-id-reconciliation.cjs --apply
           node scripts/v66146-crm-id-reconciliation.test.cjs --staged
+          SBC_V66147_ISOLATED_STAGE=YES node scripts/v66147-stage-owner-revenue-activation.cjs --apply
+          node scripts/v66147-owner-sales-delivery-evidence.test.cjs --staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
           SBC_V66146_ISOLATED_STAGE=YES node scripts/v66146-stage-crm-id-ui.cjs --apply
           node scripts/v66146-crm-id-ui.test.cjs --staged
+          SBC_V66147_ISOLATED_STAGE=YES node scripts/v66147-stage-owner-activation-ui.cjs --apply
+          node scripts/v66147-owner-activation-ui.test.cjs --staged
           node --check public/app.js
           node --check browser_public/app.js
           node --check server.js
