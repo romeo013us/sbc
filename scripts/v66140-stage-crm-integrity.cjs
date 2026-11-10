@@ -3,6 +3,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const MARK='SBC_V66140_CORRUPT_CRM_TEXT_GATE';
 const WORKFORCE_MARK='SBC_WORKFORCE_CRM_TEXT_GATE';
+const WORKFORCE_TENANT_MARK='SBC_WORKFORCE_LEAD_TENANT_SCOPE';
 const WORKFORCE_ROUTES=[
  "app.post('/api/workforce/leads',auth,async(req,res)=>{",
  "app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{",
@@ -46,10 +47,37 @@ function patchWorkforceRoute(s,route){
  ].join('\n');
  return s.slice(0,start)+once(source,declaration,guard,'workforce-before-write')+s.slice(end);
 }
+function scopeWorkforceRecord(s,route){
+ const start=s.indexOf(route);
+ const end=s.indexOf('\n});',start);
+ if(start<0||end<0)throw Error('V66140_WORKFORCE_SCOPE_ANCHOR: '+route);
+ let source=s.slice(start,end);
+ if(source.includes(WORKFORCE_TENANT_MARK))return s;
+ const isLegacyEdit=route.startsWith('app.put(');
+ const lookup="const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id));";
+ const scoped="/* "+WORKFORCE_TENANT_MARK+" */\n  const tenantId=requireRequestTenant(req);\n"+
+   "  const "+(isLegacyEdit?'record':'c')+"=(db.customers||[]).find(x=>String(x.id)===String(req.params.id) && Number(x.tenantId??x.tenant_id)===Number(tenantId));";
+ source=once(source,lookup,scoped,'workforce-tenant-lookup');
+ if(isLegacyEdit){
+  source=once(source,"if(!c)return res.status(404).json({error:'Lead not found.'});",
+   "if(!record)return res.status(404).json({error:'Lead not found.'});\n  const c={...record};",'workforce-edit-copy');
+  source=once(source,'updated_at=? WHERE id=?','updated_at=? WHERE tenant_id=? AND id=?','workforce-tenant-update');
+  source=once(source,'sqlDateTime(c.updatedAt),c.id]);','sqlDateTime(c.updatedAt),tenantId,c.id]);','workforce-tenant-update-parameters');
+  source=once(source,"WHERE id=? LIMIT 1',[c.id]","WHERE tenant_id=? AND id=? LIMIT 1',[tenantId,c.id]",'workforce-tenant-readback');
+  source=once(source,'  if(mysqlPool){',"  if(!mysqlPool)return res.status(503).json({ok:false,error:'CRM database unavailable.'});\n  try{",'workforce-durable-update-required');
+  source=once(source,"  }\n  audit(req.user,'lead_updated',",
+   "  }catch{ return res.status(503).json({ok:false,error:'Lead update could not be verified.'}); }\n"+
+   "  Object.assign(record,c);\n  audit(req.user,'lead_updated',",'workforce-cache-after-readback');
+ }
+ return s.slice(0,start)+source+s.slice(end);
+}
 function patchServer(input){
  let s=String(input||'');
  if(!s.includes(MARK))s=patchIntake(s);
  for(const route of WORKFORCE_ROUTES)s=patchWorkforceRoute(s,route);
+ for(const route of [...WORKFORCE_ROUTES.slice(1),"app.get('/api/workforce/leads/:id',auth,async(req,res)=>{"]){
+  s=scopeWorkforceRecord(s,route);
+ }
  return s;
 }
 if(require.main===module){

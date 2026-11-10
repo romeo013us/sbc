@@ -38,6 +38,9 @@ if(hasReceipt){
  if(receipt.artifactType==='server.js'&&receipt.artifactSha256!==release.serverSha256){
   throw Error('[SBC DEPLOY IDENTITY] deployment receipt compiled server digest mismatch');
  }
+ if(!stageIntegrity.legacy&&receipt.artifactType==='server.js'){
+  require('./config/deployed-build.cjs').recordVerifiedBuild(release.sourceCommit);
+ }
 }
 console.log('[SBC DEPLOY IDENTITY] entry=flat source_commit='+release.sourceCommit+' source_fingerprint='+release.sourceFingerprint+' receipt='+(hasReceipt?'VERIFIED':'ZIP_INSTALL'));
 // CI-only startup proof: exercise THIS exact flat runtime integrity/receipt gate

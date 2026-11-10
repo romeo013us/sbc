@@ -40,9 +40,9 @@ test('workstation submission rejects corrupt aliases before accessing CRM data',
 test('lead correction paths reject unreadable fields without editing the record',async()=>{
  const compiled=stage.patchServer(server);
  for(const [method,url,field] of [['post','/api/v9/lead-verification/:id','verificationSource'],['put','/api/workforce/leads/:id','contactName']]){
-  const lead={id:'synthetic',businessName:'Café Señor'};
+  const lead={id:'synthetic',tenantId:1,businessName:'Café Señor'};
   const correct=workforceHandler(compiled,method,url,{
-   canEditResearchLead:()=>true,sbcLornaRole:()=>false,db:{customers:[lead]}
+   canEditResearchLead:()=>true,sbcLornaRole:()=>false,requireRequestTenant:()=>1,db:{customers:[lead]}
   });
   const res=response();
   await correct({user:{role:'owner'},params:{id:lead.id},body:{businessName:'Different business',[field]:'Broken\uFFFD text'}},res);
@@ -50,6 +50,44 @@ test('lead correction paths reject unreadable fields without editing the record'
   assert.deepEqual(res.body.fields,[field]);
   assert.equal(lead.businessName,'Café Señor');
   assert.equal(lead[field],undefined);
+ }
+});
+test('a valid foreign lead ID cannot be read or changed through the workforce routes',async()=>{
+ const compiled=stage.patchServer(server);
+ const foreign={id:'synthetic',tenantId:9,businessName:'Private tenant record'};
+ for(const [method,url] of [['get','/api/workforce/leads/:id'],['put','/api/workforce/leads/:id'],['post','/api/v9/lead-verification/:id']]){
+  const handler=workforceHandler(compiled,method,url,{
+   canEditResearchLead:()=>true,sbcLornaRole:()=>false,requireRequestTenant:()=>1,db:{customers:[foreign]}
+  });
+  const res=response();
+  await handler({user:{role:'manager'},params:{id:foreign.id},body:{businessName:'Overwritten'}},res);
+  assert.equal(res.statusCode,404);
+  assert.equal(foreign.businessName,'Private tenant record');
+ }
+});
+test('workforce edits update memory only after tenant-scoped durable readback',async()=>{
+ const compiled=stage.patchServer(server);
+ const lead={id:'synthetic',tenantId:7,businessName:'Original'};
+ const calls=[];
+ let readback=[];
+ const handler=workforceHandler(compiled,'put','/api/workforce/leads/:id',{
+  canEditResearchLead:()=>true,requireRequestTenant:()=>7,db:{customers:[lead]},
+  leadIntel:()=>({}),sanitizeLeadIntel:x=>x,now:()=>new Date().toISOString(),sqlDateTime:x=>x,audit(){},
+  mysqlPool:{async query(sql,args){calls.push({sql,args});return [sql.startsWith('SELECT')?readback:{affectedRows:1}];}}
+ });
+ const req={user:{role:'owner'},params:{id:lead.id},body:{businessName:'Updated'}};
+ const failed=response();
+ await handler(req,failed);
+ assert.equal(failed.statusCode,503);
+ assert.equal(lead.businessName,'Original');
+ readback=[{id:lead.id}];
+ const saved=response();
+ await handler(req,saved);
+ assert.equal(saved.body.persistence.verified,true);
+ assert.equal(lead.businessName,'Updated');
+ for(const {sql,args} of calls){
+  assert.match(sql,/WHERE tenant_id=\? AND id=\?/);
+  assert.deepEqual(Array.from(args).slice(-2),[7,lead.id]);
  }
 });
 function response(){
