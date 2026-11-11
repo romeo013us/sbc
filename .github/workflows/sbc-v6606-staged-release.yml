@@ -141,6 +141,9 @@ jobs:
           node scripts/v66147-owner-activation-ui.test.cjs
           node scripts/v66148-crm-softdelete-accounting.test.cjs
           node scripts/v66148-crm-softdelete-ui.test.cjs
+          node scripts/v66149-hr-policy.test.cjs
+          node scripts/v66149-hr-workstation.test.cjs
+          node scripts/v66149-hr-workstation-ui.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -293,6 +296,8 @@ jobs:
           node scripts/v66147-owner-sales-delivery-evidence.test.cjs --staged
           SBC_V66148_ISOLATED_STAGE=YES node scripts/v66148-stage-crm-softdelete-accounting.cjs --apply
           node scripts/v66148-crm-softdelete-accounting.test.cjs --staged
+          SBC_V66149_ISOLATED_STAGE=YES node scripts/v66149-stage-hr-workstation.cjs --apply
+          node scripts/v66149-hr-workstation.test.cjs --staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
@@ -302,6 +307,8 @@ jobs:
           node scripts/v66147-owner-activation-ui.test.cjs --staged
           SBC_V66148_ISOLATED_STAGE=YES node scripts/v66148-stage-crm-softdelete-ui.cjs --apply
           node scripts/v66148-crm-softdelete-ui.test.cjs --staged
+          SBC_V66149_ISOLATED_STAGE=YES node scripts/v66149-stage-hr-ui.cjs --apply
+          node scripts/v66149-hr-workstation-ui.test.cjs --staged
           node --check public/app.js
           node --check browser_public/app.js
           node --check server.js
