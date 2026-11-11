@@ -1,4 +1,28 @@
 <?php
+/* SBCMIA signed bridge: no credential is stored in source or sent to browsers.
+ * Keep the same SBC_WEBSITE_BRIDGE_KEY in cPanel and Command Center secrets.
+ * This source is a candidate; do not overwrite the separately published cPanel site
+ * until its newer content and links have been reconciled.
+ */
+function sbcSignedBridgeHeaders($path, $raw) {
+    $permitted = ['/api/web-lead', '/api/portal/login', '/api/portal/register'];
+    if (!in_array((string)$path, $permitted, true)) return [];
+    $key = getenv('SBC_WEBSITE_BRIDGE_KEY');
+    if (!is_string($key) || strlen($key) < 32) return [];
+    try { $nonce = bin2hex(random_bytes(16)); } catch (Throwable $e) { return []; }
+    $timestamp = (string)time();
+    $host = 'sbcmia.com';
+    $signedPayload = implode("\n", [
+        $timestamp, $host, 'POST', (string)$path,
+        hash('sha256', (string)$raw), $nonce
+    ]);
+    return [
+        'X-SBC-Website-Host: ' . $host,
+        'X-SBC-Website-Timestamp: ' . $timestamp,
+        'X-SBC-Website-Nonce: ' . $nonce,
+        'X-SBC-Website-Signature: ' . hash_hmac('sha256', $signedPayload, $key)
+    ];
+}
 /* V27.7.2 Customer Portal bridge — additive; existing SBC site remains unchanged. */
 if (isset($_GET['sbc_portal'])) {
     $action=(string)$_GET['sbc_portal'];
@@ -17,14 +41,20 @@ if (isset($_GET['sbc_portal'])) {
     $base='https://app-sbcmia.c24.airoapp.ai';
     $ch=curl_init(rtrim($base,'/').$path);
     $headers=['Accept: application/json'];
-    $opts=[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>25,CURLOPT_CUSTOMREQUEST=>$method];
+    $opts=[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>25,CURLOPT_CUSTOMREQUEST=>$method];
     /* Do not forward unrelated browser cookies to the Command Center. */
     $portalToken=(string)($_COOKIE['sbc_portal_token']??'');
     if($portalToken)$headers[]='Authorization: Bearer '.$portalToken;
     if($method==='POST'){
       $raw=file_get_contents('php://input');
+      $raw=is_string($raw)&&$raw!==''?$raw:'{}';
       $headers[]='Content-Type: application/json';
-      $opts[CURLOPT_POSTFIELDS]=$raw?:'{}';
+      if(in_array($action,['login','register'],true)){
+        $signed=sbcSignedBridgeHeaders($path,$raw);
+        if(!$signed){http_response_code(503);header('Content-Type: application/json');header('Cache-Control: no-store');echo json_encode(['ok'=>false,'error'=>'Secure SBC account sign-in is temporarily unavailable. Contact SBC for help.']);exit;}
+        $headers=array_merge($headers,$signed);
+      }
+      $opts[CURLOPT_POSTFIELDS]=$raw;
     }
     $opts[CURLOPT_HTTPHEADER]=$headers;curl_setopt_array($ch,$opts);
     $raw=curl_exec($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$err=curl_error($ch);curl_close($ch);
@@ -53,10 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $endpoint = 'https://app-sbcmia.c24.airoapp.ai/api/web-lead';
         $payload = json_encode($lead, JSON_UNESCAPED_SLASHES);
         if (!function_exists('curl_init') || $payload === false) return ['ok'=>false,'error'=>'CRM bridge unavailable on this PHP host.'];
+        $signed=sbcSignedBridgeHeaders('/api/web-lead',$payload);
+        if(!$signed) return ['ok'=>false,'error'=>'Secure website-to-CRM bridge is not configured.'];
         $ch = curl_init($endpoint);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','Origin: https://sbcmia.com'],
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json','Accept: application/json','Origin: https://sbcmia.com'],$signed),
             CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 15
         ]);
         $raw = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch);
