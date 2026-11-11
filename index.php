@@ -68,6 +68,14 @@ if (isset($_GET['sbc_portal'])) {
 ?>
 
 <?php
+/* A 2xx transport status is not evidence that Command Center saved a CRM lead.
+ * Require explicit application acknowledgement; email fallback is tracked separately.
+ */
+function sbcCrmLeadAccepted($httpCode, $json, $transportError = '') {
+    return $transportError === ''
+        && (int)$httpCode >= 200 && (int)$httpCode < 300
+        && is_array($json) && ($json['ok'] ?? null) === true;
+}
 /* SBC lightweight form handler: keeps customer questionnaires on-site instead of relying on mailto:. */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -94,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         ]);
         $raw = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch);
         $json = json_decode((string)$raw, true);
-        return ['ok'=>!$err && $code>=200 && $code<300, 'code'=>$code, 'data'=>$json, 'error'=>$err ?: (($json['error'] ?? '') ?: '')];
+        return ['ok'=>sbcCrmLeadAccepted($code, $json, $err), 'code'=>$code, 'data'=>$json, 'error'=>$err ?: (($json['error'] ?? '') ?: '')];
     };
     $emailTo = 'j@sbcmia.com';
     $subject = '';
