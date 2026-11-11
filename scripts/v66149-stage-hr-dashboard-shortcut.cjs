@@ -6,11 +6,20 @@ const fs=require('node:fs'),path=require('node:path');
 const MARK='SBC_V66149_HR_DEPARTMENT_SHORTCUT';
 const OLD='<button type="button" class="btn ghost" onclick="sbcOpenOwnerAcceptanceDesk()">🛡️ Owner Acceptance Desk</button>';
 const NEW=OLD+'<button type="button" class="btn ghost" onclick="sbcOpenHrDepartment()">👥 HR Department</button>';
-const FN="\n/* SBC_V66149_HR_DEPARTMENT_SHORTCUT — owner only. */\nfunction sbcOpenHrDepartment(){\n if(state.me?.role!=='owner')return toast('Owner access required');\n window.location.assign('/hr-department.html');\n}\n";
+const FN="\n/* SBC_V66149_HR_DEPARTMENT_SHORTCUT — owner only. */\nfunction sbcOpenHrDepartment(){\n if(state.me?.role!=='owner')return toast('Owner access required');\n window.location.assign('/hr-workstation.html');\n}\n";
 
 function patchApp(raw){
  let s=String(raw||'');
- if(s.includes(MARK))return s;
+ if(s.includes(MARK)){
+  // Earlier compiled masters already have the HR button but target the
+  // retired read-only station. Upgrade precisely that link, never duplicate
+  // launchers or change unrelated navigation.
+  const oldTarget="window.location.assign('/hr-department.html');";
+  const newTarget="window.location.assign('/hr-workstation.html');";
+  if(s.includes(newTarget))return s;
+  if(s.split(oldTarget).length!==2)throw Error('HR_OWNER_EXISTING_LINK_UNEXPECTED');
+  return s.replace(oldTarget,newTarget);
+ }
  if(!s.includes('SBC_V66148_SOFT_DELETED_CRM_TRUTH_UI'))throw Error('HR_REQUIRES_CURRENT_SBC_OWNER_BASELINE');
  if(s.split(OLD).length!==2)throw Error('HR_OWNER_BUTTON_ANCHOR_NOT_UNIQUE');
  s=s.replace(OLD,NEW);
