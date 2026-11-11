@@ -19,7 +19,7 @@ const html=fs.readFileSync(path.join(root,'public/hr-workstation.html'),'utf8'),
  htmlMirror=fs.readFileSync(path.join(root,'browser_public/hr-workstation.html'),'utf8');
 assert.equal(html,htmlMirror,'independent HR manager browser mirror required');
 for(const text of ['HR Department Sign In','/api/hr/overview','/api/hr/drafts',
- '/api/hr/payout-preferences','Remitly','Owner Approval Queue',
+ '/api/hr/payout-preferences','providerChoice','Owner Approval Queue',
  'No transfer or bank account collection','data-draft'])assert(html.includes(text),text);
 assert(!html.includes('/api/v9/payroll/run'),'HR cannot run privileged payroll');
 assert(!html.includes('localStorage')&&!html.includes('sessionStorage'),'never store employee data clientside');
