@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SBC HR Department | Successful By Choice</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;background:#07101b;color:#edf5ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 10%,#17436d 0,transparent 32%),#07101b}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px max(20px,calc((100vw - 1200px)/2))}
+.brand{display:flex;gap:13px;align-items:center}.logo{width:44px;height:44px;border-radius:13px;background:linear-gradient(140deg,#66dbd4,#2e87ff);color:#04131e;display:grid;place-items:center;font-weight:900}.brand strong{font-size:17px}.sub{color:#9cb3ca;font-size:13px;margin-top:3px}
+main{max-width:1200px;margin:auto;padding:6px 20px 65px}.panel{border:1px solid #2a415b;background:#0d1a29e8;border-radius:17px;padding:24px;box-shadow:0 20px 50px #0002}
+h1{font-size:clamp(28px,5vw,43px);letter-spacing:-1.1px;margin:0 0 8px}h2{font-size:19px;margin:0 0 14px}h3{font-size:16px;margin:0 0 12px}p{line-height:1.5}.muted{color:#a4bad1}.tiny{font-size:12px}.tag{background:#103246;color:#92e6e2;padding:5px 9px;border-radius:99px;font-size:11px;letter-spacing:.05em;font-weight:800}
+.hero{display:flex;gap:18px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.metric{padding:22px;border:1px solid #294058;border-radius:15px;background:#0e2235}
+.metric strong{font-size:30px;display:block;margin:9px 0}.metric span{color:#9cb3ca;font-size:12px}
+.sections{display:grid;grid-template-columns:minmax(300px,1.5fr) minmax(280px,1fr);gap:16px;margin-top:17px}
+.full{grid-column:1/-1}.row{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.list{display:grid;gap:10px}.worker,.draft{border:1px solid #294058;padding:14px;border-radius:11px;background:#101f30}
+.worker strong,.draft strong{font-size:15px}.worker .line{font-size:12px;color:#a9bdd2;line-height:1.6;margin-top:5px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}button{border:1px solid #4a637e;border-radius:10px;background:#173047;color:#e6f4ff;padding:11px 15px;font-weight:700}
+button.primary{background:#38cbb8;color:#05222a;border-color:#38cbb8}
+button.danger{color:#ffc4ca;border-color:#9a4754;background:#381d29}
+button:hover{filter:brightness(1.15)}
+label{display:flex;flex-direction:column;gap:5px;color:#b9cadb;font-size:12px;font-weight:650}
+input,select,textarea{width:100%;min-width:0;background:#071725;color:#f1f7ff;border:1px solid #4b6176;border-radius:9px;padding:10px}
+textarea{min-height:76px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.notice{border-left:3px solid #6edbc8;padding:9px 14px;background:#102a35;color:#c8e2e7;border-radius:4px;margin:14px 0;font-size:13px}
+.warning{border-left-color:#ffbf75;background:#32291d}
+#message{position:sticky;top:5px;z-index:4;min-height:0;color:#91ebd7}
+#signin{max-width:470px;margin:36px auto}#signin h2{font-size:25px}
+footer{font-size:12px;color:#839ab1;text-align:center;margin-top:24px}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sections{grid-template-columns:1fr}.full{grid-column:auto}}
+@media(max-width:480px){.grid,.formgrid{grid-template-columns:1fr}header{padding:18px}main{padding:0 14px 40px}.panel{padding:17px}}
+[hidden]{display:none!important}
+</style></head><body>
+<header><div class="brand"><div class="logo">SBC</div><div><strong>SUCCESSFUL BY CHOICE</strong><div class="sub">HR DEPARTMENT · People Operations</div></div></div>
+<div class="actions"><span class="tag">OWNER-GOVERNED</span><button id="signout" hidden>Sign Out</button></div></header>
+<main><div id="message" role="status" aria-live="polite"></div>
+<section id="signin" class="panel" hidden><h2>HR Department Sign In</h2>
+<p class="muted">Use your individual SBC account. HR managers can access this workstation only, and cannot enter the owner's payment or CRM controls.</p>
+<form id="loginForm"><div class="formgrid" style="grid-template-columns:1fr">
+<label>Username<input id="username" autocomplete="username" required maxlength="80"></label>
+<label>Password<input id="password" type="password" autocomplete="current-password" required></label>
+</div><button type="submit" class="primary">Sign in to HR</button></form></section>
+<section id="workspace" hidden>
+<div class="hero"><div><span class="tag">SBC PRIVATE OPERATIONS</span><h1>HR Department</h1>
+<p class="muted">Workforce records, time reviews, contractor payout plans and owner approval—all in one secure workstation.</p></div>
+<div class="actions"><span id="who" class="muted"></span><button id="reload">↻ Refresh</button><a href="/" id="ownerHome" hidden style="color:#99e6dc">Owner Command Center</a></div></div>
+<div class="grid" id="stats"></div>
+<div class="sections">
+<section class="panel"><h2>👥 Team Directory</h2><p class="muted tiny">Only staff in your authorized tenant. Sensitive documents, account numbers and login secrets are not exposed.</p><div id="workers" class="list"></div></section>
+<section class="panel"><h2>🌍 Payout Provider Review</h2>
+<p class="muted tiny">Wise is not required. Propose a payment provider, then obtain owner approval. No transfer or bank account collection occurs here.</p>
+<form id="providerForm"><div class="formgrid" style="grid-template-columns:1fr">
+<label>Staff member<select id="providerWorker" required></select></label>
+<label>Proposed provider<select id="providerChoice" required></select></label></div>
+<button type="submit" class="primary">Submit Provider for Approval</button></form>
+<div class="notice warning">Before making a real payment, verify business-account eligibility, fees and the recipient's supported payout method directly with the provider.</div></section>
+<section class="panel"><h2>🧾 Prepare Payroll / Contractor Draft</h2>
+<p class="muted tiny">This is an administrative draft. Recorded hours are not necessarily approved. No calculation here is legal payroll, tax withholding or proof of payment.</p>
+<form id="draftForm"><div class="formgrid">
+<label>Staff member<select id="draftWorker" required></select></label>
+<label>Suggested payout service<select id="draftProvider" required></select></label>
+<label>Period start<input type="date" id="periodStart" required></label>
+<label>Period end<input type="date" id="periodEnd" required></label>
+<label>Hours reviewed<input type="number" id="reviewHours" min="0" max="744" step=".01" required></label>
+<label>Proposed amount (USD)<input type="number" id="proposedUsd" min="0" max="10000" step=".01" required></label>
+<label class="full">Review notes<textarea id="draftNote" maxlength="500" placeholder="Invoice, agreed rate, verified time corrections, exceptions…"></textarea></label></div>
+<button type="submit" class="primary">Submit Draft to Owner</button></form></section>
+<section class="panel"><h2>✅ Owner Approval Queue</h2><p class="muted tiny">HR staff can submit. Only the owner can approve or reject; approval still does not send money.</p><div id="drafts" class="list"></div></section>
+<section class="panel full"><h2>🔒 Controls & Compliance</h2>
+<div class="notice"><strong>HR manager:</strong> View authorized personnel, review closed time entries, propose payout providers and submit pay drafts. No access to lead/customer CRM, financial accounts, secrets, employee-account permissions or external transfer actions.</div>
+<div class="notice warning"><strong>Owner:</strong> Control compensation settings, hiring permissions, classification review, pay approvals and external payouts. Philippine contractor classification and applicable tax/worker protections are separate compliance matters requiring review.</div></section>
+</div>
+</section>
+<footer>Successful By Choice · Because Why Not? · Internal workstation · No automatic transfers, AI calls or new subscriptions.</footer></main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let current=null,model=null,busy=false;
+const html=(id,v)=>$(id).innerHTML=v;
+const notice=(v,isBad=false)=>{const x=$('message');x.textContent=String(v||'');x.style.color=isBad?'#ff9ea4':'#91ebd7';};
+async function api(url,method='GET',data){
+ const r=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data)});
+ let json={};try{json=await r.json()}catch{}
+ if(!r.ok)throw new Error(json.error||json.message||('Request failed: '+r.status));
+ return json;
+}
+function showLogin(){ $('workspace').hidden=true;$('signin').hidden=false;$('signout').hidden=true; }
+function showWork(){ $('signin').hidden=true;$('workspace').hidden=false;$('signout').hidden=false; }
+function persons(){
+ const people=model.people||[];
+ const opts=people.map(p=>'<option value="'+escape(p.id)+'">'+escape(p.name+' · '+p.role)+'</option>').join('');
+ html('draftWorker',opts);html('providerWorker',opts);
+ const providers=model.providers||[];
+ const p=providers.map(x=>'<option value="'+escape(x)+'">'+escape(x)+'</option>').join('');
+ html('draftProvider',p);html('providerChoice',p);
+}
+function render(){
+ if(!model)return;
+ const people=model.people||[],drafts=model.drafts||[],count=model.counts||{};
+ $('who').textContent=(model.actor?.name||'HR')+' · '+(model.actor?.role||'');
+ $('ownerHome').hidden=model.actor?.role!=='owner';
+ showWork();
+ const metrics=[['Team members',count.staff],['Active',count.active],['Drafts to review',count.pendingDrafts],['Provider reviews',count.unreviewedPayoutMethods]];
+ html('stats',metrics.map(x=>'<div class="metric"><span>'+escape(x[0])+'</span><strong>'+escape(String(x[1]??0))+'</strong></div>').join(''));
+ html('workers',people.map(p=>'<div class="worker"><div class="row"><strong>'+escape(p.name)+'</strong><span class="tag">'+escape(p.active?'ACTIVE':'INACTIVE')+'</span></div>'+
+  '<div class="line">'+escape(p.role)+' · '+escape(p.country)+'<br>Onboarding: '+escape(p.onboardingStatus)+
+  ' · Rate: '+escape(p.agreedRateUsd==null?'Not configured':'$'+p.agreedRateUsd+'/hr')+
+  '<br>Closed time clock: '+escape(String(p.completedTimeHours))+' h · Open shifts: '+escape(String(p.openShifts))+
+  '<br>Payout preference: '+escape(p.payoutPreference)+' · '+escape(p.payoutPreferenceStatus)+'</div>'+
+  (model.actor?.role==='owner'&&p.payoutPreferenceStatus==='Awaiting Owner Review'?'<div class="actions" style="margin-top:10px">'+
+  '<button data-pref="'+escape(p.id)+'" data-decision="approve">Approve provider</button><button data-pref="'+escape(p.id)+'" data-decision="reject">Reject</button></div>':'')+'</div>').join('')||'<p class="muted">No authorized workforce records yet.</p>');
+ html('drafts',drafts.map(d=>'<div class="draft"><div class="row"><strong>'+escape(d.workerName)+'</strong><span class="tag">'+escape(d.status)+'</span></div>'+
+ '<div class="line">'+escape(d.periodStart)+' – '+escape(d.periodEnd)+' · '+escape(String(d.hours))+' hours · $'+escape(String(d.proposedUsd))+
+ '<br>'+escape(d.provider)+' · '+escape(d.note||'No note')+'</div>'+
+ (model.actor?.role==='owner'&&d.status==='Pending Owner Review'?'<div class="actions" style="margin-top:10px"><button data-draft="'+escape(d.id)+'" data-decision="approve">Approve draft</button><button data-draft="'+escape(d.id)+'" data-decision="reject">Reject draft</button></div>':'')+'</div>').join('')||'<p class="muted">No payroll review drafts yet.</p>');
+ persons();
+}
+async function reload(){model=await api('/api/hr/overview');render();}
+async function action(fn){if(busy)return;busy=true;try{await fn();await reload();notice('Saved. No external payment was made.');}catch(e){notice(e.message,true)}finally{busy=false}}
+$('loginForm').onsubmit=e=>{e.preventDefault();action(async()=>{
+ await api('/api/login','POST',{username:$('username').value.trim(),password:$('password').value});
+ $('password').value='';await reload();});
+};
+$('reload').onclick=()=>action(async()=>{await reload();});
+$('signout').onclick=()=>action(async()=>{await api('/api/logout','POST');current=null;model=null;showLogin();});
+$('providerForm').onsubmit=e=>{e.preventDefault();action(()=>api('/api/hr/payout-preferences','POST',{
+ workerId:$('providerWorker').value,provider:$('providerChoice').value}));};
+$('draftForm').onsubmit=e=>{e.preventDefault();action(()=>api('/api/hr/drafts','POST',{
+ workerId:$('draftWorker').value,provider:$('draftProvider').value,periodStart:$('periodStart').value,
+ periodEnd:$('periodEnd').value,hours:Number($('reviewHours').value),proposedUsd:Number($('proposedUsd').value),
+ note:$('draftNote').value}));};
+$('workers').onclick=e=>{const b=e.target.closest('button[data-pref]');if(!b)return;
+ action(()=>api('/api/hr/payout-preferences/'+encodeURIComponent(b.dataset.pref)+'/decision','POST',{decision:b.dataset.decision}));};
+$('drafts').onclick=e=>{const b=e.target.closest('button[data-draft]');if(!b)return;
+ action(()=>api('/api/hr/drafts/'+encodeURIComponent(b.dataset.draft)+'/decision','POST',{decision:b.dataset.decision}));};
+(async()=>{try{const m=await api('/api/me');current=m.user;
+ if(!['owner','hr_manager'].includes(m.user?.role)){showLogin();return notice('This account has no HR Department permissions.',true)}
+ await reload();}catch(e){showLogin();notice('Sign in to access the HR Department.');}})();
+})();
+</script>
+</body></html>
