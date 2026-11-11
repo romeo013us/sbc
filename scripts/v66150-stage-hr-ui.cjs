@@ -14,8 +14,8 @@ function patchV10(src){
  const d=String.fromCharCode(36);
  s=once(s,'<option value="manager" '+d+"{u.role==='manager'?'selected':''}>Manager</option>",
   '<option value="hr_manager" '+d+"{u.role==='hr_manager'?'selected':''}>HR Department Manager</option>",'role-choice');
- s=once(s,'<button class="btn primary" onclick="addWorker11()">+ Add Team Member</button></div>',
-  '<button class="btn primary" onclick="addWorker11()">+ Add Team Member</button><button class="btn" onclick="window.open(\'/hr-workstation.html\',\'_blank\',\'noopener,noreferrer\')">👥 Open HR Management Console</button></div>','management-shortcut');
+ s=once(s,'<div class="actions"><button class="btn primary" onclick="addWorker11()">+ Add Team Member</button></div>',
+  '<div class="actions"><button class="btn primary" onclick="addWorker11()">+ Add Team Member</button><button class="btn" onclick="window.open(\'/hr-workstation.html\',\'_blank\',\'noopener,noreferrer\')">👥 Open HR Management Console</button></div>','management-shortcut');
  return s;
 }
 function patchFiles({root=path.resolve(__dirname,'..'),apply=false}={}){
