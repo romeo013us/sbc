@@ -4158,7 +4158,7 @@ app.get('/api/owner/communications/activity',auth,ownerOnly,async(req,res)=>{
    [tenantId,sqlDateTime(new Date(Date.now()-hours*3600000))]);
   const model=require('./enterprise/v66153-owner-contact-history.cjs');
   return res.json(model.summarize({tenantId,customers:db.customers,activities:(rows||[]).slice(0,1000),
-   callLogs:db.callLogs||[],callReports:db.callReports||[],now:Date.now(),hours,
+   callLogs:db.callLogs||[],callReports:db.callReports||[],tasks:db.tasks||[],now:Date.now(),hours,
    sqlTruncated:(rows||[]).length>1000}));
  }catch(e){console.warn('[SBC OWNER CONTACT HISTORY] read failed:',String(e?.code||'DATA_UNAVAILABLE'));
   return res.status(503).json({ok:false,error:'CONTACT_HISTORY_READ_UNAVAILABLE',readOnly:true});}

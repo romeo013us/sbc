@@ -14,14 +14,15 @@ const info=v=>{if(v&&typeof v==='object'&&!Array.isArray(v))return v;
  return {};};
 const suppressed=c=>Boolean(c&&(c.doNotContact===true||c.doNotCall===true||c.salesSuppressed===true||
  c.isSuppressed===true||c.smsOptOut===true||c.sbcSmsOptOut===true||c.emailUnsubscribed===true||
+ c.leadIntelligence?.sbcOutreach?.emailUnsubscribed===true||c.leadIntelligence?.sbcOutreach?.marketingEmailOptOut===true||
  ['dnc','do not call','do not contact','opt out','unsubscribe','lost','duplicate'].includes(
  String(c.status||'').trim().toLowerCase())));
 const CHANNELS=['email','sms','call'];
-function summarize({tenantId,customers,activities,callLogs,callReports,now=Date.now(),hours=168,sqlTruncated=false}={}){
+function summarize({tenantId,customers,activities,callLogs,callReports,tasks,now=Date.now(),hours=168,sqlTruncated=false}={}){
  const tid=Number(tenantId),span=Number(hours),end=Number(now);
  if(!Number.isSafeInteger(tid)||tid<1)throw Error('CONTACT_HISTORY_TENANT_REQUIRED');
  if(![168,720,2160].includes(span))throw Error('CONTACT_HISTORY_WINDOW_INVALID');
- if(!Array.isArray(customers)||!Array.isArray(activities)||!Array.isArray(callLogs)||!Array.isArray(callReports))
+ if(!Array.isArray(customers)||!Array.isArray(activities)||!Array.isArray(callLogs)||!Array.isArray(callReports)||!Array.isArray(tasks))
   throw Error('CONTACT_HISTORY_AUTHORITATIVE_SOURCES_REQUIRED');
  if(!Number.isFinite(end)||end<=0)throw Error('CONTACT_HISTORY_CLOCK_INVALID');
  const start=end-span*3600000;
@@ -51,6 +52,26 @@ function summarize({tenantId,customers,activities,callLogs,callReports,now=Date.
     label:channel==='email'?'Email accepted by SMTP':channel==='sms'?
       (meta.deliveryConfirmed===true?'SMS reported delivered':'SMS submitted to Twilio'):'Call activity recorded',
     evidence});
+ }
+ // Consented marketing email is persisted in the existing task ledger, not
+ // generic db.activities. Signed SendGrid delivery receipts update this status.
+ for(const task of tasks){
+  if(String(task?.type||'')!=='SBC Next-Day Call'||!task?.id)continue;
+  const status=String(task.outboundEmailStatus||'').toUpperCase();
+  if(!status||status==='DRAFT_ONLY')continue;
+  const delivered=status==='DELIVERED_PROVIDER_VERIFIED';
+  const uncertain=status.startsWith('SUBMISSION_')||status==='DEFERRED_PROVIDER';
+  const stopped=status.includes('SUPPRESSED');
+  const label=delivered?'Email delivery confirmed by signed provider event':
+   uncertain?'Email submission needs manual review':
+   stopped?'Email provider suppression/opt-out recorded':'Marketing email accepted by provider';
+  const evidence=delivered?'Provider verified delivered; customer reading/reply not established':
+   uncertain?'Submission outcome unconfirmed; do not automatically retry':
+   stopped?'Do not retry without owner review and valid new permission':
+   'Provider accepted, delivery unconfirmed';
+  add({channel:'email',id:'marketing:'+String(task.id),customerId:task.customerId,
+   at:task.outboundEmailLastEventAt||task.outboundEmailAcceptedAt||task.outboundEmailAttemptAt,
+   label,evidence});
  }
  for(const log of callLogs){
   const id=clean(log?.id,100),status=String(log?.status||'').toLowerCase();

@@ -17,22 +17,30 @@ const acts=[
 ];
 const calls=[{id:'logA',tenantId:1,customerId:'a',status:'completed',endedAt:iso(3),notes:'secret customer details'}];
 const reports=[{id:'reportA',customerId:'a',createdAt:iso(2),outcome:'Called back',notes:'should never leak'}];
-const params={tenantId:1,customers,activities:acts,callLogs:calls,callReports:reports,now:t,hours:168};
+const tasks=[
+ {id:'outreach1',tenantId:1,type:'SBC Next-Day Call',customerId:'a',outboundEmailStatus:'PROVIDER_ACCEPTED_NOT_DELIVERED',outboundEmailAcceptedAt:iso(1),outboundEmailProviderId:'private-provider-id'},
+ {id:'outreach2',tenantId:1,type:'SBC Next-Day Call',customerId:'b',outboundEmailStatus:'DELIVERED_PROVIDER_VERIFIED',outboundEmailLastEventAt:iso(1),outboundEmailProviderId:'private-provider-id2'},
+ {id:'outreach3',tenantId:1,type:'SBC Next-Day Call',customerId:'a',outboundEmailStatus:'DRAFT_ONLY',createdAt:iso(1)},
+ {id:'wrongTask',tenantId:2,type:'SBC Next-Day Call',customerId:'foreign',outboundEmailStatus:'DELIVERED_PROVIDER_VERIFIED',outboundEmailLastEventAt:iso(1)}
+];
+const params={tenantId:1,customers,activities:acts,callLogs:calls,callReports:reports,tasks,now:t,hours:168};
 const r=M.summarize(params);
 assert.equal(r.ok,true);assert.equal(r.readOnly,true);assert.equal(r.modelCreditsUsed,0);
-assert.deepEqual(r.counts,{email:1,sms:2,call:2});
+assert.deepEqual(r.counts,{email:3,sms:2,call:2});
 assert.equal(r.contactsWithRecordedEvents,2);
 assert.equal(r.contacts[0].name,'Miami Auto Service');
-assert.equal(r.contacts[0].latest.email.label,'Email accepted by SMTP');
+assert.equal(r.contacts[0].latest.email.label,'Marketing email accepted by provider');
+assert.equal(r.contacts.find(x=>x.customerId==='b').latest.email.label,'Email delivery confirmed by signed provider event');
 assert.match(r.contacts[0].latest.sms.evidence,/delivery not confirmed/);
 assert.equal(r.contacts.find(x=>x.customerId==='b').suppressed,true);
 assert.equal(r.contacts.find(x=>x.customerId==='b').reviewAfter,null);
 assert.equal(r.contacts.find(x=>x.customerId==='a').reviewAfter,new Date(Date.parse(iso(2))+7*86400000).toISOString());
-for(const privateValue of ['private@example.com','secret customer details','secret customer','should never leak','Other Tenant','+13050001111','SMabc'])
+for(const privateValue of ['private-provider-id','private@example.com','secret customer details','secret customer','should never leak','Other Tenant','+13050001111','SMabc'])
  assert(!JSON.stringify(r).includes(privateValue),'private/cross-tenant data leaked: '+privateValue);
 assert.throws(()=>M.summarize({...params,tenantId:0}),/TENANT_REQUIRED/);
 assert.throws(()=>M.summarize({...params,hours:2}),/WINDOW_INVALID/);
 assert.throws(()=>M.summarize({...params,activities:null}),/SOURCES_REQUIRED/);
+assert.equal(M.suppressed({leadIntelligence:{sbcOutreach:{emailUnsubscribed:true}}}),true);
 const ROOT=path.resolve(__dirname,'..');
 const server=fs.readFileSync(path.join(ROOT,'server.js'),'utf8');
 assert(server.includes("app.get('/api/owner/communications/activity',auth,ownerOnly"),'owner-only route missing');

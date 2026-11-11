@@ -155,7 +155,7 @@ function register(app,{auth,ownerOnly,getDb,saveData,requireTenant,requireWriter
    let alert={ok:false,skipped:true};
    if(created.length&&typeof notifyOwner==='function'){
     try{alert=await notifyOwner({subject:kind==='APPOINTMENT_REQUEST'?'SBC appointment request · '+compact(c.businessName,70):'SBC interested email reply · '+compact(c.businessName,70),
-      text:'Business: '+compact(c.businessName,120)+'\nAction: '+kind+'\nNotes: '+notes+'\nOpen Command Center → Prepare Tomorrow to confirm the appointment or reply. No customer appointment has been automatically booked.'})||alert}
+      text:'Business: '+compact(c.businessName,120)+'\nAction: '+kind+'\nNotes: '+notes+'\nOpen Command Center → Plan Next Week to confirm the appointment or reply. No customer appointment has been automatically booked.'})||alert}
     catch(e){alert={ok:false,reason:'OWNER_NOTIFY_NOT_CONFIRMED'}}
    }
    res.json({ok:true,kind,taskId:r.id,ownerActionCreated:created.map(x=>x.id),
