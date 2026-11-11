@@ -6,7 +6,7 @@ const fs=require('node:fs'),path=require('node:path');
 const MARK='SBC_V66149_HR_DEPARTMENT_SHORTCUT';
 const OLD='<button type="button" class="btn ghost" onclick="sbcOpenOwnerAcceptanceDesk()">🛡️ Owner Acceptance Desk</button>';
 const NEW=OLD+'<button type="button" class="btn ghost" onclick="sbcOpenHrDepartment()">👥 HR Department</button>';
-const FN=String.raw"\n/* SBC_V66149_HR_DEPARTMENT_SHORTCUT — owner only. */\nfunction sbcOpenHrDepartment(){\n if(state.me?.role!=='owner')return toast('Owner access required');\n window.location.assign('/hr-department.html');\n}\n";
+const FN="\n/* SBC_V66149_HR_DEPARTMENT_SHORTCUT — owner only. */\nfunction sbcOpenHrDepartment(){\n if(state.me?.role!=='owner')return toast('Owner access required');\n window.location.assign('/hr-department.html');\n}\n";
 
 function patchApp(raw){
  let s=String(raw||'');
