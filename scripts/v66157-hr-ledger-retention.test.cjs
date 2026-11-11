@@ -16,7 +16,7 @@ const scope={
    preferences:{'worker-1':{provider:'Payoneer',status:'Awaiting Owner Review'}},
    reviewLog:[{event:'DRAFT_SUBMITTED',draftId:'historical'}]},
   extension:{keep:true}
- }}}},
+ }}},
  SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,
  saves:0,saveData:async()=>{scope.saves++;return {ok:true}}
 };
