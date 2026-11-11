@@ -49,7 +49,7 @@ function intro(c,demo){
  const benefit=pitch(c);
  const subject='A quick idea for '+name;
  const preview=demo?.ready?'We have also prepared a sample website preview for '+name+'. If you would like to see it, reply to this email and I can send a link or show you during our call.\n\n':'';
- const text='Hello '+name+' team,\n\nMy name is Jonathan Jones, owner of Successful By Choice LLC here in Miami.\n\nWe help local businesses strengthen their professional presence, with websites, Google Business Profiles, branding, and practical business services.\n\nI wanted to introduce SBC and ask whether you would be interested in a short, no-obligation recommendation about '+benefit+'.\n\n'+preview+'I may follow up with a brief call on the next business day. If email is better, feel free to reply here.\n\nBest,\nJonathan Jones\nOwner | Successful By Choice LLC\ninfo@sbcmia.com\nhttps://sbcmia.com\n\n[Verified physical mailing address required before sending]\nTo stop receiving marketing emails from SBC, reply unsubscribe.';
+ const text='Hello '+name+' team,\n\nMy name is Jonathan Jones, owner of Successful By Choice LLC here in Miami.\n\nWe help local businesses strengthen their professional presence, with websites, Google Business Profiles, branding, and practical business services.\n\nI wanted to introduce SBC and ask whether you would be interested in a short, no-obligation recommendation about '+benefit+'.\n\n'+preview+'I may check back sometime next week if appropriate. If email is better, feel free to reply here.\n\nBest,\nJonathan Jones\nOwner | Successful By Choice LLC\ninfo@sbcmia.com\nhttps://sbcmia.com\n\n[Verified physical mailing address required before sending]\nTo stop receiving marketing emails from SBC, reply unsubscribe.';
  return {subject,text,benefit};
 }
 function item(c,db){
@@ -129,14 +129,14 @@ function register(app,deps){
       '\n\nDRAFT EMAIL (NOT SENT):\n'+d.text+
       '\n\nCALL OPENING:\nHello, this is Jonathan Jones with Successful By Choice here in Miami. I wanted to introduce SBC and see whether '+d.benefit+' is relevant to your business.\n\nCheck DNC, consent, local time and latest replies before dialing.';
     const task={id,tenantId:t,customerId:String(c.id),customerName:clean(c.businessName||c.business_name||c.contactName,160),
-      title:'Next-Day Outbound · '+clean(c.businessName||c.business_name||c.contactName,120),
+      title:'Scheduled Sales Follow-Up · '+clean(c.businessName||c.business_name||c.contactName,120),
       dueAt:easternCallSlot(date),type:'SBC Next-Day Call',priority:'Normal',status:'Open',
       assignedTo:caller?.id||'',assignedToName:caller?.name||'Owner review',createdBy:req.user.id,
       notes,createdAt:ts,updatedAt:ts};
     const old={assignedTo:c.assignedTo,nextAction:c.nextAction,followUpAt:c.followUpAt,followUp:c.followUp,websiteDemoUrl:c.websiteDemoUrl};
     changed.push({c,old});
     if(caller)c.assignedTo=caller.id;
-    c.nextAction='Next-day outbound call planned '+date+'; introductory email DRAFT ONLY (not sent). Review CRM and contact restrictions.';
+    c.nextAction='Owner-reviewed follow-up call planned '+date+'; introductory email DRAFT ONLY (not sent). Review CRM and contact restrictions.';
     c.followUpAt=date;
     c.followUp=date;
     if(demo?.ready)c.websiteDemoUrl=demo.url;

@@ -1,14 +1,14 @@
-/* SBC Next-Day Sales Prep V1 — owner review and draft-only call planning. */
+/* SBC Sales Follow-Up Prep — default seven-day lead review; existing API remains compatible. */
 (function(){
  'use strict';
  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const $=id=>document.getElementById(id);
  let rows=[],callers=[],busy=false,emailStatus={ready:false};
  const api=(p,o)=>window.api(p,o?{method:'POST',body:JSON.stringify(o),timeoutMs:20000}:{timeoutMs:20000});
- function tomorrow(){
+ function nextWeekDate(){
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   const m=Object.fromEntries(parts.map(x=>[x.type,x.value]));
-  let d=new Date(Date.UTC(+m.year,+m.month-1,+m.day+1,12));
+  let d=new Date(Date.UTC(+m.year,+m.month-1,+m.day+7,12));
   while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
   return d.toISOString().slice(0,10);
  }
@@ -185,7 +185,7 @@ async function load(){
   if(!chosen.length)return msg('Select at least one eligible lead.',true);
   if(!$('sbc-nextday-reviewed')?.checked)return msg('Owner must confirm contact/source review before preparing calls.',true);
   const date=$('sbc-nextday-date')?.value;
-  if(!window.confirm('Create '+chosen.length+' next-day call tasks for '+date+'? Emails remain DRAFT ONLY. Nothing will be sent.'))return;
+  if(!window.confirm('Create '+chosen.length+' follow-up call tasks for '+date+'? Emails remain DRAFT ONLY. Nothing will be sent.'))return;
   busy=true;const b=$('sbc-nextday-submit');if(b)b.disabled=true;
   try{
    const r=await api('/api/owner/nextday/prepare',{leadIds:chosen,callDate:date,
@@ -199,8 +199,8 @@ async function load(){
  window.sbcOpenNextDaySalesPrep=function(){
   // The server enforces authenticated owner-only endpoints; don't rely on a client global for authorization.
   if(typeof window.openModal!=='function'||typeof window.api!=='function')return;
-  window.openModal('Prepare Tomorrow · SBC Sales',
-   '<p><strong>Owner-reviewed lead preparation.</strong> Select verified prospects, assign a caller, and create tomorrow’s tasks. Introductory emails are only drafts; no mass emails or auto calls are sent.</p>'+
+  window.openModal('Plan Next Week · SBC Sales',
+   '<p><strong>Owner-reviewed lead preparation.</strong> Select verified prospects, assign a caller, and create next-week follow-up tasks. Introductory emails are only drafts; no mass emails or auto calls are sent.</p>'+
    '<div class="form-grid"><label>Review up to<select id="sbc-nextday-limit"><option>10</option><option>15</option><option>20</option></select></label>'+
    '<label>Call day<input id="sbc-nextday-date" type="date" required></label>'+
    '<label>Assign to<select id="sbc-nextday-caller"></select></label></div>'+
@@ -211,11 +211,11 @@ async function load(){
    '<h3>Verified prospects ready for owner review</h3><div id="sbc-nextday-candidates"></div>'+ 
    '<details><summary>Research and verification needed</summary><div id="sbc-nextday-review-list"></div></details>'+
    '<h3>Example email · preview only</h3><textarea id="sbc-nextday-email-draft" readonly rows="12" style="width:100%"></textarea>'+
-   '<p><label><input id="sbc-nextday-reviewed" type="checkbox"> I reviewed lead sources, DNC/opt-outs, applicable calling permissions, and next-business-day timing.</label></p>'+
-   '<button type="button" class="btn primary" id="sbc-nextday-submit">Prepare Next-Day Call Tasks</button>'+
+   '<p><label><input id="sbc-nextday-reviewed" type="checkbox"> I reviewed lead sources, DNC/opt-outs, applicable calling permissions, and your selected follow-up date and contact restrictions.</label></p>'+
+   '<button type="button" class="btn primary" id="sbc-nextday-submit">Prepare Follow-Up Call Tasks</button>'+
    '<p id="sbc-nextday-note" role="status"></p><h3>Prepared queue</h3><div id="sbc-nextday-queue"></div>'+
    '<p><small>Using info@sbcmia.com for public communication drafts. Provide verified mailing address and approved sending policy before enabling commercial email delivery.</small></p>');
-  if($('sbc-nextday-date'))$('sbc-nextday-date').value=tomorrow();
+  if($('sbc-nextday-date'))$('sbc-nextday-date').value=nextWeekDate();
   $('sbc-nextday-refresh')?.addEventListener('click',load);
   $('sbc-nextday-limit')?.addEventListener('change',load);
   $('sbc-nextday-submit')?.addEventListener('click',prepare);
@@ -230,8 +230,8 @@ async function load(){
    const p=await api('/api/owner/nextday/priorities');
    if(!p?.ok)return;
    const n=Number(p.dueCount||0);
-   nav.textContent=n>0?'☎ Prepare Tomorrow · '+n+' need review':'☎ Prepare Tomorrow';
-   nav.setAttribute('aria-label',n>0?n+' SBC sales items need review':'Prepare tomorrow sales');
+   nav.textContent=n>0?'☎ Plan Next Week · '+n+' need review':'☎ Plan Next Week';
+   nav.setAttribute('aria-label',n>0?n+' SBC sales items need review':'Plan sales follow-ups');
   }catch(_){ /* no false zero on failed status read */ }
  }
  window.addEventListener('focus',refreshDueAlert);

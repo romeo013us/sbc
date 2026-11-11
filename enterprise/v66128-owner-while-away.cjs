@@ -138,9 +138,27 @@ function summarize({tenantId,users,events,crmRows,shiftEntries,now=Date.now(),ho
  warnings.push('Only server-recorded actions appear; this is not a screen or keystroke monitor.');
  warnings.push('Browser-only shift checklists are not counted as completed work or payroll evidence.');
  warnings.push('Saved leads are not automatically verified, qualified or approved for outbound calling.');
+ // V66.152: owner action list is derived only from recorded evidence. No AI,
+ // external messaging, task creation or staff/payroll judgement.
+ const ownerActions=[];
+ const newLeads=people.reduce((n,p)=>n+p.leadsSaved,0);
+ if(newLeads>0)ownerActions.push({kind:'LEAD_REVIEW',count:newLeads,
+   label:'Review '+newLeads+' newly saved leads for verification, DNC and calling readiness.',
+   detail:'Research-complete does not mean verified or authorized for outreach.'});
+ const unmatched=people.reduce((n,p)=>n+p.unverifiedLeadEvents,0);
+ if(unmatched>0)ownerActions.push({kind:'CRM_LINK_REVIEW',count:unmatched,
+   label:'Review '+unmatched+' lead-save audit events without matching CRM records.',
+   detail:'Do not delete, reimport or assume records are missing without a read-only reconciliation.'});
+ const unfinished=people.filter(p=>p.lastShift&&p.lastShift.status==='OPEN_OR_MISSING_CLOCK_OUT'&&
+   end-stamp(p.lastShift.clockIn)>=12*3600000);
+ if(unfinished.length)ownerActions.push({kind:'SHIFT_REVIEW',count:unfinished.length,
+   label:'Check '+unfinished.length+' older shift records with no clock-out.',
+   detail:'A missing clock-out does not prove hours worked or authorize a payroll adjustment.'});
+ if(truncated)ownerActions.push({kind:'AUDIT_LIMIT',count:1,
+   label:'Review the incomplete audit window.',detail:'The event limit was reached; report totals can be incomplete.'});
  return {ok:true,readOnly:true,modelCreditsUsed:0,generatedAt:new Date(end).toISOString(),
   window:{hours:span,since:new Date(start).toISOString(),until:new Date(end).toISOString(),timeZone:'America/New_York'},
   source:'TENANT_MYSQL_AUDIT_AND_CRM_PLUS_RECORDED_CLOCK',totals,employees:people,
-  timeline:timeline.slice(0,100),unverifiableEvents:unverifiable,truncated:Boolean(truncated),warnings};
+  timeline:timeline.slice(0,100),ownerActions:ownerActions.slice(0,4),unverifiableEvents:unverifiable,truncated:Boolean(truncated),warnings};
 }
 module.exports={eligibleUsers,summarize,classify};
