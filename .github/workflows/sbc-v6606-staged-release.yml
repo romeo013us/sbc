@@ -603,12 +603,16 @@ jobs:
           for(const token of ['SBC_V6606_QUOTE_WRITER_HARDENING','SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE','SBC_V6608_PROSPECT_CSV_PRIVACY_GATE','owner-verified-zero-vendor-cost','SBC_V6670_QUOTE_ORDER_TRANSACTION_INTEGRITY'])
             assert.ok(fs.readFileSync(path.join(temp,'server.js'),'utf8').includes(token),'Missing runtime guard: '+token);
           NODE
-          # Eight pinned release assets: server, both enterprise modules, both UI bundles and the three release attestations.
+          # Ten pinned release assets: server, both enterprise modules, both UI bundle pairs (app + v10) and three release attestations.
           cp "$temp/server.js" server.js
           cp "$temp/enterprise/v56150-revenue-autopilot.js" enterprise/v56150-revenue-autopilot.js
           cp "$temp/enterprise/sbc-unattended-notifications-v6504.cjs" enterprise/sbc-unattended-notifications-v6504.cjs
           cp "$temp/public/app.js" public/app.js
           cp "$temp/browser_public/app.js" browser_public/app.js
+          # V66.150 HR role selection is compiled into v10.js in the isolated ZIP.
+          # Its mirror checksums must match the release inventory before publishing.
+          cp "$temp/public/v10.js" public/v10.js
+          cp "$temp/browser_public/v10.js" browser_public/v10.js
           cp "$temp/SBC-FLAT-RELEASE-IDENTITY.json" SBC-FLAT-RELEASE-IDENTITY.json
           cp "$temp/SBC-STAGED-INVENTORY.json" SBC-STAGED-INVENTORY.json
           cp "$temp/SBC-DEPLOY-RECEIPT.json" SBC-DEPLOY-RECEIPT.json
@@ -616,16 +620,19 @@ jobs:
           node --check server.js
           node --check public/app.js
           node --check browser_public/app.js
+          node --check public/v10.js
+          node --check browser_public/v10.js
+          cmp public/v10.js browser_public/v10.js
           node --check sbc-godaddy-flat-entrypoint.cjs
           BRANCH='a-sbc-master'
           git switch -c "sbc-master-verified-$(printf '%.12s' "$GITHUB_SHA")"
-          git add server.js enterprise/v56150-revenue-autopilot.js enterprise/sbc-unattended-notifications-v6504.cjs public/app.js browser_public/app.js SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json SBC-DEPLOY-RECEIPT.json
+          git add server.js enterprise/v56150-revenue-autopilot.js enterprise/sbc-unattended-notifications-v6504.cjs public/app.js browser_public/app.js public/v10.js browser_public/v10.js SBC-FLAT-RELEASE-IDENTITY.json SBC-STAGED-INVENTORY.json SBC-DEPLOY-RECEIPT.json
           node - <<'NODE'
           const cp=require('node:child_process'),assert=require('node:assert/strict');
           const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
-          const allowed=new Set(['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','public/app.js','browser_public/app.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
+          const allowed=new Set(['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','public/app.js','browser_public/app.js','public/v10.js','browser_public/v10.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json']);
           // Source-only UI or workflow improvements may preserve identical server bytes.
-          // All eight candidate assets were copied and verified by the full SHA256
+          // All ten candidate assets were copied and verified by the full SHA256
           // inventory above; Git correctly omits unchanged files from this diff.
           // Require all THREE fresh release attestations and reject extra paths.
           assert.ok(paths.length>=3&&['SBC-DEPLOY-RECEIPT.json','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json'].every(p=>paths.includes(p))&&paths.every(x=>allowed.has(x)), 'Unexpected candidate branch mutation: '+paths.join(', '));
@@ -652,7 +659,7 @@ jobs:
           const git=(...args)=>cp.execFileSync('git',args,{encoding:'utf8',maxBuffer:8*1024*1024});
           assert.equal(git('rev-parse',remote+'^').trim(),source,
             'Branch moved to another source/release; refusing to overwrite');
-          const files=['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','public/app.js','browser_public/app.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
+          const files=['server.js','enterprise/v56150-revenue-autopilot.js','enterprise/sbc-unattended-notifications-v6504.cjs','public/app.js','browser_public/app.js','public/v10.js','browser_public/v10.js','SBC-FLAT-RELEASE-IDENTITY.json','SBC-STAGED-INVENTORY.json','SBC-DEPLOY-RECEIPT.json'];
           for(const file of files){
             assert.equal(git('show',remote+':'+file),fs.readFileSync(file,'utf8'),
               'Previously published release differs from this exact verified ZIP: '+file);
