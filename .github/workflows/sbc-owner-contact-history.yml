@@ -1,0 +1,35 @@
+name: SBC Owner Contact History Integrity
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - enterprise/v66153-owner-contact-history.cjs
+      - scripts/v66153-owner-contact-history.test.cjs
+      - server.js
+      - public/sbc-unattended-notifications-v6504.js
+      - browser_public/sbc-unattended-notifications-v6504.js
+      - .github/workflows/sbc-owner-contact-history.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-contact-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax validation
+        run: |
+          node --check server.js
+          node --check enterprise/v66153-owner-contact-history.cjs
+          node --check public/sbc-unattended-notifications-v6504.js
+          node --check scripts/v66153-owner-contact-history.test.cjs
+      - name: Owner-only contact history privacy and evidence tests
+        run: node scripts/v66153-owner-contact-history.test.cjs
+      - name: Existing employee recap and next-day sales regression tests
+        run: |
+          node scripts/v66128-owner-while-away.test.cjs
+          node scripts/v66132-nextday-outbound.test.cjs

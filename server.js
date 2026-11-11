@@ -4143,6 +4143,26 @@ app.post('/api/owner/notifications/destinations',auth,ownerOnly,(req,res)=>{
     res.json({ok:true,version:BUILD_VERSION,...result,message:'Notification destinations saved server-side. No GoDaddy secret slot was added.'});
   }catch(e){res.status(400).json({ok:false,error:e.message});}
 });
+/* SBC V66.153 OWNER CONTACT HISTORY: tenant-scoped read-only activity.
+ * Never contacts customers, updates retry state, or infers provider delivery.
+ */
+app.get('/api/owner/communications/activity',auth,ownerOnly,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const tenantId=requireRequestTenant(req),hours=Number(req.query?.hours??168);
+  if(![168,720,2160].includes(hours))return res.status(400).json({ok:false,error:'CONTACT_HISTORY_WINDOW_INVALID'});
+  if(!mysqlPool||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED)
+   return res.status(503).json({ok:false,error:'CONTACT_HISTORY_AUTHORITATIVE_DB_UNAVAILABLE'});
+  const [rows]=await mysqlPool.query(
+   "SELECT id,tenant_id,activity_type,meta_json,created_at FROM sbc_activities WHERE tenant_id=? AND activity_type IN ('email','sms','call') AND created_at>=? ORDER BY created_at DESC LIMIT 1001",
+   [tenantId,sqlDateTime(new Date(Date.now()-hours*3600000))]);
+  const model=require('./enterprise/v66153-owner-contact-history.cjs');
+  return res.json(model.summarize({tenantId,customers:db.customers,activities:(rows||[]).slice(0,1000),
+   callLogs:db.callLogs||[],callReports:db.callReports||[],now:Date.now(),hours,
+   sqlTruncated:(rows||[]).length>1000}));
+ }catch(e){console.warn('[SBC OWNER CONTACT HISTORY] read failed:',String(e?.code||'DATA_UNAVAILABLE'));
+  return res.status(503).json({ok:false,error:'CONTACT_HISTORY_READ_UNAVAILABLE',readOnly:true});}
+});
 app.get('/api/owner/notifications/status',auth,ownerOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   res.json({...SBC_UNATTENDED_NOTIFICATIONS.status(),version:BUILD_VERSION});
