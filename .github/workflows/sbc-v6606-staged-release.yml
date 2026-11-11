@@ -142,6 +142,9 @@ jobs:
           node scripts/v66148-crm-softdelete-accounting.test.cjs
           node scripts/v66148-crm-softdelete-ui.test.cjs
           node scripts/v66149-hr-workstation.test.cjs
+          node scripts/v66149-hr-policy.test.cjs
+          node scripts/v66150-hr-delegation.test.cjs
+          node scripts/v66149-hr-workstation-ui.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -296,6 +299,8 @@ jobs:
           node scripts/v66148-crm-softdelete-accounting.test.cjs --staged
           SBC_V66149_ISOLATED_STAGE=YES node scripts/v66149-stage-hr-workstation.cjs --apply
           node scripts/v66149-hr-workstation.test.cjs --staged
+          SBC_V66149_ISOLATED_STAGE=YES node scripts/v66150-stage-hr-delegation.cjs --apply
+          node scripts/v66150-hr-delegation.test.cjs --staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
@@ -307,6 +312,8 @@ jobs:
           node scripts/v66148-crm-softdelete-ui.test.cjs --staged
           SBC_V66149_ISOLATED_STAGE=YES node scripts/v66149-stage-hr-dashboard-shortcut.cjs --apply
           node scripts/v66149-stage-hr-dashboard-shortcut.cjs --verify-staged
+          SBC_V66150_ISOLATED_STAGE=YES node scripts/v66150-stage-hr-ui.cjs --apply
+          node scripts/v66149-hr-workstation-ui.test.cjs --staged
           node scripts/v66149-hr-workstation.test.cjs --staged
           node --check public/hr-department.js
           node --check browser_public/hr-department.js
