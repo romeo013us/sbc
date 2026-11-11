@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>SBC | HR Department</title>
+<style>
+:root{color-scheme:dark;--bg:#081323;--surface:#10243b;--surface2:#152e49;--border:#2a415c;--text:#eef4ff;--muted:#afc2d9;--accent:#5ec9b5;--blue:#7caaf2;--warn:#f6bf73}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+button,input{font:inherit}button,a.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#082330;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;text-decoration:none}
+button.ghost,a.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+header{background:#0c1c30;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:3}
+.top{max-width:1260px;margin:auto;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.02em}.brand small{font-weight:500;font-size:12px;color:var(--muted);display:block}.topnav{display:flex;align-items:center;gap:10px}
+main{max-width:1260px;padding:25px 20px 60px;margin:auto}h1{font-size:clamp(24px,3vw,34px);letter-spacing:-.02em;margin:0}h2{font-size:19px;margin:0 0 12px}h3{font-size:15px;margin:0}
+.subtitle{color:var(--muted);max-width:770px;margin-top:7px}.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--accent);font-weight:800}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:22px 0}
+.card,.panel{border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:18px}.card strong{display:block;font-size:27px;margin-top:6px}.small{font-size:12px;color:var(--muted)}.meta{font-size:13px;color:var(--muted)}
+.tabbar{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0}.tabbar button{background:var(--surface2);color:var(--text);border:1px solid var(--border);font-size:14px}.tabbar button[aria-selected="true"]{background:var(--accent);color:#082330}
+.panel{margin-bottom:12px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.note{background:#132c41;border-left:3px solid var(--blue);padding:13px 16px;border-radius:9px;color:var(--muted);font-size:13px;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;border-bottom:1px solid var(--border);padding:12px 10px;vertical-align:top}th{color:var(--muted);font-weight:650}td{overflow-wrap:anywhere}.tablewrap{overflow-x:auto}
+.tag{display:inline-block;border:1px solid var(--border);background:#1c3d54;border-radius:99px;padding:2px 9px;color:#dce9fc;font-size:11px}
+.negative{color:var(--warn)}.good{color:var(--accent)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+[hidden]{display:none!important}#signIn{max-width:440px;margin:60px auto}label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}input{width:100%;background:#0b1c30;color:var(--text);padding:12px 13px;border:1px solid var(--border);border-radius:9px}
+#message{margin-top:14px;white-space:pre-wrap}#loading{padding:25px}footer{border-top:1px solid var(--border);color:var(--muted);margin-top:32px;padding-top:15px;font-size:12px}
+@media(max-width:850px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:1fr}}
+@media(max-width:490px){.cards{grid-template-columns:1fr 1fr}.card{padding:14px}table{min-width:640px}.topnav .ghost{font-size:12px;padding:8px}}
+</style>
+<script defer src="/hr-department.js?v=66.149"></script>
+</head>
+<body>
+<header><div class="top"><div class="brand">SBC / PEOPLE OPERATIONS<small>Successful By Choice · Because Why Not?</small></div>
+<div class="topnav"><a class="btn ghost" href="/">← Command Center</a><button class="ghost" id="reload" type="button" hidden>Refresh</button><button class="ghost" id="logout" type="button" hidden>Sign out</button></div></div></header>
+<main>
+<div id="loading" class="panel" role="status">Checking your secure SBC session…</div>
+<section id="signIn" class="panel" hidden><p class="eyebrow">Private department workstation</p><h1>HR Department Login</h1>
+<p class="subtitle">Owner account only for this first release. HR-manager access will require separate least-privilege approval.</p>
+<form id="loginForm"><label for="username">Username</label><input id="username" name="username" required autocomplete="username" value="owner">
+<label for="password">Password</label><input id="password" name="password" required type="password" autocomplete="current-password">
+<div class="actions"><button type="submit">Sign in</button></div></form><p id="message" role="status"></p></section>
+<div id="workspace" hidden>
+<p class="eyebrow">Independent management workstation · Owner-controlled</p><h1>HR & Contractor Department</h1>
+<p class="subtitle">Manage the people side of SBC using your existing workforce, time clock and payroll data. No new subscription, no automatic payouts and no employee-classification assumptions.</p>
+<div class="note" id="alert">Records shown here are internal administrative evidence, not certified payroll, legal classifications or payment settlements.</div>
+<div class="cards" aria-label="HR overview">
+<div class="card"><span class="small">Active team members</span><strong id="staffCount">—</strong></div>
+<div class="card"><span class="small">Onboarding reviews</span><strong id="onboardingCount">—</strong></div>
+<div class="card"><span class="small">Open clock sessions</span><strong id="clockCount">—</strong></div>
+<div class="card"><span class="small">Payroll approvals awaiting owner</span><strong id="payCount">—</strong></div>
+</div>
+<div class="tabbar" role="tablist" aria-label="HR department sections">
+<button data-tab="people" type="button" role="tab" aria-selected="true">Personnel</button>
+<button data-tab="attendance" type="button" role="tab" aria-selected="false">Attendance</button>
+<button data-tab="payroll" type="button" role="tab" aria-selected="false">Payroll</button>
+<button data-tab="policies" type="button" role="tab" aria-selected="false">HR Management</button>
+</div>
+<section class="panel" data-panel="people"><h2>Personnel directory</h2><p class="meta">Accounts, roles and onboarding records from the established SBC workforce systems. No personal banking details or passwords.</p>
+<div class="tablewrap"><table><thead><tr><th>Team member</th><th>Role</th><th>Location</th><th>Onboarding</th><th>Contract record</th><th>Account</th></tr></thead><tbody id="peopleRows"></tbody></table></div></section>
+<section class="panel" data-panel="attendance" hidden><h2>Time & attendance</h2><p class="meta">Closed hours from existing clock sessions; open sessions are flagged and not assumed paid. Review and resolve corrections in the owner system.</p>
+<div class="tablewrap"><table><thead><tr><th>Team member</th><th>Closed clock hours (all history)</th><th>Open clock records</th><th>Review status</th></tr></thead><tbody id="attendanceRows"></tbody></table></div></section>
+<section class="panel" data-panel="payroll" hidden><h2>Payroll review queue</h2><p class="meta">Existing payroll runs only. An internal “Paid” label is not proof of a Wise, bank or payroll-provider transfer.</p>
+<div class="tablewrap"><table><thead><tr><th>Team member</th><th>Period</th><th>Recorded amount</th><th>Status</th><th>Reference recorded?</th></tr></thead><tbody id="payrollRows"></tbody></table></div>
+<div class="actions"><a class="btn ghost" href="/">Open Command Center to review/approve payroll</a></div></section>
+<section class="panel" data-panel="policies" hidden><h2>Department management & permissions</h2>
+<div class="grid2"><div><h3>What HR can manage in the future</h3><p class="meta">Personnel profiles, onboarding requests, attendance exceptions, training records, document status, performance reviews and draft payroll recommendations.</p></div>
+<div><h3>What stays with the SBC owner</h3><p class="meta">Final pay-rate approval, contractor classification decisions, account privileges, payroll approval, payment execution, refunds and company secrets.</p></div></div>
+<div class="note"><strong>Future HR Manager account: NOT YET ENABLED.</strong> Role-based login will require a reviewed deny-by-default server permission boundary, audit logs and owner creation of the account. Simply changing a frontend menu is not enough.</div>
+<div class="actions"><a class="btn ghost" href="/">Owner: Open workforce, payroll and training controls</a></div>
+</section>
+<footer>V66.149 · Current phase: owner HR workstation. Employee privacy preserved through owner-only authenticated endpoints. All payments remain outside this interface.</footer>
+</div></main></body></html>
