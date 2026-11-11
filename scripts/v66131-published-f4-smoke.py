@@ -20,6 +20,10 @@ from urllib.parse import parse_qs, urlsplit
 
 TIMEOUT = 12
 UA = "SBC-F4-Published-ReadOnly-Smoke/1.0 (+https://sbcmia.com)"
+DIAGNOSTIC_ROUTES = {
+    "cc_diag_direct": "https://tyvrqnjz57.c24.airoapp.ai/diag2.html",
+    "cc_diag_alias": "https://app-sbcmia.c24.airoapp.ai/diag2.html",
+}
 ENDPOINTS = {
     "cc_health": "https://tyvrqnjz57.c24.airoapp.ai/healthz",
     "cc_ready": "https://tyvrqnjz57.c24.airoapp.ai/readyz",
@@ -27,6 +31,7 @@ ENDPOINTS = {
     "cc_checkout_ui": "https://tyvrqnjz57.c24.airoapp.ai/v66-129-owner-checkout-lab.js?v=66.0.129",
     "cc_workforce_ui": "https://tyvrqnjz57.c24.airoapp.ai/v66-128-owner-while-away.js?v=66.0.128",
     "cc_lorna_ui": "https://tyvrqnjz57.c24.airoapp.ai/sbc-lorna-checklist.js?v=1",
+    **DIAGNOSTIC_ROUTES,
     "office_health": "https://31qflm5uk6.c24.airoapp.ai/healthz",
     "office_api": "https://31qflm5uk6.c24.airoapp.ai/api/health",
     "office_i18n": "https://31qflm5uk6.c24.airoapp.ai/officebox-languages-v1556.js?v=15.5.6",
@@ -63,7 +68,7 @@ def fetch_once(name: str, url: str, transport=None):
             with urllib.request.urlopen(request, timeout=TIMEOUT, context=ssl.create_default_context()) as r:
                 status = r.status
                 effective_url = r.url
-                body = r.read(384 * 1024 + 1)
+                body = b"" if name in DIAGNOSTIC_ROUTES else r.read(384 * 1024 + 1)
                 headers = dict(r.headers)
         else:
             status, effective_url, body, headers = transport(name, request)
@@ -72,7 +77,13 @@ def fetch_once(name: str, url: str, transport=None):
         if not isinstance(body, bytes):
             return {"name": name, "status": "INCONCLUSIVE", "reason": "INVALID_RESPONSE_TYPE", "http": status}
         return evaluate(name, status, body, headers, effective_url)
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, socket.timeout, ssl.SSLError) as exc:
+    except urllib.error.HTTPError as exc:
+        # An expected 403/404 is evidence only for the original diagnostic URL.
+        with exc:
+            if name in DIAGNOSTIC_ROUTES:
+                return evaluate(name, exc.code, b"", {}, exc.url)
+            return {"name": name, "status": "UNVERIFIED", "reason": type(exc).__name__, "http": exc.code}
+    except (urllib.error.URLError, TimeoutError, socket.timeout, ssl.SSLError) as exc:
         # Don't emit provider response bodies, tokens or headers.
         err = type(exc).__name__
         code = getattr(exc, "code", None)
@@ -90,6 +101,16 @@ def fetch(name: str, url: str, transport=None):
 
 def evaluate(name, status, body, headers, url):
     result = {"name": name, "status": "UNVERIFIED", "http": int(status), "reason": ""}
+    if name in DIAGNOSTIC_ROUTES:
+        if url != DIAGNOSTIC_ROUTES[name]:
+            result["reason"] = "DIAGNOSTIC_URL_REDIRECTED"
+        elif status in (403, 404):
+            result.update(status="VERIFIED", reason="DIAGNOSTIC_ROUTE_CLOSED")
+        elif status == 200:
+            result["reason"] = "DIAGNOSTIC_ROUTE_STILL_SERVES_CONTENT"
+        else:
+            result["reason"] = "DIAGNOSTIC_CLOSURE_UNCONFIRMED"
+        return result
     if name in {"cc_health", "office_health"}:
         commit = header(headers, "x-sbc-source-commit")
         if re.fullmatch(r"[a-f0-9]{40}", commit):
@@ -209,7 +230,7 @@ def evaluate(name, status, body, headers, url):
 
 
 def selftest():
-    assert set(ENDPOINTS) == REQUIRED | LATEST_UI | RESELLER_PATHS.keys()
+    assert set(ENDPOINTS) == REQUIRED | LATEST_UI | RESELLER_PATHS.keys() | DIAGNOSTIC_ROUTES.keys()
     for url in ENDPOINTS.values():
         assert url.startswith("https://")
         assert set(parse_qs(urlsplit(url).query)) <= {"v", "pl_id", "plid"}
@@ -240,6 +261,14 @@ def selftest():
     assert fetch("office_health", ENDPOINTS["office_health"], transport=lambda n, r: (
         401, r.full_url, b"", {}
     ))["status"] == "UNVERIFIED"
+    def missing(_name, request):
+        raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, None)
+
+    for name, url in DIAGNOSTIC_ROUTES.items():
+        assert fetch(name, url, transport=missing)["status"] == "VERIFIED"
+        assert evaluate(name, 403, b"", {}, url)["status"] == "VERIFIED"
+        assert evaluate(name, 200, b"", {}, url)["reason"] == "DIAGNOSTIC_ROUTE_STILL_SERVES_CONTENT"
+        assert evaluate(name, 404, b"", {}, "https://example.test/diag2.html")["status"] == "UNVERIFIED"
     print("[SBC F4 LIVE PUBLIC SMOKE] SELFTEST PASS: GET only, provider-independent, fail-closed and diagnostic-safe")
 
 
@@ -254,6 +283,7 @@ def run(args):
     ok = all(obs["status"] == "VERIFIED" for obs in observations if obs["name"] in REQUIRED)
     latest_ui = all(obs["status"] == "VERIFIED" for obs in observations if obs["name"] in LATEST_UI)
     by_name = {obs["name"]: obs for obs in observations}
+    diagnostics_closed = all(by_name[name]["status"] == "VERIFIED" for name in DIAGNOSTIC_ROUTES)
     expectations = (
         ("Command Center", "cc_health", "sourceCommit", args.expect_cc),
         ("Office Box", "office_health", "sourceCommit", args.expect_office),
@@ -267,6 +297,7 @@ def run(args):
     selected_paths = []
     if args.expect_cc:
         selected_paths.append("cc_lorna_ui")
+        selected_paths.extend(DIAGNOSTIC_ROUTES)
     if args.expect_office:
         selected_paths.append("office_locale_ui")
     if args.require_reseller_paths:
@@ -279,6 +310,7 @@ def run(args):
         "observedAtUtc": dt.datetime.now(dt.timezone.utc).isoformat(),
         "requiredPublicChecksPassed": ok,
         "latestUiAssetsServed": latest_ui,
+        "commandCenterDiagnosticRoutesClosed": diagnostics_closed,
         "forbiddenOperationsPerformed": 0,
         "providerCharges": 0,
         "liveOfficeBoxFederationAuthenticated": "NOT_TESTED_OWNER_AUTH_REQUIRED",
@@ -302,6 +334,7 @@ def run(args):
         "",
         f"**Required public checks across all four products:** {'PASS' if ok else 'NOT VERIFIED'}.",
         f"**Latest workstation and Office Box UI assets:** {'SERVED' if latest_ui else 'NOT VERIFIED'}.",
+        f"**Command Center diagnostic route on both public hosts:** {'CLOSED' if diagnostics_closed else 'CLOSURE UNVERIFIED'}.",
         "",
     ]
     for label, item in evidence.items():
