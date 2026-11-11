@@ -585,7 +585,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
  </a>
 
  <nav class="nav-links" aria-label="Primary navigation">
-        <button id="sbc-account-button" type="button" class="nav-cta" onclick="SBCPortal.open()">
+        <button id="sbc-account-button" type="button" class="nav-cta" aria-haspopup="dialog" aria-controls="sbc-v27-portal" onclick="SBCPortal.open(this)">
           <i class="fa-solid fa-user"></i> My SBC Account
         </button>
  <a href="#services">Services</a>
@@ -599,7 +599,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
  <a class="nav-cta" href="tel:3054961065"><i class="fa-solid fa-phone"></i> Talk to SBC</a>
  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav"><i class="fa-solid fa-bars"></i></button>
  </div>
- <button id="sbc-mobile-account-button" type="button" class="btn btn-orange" style="margin:10px 0 14px;width:100%;" onclick="SBCPortal.open()"><i class="fa-solid fa-user"></i> My SBC Account</button>\n<div class="mobile-nav" id="mobileNav">
+ <button id="sbc-mobile-account-button" type="button" class="btn btn-orange" style="margin:10px 0 14px;width:100%;" aria-haspopup="dialog" aria-controls="sbc-v27-portal" onclick="SBCPortal.open(this)"><i class="fa-solid fa-user"></i> My SBC Account</button>
+ <div class="mobile-nav" id="mobileNav">
  <div class="container mobile-nav-inner">
  <a href="#services">Services</a>
  <a href="#pricing">Packages</a>
@@ -778,7 +779,7 @@ Successful By Choice makes it easier to build a professional business presence w
   <div class="section-heading">
    <span class="eyebrow">SBC business packages</span>
    <h2>Choose the package that fits your business. Then let’s build.</h2>
-   <p>Three straightforward options make it easier to get the business essentials you need without sorting through a long list of separate services.</p>
+   <p>Four packages cover business visibility, a first website, a larger website, or a complete launch.</p>
   </div>
 
   <div class="sales-callout">
@@ -823,8 +824,8 @@ Successful By Choice makes it easier to build a professional business presence w
 
    <article class="price-card featured">
     <span class="popular-tag">Most Popular</span>
-    <span class="package-badge"><i class="fa-solid fa-briefcase"></i> Essentials</span>
-    <h3>Business Essentials</h3>
+    <span class="package-badge"><i class="fa-solid fa-briefcase"></i> Basic</span>
+    <h3>Business Basic</h3>
     <p class="desc">A stronger everyday package for an established small business that needs a more complete professional presence.</p>
     <div class="price">$349 <small>setup</small></div>
     <div class="value">More tools. More presence.</div>
@@ -835,7 +836,7 @@ Successful By Choice makes it easier to build a professional business presence w
      <li><i class="fa-solid fa-check"></i> 200 business cards</li>
      <li><i class="fa-solid fa-check"></i> Basic maintenance support</li>
     </ul>
-    <a class="btn btn-orange price-btn" href="https://square.link/u/uf53mzCR" target="_blank" rel="noopener">Choose $349 Essentials</a>
+    <a class="btn btn-orange price-btn" href="https://square.link/u/uf53mzCR" target="_blank" rel="noopener">Choose Business Basic for $349</a>
    </article>
 
    <article class="price-card">
@@ -1269,30 +1270,30 @@ Successful By Choice makes it easier to build a professional business presence w
   <div id="sbc-v27-portal" role="dialog" aria-modal="true" aria-label="SBC Customer Account">
     <div class="phead">
       <strong><i class="fa-solid fa-user-circle"></i> My SBC Account</strong>
-      <button class="x" type="button" onclick="SBCPortal.close()" aria-label="Close">×</button>
+      <button id="sbc-portal-close" class="x" type="button" onclick="SBCPortal.close()" aria-label="Close">×</button>
     </div>
     <div class="pbody">
-      <div id="sbc-portal-message"></div>
+      <div id="sbc-portal-message" aria-live="polite"></div>
       <div id="sbc-auth-area">
         <div class="tabs">
           <button id="sbc-login-tab" class="active" onclick="SBCPortal.mode('login')">Log In</button>
           <button id="sbc-register-tab" onclick="SBCPortal.mode('register')">Create Account</button>
         </div>
         <form id="sbc-login-form" onsubmit="SBCPortal.submitLogin(event)">
-          <label>Email</label><input id="sbc-login-email" type="email" required autocomplete="email">
-          <label>Password</label><input id="sbc-login-password" type="password" required autocomplete="current-password">
+          <label for="sbc-login-email">Email</label><input id="sbc-login-email" type="email" required autocomplete="email">
+          <label for="sbc-login-password">Password</label><input id="sbc-login-password" type="password" required autocomplete="current-password">
           <button class="btn btn-orange" style="width:100%;margin-top:16px" type="submit">Log In</button>
         </form>
         <form id="sbc-register-form" style="display:none" onsubmit="SBCPortal.submitRegister(event)">
-          <label>Your Name</label><input id="sbc-reg-name" required autocomplete="name">
-          <label>Business Name</label><input id="sbc-reg-business" required autocomplete="organization">
-          <label>Email</label><input id="sbc-reg-email" type="email" required autocomplete="email">
-          <label>Password</label><input id="sbc-reg-password" type="password" minlength="8" required autocomplete="new-password">
+          <label for="sbc-reg-name">Your Name</label><input id="sbc-reg-name" required autocomplete="name">
+          <label for="sbc-reg-business">Business Name</label><input id="sbc-reg-business" required autocomplete="organization">
+          <label for="sbc-reg-email">Email</label><input id="sbc-reg-email" type="email" required autocomplete="email">
+          <label for="sbc-reg-password">Password</label><input id="sbc-reg-password" type="password" minlength="8" required autocomplete="new-password">
           <button class="btn btn-orange" style="width:100%;margin-top:16px" type="submit">Create My SBC Account</button>
         </form>
       </div>
       <div id="sbc-account-area" style="display:none">
-        <h3 id="sbc-account-welcome"></h3>
+        <h3 id="sbc-account-welcome" tabindex="-1"></h3>
         <div class="account-grid">
           <div class="account-card"><h4>📦 My Services</h4><span id="sbc-account-services">Loading…</span></div>
           <div class="account-card"><h4>🧾 My Orders</h4><span id="sbc-account-orders">Loading…</span></div>
@@ -1316,6 +1317,9 @@ Successful By Choice makes it easier to build a professional business presence w
 const SBCPortal=(function(){
   const A='/index.php?sbc_portal=';
   const el=id=>document.getElementById(id);
+  const backdrop=el('sbc-v27-portal-backdrop');
+  const dialog=el('sbc-v27-portal');
+  let opener=null;
   async function api(action,opts={}){
     const r=await fetch(A+encodeURIComponent(action),{credentials:'include',...opts});
     let j={}; try{j=await r.json()}catch(e){}
@@ -1324,16 +1328,50 @@ const SBCPortal=(function(){
   }
   function msg(t,type=''){el('sbc-portal-message').innerHTML=t?'<div class="pmsg '+type+'">'+esc(t)+'</div>':''}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  function open(){el('sbc-v27-portal-backdrop').classList.add('open');el('sbc-v27-portal-backdrop').setAttribute('aria-hidden','false');check()}
-  function close(){el('sbc-v27-portal-backdrop').classList.remove('open');el('sbc-v27-portal-backdrop').setAttribute('aria-hidden','true')}
+  function open(trigger=document.activeElement){
+    if(backdrop.classList.contains('open'))return;
+    opener=trigger;
+    backdrop.classList.add('open');
+    backdrop.setAttribute('aria-hidden','false');
+    el('sbc-portal-close').focus();
+    check();
+  }
+  function close(){
+    if(!backdrop.classList.contains('open'))return;
+    backdrop.classList.remove('open');
+    if(opener?.isConnected&&opener.getClientRects().length)opener.focus();
+    else if(el('mobileMenuBtn')?.getClientRects().length)el('mobileMenuBtn').focus();
+    backdrop.setAttribute('aria-hidden','true');
+    opener=null;
+  }
+  document.addEventListener('keydown',event=>{
+    if(!backdrop.classList.contains('open'))return;
+    if(event.key==='Escape'){
+      event.preventDefault();
+      close();
+      return;
+    }
+    if(event.key!=='Tab')return;
+    const controls=Array.from(dialog.querySelectorAll(
+      'button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex]'
+    )).filter(control=>control.tabIndex>=0&&control.getClientRects().length);
+    const first=controls[0],last=controls.at(-1),active=document.activeElement;
+    if(!first)return;
+    if(!dialog.contains(active)||active===(event.shiftKey?first:last)){
+      event.preventDefault();
+      (event.shiftKey?last:first).focus();
+    }
+  });
   function mode(m){el('sbc-login-form').style.display=m==='login'?'block':'none';el('sbc-register-form').style.display=m==='register'?'block':'none';el('sbc-login-tab').classList.toggle('active',m==='login');el('sbc-register-tab').classList.toggle('active',m==='register');msg('')}
   async function check(){try{await refresh()}catch(e){el('sbc-auth-area').style.display='block';el('sbc-account-area').style.display='none'}}
   async function submitLogin(e){e.preventDefault();msg('Signing you in…');try{await api('login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:el('sbc-login-email').value,password:el('sbc-login-password').value})});msg('Welcome back.','ok');await refresh()}catch(x){msg(x.message,'err')}}
   async function submitRegister(e){e.preventDefault();msg('Creating your SBC account…');try{await api('register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:el('sbc-reg-name').value,businessName:el('sbc-reg-business').value,email:el('sbc-reg-email').value,password:el('sbc-reg-password').value})});msg('Your SBC account is ready.','ok');await refresh()}catch(x){msg(x.message,'err')}}
   async function refresh(){
     const p=await api('profile'); const c=p.customer||p.user||p;
+    const authHadFocus=el('sbc-auth-area').contains(document.activeElement);
     el('sbc-auth-area').style.display='none';el('sbc-account-area').style.display='block';
     el('sbc-account-welcome').textContent='Welcome, '+(c.name||c.contactName||c.businessName||'SBC Customer')+' 👋';
+    if(authHadFocus&&backdrop.classList.contains('open'))el('sbc-account-welcome').focus();
     try{const j=await api('services');const a=j.services||j.items||[];el('sbc-account-services').textContent=a.length+' service'+(a.length===1?'':'s')}catch(e){el('sbc-account-services').textContent='See Command Center'}
     try{const j=await api('orders');const a=j.orders||j.items||[];el('sbc-account-orders').innerHTML=a.length?a.map(x=>'<div style="padding:10px 0;border-bottom:1px solid #e2e8f0"><strong>'+esc(x.product||x.id)+'</strong><br><span class="muted">Order '+esc(x.id)+' · $'+Number(x.price||0).toFixed(2)+' · '+esc(x.paymentStatus||x.status||'Pending')+'</span>'+(x.paymentUrl&&String(x.paymentStatus||'').toUpperCase()!=='PAID'?'<br><a class="btn btn-orange" style="display:inline-block;margin-top:7px" target="_blank" rel="noopener" href="'+esc(x.paymentUrl)+'">Pay Securely via Square</a>':'')+'</div>').join(''):'No orders yet.'}catch(e){el('sbc-account-orders').textContent='Orders are temporarily unavailable.'}
     try{const j=await api('messages');const a=j.messages||j.items||[];el('sbc-account-messages').innerHTML=a.length?a.map(x=>'<div style="padding:8px;border-bottom:1px solid #e2e8f0"><b>'+esc(x.senderName||x.sender||'SBC')+'</b><br>'+esc(x.message||x.body||x.content||'')+'</div>').join(''):'<span class="muted">No messages yet.</span>'}catch(e){el('sbc-account-messages').textContent='Messages are temporarily unavailable.'}

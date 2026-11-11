@@ -6,6 +6,15 @@ on:
       - index.php
       - enterprise/v6660-website-bridge.cjs
       - scripts/sbcmia-php-bridge-contract.test.js
+      - scripts/sbcmia-public-portal.test.cjs
+      - .github/workflows/sbcmia-php-bridge-contract.yml
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - index.php
+      - enterprise/v6660-website-bridge.cjs
+      - scripts/sbcmia-php-bridge-contract.test.js
+      - scripts/sbcmia-public-portal.test.cjs
       - .github/workflows/sbcmia-php-bridge-contract.yml
   workflow_dispatch:
 permissions:
@@ -28,3 +37,5 @@ jobs:
         run: php -l index.php
       - name: Verify signed PHP/Node HMAC bridge with tamper and replay guards
         run: node scripts/sbcmia-php-bridge-contract.test.js
+      - name: Verify customer portal keyboard controls and Square offer copy
+        run: node scripts/sbcmia-public-portal.test.cjs
