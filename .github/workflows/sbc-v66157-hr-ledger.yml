@@ -1,0 +1,27 @@
+name: SBC V66 HR Ledger Retention Safety
+on:
+  push:
+    branches: [a-sbc-master, fix/v66157-hr-ledger-staged-20261111]
+    paths:
+      - scripts/v66157-stage-hr-ledger-retention.cjs
+      - scripts/v66157-hr-ledger-retention.test.cjs
+      - .github/workflows/sbc-v66157-hr-ledger.yml
+      - .github/workflows/sbc-v6606-staged-release.yml
+  pull_request:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hr-ledger-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: '22'
+      - run: node scripts/v66157-hr-ledger-retention.test.cjs
+      - run: node scripts/v66150-hr-delegation.test.cjs
+      - run: node scripts/v66149-hr-policy.test.cjs
+      - run: node scripts/v66151-hr-release-parity.test.cjs

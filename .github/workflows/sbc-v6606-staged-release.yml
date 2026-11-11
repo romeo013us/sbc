@@ -146,6 +146,7 @@ jobs:
           node scripts/v66149-hr-workstation.test.cjs
           node scripts/v66149-hr-policy.test.cjs
           node scripts/v66150-hr-delegation.test.cjs
+          node scripts/v66157-hr-ledger-retention.test.cjs
           node scripts/v66149-hr-workstation-ui.test.cjs
           node scripts/v66151-hr-release-parity.test.cjs
           node scripts/v66101-caller-least-privilege.test.cjs
@@ -304,6 +305,9 @@ jobs:
           node scripts/v66149-hr-workstation.test.cjs --staged
           SBC_V66149_ISOLATED_STAGE=YES node scripts/v66150-stage-hr-delegation.cjs --apply
           node scripts/v66150-hr-delegation.test.cjs --staged
+          SBC_V66157_ISOLATED_STAGE=YES node scripts/v66157-stage-hr-ledger-retention.cjs --apply
+          node scripts/v66157-hr-ledger-retention.test.cjs --staged
+          node scripts/v66157-stage-hr-ledger-retention.cjs --verify-staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
