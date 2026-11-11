@@ -6240,7 +6240,7 @@ async function purgeRemovedEmployeeMysql(){
   removed+=await exec("UPDATE sbc_customers SET assigned_to='' WHERE assigned_to IN (?)",[idList]);
     return {mysql:true,removed};
 }
-function v9save(v){db.settings.v9=v;return saveData()}
+function v9save(v){ /* SBC_V66157_HR_LEDGER_RETENTION */ const prior=db.settings.v9||{};db.settings.v9={...prior,...v};try{return Promise.resolve(saveData()).catch(e=>{db.settings.v9=prior;throw e})}catch(e){db.settings.v9=prior;throw e}}
 function megaDefault(){return {nextActions:[],approvals:[],projects:[],tickets:[],automationEvents:[],automationFailures:[],fulfillmentJobs:[],websiteDemos:[],presentationPortals:[],leadIntelligence:[],settings:{staleLeadDays:2,followupGraceHours:24,appointmentReminderHours:24,renewalReminderDays:[60,30,14,7],reviewDelayDays:1,autoAssignSales:true,autoVendorSubmit:false,demoAutoDeploy:false},updatedAt:now()}}
 function megaData(){const x=db.megaOpsStore||db.settings.megaOps||{};return {...megaDefault(),...x,nextActions:Array.isArray(x.nextActions)?x.nextActions:[],approvals:Array.isArray(x.approvals)?x.approvals:[],projects:Array.isArray(x.projects)?x.projects:[],tickets:Array.isArray(x.tickets)?x.tickets:[],automationEvents:Array.isArray(x.automationEvents)?x.automationEvents:[],automationFailures:Array.isArray(x.automationFailures)?x.automationFailures:[],fulfillmentJobs:Array.isArray(x.fulfillmentJobs)?x.fulfillmentJobs:[],websiteDemos:Array.isArray(x.websiteDemos)?x.websiteDemos:[],presentationPortals:Array.isArray(x.presentationPortals)?x.presentationPortals:[],leadIntelligence:Array.isArray(x.leadIntelligence)?x.leadIntelligence:[],settings:{...megaDefault().settings,...(x.settings||{})}}}
 
@@ -6597,8 +6597,8 @@ async function sbcHrSave(v,ops){
   throw Object.assign(Error('HR_PUBLISHED_WRITER_REQUIRED'),{status:423});
  const prev=db.settings.v9;
  try{
-  const committed=await v9save({...v,hrOps:{drafts:ops.drafts.slice(0,200),
-   preferences:ops.preferences,reviewLog:ops.reviewLog.slice(0,300)}});
+  const committed=await v9save({...v,hrOps:{drafts:[...ops.drafts],
+   preferences:{...ops.preferences},reviewLog:[...ops.reviewLog]}});
   if(committed?.skipped)throw Error('HR_NON_DURABLE_COMMIT_REFUSED');
  }catch(e){db.settings.v9=prev;throw Object.assign(Error('HR_LEDGER_COMMIT_FAILED'),{status:503})}
 }
