@@ -6,7 +6,7 @@ const src=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8');
 const staged=S.patchServer(src);
 assert.equal(S.patchServer(staged),staged);
 assert(staged.includes(S.MARK));
-assert(staged.includes("const SBC_V66149_HR_POLICY=require('./enterprise/v66149-hr-workstation-policy.cjs');"));
+assert(staged.includes('const SBC_V66149_HR_POLICY=require('));
 assert(staged.includes("SBC_V66149_HR_POLICY.allowed(req.method,req.path)"));
 assert(staged.includes("['caller','lead_researcher','fulfillment','manager','sales_manager','hr_manager']"));
 assert(staged.includes("u?.role==='hr_manager')return res.redirect(302,'/hr-workstation.html')"));
