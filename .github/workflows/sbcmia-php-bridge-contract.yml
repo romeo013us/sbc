@@ -1,0 +1,30 @@
+name: SBCMIA PHP bridge signature contract
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - index.php
+      - enterprise/v6660-website-bridge.cjs
+      - scripts/sbcmia-php-bridge-contract.test.js
+      - .github/workflows/sbcmia-php-bridge-contract.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bridge-contract:
+    name: PHP lint + signed website to Command Center contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Lint SBCMIA PHP
+        run: php -l index.php
+      - name: Verify signed PHP/Node HMAC bridge with tamper and replay guards
+        run: node scripts/sbcmia-php-bridge-contract.test.js
