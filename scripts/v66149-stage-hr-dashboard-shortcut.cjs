@@ -10,7 +10,16 @@ const FN="\n/* SBC_V66149_HR_DEPARTMENT_SHORTCUT — owner only. */\nfunction sb
 
 function patchApp(raw){
  let s=String(raw||'');
- if(s.includes(MARK))return s;
+ if(s.includes(MARK)){
+  // Earlier compiled masters already have the HR button but target the
+  // retired read-only station. Upgrade precisely that link, never duplicate
+  // launchers or change unrelated navigation.
+  const oldTarget="window.location.assign('/hr-department.html');";
+  const newTarget="window.location.assign('/hr-workstation.html');";
+  if(s.includes(newTarget))return s;
+  if(s.split(oldTarget).length!==2)throw Error('HR_OWNER_EXISTING_LINK_UNEXPECTED');
+  return s.replace(oldTarget,newTarget);
+ }
  if(!s.includes('SBC_V66148_SOFT_DELETED_CRM_TRUTH_UI'))throw Error('HR_REQUIRES_CURRENT_SBC_OWNER_BASELINE');
  if(s.split(OLD).length!==2)throw Error('HR_OWNER_BUTTON_ANCHOR_NOT_UNIQUE');
  s=s.replace(OLD,NEW);
