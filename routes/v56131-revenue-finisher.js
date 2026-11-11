@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const path = require('path');
 const TIER1 = require('../enterprise/v562-tier1-architecture');
+const CRM_TEXT = require('../enterprise/crm-text-integrity-v66140.cjs');
 
 const MAX_ROWS = Math.max(1, Math.min(1000, Number(process.env.SBC_MAX_LEAD_IMPORT_ROWS || 500)));
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -17,8 +18,10 @@ function csvPreview(bytes, filename){
   const rows = TIER1.parseCsvBinary(bytes,{maxBytes:MAX_BYTES,maxRows:MAX_ROWS});
   const headers = rows[0] || [];
   const data = rows.slice(1);
-  const mapped = data.slice(0,25).map(r=>Object.fromEntries(headers.map((h,i)=>[clean(h,120),r[i]||''])));
-  return {headers,rows:data.length,preview:mapped};
+  const records=data.map(r=>Object.fromEntries(headers.map((h,i)=>[clean(h,120),r[i]||''])));
+  const mapped=records.slice(0,25);
+  const integrity=CRM_TEXT.inspectBatch(records.map(r=>mapRow(r,'PREVIEW')),{maxResults:50});
+  return {headers,rows:data.length,preview:mapped,readyToIngest:integrity.ok,invalidRows:integrity.invalid};
 }
 
 function mapRow(r, batchId){
@@ -76,7 +79,7 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
       if(!/\.csv$/i.test(filename))return res.status(400).json({error:'Only CSV files are accepted by Smart Lead Ingest.'});
       const preview=csvPreview(bytes,filename);
       const sample=preview.preview.map(x=>({businessName:first(x.businessName,x.business_name,x.business,x.company,x['Business Name'],x['Company Name'],x.name),phone:first(x.phone,x.Phone,x['Phone Number']),email:first(x.email,x.Email,x['Email Address']),website:first(x.website,x.Website),industry:first(x.industry,x.Industry,x.Type)}));
-      res.json({ok:true,filename,bytes:bytes.length,rows:preview.rows,headers:preview.headers,sample,limits:{maxRows:MAX_ROWS,maxBytes:MAX_BYTES},engine:'SBC V56.13.1 Smart Lead Ingest'});
+      res.json({ok:true,filename,bytes:bytes.length,rows:preview.rows,headers:preview.headers,sample,readyToIngest:preview.readyToIngest,invalidRows:preview.invalidRows,limits:{maxRows:MAX_ROWS,maxBytes:MAX_BYTES},engine:'SBC V56.13.1 Smart Lead Ingest'});
     }catch(e){res.status(400).json({ok:false,error:e.message});}
   });
 
@@ -95,7 +98,14 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
       const parsed=TIER1.parseCsvBinary(bytes,{maxBytes:MAX_BYTES,maxRows:MAX_ROWS});
       const headers=parsed[0]||[];
       const sourceRows=parsed.slice(1).map(row=>Object.fromEntries(headers.map((h,i)=>[clean(h,120),row[i]||''])));
-      const mapped=sourceRows.map(r=>mapRow(r,batchId)).filter(r=>r.businessName||r.phone||r.email);
+      const candidateRows=sourceRows.map(r=>mapRow(r,batchId));
+      const integrity=CRM_TEXT.inspectBatch(candidateRows,{maxResults:50});
+      if(!integrity.ok)return res.status(422).json({
+        ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',readyToIngest:false,
+        noLeadsWritten:true,invalidRows:integrity.invalid,rows:sourceRows.length,
+        message:'CSV contains invalid text. Correct the indicated row(s) and preview again. No leads were written.'
+      });
+      const mapped=candidateRows.filter(r=>r.businessName||r.phone||r.email);
       const seen=new Set();
       let skipped=sourceRows.length-mapped.length;
       let added=0;
@@ -150,6 +160,9 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
       await ctx.saveData();
       res.status(201).json({ok:true,batchId,filename,rows:sourceRows.length,added,skipped,radar:radar.sort((a,b)=>b.score-a.score).slice(0,25),message:`${added} leads entered the CRM and Lead Assist queue.`});
     }catch(e){
+      if(String(e?.message||'').startsWith('CSV_INVALID_UTF8:'))
+        return res.status(422).json({ok:false,code:'CSV_INVALID_UTF8',noLeadsWritten:true,retryable:false,
+          message:'CSV encoding is invalid. Export the file as UTF-8 and try again.'});
       console.error('[V56.13.1 SMART INGEST]',e);
       res.status(500).json({ok:false,error:String(e?.message||e),retryable:true});
     }

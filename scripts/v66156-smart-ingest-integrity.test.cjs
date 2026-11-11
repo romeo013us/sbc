@@ -26,6 +26,15 @@ function harness(){
  }
  return {calls,db,submit};
 }
+test('strict CSV decoder preserves multi-byte text and rejects malformed UTF-8',()=>{
+ const tier=require('../enterprise/v562-tier1-architecture.js');
+ const bom=Buffer.from('\uFEFFBusiness Name,Owner\nCafé Niña,María\n','utf8');
+ assert.deepEqual(tier.parseCsvBinary(bom),[['Business Name','Owner'],['Café Niña','María']]);
+ assert.deepEqual(tier.parseCsvBinary(Buffer.from('Business Name\nشركة الهدى\n','utf8')),
+  [['Business Name'],['شركة الهدى']]);
+ const invalid=Buffer.concat([Buffer.from('Business Name\nBad'),Buffer.from([0xC3,0x28])]);
+ assert.throws(()=>tier.parseCsvBinary(invalid),/CSV_INVALID_UTF8/);
+});
 test('preview reports a corrupted identity field without saving the CSV',async()=>{
  const h=harness();
  const r=await h.submit('/api/v56131/leads/bulk-preview',[
