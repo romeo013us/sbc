@@ -39,5 +39,7 @@ jobs:
         run: php -l index.php
       - name: Verify signed PHP/Node HMAC bridge with tamper and replay guards
         run: node scripts/sbcmia-php-bridge-contract.test.js
-      - name: Prove CRM 2xx responses cannot mask rejected writes\n        run: node scripts/sbcmia-crm-lead-acceptance.test.cjs\n      - name: Verify customer portal keyboard controls and Square offer copy
+      - name: Prove CRM 2xx responses cannot mask rejected writes
+        run: node scripts/sbcmia-crm-lead-acceptance.test.cjs
+      - name: Verify customer portal keyboard controls and Square offer copy
         run: node scripts/sbcmia-public-portal.test.cjs
