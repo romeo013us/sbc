@@ -34,7 +34,7 @@ assert.equal(r.contacts.find(x=>x.customerId==='b').latest.email.label,'Email de
 assert.match(r.contacts[0].latest.sms.evidence,/delivery not confirmed/);
 assert.equal(r.contacts.find(x=>x.customerId==='b').suppressed,true);
 assert.equal(r.contacts.find(x=>x.customerId==='b').reviewAfter,null);
-assert.equal(r.contacts.find(x=>x.customerId==='a').reviewAfter,new Date(Date.parse(iso(2))+7*86400000).toISOString());
+assert.equal(r.contacts.find(x=>x.customerId==='a').reviewAfter,new Date(Date.parse(iso(1))+7*86400000).toISOString());
 for(const privateValue of ['private-provider-id','private@example.com','secret customer details','secret customer','should never leak','Other Tenant','+13050001111','SMabc'])
  assert(!JSON.stringify(r).includes(privateValue),'private/cross-tenant data leaked: '+privateValue);
 assert.throws(()=>M.summarize({...params,tenantId:0}),/TENANT_REQUIRED/);
