@@ -53,7 +53,7 @@ function closeModal(){$('#modal').classList.add('hidden')}
 /* SBC_V66149_HR_DEPARTMENT_SHORTCUT — owner only. */
 function sbcOpenHrDepartment(){
  if(state.me?.role!=='owner')return toast('Owner access required');
- window.location.assign('/hr-department.html');
+ window.location.assign('/hr-workstation.html');
 }
 
 function sbcOpenOwnerAcceptanceDesk(){

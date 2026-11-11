@@ -1,8 +1,8 @@
 {
-  "sourceCommit": "4aefba685769ededdbe829fec54b375110f84458",
-  "sourceFingerprint": "978537a425917a34c52ddc12e0108aea977b8c5c57a1b24a5d5cc63a896a1de5",
+  "sourceCommit": "4625673ab85a035f358967139a4374d9e456433c",
+  "sourceFingerprint": "bc83b5926da9f25e638ec7533d975c358281cdcc4332631f718ccce3488ca49e",
   "artifactType": "server.js",
-  "artifactSha256": "b9d2ca4446111439e0be3d219800eff6f3afc11cca84e0ea9d7800d11e01fcb7",
+  "artifactSha256": "a7c0be999f0a89a491215b92f211d94f949af71d8ef7665b4f0c1b8bf2908814",
   "buildBranch": "a-sbc-master",
   "deployBranch": "a-sbc-master",
   "createdBy": "SBC V66 Verified Master Release GitHub Actions"

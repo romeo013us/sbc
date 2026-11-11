@@ -2960,6 +2960,7 @@ const SESSION_STORE=createSessionStore({sessionSecret:SESSION_SECRET,getMysqlPoo
 const {sessionHash,sessionRedisKey,sessionCookieToken,makeSession,persistSession,dropSession,sessionUser,validSession}=SESSION_STORE;
 // SBC_V66101_CALLER_FAIL_CLOSED: deny-by-default employee API and independent staff shell
 const SBC_V66101_CALLER_POLICY=require('./enterprise/v66101-caller-access.cjs');
+const SBC_V66149_HR_POLICY=require('./enterprise/v66149-hr-workstation-policy.cjs');
 async function auth(req,res,next){
   // V64.2.25 — Recovery-safe owner identity bootstrap.
   // Recovery mode intentionally stops the normal startup seed pipeline. That used to
@@ -2984,7 +2985,10 @@ if(e?.code==='SESSION_STORE_UNAVAILABLE'){
   }
   if(!u)return res.status(401).json({error:'Authentication required.'});
   if(u.expiresAt&&Number.isFinite(new Date(u.expiresAt).valueOf())&&new Date(u.expiresAt).getTime()<=Date.now())return res.status(403).json({ok:false,error:'EMPLOYEE_ACCOUNT_EXPIRED'});
-  req.user=u;if(u.role==='owner'&&!ADMIN_PASSWORD)return res.status(503).json({error:'Add SBC_ADMIN_PASSWORD in GoDaddy Secrets.'});
+  req.user=u;
+  if(u.role==='hr_manager'&&(u.active===false||!SBC_V66149_HR_POLICY.allowed(req.method,req.path)))
+   return res.status(403).json({ok:false,error:'HR_WORKSTATION_ONLY'});
+  if(u.role==='owner'&&!ADMIN_PASSWORD)return res.status(503).json({error:'Add SBC_ADMIN_PASSWORD in GoDaddy Secrets.'});
   if(u.role==='manager'||u.role==='sales_manager')return res.status(403).json({error:'This legacy management role is no longer an active SBC workforce position. Sign in again after the account role is corrected.'});if(u.role==='caller'&&(u.active===false||!SBC_V66101_CALLER_POLICY.allowed(req.method,req.path))){res.setHeader('Cache-Control','no-store');return res.status(403).json({ok:false,error:'CALLER_WORKSPACE_ONLY',message:'Sales callers only have access to their assigned workstation services.'});}
   // V55.18.3 — Workforce authorization simplification: do not use a blanket route allow-list.
   // Authenticated workforce users reach the endpoint-level RBAC checks below; this prevents
@@ -6071,8 +6075,8 @@ app.post('/api/call-reports',auth,async(req,res)=>{const b=req.body||{},c=db.cus
 app.post('/api/call-reports/:id/approve',auth,ownerOnly,async(req,res)=>{const r=(db.callReports||[]).find(x=>x.id===req.params.id);if(!r)return res.status(404).json({error:'Call report not found.'});const c=db.customers.find(x=>x.id===r.customerId);if(!c)return res.status(404).json({error:'Lead not found.'});if(r.contactName)c.contactName=r.contactName;if(r.outcome==='Interested'||r.outcome==='Appointment Requested'||r.orderReady)c.status=r.appointmentRequested?'Qualified':'Contacted';if(r.callbackAt)c.followUp=r.callbackAt.slice(0,10);if(r.need||r.pain||r.requirements||r.notes)c.notes=[r.need&&`Need: ${r.need}`,r.pain&&`Pain: ${r.pain}`,r.requirements&&`Requirements: ${r.requirements}`,r.notes&&r.notes].filter(Boolean).join('\n');r.status='Approved';r.reviewedAt=now();r.reviewedBy=req.user.id;audit(req.user,'call_report_approved','Approved call report',{callReportId:r.id,customerId:c.id});await saveData();res.json({ok:true,customer:c,report:r})});
 app.get('/api/call-reports/pending',auth,ownerOnly,(req,res)=>res.json((db.callReports||[]).filter(x=>x.status==='Pending')));
 app.get('/api/users',auth,ownerOnly,(req,res)=>res.json((db.users||[]).map(u=>({id:u.id,username:u.username,name:u.name,role:u.role,active:u.active!==false,expiresAt:u.expiresAt||'',createdAt:u.createdAt}))));
-app.post('/api/users',auth,ownerOnly,async(req,res)=>{const b=req.body||{};if(b.expiresAt&&(!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)?$/.test(String(b.expiresAt))||!Number.isFinite(new Date(b.expiresAt).valueOf())||new Date(b.expiresAt).getTime()<=Date.now()))return res.status(400).json({error:'INVALID_FUTURE_ACCOUNT_EXPIRY'});const username=String(b.username||'').trim().toLowerCase(),name=String(b.name||'').trim(),password=String(b.password||'');if(!/^[a-z0-9._-]{3,40}$/.test(username)||!name||password.length<10)return res.status(400).json({error:'Username must be 3–40 characters and password must be at least 10 characters.'});if((db.users||[]).some(u=>u.username===username))return res.status(409).json({error:'That username already exists.'});const role=['caller','lead_researcher','fulfillment','manager','sales_manager'].includes(String(b.role||''))?String(b.role):'caller';const u={id:id('user'),tenantId:requireRequestTenant(req),username,name,role,active:true,expiresAt:String(b.expiresAt||''),passwordHash:hashPassword(password),createdAt:now()};db.users.unshift(u);audit(req.user,'user_created',`Created ${workforceRoleLabel(role)} ${name}`,{userId:u.id,role});await saveData();res.status(201).json({id:u.id,username:u.username,name:u.name,role:u.role,active:true,expiresAt:u.expiresAt,createdAt:u.createdAt})});
-app.put('/api/users/:id',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.id);if(!u)return res.status(404).json({error:'User not found.'});if(u.id==='user_owner'&&req.body.role&&req.body.role!=='owner')return res.status(400).json({error:'The owner account cannot be downgraded.'});if(req.body.name!==undefined)u.name=String(req.body.name);if(req.body.role!==undefined&&u.id!=='user_owner'){const nr=String(req.body.role);if(!['caller','lead_researcher','fulfillment','manager','sales_manager'].includes(nr))return res.status(400).json({error:'Invalid workforce role.'});u.role=nr;}if(req.body.active!==undefined)u.active=Boolean(req.body.active);if(req.body.expiresAt!==undefined)u.expiresAt=String(req.body.expiresAt||'');if(req.body.password){if(String(req.body.password).length<10)return res.status(400).json({error:'Password must be at least 10 characters.'});u.passwordHash=hashPassword(String(req.body.password))}audit(req.user,'user_updated',`Updated user ${u.name}`,{userId:u.id});await saveData();res.json({id:u.id,username:u.username,name:u.name,role:u.role,active:u.active,expiresAt:u.expiresAt})});
+app.post('/api/users',auth,ownerOnly,async(req,res)=>{const b=req.body||{};if(b.expiresAt&&(!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)?$/.test(String(b.expiresAt))||!Number.isFinite(new Date(b.expiresAt).valueOf())||new Date(b.expiresAt).getTime()<=Date.now()))return res.status(400).json({error:'INVALID_FUTURE_ACCOUNT_EXPIRY'});const username=String(b.username||'').trim().toLowerCase(),name=String(b.name||'').trim(),password=String(b.password||'');if(!/^[a-z0-9._-]{3,40}$/.test(username)||!name||password.length<10)return res.status(400).json({error:'Username must be 3–40 characters and password must be at least 10 characters.'});if((db.users||[]).some(u=>u.username===username))return res.status(409).json({error:'That username already exists.'});const role=['caller','lead_researcher','fulfillment','manager','sales_manager','hr_manager'].includes(String(b.role||''))?String(b.role):'caller';const u={id:id('user'),tenantId:requireRequestTenant(req),username,name,role,active:true,expiresAt:String(b.expiresAt||''),passwordHash:hashPassword(password),createdAt:now()};db.users.unshift(u);audit(req.user,'user_created',`Created ${workforceRoleLabel(role)} ${name}`,{userId:u.id,role});await saveData();res.status(201).json({id:u.id,username:u.username,name:u.name,role:u.role,active:true,expiresAt:u.expiresAt,createdAt:u.createdAt})});
+app.put('/api/users/:id',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.id);if(!u)return res.status(404).json({error:'User not found.'});if(u.id==='user_owner'&&req.body.role&&req.body.role!=='owner')return res.status(400).json({error:'The owner account cannot be downgraded.'});if(req.body.name!==undefined)u.name=String(req.body.name);if(req.body.role!==undefined&&u.id!=='user_owner'){const nr=String(req.body.role);if(!['caller','lead_researcher','fulfillment','manager','sales_manager','hr_manager'].includes(nr))return res.status(400).json({error:'Invalid workforce role.'});u.role=nr;}if(req.body.active!==undefined)u.active=Boolean(req.body.active);if(req.body.expiresAt!==undefined)u.expiresAt=String(req.body.expiresAt||'');if(req.body.password){if(String(req.body.password).length<10)return res.status(400).json({error:'Password must be at least 10 characters.'});u.passwordHash=hashPassword(String(req.body.password))}audit(req.user,'user_updated',`Updated user ${u.name}`,{userId:u.id});await saveData();res.json({id:u.id,username:u.username,name:u.name,role:u.role,active:u.active,expiresAt:u.expiresAt})});
 app.get('/api/ops/lead-count-audit',auth,ownerOnly,(req,res)=>{const customers=db.customers||[],excluded=new Set(['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified']);const active=customers.filter(c=>!excluded.has(String(c.status||'')));const research=customers.filter(c=>String(c.status||'')==='Lead');const byStatus={};const bySource={};const seen={email:new Map(),phone:new Map(),business:new Map()};const duplicates=[];for(const c of customers){const status=String(c.status||'Lead');byStatus[status]=(byStatus[status]||0)+1;const source=String(c.source||'Other');bySource[source]=(bySource[source]||0)+1;for(const [kind,val] of [['email',String(c.email||'').trim().toLowerCase()],['phone',String(c.phone||'').replace(/\D/g,'')],['business',String(c.businessName||'').trim().toLowerCase()]]){if(!val)continue;const m=seen[kind];const prior=m.get(val);if(prior)duplicates.push({kind,key:val,firstId:prior,duplicateId:c.id});else m.set(val,c.id)}}res.json({ok:true,version:BUILD_VERSION,totalCrmRecords:customers.length,activeSalesLeads:active.length,researchQueueLeads:research.length,byStatus,bySource,duplicateSignals:duplicates.length,duplicates:duplicates.slice(0,250),note:'Read-only audit. No lead records were deleted, merged, restored, or rewritten.'});});
 
 app.get('/api/crm/analytics',auth,ownerOnly,(req,res)=>{const c=db.customers,q=db.quotes,a=db.appointments;const statuses=['Lead','Contacted','Qualified','Proposal','Customer','Lost'];const pipeline=Object.fromEntries(statuses.map(s=>[s,{count:c.filter(x=>x.status===s).length,value:q.filter(x=>{const cc=c.find(z=>z.id===x.customerId);return cc?.status===s}).reduce((v,x)=>v+Number(x.total||0),0)}]));const won=q.filter(x=>['Won','Paid'].includes(x.status));const sources={};c.forEach(x=>sources[x.source||'Other']=(sources[x.source||'Other']||0)+1);res.json({totalLeads:c.length,activeLeads:c.filter(x=>!['Customer','Lost'].includes(x.status)).length,customers:c.filter(x=>x.status==='Customer').length,pipelineValue:q.filter(x=>!['Won','Paid','Lost'].includes(x.status)).reduce((v,x)=>v+Number(x.total||0),0),wonRevenue:won.reduce((v,x)=>v+Number(x.total||0),0),conversion:q.length?Math.round(won.length/q.length*100):0,appointments:a.filter(x=>x.status!=='Cancelled'&&new Date(x.startAt)>=new Date()).length,pipeline,sources});});
@@ -6513,7 +6517,7 @@ async function createWebsiteDemo(customerId,overrides={}){
 async function deployDemoSftp(demo){if(!SftpClient)throw new Error('SFTP adapter is not installed. Run npm install before enabling auto deployment.');if(!(process.env.SBC_DEMO_SFTP_HOST&&process.env.SBC_DEMO_SFTP_USER&&(process.env.SBC_DEMO_SFTP_PASSWORD||process.env.SBC_DEMO_SFTP_PRIVATE_KEY)))throw new Error('Demo SFTP credentials are not configured.');const sftp=new SftpClient();const root=String(process.env.SBC_DEMO_SFTP_ROOT||'public_html/demos');const remote=`${root.replace(/\/$/,'')}/${demo.slug}.html`;try{await sftp.connect({host:process.env.SBC_DEMO_SFTP_HOST,port:Number(process.env.SBC_DEMO_SFTP_PORT||22),username:process.env.SBC_DEMO_SFTP_USER,password:process.env.SBC_DEMO_SFTP_PASSWORD,privateKey:process.env.SBC_DEMO_SFTP_PRIVATE_KEY});await sftp.mkdir(root,true).catch(()=>{});await sftp.put(Buffer.from(demo.html,'utf8'),remote);demo.deployStatus='deployed';demo.updatedAt=now();demo.url=String(process.env.SBC_DEMO_PUBLIC_BASE_URL||demo.url);return demo;}finally{await sftp.end().catch(()=>{});}}
 
 function v9User(u){return {id:u.id,username:u.username,name:u.name,role:u.role,title:u.profile?.title||'',email:u.profile?.email||'',location:u.profile?.location||'',experience:u.profile?.experience||'',active:u.active!==false,expiresAt:u.expiresAt||'',createdAt:u.createdAt,certified:Boolean(v9data().certifications[u.id]?.status==='Certified')}}
-function workforceRoleLabel(role){return ({owner:'Owner / Admin',caller:'Lead Sales Manager',lead_researcher:'Lead Researcher',fulfillment:'Fulfillment Specialist',sales_manager:'Lead Sales Manager'})[role]||role}
+function workforceRoleLabel(role){return ({owner:'Owner / Admin',caller:'Lead Sales Manager',lead_researcher:'Lead Researcher',fulfillment:'Fulfillment Specialist',sales_manager:'Lead Sales Manager',hr_manager:'HR Department Manager'})[role]||role}
 function isWorkforceRole(role){return ['caller','lead_researcher','fulfillment'].includes(role)}
 function onboardingComplete(uid){const o=v9data().onboarding?.[uid]||{};return Boolean(o.status==='Approved'&&o.contractorAgreementAccepted&&o.confidentialityAccepted&&o.codeOfConductAccepted&&o.remoteLocationConfirmed&&o.ownerVerified)}
 function v9CanLiveCall(u){return u?.role==='owner'||(onboardingComplete(u.id)&&v9data().certifications[u.id]?.status==='Certified')}
@@ -6552,6 +6556,100 @@ function commissionEligibleAt(baseDate,comp){const days=Math.max(0,Number(comp?.
 function approvedReportsFor(uid){return (db.callReports||[]).filter(r=>r.callerId===uid&&r.status==='Approved')}
 function periodStart(period){const d=new Date(); if(period==='Monthly') return new Date(d.getFullYear(),d.getMonth(),1); const day=d.getDay(); const diff=(day+6)%7; return new Date(d.getFullYear(),d.getMonth(),d.getDate()-diff)}
 function payrollFor(uid){const u=(db.users||[]).find(x=>x.id===uid), c=compFor(uid), entries=(v9data().timeEntries||[]).filter(e=>e.userId===uid), start=periodStart(c.payPeriod), startIso=start.toISOString(); const mins=entries.reduce((sum,e)=>{const end=e.clockOut||new Date().toISOString(); let m=Math.max(0,Math.round((new Date(end)-new Date(e.clockIn))/60000)); for(const b of (e.breaks||[])) if(b.start&&b.end)m-=Math.round((new Date(b.end)-new Date(b.start))/60000); return sum+Math.max(0,m)},0); const periodMins=entries.filter(e=>new Date(e.clockIn)>=start).reduce((sum,e)=>{const end=e.clockOut||new Date().toISOString();let m=Math.max(0,Math.round((new Date(end)-new Date(e.clockIn))/60000));for(const b of (e.breaks||[]))if(b.start&&b.end)m-=Math.round((new Date(b.end)-new Date(b.start))/60000);return sum+Math.max(0,m)},0); const reports=approvedReportsFor(uid).filter(r=>new Date(r.createdAt)>=start); const appts=reports.filter(r=>r.appointmentRequested||r.outcome==='Appointment Requested').length; const sales=reports.filter(r=>['Closed Sale','Sale','Won'].includes(r.outcome)).length; const hours=periodMins/60, base=hours*Number(c.payRate||0), bonuses=appts*Number(c.bonusPerQualifiedAppointment||0)+sales*Number(c.bonusPerSale||0); return {userId:uid,userName:u?.name||'',period:c.payPeriod,periodStart:start.toISOString().slice(0,10),hours,trainingHours:entries.filter(e=>new Date(e.clockIn)>=start&&e.mode==='training').reduce((a,e)=>a+Math.max(0,(new Date(e.clockOut||new Date())-new Date(e.clockIn))/3600000),0),callingHours:entries.filter(e=>new Date(e.clockIn)>=start&&e.mode==='calling').reduce((a,e)=>a+Math.max(0,(new Date(e.clockOut||new Date())-new Date(e.clockIn))/3600000),0),qualifiedAppointments:appts,sales,basePay:base,bonuses,estimatedGrossPay:base+bonuses,currency:c.currency}}
+
+/* SBC_V66150_HR_DELEGATED_ADMIN */
+function sbcHrWorkspaceGate(req,res,next){
+ if(!req.user||!['owner','hr_manager'].includes(String(req.user.role||''))||req.user.active===false)
+  return res.status(403).json({ok:false,error:'HR_WORKSTATION_ACCESS_DENIED'});
+ next();
+}
+function sbcHrTeamMember(tid,uid){
+ return SBC_V66149_HR_POLICY.staff(db.users||[],tid).find(u=>String(u.id)===String(uid));
+}
+function sbcHrLedger(){
+ const v=db.settings?.v9&&typeof db.settings.v9==='object'?db.settings.v9:{},ops=v.hrOps||{};
+ return {v,ops:{drafts:Array.isArray(ops.drafts)?ops.drafts:[],
+  preferences:ops.preferences&&typeof ops.preferences==='object'?ops.preferences:{},
+  reviewLog:Array.isArray(ops.reviewLog)?ops.reviewLog:[]}};
+}
+async function sbcHrSave(v,ops){
+ if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
+  throw Object.assign(Error('HR_PUBLISHED_WRITER_REQUIRED'),{status:423});
+ const prev=db.settings.v9;
+ try{
+  const committed=await v9save({...v,hrOps:{drafts:ops.drafts.slice(0,200),
+   preferences:ops.preferences,reviewLog:ops.reviewLog.slice(0,300)}});
+  if(committed?.skipped)throw Error('HR_NON_DURABLE_COMMIT_REFUSED');
+ }catch(e){db.settings.v9=prev;throw Object.assign(Error('HR_LEDGER_COMMIT_FAILED'),{status:503})}
+}
+app.get('/api/hr/overview',auth,sbcHrWorkspaceGate,(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ return res.json(SBC_V66149_HR_POLICY.overview({
+  tenantId:requireRequestTenant(req),users:db.users||[],v9:{...v9data(),hrOps:db.settings?.v9?.hrOps||{}},actor:req.user}));
+});
+app.get('/api/hr/drafts',auth,sbcHrWorkspaceGate,(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ const tid=requireRequestTenant(req),{ops}=sbcHrLedger();
+ res.json({ok:true,drafts:ops.drafts.filter(d=>Number(d.tenantId)===tid).slice(0,100)});
+});
+app.post('/api/hr/drafts',auth,sbcHrWorkspaceGate,async(req,res)=>{
+ try{
+  const tid=requireRequestTenant(req),worker=sbcHrTeamMember(tid,req.body?.workerId),{v,ops}=sbcHrLedger();
+  const draft=SBC_V66149_HR_POLICY.makeDraft({input:req.body||{},worker,
+   actor:{...req.user,tenantId:tid},tenantId:tid});
+  if(ops.drafts.filter(d=>Number(d.tenantId)===tid&&d.status==='Pending Owner Review').length>=50)
+   return res.status(409).json({ok:false,error:'HR_REVIEW_QUEUE_FULL'});
+  ops.drafts=[draft,...ops.drafts];
+  ops.reviewLog=[{at:now(),by:String(req.user.id),event:'DRAFT_SUBMITTED',draftId:draft.id},...ops.reviewLog];
+  await sbcHrSave(v,ops);
+  res.status(201).json({ok:true,draft,transferInitiated:false});
+ }catch(e){res.status(Number(e.status)||400).json({ok:false,error:String(e.message||'HR_DRAFT_REJECTED')});}
+});
+app.post('/api/hr/payout-preferences',auth,sbcHrWorkspaceGate,async(req,res)=>{
+ try{
+  const tid=requireRequestTenant(req),worker=sbcHrTeamMember(tid,req.body?.workerId);
+  if(!worker)return res.status(404).json({ok:false,error:'HR_WORKER_NOT_FOUND'});
+  const provider=SBC_V66149_HR_POLICY.method(req.body?.provider);
+  if(!provider)return res.status(400).json({ok:false,error:'HR_INVALID_PAYOUT_PROVIDER'});
+  const {v,ops}=sbcHrLedger(),uid=String(worker.id);
+  ops.preferences={...ops.preferences,[uid]:{provider,status:'Awaiting Owner Review',changedBy:String(req.user.id),
+   updatedAt:now(),tenantId:tid,accountInformationCollected:false}};
+  ops.reviewLog=[{at:now(),by:String(req.user.id),event:'PAYOUT_METHOD_PROPOSED',userId:uid},...ops.reviewLog];
+  await sbcHrSave(v,ops);
+  res.json({ok:true,provider,status:'Awaiting Owner Review',transferInitiated:false});
+ }catch(e){res.status(Number(e.status)||400).json({ok:false,error:String(e.message||'HR_PAYOUT_METHOD_FAILED')});}
+});
+app.post('/api/hr/drafts/:id/decision',auth,ownerOnly,async(req,res)=>{
+ try{
+  const tid=requireRequestTenant(req),{v,ops}=sbcHrLedger();
+  const old=ops.drafts.find(d=>String(d.id)===String(req.params.id)&&Number(d.tenantId)===tid);
+  if(!old)return res.status(404).json({ok:false,error:'HR_DRAFT_NOT_FOUND'});
+  if(old.status!=='Pending Owner Review')return res.status(409).json({ok:false,error:'HR_ALREADY_REVIEWED'});
+  if(!['approve','reject'].includes(String(req.body?.decision)))return res.status(400).json({ok:false,error:'HR_INVALID_DECISION'});
+  const draft={...old,status:req.body.decision==='approve'?'Owner Approved - Manual Transfer Required':'Owner Rejected',
+   decidedBy:String(req.user.id),decidedAt:now()};
+  ops.drafts=ops.drafts.map(d=>d===old?draft:d);
+  ops.reviewLog=[{at:now(),by:String(req.user.id),event:'OWNER_DRAFT_DECISION',draftId:draft.id,decision:req.body.decision},...ops.reviewLog];
+  await sbcHrSave(v,ops);
+  res.json({ok:true,draft,transferInitiated:false,providerPaid:false});
+ }catch(e){res.status(Number(e.status)||400).json({ok:false,error:String(e.message||'HR_APPROVAL_FAILED')});}
+});
+app.post('/api/hr/payout-preferences/:userId/decision',auth,ownerOnly,async(req,res)=>{
+ try{
+  const tid=requireRequestTenant(req),worker=sbcHrTeamMember(tid,req.params.userId),{v,ops}=sbcHrLedger();
+  if(!worker)return res.status(404).json({ok:false,error:'HR_WORKER_NOT_FOUND'});
+  const old=ops.preferences[String(worker.id)];
+  if(!old||Number(old.tenantId)!==tid||old.status!=='Awaiting Owner Review')
+   return res.status(409).json({ok:false,error:'HR_METHOD_NOT_PENDING'});
+  if(!['approve','reject'].includes(String(req.body?.decision)))return res.status(400).json({ok:false,error:'HR_INVALID_DECISION'});
+  const status=req.body.decision==='approve'?'Owner Approved':'Owner Rejected';
+  ops.preferences={...ops.preferences,[String(worker.id)]:{...old,status,reviewedBy:String(req.user.id),reviewedAt:now()}};
+  ops.reviewLog=[{at:now(),by:String(req.user.id),event:'OWNER_METHOD_DECISION',userId:String(worker.id),decision:req.body.decision},...ops.reviewLog];
+  await sbcHrSave(v,ops);
+  res.json({ok:true,provider:old.provider,status,transferInitiated:false});
+ }catch(e){res.status(Number(e.status)||400).json({ok:false,error:String(e.message||'HR_METHOD_APPROVAL_FAILED')});}
+});
+
 app.get('/api/v9/compensation',auth,ownerOnly,(req,res)=>{const users=(db.users||[]).filter(u=>isWorkforceRole(u.role));res.json(users.map(u=>({user:v9User(u),compensation:compFor(u.id),payroll:payrollFor(u.id)})))})
 app.put('/api/v9/compensation/:userId',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.userId&&isWorkforceRole(x.role));if(!u)return res.status(404).json({error:'Workforce member not found.'});const v=v9data();v.compensation=v.compensation||{};const old=compFor(u.id), b=req.body||{};v.compensation[u.id]={...old,payRate:Math.max(0,Number(b.payRate??old.payRate)),currency:String(b.currency||old.currency),bonusPerQualifiedAppointment:Math.max(0,Number(b.bonusPerQualifiedAppointment ?? (old.bonusPerQualifiedAppointment || 0))),bonusPerSale:Math.max(0,Number(b.bonusPerSale ?? (old.bonusPerSale || 0))),payPeriod:['Weekly','Biweekly','Monthly'].includes(b.payPeriod)?b.payPeriod:old.payPeriod,commissionRates:{...old.commissionRates,...Object.fromEntries(Object.entries(b.commissionRates||{}).map(([k,v])=>[k,Math.max(0,Math.min(0.25,Number(v)))]))},highValueBonus699:0,monthlyBonuses:{...old.monthlyBonuses,...(b.monthlyBonuses||{})},commissionPayCycleDays:Math.max(1,Number(b.commissionPayCycleDays ?? (old.commissionPayCycleDays || 30))),returnWindowDays:Math.max(0,Math.min(60,Number(b.returnWindowDays ?? (old.returnWindowDays || 14)))),effectiveFrom:String(b.effectiveFrom||old.effectiveFrom)};await v9save(v);audit(req.user,'compensation_updated',`Updated compensation for ${u.name}`,{userId:u.id});res.json({compensation:v.compensation[u.id],payroll:payrollFor(u.id)})})
 // SBC_V66149_HR_DEPARTMENT_OWNER_ROUTE; workforce-only read model; no provider, money, account or HR writes.
@@ -9395,6 +9493,7 @@ app.use(async(req,res,next)=>{
  let u=null;try{u=await sessionUser(req)}catch(e){return next()}
  if(u?.role==='caller')return res.redirect(302,'/sales-caller.html');
  if(u?.role==='lead_researcher')return res.redirect(302,'/lead-research.html');
+ if(u?.role==='hr_manager')return res.redirect(302,'/hr-workstation.html');
  return next();
 });
 app.use((req,res,next)=>{const name=String(req.path||req.url||'').split('?')[0];if(/\.csv$/i.test(name)||/(?:^|\/)starter-leads(?:\/|$)/i.test(name))return res.status(404).end();next()}); // SBC_V6608_PROSPECT_CSV_PRIVACY_GATE
