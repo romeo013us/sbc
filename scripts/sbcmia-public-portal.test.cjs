@@ -7,10 +7,10 @@ const vm = require('node:vm');
 
 const page = fs.readFileSync(path.join(__dirname, '../index.php'), 'utf8');
 const packageCard = page.match(/<article\b[^>]*>(?:(?!<\/article>)[\s\S])*?square\.link\/u\/uf53mzCR[\s\S]*?<\/article>/)?.[0];
-assert.match(packageCard, /<h3>Business Basic<\/h3>/);
+assert.match(packageCard, /<h3>Business Essentials<\/h3>/);
 assert.match(packageCard, /\$349/);
-assert.match(packageCard, /\b200 business cards\b/);
-assert.doesNotMatch(packageCard, /Essentials|\b250 business cards\b/);
+assert.match(packageCard, /\b250 business cards, with three design concepts and standard shipping\b/);
+assert.doesNotMatch(packageCard, /Business Basic|\b200 business cards\b/);
 
 for (const field of ['sbc-login-email', 'sbc-login-password', 'sbc-reg-name', 'sbc-reg-business', 'sbc-reg-email', 'sbc-reg-password']) {
   assert.match(page, new RegExp('<label for="' + field + '">'));

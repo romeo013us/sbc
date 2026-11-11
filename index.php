@@ -824,8 +824,8 @@ Successful By Choice makes it easier to build a professional business presence w
 
    <article class="price-card featured">
     <span class="popular-tag">Most Popular</span>
-    <span class="package-badge"><i class="fa-solid fa-briefcase"></i> Basic</span>
-    <h3>Business Basic</h3>
+    <span class="package-badge"><i class="fa-solid fa-briefcase"></i> Essentials</span>
+    <h3>Business Essentials</h3>
     <p class="desc">A stronger everyday package for an established small business that needs a more complete professional presence.</p>
     <div class="price">$349 <small>setup</small></div>
     <div class="value">More tools. More presence.</div>
@@ -833,10 +833,10 @@ Successful By Choice makes it easier to build a professional business presence w
      <li><i class="fa-solid fa-check"></i> Domain + hosting</li>
      <li><i class="fa-solid fa-check"></i> Up to 4-page website</li>
      <li><i class="fa-solid fa-check"></i> Mobile optimization</li>
-     <li><i class="fa-solid fa-check"></i> 200 business cards</li>
+     <li><i class="fa-solid fa-check"></i> 250 business cards, with three design concepts and standard shipping</li>
      <li><i class="fa-solid fa-check"></i> Basic maintenance support</li>
     </ul>
-    <a class="btn btn-orange price-btn" href="https://square.link/u/uf53mzCR" target="_blank" rel="noopener">Choose Business Basic for $349</a>
+    <a class="btn btn-orange price-btn" href="https://square.link/u/uf53mzCR" target="_blank" rel="noopener">Choose $349 Essentials</a>
    </article>
 
    <article class="price-card">
