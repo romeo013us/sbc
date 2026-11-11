@@ -17,7 +17,7 @@ function shouldGuard(req){
 }
 function runtimeMiddleware({slowMs=DEFAULT_SLOW_MS,timeoutMs=DEFAULT_TIMEOUT_MS,onEvent=()=>{}}={}){
   return (req,res,next)=>{
-    if(ASSET_POLICY.denyPublicRequest(req.path||req.url))return res.status(404).end();
+    if(['GET','HEAD'].includes(String(req.method||'').toUpperCase()) && !String(req.path||req.url||'').startsWith('/api/') && ASSET_POLICY.denyPublicRequest(req.path||req.url))return res.status(404).end();
     const started=Date.now(); let timer=null; let completed=false;
     const requestId=req.requestId||crypto.randomUUID();
     activeRequests.set(requestId,{startedAt:started,method:req.method,path:req.originalUrl||req.path});

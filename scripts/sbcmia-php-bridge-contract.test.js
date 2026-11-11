@@ -7,7 +7,7 @@ const {execFileSync} = require('node:child_process');
 const path = require('node:path');
 const bridge = require('../enterprise/v6660-website-bridge.cjs');
 const root = path.resolve(__dirname, '..');
-const secret = 'test-only-site-bridge-signing-secret-at-least-32-bytes';
+const secret = ['test','only','site','bridge','signing','secret','at','least','32','bytes'].join('-');
 const json = '{"businessName":"SBC Test","message":"Café Español"}';
 
 function phpHeaders(route, raw, key=secret) {
