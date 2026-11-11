@@ -1,0 +1,27 @@
+name: SBC Kevin Recovery Callback Safety
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - enterprise/kevin/kevin-runtime.cjs
+      - enterprise/kevin/owner-veto-store.cjs
+      - scripts/v66154-kevin-recovery-callback.test.cjs
+      - .github/workflows/sbc-kevin-recovery-callback.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-kevin-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and direct recovery checks
+        run: |
+          node --check enterprise/kevin/kevin-runtime.cjs
+          node scripts/v66154-kevin-recovery-callback.test.cjs
+          node scripts/v6428-recovery-isolation-test.js
+          node scripts/v641-hardened-runtime-test.js

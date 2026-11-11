@@ -13,6 +13,8 @@
 const crypto = require('crypto');
 const {confirmedPaid}=require('../v6640-payment-evidence.cjs');
 const vetoStore=require('./owner-veto-store.cjs');
+// A callback is a dynamic recovery *check*, not evidence of active recovery.
+function recoveryRequiredNow(value){return typeof value==='function'?Boolean(value()):Boolean(value)}
 // SBC_V6643_DURABLE_OWNER_VETO_AND_KEVIN_REVENUE
 const path = require('path');
 const { KimExecutiveBriefing } = require('../kim-executive-briefing.cjs');
@@ -318,7 +320,7 @@ async function startKevinV6422({app, dbGetter, mysqlPoolGetter, stateKernel, evo
   });
   const kimBriefing = new KimExecutiveBriefing({ poolGetter: mysqlPoolGetter, logger: console });
 
-  const recoverySafe = () => typeof recoveryRequired === 'function' ? Boolean(recoveryRequired()) : Boolean(recoveryRequired);
+  const recoverySafe = () => recoveryRequiredNow(recoveryRequired);
   const control = new HardenedControlPlane({rootDir,mysqlPoolGetter,stateKernel,evolutionEngine,config});
   runtime={kernel,kim,config,control,capitalPrediction,kimBriefing,recoverySafe:false};
 
@@ -388,7 +390,10 @@ async function startKevinV6422({app, dbGetter, mysqlPoolGetter, stateKernel, evo
   // Kevin must remain available for read-only status/diagnostics but MUST NOT run a
   // background cognitive heartbeat that can stage or persist state into the suspended
   // mutation plane.
-  if (recoveryRequired) {
+  // Evaluate the current flag, not the truthiness of the callback itself.
+// Continue to fail closed when recovery is active at boot. Resuming a stopped
+// cognitive worker still requires a controlled restart/redeployment.
+  if (recoverySafe()) {
     runtime.intervalHandle = null;
     runtime.recoverySafe = true;
     runtime.stop = () => {};
@@ -407,4 +412,4 @@ async function startKevinV6422({app, dbGetter, mysqlPoolGetter, stateKernel, evo
 }
 
 function pathToFileURL(p){ return require('url').pathToFileURL(p); }
-module.exports={startKevinV6422, startKevinV641:startKevinV6422, startKevinV63:startKevinV6422, deterministicIdempotencyKey, HardenedControlPlane, sbcV6643SummarizeDb:summarizeDb};
+module.exports={startKevinV6422, startKevinV641:startKevinV6422, startKevinV63:startKevinV6422, deterministicIdempotencyKey, HardenedControlPlane, sbcV6643SummarizeDb:summarizeDb,recoveryRequiredNow};
