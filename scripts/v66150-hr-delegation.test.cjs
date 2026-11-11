@@ -27,6 +27,7 @@ const users=[
 const db={users,settings:{v9:{timeEntries:[],onboarding:{lorna:{country:'Philippines',status:'Submitted'}},
   compensation:{lorna:{payRate:4,payPeriod:'Monthly'}},legacyStaffSetting:{retainMe:true},hrOps:{drafts:[],preferences:{},reviewLog:[]}}}};
 const context={app,auth:'AUTH',ownerOnly:'OWNER_ONLY',db,SBC_V66149_HR_POLICY:P,
+ SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,
  requireRequestTenant:req=>req.tenantId||1,v9data:()=>{const v=db.settings.v9;return {timeEntries:v.timeEntries||[],onboarding:v.onboarding||{},compensation:v.compensation||{},payrollRuns:[]}},
  v9save:async v=>{db.settings.v9=v;return {ok:true}},
  now:()=>new Date().toISOString()};
@@ -53,6 +54,11 @@ const hrUser={id:'hr',role:'hr_manager',tenantId:1,name:'HR Manager',active:true
  res=reply();await routes['POST /api/hr/drafts'].fn({...req,body:input},res);
  assert.equal(res.code,201);assert.equal(res.out.transferInitiated,false);
  assert.equal(db.settings.v9.hrOps.drafts.length,1);
+ context.SBC_RUNTIME_READ_ONLY=true;
+ let blocked=reply();await routes['POST /api/hr/drafts'].fn({...req,body:input},blocked);
+ assert.equal(blocked.code,423,'Preview must never claim payroll draft persisted');
+ assert.equal(db.settings.v9.hrOps.drafts.length,1,'Preview rejection must not change ledger');
+ context.SBC_RUNTIME_READ_ONLY=false;
  assert.equal(db.settings.v9.legacyStaffSetting.retainMe,true,'HR save must not discard unrelated workforce settings');
  res=reply();await routes['GET /api/hr/overview'].fn(req,res);
  assert.equal(res.out.drafts.length,1,'HR drafts must survive legacy v9data() projection');
