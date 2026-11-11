@@ -9,7 +9,14 @@ const html=read(path.join(pub,'index.html'));
 const readModules=dir=>fs.existsSync(dir)
   ? fs.readdirSync(dir).filter(f=>/\.(?:c?js)$/.test(f)).map(f=>read(path.join(dir,f)))
   : [];
-const srv=[read(path.join(root,'server.js')),...readModules(path.join(root,'routes'))].join('\n');
+// The shipping GoDaddy build patches the pinned server in an isolated stage.
+// Audit that exact deterministic patch rather than pretending its API route
+// exists in the untouched/pinned source server.js.
+const canonicalServer=read(path.join(root,'server.js'));
+const hrStage=require('./v66149-stage-hr-workstation.cjs');
+const stagedServer=hrStage.patchServer(canonicalServer);
+if(!stagedServer.includes(hrStage.MARK))throw Error('HR_ROUTE_ABSENT_IN_STAGED_AUDIT');
+const srv=[stagedServer,...readModules(path.join(root,'routes'))].join('\n');
 const routes=[...srv.matchAll(/\b(?:app|router)\.(?:get|post|put|patch|delete|all|use)\(\s*['"`]([^'"`]+)['"`]/g)].map(m=>m[1]);
 const toRe=r=>new RegExp('^'+r.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replace(/:[A-Za-z_]+/g,'[^/]+').replace(/\*/g,'.*')+'/?$');
 // Catch-all routes (containing '*' or mounted at '/') would make EVERY path look valid, so they are excluded.
