@@ -25,9 +25,9 @@ const users=[
  {id:'lorna',tenantId:1,role:'lead_researcher',name:'Lorna',active:true},
  {id:'foreign',tenantId:2,role:'caller',name:'Foreign Staff',active:true}];
 const db={users,settings:{v9:{timeEntries:[],onboarding:{lorna:{country:'Philippines',status:'Submitted'}},
-  compensation:{lorna:{payRate:4,payPeriod:'Monthly'}},hrOps:{drafts:[],preferences:{},reviewLog:[]}}}};
+  compensation:{lorna:{payRate:4,payPeriod:'Monthly'}},legacyStaffSetting:{retainMe:true},hrOps:{drafts:[],preferences:{},reviewLog:[]}}}};
 const context={app,auth:'AUTH',ownerOnly:'OWNER_ONLY',db,SBC_V66149_HR_POLICY:P,
- requireRequestTenant:req=>req.tenantId||1,v9data:()=>db.settings.v9,
+ requireRequestTenant:req=>req.tenantId||1,v9data:()=>{const v=db.settings.v9;return {timeEntries:v.timeEntries||[],onboarding:v.onboarding||{},compensation:v.compensation||{},payrollRuns:[]}},
  v9save:async v=>{db.settings.v9=v;return {ok:true}},
  now:()=>new Date().toISOString()};
 vm.runInNewContext(S.ROUTES,context,{filename:'v66149-hr-routes.js'});
@@ -53,6 +53,9 @@ const hrUser={id:'hr',role:'hr_manager',tenantId:1,name:'HR Manager',active:true
  res=reply();await routes['POST /api/hr/drafts'].fn({...req,body:input},res);
  assert.equal(res.code,201);assert.equal(res.out.transferInitiated,false);
  assert.equal(db.settings.v9.hrOps.drafts.length,1);
+ assert.equal(db.settings.v9.legacyStaffSetting.retainMe,true,'HR save must not discard unrelated workforce settings');
+ res=reply();await routes['GET /api/hr/overview'].fn(req,res);
+ assert.equal(res.out.drafts.length,1,'HR drafts must survive legacy v9data() projection');
  res=reply();await routes['POST /api/hr/payout-preferences'].fn({...req,body:{workerId:'lorna',provider:'Payoneer'}},res);
  assert.equal(res.code,200);assert.equal(res.out.status,'Awaiting Owner Review');
  res=reply();await routes['POST /api/hr/drafts'].fn({...req,body:{...input,workerId:'foreign'}},res);
