@@ -53,6 +53,10 @@ if(process.env.SBC_RELEASE_PREFLIGHT_ONLY==='1'){
  console.log('[SBC DEPLOY PREFLIGHT] PASS compiled server, inventory and receipt are one release');
  process.exit(0);
 }
+// Repair previous GoDaddy overlay deployments without deleting unrelated files.
+const legacyDiagnostics=require('./enterprise/v66131-close-legacy-diag.cjs').removeLegacyDiagnosticFiles(root);
+console.log('[SBC LEGACY DIAGNOSTICS] removed='+legacyDiagnostics.removed.length+
+ ' preserved='+legacyDiagnostics.retained.length+' errors='+legacyDiagnostics.errors.length);
 const {persistState} = require('./persistent-state.js');
 const state = persistState(root, root, {reused:false});
 if (state.ephemeral) throw Error('SBC flat runtime rejects ephemeral customer state');
