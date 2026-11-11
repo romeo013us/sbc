@@ -25,6 +25,8 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           node scripts/v6606-quote-server-hardening.cjs
           node scripts/v6606-quote-server-hardening.test.cjs
+          node scripts/v66155-release-hygiene.test.cjs
+          node scripts/secret-audit.js
           node --check hotfix-assets/apply-v6693-quarantine-legacy-officebox.js
           node --check hotfix-assets/v6694-owner-qa-route.cjs
           node scripts/v6605-revenue-integrity.test.cjs
@@ -362,7 +364,7 @@ jobs:
       - name: Build disposable flat GoDaddy ZIP and SHA256 evidence
         run: |
           python3 - <<'PY'
-          import hashlib,json,pathlib,zipfile
+          import hashlib,json,pathlib,zipfile,subprocess
           root=pathlib.Path('.').resolve()
           out=root/'dist-stage'
           out.mkdir(exist_ok=True)
@@ -375,11 +377,19 @@ jobs:
               # write exactly ONE fresh staged inventory record into this ZIP.
               if str(rel)=='SBC-STAGED-INVENTORY.json':continue
               if any(part in banned for part in rel.parts):continue
-              if p.name=='.env' or (p.name.startswith('.env.') and p.name!='.env.example'):continue
-              if p.suffix.lower() in ('.zip','.tgz','.tar','.gz','.sqlite','.db','.csv'):continue
+              if p.name=='.env' or p.name.startswith('.env.'):continue
+              if p.suffix.lower() in ('.zip','.tgz','.tar','.gz','.sqlite','.db','.csv','.pem','.p12','.pfx','.key','.log','.bak','.orig','.swp'):continue
+              if str(rel) in ('public/diag2.html','browser_public/diag2.html','public/index.html.pre-commercial','browser_public/index.html.pre-commercial'):continue
+              if p.name in ('credentials.json','service-account.json','service-account-key.json'):continue
+              if rel.parts[0] in ('public','browser_public') and p.suffix.lower()=='.sql':continue
               if rel.parts[0]=='releases':continue
               files.append(rel)
           files.sort(key=str)
+          checked=subprocess.run(['node','scripts/v66155-release-hygiene.cjs','--paths-stdin',str(root)],
+             input=json.dumps({'files':[str(f) for f in files],'zipName':'SBC-V66-QUOTE-SAFETY-STAGING.zip'}),
+             text=True,capture_output=True)
+          assert checked.returncode==0,'SBC release hygiene gate failed: '+checked.stderr[-1500:]
+          print(checked.stdout.strip())
           assert all(pathlib.Path(n) in files for n in ('package.json','package-lock.json','server.js','sbc-godaddy-flat-entrypoint.cjs','SBC-FLAT-RELEASE-IDENTITY.json','.airo/config.json','public/app.js'))
           # Host-mutated install metadata is deliberately not a runtime integrity input.
           excluded_inventory={'package-lock.json','SBC-FLAT-RELEASE-IDENTITY.json'}
@@ -401,6 +411,7 @@ jobs:
               assert z.testzip() is None
               assert 'SBC-DEPLOY-RECEIPT.json' in z.namelist(), 'Package must overwrite GoDaddy stale receipt'
               assert not any(n.lower().endswith('.csv') or n.startswith('starter-leads/') for n in z.namelist()), 'Customer prospect CSVs must never be shipped'
+              assert not any(n in ('public/diag2.html','browser_public/diag2.html','public/index.html.pre-commercial','browser_public/index.html.pre-commercial') for n in z.namelist()), 'Diagnostic or archived HTML must never ship'
           assert 'SBC-DEPLOY-RECEIPT.json' in hashed, 'Receipt must be included in pinned inventory' 
           print('[SBC STAGING ZIP] '+str(len(files))+' files; fresh pinned receipt, no customer state or secrets');
           PY
@@ -494,6 +505,7 @@ jobs:
             node --check "$tmp/public/app.js"
             node --check "$tmp/enterprise/financial-governor-v56-25-3.js"
             node "$tmp/scripts/v6611-verify-stage-inventory.cjs" "$tmp"
+            node "$tmp/scripts/v66155-release-hygiene.cjs" --inventory "$tmp"
             SBC_RELEASE_PREFLIGHT_ONLY=1 node "$tmp/sbc-godaddy-flat-entrypoint.cjs"
           done
           # Reproduce BOTH reported GoDaddy errors through the REAL startup gate;

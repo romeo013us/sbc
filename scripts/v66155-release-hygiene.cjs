@@ -49,7 +49,7 @@ if(require.main===module){
  const mode=process.argv[2],root=path.resolve(process.argv[3]||'.');let data;
  if(mode==='--paths-stdin'){data=JSON.parse(fs.readFileSync(0,'utf8'))}
  else if(mode==='--inventory'){const inv=JSON.parse(fs.readFileSync(path.join(root,'SBC-STAGED-INVENTORY.json'),'utf8'));
-  data={files:[...Object.keys(inv.files),'package-lock.json','SBC-FLAT-RELEASE-IDENTITY.json'],zipName:'SBC-V66-QUOTE-SAFETY-STAGING.zip'}}
+  data={files:[...Object.keys(inv.files),'package-lock.json','SBC-FLAT-RELEASE-IDENTITY.json','.airo/config.json'],zipName:'SBC-V66-QUOTE-SAFETY-STAGING.zip'}}
  else throw Error('Usage --paths-stdin [root] or --inventory [root]');
  console.log('[SBC RELEASE HYGIENE] '+JSON.stringify(verify(root,data.files,data.zipName)));
 }
