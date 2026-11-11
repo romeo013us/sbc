@@ -36,28 +36,31 @@ function claimIdempotency(key,result){
 function parseCsvBinary(input,{maxBytes=25*1024*1024,maxRows=250000}={}){
   const buf=Buffer.isBuffer(input)?input:Buffer.from(input||'');
   if(buf.length>maxBytes)throw new Error(`Bulk upload exceeds ${maxBytes} byte limit.`);
-  const rows=[]; let row=[]; let fieldStart=0; let field=''; let quoted=false; let i=0;
+  // The historical byte scanner split UTF-8 multi-byte characters, turning
+  // valid names like "Café Niña" into replacement glyphs in durable CRM rows.
+  // Decode the bounded input exactly once, reject malformed encodings, then
+  // scan Unicode text. TextDecoder also handles the optional UTF-8 BOM.
+  let csv;
+  try{csv=new TextDecoder('utf-8',{fatal:true}).decode(buf)}
+  catch{throw new Error('CSV_INVALID_UTF8: Save your CSV as UTF-8 before importing.')}
+  const rows=[]; let row=[]; let field=''; let quoted=false; let i=0;
   const flushField=()=>{row.push(field.trim());field='';};
   const flushRow=()=>{if(row.length||field.length){flushField();rows.push(row);row=[];}else row=[];};
-  while(i<buf.length){
-    const b=buf[i];
-    if(b===34){
-      if(quoted && buf[i+1]===34){field+='"';i+=2;continue;}
+  while(i<csv.length){
+    const ch=csv[i];
+    if(ch==='"'){
+      if(quoted && csv[i+1]==='"'){field+='"';i+=2;continue;}
       quoted=!quoted;i++;continue;
     }
-    if(!quoted && b===44){flushField();i++;continue;}
-    if(!quoted && (b===10||b===13)){
+    if(!quoted && ch===','){flushField();i++;continue;}
+    if(!quoted && (ch==='\n'||ch==='\r')){
       flushRow();
-      if(b===13&&buf[i+1]===10)i++;
+      if(ch==='\r'&&csv[i+1]==='\n')i++;
       i++;continue;
     }
-    // Decode only the current character sequence; UTF-8 multi-byte data is handled by accumulating bytes below.
-    const start=i;
-    if(b<128){field+=String.fromCharCode(b);i++;continue;}
-    while(i<buf.length && (buf[i]&0xC0)===0x80)i++;
-    i++;
-    field+=buf.subarray(start,i).toString('utf8');
+    field+=ch;i++;
   }
+  if(quoted)throw new Error('CSV_UNCLOSED_QUOTED_FIELD');
   if(field.length||row.length)flushRow();
   if(rows.length>maxRows)throw new Error(`Bulk upload exceeds ${maxRows} rows.`);
   return rows;
