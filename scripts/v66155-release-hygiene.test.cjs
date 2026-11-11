@@ -16,7 +16,7 @@ try{
  put('VERSION','66.0.0\n');put('package.json',JSON.stringify({version:'66.0.0'}));
  put('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify({version:'66.0.0'}));
  let files=[...H.required];for(const f of files)if(!fs.existsSync(path.join(root,f)))put(f,'test');
- const html='<script src="/app.js"></script><script src="/v32-2-upgrade.js"></script><link rel="stylesheet" href="/asset.css">';
+ const html='<script src="/app.js"></script>'.repeat(10)+'<script src="/v32-2-upgrade.js"></script><link rel="stylesheet" href="/asset.css">';
  put('public/index.html',html);put('browser_public/index.html',html);
  put('public/asset.css','safe');put('browser_public/asset.css','safe');
  files.push('public/asset.css','browser_public/asset.css');
