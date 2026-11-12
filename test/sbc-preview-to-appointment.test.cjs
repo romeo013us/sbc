@@ -44,10 +44,10 @@ test('unguessable slugs and honest caller scripts never claim verification witho
  assert.match(first,/^synthetic-garage-[a-f0-9]{32}$/);
  assert.notEqual(first,second);
  const script=PREVIEW.salesScript({businessName:'Synthetic Garage',googleBusinessWebsiteStatus:'not_checked'}, {status:'Approved'});
- assert.match(script,/website preview/i);
+ assert.match(script,/built a website/i);
  assert.doesNotMatch(script,/noticed you (?:didn't|do not|don't) have a website/i);
  assert.match(PREVIEW.salesScript({businessName:'Synthetic Garage',googleBusinessWebsiteStatus:'verified_missing'}, {status:'Approved'}),/no website linked/i);
- assert.doesNotMatch(PREVIEW.salesScript(customer,{status:'Draft'}),/put together a website preview/);
+ assert.doesNotMatch(PREVIEW.salesScript(customer,{status:'Draft'}),/went ahead and built a website/);
 });
 
 test('release stage is idempotent and preserves signed master until isolated build',()=>{
