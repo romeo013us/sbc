@@ -61,6 +61,21 @@ function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:
  const d=await api.reconcile({tenantId:1,orderId:order.id},duplicate.deps);assert.equal(d.status,'INVITATION_RECONCILIATION_REQUIRED');assert.equal(d.activationUrl,null);
  const noAck=fixture({response:{ok:false,error:'rejected'}});await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},noAck.deps),/HANDOFF_NOT_ACKNOWLEDGED/);
  const badHost=fixture();badHost.deps.baseUrl='http://localhost:3000';await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},badHost.deps),/HTTPS_ORIGIN_REQUIRED/);assert.equal(badHost.calls.square.length,0);
+ // Explicitly reject private and literal network destinations before touching Square.
+ // The prior URL policy incorrectly allowed 172.16/12, IPv6 loopback and link-local.
+ for(const url of [
+  'https://172.16.0.1','https://172.31.255.254','https://100.64.0.1',
+  'https://[::1]','https://[fe80::1]','https://[::ffff:127.0.0.1]',
+  'https://8.8.8.8','https://0x7f.1','https://dev.internal',
+  'https://office.local','https://office.localhost'
+ ]){
+  const blocked=fixture();blocked.deps.baseUrl=url;
+  await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},blocked.deps),/HTTPS_ORIGIN_REQUIRED/,url);
+  assert.equal(blocked.calls.mysql.length,0,url);
+  assert.equal(blocked.calls.square.length,0,url);
+  assert.equal(blocked.calls.fetch.length,0,url);
+ }
+ assert.equal(api.baseUrl('https://office.example.test:443'),'https://office.example.test');
  const noSecret=fixture();noSecret.deps.secret='short';await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},noSecret.deps),/SECRET_NOT_CONFIGURED/);
  const invalidTenant=fixture();await assert.rejects(()=>api.reconcile({tenantId:0,orderId:order.id},invalidTenant.deps),/TENANT_REQUIRED/);
  console.log('[SBC V66.112] PASS: existing committed MySQL order, exact Square provider payment, authorized Office Box SKU, signed V2 HTTPS, replay handling, fail-closed boundaries; no live calls');
