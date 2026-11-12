@@ -11,10 +11,10 @@ assert.match(FINISHER,/\/\\\.csv\$\/i\.test\(filename\)/,'only genuine .csv exte
 assert.doesNotMatch(FINISHER,/linktrglobal|googleglobal|global\.__SBC_REQUIRE_TENANT\(req\)\.csv/);
 assert.match(FINISHER,/LEAD_IMPORT_WRITER_UNAVAILABLE/,'preview and lost writer cannot import');
 assert.match(FINISHER,/LEAD_IMPORT_MYSQL_REQUIRED/);
-assert.match(FINISHER,/const tenantId=Number\(global\.__SBC_REQUIRE_TENANT\(req\)\)/);
+assert.match(FINISHER,/const tenantId=Number\(global\.__SBC_REQUIRE_TENANT\?\.\(req\)\)/);
 assert.match(FINISHER,/id:id\('cust'\),tenantId,businessName/);
 assert.match(FINISHER,/INSERT INTO sbc_customers[\s\S]*?\(id,tenant_id,business_name/);
-assert.match(FINISHER,/Number\(c.tenantId\)===tenantId&&\(/,'do not dedupe against a foreign tenant');
+assert.match(FINISHER,/Number\(c.tenantId\?\?c.tenant_id\)===tenantId&&\(/,'do not dedupe against a foreign tenant');
 assert.match(candidate,/writerReady:!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted/);
 assert.match(LOOP,/PAYMENT_EVIDENCE\.providerCapturedSquare\(o\)/);
 assert.match(LOOP,/String\(o\.product\|\|''\)!=='SBC Launch QA - \$1 Test Service'/);

@@ -89,7 +89,8 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
       if(!allowed.has(req.user?.role))return res.status(403).json({error:'Lead research access required.'});
       if(ctx.writerReady!==true)return res.status(423).json({ok:false,code:'LEAD_IMPORT_WRITER_UNAVAILABLE'});
       if(!ctx.mysqlPool)return res.status(503).json({ok:false,code:'LEAD_IMPORT_MYSQL_REQUIRED'});
-      const tenantId=Number(global.__SBC_REQUIRE_TENANT(req));
+      const tenantId=Number(global.__SBC_REQUIRE_TENANT?.(req));
+      if(!Number.isSafeInteger(tenantId)||tenantId<1)return res.status(403).json({ok:false,code:'TENANT_REQUIRED'});
       const filename=clean(req.body?.filename||'leads.csv',180);
       const bytes=Buffer.from(String(req.body?.contentBase64||''),'base64');
       if(!bytes.length)return res.status(400).json({error:'contentBase64 is required.'});
@@ -114,7 +115,7 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
         const key=duplicateKey(r);
         if(seen.has(key)){skipped++;continue;}
         seen.add(key);
-        const exists=(ctx.db?.customers||[]).some(c=>Number(c.tenantId)===tenantId&&(
+        const exists=(ctx.db?.customers||[]).some(c=>Number(c.tenantId??c.tenant_id)===tenantId&&(
           (r.email && clean(c.email).toLowerCase()===r.email.toLowerCase()) ||
           (normPhone(r.phone) && normPhone(c.phone)===normPhone(r.phone)) ||
           (r.businessName && clean(c.businessName).toLowerCase()===r.businessName.toLowerCase()))
@@ -171,8 +172,11 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
   app.get('/api/v56131/revenue/radar',auth,async(req,res)=>{
     try{
       if(!ownerOnly || !['owner','manager'].includes(req.user?.role))return res.status(403).json({error:'Owner or manager access required.'});
+      res.setHeader('Cache-Control','no-store');
+      const tenantId=Number(global.__SBC_REQUIRE_TENANT?.(req));
+      if(!Number.isSafeInteger(tenantId)||tenantId<1)return res.status(403).json({ok:false,code:'TENANT_REQUIRED'});
       const ctx=getContext();
-      const rows=(ctx.db?.customers||[]).map(c=>{const x=bulkScore(c);return {id:c.id,businessName:c.businessName,phone:c.phone,email:c.email,website:c.website,industry:c.industry,score:x.score,priority:x.priority,gaps:x.gaps,recommendedPackage:x.recommendedPackage,openingAngle:x.openingAngle,status:c.status,temperature:c.leadIntelligence?.leadTemperature||''};});
+      const rows=(ctx.db?.customers||[]).filter(c=>Number(c.tenantId??c.tenant_id)===tenantId).map(c=>{const x=bulkScore(c);return {id:c.id,businessName:c.businessName,phone:c.phone,email:c.email,website:c.website,industry:c.industry,score:x.score,priority:x.priority,gaps:x.gaps,recommendedPackage:x.recommendedPackage,openingAngle:x.openingAngle,status:c.status,temperature:c.leadIntelligence?.leadTemperature||''};});
       rows.sort((a,b)=>b.score-a.score);
       const hot=rows.filter(x=>x.priority==='HOT').length,warm=rows.filter(x=>x.priority==='WARM').length;
       res.json({ok:true,generatedAt:now(),total:rows.length,hot,warm,nurture:Math.max(0,rows.length-hot-warm),top:rows.slice(0,25),guardrail:'Radar recommends; Revenue PLAY/owner controls execution.'});
