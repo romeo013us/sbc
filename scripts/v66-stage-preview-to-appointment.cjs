@@ -35,6 +35,7 @@ function patchServer(input) {
  "Object.assign(o,{demoId:demo.id,demoUrl:'',status:'DEMO_DRAFT',lastAction:'demo_created',updatedAt:now()});");
  once("return await createWebsiteDemo(String(a.customerId),a);",
  "return await createWebsiteDemo(String(a.customerId),{...a,actor:req.user,tenantId:requireRequestTenant(req)});");
+ once("app.post('/api/website-demos',auth,", "require('./enterprise/sbc-website-production-routes.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,paidGuard:SBC_V6651_REQUIRE_PAID});\\napp.post('/api/website-demos',auth,");
  line("app.post('/api/website-demos',auth,",
  "app.post('/api/website-demos',auth,async(req,res)=>{"+
  "if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY||!sbcWriterLeaseReady)return res.status(423).json({ok:false,error:'DEMO_WRITER_UNAVAILABLE'});"+
