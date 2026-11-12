@@ -9,8 +9,8 @@ test('starter is an actual responsive, navigable complete one-page site',()=>{
  assert.match(html,/<!doctype html>/i);
  assert.match(html,/<nav id="siteNavigation"/);
  for(const section of ['services','about','contact','faq'])assert.match(html,new RegExp('id="'+section+'"'));
- assert.match(html,/href="#services"/);
- assert.match(html,/href="#contact"/);
+ assert.match(html,/href="\/api\/website-demos\/demo_Xyz1\/preview#services"/);
+ assert.match(html,/href="\/api\/website-demos\/demo_Xyz1\/preview#contact"/);
  assert.match(html,/name="description"/);
  assert.match(html,/name="viewport"/);
  assert.match(html,/sbc-prospect-site.css/);
