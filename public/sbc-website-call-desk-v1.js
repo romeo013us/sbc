@@ -76,7 +76,7 @@
    outcomes+'<p style="font-size:12px;color:#586679;line-height:1.6;margin:20px 0 5px"><strong>AI voice outbound:</strong> disabled. Separate written consent, do-not-call screening, disclosure requirements and legal review are mandatory before considering any autonomous AI calling.</p></div>';
  }
  function panel(){
-  return '<div style="max-width:1240px"><div style="display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap">'+
+  return '<style>@media(max-width:720px){#sbcWebcallLayout{grid-template-columns:1fr!important}}</style><div style="max-width:1240px"><div style="display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap">'+
    '<div><p style="font-size:11px;letter-spacing:.12em;font-weight:850;color:#15836e;margin:0">SUCCESSFUL BY CHOICE · VERIFIED LEAD → ACTUAL WEBSITE → SALE</p>'+
    '<h2 style="font-size:28px;margin:5px 0">SBC Website Call Desk</h2><p style="font-size:13px;color:#52667a">Lorna researches and imports. SBC builds a real website. The assigned human caller books the presentation.</p></div>'+
    '<button type="button" class="btn" id="sbcWebcallRefresh">Refresh</button></div>'+leader()+
@@ -98,10 +98,10 @@
   document.getElementById('sbcWebcallCopyPhone')?.addEventListener('click',()=>copyText(current()?.phone));
   document.getElementById('sbcWebcallCopyScript')?.addEventListener('click',()=>copyText(current()?.script));
   document.getElementById('sbcWebcallOpenSite')?.addEventListener('click',()=>{
-   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION?.openExisting)window.SBC_WEBSITE_PRODUCTION.openExisting(id);
+   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.openExisting==='function')window.SBC_WEBSITE_PRODUCTION.openExisting(id);
   });
   document.getElementById('sbcWebcallBuildSite')?.addEventListener('click',()=>{
-   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION?.build)window.SBC_WEBSITE_PRODUCTION.build(id);
+   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(id);
   });
   document.getElementById('sbcWebcallSaveOutcome')?.addEventListener('click',saveOutcome);
  }
