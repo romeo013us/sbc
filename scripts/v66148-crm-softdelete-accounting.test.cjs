@@ -43,7 +43,8 @@ assert.equal(STAGE.patchServer(staged),staged,'stage reapplication is idempotent
 assert(staged.includes(STAGE.MARK));
 assert(staged.includes("SELECT id,status FROM sbc_customers WHERE tenant_id=?"));
 assert(staged.includes("SELECT id,status FROM sbc_orders WHERE tenant_id=?"));
-assert(staged.includes("assessPersistenceSafety(visibleCore,sourceCore)"));
+assert(staged.includes("assessPersistenceSafety(reconciledVisibleCore,sourceCore)"),"pending explicit tombstones are reconciled with SQL before shrink safety");
+assert(staged.includes("pendingVisibleTombstones(conn,snapshotRows,TENANT_DEFAULT_ID)"),"guard counts only SQL-visible pending tenant deletes");
 assert(staged.includes("visibleCounts:visibleCore"),'raw backup census must also preserve visible counts');
 assert(staged.includes("counts:authoritativeCore"),'full SQL backup snapshot remains intact');
 new vm.Script(staged,{filename:'staged-v66148-server.js'});
