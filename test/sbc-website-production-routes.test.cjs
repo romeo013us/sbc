@@ -8,8 +8,8 @@ async function runCase(verify,{paid=true,writer=true}={}){
  let store={websiteDemos:[{id:'site-1',customerId:'c1',tenantId:1,status:'Approved',offerTier:'essentials'}],websiteProductionOrders:[]};
  const app=express();app.use(express.json());
  app.use((req,res,next)=>{req.user=req.header('x-test')==='owner'?owner:req.header('x-test')==='worker'?worker:null;next();});
- const auth=(req,res,next)=>req.user?next():res.sendStatus(401);
- const ownerOnly=(req,res,next)=>req.user.role==='owner'?next():res.sendStatus(403);
+ const auth=(req,res,next)=>req.user?next():res.status(401).json({ok:false});
+ const ownerOnly=(req,res,next)=>req.user.role==='owner'?next():res.status(403).json({ok:false});
  register(app,{auth,ownerOnly,requireTenant:req=>req.user.tenantId,db,getStore:()=>store,saveStore:async next=>{store=next;return {ok:true}},writerReady:()=>writer,paidGuard:(order,tenant)=>{if(!paid||tenant!==1)throw Error('PAYMENT_EVIDENCE_REQUIRED')}});
  const server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s))});
  const call=async(method,url,body,role='owner')=>{
