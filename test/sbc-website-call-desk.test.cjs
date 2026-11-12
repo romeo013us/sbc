@@ -81,7 +81,11 @@ test('owner and assigned caller only; GET creates no history; POST records no ca
  try{
   assert.equal((await call('GET','/api/website-production/call-desk',null)).status,401);
   assert.equal((await call('GET','/api/website-production/call-desk','research')).status,403);
-  assert.equal((await call('GET','/api/website-production/call-desk','foreign')).body.rows.length,0);
+  const foreignView=await call('GET','/api/website-production/call-desk','foreign');
+  assert.equal(foreignView.body.rows.length,1);
+  assert.equal(foreignView.body.rows[0].customerId,'foreign');
+  assert(!JSON.stringify(foreignView.body).includes('Synthetic ready'));
+
   const view=await call('GET','/api/website-production/call-desk','caller');
   assert.equal(view.status,200);assert.equal(saves,0);
   assert.equal((await call('POST','/api/website-production/call-desk/another/outcome','caller',{kind:'NO_ANSWER'})).status,404);
