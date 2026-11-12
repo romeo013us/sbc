@@ -34,6 +34,13 @@ function patchServer(source) {
   }
   replace(oldWrites, '    await SNAPSHOT_TENANTS.persist(conn,snapshotRows,{sqlDate,sqlDateTime,now});\n\n');
 
+  // A pending explicit soft delete is still visible to MySQL until persist().
+  // Reconcile only exact, default-tenant SQL matches before the shrink gate.
+  replace('    const safety=assessPersistenceSafety(visibleCore,sourceCore);', [
+    '    const pendingDeletes=await SNAPSHOT_TENANTS.pendingVisibleTombstones(conn,snapshotRows,TENANT_DEFAULT_ID);',
+    '    const reconciledVisibleCore=Object.fromEntries(Object.entries(visibleCore).map(([name,count])=>[name,Math.max(0,count-(pendingDeletes[name]||0))]));',
+    '    const safety=assessPersistenceSafety(reconciledVisibleCore,sourceCore);'
+  ].join('\n'));
   replace("function addActivity(type,message,meta={}){const entry={id:id('act'),type,message,meta,createdAt:now()};",
     "function addActivity(type,message,meta={},tenantId=currentTenantContext()?.tenantId){const entry={id:id('act'),type,message,meta,createdAt:now(),tenantId};");
   replace('sourcePage:c0.sourcePage,duplicate:true,contactChanged:false});',
