@@ -149,6 +149,8 @@ jobs:
           node scripts/v66157-hr-ledger-retention.test.cjs
           node scripts/v66149-hr-workstation-ui.test.cjs
           node scripts/v66151-hr-release-parity.test.cjs
+          node scripts/owner-crm-export.test.cjs
+          python3 scripts/v66131-published-f4-smoke.py --self-test
           node scripts/v66101-caller-least-privilege.test.cjs
           node scripts/v66102-research-shift-notice.test.cjs
           node scripts/v66105-lorna-operations.test.cjs
@@ -322,6 +324,8 @@ jobs:
           SBC_V66150_ISOLATED_STAGE=YES node scripts/v66150-stage-hr-ui.cjs --apply
           node scripts/v66149-hr-workstation-ui.test.cjs --staged
           node scripts/v66149-hr-workstation.test.cjs --staged
+          SBC_OWNER_CRM_EXPORT_ISOLATED_STAGE=YES node scripts/stage-owner-crm-export.cjs --apply
+          node scripts/owner-crm-export.test.cjs --staged
           node --check public/hr-department.js
           node --check browser_public/hr-department.js
           node --check public/app.js
