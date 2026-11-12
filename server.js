@@ -5617,8 +5617,43 @@ app.get('/api/intelligence',auth,(req,res)=>{
   res.json({ok:true,version:BUILD_VERSION,generatedAt:new Date().toISOString(),recentOrders,financial:{revenueToday,revenue30,grossContribution,grossContributionSource:'Recorded revenue less recorded direct cost',grossMarginData,grossMargin:grossRevenue?grossContribution/grossRevenue*100:null,aovData:closedQuotes.length?{status:'available',value:closedQuotes.reduce((a,q)=>a+money(q.total),0)/closedQuotes.length}:{status:'insufficient_data'},byPackage,cacData,ltvData,recurringRevenue,commissionExpense,revenuePerCustomerData:revenuePerCustomerValue!=null?{status:'available',value:revenuePerCustomerValue}:{status:'insufficient_data'} ,churnData},customer:{total:customers.length,health,healthList,renewals30,abandonedCheckouts,inactiveCustomers,upsellOpportunities,repeatPrintReminders},sales:{pipelineValue:quotes.filter(q=>!['Lost','Paid','Won'].includes(String(q.status||''))).reduce((a,q)=>a+money(q.total),0),conversionData,aovData:closedQuotes.length?{status:'available',value:closedQuotes.reduce((a,q)=>a+money(q.total),0)/closedQuotes.length}:{status:'insufficient_data'},averageSalesCycleDays:cycleValues.length?cycleValues.reduce((a,x)=>a+x,0)/cycleValues.length:null,salesCycleData:cycleValues.length?{status:'available'}:{status:'insufficient_data'},pipelineVelocityData:decidedQuotes.length?{status:'available',value:quotes.filter(q=>!['Lost','Paid','Won'].includes(String(q.status||''))).reduce((a,q)=>a+money(q.total),0)/30}:{status:'insufficient_data'},lostDeals:quotes.filter(q=>q.status==='Lost').length,bySource:Object.values(bySource),bySalesperson:Object.values(bySalesperson),lostReasons:Object.entries(lostReasons).map(([reason,count])=>({reason,count})).sort((a,b)=>b.count-a.count)},operations:{openFulfillment,agingOverSla,openTickets:(mega.tickets||[]).filter(x=>x.status!=='Resolved').length,fulfillmentAging,webhooks24,webhookFailures,lastWebhook:lastWebhook?.receivedAt||lastWebhook?.createdAt||'',uptime:`${Math.floor(process.uptime()/3600)}h ${Math.floor(process.uptime()%3600/60)}m`},automation:{enabled:db.settings?.automationEnabled!==false,failed},security:{backup:{status:'available',message:'The owner-only backup endpoint is available. A backup download is not the same as a verified restore.'},dr:{statusLabel:'NOT TESTED',message:'No successful disaster-recovery restore test is recorded in the Command Center data.'},audit}});
 });
 
-app.get('/api/export',auth,ownerOnly,(req,res)=>{res.setHeader('Content-Type','application/json');res.setHeader('Content-Disposition',`attachment; filename="sbc-business-backup-${new Date().toISOString().slice(0,10)}.json"`);res.send(JSON.stringify(db,null,2))});
-app.post('/api/import',auth,ownerOnly,async(req,res)=>{const incoming=normalize(req.body);db=incoming;addActivity('system','Imported SBC business backup');await saveData();res.json({ok:true})});
+// SBC_OWNER_CRM_EXPORT_SCOPE
+app.get('/api/export',auth,ownerOnly,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!MYSQL_RECOVERY_EVALUATED || MYSQL_RECOVERY_REQUIRED){
+    return res.status(503).json({ok:false,error:'CRM_EXPORT_UNAVAILABLE',message:'Wait until the workspace data is ready to export.'});
+  }
+  const tenantId = requireRequestTenant(req);
+  const createdAt = new Date().toISOString();
+  const fields = (record, keys) => Object.fromEntries(keys.flatMap(key => {
+    const value = record?.[key];
+    return value === null || ['string','number','boolean'].includes(typeof value) ? [[key,value]] : [];
+  }));
+  const base = ['id','createdAt','updatedAt'];
+  const sale = ['customerId','customerName','status','notes'];
+  const rows = (name, keys) => tenantFilter(req,(db[name] || []).filter(Boolean))
+    .map(record => ({...fields(record,[...base,...keys]),tenantId}));
+  const quotes = tenantFilter(req,(db.quotes || []).filter(Boolean)).map(quote => ({
+    ...fields(quote,[...base,...sale,'quoteNumber','validUntil','subtotal','discount','taxRate','tax','total']),
+    tenantId,
+    items: Array.isArray(quote.items) ? quote.items.map(item => fields(item,['id','name','category','qty','unitPrice'])) : []
+  }));
+  const result = {
+    version:1,kind:'sbc-crm-export',createdAt,tenantId,
+    customers:rows('customers',['businessName','contactName','phone','email','status','source','followUp','notes','website','websiteStatus','industry','assignedTo','verificationStatus','address','city','region','zip']),
+    quotes,
+    orders:rows('orders',[...sale.filter(key => key !== 'notes'),'product','quantity','cost','price','paymentStatus','fulfillmentStatus','fulfillmentUpdatedAt']),
+    renewals:rows('renewals',[...sale,'service','dueDate','amount']),
+    activities:rows('activities',['type','message'])
+  };
+  res.setHeader('Content-Disposition','attachment; filename="sbc-crm-export-'+createdAt.slice(0,10)+'.json"');
+  return res.json(result);
+});
+
+app.post('/api/import',auth,ownerOnly,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  return res.status(410).json({ok:false,error:'LEGACY_WORKSPACE_IMPORT_RETIRED',message:'Use the CRM lead importer for new leads. For database recovery, restore a MySQL backup into a separate database first.'});
+});
 app.post('/api/activities',auth,ownerOnly,async(req,res)=>{const b=req.body||{};if(!b.customerId||!b.type||!b.message)return res.status(400).json({error:'Customer, activity type and note are required.'});const c=db.customers.find(x=>x.id===b.customerId);const a={id:id('act'),type:String(b.type),message:String(b.message).slice(0,500),meta:{customerId:b.customerId,customerName:c?.businessName||c?.contactName||''},createdAt:now()};db.activities.unshift(a);db.activities=db.activities.slice(0,200);if(c&&b.nextFollowUp)c.followUp=String(b.nextFollowUp).slice(0,10);await saveData();res.status(201).json(a)});
 app.post('/api/tasks',auth,async(req,res)=>{if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Only owner or manager can create and assign team tasks.'});const b=req.body||{};if(!b.title||!b.dueAt)return res.status(400).json({error:'Task title and due date/time are required.'});const c=b.customerId?db.customers.find(x=>x.id===b.customerId):null;const assigneeId=String(b.assignedTo||'');const assignee=assigneeId?(db.users||[]).find(x=>x.id===assigneeId&&x.active!==false&&x.role!=='owner'):null;if(assigneeId&&!assignee)return res.status(400).json({error:'Select an active team member.'});const t={id:id('task'),customerId:String(b.customerId||''),customerName:c?.businessName||c?.contactName||String(b.customerName||''),title:String(b.title),dueAt:String(b.dueAt),type:String(b.type||'Follow-up'),priority:String(b.priority||'Normal'),status:String(b.status||'Open'),notes:String(b.notes||''),assignedTo:assignee?.id||'',assignedToName:assignee?.name||'Unassigned',createdBy:req.user.id,createdAt:now(),updatedAt:now()};db.tasks.unshift(t);addActivity('task',`Task created: ${t.title}${t.customerName?' for '+t.customerName:''}`,{taskId:t.id,customerId:t.customerId,assignedTo:t.assignedTo});await saveData();res.status(201).json(t)});
 app.put('/api/tasks/:id',auth,async(req,res)=>{const t=db.tasks.find(x=>x.id===req.params.id);if(!t)return res.status(404).json({error:'Task not found.'});if(req.user.role!=='owner'&&req.user.role!=='manager'&&t.assignedTo!==req.user.id)return res.status(403).json({error:'Not assigned to you.'});const b=req.body||{};if(b.assignedTo!==undefined){if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Only owner or manager can reassign tasks.'});const u=(db.users||[]).find(x=>x.id===String(b.assignedTo)&&x.active!==false&&x.role!=='owner');if(b.assignedTo&&!u)return res.status(400).json({error:'Select an active team member.'});t.assignedTo=u?.id||'';t.assignedToName=u?.name||'Unassigned';}Object.assign(t,{...b,id:t.id,updatedAt:now()});if(t.status==='Completed'&&!t.completedAt)t.completedAt=now();await saveData();res.json(t)});
