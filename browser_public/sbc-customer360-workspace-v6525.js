@@ -91,7 +91,7 @@
     if(phone)addButton(bar,'▣ SMS','',()=>{if(typeof window.sendSmsToLead==='function')window.sendSmsToLead(c.id);else toast('SMS composer is not available.');},locked,'Recovery/read-only mode blocks outreach.');
     addButton(bar,'＋ Build Cart / Quote','',()=>window.sbcStartCustomerQuote(c.id),locked||!canSell(),locked?'Recovery/read-only mode blocks new quotes.':'This role cannot create quotes.');
     addButton(bar,'⚡ Fast Checkout','primary',()=>window.sbcCustomerFastCheckout(c.id),locked||!canSell(),locked?'Recovery/read-only mode blocks checkout preparation.':'This role cannot prepare checkout.');
-    if(typeof window.generateWebsiteDemo==='function')addButton(bar,'Generate Demo','',()=>window.generateWebsiteDemo(c.id),locked,'Recovery/read-only mode blocks new actions.');
+    if(typeof window.generateWebsiteDemo==='function')addButton(bar,'Build Website','',()=>window.generateWebsiteDemo(c.id),locked,'Recovery/read-only mode blocks new actions.');
     if(typeof window.megaRequestRefund==='function')addButton(bar,'Request Refund','danger',()=>window.megaRequestRefund(c.id),locked,'Recovery/read-only mode blocks refund requests.');
     const before=host.querySelector(':scope > .actions');host.insertBefore(bar,before||null);
     installBriefing(host,c);
