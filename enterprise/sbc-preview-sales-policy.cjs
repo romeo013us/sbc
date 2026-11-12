@@ -54,8 +54,9 @@ function salesScript(customer, demo) {
   const intro = customer?.googleBusinessWebsiteStatus === 'verified_missing'
     ? 'I checked your Google Business Profile and noticed there was no website linked.'
     : 'I was checking out your business online and had an idea for how your website could look.';
-  return greeting + ' ' + intro + ' ' + (done
-    ? 'I put together a website preview for your business. Would tonight or tomorrow work for a quick 10-minute walkthrough?'
-    : 'Would you be interested in seeing a website concept if I put one together?');
+  return greeting + '\n\n' + intro + '\n\n' + (done
+    ? 'So I went ahead and built a website for your business. It is ready for you to look through, and we can finish the remaining business-specific details if you want to move forward.\n\nWould you have 10 minutes today or tomorrow for me to show you? Which works better?'
+    : 'I would like to put together a working website for your business. Would you be open to seeing it once it is ready?') +
+    '\n\nIf they ask the price: Our one-page Starter is $199, and the more complete four-page website starts at $349. We can walk through what each includes.';
 }
 module.exports = {sameTenant,canOperate,canReadDemo,publicReady,canCheckout,newSlug,reviewApproval,salesScript};

@@ -75,6 +75,11 @@ test('Website Production replaces small-demo UI and preserves CRM action compati
  assert.match(source,/sbcFactoryCheckDetails/);
  assert.match(source,/sbcFactoryCheckVisuals/);
  assert.match(source,/sbcFactoryCheckContent/);
+ assert.match(source,/sbcFactoryBookMeeting/);
+ assert.match(source,/sbcFactoryMeetingConfirmed/);
+ assert.match(source,/sbcFactoryMeetingTime/);
+ assert.match(source,/\/api\/website-production\/appointments/);
+ assert.match(source,/prospect explicitly agreed/i);
  assert.match(source,/\/api\/website-demos\/.*approve/);
  assert.match(source,/window\.generateWebsiteDemo = buildWebsite/);
  assert.doesNotMatch(source,/SBC Demo Studio|small demo|Generate Demo/);

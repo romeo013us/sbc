@@ -142,7 +142,7 @@ jobs:
       - name: Legacy CRM tenant guards
         run: node scripts/v6620-legacy-crm-tenant-guard-test.cjs
       - name: Full website production, site generation and role-based fulfillment
-        run: node --test test/sbc-preview-to-appointment.test.cjs test/sbc-prospect-site-factory.test.cjs test/sbc-website-workorders.test.cjs test/sbc-website-production-routes.test.cjs
+        run: node --test test/sbc-preview-to-appointment.test.cjs test/sbc-prospect-site-factory.test.cjs test/sbc-website-workorders.test.cjs test/sbc-website-production-routes.test.cjs test/sbc-website-appointments.test.cjs
       - name: Tenant repository isolation
         run: node scripts/tenant-repository-isolation-test.js
 
