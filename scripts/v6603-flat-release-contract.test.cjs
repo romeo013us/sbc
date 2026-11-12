@@ -42,7 +42,7 @@ assert.match(deployed.sourceCommit,/^[a-f0-9]{40}$/);
 assert.match(deployed.sourceFingerprint,/^[a-f0-9]{64}$/);
 const html=read('public/index.html');
 assert.equal(html,read('browser_public/index.html'),'published and mirrored HTML must match');
-assert.match(html,/id="sbcBuildVersion">V66\.0\.0 · DEMO STUDIO/);
+assert.match(html,/id="sbcBuildVersion">V66\.0\.0 · WEBSITE PRODUCTION/);
 assert.match(read('public/v56251-ui-finalize.js'),/__SBC_UI_RELEASE__='66\.0\.0'/);
 assert.doesNotMatch(read('public/sbc-kim-ui-hardening-v6429.js'),/window\.__SBC_UI_RELEASE__\s*=/);
 assert.match(html,/sbc-v6636-canonical-styles/);

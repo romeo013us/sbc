@@ -40,9 +40,9 @@ check('release identity and visible shell match current V66.0.0',()=>{
   assert.match(identity,new RegExp("RELEASE_VERSION = '" + pkg.version.replaceAll('.', '\\.') + "'"));
   assert.match(identity,/patch:0/);
   assert.match(read('package.json'),/"version": "66\.0\.0"/);
-  assert.match(shell,/V66\.0\.0 · DEMO STUDIO/);
+  assert.match(shell,/V66\.0\.0 · WEBSITE PRODUCTION/);
   assert.match(shell,/app\.js\?v=66\./);
-  assert.match(read('public/v56251-ui-finalize.js'),/V66\.0\.0 · DEMO STUDIO/);
+  assert.match(read('public/v56251-ui-finalize.js'),/V66\.0\.0 · WEBSITE PRODUCTION/);
   assert.match(agentOs,/data\.releaseVersion\|\|'65\.1\.\d+'/);
   assert.match(growthUi,/SBC OS V65\.1\.\d+/);
 });
