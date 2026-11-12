@@ -4,6 +4,13 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const currentRole = () => (typeof state !== 'undefined' && state.me && state.me.role) || '';
   const getCustomer = id => (typeof state !== 'undefined' && Array.isArray(state.data?.customers) ? state.data.customers : []).find(c => String(c.id) === String(id));
+  // The Call Desk may show verified assigned leads beyond legacy CRM row limits.
+  // This fallback is display-only. Server endpoints still enforce tenant and assignment.
+  const salesCustomer = (id,hint) => getCustomer(id) || (hint && String(hint.customerId)===String(id) ? {
+    id:String(id),businessName:String(hint.businessName||'Business').slice(0,120),
+    contactName:String(hint.contactName||'').slice(0,100),phone:'',email:'',
+    doNotContact:true,doNotCall:true,salesSuppressed:true
+  } : null);
   const serviceApi = async (endpoint, options) => {
     if (typeof api !== 'function') throw new Error('Command Center connection unavailable. Refresh and try again.');
     return api(endpoint, options);
@@ -136,8 +143,8 @@
     finally{busy=false;}
   }
 
-  async function buildWebsite(customerId,defaultTier='essentials'){
-    const customer=getCustomer(customerId);
+  async function buildWebsite(customerId,defaultTier='essentials',hint){
+    const customer=salesCustomer(customerId,hint);
     if(!customer)return notify('CRM customer record not found. Reload Command Center.');
     if(typeof state!=='undefined'&&state.data&&(state.data.recovery?.required||state.data.recoveryRequired||state.data.readOnly||state.data.mysqlRecoveryRequired))
       return notify('Website production is blocked during recovery/read-only mode.');
@@ -160,8 +167,8 @@
       finally{busy=false;}
     });
   }
-  async function openExisting(customerId){
-    const customer=getCustomer(customerId);
+  async function openExisting(customerId,hint){
+    const customer=salesCustomer(customerId,hint);
     if(!customer)return notify('Customer record unavailable. Reload the CRM.');
     if(typeof openModal==='function')openModal('SBC Website Production','<div class="v6526-studio"><h3>Opening existing website…</h3><p>Loading the latest saved site, not rebuilding or changing a client-approved website.</p></div>');
     try{
