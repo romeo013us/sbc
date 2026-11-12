@@ -68,13 +68,15 @@ if (isset($_GET['sbc_portal'])) {
 ?>
 
 <?php
-/* A 2xx transport status is not evidence that Command Center saved a CRM lead.
- * Require explicit application acknowledgement; email fallback is tracked separately.
+/* A CRM receipt includes the persisted lead ID. Email fallback has its own result.
  */
 function sbcCrmLeadAccepted($httpCode, $json, $transportError = '') {
+    $leadId = is_array($json) ? ($json['id'] ?? null) : null;
     return $transportError === ''
-        && (int)$httpCode >= 200 && (int)$httpCode < 300
-        && is_array($json) && ($json['ok'] ?? null) === true;
+        && in_array((int)$httpCode, [200, 201], true)
+        && is_array($json) && ($json['ok'] ?? null) === true
+        && ($json['accepted'] ?? null) !== false
+        && is_string($leadId) && trim($leadId) !== '' && strlen($leadId) <= 80;
 }
 /* SBC lightweight form handler: keeps customer questionnaires on-site instead of relying on mailto:. */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {

@@ -84,6 +84,7 @@ jobs:
           node scripts/v66108-war-gate.test.cjs
           node scripts/v66109-workforce-audio.test.cjs
           node scripts/predeploy-war-test.js
+          node --test test/sbc-market-intelligence.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs
           node scripts/v66112-stage-officebox-postcommit.cjs
           node scripts/v66112-officebox-postcommit.test.cjs
@@ -335,6 +336,8 @@ jobs:
         run: |
           SBC_ISOLATED_BUILD_PROOF_STAGE=YES node scripts/stage-deployed-build-proof.cjs --apply
           node test/deployed-build-proof.test.cjs --staged
+          SBC_ISOLATED_MARKET_INTELLIGENCE_STAGE=YES node scripts/v66-stage-market-intelligence.cjs --apply
+          SBC_MARKET_INTELLIGENCE_EXPECT_STAGED=YES node --test test/sbc-market-intelligence.test.cjs
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
           node - <<'NODE'
