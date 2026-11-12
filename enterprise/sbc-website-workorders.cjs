@@ -16,8 +16,8 @@ function needOwner(actor,entity){
  if(String(actor?.role)!=='owner'||!sameTenant(actor,entity)||actor.active===false)throw Error('OWNER_REQUIRED');
 }
 function start({order,site,actor,clock=new Date().toISOString()}={}){
- needOwner(actor,order);
  if(!sameTenant(order,site))throw Error('TENANT_CONTEXT_REQUIRED');
+ needOwner(actor,order);
  if(String(order?.customerId||'')!==String(site?.customerId||''))throw Error('CUSTOMER_MISMATCH');
  if(site?.status!=='Approved'||site?.archived===true)throw Error('WEBSITE_NOT_APPROVED');
  return {id:'webprod_'+randomUUID(),tenantId:tid(order),orderId:String(order.id),
