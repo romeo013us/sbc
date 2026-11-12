@@ -98,10 +98,10 @@
   document.getElementById('sbcWebcallCopyPhone')?.addEventListener('click',()=>copyText(current()?.phone));
   document.getElementById('sbcWebcallCopyScript')?.addEventListener('click',()=>copyText(current()?.script));
   document.getElementById('sbcWebcallOpenSite')?.addEventListener('click',()=>{
-   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.openExisting==='function')window.SBC_WEBSITE_PRODUCTION.openExisting(id);
+   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.openExisting==='function')window.SBC_WEBSITE_PRODUCTION.openExisting(id,current());
   });
   document.getElementById('sbcWebcallBuildSite')?.addEventListener('click',()=>{
-   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(id);
+   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(id,'essentials',current());
   });
   document.getElementById('sbcWebcallSaveOutcome')?.addEventListener('click',saveOutcome);
  }
