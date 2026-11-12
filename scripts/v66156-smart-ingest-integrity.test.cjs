@@ -8,7 +8,8 @@ const register=require('../routes/v56131-revenue-finisher.js');
 function harness(){
  const routes=new Map(),calls={mysql:0,save:0,assist:0,activity:0};
  const db={customers:[]};
- const ctx={writerReady:true,db,mysqlPool:{query:async()=>{calls.mysql++;return [[]]}},
+ const connection={query:async()=>{calls.mysql++;return [[]]},beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{}};
+ const ctx={writerReady:true,db,mysqlPool:{getConnection:async()=>connection},
   saveData:async()=>{calls.save++},
   enqueueLeadAssist:()=>{calls.assist++},
   addActivity:()=>{calls.activity++},

@@ -110,12 +110,13 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
       const seen=new Set();
       let skipped=sourceRows.length-mapped.length;
       let added=0;
-      const radar=[];
+      const radar=[],pending=[];
+      if(!Array.isArray(ctx.db?.customers))return res.status(503).json({ok:false,code:'LEAD_IMPORT_CRM_UNAVAILABLE'});
       for(const r of mapped){
         const key=duplicateKey(r);
         if(seen.has(key)){skipped++;continue;}
         seen.add(key);
-        const exists=(ctx.db?.customers||[]).some(c=>Number(c.tenantId??c.tenant_id)===tenantId&&(
+        const exists=[...ctx.db.customers,...pending].some(c=>Number(c.tenantId??c.tenant_id)===tenantId&&(
           (r.email && clean(c.email).toLowerCase()===r.email.toLowerCase()) ||
           (normPhone(r.phone) && normPhone(c.phone)===normPhone(r.phone)) ||
           (r.businessName && clean(c.businessName).toLowerCase()===r.businessName.toLowerCase()))
@@ -143,23 +144,50 @@ module.exports=function registerRevenueFinisher(app,{auth,ownerOnly,getContext})
         c.leadIntelligence.recommendedPackage=intelligence.recommendedPackage;
         c.leadIntelligence.estimatedDealValue=Number(c.dealValue||0);
         c.leadIntelligence.sourceResearchNotes += ` · ${intelligence.gaps.join(',')||'NO_MAJOR_DIGITAL_GAP'} · SCORE ${intelligence.score}`;
-        if(ctx.mysqlPool){
-          await ctx.mysqlPool.query(
+        pending.push(c);
+        radar.push({id:c.id,businessName:c.businessName,score:intelligence.score,priority:intelligence.priority,gaps:intelligence.gaps,recommendedPackage:intelligence.recommendedPackage,openingAngle:intelligence.openingAngle});
+        added++;
+      }
+      // All customer rows commit together; no in-memory rows or downstream jobs
+      // are published until MySQL confirms the entire batch.
+      if(pending.length){
+        if(typeof ctx.mysqlPool.getConnection!=='function')return res.status(503).json({ok:false,code:'LEAD_IMPORT_TRANSACTION_REQUIRED',noLeadsWritten:true});
+        let connection,commitAttempted=false,rollbackConfirmed=false;
+        try{
+          connection=await ctx.mysqlPool.getConnection();
+          await connection.beginTransaction();
+          for(const c of pending){
+          await connection.query(
             `INSERT INTO sbc_customers
               (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,created_at,updated_at)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [c.id,tenantId,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,JSON.stringify(c.leadIntelligence),ctx.sqlDateTime?ctx.sqlDateTime(c.createdAt):c.createdAt,ctx.sqlDateTime?ctx.sqlDateTime(c.updatedAt):c.updatedAt]
           );
-        }
-        ctx.db.customers.unshift(c);
-        if(typeof ctx.assignLeadAutomatically==='function')ctx.assignLeadAutomatically(c);
-        if(typeof ctx.enqueueLeadAssist==='function')ctx.enqueueLeadAssist(c.id,'bulk_ingest','high');
-        radar.push({id:c.id,businessName:c.businessName,score:intelligence.score,priority:intelligence.priority,gaps:intelligence.gaps,recommendedPackage:intelligence.recommendedPackage,openingAngle:intelligence.openingAngle});
-        added++;
+          }
+          commitAttempted=true;
+          await connection.commit();
+        }catch(e){
+          if(connection){try{await connection.rollback();rollbackConfirmed=true}catch{}}
+          // A lost COMMIT acknowledgement can mean the server already committed.
+          // Never advise a blind retry or claim zero writes in that case.
+          const uncertain=commitAttempted||Boolean(connection&&!rollbackConfirmed);
+          return res.status(503).json({ok:false,batchId,code:uncertain?'LEAD_IMPORT_COMMIT_UNCONFIRMED':'LEAD_IMPORT_ROLLED_BACK',
+            noLeadsWritten:!uncertain,retryable:!uncertain,reconciliationRequired:uncertain,
+            message:uncertain?'Import outcome needs owner reconciliation. Do not reimport this batch.':'The batch could not be saved. No leads were written.'});
+        }finally{if(connection)connection.release();}
       }
-      if(added && typeof ctx.addActivity==='function')ctx.addActivity('import',`Lorna Smart Ingest added ${added} leads`,{batchId,filename,skipped});
-      await ctx.saveData();
-      res.status(201).json({ok:true,batchId,filename,rows:sourceRows.length,added,skipped,radar:radar.sort((a,b)=>b.score-a.score).slice(0,25),message:`${added} leads entered the CRM and Lead Assist queue.`});
+      for(const c of pending)ctx.db.customers.unshift(c);
+      const warnings=new Set();
+      for(const c of pending){
+        try{if(typeof ctx.assignLeadAutomatically==='function')await ctx.assignLeadAutomatically(c)}catch{warnings.add('ASSIGNMENT_PENDING')}
+        try{if(typeof ctx.enqueueLeadAssist==='function')await ctx.enqueueLeadAssist(c.id,'bulk_ingest','high')}catch{warnings.add('LEAD_ASSIST_PENDING')}
+      }
+      try{if(added && typeof ctx.addActivity==='function')await ctx.addActivity('import',`Lorna Smart Ingest added ${added} leads`,{batchId,filename,skipped})}catch{warnings.add('ACTIVITY_PENDING')}
+      try{await ctx.saveData()}catch{warnings.add('FOLLOWUP_STATE_SAVE_PENDING')}
+      res.status(201).json({ok:true,batchId,filename,rows:sourceRows.length,added,skipped,
+        retryable:false,followUpRequired:warnings.size>0,warnings:[...warnings],
+        radar:radar.sort((a,b)=>b.score-a.score).slice(0,25),
+        message:warnings.size?`${added} leads saved. Follow-up processing needs owner review; do not reimport.`:`${added} leads entered the CRM and Lead Assist queue.`});
     }catch(e){
       if(String(e?.message||'').startsWith('CSV_INVALID_UTF8:'))
         return res.status(422).json({ok:false,code:'CSV_INVALID_UTF8',noLeadsWritten:true,retryable:false,
