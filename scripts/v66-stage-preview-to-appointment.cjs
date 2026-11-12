@@ -7,7 +7,7 @@ function patchServer(input) {
  const once=(before,after)=>{assert.equal(source.split(before).length-1,1,'Preview anchor changed: '+before.slice(0,100));source=source.replace(before,()=>after)};
  const line=(prefix,after)=>{const rows=source.split('\n').filter(x=>x.startsWith(prefix));assert.equal(rows.length,1,'Preview route changed: '+prefix);once(rows[0],after)};
  once("const {direct: directDemoWithKim} = require('./enterprise/kim-demo-director');",
- "const {direct: directDemoWithKim} = require('./enterprise/kim-demo-director');\nconst SBC_PREVIEW_SALES = require('./enterprise/sbc-preview-sales-policy.cjs'); // "+MARK);
+ "const {direct: directDemoWithKim} = require('./enterprise/kim-demo-director');\nconst SBC_PREVIEW_SALES = require('./enterprise/sbc-preview-sales-policy.cjs');\nconst SBC_PROSPECT_SITE = require('./enterprise/sbc-prospect-site-factory.cjs'); // "+MARK);
  once("  const c=(db.customers||[]).find(x=>x.id===String(customerId));\n  if(!c)throw new Error('Customer not found.');",
  "  const c=(db.customers||[]).find(x=>x.id===String(customerId)&&SBC_PREVIEW_SALES.canOperate(x,overrides.actor,overrides.tenantId));\n  if(!c)throw new Error('DEMO_CUSTOMER_NOT_AUTHORIZED');");
  once("existing=m.websiteDemos.find(x=>x.customerId===c.id&&!x.archived);",
@@ -18,11 +18,15 @@ function patchServer(input) {
  once("id:existing?.id||id('demo'),customerId:c.id,customer:seed.customer,industry:",
  "id:existing?.id||id('demo'),tenantId:overrides.tenantId,customerId:c.id,customer:seed.customer,industry:");
  once("status:'Ready',templateMetadata:",
- "status:'Draft',approvedAt:null,approvedBy:null,checkoutEnabled:false,templateMetadata:");
+ "status:'Draft',approvedAt:null,approvedBy:null,checkoutEnabled:false,offerTier:['starter','essentials'].includes(String(overrides.offerTier))?String(overrides.offerTier):(existing?.offerTier||'essentials'),templateMetadata:");
  once("eventType:'demo.created',tenantId:TENANT_DEFAULT_ID,orderId:null,action:'demo_ready',risk:'normal',requiresHuman:false,",
  "eventType:'demo.created',tenantId:overrides.tenantId,orderId:null,action:'demo_draft',risk:'normal',requiresHuman:true,");
  once("if(process.env.SBC_DEMO_AUTO_DEPLOY==='true')await deployDemoSftp(demo);",
  "if(process.env.SBC_DEMO_AUTO_DEPLOY==='true'&&demo.status==='Approved')await deployDemoSftp(demo);");
+ once("  const result=buildSbcSite(demo);",
+ "  const result={html:SBC_PROSPECT_SITE.renderPage(demo,demo.requestedPage||'home')};");
+ once("  const premiumHtml=String(result.html||'').replace('<body>','<body>'+previewRibbon);",
+ "  const premiumHtml=String(result.html||'');");
  once("return premiumHtml.replace('</body>',checkoutBlock+'</body>');",
  "return premiumHtml.replace('</body>',(demo.status==='Approved'&&demo.checkoutEnabled===true?checkoutBlock:'')+'</body>');");
  once("  const demo=await createWebsiteDemo(c.id,req.body||{});let o=acquisitionRecordFor(c.id);",
@@ -45,7 +49,7 @@ function patchServer(input) {
  "  const d=megaData().websiteDemos.find(x=>x.id===req.params.id);",
  "  const c=(db.customers||[]).find(x=>x.id===d?.customerId);",
  "  if(!SBC_PREVIEW_SALES.canReadDemo(d,c,req.user,tid))return res.status(404).type('text/plain').send('Preview unavailable');",
- "  res.type('html').send(buildDemoHtml(d));","});",
+ "  res.type('html').send(buildDemoHtml({...d,requestedPage:req.query.page||'home'}));","});",
  "app.post('/api/website-demos/:id/approve',auth,ownerOnly,async(req,res)=>{",
  "  if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY||!sbcWriterLeaseReady)return res.status(423).json({ok:false,error:'DEMO_WRITER_UNAVAILABLE'});",
  "  let tid;try{tid=requireRequestTenant(req)}catch{return res.status(403).json({ok:false,error:'TENANT_CONTEXT_REQUIRED'})}",
@@ -80,6 +84,7 @@ function patchServer(input) {
  "const d=megaData().websiteDemos.find(x=>x.slug===req.params.slug&&!x.archived);"+
  "const c=(db.customers||[]).find(x=>x.id===d?.customerId);"+
  "if(!SBC_PREVIEW_SALES.publicReady(d,c))return res.status(404).type('html').send('<h1>Preview not available</h1>');");
+ once("res.type('html').send(buildDemoHtml(dynamic));","res.type('html').send(buildDemoHtml({...dynamic,requestedPage:req.query.page||'home'}));");
  return source;
 }
 if(require.main===module){
