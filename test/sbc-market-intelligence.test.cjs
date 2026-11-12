@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { generateKeyPairSync, verify } = require('node:crypto');
+const { generateKeyPairSync, randomBytes, verify } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -130,6 +130,7 @@ test('SQL failures, inconsistent tenant rows and truncated results yield explici
 
 test('Search Console signs a read-only JWT and uses fixed Google endpoints and scoped caching', async () => {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const fixtureToken = randomBytes(24).toString('base64url');
   const tokenUrl = 'https://oauth2.googleapis.com/token';
   const value = JSON.stringify({
     type: 'service_account', client_email: 'fixture@sbc-test.iam.gserviceaccount.com', token_uri: tokenUrl,
@@ -150,10 +151,10 @@ test('Search Console signs a read-only JWT and uses fixed Google endpoints and s
       assert.equal(payload.scope, 'https://www.googleapis.com/auth/webmasters.readonly');
       assert.equal(payload.exp - payload.iat, 900);
       assert(verify('RSA-SHA256', Buffer.from(`${header}.${claims}`), publicKey, Buffer.from(signature, 'base64url')));
-      return { ok: true, json: async () => ({ access_token: 'synthetic-google-token' }) };
+      return { ok: true, json: async () => ({ access_token: fixtureToken }) };
     }
     assert.equal(url, `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(Search.PROPERTY)}/searchAnalytics/query`);
-    assert.equal(options.headers.Authorization, 'Bearer synthetic-google-token');
+    assert.equal(options.headers.Authorization, `Bearer ${fixtureToken}`);
     const query = JSON.parse(options.body);
     assert.equal(query.type, 'web');
     assert.equal(query.dataState, 'final');
@@ -168,7 +169,8 @@ test('Search Console signs a read-only JWT and uses fixed Google endpoints and s
   assert.deepEqual(first.current, { clicks: 2, impressions: 10 });
   assert.equal(first.previous, null);
   assert.deepEqual(first.periods.current, { startDate: '2026-10-10', endDate: '2026-11-08' });
-  assert.doesNotMatch(JSON.stringify(first), /synthetic-google-token|private_key|fixture@/);
+  assert(!JSON.stringify(first).includes(fixtureToken));
+  assert.doesNotMatch(JSON.stringify(first), /private_key|fixture@/);
   assert.equal((await read({ ...args, value: value.replace(tokenUrl, 'https://invalid.example/') })).status, 'credential_invalid');
   assert.equal(calls.length, 3);
   denied = true;
