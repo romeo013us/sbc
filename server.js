@@ -18,8 +18,9 @@ function sbcMayAutoEnableDdl(){return false;} // SBC_V6621_EXPLICIT_DDL_OPTIN: a
 let db = {};
 let persistenceEpoch = null;
 const {assessPersistenceSafety, PERSISTENCE_EPOCH_KEY} = require('./enterprise/integration/sbc-persistence-safety.cjs');
+const SNAPSHOT_TENANTS = require('./enterprise/integration/sbc-snapshot-tenants.cjs'); // SBC_RELATIONAL_SNAPSHOT_TENANT_OWNERSHIP
 const {auditLeadMesh, validateLead} = require('./enterprise/recovery/lead-provenance-validator.cjs');
-const {runWithTenantContext} = require('./enterprise/tenant-context.cjs');
+const {runWithTenantContext,currentTenantContext} = require('./enterprise/tenant-context.cjs');
 const strictTenantGuard=require('./middleware/strict-tenant-guard');
 const StorefrontCheckoutEventHandler = require('./enterprise/StorefrontCheckoutEventHandler');
 const {RELEASE_VERSION, RELEASE_NAME} = require('./config/release-identity');
@@ -1961,7 +1962,7 @@ async function readRelational(){
   const [extraRows]=await mysqlPool.query('SELECT payload FROM sbc_workspace WHERE id=1 LIMIT 1');
   let extra={}; try{ extra=extraRows[0]?.payload?safeJsonParse(extraRows[0].payload, {}):{} }catch{}
   const megaOpsFromWorkspace=extra.megaOps||settings.megaOps||null;
-  if(megaOpsFromWorkspace && durableJobs.length){megaOpsFromWorkspace.fulfillmentJobs=durableJobs.map(r=>({id:r.id,orderId:r.order_id,customerId:r.customer_id,customerName:r.customer_name,itemId:r.item_id,product:r.product,quantity:Number(r.quantity),vendor:r.vendor,status:r.status,vendorStatus:r.vendor_status,vendorOrderNumber:r.vendor_order_number,trackingNumber:r.tracking_number,cost:Number(r.cost||0),value:Number(r.value||0),requirements:(()=>{try{return JSON.parse(r.requirements_json||'{}')}catch{return {}}})(),attempts:Number(r.attempts||0),lastError:r.last_error||'',idempotencyKey:r.idempotency_key||'',claimedAt:r.claimed_at?fromSqlDateTime(r.claimed_at):'',processingStartedAt:r.processing_started_at?fromSqlDateTime(r.processing_started_at):'',leaseUntil:r.lease_until?fromSqlDateTime(r.lease_until):'',nextAttemptAt:r.next_attempt_at?fromSqlDateTime(r.next_attempt_at):'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)}));}
+  if(megaOpsFromWorkspace && durableJobs.length){megaOpsFromWorkspace.fulfillmentJobs=durableJobs.map(r=>({id:r.id,tenantId:Number(r.tenant_id),orderId:r.order_id,customerId:r.customer_id,customerName:r.customer_name,itemId:r.item_id,product:r.product,quantity:Number(r.quantity),vendor:r.vendor,status:r.status,vendorStatus:r.vendor_status,vendorOrderNumber:r.vendor_order_number,trackingNumber:r.tracking_number,cost:Number(r.cost||0),value:Number(r.value||0),requirements:(()=>{try{return JSON.parse(r.requirements_json||'{}')}catch{return {}}})(),attempts:Number(r.attempts||0),lastError:r.last_error||'',idempotencyKey:r.idempotency_key||'',claimedAt:r.claimed_at?fromSqlDateTime(r.claimed_at):'',processingStartedAt:r.processing_started_at?fromSqlDateTime(r.processing_started_at):'',leaseUntil:r.lease_until?fromSqlDateTime(r.lease_until):'',nextAttemptAt:r.next_attempt_at?fromSqlDateTime(r.next_attempt_at):'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)}));}
   delete settings.megaOps;
   db=normalize({version:4,settings,megaOpsStore:megaOpsFromWorkspace,leadAssistQueue:Array.isArray(extra.leadAssistQueue)?extra.leadAssistQueue:[],customers:customers.map(r=>({id:r.id,tenantId:Number(r.tenant_id),businessName:r.business_name,contactName:r.contact_name,phone:r.phone,email:r.email,status:r.status,source:r.source,followUp:fromSqlDate(r.follow_up),notes:r.notes||'',website:r.website||'',websiteStatus:r.website_status||'',industry:r.industry||'',assignedTo:r.assigned_to||'',accountNotes:(()=>{try{return safeJsonParse(r.account_notes_json, [])}catch{return []}})(),leadIntelligence:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {})}catch{return {}}})(),verificationStatus:(()=>{try{return safeJsonParse(r.lead_intelligence_json, {}).verificationStatus||'Needs Verification'}catch{return 'Needs Verification'}})(),createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),quotes:quotes.map(r=>({id:r.id,tenantId:Number(r.tenant_id),quoteNumber:r.quote_number,customerId:r.customer_id,customerName:r.customer_name,status:r.status,validUntil:fromSqlDate(r.valid_until),notes:r.notes||'',items:safeJsonParse(r.items_json, []),subtotal:Number(r.subtotal),discount:Number(r.discount),taxRate:Number(r.tax_rate),tax:Number(r.tax),total:Number(r.total),paymentUrl:r.payment_url||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),orders:orders.map(r=>({id:r.id,tenantId:Number(r.tenant_id),customerId:r.customer_id,customerName:r.customer_name,product:r.product,quantity:Number(r.quantity),status:r.status,fulfillmentStatus:r.fulfillment_status||'Not Started',fulfillmentUpdatedAt:r.fulfillment_updated_at?fromSqlDateTime(r.fulfillment_updated_at):'',cost:Number(r.cost),price:Number(r.price),notes:r.notes||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),renewals:renewals.map(r=>({id:r.id,tenantId:Number(r.tenant_id),customerId:r.customer_id,customerName:r.customer_name,service:r.service,dueDate:fromSqlDate(r.due_date),amount:Number(r.amount),status:r.status,notes:r.notes||'',createdAt:fromSqlDateTime(r.created_at),updatedAt:fromSqlDateTime(r.updated_at)})),activities:activities.map(r=>({id:r.id,tenantId:Number(r.tenant_id),type:r.activity_type,message:r.message,meta:r.meta_json?safeJsonParse(r.meta_json, {}):{},createdAt:fromSqlDateTime(r.created_at)})),appointments:extra.appointments||[],sequences:extra.sequences||[],sequenceEnrollments:extra.sequenceEnrollments||[],emailTemplates:extra.emailTemplates||[],messageTemplates:extra.messageTemplates||[],tasks:extra.tasks||[],users:(durableUsers.length?durableUsers:(extra.users||[])),callReports:extra.callReports||[],auditLog:extra.auditLog||[],callLogs:extra.callLogs||[],customerAccounts:extra.customerAccounts||[],customerMessages:extra.customerMessages||[],squarePayments:extra.squarePayments||[],squareWebhookEvents:extra.squareWebhookEvents||[]});
 }
@@ -1997,12 +1998,8 @@ async function writeRelational({includeSettings=true}={}){
         (SELECT COUNT(*) FROM sbc_renewals WHERE tenant_id = ?) AS renewals
     `,[TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID]);
 
-    const sourceCore={
-      customers:Array.isArray(db.customers)?db.customers.length:0,
-      quotes:Array.isArray(db.quotes)?db.quotes.length:0,
-      orders:Array.isArray(db.orders)?db.orders.length:0,
-      renewals:Array.isArray(db.renewals)?db.renewals.length:0
-    };
+    const snapshotRows=SNAPSHOT_TENANTS.prepare(db,TENANT_DEFAULT_ID);
+    const sourceCore=snapshotRows.sourceCounts;
     const authoritativeCore={
       customers:Number(beforeCore?.customers||0),
       quotes:Number(beforeCore?.quotes||0),
@@ -2092,109 +2089,7 @@ async function writeRelational({includeSettings=true}={}){
       }
     }
 
-    // V64.2.16: row-level upserts. Omitted rows are NOT deleted by a generic save.
-    // Explicit delete endpoints use soft-delete status so ordinary saves cannot resurrect them.
-    for(const c of (db.customers||[])){
-      await conn.query(`
-        INSERT INTO sbc_customers
-          (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,lead_intelligence_json,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE
-          tenant_id=VALUES(tenant_id),business_name=VALUES(business_name),contact_name=VALUES(contact_name),
-          phone=VALUES(phone),email=VALUES(email),status=VALUES(status),source=VALUES(source),
-          follow_up=VALUES(follow_up),notes=VALUES(notes),website=VALUES(website),industry=VALUES(industry),
-          website_status=VALUES(website_status),assigned_to=VALUES(assigned_to),
-          account_notes_json=VALUES(account_notes_json),lead_intelligence_json=VALUES(lead_intelligence_json),
-          updated_at=VALUES(updated_at)
-      `,[c.id,TENANT_DEFAULT_ID,c.businessName||'',c.contactName||'',c.phone||'',c.email||'',c.status||'Lead',
-         c.source||'Walk-in',sqlDate(c.followUp),c.notes||'',c.website||'',c.industry||'',c.websiteStatus||'',c.assignedTo||'',
-         JSON.stringify(c.accountNotes||[]),JSON.stringify(c.leadIntelligence||{}),sqlDateTime(c.createdAt),sqlDateTime(c.updatedAt)]);
-    }
-
-    for(const q of (db.quotes||[])){
-      await conn.query(`
-        INSERT INTO sbc_quotes
-          (id,tenant_id,quote_number,customer_id,customer_name,status,valid_until,notes,items_json,subtotal,discount,tax_rate,tax,total,payment_url,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE
-          tenant_id=VALUES(tenant_id),quote_number=VALUES(quote_number),customer_id=VALUES(customer_id),
-          customer_name=VALUES(customer_name),status=VALUES(status),valid_until=VALUES(valid_until),notes=VALUES(notes),
-          items_json=VALUES(items_json),subtotal=VALUES(subtotal),discount=VALUES(discount),tax_rate=VALUES(tax_rate),
-          tax=VALUES(tax),total=VALUES(total),payment_url=VALUES(payment_url),updated_at=VALUES(updated_at)
-      `,[q.id,TENANT_DEFAULT_ID,q.quoteNumber,q.customerId||'',q.customerName||'',q.status||'Draft',sqlDate(q.validUntil),
-         q.notes||'',JSON.stringify(q.items||[]),q.subtotal||0,q.discount||0,q.taxRate||0,q.tax||0,q.total||0,q.paymentUrl||'',
-         sqlDateTime(q.createdAt),sqlDateTime(q.updatedAt)]);
-    }
-
-    for(const o of (db.orders||[])){
-      await conn.query(`
-        INSERT INTO sbc_orders
-          (id,tenant_id,customer_id,customer_name,product,quantity,status,fulfillment_status,fulfillment_updated_at,cost,price,notes,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE
-          tenant_id=VALUES(tenant_id),customer_id=VALUES(customer_id),customer_name=VALUES(customer_name),
-          product=VALUES(product),quantity=VALUES(quantity),status=VALUES(status),fulfillment_status=VALUES(fulfillment_status),fulfillment_updated_at=VALUES(fulfillment_updated_at),cost=VALUES(cost),
-          price=VALUES(price),notes=VALUES(notes),updated_at=VALUES(updated_at)
-      `,[o.id,TENANT_DEFAULT_ID,o.customerId||'',o.customerName||'',o.product||'',o.quantity||1,o.status||'New',
-         o.fulfillmentStatus||'Not Started',o.fulfillmentUpdatedAt?sqlDateTime(o.fulfillmentUpdatedAt):null,o.cost||0,o.price||0,o.notes||'',sqlDateTime(o.createdAt),sqlDateTime(o.updatedAt)]);
-    }
-
-    for(const r of (db.renewals||[])){
-      await conn.query(`
-        INSERT INTO sbc_renewals
-          (id,tenant_id,customer_id,customer_name,service,due_date,amount,status,notes,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE
-          tenant_id=VALUES(tenant_id),customer_id=VALUES(customer_id),customer_name=VALUES(customer_name),
-          service=VALUES(service),due_date=VALUES(due_date),amount=VALUES(amount),status=VALUES(status),
-          notes=VALUES(notes),updated_at=VALUES(updated_at)
-      `,[r.id,TENANT_DEFAULT_ID,r.customerId||'',r.customerName||'',r.service||'',sqlDate(r.dueDate),r.amount||0,
-         r.status||'Upcoming',r.notes||'',sqlDateTime(r.createdAt),sqlDateTime(r.updatedAt)]);
-    }
-
-    // Activities are append/update only; never truncate authoritative history.
-    for(const a of (db.activities||[]).slice(0,200)){
-      await conn.query(`
-        INSERT INTO sbc_activities(id,tenant_id,activity_type,message,meta_json,created_at)
-        VALUES (?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE activity_type=VALUES(activity_type),message=VALUES(message),
-          meta_json=VALUES(meta_json),created_at=VALUES(created_at)
-      `,[a.id,TENANT_DEFAULT_ID,a.type||'system',a.message||'',JSON.stringify(a.meta||{}),sqlDateTime(a.createdAt)]);
-    }
-
-    const jobs=(db.megaOpsStore?.fulfillmentJobs||db.settings?.megaOps?.fulfillmentJobs||[]).slice(0,5000);
-    for(const j of jobs){
-      j.idempotencyKey=j.idempotencyKey||`sbc:${j.orderId||'order'}:${j.itemId||j.id}`;
-      await conn.query(`
-        INSERT INTO sbc_fulfillment_jobs
-          (id,order_id,customer_id,customer_name,item_id,product,quantity,vendor,status,vendor_status,vendor_order_number,tracking_number,cost,value,requirements_json,attempts,last_error,idempotency_key,claimed_at,processing_started_at,lease_until,next_attempt_at,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE
-          order_id=VALUES(order_id),customer_id=VALUES(customer_id),customer_name=VALUES(customer_name),
-          item_id=VALUES(item_id),product=VALUES(product),quantity=VALUES(quantity),vendor=VALUES(vendor),
-          status=VALUES(status),vendor_status=VALUES(vendor_status),vendor_order_number=VALUES(vendor_order_number),
-          tracking_number=VALUES(tracking_number),cost=VALUES(cost),value=VALUES(value),requirements_json=VALUES(requirements_json),
-          attempts=VALUES(attempts),last_error=VALUES(last_error),idempotency_key=VALUES(idempotency_key),
-          claimed_at=VALUES(claimed_at),processing_started_at=VALUES(processing_started_at),
-          lease_until=VALUES(lease_until),next_attempt_at=VALUES(next_attempt_at),updated_at=VALUES(updated_at)
-      `,[j.id,j.orderId||'',j.customerId||'',j.customerName||'',j.itemId||'',j.product||'',Number(j.quantity||1),
-         j.vendor||'internal',j.status||'ready',j.vendorStatus||'',j.vendorOrderNumber||'',j.trackingNumber||'',Number(j.cost||0),
-         Number(j.value||0),JSON.stringify(j.requirements||{}),Number(j.attempts||0),j.lastError||'',j.idempotencyKey,
-         j.claimedAt?sqlDateTime(j.claimedAt):null,j.processingStartedAt?sqlDateTime(j.processingStartedAt):null,
-         j.leaseUntil?sqlDateTime(j.leaseUntil):null,j.nextAttemptAt?sqlDateTime(j.nextAttemptAt):null,
-         sqlDateTime(j.createdAt),sqlDateTime(j.updatedAt)]);
-    }
-
-    for(const u of (db.users||[]).filter(x=>String(x.username||'').toLowerCase()!=='owner' && String(x.role||'')!=='demo')){
-      await conn.query(`INSERT INTO sbc_workforce_users(id,tenant_id,username,name,email,role,active,must_change_password,password_hash,expires_at,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE
-        tenant_id=VALUES(tenant_id),name=VALUES(name),email=VALUES(email),role=VALUES(role),active=VALUES(active),
-        must_change_password=VALUES(must_change_password),password_hash=IF(VALUES(password_hash)='',password_hash,VALUES(password_hash)),
-        expires_at=VALUES(expires_at),updated_at=VALUES(updated_at)`,
-        [u.id,u.tenantId||TENANT_DEFAULT_ID,u.username||'',u.name||'',u.email||u.profile?.email||'',u.role||'caller',
-         u.active===false?0:1,u.mustChangePassword?1:0,u.passwordHash||'',u.expiresAt||null,
-         sqlDateTime(u.createdAt||now()),sqlDateTime(u.updatedAt||now())]);
-    }
+    await SNAPSHOT_TENANTS.persist(conn,snapshotRows,{sqlDate,sqlDateTime,now});
 
     const extra={leadAssistQueue:(db.leadAssistQueue||[]).slice(0,5000),appointments:db.appointments||[],sequences:db.sequences||[],sequenceEnrollments:db.sequenceEnrollments||[],
       emailTemplates:db.emailTemplates||[],messageTemplates:db.messageTemplates||[],tasks:db.tasks||[],users:db.users||[],
@@ -2937,7 +2832,7 @@ async function runArchitectureHealth(){
   return {version:BUILD_VERSION,architectureVersion:ARCHITECTURE_VERSION,tenant:{mode:'logical',defaultTenantId:TENANT_DEFAULT_ID,ready:true},demo:{mode:'metadata-router+sandbox-worker',sandboxMode:String(process.env.SBC_DEMO_SANDBOX_MODE||'process'),ready:true},eventBus:{mode:amqpChannel?'rabbitmq-amqp':'durable-db-outbox',configured:Boolean(amqpChannel||process.env.SBC_AMQP_URL),ready:true},sessions:{mode:process.env.SBC_AUTH_MODE==='jwt'?'jwt-jwks':(redisReady?'redis+mysql-durable-cookie':'mysql-durable-cookie'),redisConfigured:Boolean(process.env.SBC_REDIS_URL||process.env.REDIS_URL),redisReady,ready:Boolean(redisReady||mysqlPool)},rbac:{mode:'policy-interceptor',ready:true},vault:{mode:'aes-256-gcm',configured:Boolean(process.env.SBC_VAULT_KEY),ready:Boolean(process.env.SBC_VAULT_KEY)},telemetry:{mode:'structured-json+metrics',ready:true},cqrs:{mode:mysqlReadPool?'primary-write/read-replica':'primary-only-fallback',readReplicaConfigured:Boolean(mysqlReadPool),ready:true},migrations:{mode:'versioned-expand-contract',ready:true,recent:migrations},outbox:outbox,metrics:{...architectureMetrics,uptimeSeconds:Math.floor(process.uptime())}};
 }
 
-function addActivity(type,message,meta={}){const entry={id:id('act'),type,message,meta,createdAt:now()};db.activities.unshift(entry);db.activities=db.activities.slice(0,200);return entry;}
+function addActivity(type,message,meta={},tenantId=currentTenantContext()?.tenantId){const entry={id:id('act'),type,message,meta,createdAt:now(),tenantId};db.activities.unshift(entry);db.activities=db.activities.slice(0,200);return entry;}
 
 // Shared numeric money normalizer. Keep this at module scope so website demos,
 // revenue, order summaries, and supervisor code cannot hit a scope-dependent ReferenceError.
@@ -3536,7 +3431,7 @@ app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.r
     const c=dup.customer;c.webLead=true;c.lastWebLeadAt=now();c.webLeadCount=Math.min(100000,Number(c.webLeadCount||0)+1);
     c.webLeadPendingReview=true;
     c.webLeadInquiries=(Array.isArray(c.webLeadInquiries)?c.webLeadInquiries:[]).slice(-9).concat([{at:now(),sourcePage:c0.sourcePage,serviceInterest:c0.serviceInterest,quoteType:c0.quoteType,contactName:c0.contactName,phone:c0.phone,email:c0.email,message:c0.message}]);
-    const activity=addActivity('web_lead',`Website inquiry pending verification for ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,duplicate:true,contactChanged:false});
+    const activity=addActivity('web_lead',`Website inquiry pending verification for ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,duplicate:true,contactChanged:false},tenantId);
     if(!await confirmWebsiteInquiry(tenantId,c.id,activity.id))return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_UNCONFIRMED'});
     return res.status(200).json({ok:true,id:c.id,duplicate:true,verificationRequired:true,assignedTo:c.assignedTo||''});
   }
@@ -3545,7 +3440,7 @@ app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.r
   c.verificationStatus='Needs Verification';c.leadTemperature='Cold';c.leadScore=Math.min(49,Math.max(0,Number(c.leadScore)||0));c.webLeadPendingReview=true;
   db.customers.unshift(c);
   // Staff verification precedes any qualified-lead call or outbound automation.
-  const activity=addActivity('web_lead',`New SBCMIA inquiry requires verification: ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,qualified:false});
+  const activity=addActivity('web_lead',`New SBCMIA inquiry requires verification: ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,qualified:false},tenantId);
   if(!await confirmWebsiteInquiry(tenantId,c.id,activity.id))return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_UNCONFIRMED'});
   res.status(201).json({ok:true,id:c.id,hot:false,verificationRequired:true,assignedTo:c.assignedTo||'',assignedToName:c.assignedToName||''});
 });
