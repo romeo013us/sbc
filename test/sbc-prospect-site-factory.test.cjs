@@ -62,3 +62,28 @@ test('industry presets are distinct, descriptions escape user content, and visit
  assert.equal(js,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-prospect-site.js'),'utf8'));
  assert.equal(fs.readFileSync(path.join(__dirname,'../public/sbc-prospect-site.css'),'utf8'),fs.readFileSync(path.join(__dirname,'../browser_public/sbc-prospect-site.css'),'utf8'));
 });
+
+test('Website Production replaces small-demo UI and preserves CRM action compatibility',()=>{
+ const root=path.join(__dirname,'..');
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const source=read('public/sbc-website-production-v1.js');
+ assert.equal(source,read('browser_public/sbc-website-production-v1.js'));
+ assert.match(source,/SBC Website Production/);
+ assert.match(source,/Business Starter · \$199/);
+ assert.match(source,/Business Basic · \$349/);
+ assert.match(source,/Build Full Website/);
+ assert.match(source,/sbcFactoryCheckDetails/);
+ assert.match(source,/sbcFactoryCheckVisuals/);
+ assert.match(source,/sbcFactoryCheckContent/);
+ assert.match(source,/\/api\/website-demos\/.*approve/);
+ assert.match(source,/window\.generateWebsiteDemo = buildWebsite/);
+ assert.doesNotMatch(source,/SBC Demo Studio|small demo|Generate Demo/);
+ for(const name of ['public/index.html','browser_public/index.html']){
+  const html=read(name);
+  assert.match(html,/sbc-website-production-v1\.js/);
+  assert.doesNotMatch(html,/src="\/sbc-demo-studio-v6526\.js/);
+ }
+ for(const name of ['public/sbc-customer360-workspace-v6525.js','browser_public/sbc-customer360-workspace-v6525.js']){
+  assert.match(read(name),/addButton\(bar,'Build Website'/);
+ }
+});
