@@ -189,6 +189,11 @@ jobs:
           SBC_V6682_MYSQL_TEST: YES
           SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
         run: node scripts/v6682-mysql-concurrency-ci.test.cjs
+      - name: Verify snapshot tenant ownership against disposable MySQL
+        env:
+          SBC_SNAPSHOT_TENANT_CI: 'YES'
+          SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
+        run: node --test test/sbc-snapshot-tenants.test.cjs
 
   recovery-snapshot-mysql:
     runs-on: ubuntu-latest
