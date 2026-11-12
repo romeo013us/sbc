@@ -7,12 +7,24 @@ const {invalidFields}=require('./crm-text-integrity-v66140.cjs');
 const {suspicious}=require('./v66144-crm-forensics.cjs');
 const SAMPLE_LIMIT=40;
 const ID_QUERY_LIMIT=2001;
+const CRM_TABLES={customers:'sbc_customers',orders:'sbc_orders'};
 function tenant(n){
  const id=Number(n);
  if(!Number.isSafeInteger(id)||id<1)throw Object.assign(Error('CRM_RECON_TENANT_REQUIRED'),{code:'CRM_RECON_TENANT_REQUIRED',status:403});
  return id;
 }
 function key(v){return String(v??'').trim()}
+async function readVisibleCounts(pool,tenantId,entity){
+ if(!Object.hasOwn(CRM_TABLES,entity))throw Error('CRM_RECON_ENTITY_INVALID');
+ const [rows]=await pool.query(
+  `SELECT COUNT(*) AS total, COUNT(CASE WHEN COALESCE(status, '') <> 'Deleted' THEN 1 END) AS visible
+   FROM ${CRM_TABLES[entity]} WHERE tenant_id=?`,[tenant(tenantId)]
+ );
+ const total=Number(rows?.[0]?.total??NaN),visible=Number(rows?.[0]?.visible??NaN);
+ if(!Number.isSafeInteger(total)||!Number.isSafeInteger(visible)||visible<0||total<visible)
+  throw Error('CRM_RECON_SQL_COUNT_INVALID');
+ return {total,visible,deleted:total-visible};
+}
 function unique(rows){
  const seen=new Set(),duplicates=new Set(),missing=[];
  for(const row of rows){
@@ -78,4 +90,4 @@ function inspect({tenantId,customers=[],orders=[],sqlCustomers=[],sqlOrders=[],s
     'DO_NOT_ASSUME_SQL_OR_MEMORY_IS_AUTHORITATIVE_WITHOUT_BACKUP_REVIEW',
   note:'SQL retains soft-deleted rows while the application intentionally omits them. Only statuses read from SQL can prove expected exclusions. Concurrent imports can race this read. Never bulk-restore or auto-contact historical records; verify an immutable backup and audit before any owner-approved recovery.'};
 }
-module.exports={inspect,summarize,tenant,ID_QUERY_LIMIT};
+module.exports={inspect,summarize,tenant,readVisibleCounts,ID_QUERY_LIMIT};

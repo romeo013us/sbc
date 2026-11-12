@@ -51,9 +51,14 @@
     ' ('+(present.join(', ')||'none')+'). Separate live checks required for Office Box, sbcmia.com, sbcwebsites.com and payment handoffs.'];
   }
   if(name==='leads'){
-   const mismatch=result?.tenantHydrationDelta;
-   return [mismatch!=null&&Number(mismatch)!==0?'CRM count discrepancy — investigate':'Research queue review',
-    'Tenant leads '+number(result?.totalTenantRecords)+
+   const delta=result?.tenantHydrationDelta;
+   const status=delta==null?'MySQL count comparison unavailable':
+    Number(delta)===0?'Research queue review':'Visible CRM count discrepancy — compare record IDs';
+   const counts=result?.sqlVisibleTenantRecords==null?'':
+    ' · Visible MySQL records '+number(result.sqlVisibleTenantRecords)+
+    ' · Deleted records retained '+number(result.sqlDeletedRecordTombstones);
+   return [status,
+    'Loaded CRM records '+number(result?.totalTenantRecords)+counts+
     ' · Human-verified call candidates '+number(result?.verifiedHumanCallReady)+
     ' · Records needing verification '+number(result?.needsRecordVerification)+
     ' · Suppressed/terminal '+number(result?.suppressedOrTerminal)+
@@ -65,7 +70,7 @@
    return [result?.preflightReady===true?'Square preflight ready · no live proof':'Square preflight blocked',
     'Environment '+String(result?.environment||'unknown')+
     ' · '+(blockers.length?'Blockers: '+blockers.join(', '):'No configured blockers detected')+
-    '. Paid capture, signed webhook and fulfillment still require one supervised live test.'];
+    '. Review existing Square payment and signed webhook evidence. Verify customer fulfillment separately.'];
   }
   return ['Unverified','Unknown read-only endpoint'];
  }
@@ -85,7 +90,7 @@
     title+'</strong><p id="sbc-launch-'+key+'" class="mini" role="status">Not checked</p>'+
     '<p id="sbc-launch-'+key+'-detail" class="mini"></p></div>').join('')+
    '<p id="sbc-launch-footer" class="mini" role="status">Starting owner-only read checks…</p>'+
-   '<p class="mini"><strong>Still required:</strong> healthy GoDaddy Published runtime; one settled Square $1 checkout and signed-webhook reconciliation; CRM record readback; separate researcher/demo logins; real Fantastic 4 handoff; backup-restore drill; first customer delivery.</p>');
+   '<p class="mini"><strong>Acceptance evidence:</strong> Published release identity, CRM record readback, independent researcher and demo logins, existing Square payment and webhook records, Fantastic 4 handoff, backup restoration, and customer delivery.</p>');
   if(!owner()){text('sbc-launch-footer','Owner session no longer verified. No checks were run.');return}
   for(const [name,url] of endpoints){
    if(!owner()){text('sbc-launch-footer','Owner session changed. Checks stopped.');return}
