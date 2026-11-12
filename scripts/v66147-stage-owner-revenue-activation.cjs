@@ -33,12 +33,43 @@ const ROUTE=[
  "});",
  ""
 ].join('\n');
+const LEAD_COUNTS=[
+ "    let counts=null,sqlEvidence='unavailable';",
+ "    try{if(mysqlPool){",
+ "      const {readVisibleCounts}=require('./enterprise/v66146-crm-id-reconciliation.cjs');",
+ "      counts=await readVisibleCounts(mysqlPool,tenantId,'customers');",
+ "      sqlEvidence='SELECT_ONLY';",
+ "    }}catch(_){sqlEvidence='query_unavailable';}",
+ "    res.json({ok:true,version:BUILD_VERSION,recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),...result,",
+ "      sqlTenantRecords:counts?.total??null,sqlVisibleTenantRecords:counts?.visible??null,",
+ "      sqlDeletedRecordTombstones:counts?.deleted??null,sqlEvidence,",
+ "      tenantHydrationDelta:counts?counts.visible-result.totalTenantRecords:null,",
+ "      note:'Compares the loaded CRM count with tenant SQL rows excluding retained Deleted records.'});"
+].join('\n');
+function patchLeadCounts(source){
+ const routeStart=source.indexOf(ANCHOR);
+ const routeEnd=source.indexOf('\n});',routeStart);
+ if(routeStart<0||routeEnd<0)throw Error('LEAD_READINESS_ROUTE_MISSING');
+ const route=source.slice(routeStart,routeEnd);
+ if(route.includes(LEAD_COUNTS))return source;
+ const start=route.indexOf("    let sqlTenantRecords=null,sqlEvidence='unavailable';");
+ const end=route.indexOf('\n  }catch(e){',start);
+ if(start<0||end<0)throw Error('LEAD_READINESS_COUNT_ANCHOR_MISSING');
+ return source.slice(0,routeStart+start)+LEAD_COUNTS+source.slice(routeStart+end);
+}
 function patchServer(input){
- const s=String(input||'');
- if(s.includes(MARK))return s;
- if(!s.includes('SBC_V66146_OWNER_CRM_ID_RECONCILIATION'))throw Error('ACTIVATION_REQUIRES_CRM_DIAGNOSTICS');
- const n=s.split(ANCHOR).length-1;if(n!==1)throw Error('ACTIVATION_SERVER_ANCHOR_'+n);
- return s.replace(ANCHOR,ROUTE+ANCHOR);
+ const source=String(input||'');
+ if(!source.includes('SBC_V66146_OWNER_CRM_ID_RECONCILIATION'))throw Error('ACTIVATION_REQUIRES_CRM_DIAGNOSTICS');
+ const n=source.split(ANCHOR).length-1;
+ if(n!==1)throw Error('ACTIVATION_SERVER_ANCHOR_'+n);
+ if(!source.includes(MARK))return patchLeadCounts(source.replace(ANCHOR,ROUTE+ANCHOR));
+ // The source branch retains the previous verified server. Upgrade the
+ // existing activation handler only inside the isolated release build.
+ const start=source.indexOf('// '+MARK);
+ const end=source.indexOf('\n});',start);
+ if(start<0||end<0||!source.slice(start,end).includes("app.get('/api/owner/revenue/activation-review',auth,ownerOnly,"))
+  throw Error('ACTIVATION_EXISTING_ROUTE_MISSING');
+ return patchLeadCounts(source.slice(0,start)+ROUTE.trimEnd()+source.slice(end+4));
 }
 if(require.main===module){
  const file=path.resolve(__dirname,'../server.js'),original=fs.readFileSync(file,'utf8'),next=patchServer(original);

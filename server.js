@@ -4274,22 +4274,16 @@ app.get('/api/owner/revenue/activation-review',auth,ownerOnly,async(req,res)=>{
   const d=require('./enterprise/v66147-owner-sales-delivery-evidence.cjs').inspect({
    tenantId:tid,customers:db.customers||[],orders:db.orders||[],limit:req.query?.limit
   });
-  let customerCounts=null,orderCounts=null;
-  d.sqlEvidence='UNAVAILABLE';
+  d.sqlTenantCustomers=null;d.sqlTenantOrders=null;d.sqlEvidence='UNAVAILABLE';
   if(mysqlPool){try{
-   const {readVisibleCounts}=require('./enterprise/v66146-crm-id-reconciliation.cjs');
-   [customerCounts,orderCounts]=await Promise.all([
-    readVisibleCounts(mysqlPool,tid,'customers'),readVisibleCounts(mysqlPool,tid,'orders')
-   ]);
+   const [[c]]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_customers WHERE tenant_id=?',[tid]);
+   const [[o]]=await mysqlPool.query('SELECT COUNT(*) AS n FROM sbc_orders WHERE tenant_id=?',[tid]);
+   d.sqlTenantCustomers=Number(c?.n||0);d.sqlTenantOrders=Number(o?.n||0);
    d.sqlEvidence='TENANT_SCOPED_SELECT_ONLY';
   }catch(_){d.sqlEvidence='QUERY_UNAVAILABLE';}}
-  d.sqlTenantCustomers=customerCounts?.total??null;
-  d.sqlTenantOrders=orderCounts?.total??null;
-  d.sqlVisibleTenantCustomers=customerCounts?.visible??null;
-  d.sqlVisibleTenantOrders=orderCounts?.visible??null;
-  d.projectionMatchesSql=customerCounts&&orderCounts?
-   customerCounts.visible===(db.customers||[]).filter(c=>c&&Number(c.tenantId??c.tenant_id)===tid).length&&
-   orderCounts.visible===(db.orders||[]).filter(o=>o&&Number(o.tenantId??o.tenant_id)===tid).length:null;
+  d.projectionMatchesSql=d.sqlTenantCustomers===null?null:
+   d.sqlTenantCustomers===(db.customers||[]).filter(c=>c&&Number(c.tenantId??c.tenant_id)===tid).length&&
+   d.sqlTenantOrders===(db.orders||[]).filter(o=>o&&Number(o.tenantId??o.tenant_id)===tid).length;
   return res.json(d);
  }catch(e){return res.status(Number(e?.status)||503).json({ok:false,readOnly:true,error:String(e?.code||'OWNER_ACTIVATION_REVIEW_UNAVAILABLE')});}
 });
@@ -4297,17 +4291,7 @@ app.get('/api/owner/lead-readiness',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{const tenantId=requireRequestTenant(req);
     const result=SBC_V6625_AUDIT.inspect(db.customers,tenantId,{limit:req.query?.limit});
-    let counts=null,sqlEvidence='unavailable';
-    try{if(mysqlPool){
-      const {readVisibleCounts}=require('./enterprise/v66146-crm-id-reconciliation.cjs');
-      counts=await readVisibleCounts(mysqlPool,tenantId,'customers');
-      sqlEvidence='SELECT_ONLY';
-    }}catch(_){sqlEvidence='query_unavailable';}
-    res.json({ok:true,version:BUILD_VERSION,recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),...result,
-      sqlTenantRecords:counts?.total??null,sqlVisibleTenantRecords:counts?.visible??null,
-      sqlDeletedRecordTombstones:counts?.deleted??null,sqlEvidence,
-      tenantHydrationDelta:counts?counts.visible-result.totalTenantRecords:null,
-      note:'Compares the loaded CRM count with tenant SQL rows excluding retained Deleted records.'});
+    let sqlTenantRecords=null,sqlEvidence='unavailable';try{if(mysqlPool){const [rows]=await mysqlPool.query('SELECT COUNT(*) AS row_count FROM sbc_customers WHERE tenant_id=?',[tenantId]);sqlTenantRecords=Number(rows?.[0]?.row_count??0);sqlEvidence='SELECT_ONLY';}}catch(_){sqlEvidence='query_unavailable';}res.json({ok:true,version:BUILD_VERSION,recoveryRequired:Boolean(MYSQL_RECOVERY_REQUIRED),...result,sqlTenantRecords,sqlEvidence,tenantHydrationDelta:sqlTenantRecords===null?null:sqlTenantRecords-result.totalTenantRecords,note:'Read-only authoritative tenant count; discrepancies require investigation. No record was reassigned, contacted, or changed.'});
   }catch(e){res.status(Number(e.status||503)).json({ok:false,error:String(e.code||'LEAD_READINESS_UNAVAILABLE')});}
 });
 app.get('/api/owner/launch-gates',auth,ownerOnly,async(req,res)=>{
