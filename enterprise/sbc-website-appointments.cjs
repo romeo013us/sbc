@@ -34,7 +34,7 @@ function register(app,{auth,requireTenant,db,getStore,saveData,writerReady,now=(
   const key=[tid,a.customerId,a.websiteId,a.startAt].join('::');
   const existing=()=>db.appointments?.find(x=>Number(x.tenantId)===tid&&String(x.customerId)===a.customerId&&String(x.websiteId)===a.websiteId&&x.startAt===a.startAt&&x.status==='Scheduled');
   if(existing())return res.json({ok:true,existing:true,appointment:existing()});
-  if(inflight.has(key))return res.json({ok:true,existing:true,appointment:await inflight.get(key)});
+  if(inflight.has(key)){try{return res.json({ok:true,existing:true,appointment:await inflight.get(key)})}catch(e){return res.status(503).json({ok:false,code:'APPOINTMENT_SAVE_FAILED'})}}
   const reserve=(async()=>{
     const clash=(db.appointments||[]).some(x=>String(x.assignedTo)===a.assignedTo&&x.status==='Scheduled'&&
       new Date(x.startAt).getTime()<new Date(a.endAt).getTime()&&new Date(x.endAt||x.startAt).getTime()>new Date(a.startAt).getTime());
@@ -43,7 +43,7 @@ function register(app,{auth,requireTenant,db,getStore,saveData,writerReady,now=(
     db.appointments=[a,...prior];
     try{
       const result=await saveData();
-      if(result?.skipped===true)throw Error('APPOINTMENT_NOT_DURABLE');
+      if(result?.skipped===true||result?.ok===false||result?.persisted===false)throw Error('APPOINTMENT_NOT_DURABLE');
       return a;
     }catch(e){db.appointments=prior;throw e}
   })();
