@@ -36,6 +36,39 @@ test('prepares a same-tenant recovery census and derives ownership for linked le
   assert.throws(() => prepare({ customers: [{ id: 'shared', tenantId: 1 }, { id: 'shared', tenantId: 2 }] }, 1), { code: 'SNAPSHOT_TENANT_CONFLICT' });
 });
 
+test('pre-write census excludes only pending visible owner tombstones, not historical or foreign rows', async () => {
+  const { pendingVisibleTombstones } = require('../enterprise/integration/sbc-snapshot-tenants.cjs');
+  const { assessPersistenceSafety } = require('../enterprise/integration/sbc-persistence-safety.cjs');
+  const currentRows = [
+    { id: 'pending-delete', tenant_id: 1, status: 'Lead' },
+    { id: 'already-deleted', tenant_id: 1, status: 'Deleted' },
+    { id: 'foreign-delete', tenant_id: 2, status: 'Lead' }
+  ];
+  const queries = [];
+  const conn = { async query(sql, [tenantId, ids]) {
+    queries.push({ sql, tenantId, ids });
+    assert.match(sql, /^SELECT id FROM sbc_(customers|quotes|orders|renewals) WHERE tenant_id=\? AND id IN \(\?\) AND COALESCE\(status,''\) <> 'Deleted'$/);
+    return [currentRows.filter(row => row.tenant_id === tenantId && ids.includes(row.id) && row.status !== 'Deleted')];
+  } };
+  const snapshot = prepare({
+    customers: [
+      { id: 'pending-delete', tenantId: 1, status: 'Deleted' },
+      { id: 'already-deleted', tenantId: 1, status: 'Deleted' },
+      { id: 'phantom-delete', tenantId: 1, status: 'Deleted' },
+      { id: 'foreign-delete', tenantId: 2, status: 'Deleted' }
+    ]
+  }, 1);
+  const pending = await pendingVisibleTombstones(conn, snapshot, 1);
+  assert.deepEqual(pending, { customers: 1, quotes: 0, orders: 0, renewals: 0 });
+  assert.equal(queries.length, 1);
+  assert.deepEqual(queries[0].ids, ['pending-delete', 'already-deleted', 'phantom-delete']);
+  assert.equal(assessPersistenceSafety({ customers: 1 }, snapshot.sourceCounts).ok, false);
+  assert.equal(assessPersistenceSafety({ customers: 1 - pending.customers }, snapshot.sourceCounts).ok, true);
+  assert.equal(assessPersistenceSafety({ customers: 12 }, { customers: 10 }).ok, false);
+  assert.equal(assessPersistenceSafety({ customers: 12 - 2 }, { customers: 10 }).ok, true);
+  assert.equal(assessPersistenceSafety({ customers: 12 - pending.customers }, { customers: 1 }).ok, false);
+});
+
 test('updates are locked and tenant-bound, tombstones survive, and new rows carry their tenant', async () => {
   const mutations = [];
   const mock = {
@@ -88,6 +121,8 @@ test('the compiled normal writer calls the scoped snapshot inside its existing t
   const writer = compiled.slice(compiled.indexOf('async function writeRelational('), compiled.indexOf('async function mysqlKeepalive()'));
   assert.match(writer, /const sourceCore=snapshotRows\.sourceCounts/);
   assert.match(writer, /await conn\.beginTransaction\(\);[\s\S]*await SNAPSHOT_TENANTS\.persist\(conn,snapshotRows,[\s\S]*await conn\.commit\(\);[\s\S]*await conn\.rollback\(\)/);
+  assert.match(writer, /await SNAPSHOT_TENANTS\.pendingVisibleTombstones\(conn,snapshotRows,TENANT_DEFAULT_ID\)/);
+  assert.match(writer, /assessPersistenceSafety\(reconciledVisibleCore,sourceCore\)/);
   assert.doesNotMatch(writer, /tenant_id=VALUES\(tenant_id\)/);
   assert.match(compiled, /fulfillmentJobs=durableJobs\.map\(r=>\(\{id:r\.id,tenantId:Number\(r\.tenant_id\)/);
   assert.match(compiled, /sourcePage:c0\.sourcePage,duplicate:true,contactChanged:false\},tenantId\)/);

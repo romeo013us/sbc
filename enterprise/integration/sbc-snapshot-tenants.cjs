@@ -50,6 +50,28 @@ function deleted(status) {
   return String(status || '').trim().toLowerCase() === 'deleted';
 }
 
+// Reconcile deliberate soft deletes in memory against rows that MySQL still
+// counts as visible before the transaction. Persisted tombstones, missing IDs,
+// and other tenants never offset the recovery guard.
+async function pendingVisibleTombstones(conn, { scope }, defaultTenantId) {
+  const owner = tenant(defaultTenantId);
+  const counts = Object.fromEntries(CORE.map(name => [name, 0]));
+  for (const name of CORE) {
+    const ids = [...scope[name].values()]
+      .filter(({ row, tenantId }) => tenantId === owner && deleted(row.status))
+      .map(({ id }) => id);
+    for (let offset = 0; offset < ids.length; offset += LOCK_BATCH) {
+      const batch = ids.slice(offset, offset + LOCK_BATCH);
+      const [visible] = await conn.query(
+        'SELECT id FROM sbc_' + name + " WHERE tenant_id=? AND id IN (?) AND COALESCE(status,'') <> 'Deleted'",
+        [owner, batch]
+      );
+      counts[name] += visible.length;
+    }
+  }
+  return counts;
+}
+
 async function persistTable(conn, table, records, columnsFor, { tombstones = false, immutable = ['created_at'] } = {}) {
   const rows = [...records.values()];
   for (let offset = 0; offset < rows.length; offset += LOCK_BATCH) {
@@ -128,4 +150,4 @@ async function persist(conn, { scope }, { sqlDate, sqlDateTime, now }) {
   }), { immutable: ['created_at', 'username'] });
 }
 
-module.exports = { prepare, persist };
+module.exports = { prepare, persist, pendingVisibleTombstones };

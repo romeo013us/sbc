@@ -6,8 +6,21 @@ const path = require('node:path');
 
 const MARK = 'SBC_RELATIONAL_SNAPSHOT_TENANT_OWNERSHIP';
 
+const TOMBSTONE_GUARD_MARK = 'SBC_PENDING_TOMBSTONE_RECOVERY_GUARD';
+function patchPendingTombstones(source) {
+  if (source.includes(TOMBSTONE_GUARD_MARK)) return source;
+  const before = '    const safety=assessPersistenceSafety(visibleCore,sourceCore);';
+  assert.equal(source.split(before).length - 1, 1, 'Unique tombstone recovery guard anchor required');
+  return source.replace(before, [
+    '    // ' + TOMBSTONE_GUARD_MARK,
+    '    const pendingDeletes=await SNAPSHOT_TENANTS.pendingVisibleTombstones(conn,snapshotRows,TENANT_DEFAULT_ID);',
+    '    const reconciledVisibleCore=Object.fromEntries(Object.entries(visibleCore).map(([name,count])=>[name,Math.max(0,count-(pendingDeletes[name]||0))]));',
+    '    const safety=assessPersistenceSafety(reconciledVisibleCore,sourceCore);'
+  ].join('\n'));
+}
+
 function patchServer(source) {
-  if (source.includes(MARK)) return source;
+  if (source.includes(MARK)) return patchPendingTombstones(source);
   const replace = (before, after) => {
     assert.equal(source.split(before).length - 1, 1, 'Unique snapshot tenant stage anchor required: ' + before.split('\n')[0]);
     source = source.replace(before, () => after);
@@ -39,7 +52,7 @@ function patchServer(source) {
   replace('sourcePage:c0.sourcePage,duplicate:true,contactChanged:false});',
     'sourcePage:c0.sourcePage,duplicate:true,contactChanged:false},tenantId);');
   replace('sourcePage:c0.sourcePage,qualified:false});', 'sourcePage:c0.sourcePage,qualified:false},tenantId);');
-  return source;
+  return patchPendingTombstones(source);
 }
 
 if (require.main === module) {
