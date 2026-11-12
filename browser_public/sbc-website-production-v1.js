@@ -160,6 +160,19 @@
       finally{busy=false;}
     });
   }
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite});
+  async function openExisting(customerId){
+    const customer=getCustomer(customerId);
+    if(!customer)return notify('Customer record unavailable. Reload the CRM.');
+    if(typeof openModal==='function')openModal('SBC Website Production','<div class="v6526-studio"><h3>Opening existing website…</h3><p>Loading the latest saved site, not rebuilding or changing a client-approved website.</p></div>');
+    try{
+      const result=await serviceApi('/api/website-demos/'+encodeURIComponent(customer.id));
+      if(!result||!result.id)throw Error(result?.error||'Saved website was not found.');
+      showSite(result,customer,'Opened previously saved website. No rebuild, outreach, or payment was initiated.');
+    }catch(error){
+      if(typeof openModal==='function')openModal('SBC Website Production','<div role="alert" class="v6526-studio"><h3>Could not open the website</h3><p>'+esc(error.message||'Website unavailable')+'</p><p>Your previous website was not changed.</p></div>');
+    }
+  }
+
+  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting});
   window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
 })();
