@@ -1,0 +1,47 @@
+{
+  "observedOn": "2026-11-12",
+  "competitors": [
+    {
+      "name": "Web Design Miami Company",
+      "market": "Miami web design",
+      "observation": "Its Essential Site is advertised at $2,495 one time for three to five pages, a contact form, click-to-call, and Google Business Profile setup.",
+      "action": "On the SBC package page, make page count, first-year inclusions, renewal terms, and the path to a custom quote easy to compare.",
+      "source": "https://webdesignmiamicompany.com/pricing"
+    },
+    {
+      "name": "Made by Sebby",
+      "market": "South Florida web design",
+      "observation": "The agency promotes English and Spanish websites, monthly website care, and local SEO with publicly listed prices.",
+      "action": "Test a Spanish-language inquiry path for one service SBC can deliver in Spanish. Track qualified inquiries and paid orders from that path.",
+      "source": "https://madebysebby.com/"
+    },
+    {
+      "name": "GoDaddy",
+      "market": "DIY website builders",
+      "observation": "GoDaddy promotes a free website-building entry point and a domain with annual Website Builder plans.",
+      "action": "Show prospects what SBC sets up for them and what support they can expect after launch.",
+      "source": "https://www.godaddy.com/websites/website-builder"
+    },
+    {
+      "name": "Wix",
+      "market": "DIY website builders",
+      "observation": "Wix offers a free building tier and lists payment acceptance and basic ecommerce on its Core plan.",
+      "action": "Demonstrate a complete customer journey in the SBC store demo, from a product page through the merchant's payment setup.",
+      "source": "https://www.wix.com/plans"
+    },
+    {
+      "name": "HubSpot",
+      "market": "Small-business CRM",
+      "observation": "HubSpot offers a free CRM with contact management and a sales pipeline.",
+      "action": "In the Office Box demo, use one industry-specific workflow to show what happens after an inquiry becomes a job.",
+      "source": "https://www.hubspot.com/products/crm"
+    },
+    {
+      "name": "VistaPrint",
+      "market": "Business cards",
+      "observation": "VistaPrint lets buyers customize standard business cards with different sizes, paper options, and quantities.",
+      "action": "Show the design brief, proof review, and expected handoff date together on the SBC card order page.",
+      "source": "https://www.vistaprint.com/business-cards/standard"
+    }
+  ]
+}
