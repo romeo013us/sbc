@@ -141,6 +141,8 @@ jobs:
         run: node scripts/v6605-crm-tenant-barrier-test.js
       - name: Legacy CRM tenant guards
         run: node scripts/v6620-legacy-crm-tenant-guard-test.cjs
+      - name: Prospect demo review, isolation and public-access safety
+        run: node --test test/sbc-preview-to-appointment.test.cjs
       - name: Tenant repository isolation
         run: node scripts/tenant-repository-isolation-test.js
 
