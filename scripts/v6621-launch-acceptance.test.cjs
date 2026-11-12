@@ -9,7 +9,7 @@ assert.equal(src,read('browser_public/sbc-launch-readiness-v6621.js'),'browser t
 const html=read('public/index.html');
 assert.equal(html,read('browser_public/index.html'),'HTML twins must be identical');
 assert.match(html,/id="sbc-launch-readiness-topbar"[^>]*hidden/);
-assert.match(html,/sbc-launch-readiness-v6621\.js\?v=66\.0\.21-read-only-acceptance/);
+assert.match(html,/sbc-launch-readiness-v6621\.js\?v=66\.0\.21-visible-crm-counts/);
 assert.match(html,/launch\.hidden=!isOwner/);
 assert.match(html,/if\(launch\)launch\.hidden=true/);
 assert.doesNotMatch(src,/setInterval\(|location\.reload\(|localStorage\.clear\(/);
@@ -19,14 +19,15 @@ const expected=[
  '/api/owner/launch-gates','/api/users','/api/fantastic4/summary',
  '/api/owner/lead-readiness?limit=0','/api/payments/square/readiness'
 ];
-function fixture(role,fail=''){
+function fixture(role,fail='',leadCounts={}){
  const elements={},calls=[],alerts=[];
  const document={getElementById(id){return elements[id]||(elements[id]={id,textContent:'',hidden:false,replaceChildren(){this.replaced=true;}})}};
  const payload={
   [expected[0]]:{ok:true,coreWritePrerequisitesVerified:true,checks:{mysqlReachable:true,writerLeaseSessionVerified:true,recoveryEvaluated:true,recoveryClear:true},records:{customers:530}},
   [expected[1]]:[{role:'lead_researcher',active:true},{role:'demo',active:true}],
   [expected[2]]:{ok:true,providerGates:{wordpress:true,hosting:false,vault:true,edgeCache:false}},
-  [expected[3]]:{ok:true,totalTenantRecords:530,verifiedHumanCallReady:0,needsRecordVerification:275,suppressedOrTerminal:20,tenantHydrationDelta:0},
+  [expected[3]]:{ok:true,totalTenantRecords:530,verifiedHumanCallReady:0,needsRecordVerification:275,suppressedOrTerminal:20,
+   tenantHydrationDelta:0,sqlVisibleTenantRecords:530,sqlDeletedRecordTombstones:55,...leadCounts},
   [expected[4]]:{ok:true,preflightReady:false,environment:'production',triage:{blockers:[{code:'SQUARE_WEBHOOK_NOT_CONFIGURED'}]}}
  };
  const window={state:{me:{role}},toast:s=>alerts.push(s),openModal:(title,body)=>{window.dialog={title,body}},api:async(url,options)=>{
@@ -56,8 +57,17 @@ function fixture(role,fail=''){
  assert.match(owner.elements['sbc-launch-staff'].textContent,/login untested/);
  assert.match(owner.elements['sbc-launch-f4-detail'].textContent,/Separate live checks required/);
  assert.match(owner.elements['sbc-launch-leads-detail'].textContent,/no outreach was sent/);
+ assert.match(owner.elements['sbc-launch-leads-detail'].textContent,/Loaded CRM records 530 · Visible MySQL records 530 · Deleted records retained 55/);
+ assert.equal(owner.elements['sbc-launch-leads'].textContent,'Research queue review');
+ assert.doesNotMatch(owner.window.dialog.body,/one settled Square/);
  assert.match(owner.elements['sbc-launch-square'].textContent,/blocked/);
  assert.match(owner.elements['sbc-launch-footer'].textContent,/NOT certified/);
+ const mismatched=fixture('owner','',{tenantHydrationDelta:-1,sqlVisibleTenantRecords:529});
+ await mismatched.window.sbcOpenLaunchReadiness();
+ assert.match(mismatched.elements['sbc-launch-leads'].textContent,/count discrepancy/);
+ const unknown=fixture('owner','',{tenantHydrationDelta:null,sqlVisibleTenantRecords:null});
+ await unknown.window.sbcOpenLaunchReadiness();
+ assert.match(unknown.elements['sbc-launch-leads'].textContent,/comparison unavailable/);
  const failure=fixture('owner',expected[0]);
  await failure.window.sbcOpenLaunchReadiness();
  assert.equal(failure.calls.length,5,'One failing GET must not cancel other evidence checks');

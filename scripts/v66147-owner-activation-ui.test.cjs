@@ -46,7 +46,7 @@ assert.equal(typeof ctx.sbcV66147ReviewLeadAt,'function');
 assert.equal(typeof ctx.sbcV66147ReviewOrderAt,'function');
 (async()=>{
  await ctx.sbcAcceptActivationReview();
- assert(out.innerHTML.includes('Loaded CRM and MySQL counts differ'));
+ assert(out.innerHTML.includes('Loaded CRM and visible MySQL counts differ'));
  assert(out.innerHTML.includes('NOT approved calling tasks'));
  assert(out.innerHTML.includes('Internal QA orders excluded: 2'));
  assert(out.innerHTML.includes('&lt;img src=x onerror=alert(1)&gt;'));

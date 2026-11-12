@@ -173,7 +173,8 @@ async function sbcAcceptActivationReview(){
    ' not yet verified · '+esc(String(d.counts?.missingCallablePhone??0))+
    ' missing usable phone in active leads</p>'+
    (d.projectionMatchesSql===false?
-    '<p>⚠ Loaded CRM and MySQL counts differ. This shortlist may omit SQL-only records. Investigate CRM integrity first.</p>':'')+
+    '<p>⚠ Loaded CRM and visible MySQL counts differ. Compare record IDs in CRM integrity diagnostics.</p>':
+    d.projectionMatchesSql==null?'<p>MySQL count comparison unavailable.</p>':'')+
    '<p class="mini">These are NOT approved calling tasks. Check source, decision maker, number ownership, DNC/consent, time zone and owner approval on each record.</p>';
   const leadsHtml=leads.map((c,i)=>
    '<div style="padding:7px 0;border-bottom:1px solid #ddd"><strong>'+
