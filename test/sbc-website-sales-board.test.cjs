@@ -73,3 +73,16 @@ test('sales cockpit is mounted in mirrored UI and can reopen an existing website
  assert.match(production,/async function openExisting/);
  assert.match(production,/SBC_WEBSITE_PRODUCTION.*openExisting/);
 });
+
+test('isolated release includes owner sales pipeline and never rebuilds an owner-approved website',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
+ const {patchServer,MARK}=require('../scripts/v66-stage-website-sales-board.cjs');
+ const staged=patchServer(src);
+ assert(staged.includes(MARK));
+ assert.equal(patchServer(staged),staged);
+ assert.match(staged,/require\('\.\/enterprise\/sbc-website-sales-board\.cjs'\)\.register\(app/);
+ assert.match(staged,/if\(existing\?\.status==='Approved'\)return existing/);
+ assert.match(staged,/SBC_V6651_REQUIRE_PAID/);
+ new (require('node:vm').Script)(staged);
+ if(process.env.SBC_SALES_BOARD_EXPECT_STAGED==='YES')assert.equal(staged,src,'disposable package must have compiled sales board');
+});
