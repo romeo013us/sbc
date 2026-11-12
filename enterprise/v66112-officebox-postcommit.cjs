@@ -1,4 +1,5 @@
 'use strict';
+const {isIP}=require('node:net');
 /* SBC V66.112: owner-invoked, post-commit Office Box V2 reconciliation.
  * Never charges a card, calls Twilio, creates a new order, or provisions
  * a tenant without an existing paid, MySQL-committed Office Box SKU.
@@ -9,7 +10,14 @@ function fail(code,status=409){const e=new Error(code);e.code=code;e.status=stat
 function parseNotes(s){try{const x=JSON.parse(String(s||'{}'));return x&&typeof x==='object'&&!Array.isArray(x)?x:{}}catch{return {}}}
 function baseUrl(raw){
  let u;try{u=new URL(String(raw||''))}catch{fail('OFFICEBOX_URL_NOT_CONFIGURED',503)}
- if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash||u.port&&u.port!=='443'||/^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|169\.254\.)/i.test(u.hostname))fail('OFFICEBOX_HTTPS_ORIGIN_REQUIRED',503);
+ const host=u.hostname.replace(/^\[|\]$/g,'').replace(/\.$/,'').toLowerCase();
+ // A signed provisioning handoff must use a DNS origin, never a literal
+ // IPv4/IPv6 address or local-resolver hostname. Redirects remain disabled.
+ if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash||
+   (u.port&&u.port!=='443')||!host||isIP(host)||
+   host==='localhost'||host.endsWith('.localhost')||
+   host.endsWith('.local')||host.endsWith('.internal'))
+   fail('OFFICEBOX_HTTPS_ORIGIN_REQUIRED',503);
  return u.origin;
 }
 function skuFor(notes){
