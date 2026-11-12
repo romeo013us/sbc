@@ -341,6 +341,9 @@ jobs:
           SBC_MARKET_INTELLIGENCE_EXPECT_STAGED=YES node --test test/sbc-market-intelligence.test.cjs
           SBC_ISOLATED_SNAPSHOT_TENANT_STAGE=YES node scripts/v66-stage-snapshot-tenants.cjs --apply
           SBC_SNAPSHOT_TENANT_EXPECT_STAGED=YES node --test test/sbc-snapshot-tenants.test.cjs test/sbc-market-intelligence.test.cjs
+          node --test test/sbc-preview-to-appointment.test.cjs
+          SBC_ISOLATED_PREVIEW_STAGE=YES node scripts/v66-stage-preview-to-appointment.cjs --apply
+          SBC_PREVIEW_EXPECT_STAGED=YES node --test test/sbc-preview-to-appointment.test.cjs
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
           node - <<'NODE'
