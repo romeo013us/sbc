@@ -2016,7 +2016,10 @@ async function writeRelational({includeSettings=true}={}){
     `,[TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID,TENANT_DEFAULT_ID]);
     const visibleCore={customers:Number(visibleCoreRow?.customers||0),quotes:Number(visibleCoreRow?.quotes||0),
       orders:Number(visibleCoreRow?.orders||0),renewals:Number(visibleCoreRow?.renewals||0)};
-    const safety=assessPersistenceSafety(visibleCore,sourceCore);
+    // SBC_PENDING_TOMBSTONE_RECOVERY_GUARD
+    const pendingDeletes=await SNAPSHOT_TENANTS.pendingVisibleTombstones(conn,snapshotRows,TENANT_DEFAULT_ID);
+    const reconciledVisibleCore=Object.fromEntries(Object.entries(visibleCore).map(([name,count])=>[name,Math.max(0,count-(pendingDeletes[name]||0))]));
+    const safety=assessPersistenceSafety(reconciledVisibleCore,sourceCore);
     if(!safety.ok){
       MYSQL_RECOVERY_REQUIRED=true;
       storageMode='mysql-recovery-required';
