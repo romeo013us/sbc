@@ -115,6 +115,15 @@ test('full Website Call Desk is available to owner and assigned sales staff, no 
  assert.match(ui,/SBC Website Call Desk/);
  assert.match(ui,/\/api\/website-production\/call-desk/);
  assert.match(ui,/SBC_WEBSITE_PRODUCTION\.openExisting/);
+ assert.match(ui,/SBC_WEBSITE_PRODUCTION\.openExisting\(id,current\(\)\)/);
+ assert.match(ui,/SBC_WEBSITE_PRODUCTION\.build\(id,'essentials',current\(\)\)/);
+ const production=read('public/sbc-website-production-v1.js');
+ assert.equal(production,read('browser_public/sbc-website-production-v1.js'));
+ assert.match(production,/const salesCustomer =/);
+ assert.match(production,/doNotContact:true,doNotCall:true,salesSuppressed:true/);
+ assert.match(production,/async function buildWebsite\(customerId,defaultTier='essentials',hint\)/);
+ assert.match(production,/async function openExisting\(customerId,hint\)/);
+
  assert.match(ui,/NO_ANSWER/);
  assert.match(ui,/DO_NOT_CALL/);
  assert.match(ui,/AI call coach/);
