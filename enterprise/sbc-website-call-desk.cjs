@@ -132,7 +132,7 @@ function recordOutcome({customer,site,actor,tenantId:tid,kind,now=new Date().toI
  if(type==='DO_NOT_CALL'){patch.doNotCall=true;patch.doNotContact=true;patch.salesSuppressed=true;}
  const record={id:'webcall_'+randomUUID(),tenantId:int(tid),customerId:String(customer.id),websiteId:site&&sameTenant(site,tid)&&String(site.customerId)===String(customer.id)?String(site.id):null,
   actorId:String(actor.id),kind:type,createdAt:at.toISOString(),outboundTriggered:false,channel:'manual_outcome_only'};
- return {record,customerPatch:patch};
+ return {kind:type,record,customerPatch:patch};
 }
 function register(app,{auth,requireTenant,db,getStore,saveStore,writerReady,now=()=>new Date().toISOString()}){
  const scope=(req,res)=>{
