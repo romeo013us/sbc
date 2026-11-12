@@ -34,6 +34,15 @@
       '<label style="display:block;margin:12px 0"><input type="checkbox" id="sbcFactoryCheckContent"> No fabricated customer claims, certifications or reviews. Contact form does not submit data.</label>'+
       '<button type="button" id="sbcFactoryApprove" class="btn primary">Approve Website for Presentation</button></section>';
   }
+  function appointmentPanel(demo){
+    if(!isApproved(demo))return '';
+    return '<section class="sbc-website-walkthrough" style="padding:22px;border:1px solid #b7c5d5;border-radius:12px;background:#f5f8fe;margin:22px 0">'+
+      '<h4 style="margin-top:0">Book a 10-minute website walkthrough</h4><p style="font-size:13px">Only create the appointment after the business owner agrees to meet. No texts, emails, or calendar invitations will be sent automatically.</p>'+
+      '<label style="display:block;margin:12px 0">Confirmed meeting date and time (your local time) <input type="datetime-local" id="sbcFactoryMeetingTime" style="width:100%;padding:10px;margin-top:6px"></label>'+
+      '<label style="display:block;margin:12px 0"><input type="checkbox" id="sbcFactoryMeetingConfirmed"> The prospect explicitly agreed to this date and time.</label>'+
+      '<button type="button" class="btn primary" id="sbcFactoryBookMeeting">Book Walkthrough in Command Center</button></section>';
+  }
+
   function showSite(demo,customer,message='') {
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
@@ -46,6 +55,7 @@
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
       '<section style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(demo.salesScript||'Once the website is reviewed, introduce the owner to the finished site and offer a short walkthrough.')+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
+      appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
       '<div class="v6526-delivery"><div><h4>Owner-authorized presentation delivery</h4><p>Only send after the business requests or consents to the link. Do not send to suppressed contacts.</p></div><div class="v6526-delivery-actions"><button type="button" class="btn" id="sbcFactoryEmail" '+(currentRole()==='owner'&&isApproved(demo)&&customer.email&&!customer.doNotContact&&!customer.salesSuppressed?'':'disabled')+'>Email Website</button><button type="button" class="btn" id="sbcFactorySms" '+(currentRole()==='owner'&&isApproved(demo)&&customer.phone&&(customer.smsConsent===true||customer.consentToSms===true)&&!customer.smsOptOut&&!customer.doNotCall&&!customer.doNotContact&&!customer.salesSuppressed?'':'disabled')+'>Text Website</button></div></div>'+
       '<p id="sbcWebsiteFactoryStatus" role="status" style="padding:12px 0">'+esc(message||(isApproved(demo)?'Website ready for a human-led sales presentation.':'Website built and awaiting owner verification.'))+'</p>'+
@@ -64,6 +74,7 @@
       document.querySelector('.v6526-preview-shell')?.classList.toggle('is-mobile',button.dataset.factoryDevice==='mobile');
     }));
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
+    document.getElementById('sbcFactoryBookMeeting')?.addEventListener('click',bookWalkthrough);
     document.getElementById('sbcFactoryCopyLink')?.addEventListener('click',()=>copyText(pageUrl(demo,'home'),'Website link copied.'));
     document.getElementById('sbcFactoryCopyPitch')?.addEventListener('click',()=>copyText(demo.salesScript||'','Sales opening copied.'));
     document.getElementById('sbcFactoryEmail')?.addEventListener('click',()=>send('email'));
@@ -88,6 +99,23 @@
     }catch(error){updateStatus(error.message||'Website approval failed.',true);}
     finally{busy=false;}
   }
+  async function bookWalkthrough(){
+    if(!active||busy||!isApproved(active.demo))return updateStatus('Owner-approved website required before scheduling.',true);
+    const time=document.getElementById('sbcFactoryMeetingTime')?.value||'';
+    const confirmed=document.getElementById('sbcFactoryMeetingConfirmed')?.checked===true;
+    if(!confirmed)return updateStatus('Confirm the prospect agreed to the proposed appointment time.',true);
+    if(!time||!Number.isFinite(new Date(time).valueOf()))return updateStatus('Choose a valid date and time.',true);
+    busy=true;updateStatus('Saving the confirmed walkthrough in Command Center...');
+    try{
+      const result=await serviceApi('/api/website-production/appointments',{
+        method:'POST',body:JSON.stringify({customerId:active.customer.id,websiteId:active.demo.id,startAt:new Date(time).toISOString(),prospectConfirmed:true})
+      });
+      if(!result?.ok||!result.appointment)throw Error(result?.code||'Appointment was not committed.');
+      updateStatus('Confirmed website walkthrough booked for '+new Date(result.appointment.startAt).toLocaleString()+'. No message or call was sent.');
+    }catch(error){updateStatus(error.message||'Unable to book appointment.',true)}
+    finally{busy=false}
+  }
+
   async function send(channel){
     if(!active||busy||currentRole()!=='owner'||!isApproved(active.demo))return updateStatus('Owner-approved website required before sending.',true);
     const {customer,demo}=active, url=pageUrl(demo,'home');
