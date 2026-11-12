@@ -371,6 +371,7 @@ function requireRequestTenant(req){ return PRODUCTION_HARDENING.requireTenant(re
 // SBC_V6547_TENANT_PROPAGATION: public ingress resolves tenant scope from the authoritative host map.
 // SBC_V6660_WEBSITE_BRIDGE_TENANT_SECURITY: signed server-to-server website identity required for public customer mutations.
 const SBC_V6660_BRIDGE=require('./enterprise/v6660-website-bridge.cjs');
+const SBC_SEARCH_CONSOLE=require('./enterprise/sbc-search-console.cjs');
 function sbcVerifiedWebsiteTenant(req){const v=SBC_V6660_BRIDGE.verify(req,{key:process.env.SBC_WEBSITE_BRIDGE_KEY});if(!v.ok)throw Object.assign(Error(v.code),{code:v.code,status:403});const m=V569_PRODUCTION_EXPANSION.tenantFromHost(v.host);if(!m.ok)throw Object.assign(Error('SITE_BRIDGE_TENANT_UNMAPPED'),{code:'SITE_BRIDGE_TENANT_UNMAPPED',status:403});return Number(m.tenantId);}
 function requireMappedRequestTenant(req){const m=V569_PRODUCTION_EXPANSION.tenantFromHost(req?.headers?.host||req?.hostname||'');const n=Number(m?.tenantId);if(!m?.ok||!Number.isSafeInteger(n)||n<1)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED: public host is not mapped to a tenant.'),{code:'TENANT_CONTEXT_REQUIRED',status:403});return n;}
 // Shared strict tenant resolver for registered route modules. Never defaults an authenticated request to tenant 1.
@@ -2620,7 +2621,7 @@ async function credentialSecret(name,envNames=[]){
 
 
 const secretCache=new Map();
-async function loadVaultSecrets(){if(!mysqlPool)return;try{const [rows]=await mysqlPool.query('SELECT secret_name,secret_ciphertext FROM sbc_secret_vault WHERE tenant_id=?',[TENANT_DEFAULT_ID]);for(const r of rows){try{secretCache.set(r.secret_name,decryptVault(r.secret_ciphertext))}catch(e){console.warn('[SBC VAULT] decrypt failed for',r.secret_name)}}}catch(e){console.warn('[SBC VAULT] load:',e.message)}}
+async function loadVaultSecrets(){if(!mysqlPool)return;try{const [rows]=await mysqlPool.query('SELECT secret_name,secret_ciphertext FROM sbc_secret_vault WHERE tenant_id=? AND secret_name <> ?',[TENANT_DEFAULT_ID,SBC_SEARCH_CONSOLE.CREDENTIAL]);for(const r of rows){try{secretCache.set(r.secret_name,decryptVault(r.secret_ciphertext))}catch(e){console.warn('[SBC VAULT] decrypt failed for',r.secret_name)}}}catch(e){console.warn('[SBC VAULT] load:',e.message)}}
 function secretValue(name,...fallbackNames){if(secretCache.has(name))return secretCache.get(name);for(const n of fallbackNames){if(process.env[n])return process.env[n]}return ''}
 async function vaultBootstrapFromEnvironment(){
   if(!mysqlPool||process.env.SBC_VAULT_BOOTSTRAP!=='true')return;
@@ -2936,7 +2937,7 @@ async function runArchitectureHealth(){
   return {version:BUILD_VERSION,architectureVersion:ARCHITECTURE_VERSION,tenant:{mode:'logical',defaultTenantId:TENANT_DEFAULT_ID,ready:true},demo:{mode:'metadata-router+sandbox-worker',sandboxMode:String(process.env.SBC_DEMO_SANDBOX_MODE||'process'),ready:true},eventBus:{mode:amqpChannel?'rabbitmq-amqp':'durable-db-outbox',configured:Boolean(amqpChannel||process.env.SBC_AMQP_URL),ready:true},sessions:{mode:process.env.SBC_AUTH_MODE==='jwt'?'jwt-jwks':(redisReady?'redis+mysql-durable-cookie':'mysql-durable-cookie'),redisConfigured:Boolean(process.env.SBC_REDIS_URL||process.env.REDIS_URL),redisReady,ready:Boolean(redisReady||mysqlPool)},rbac:{mode:'policy-interceptor',ready:true},vault:{mode:'aes-256-gcm',configured:Boolean(process.env.SBC_VAULT_KEY),ready:Boolean(process.env.SBC_VAULT_KEY)},telemetry:{mode:'structured-json+metrics',ready:true},cqrs:{mode:mysqlReadPool?'primary-write/read-replica':'primary-only-fallback',readReplicaConfigured:Boolean(mysqlReadPool),ready:true},migrations:{mode:'versioned-expand-contract',ready:true,recent:migrations},outbox:outbox,metrics:{...architectureMetrics,uptimeSeconds:Math.floor(process.uptime())}};
 }
 
-function addActivity(type,message,meta={}){db.activities.unshift({id:id('act'),type,message,meta,createdAt:now()});db.activities=db.activities.slice(0,200)}
+function addActivity(type,message,meta={}){const entry={id:id('act'),type,message,meta,createdAt:now()};db.activities.unshift(entry);db.activities=db.activities.slice(0,200);return entry;}
 
 // Shared numeric money normalizer. Keep this at module scope so website demos,
 // revenue, order summaries, and supervisor code cannot hit a scope-dependent ReferenceError.
@@ -3001,6 +3002,13 @@ if(e?.code==='SESSION_STORE_UNAVAILABLE'){
   return strictTenantGuard(req,res,()=>runWithTenantContext({tenantId:req.tenantId,actorId:u.id||u.username,role:u.role,requestId:req.requestId,source:'authenticated-session'},()=>next()));
 }
 function ownerOnly(req,res,next){if(req.user?.role!=='owner')return res.status(403).json({error:'Owner access required.'});next()}
+
+function sbcMarketSiteTenant(tenantId){
+  try{
+    const site=V569_PRODUCTION_EXPANSION.tenantFromHost(new URL(SBC_SEARCH_CONSOLE.PROPERTY).hostname);
+    return site.ok && site.tenantId===tenantId;
+  }catch{return false;}
+}
 
 // V54.0.4 — Auth bootstrap contract: the production frontend calls GET /api/me
 // before loading the Command Center. Keep this endpoint on the existing session/RBAC
@@ -3491,7 +3499,24 @@ function webLeadRateLimit(ip){const key=String(ip||'unknown'),nowMs=Date.now(),a
 // SBC_V6661_WEB_INQUIRY_CONTACT_INTEGRITY: a public inquiry cannot bind by business-name similarity alone.
 function webLeadDuplicate(candidate,tenantId){const m=leadDuplicateMatches(candidate).filter(x=>Number(x.customer?.tenantId)===Number(tenantId)&&Array.isArray(x.reasons)&&x.reasons.some(r=>r==='email'||r==='phone'));return m.length===1?m[0]:null;}
 function normalizeWebLeadBody(b){return {businessName:String(b.businessName||b.company||b.business||'').trim().slice(0,180),contactName:String(b.contactName||b.name||'').trim().slice(0,140),phone:String(b.phone||'').trim().slice(0,40),email:String(b.email||'').trim().toLowerCase().slice(0,180),website:String(b.website||'').trim().slice(0,300),address:String(b.address||'').trim().slice(0,300),city:String(b.city||'').trim().slice(0,100),region:String(b.region||b.state||'').trim().slice(0,100),zip:String(b.zip||b.postalCode||'').trim().slice(0,30),industry:String(b.industry||b.category||'').trim().slice(0,120),serviceInterest:String(b.serviceInterest||b.service||b.interest||'').trim().slice(0,160),quoteType:String(b.quoteType||'').trim().slice(0,120),quantity:String(b.quantity||'').trim().slice(0,80),message:String(b.message||b.notes||'').trim().slice(0,3000),sourcePage:String(b.sourcePage||b.page||'').trim().slice(0,300)}}
+async function confirmWebsiteInquiry(tenantId,customerId,activityId){
+  try{
+    await saveData();
+    const [rows]=await mysqlPool.query({timeout:4000,sql:`
+      SELECT a.id FROM sbc_activities a
+      JOIN sbc_customers c ON c.tenant_id=a.tenant_id AND c.id=?
+      WHERE a.tenant_id=? AND a.id=? AND a.activity_type='web_lead' AND c.status<>'Deleted' LIMIT 1`
+    },[customerId,tenantId,activityId]);
+    return rows.length===1;
+  }catch{return false;}
+}
 app.use('/api', apiRateLimiter);
+/* SBC_MARKET_INTELLIGENCE */
+require('./enterprise/sbc-market-intelligence.cjs').register(app,{
+  auth,ownerOnly,requireTenant:requireRequestTenant,isSiteTenant:sbcMarketSiteTenant,
+  getPool:()=>MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED?mysqlPool:null,
+  readSearchCredential:tenantId=>mysqlPool?vaultSecret(SBC_SEARCH_CONSOLE.CREDENTIAL,tenantId):''
+});
 app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}),async(req,res)=>{
   const origin=String(req.headers.origin||'');
   if(origin && !PORTAL_ORIGINS.has(origin)) return res.status(403).json({error:'Web lead origin is not authorized.'});
@@ -3503,14 +3528,16 @@ app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.r
   const c0=normalizeWebLeadBody(b);
   if(!c0.businessName && !c0.contactName) return res.status(400).json({error:'Business name or contact name is required.'});
   if(!c0.phone && !c0.email) return res.status(400).json({error:'Please provide a phone number or email address.'});
+  if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
+    return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_WRITER_UNAVAILABLE'});
   const dup=webLeadDuplicate(c0,tenantId);
   if(dup){
     // Never overwrite a verified CRM contact from an anonymous public form.
     const c=dup.customer;c.webLead=true;c.lastWebLeadAt=now();c.webLeadCount=Math.min(100000,Number(c.webLeadCount||0)+1);
     c.webLeadPendingReview=true;
     c.webLeadInquiries=(Array.isArray(c.webLeadInquiries)?c.webLeadInquiries:[]).slice(-9).concat([{at:now(),sourcePage:c0.sourcePage,serviceInterest:c0.serviceInterest,quoteType:c0.quoteType,contactName:c0.contactName,phone:c0.phone,email:c0.email,message:c0.message}]);
-    addActivity('web_lead',`Website inquiry pending verification for ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,duplicate:true,contactChanged:false});
-    await saveData();
+    const activity=addActivity('web_lead',`Website inquiry pending verification for ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,duplicate:true,contactChanged:false});
+    if(!await confirmWebsiteInquiry(tenantId,c.id,activity.id))return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_UNCONFIRMED'});
     return res.status(200).json({ok:true,id:c.id,duplicate:true,verificationRequired:true,assignedTo:c.assignedTo||''});
   }
   const c={id:id('cust'),tenantId,businessName:c0.businessName,contactName:c0.contactName,phone:c0.phone,email:c0.email,status:'Lead',source:'sbcmia.com',followUp:'',notes:c0.message,website:c0.website,address:c0.address,city:c0.city,region:c0.region,zip:c0.zip,industry:c0.industry,dealValue:0,assignedTo:'',assignedToName:'',webLead:true,webLeadType:c0.quoteType||c0.serviceInterest||'Website Inquiry',webLeadMessage:c0.message,webLeadService:c0.serviceInterest,webLeadQuantity:c0.quantity,webLeadSourcePage:c0.sourcePage,leadTemperature:'Cold',leadScore:0,verificationStatus:'Needs Verification',webLeadPendingReview:true,pipelineStage:'New Lead',salesQueueState:'',createdAt:now(),updatedAt:now(),inboundAt:now()};
@@ -3518,8 +3545,8 @@ app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.r
   c.verificationStatus='Needs Verification';c.leadTemperature='Cold';c.leadScore=Math.min(49,Math.max(0,Number(c.leadScore)||0));c.webLeadPendingReview=true;
   db.customers.unshift(c);
   // Staff verification precedes any qualified-lead call or outbound automation.
-  addActivity('web_lead',`New SBCMIA inquiry requires verification: ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,qualified:false});
-  await saveData();
+  const activity=addActivity('web_lead',`New SBCMIA inquiry requires verification: ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,qualified:false});
+  if(!await confirmWebsiteInquiry(tenantId,c.id,activity.id))return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_UNCONFIRMED'});
   res.status(201).json({ok:true,id:c.id,hot:false,verificationRequired:true,assignedTo:c.assignedTo||'',assignedToName:c.assignedToName||''});
 });
 
@@ -9272,6 +9299,7 @@ function verifyPrintWebhook(req,vendor){const name=vendor==='4over4'?'FOUROVER4_
 app.post('/api/webhooks/print/:vendor',async(req,res)=>{const vendor=String(req.params.vendor||'').toLowerCase();if(!['vistaprint','4over4'].includes(vendor))return res.status(404).end();const check=verifyPrintWebhook(req,vendor);if(!check.ok)return res.status(401).json({error:check.reason});await publishEnterpriseEvent(TENANT_DEFAULT_ID,'print_webhook_received',{vendor,payload:req.body||{},receivedAt:now()});res.status(202).json({ok:true,accepted:true});});
 const PROVIDER_VAULT_ALLOWED=new Set([
   'GODADDY_PAT',
+  SBC_SEARCH_CONSOLE.CREDENTIAL,
   'FOUROVER4_API_KEY','FOUROVER4_API_URL','FOUROVER4_ORDER_ENDPOINT','FOUROVER4_WEBHOOK_SECRET',
   'VISTAPRINT_API_KEY','VISTAPRINT_API_URL','VISTAPRINT_ORDER_ENDPOINT','VISTAPRINT_WEBHOOK_SECRET',
   'TWILIO_ACCOUNT_SID','TWILIO_API_KEY_SID','TWILIO_API_KEY_SECRET','TWILIO_TWIML_APP_SID','TWILIO_PHONE_NUMBER','TWILIO_AUTH_TOKEN','SBC_TWILIO_AUTH_TOKEN','SBC_TWILIO_ACCOUNT_SID','SBC_TWILIO_FROM',
@@ -9286,14 +9314,24 @@ app.post('/api/architecture/vault',auth,ownerOnly,async(req,res)=>{
   if(!value)return res.status(400).json({error:'Credential value is required.'});
   if(value.length>20000)return res.status(400).json({error:'Credential value is too large.'});
   if(!mysqlPool)return res.status(503).json({error:'MySQL is required for the persistent vault.'});
+  if(name===SBC_SEARCH_CONSOLE.CREDENTIAL){
+    if(!sbcMarketSiteTenant(requireRequestTenant(req)))return res.status(403).json({error:'The sbcmia.com property belongs to a different tenant.'});
+    if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
+      return res.status(503).json({error:'Connect Search Console from the Published writer once MySQL is ready.'});
+    try{SBC_SEARCH_CONSOLE.parseCredential(value);}
+    catch{return res.status(400).json({error:'Choose a valid Google service account JSON key.'});}
+  }
   try{
     const keySource=vaultKeySource();
     const ciphertext=encryptVault(value);
     await mysqlPool.query(`INSERT INTO sbc_secret_vault(id,tenant_id,secret_name,secret_ciphertext,created_at,updated_at) VALUES (?,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE secret_ciphertext=VALUES(secret_ciphertext),updated_at=UTC_TIMESTAMP()`,[id('vault'),req.tenantId,name,ciphertext]);
-    secretCache.set(name,value);
+    if(name!==SBC_SEARCH_CONSOLE.CREDENTIAL)secretCache.set(name,value);
     audit(req.user,'secret_vault_updated',`Updated encrypted provider credential ${name}`,{tenantId:req.tenantId,secretName:name,keySource});
     res.json({ok:true,name,encrypted:true,persisted:true,keySource});
-  }catch(e){res.status(503).json({ok:false,error:`Provider Credential Vault unavailable: ${e.message}`})}
+  }catch(e){
+    if(name===SBC_SEARCH_CONSOLE.CREDENTIAL)return res.status(503).json({ok:false,error:'Search Console credential save could not be confirmed.'});
+    res.status(503).json({ok:false,error:`Provider Credential Vault unavailable: ${e.message}`});
+  }
 });
 
 app.get('/api/security/provider-vault-status',auth,ownerOnly,async(req,res)=>{
