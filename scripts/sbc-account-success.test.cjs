@@ -33,11 +33,11 @@ for(const name of ['sbc-account-success-v1.js','sbc-lead-profile-v1.js','sbc-web
  assert.equal(read('public/'+name),read('browser_public/'+name),'Mirror mismatch for '+name);
 }
 const profile=read('public/sbc-lead-profile-v1.js'),worker=read('public/sales-caller.js'),builder=read('public/sbc-website-production-v1.js');
-assert.match(profile,/SBC_ACCOUNT_SUCCESS\.plan/);
+assert.match(profile,/window\.SBC_ACCOUNT_SUCCESS/);assert.match(profile,/planner\.plan\(/);
 assert.match(profile,/Account relationship plan/);
-assert.match(worker,/SBC_ACCOUNT_SUCCESS\.plan/);
+assert.match(worker,/window\.SBC_ACCOUNT_SUCCESS/);assert.match(worker,/planner\.plan\(/);
 assert.match(worker,/Account manager · customer success/);
-assert.match(builder,/SBC_ACCOUNT_SUCCESS\.plan/);
+assert.match(builder,/window\.SBC_ACCOUNT_SUCCESS/);assert.match(builder,/planner\.plan\(/);
 assert.match(builder,/SBC Instant Sites/);
 assert.match(read('public/index.html'),/src="\/sbc-account-success-v1\.js/);
 assert.match(read('public/sales-caller.html'),/src="\/sbc-account-success-v1\.js/);
