@@ -5,7 +5,7 @@ const {positiveTenantId}=require('../enterprise/repositories/customer-repository
 const {revisionOfLead}=require('../enterprise/crm-revision-v6607.cjs');
 const CRM_TEXT=require('../enterprise/crm-text-integrity-v66140.cjs');
 // SBC_V6607_LEAD_REVISION_GUARD
-const FIELDS=Object.freeze({contactName:['contact_name',255],phone:['phone',80],email:['email',255],status:['status',40],notes:['notes',4000]});
+const FIELDS=Object.freeze({contactName:['contact_name',255],phone:['phone',80],email:['email',255],status:['status',40],notes:['notes',4000],address:['address',500]});
 const STATUS=new Set(['Lead','Prospect','Contacted','Follow Up','Qualified','Interested','Not Interested','Appointment Set','Customer','Not Qualified','Do Not Call','Lost']);
 const deny=(res,status,code)=>res.status(status).json({ok:false,code});
 function tenantFor(req){
@@ -56,7 +56,7 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
   try{
    conn=await ctx.mysqlPool.getConnection();
    await conn.beginTransaction();tx=true;
-   const [matched]=await conn.query('SELECT id,assigned_to,contact_name,phone,email,status,notes,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);
+   const [matched]=await conn.query('SELECT id,assigned_to,contact_name,phone,email,status,notes,address,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);
    if(!Array.isArray(matched)||matched.length!==1){
     await conn.rollback();tx=false;return deny(res,404,'LEAD_NOT_FOUND');
    }
@@ -73,7 +73,7 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
    const [updated]=await conn.query(sql,params);
    if(updated?.affectedRows!==1)throw Error('LEAD_EDIT_NOT_PERSISTED');
    const [verified]=await conn.query(
-    'SELECT id,tenant_id,contact_name,phone,email,status,notes,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[tenant,id]
+    'SELECT id,tenant_id,contact_name,phone,email,status,notes,address,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[tenant,id]
    );
    if(!Array.isArray(verified)||verified.length!==1||Number(verified[0].tenant_id)!==tenant)
     throw Error('LEAD_EDIT_READBACK_FAILED');
