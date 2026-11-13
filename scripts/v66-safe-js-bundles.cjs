@@ -19,6 +19,18 @@ const GROUPS=Object.freeze({
   'v562-experience.js','v562-next.js','v562-executive.js',
   'v563-maturity.js','v564-guardian.js','v565-operational.js',
   'v566-customer360.js'
+ ]),
+ 'legacy-growth-controls':Object.freeze([
+  'v37-kim-automation.js',
+  'v38-kim-growth.js',
+  'v391-commercial-readiness.js'
+ ]),
+ 'legacy-enterprise-controls':Object.freeze([
+  'v43-edge-suite.js',
+  'v43-4-resilience-brand.js',
+  'v43-7-sales-velocity.js',
+  'kim-deep-ops.js',
+  'kim-founder-fortress.js'
  ])
 });
 const digest=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
@@ -56,7 +68,7 @@ function verify(root=path.resolve(__dirname,'..')){
  for(const dir of ['public','browser_public']){
   const html=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
-  if(tags.length!==98)throw Error('[SBC V66 JS] Expected 98 external script tags, got '+tags.length+' in '+dir);
+  if(tags.length!==92)throw Error('[SBC V66 JS] Expected 92 external script tags, got '+tags.length+' in '+dir);
   for(const value of values){
    const file=path.join(root,dir,value.filename);
    if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==value.content)throw Error('[SBC V66 JS] Missing/stale JS bundle: '+dir+'/'+value.filename);
