@@ -35,7 +35,7 @@ test('the mirror gate fails when a shared asset drifts or a new exception appear
 test('the staged ZIP helper creates identical bytes across timestamps and insertion order, then detects changes',()=>{
  const result=spawnSync('python3',[path.join(root,'test/v66_reproducible_zip_test.py')],{cwd:root,encoding:'utf8'});
  assert.equal(result.status,0,(result.stdout||'')+'\n'+(result.stderr||''));
- assert.match(result.stdout,/OK/);
+ assert.match((result.stdout||'')+(result.stderr||''),/OK/);
 });
 test('release candidate uses deterministic ZIP writer and a source-mirror gate',()=>{
  assert.match(workflow,/from scripts\.v66_deterministic_zip import create_reproducible_zip/);
