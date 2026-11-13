@@ -105,11 +105,13 @@ body{overflow-x:hidden}
 <link rel="stylesheet" href="/sbc-manual-dialer-v6696.css?v=1" />
 <link rel="stylesheet" href="/sbc-owner-employee-switch-v6697.css?v=1" />
 <link rel="stylesheet" href="/sbc-executive-ui-v1.css?v=1" data-sbc-executive-ui="global" />
+<link rel="stylesheet" href="/sbc-website-revenue-shortcuts-v1.css?v=1" data-sbc-website-spotlight="true" />
 </head><body>
 <div id="toast" class="toast"></div>
 <div id="login" class="login-screen"><div class="login-card"><img class="brand-logo login-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div class="eyebrow">SUCCESSFUL BY CHOICE</div><h1>Business Command Center</h1><p>Private operating system for SBC sales, customers, quotes, payments, print orders and renewals.</p><form id="loginForm"><label>Username<input id="loginUsername" autocomplete="username" value="owner" required placeholder="owner"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your SBC password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="form-error"></div></form></div></div>
 <script src="/sbc-login-controller-v6623.js?v=66.0.23-login-access"></script><div id="app" class="app hidden v56-app"><aside class="sidebar"><div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div><strong>Successful By Choice</strong><span>Business Command Center</span></div></div><nav class="v56-primary-nav">
 <button data-view="dashboard" class="nav-item v56-nav-item active"><span>⌂</span> Home</button>
+<button type="button" id="sbc-website-production-nav" class="sbc-website-spotlight-nav owner-only" aria-label="Open SBC Website Production and Website Call Desk" onclick="window.SBC_WEBSITE_CALL_DESK?.open?.()"><span class="sbc-spotlight-icon" aria-hidden="true">🌐</span><span class="sbc-spotlight-copy"><strong>Website Production</strong><small>Build · Present · Close</small></span><span class="sbc-spotlight-arrow" aria-hidden="true">↗</span></button>
 <button type="button" id="sbc-quick-checkout-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start customer Quick Checkout"><span>⚡</span> Quick Checkout</button>
 <button type="button" id="sbc-owner-qa-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start owner-only internal $1 Square test"><span>🧪</span> $1 Test Checkout</button>
 <button data-view="notifications" class="nav-item v56-nav-item owner-only"><span>🔔</span> Notifications</button>
