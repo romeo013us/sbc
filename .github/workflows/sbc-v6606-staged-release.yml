@@ -26,6 +26,8 @@ jobs:
           node scripts/v6606-quote-server-hardening.cjs
           node scripts/v6606-quote-server-hardening.test.cjs
           node scripts/v66155-release-hygiene.test.cjs
+          node --test test/v66-release-foundation.test.cjs
+          node scripts/v66-static-mirror-gate.cjs
           node scripts/secret-audit.js
           node --check hotfix-assets/apply-v6693-quarantine-legacy-officebox.js
           node --check hotfix-assets/v6694-owner-qa-route.cjs
@@ -392,6 +394,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib,json,pathlib,zipfile,subprocess
+          from scripts.v66_deterministic_zip import create_reproducible_zip
           root=pathlib.Path('.').resolve()
           out=root/'dist-stage'
           out.mkdir(exist_ok=True)
@@ -430,9 +433,12 @@ jobs:
           identity['stagedInventorySha256']=hashlib.sha256(manifest_bytes).hexdigest()
           identity_path.write_text(json.dumps(identity,indent=2)+'\n')
           zip_path=out/'SBC-V66-QUOTE-SAFETY-STAGING.zip'
-          with zipfile.ZipFile(zip_path,'w',zipfile.ZIP_DEFLATED,compresslevel=8) as z:
-              for rel in files:z.write(root/rel,str(rel))
-              z.writestr('SBC-STAGED-INVENTORY.json',manifest_bytes)
+          create_reproducible_zip(zip_path,root,files,{'SBC-STAGED-INVENTORY.json':manifest_bytes})
+          # Byte-for-byte repeatability is a release invariant, not a best-effort setting.
+          second=out/'SBC-V66-REPRO-VERIFY-TEMP.zip'
+          create_reproducible_zip(second,root,list(reversed(files)),{'SBC-STAGED-INVENTORY.json':manifest_bytes})
+          assert zip_path.read_bytes()==second.read_bytes(),'Staging ZIP is not byte-for-byte reproducible'
+          second.unlink()
           (out/'SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256').write_text(hashlib.sha256(zip_path.read_bytes()).hexdigest()+'  '+zip_path.name+'\n')
           with zipfile.ZipFile(zip_path) as z:
               assert z.testzip() is None
