@@ -1,0 +1,20 @@
+name: SBC Account 360 and Focused UX
+on:
+  pull_request:
+    branches: [a-sbc-master]
+  push:
+    branches: [a-sbc-master]
+permissions:
+  contents: read
+jobs:
+  account-profile-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:lead-accounts
