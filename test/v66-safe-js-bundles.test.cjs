@@ -15,8 +15,8 @@ test('index replaces 19 synchronous controllers with 4 version-hashed bundles an
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const tags=htmlScripts(page);
-  assert.equal(tags.length,95,'92 verified V66 scripts plus Account 360, focused navigation, and Account Success controllers');
-  for(const script of ['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js'])assert.equal(tags.filter(x=>x.split('?')[0]===script).length,1,'New isolated controller loads exactly once: '+script);
+  assert.equal(tags.length,96,'92 verified V66 scripts plus Account 360, focused navigation, and Account Success controllers');
+  for(const script of ['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js','/sbc-account-portfolios-v1.js'])assert.equal(tags.filter(x=>x.split('?')[0]===script).length,1,'New isolated controller loads exactly once: '+script);
   const bundles=Object.keys(GROUPS).map(group=>compile(root,group).filename);
   for(const file of bundles)assert(tags.some(t=>t.startsWith('/'+file)),file+' must load');
   for(const files of Object.values(GROUPS)){
