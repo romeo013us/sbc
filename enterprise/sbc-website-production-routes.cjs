@@ -1,10 +1,54 @@
 'use strict';
 const P=require('./sbc-website-workorders.cjs');
+const Editor=require('./sbc-instant-site-editor.cjs');
 function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,paidGuard}){
  const respond=(res,e)=>{const code=String(e?.message||e);const status=/TENANT_CONTEXT|NOT_ASSIGNED|OWNER_REQUIRED|ASSIGNEE_INVALID/.test(code)?403:/PAYMENT_EVIDENCE|PREREQUISITES|WEBSITE_NOT_APPROVED|CUSTOMER_MISMATCH|ALREADY_COMPLETED/.test(code)?409:/UNKNOWN_TASK|INVALID|REQUIRED/.test(code)?400:503;return res.status(status).json({ok:false,code})};
  const tenant=req=>{const n=Number(requireTenant(req));if(!Number.isSafeInteger(n)||n<1)throw Error('TENANT_CONTEXT_REQUIRED');return n};
  const available=(res)=>{if(!writerReady()){res.status(423).json({ok:false,code:'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'});return false}return true};
  const orders=()=>{const m=getStore();return Array.isArray(m.websiteProductionOrders)?m.websiteProductionOrders:[]};
+
+ // Serializes draft saves within the published writer process, so two editors
+ // cannot read the same version and both claim successful persistence.
+ let editQueue=Promise.resolve();
+ const readSite=(req)=>{
+   const t=tenant(req);
+   const m=getStore();
+   return (Array.isArray(m.websiteDemos)?m.websiteDemos:[]).find(x=>
+     String(x.id)===String(req.params.id)&&Number(x.tenantId)===t)||null;
+ };
+ app.get('/api/website-production/sites/:id/editor',auth,ownerOnly,(req,res)=>{
+   let site;try{site=readSite(req)}catch(e){return respond(res,e)}
+   if(!site)return res.status(404).json({ok:false,code:'WEBSITE_NOT_FOUND'});
+   res.setHeader('Cache-Control','no-store');
+   return res.json({ok:true,site:Editor.view(site)});
+ });
+ app.patch('/api/website-production/sites/:id/editor',auth,ownerOnly,async(req,res)=>{
+   if(!available(res))return;
+   let result;
+   const operation=editQueue.catch(()=>{}).then(async()=>{
+     // Resolve the row and expectedVersion INSIDE the serialized critical section.
+     const site=readSite(req);
+     if(!site)return {status:404,body:{ok:false,code:'WEBSITE_NOT_FOUND'}};
+     let updated;try{updated=Editor.apply(site,req.body);}
+     catch(e){
+       const code=String(e.message||e);
+       const status=/STALE_SITE_VERSION|APPROVED_SITE_LOCKED|SITE_ARCHIVED|SITE_NOT_EDITABLE/.test(code)?409:
+         /UNSUPPORTED_SITE_FIELD|INVALID_SITE_/.test(code)?400:503;
+       return {status,body:{ok:false,code}};
+     }
+     const m=getStore();
+     const existing=Array.isArray(m.websiteDemos)?m.websiteDemos:[];
+     const next={...m,websiteDemos:existing.map(x=>String(x.id)===String(updated.id)&&Number(x.tenantId)===tenant(req)?updated:x)};
+     const saved=await saveStore(next);
+     if(saved?.skipped===true||saved?.ok===false)throw Error('WEBSITE_EDIT_NOT_DURABLE');
+     return {status:200,body:{ok:true,site:Editor.view(updated),durable:true}};
+   });
+   editQueue=operation.then(()=>undefined,()=>undefined);
+   try{result=await operation;}catch(e){return respond(res,e)}
+   res.setHeader('Cache-Control','no-store');
+   return res.status(result.status).json(result.body);
+ });
+
  const project=(req)=>{const tid=tenant(req);return orders().find(w=>String(w.id)===String(req.params.id)&&Number(w.tenantId)===tid)};
  const visible=(work,user)=>P.sameTenant(work,user)&&(String(user.role)==='owner'||(work.tasks||[]).some(t=>String(t.assignedTo)===String(user.id)));
  const publicView=(work,user)=>String(user.role)==='owner'?work:{...work,contractorRequests:[]};
