@@ -6,7 +6,7 @@ const register = require('../routes/crm-edits-v6606.js');
 async function run() {
   const route = {h:null};
   const app={patch(p,auth,handler){assert.equal(p,'/api/v6606/crm/leads/:id');route.h=handler;}};
-  const row={id:'lead1',tenant_id:5,assigned_to:'jane',contact_name:'Jane',phone:'3055551200',email:'jane@example.org',status:'Lead',notes:'Original note',updated_at:'2026-10-24 10:00:01'};
+  const row={id:'lead1',tenant_id:5,assigned_to:'jane',business_name:'Example Barbers',contact_name:'Jane',phone:'3055551200',email:'jane@example.org',website:'',address:'Old location',industry:'Barber',lead_intelligence_json:JSON.stringify({researchBrief:{googleBusinessUrl:''}}),status:'Lead',notes:'Original note',updated_at:'2026-10-24 10:00:01'};
   let saved={...row}, working=null, opened=0, released=0, commits=0, rollbacks=0, audits=0;
   let auditFailure=false,readbackMismatch=false,recoveryRequired=false;
   const conn={
@@ -47,14 +47,21 @@ async function run() {
     x=response();await route.h(req({notes:'No revision'}),x);assert.equal(x.code,400);assert.equal(x.body.code,'LEAD_REVISION_REQUIRED');
     x=response();await route.h(req({notes:'Tenant tampering',revision:originalToken},'owner',9),x);assert.equal(x.code,403);
     x=response();await route.h(req({notes:'SQL injection?',tenantId:9,revision:originalToken}),x);assert.equal(x.code,400);
+    x=response();await route.h(req({businessName:'Not allowed',revision:originalToken},'caller'),x);assert.equal(x.code,403);assert.equal(x.body.code,'LEAD_PROFILE_OWNER_REQUIRED');
+    x=response();await route.h(req({googleBusinessUrl:'javascript:alert(1)',revision:originalToken}),x);assert.equal(x.code,400);assert.equal(x.body.code,'INVALID_GOOGLE_BUSINESS_URL');
+    x=response();await route.h(req({address:'X'.repeat(501),revision:originalToken}),x);assert.equal(x.code,400);
     readbackMismatch=true;
     x=response();await route.h(req({notes:'Should fail',revision:originalToken}),x);assert.equal(x.code,503);assert.equal(saved.notes,'Original note');
     readbackMismatch=false;
     auditFailure=true;
     x=response();await route.h(req({notes:'Must roll back audit',revision:originalToken}),x);assert.equal(x.code,503);assert.equal(saved.notes,'Original note');
     auditFailure=false;
-    x=response();await route.h(req({notes:'New verified note',revision:originalToken,status:'Contacted'}),x);assert.equal(x.code,200);assert.equal(x.body.durable,true);
+    x=response();await route.h(req({notes:'New verified note',businessName:'Updated Barbers',website:'https://example.com',address:'120 Example Ave, Miami FL',industry:'Barber Shop',googleBusinessUrl:'https://www.google.com/maps?cid=123',revision:originalToken,status:'Contacted'}),x);assert.equal(x.code,200);assert.equal(x.body.durable,true);
     assert.equal(saved.notes,'New verified note');assert.equal(saved.status,'Contacted');
+    assert.equal(saved.address,'120 Example Ave, Miami FL');
+    assert.equal(saved.business_name,'Updated Barbers');
+    assert.equal(saved.industry,'Barber Shop');
+    assert.equal(JSON.parse(saved.lead_intelligence_json).researchBrief.googleBusinessUrl,'https://www.google.com/maps?cid=123');
     assert.notEqual(x.body.data.revision,originalToken);
     const stale=response();await route.h(req({notes:'Stale overwrite attempt',revision:originalToken}),stale);
     assert.equal(stale.code,409);assert.equal(stale.body.code,'LEAD_STALE_REVISION');
