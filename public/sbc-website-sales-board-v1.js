@@ -30,13 +30,13 @@
     '<td style="padding:12px;border-bottom:1px solid #e2e8f0">'+esc(x.paidOrders?money(x.paidRevenueCents):'—')+'</td>'+
     '<td style="padding:12px;border-bottom:1px solid #e2e8f0"><div style="font-size:12px;color:#475569;margin-bottom:6px">'+esc(x.nextAction)+'</div>'+action+'</td></tr>';
   }).join('');
-  return '<div style="max-width:1260px"><div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">'+
+  return '<div class="sbc-ops-surface sbc-sales-surface" style="max-width:1260px"><div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">'+
    '<div><p style="font-size:10px;font-weight:800;letter-spacing:.15em;color:#0f766e;margin:0">SUCCESSFUL BY CHOICE · REVENUE OPERATIONS</p><h3 style="margin:6px 0">SBC Website Sales Pipeline</h3><p style="color:#526072">Real sites, verified appointments, payment-backed sales and assigned fulfillment—without a new CRM subscription.</p></div>'+
    '<button type="button" class="btn" id="sbcSalesReload">Refresh Pipeline</button></div>'+
    '<div style="display:flex;flex-wrap:wrap;gap:11px;margin:20px 0">'+stats.map(card).join('')+'</div>'+
    '<p style="font-size:12px;line-height:1.6;color:#64748b">Shows '+esc(result.returnedRows)+' of '+esc(result.totalRows)+' matching tenant CRM records. Excludes '+esc(m.unverifiedOrUnattributedOrdersExcluded||0)+' unverified or unrelated order entries from revenue. Revenue is provider-capture-backed, not a projection. No calls or messages are sent by this panel.</p>'+
    '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:20px 0">'+filters+'</div>'+
-   '<div style="overflow-x:auto;max-height:480px"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px"><thead><tr style="background:#e7f0f3"><th style="padding:11px">Business</th><th style="padding:11px">Stage</th><th style="padding:11px">Site Package</th><th style="padding:11px">Meeting</th><th style="padding:11px">Captured Sales</th><th style="padding:11px">Next Action</th></tr></thead>'+
+   '<div class="sbc-ops-detail" style="overflow-x:auto;max-height:480px"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px"><thead><tr style="background:#e7f0f3"><th style="padding:11px">Business</th><th style="padding:11px">Stage</th><th style="padding:11px">Site Package</th><th style="padding:11px">Meeting</th><th style="padding:11px">Captured Sales</th><th style="padding:11px">Next Action</th></tr></thead>'+
    '<tbody>'+rows+'</tbody></table></div>'+
    '<p style="margin-top:18px;font-size:12px;color:#64748b">Workflow: Research → Build actual website → Owner approve → Call → Book walkthrough → Verified Square payment → Assign fulfillment → Publish.</p>'+
    '</div>';
