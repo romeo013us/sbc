@@ -65,3 +65,47 @@ test('Launch Check and Website Production panels have explicit contrast surfaces
  assert.match(read('public/sbc-website-call-desk-v1.js'),/AI voice outbound:.*disabled/);
  assert.match(read('public/sbc-website-sales-board-v1.js'),/capturedWebsiteRevenueCents/);
 });
+
+test('whole OS theme guard covers ordinary workspaces, forms, tables, hero, modal and sidebar',()=>{
+ const css=read('public/sbc-executive-ui-v1.css');
+ const selectors=[
+  '#app .content :is(.card:not(.hero),.stat,.list-card,.detail-box,.table-wrap',
+  'body[data-theme="dark"] #app .content',
+  'body[data-theme="light"] #app .content',
+  '#app .sidebar nav',
+  '#app .top-actions',
+  '#modal .modal-card',
+  '#modal #modalBody',
+  ':is(input,select,textarea,option)',
+  ':is(.table,table) th',
+  ':is(.table,table) td',
+  '#app .content > .hero',
+  'background:#f7fafb',
+  'background:#f6fbfa',
+  'background:#f6f8fb',
+  '.sbc-exec-secondary',
+  '.sbc-advanced-nav',
+  'prefers-reduced-motion'
+ ];
+ for(const s of selectors)assert(css.includes(s),'Missing OS-wide visual contract: '+s);
+ assert(contrast('#f7fafb','#17283a')>=7,'Previously unreadable pale cards require high contrast');
+ assert(contrast('#172c41','#f2f7ff')>=7,'Advanced navigation must have clear keyboard-visible labels');
+ assert(!css.includes('display:none!important}.content'),'Must not hide general workspace content to solve clutter');
+ assert.match(css,/body\[data-theme="dark"\] #modal \.sbc-ops-surface/);
+});
+test('global visual repair does not remove critical purchasing, audit, CRM and sales controls',()=>{
+ const html=read('public/index.html');
+ const js=read('public/app.js');
+ for(const action of [
+  'sbcOpenOwnerDollarQA()', 'sbcOpenQuickCheckout()', 'sbcOpenOwnerCheckoutLab()',
+  'sbcOpenOwnerAcceptanceDesk()', 'sbcOpenHrDepartment()', 'newCustomer()',
+  'newQuote()', 'newOrder()'
+ ])assert(js.includes(action),'Important existing action removed: '+action);
+ for(const surface of ['data-view="crm"','data-view="orders"','data-view="marketing"',
+  'data-view="workforce"','data-view="customers"','data-view="quotes"',
+  'data-view="notifications"','data-view="settings"'
+ ])assert(html.includes(surface),'Expected workspace navigation missing: '+surface);
+ assert.match(html,/sbc-website-call-desk-v1\.js/);
+ assert.match(html,/sbc-website-sales-board-v1\.js/);
+ assert.match(html,/sbc-launch-readiness-topbar/);
+});
