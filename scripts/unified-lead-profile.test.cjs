@@ -23,6 +23,15 @@ assert.match(profile,/api\/customers/,'notes and deletion use existing server ac
 assert.match(index,/sbc-lead-profile-v1\.js/,'Command Center must load account profile feature');
 assert.match(owner,/data-sbc-profile-id/,'sales calling queue must link to full account profile');
 assert.match(owner,/SBC_LEAD_PROFILE/,'existing CRM account actions must open the unified profile');
+assert.match(read('public/sbc-customer360-workspace-v6525.js'), /window\.SBC_LEAD_PROFILE&&typeof window\.SBC_LEAD_PROFILE\.open/,'final owner customer360 wrapper must invoke unified profile');
+assert.match(read('public/mega.js'), /window\.SBC_LEAD_PROFILE&&typeof window\.SBC_LEAD_PROFILE\.open/,'legacy customer route must reach unified profile');
+assert.match(profile,/var submittedId=currentId/,'asynchronous saves must bind to the originally edited customer');
+assert.match(profile,/local\(submittedId\)/,'profile writes must never mutate a different opened lead');
+assert.match(profile,/if\(currentId===submittedId\)await open\(submittedId/,'delayed save must not navigate another opened customer');
+assert.match(profile,/cached\.salesSuppressed=true/,'terminal outcomes must block cached outreach while awaiting server refresh');
+assert.match(profile,/await window\.load\(\)/,'call outcome must refresh authoritative customer suppression state');
+assert.match(read('migrations/20261113_001_sbc_customer_address.sql'),/information_schema\.COLUMNS/,'address schema migration must be idempotent');
+
 assert.match(repo,/website, address, industry/,'authenticated CRM list and detail queries must project business identity');
 assert.match(repo,/lead_intelligence_json/,'Google profile evidence must come from existing record JSON');
 assert.match(revision,/lead_intelligence_json/,'Google profile editing must participate in stale-write protection');
