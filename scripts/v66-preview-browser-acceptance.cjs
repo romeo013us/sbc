@@ -148,7 +148,7 @@ async function runBrowser(){
      let bg=null,el=label;
      while(el){
       const style=getComputedStyle(el);
-      if(style.backgroundColor&&!style.backgroundColor.includes('0)')&&
+      if(style.backgroundColor&&!/^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(style.backgroundColor)&&
         style.backgroundColor!=='transparent'){bg=rgb(style.backgroundColor);if(bg)break;}
       el=el.parentElement;
      }
@@ -187,7 +187,7 @@ async function runBrowser(){
   metrics.domReadyMs=nav.domReadyMs;metrics.loadMs=nav.loadMs;
   await ctx.close();
  }finally{await browser.close();}
- const report=sanitizeReport({status:checks.length===11&&checks.every(x=>x.ok)?'PASS':'FAIL',
+ const report=sanitizeReport({status:checks.length===12&&checks.every(x=>x.ok)?'PASS':'FAIL',
   metrics,checks});
  const dest=path.resolve('sbc-preview-browser-evidence.json');
  fs.writeFileSync(dest,JSON.stringify(report,null,2)+'\n',{mode:0o600});
