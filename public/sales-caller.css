@@ -151,3 +151,40 @@ html[data-sbc-theme="light"] #desk #scripts .sbc-script-card{background:white;bo
 html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro strong,html[data-sbc-theme="light"] #desk #scripts .sbc-script-card h3{color:#184e78}
 html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro p,html[data-sbc-theme="light"] #desk #scripts .sbc-script-words{color:#122f48}
 html[data-sbc-theme="light"] #desk #scripts .sbc-script-intro .muted,html[data-sbc-theme="light"] #desk #scripts .sbc-script-coach{color:#34566f}
+
+/* SBC Sales Website Showroom: assigned, approved websites only. */
+#desk .nav.sidebar .sbc-website-nav{display:flex;align-items:center;gap:9px;min-height:55px;width:100%;margin:9px 0;padding:13px 12px;border:2px solid #73caff;border-left:5px solid #ffb260;border-radius:12px;background:linear-gradient(125deg,#143c78,#12657b);color:#fff;font-weight:900;box-shadow:0 10px 20px #071e3b55;text-align:left}
+#desk .nav.sidebar .sbc-website-nav span{flex:1;font-size:13px;font-weight:900}
+#desk .nav.sidebar .sbc-website-nav.active{background:linear-gradient(125deg,#07588a,#147c70);border-color:#ffd397}
+#desk .sbc-website-nav-badge{font-size:9px;letter-spacing:.09em;color:#173449;background:#ffe3a8;padding:5px 7px;border-radius:999px}
+#desk .sbc-website-nav:focus-visible,#desk .sbc-website-go:focus-visible,#desk .sbc-website-open:focus-visible,#desk .sbc-website-lead-action:focus-visible{outline:3px solid #ffdca2!important;outline-offset:3px!important}
+#desk .sbc-sales-website-promo{margin:18px 0 20px;padding:22px;display:flex;justify-content:space-between;align-items:center;gap:22px;border-radius:15px;border:1px solid #73caff;background:linear-gradient(115deg,#133f72,#155e7a,#166052);box-shadow:0 16px 30px #081c3655;color:#fff}
+#desk .sbc-sales-website-promo strong{font-size:21px;font-weight:950;color:#fff}
+#desk .sbc-sales-website-promo p{max-width:750px;margin:8px 0 0;line-height:1.7;font-size:13px;color:#e1f6ff}
+#desk .sbc-website-go{border-radius:999px;border:1px solid #fff0b3;background:#ffd084;color:#15283a;min-height:45px;padding:12px 18px;font-size:13px;font-weight:950;flex-shrink:0;cursor:pointer}
+#desk .sbc-website-showroom-hero{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:25px;align-items:center;padding:30px;border:1px solid #77c7ff;border-radius:18px;background:radial-gradient(circle at 83% 25%,#2f8ca288,transparent 38%),linear-gradient(125deg,#132b52,#134878 60%,#155b62);box-shadow:0 18px 40px #091e3855;color:#fff}
+#desk .sbc-website-showroom-hero h2{font-size:clamp(27px,3.2vw,38px);font-weight:950;line-height:1.13;margin:6px 0 14px;color:#fff}
+#desk .sbc-website-showroom-hero p{max-width:780px;color:#e6f4ff;line-height:1.75}
+#desk .sbc-website-showroom-hero .eyebrow{font-weight:900;color:#ffe1a7}
+#desk .sbc-website-showroom-hero .sbc-website-safety{font-size:12px;font-weight:750;color:#ffdaa3;margin-top:18px}
+#desk .sbc-website-kpi{padding:20px;border:1px solid #cceaff85;border-radius:15px;background:#ffffff20;display:grid;gap:10px}
+#desk .sbc-website-kpi strong{font-size:55px;line-height:1;font-weight:950;color:#fff}
+#desk .sbc-website-kpi small{font-size:12px;color:#ecf8ff;font-weight:750}
+#desk #sbcSalesWebsiteLibrary{display:grid;gap:16px;margin-top:18px}
+#desk .sbc-website-lead-card{display:grid;gap:15px;min-width:0;border-radius:15px;padding:23px;border:1px solid #5480a7;background:linear-gradient(130deg,#1b344f,#14273f);color:#f7fbff;box-shadow:0 10px 20px #08192d30}
+#desk .sbc-website-card-intro{min-width:0}
+#desk .sbc-website-lead-card h3{font-size:21px;color:#fff;margin:14px 0 10px;font-weight:950;overflow-wrap:anywhere}
+#desk .sbc-website-lead-card p,#desk .sbc-website-lead-card small{line-height:1.65;color:#d4e6f5}
+#desk .sbc-website-status-pill{display:inline-block;font-weight:900;font-size:11px;letter-spacing:.07em;color:#0b3b2c;background:#b0f4d4;border-radius:999px;padding:7px 11px}
+#desk .sbc-website-card-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#desk .sbc-website-open,#desk .sbc-website-lead-action{display:inline-flex;align-items:center;justify-content:center;min-height:43px;border:1px solid #6fbce2;border-radius:999px;padding:11px 17px;background:#145b85;color:#fff;font-size:13px;font-weight:900;cursor:pointer;text-decoration:none}
+#desk .sbc-website-open:hover{background:#1676a1}
+#desk .sbc-website-lead-action{background:transparent;border-color:#9fb8d2}
+#desk .sbc-website-empty{border:1px dashed #6c8da7;padding:30px;border-radius:14px;background:#1a2f45}
+html[data-sbc-theme="light"] #desk .sbc-website-lead-card{background:linear-gradient(130deg,#eff6ff,#e0f2fc)!important;border-color:#99c4e0!important;color:#16314b!important}
+html[data-sbc-theme="light"] #desk .sbc-website-lead-card h3,html[data-sbc-theme="light"] #desk .sbc-website-lead-card p,html[data-sbc-theme="light"] #desk .sbc-website-lead-card small{color:#173651!important}
+html[data-sbc-theme="light"] #desk .sbc-website-lead-action{color:#1c4161!important;border-color:#8baec9}
+html[data-sbc-theme="light"] #desk .sbc-website-empty{background:#f2f8fc;color:#16314b}
+html[data-sbc-theme="light"] #desk .nav.sidebar .sbc-website-nav{color:#fff!important;background:linear-gradient(125deg,#1d5b91,#11777d)!important;border-color:#388dcc!important}
+@media(max-width:760px){#desk .sbc-sales-website-promo{align-items:stretch;flex-direction:column;padding:18px}#desk .sbc-website-go{width:100%}#desk .sbc-website-showroom-hero{grid-template-columns:1fr;padding:20px}#desk .sbc-website-kpi{grid-template-columns:1fr auto;align-items:center}#desk .sbc-website-kpi small:last-child{grid-column:1/-1}#desk .sbc-website-lead-card{padding:17px}}
+@media(prefers-reduced-motion:reduce){#desk .sbc-website-go,#desk .sbc-website-open{transition:none!important}}
