@@ -169,11 +169,19 @@ function openReview(item,lead,editable){
  var otherPhone=splitSecondaryPhoneNotes(lead.notes);
  if(!editable){
   form.append(element('p',null,'Research source: '+String(lead.researchSource||lead.source||'Not recorded')));
+   form.append(element('p',null,'Contact / decision maker: '+String(lead.contactName||'Not recorded')));
+   form.append(element('p',null,'Email: '+String(lead.email||'Not recorded')));
   form.append(element('p',null,'Primary phone: '+String(lead.phone||'Not recorded')));
   form.append(element('p',null,'Secondary phone: '+(otherPhone.phone||'Not recorded')+(otherPhone.source?' · Source: '+otherPhone.source:'')));
   form.append(element('p',null,'Category: '+String(lead.industry||'Not recorded')));
    form.append(element('p',null,'Business address: '+String(lead.address||'Not recorded')));
   form.append(element('p',null,'Website: '+String(lead.website||'Not recorded — requires checking')));
+   var intelligence=lead.leadIntelligence||{},brief=intelligence.researchBrief||lead.researchBrief||{};
+   var gbp=String(lead.googleBusinessUrl||brief.googleBusinessUrl||'').trim();
+   var p=element('p',null,'Google Business Profile: ');
+   try{var url=new URL(gbp);if(['http:','https:'].includes(url.protocol)&&!url.username&&!url.password){var a=element('a',null,gbp);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';p.append(a);}else p.append(element('span',null,'Not recorded'));}
+   catch(_){p.append(element('span',null,'Not recorded'));}
+   form.append(p);
   form.append(element('p',null,'Original CRM research notes: '+String(lead.notes||'Not recorded')));
   form.append(element('p','muted','Full structured research from newly submitted leads is saved with the CRM record and available in the assigned caller view.')); 
   var close=element('button','outline','Close');close.type='button';close.onclick=function(){form.remove();};form.append(close);item.append(form);return;
