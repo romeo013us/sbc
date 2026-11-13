@@ -45,7 +45,7 @@ async function load(){
  $('preview-banner').hidden=!preview;
  $('m-leads').textContent=result.metrics.assigned;
  $('m-callable').textContent=result.role==='caller'?result.metrics.callable:'—';
- $('m-attention').textContent=result.role==='caller'?(window.SBCFollowupPriority?priorityCalls().length:'Unavailable'):result.metrics.needsAttention;
+ $('m-attention').textContent=result.role==='caller'?(window.SBCFollowupPriority?priorityCalls().length+accountCareItems().length:'Unavailable'):result.metrics.needsAttention;
  $('m-clearance').textContent=result.role==='caller'?(result.canLiveCall?'Approved':'Training required'):'Research only';
  if(preview){
   clock={open:result.time.find(x=>!x.clockOut)||null,entries:result.time};
@@ -65,6 +65,14 @@ async function loadClock(){
 function priorityCalls(){
  return window.SBCFollowupPriority?.buildQueue(data?.leads||[],data?.calls||[],Date.now())||[];
 }
+function accountCareItems(){
+ const now=new Date().toISOString().slice(0,10);
+ return (data?.leads||[]).filter(c=>String(c.status||'').toLowerCase()==='customer'&&
+   /^\d{4}-\d{2}-\d{2}$/.test(String(c.followUpAt||'').slice(0,10)))
+  .map(c=>({id:c.id,name:c.businessName||'Customer account',date:String(c.followUpAt).slice(0,10)}))
+  .filter(c=>c.date<=new Date(Date.now()+30*86400000).toISOString().slice(0,10))
+  .sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name)).slice(0,50);
+}
 function renderAttention(){
  const target=$('attention-list');target.replaceChildren();
  if(data?.role==='caller'&&!window.SBCFollowupPriority){
@@ -72,8 +80,10 @@ function renderAttention(){
   return;
  }
  const issues=data?.role==='caller'?priorityCalls():[];
+ const careItems=data?.role==='caller'?accountCareItems():[];
  const research=(data?.leads||[]).filter(x=>x.needsAttention);
- if(!issues.length&&!research.length){target.append(recordRow('No follow-ups currently listed','Check assigned leads and notifications; absence here does not prove callbacks were completed.'));return;}
+ if(!issues.length&&!research.length&&!careItems.length){target.append(recordRow('No follow-ups currently listed','Check assigned leads and notifications; absence here does not prove callbacks were completed.'));return;}
+ for(const item of careItems){target.append(recordRow('Customer care · '+item.name,'Account review scheduled: '+item.date+' · confirm customer agreement and service needs','Open account',()=>openLead(item.id),item.date<=new Date().toISOString().slice(0,10)));}
  for(const item of issues.slice(0,50)){
   const when=item.dueAt?stamp(item.dueAt):'Confirm a callback time with the owner';
   const detail=[item.label,when,item.outcome,item.nextAction].filter(Boolean).join(' · ');
@@ -182,6 +192,33 @@ function renderCallerAccount(c){
   panel.append(el('p','Website concepts require owner approval. Existing client support, payments and fulfillment remain owner-controlled; staff cannot bypass calling consent or account assignment.','muted'));
   host.append(panel);
  }
+ // Existing paying customers stay in this assigned account desk beyond the first sale.
+ var care=el('section',undefined,'sbc-account-next-touch');
+ care.append(el('h3','Account follow-up · ongoing relationship'));
+ care.append(el('p','Schedule an agreed review, renewal or service check-in. Saving creates a CRM follow-up only; it does not call, text or email anyone.','muted'));
+ var form=el('form'),line=el('label','Next account review date');
+ var due=el('input');due.type='date';due.required=true;due.name='dueDate';due.value=/^\d{4}-\d{2}-\d{2}$/.test(String(c.followUpAt||'').slice(0,10))?String(c.followUpAt).slice(0,10):'';
+ line.append(due);
+ var note=el('label','Reason / customer-agreed next step');
+ var purpose=el('textarea');purpose.name='purpose';purpose.required=true;purpose.minLength=12;purpose.maxLength=500;purpose.rows=3;purpose.placeholder='Example: Review website launch, hosting renewal or support request';note.append(purpose);
+ var submit=el('button','Save CRM Follow-up','primary');submit.type='submit';
+ var feedback=el('p','Only the assigned account manager can schedule this account. Owner can review and transfer ownership.','muted');
+ const closed=['do not call','do not contact','dnc','opt out','unsubscribe','lost'].includes(String(c.status||'').toLowerCase());
+ if(!canWrite()||closed){submit.disabled=true;feedback.textContent='Read-only: account follow-up changes are not authorized for this role/status.';}
+ form.append(line,note,submit,feedback);
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(!canWrite()||closed)return;
+  submit.disabled=true;feedback.textContent='Saving the next touchpoint in the authoritative CRM…';
+  try{
+   const result=await api('/api/v6606/crm/account-portfolios/'+encodeURIComponent(String(c.id))+'/follow-up',{
+    method:'POST',body:JSON.stringify({dueDate:due.value,purpose:purpose.value.trim()})});
+   if(result?.durable!==true||String(result?.id)!==String(c.id))throw Error('SBC did not confirm a durable follow-up.');
+   c.followUpAt=result.followUp;renderLeads();renderAttention();
+   feedback.textContent='Saved. Follow-up due '+result.followUp+'; no message or call was sent.';
+  }catch(err){feedback.textContent='Not saved: '+error(err)+'. Check assignment and CRM availability.';}
+  finally{submit.disabled=false;}
+ });
+ care.append(form);host.append(care);
  host.append(el('p','Use the call and report controls below to log verified outcomes. Only the SBC owner can edit the master business record or approve outreach.','muted'));
 }
 function renderCallSelection(){
