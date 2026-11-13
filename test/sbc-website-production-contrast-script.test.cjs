@@ -77,7 +77,7 @@ test('white Website Production panels explicitly define accessible dark text wit
  assert.match(css,/label\.sbc-factory-meeting-label\s*\{\s*display:block!important/);
  for(const html of ['public/index.html','browser_public/index.html']){
   const page=read(html);
-  assert.match(page,/sbc-website-production-contrast-v1\.css/);
+  assert.match(page,/sbc-v66-owner-ui-core\.[a-f0-9]{16}\.css/);
   assert.match(page,/sbc-website-sales-script-v1\.js/);
   assert(page.indexOf('/sbc-website-sales-script-v1.js')<page.indexOf('/sbc-website-production-v1.js'));
  }
