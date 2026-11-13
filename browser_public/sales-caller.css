@@ -188,3 +188,13 @@ html[data-sbc-theme="light"] #desk .sbc-website-empty{background:#f2f8fc;color:#
 html[data-sbc-theme="light"] #desk .nav.sidebar .sbc-website-nav{color:#fff!important;background:linear-gradient(125deg,#1d5b91,#11777d)!important;border-color:#388dcc!important}
 @media(max-width:760px){#desk .sbc-sales-website-promo{align-items:stretch;flex-direction:column;padding:18px}#desk .sbc-website-go{width:100%}#desk .sbc-website-showroom-hero{grid-template-columns:1fr;padding:20px}#desk .sbc-website-kpi{grid-template-columns:1fr auto;align-items:center}#desk .sbc-website-kpi small:last-child{grid-column:1/-1}#desk .sbc-website-lead-card{padding:17px}}
 @media(prefers-reduced-motion:reduce){#desk .sbc-website-go,#desk .sbc-website-open{transition:none!important}}
+
+/* Assigned business profile: readable before connecting a call. */
+.sbc-caller-account-profile{border:1px solid #9cb9d0;border-radius:14px;padding:16px;margin:12px 0;background:rgba(83,140,185,.07);overflow-wrap:anywhere}
+.sbc-caller-account-profile h3{margin:0 0 5px;font-size:20px}
+.sbc-caller-account-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.sbc-caller-account-field{min-width:0}
+.sbc-caller-account-field small{display:block;font-size:12px;opacity:.72;margin-bottom:4px}
+.sbc-caller-account-field strong{display:block;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.sbc-caller-account-fields>a{display:inline-flex;padding:8px 10px;border-radius:8px;border:1px solid #5383a3;font-weight:650}
+@media(max-width:760px){.sbc-caller-account-fields{grid-template-columns:1fr}}
