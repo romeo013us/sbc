@@ -219,6 +219,28 @@ function renderCallerAccount(c){
   finally{submit.disabled=false;}
  });
  care.append(form);host.append(care);
+ var noteSection=el('section',undefined,'sbc-account-service-notes');
+ noteSection.append(el('h3','Record account interaction · customer service'));
+ noteSection.append(el('p','Keep the customer relationship in SBC. Log service requests, website changes and agreed next steps here; no payment card details or passwords.','muted'));
+ const serviceForm=el('form'),serviceText=el('textarea');serviceText.name='note';serviceText.rows=3;serviceText.minLength=12;serviceText.maxLength=3000;serviceText.required=true;
+ serviceText.placeholder='Example: Customer asked about updating their website. Explained next steps and scheduled a service review.';
+ const serviceButton=el('button','Save Account Interaction','primary');serviceButton.type='submit';
+ const serviceStatus=el('p','A saved account note is visible to SBC management and follows the account when ownership changes.','muted');
+ serviceButton.disabled=!canWrite();
+ serviceForm.append(serviceText,serviceButton,serviceStatus);
+ serviceForm.addEventListener('submit',async event=>{
+  event.preventDefault();if(!canWrite())return;
+  serviceButton.disabled=true;serviceStatus.textContent='Saving the customer interaction in SBC…';
+  try{
+   const result=await api('/api/v6606/crm/account-portfolios/'+encodeURIComponent(String(c.id))+'/note',
+    {method:'POST',body:JSON.stringify({note:serviceText.value.trim()})});
+   if(result?.durable!==true||String(result?.id)!==String(c.id))throw Error('SBC did not verify the account note.');
+   serviceText.value='';
+   serviceStatus.textContent='Saved to the permanent account record. No customer contact was sent.';
+  }catch(err){serviceStatus.textContent='Account note not saved: '+error(err)+'. Verify assignment and try again.';}
+  finally{serviceButton.disabled=false;}
+ });
+ noteSection.append(serviceForm);host.append(noteSection);
  host.append(el('p','Use the call and report controls below to log verified outcomes. Only the SBC owner can edit the master business record or approve outreach.','muted'));
 }
 function renderCallSelection(){
