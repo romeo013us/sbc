@@ -136,7 +136,7 @@ jobs:
         with: { node-version: '22' }
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Deterministic packaging and mirrored-browser integrity
-        run: npm run verify:v66:release
+        run: npm run verify:v66:release && node --test test/v66-release-selection.test.cjs
       - name: Synthetic extracted deployment artifact adversarial proof
         run: node --test test/v66-deployment-artifact-gate.test.cjs
       - name: Session security
