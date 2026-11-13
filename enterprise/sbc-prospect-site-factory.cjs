@@ -56,12 +56,32 @@ const stockPhotos={
  'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1100&q=76',
  'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1100&q=76']
 };
+// No generative API needed: stable client-specific art direction within each
+// industry, never a random theme that changes after a refresh.
+const artDirections=Object.freeze({
+ automotive:[{ink:'#0b1426',p:'#d84829',soft:'#fff1e8'},{ink:'#142530',p:'#177d89',soft:'#ecf9f9'},{ink:'#191b25',p:'#ac5e22',soft:'#fff2e5'}],
+ beauty:[{ink:'#251824',p:'#a44f83',soft:'#fff0f8'},{ink:'#1f2632',p:'#925c69',soft:'#f9eff0'},{ink:'#25302b',p:'#6b7760',soft:'#f1f5eb'}],
+ dining:[{ink:'#242015',p:'#a97625',soft:'#faf2e4'},{ink:'#29211d',p:'#ac4f31',soft:'#fcf1e8'},{ink:'#162b28',p:'#5b8066',soft:'#eaf4eb'}],
+ trades:[{ink:'#102f2b',p:'#22796b',soft:'#eaf8f3'},{ink:'#1b293a',p:'#496ca3',soft:'#eef3fd'},{ink:'#2a2922',p:'#9a7139',soft:'#faf2e5'}],
+ professional:[{ink:'#1b2c46',p:'#bb8843',soft:'#f8f2e8'},{ink:'#1e3134',p:'#467b79',soft:'#edf8f4'},{ink:'#332a39',p:'#916384',soft:'#faf0f7'}],
+ local:[{ink:'#16283f',p:'#416fbb',soft:'#eef4ff'},{ink:'#24332d',p:'#4c896d',soft:'#eaf7ee'},{ink:'#292437',p:'#9a619b',soft:'#f9effb'}]
+});
+function stableDesignIndex(business){
+ let hash=2166136261;
+ for(const ch of String(business||'').trim().toLowerCase()){
+  hash^=ch.codePointAt(0);hash=Math.imul(hash,16777619);
+ }
+ return (hash>>>0)%3;
+}
 const allowed=new Set(['home','services','about','contact']);
 function define(demo,opts={}) {
  const customer=demo?.customer||{};
  const business=text(customer.businessName||customer.contactName||demo?.businessName||'Your Business',100);
  const industry=text(demo?.industry||customer.industry||'Local Business',100);
- const style=palettes.find(x=>x.match.test(industry))||generic;
+ const baseStyle=palettes.find(x=>x.match.test(industry))||generic;
+ const designIndex=stableDesignIndex(business);
+ const style={...baseStyle,...artDirections[baseStyle.category][designIndex]};
+ const designVariant=baseStyle.category+'-'+(designIndex+1);
  const tier=['starter','essentials'].includes(String(demo?.offerTier))?demo.offerTier:'essentials';
  const slug=String(demo?.slug||'').replace(/[^a-z0-9-]/gi,'').slice(0,90);
  const slugId=String(demo?.id||'').replace(/[^a-z0-9_-]/gi,'').slice(0,100);
@@ -73,7 +93,9 @@ function define(demo,opts={}) {
  const layout=EXPERIENCE.archetype(style.category);
  const names=facts?.services.length?facts.services:(serviceNames[style.category]||serviceNames.local);
  const questions=faqs[style.category]||faqs.local;
- const model={business,title,industry,safeIndustry,style,tier,prefix,city,rawCity,layout,facts,names,questions,approved,slug,images:stockPhotos[style.category]||stockPhotos.local,staticMode:opts.staticMode===true};
+ const defaultPhotos=stockPhotos[style.category]||stockPhotos.local;
+ const images=defaultPhotos.slice(designIndex).concat(defaultPhotos.slice(0,designIndex));
+ const model={business,title,industry,safeIndustry,style,designVariant,tier,prefix,city,rawCity,layout,facts,names,questions,approved,slug,images,staticMode:opts.staticMode===true};
  model.publicationReady=EXPERIENCE.publicReleaseReady(model,opts);
  return model;
 }
@@ -189,7 +211,7 @@ function renderPage(demo,page='home',options={}){
  const body=requested==='home'?home(m):requested==='services'?servicesPage(m):requested==='about'?aboutPage(m):contactPage(m);
  const foot='<footer class="footer"><div class="container"><div><a class="footer-brand" href="'+esc(anchor(m,'home'))+'">'+m.title+'</a><p>Made for the people who matter most—your customers.</p></div><div><span>EXPLORE</span><a href="'+esc(anchor(m,'services',m.tier==='starter'?'services':''))+'">Services</a><a href="'+esc(anchor(m,'about',m.tier==='starter'?'about':''))+'">About</a><a href="'+esc(anchor(m,'contact',m.tier==='starter'?'contact':''))+'">Contact</a></div><div><span>WEBSITE CONCEPT</span><p>Created by Successful By Choice</p><p>Details &amp; imagery to be approved before launch.</p></div></div><div class="container footer-bottom"><span>Website concept © '+new Date().getFullYear()+'</span><span>Built to become yours.</span></div></footer>';
  const banner='<div class="preview-banner" role="note"><div class="container"><strong>Website concept preview</strong><span>Fully navigable design · Business details finalized after purchase · Not an official live business website</span></div></div>';
- return '<!doctype html><html lang="en"><head>'+head+'</head><body data-sbc-layout="'+m.layout+'" style="--site-ink:'+m.style.ink+';--site-primary:'+m.style.p+';--site-soft:'+m.style.soft+'"><a class="skip-link" href="#main">Skip to content</a>'+banner+navigation(m,requested)+body+foot+EXPERIENCE.mobileActions(m,anchor)+
+ return '<!doctype html><html lang="en"><head>'+head+'</head><body data-sbc-layout="'+m.layout+'" data-sbc-design-variant="'+esc(m.designVariant)+'" style="--site-ink:'+m.style.ink+';--site-primary:'+m.style.p+';--site-soft:'+m.style.soft+'"><a class="skip-link" href="#main">Skip to content</a>'+banner+navigation(m,requested)+body+foot+EXPERIENCE.mobileActions(m,anchor)+
  '<script defer src="'+(m.staticMode?'site.js':'/sbc-prospect-site.js')+'"></script></body></html>';
 }
 function availablePages(demo){return String(demo?.offerTier)==='starter'?['home']:['home','services','about','contact'];}
