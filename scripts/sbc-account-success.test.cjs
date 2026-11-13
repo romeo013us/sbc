@@ -1,0 +1,46 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const source=read('public/sbc-account-success-v1.js');
+const window={};
+vm.runInNewContext(source,{window},{filename:'sbc-account-success-v1.js'});
+assert(window.SBC_ACCOUNT_SUCCESS,'Account success planning library should be globally available');
+const plan=window.SBC_ACCOUNT_SUCCESS.plan;
+const prospect=plan({id:'a',businessName:'Miami Sample Studio',status:'Lead',industry:'Beauty',assignedTo:'worker-1',address:'Miami',phone:'3055551212',website:'',leadIntelligence:{researchBrief:{specificServices:'Hair styling',servicesVerified:false}}});
+assert.equal(prospect.stage,'Prospect');
+assert.equal(prospect.accountManager,'worker-1');
+assert.match(prospect.nextAction,/website need/i);
+assert.equal(prospect.siteBrief.businessName,'Miami Sample Studio');
+assert.equal(prospect.siteBrief.industry,'Beauty');
+assert.equal(prospect.siteBrief.servicesVerified,false);
+assert(prospect.launchChecks.some(x=>/services/i.test(x)));
+assert(prospect.launchChecks.some(x=>/domain/i.test(x)));
+assert(prospect.launchChecks.some(x=>/payment/i.test(x)));
+const blocked=plan({status:'Do Not Call',doNotContact:true,phone:'3055551212'}, {openTickets:[{status:'Open'}]});
+assert.equal(blocked.contactBlocked,true);
+assert.match(blocked.nextAction,/Do not contact/i);
+const service=plan({status:'Customer',website:'https://example.com',followUpAt:'2026-12-10'}, {openTickets:[{status:'Open',customerId:'a'}]});
+assert.equal(service.stage,'Existing customer');
+assert.match(service.nextAction,/support request/i);
+assert.match(service.relationshipNote,/not payment proof/i);
+assert.equal(service.nextTouchpoint,'2026-12-10');
+const qualified=plan({status:'Qualified',website:'https://example.com'}, {quotes:[{status:'Draft'}]});
+assert.match(qualified.nextAction,/quote/i);
+const noGuess=plan({businessName:'Another Shop',status:'Customer'});
+assert(!/paid|verified payment/i.test(noGuess.nextAction));
+for(const name of ['sbc-account-success-v1.js','sbc-lead-profile-v1.js','sbc-website-production-v1.js','sales-caller.js','index.html','sales-caller.html']){
+ assert.equal(read('public/'+name),read('browser_public/'+name),'Mirror mismatch for '+name);
+}
+const profile=read('public/sbc-lead-profile-v1.js'),worker=read('public/sales-caller.js'),builder=read('public/sbc-website-production-v1.js');
+assert.match(profile,/SBC_ACCOUNT_SUCCESS\.plan/);
+assert.match(profile,/Account relationship plan/);
+assert.match(worker,/SBC_ACCOUNT_SUCCESS\.plan/);
+assert.match(worker,/Account manager · customer success/);
+assert.match(builder,/SBC_ACCOUNT_SUCCESS\.plan/);
+assert.match(builder,/SBC Instant Sites/);
+assert.match(read('public/index.html'),/src="\/sbc-account-success-v1\.js/);
+assert.match(read('public/sales-caller.html'),/src="\/sbc-account-success-v1\.js/);
+for(const name of ['sbc-account-success-v1.js','sbc-lead-profile-v1.js','sbc-website-production-v1.js','sales-caller.js'])
+ new vm.Script(read('public/'+name),{filename:name});
+console.log('PASS: SBC Account Success unified plan, suppressed outreach, real client support priority, source-mirrors, and Instant Site CRM brief');
