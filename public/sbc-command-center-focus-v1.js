@@ -12,6 +12,39 @@ function setCompact(on){
  var advanced=document.getElementById('sbcAdvancedNav');
  if(advanced&&on)advanced.open=false;
  if(advanced&&!on)advanced.open=true;
+ simplifyPageActions();
+}
+function simplifyPageActions(){
+ var root=document.getElementById('content');if(!root)return;
+ if(!compact()){
+  root.querySelectorAll('details.sbc-page-more-actions').forEach(function(group){
+   var parent=group.parentElement,extras=group.querySelector('.sbc-page-extra-buttons');
+   if(parent&&extras){Array.from(extras.children).forEach(function(node){parent.insertBefore(node,group);});delete parent.dataset.sbcFocusFolded;}
+   group.remove();
+  });
+  return;
+ }
+ root.querySelectorAll('.hero-actions,.crm-toolbar > .actions,.card-head > .actions').forEach(function(row){
+  if(row.dataset.sbcFocusFolded==='1')return;
+  var actions=Array.from(row.children).filter(function(el){return el.matches('button,a,[role="button"]');});
+  if(actions.length<4)return;
+  row.dataset.sbcFocusFolded='1';
+  var more=document.createElement('details');more.className='sbc-page-more-actions';
+  var title=document.createElement('summary');title.textContent='More actions';
+  var items=document.createElement('div');items.className='sbc-page-extra-buttons';
+  actions.slice(2).forEach(function(action){items.appendChild(action);});
+  more.append(title,items);row.appendChild(more);
+ });
+}
+function watchPage(){
+ var root=document.getElementById('content');
+ if(!root||typeof MutationObserver!=='function')return;
+ var scheduled=false;
+ new MutationObserver(function(){
+  if(scheduled)return;scheduled=true;
+  queueMicrotask(function(){scheduled=false;simplifyPageActions();});
+ }).observe(root,{childList:true,subtree:true});
+ simplifyPageActions();
 }
 function navLink(view,icon,label){
  var b=document.createElement('button');b.type='button';b.className='nav-item v56-nav-item';
@@ -63,6 +96,7 @@ function install(){
   bottom.insertBefore(toggle,bottom.firstChild);
  }
  setCompact(compact());
+ watchPage();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 window.SBC_COMMAND_FOCUS=Object.freeze({enable:function(){setCompact(true);},showAll:function(){setCompact(false);}});
