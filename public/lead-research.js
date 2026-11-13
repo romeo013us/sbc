@@ -136,6 +136,7 @@ function displayLead(c,inQueue){
  left.append(element('strong',null,c.businessName||'Unnamed business'));
  left.append(element('small',null,[c.city||c.address,c.industry,c.phone,secondaryPhoneLabel(c),c.email].filter(Boolean).join(' · ')||'Contact details pending'));
  left.append(element('small','lead-address','Address: '+String(c.address||'Not recorded')));
+ if(!String(c.address||'').trim())left.append(element('small','address-needs-research','Address needs research · leave blank until verified from a real source'));
   if(isException(c))left.append(element('small','correction-reason','Reason: '+correctionReason(c)));
  right.append(element('span','pill',leadAutomationStatus(c)));
  var actionable=own&&isException(c);
@@ -225,11 +226,14 @@ function drawLeads(){
   empty(q,'Loading your own SBC submissions and exception queue…');
   empty(m,'Loading your submission history…');
   ['metric-queue','metric-unverified','metric-mine'].forEach(function(id){txt(id,'—');});
+  txt('sbc-address-missing-count','Address research count loading from your submitted CRM leads…');
   updatePriorityIndicator();
   return;
  }
  var own=leads.filter(function(c){return submittedIds.has(String(c.id))&&researchDisplayable(c);});
  var attention=own.filter(isException);
+ var missingAddress=own.filter(function(c){return !String(c.address||'').trim();}).length;
+ txt('sbc-address-missing-count',missingAddress+' of your '+own.length+' visible submitted leads have no recorded address. Research when available; do not invent one.');
  var chosen=attention.filter(function(c){return [c.businessName,c.phone,secondaryPhoneLabel(c),c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
  q.replaceChildren();m.replaceChildren();
  if(!chosen.length)empty(q,filter?'No matching exceptions from your submissions.':'No records currently need your corrections. SBC automatically checks submitted leads.');
@@ -573,7 +577,7 @@ async function submitLead(event){
  try{
   var saved=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(data)});
   if(!saved.id||!saved.persistence||saved.persistence.verified!==true)throw Error('The backend did not provide verified CRM persistence evidence.');
-  form.reset();setTab('home');note((saved.researchComplete?'Research-complete lead saved; it counts toward your daily research target.':'Lead saved. Add a real contact method and research source to qualify for the research target.')+' SBC Lead Assist will perform verification automatically. Reference: '+saved.id);
+  form.reset();setTab('home');note((saved.researchComplete?'Research-complete lead saved; it counts toward your daily research target.':'Lead saved. Add a real contact method and research source to qualify for the research target.')+(data.address?' Address included for Account 360.':' Address not recorded; research it later if a public source is available.')+' SBC Lead Assist will perform verification automatically. Reference: '+saved.id);
   await Promise.allSettled([loadLeads(),loadProgress()]);
  }catch(e){note('Lead not submitted: '+errorMessage(e),true);}
  finally{busy=false;$('save-lead').disabled=false;}
@@ -612,7 +616,8 @@ function drawImportPreview(){
  panel.hidden=!importBatch;
  if(!importBatch){list.replaceChildren();return;}
  var rows=importBatch.records;
- txt('import-details',importBatch.total+' businesses found · '+importBatch.format+(importBatch.headersDetected?' · column headers mapped':' · standard column order'));
+ var needingAddress=rows.filter(function(r){return !String(r.record&&r.record.address||'').trim();}).length;
+ txt('import-details',importBatch.total+' businesses found · '+importBatch.format+(importBatch.headersDetected?' · column headers mapped':' · standard column order')+' · '+needingAddress+' missing address for later research');
  txt('import-ready',rows.filter(function(r){return r.status==='ready';}).length+' ready');
  txt('import-invalid',rows.filter(function(r){return r.status==='invalid';}).length+' invalid');
  txt('import-saved',rows.filter(function(r){return r.status==='saved';}).length+' saved · '+rows.filter(function(r){return r.status==='duplicate';}).length+' CRM duplicates');
