@@ -25,9 +25,10 @@ test('Executive styles define readable light surfaces with WCAG AA body text and
 test('both browser entrypoints load styling last, and collapse legacy tools while preserving navigation',()=>{
  for(const name of ['public/index.html','browser_public/index.html']){
   const html=read(name);
-  assert.match(html,/href="\/sbc-executive-ui-v1\.css\?v=1"/);
-  const cssIndex=html.indexOf('sbc-executive-ui-v1.css');
-  assert(cssIndex>html.indexOf('sbc-global-contrast-rescue-20261106.css'),'executive contrast should win cascade');
+  assert.match(html,/href="\/sbc-v66-owner-ui-core\.[a-f0-9]{16}\.css"/);
+  const compiled=require('../scripts/v66-owner-ui-css-bundle.cjs').compile(root).content;
+  const cssIndex=compiled.indexOf('/* sbc-executive-ui-v1.css */');
+  assert(cssIndex>compiled.indexOf('/* sbc-global-contrast-rescue-20261106.css */'),'executive contrast should win cascade');
   assert.match(html,/<details[^>]+id="sbcAdvancedNav"/);
   assert.match(html,/<summary[^>]*>[^<]*Advanced tools/);
   assert.match(html,/class="v56-legacy-tools"/);
