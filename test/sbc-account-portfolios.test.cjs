@@ -100,7 +100,7 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   const fu=await call('POST',pre+'/c/follow-up',{dueDate:'2026-12-10',purpose:'Review managed hosting renewal and support needs'},'m2');
   assert.equal(fu.status,200);
   assert.equal(rows.find(x=>x.id==='c').follow_up,'2026-12-10');
-  assert(events.some(x=>x.customerId==='c'&&x.purpose.includes('hosting')));
+  assert(events.some(x=>x.customerId==='c'&&String(x.purpose||'').includes('hosting')));
   assert.equal((await call('GET',pre+'/summary')).data.managers.some(x=>x.id==='m2'&&x.customers>=1),true);
   const before=JSON.stringify(rows),priorWrites=writes;
   badAudit=true;
