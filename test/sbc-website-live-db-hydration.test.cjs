@@ -87,7 +87,10 @@ test('post-payment website fulfillment sees current verified order and workers, 
 test('isolated release stage rewires all four Website Production modules to a live database view',()=>{
  const script=require('../scripts/v66-stage-website-live-db.cjs');
  const source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
- const patched=script.patchServer(source);
+ const preview=require('../scripts/v66-stage-preview-to-appointment.cjs').patchServer(source);
+ const sales=require('../scripts/v66-stage-website-sales-board.cjs').patchServer(preview);
+ const calling=require('../scripts/v66-stage-website-call-desk.cjs').patchServer(sales);
+ const patched=script.patchServer(calling);
  assert(patched.includes(script.MARK));assert.equal(script.patchServer(patched),patched);
  new vm.Script(patched);
  for(const n of ['sbc-website-production-routes','sbc-website-appointments','sbc-website-call-desk','sbc-website-sales-board']){
