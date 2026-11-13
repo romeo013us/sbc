@@ -21,3 +21,12 @@ html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead{display:grid;gr
 html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead .actions{display:flex;gap:8px;flex-wrap:wrap}
 html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead .meta{margin-top:6px;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:760px){#sbcFocusNav>.nav-item{min-height:48px}html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead{grid-template-columns:1fr}}
+
+/* Existing buttons move into a reversible accessible disclosure — no handler is replaced. */
+.sbc-page-more-actions{position:relative;min-width:134px}
+.sbc-page-more-actions>summary{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:38px;border:1px solid rgba(132,163,191,.5);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:720}
+.sbc-page-more-actions[open]{z-index:2}
+.sbc-page-extra-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;padding:10px;border:1px solid rgba(132,163,191,.35);border-radius:10px;background:var(--card,#132539)}
+.sbc-page-extra-buttons>.btn{flex:1 1 auto}
+.sbc-page-more-actions>summary:focus-visible{outline:3px solid #f5a94f;outline-offset:2px}
+@media(max-width:760px){.sbc-page-more-actions{width:100%}.sbc-page-more-actions>summary{width:100%}}
