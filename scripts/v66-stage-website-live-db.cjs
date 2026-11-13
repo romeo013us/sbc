@@ -15,7 +15,7 @@ function patchServer(input){
  let result=input;
  for(const name of MODULES){
    const prefix="require('./enterprise/"+name+".cjs').register(app,{";
-   const candidates=result.split('\n').filter(s=>s.startsWith(prefix));
+   const candidates=result.split('\n').filter(s=>s.includes(prefix));
    assert.equal(candidates.length,1,'Website live DB stage requires one existing module: '+name);
    const line=candidates[0];
    assert(line.includes(',db,'),'Expected old captured db in '+name);
