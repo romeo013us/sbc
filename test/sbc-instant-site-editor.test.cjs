@@ -23,7 +23,7 @@ test('native editable site fields are normalized and survive a render without AI
  assert.match(html,/Precision cuts/);
  assert.match(html,/Beard care/);
  assert.match(html,/Our crew welcomes new guests/);
- assert.doesNotMatch(html,/SAMPLE GALLERY \\/ CREATIVE DIRECTION/);
+ assert.doesNotMatch(html,/SAMPLE GALLERY \/ CREATIVE DIRECTION/);
  assert.doesNotMatch(html,/SAMPLE VIDEO · NOT THE REAL BUSINESS/);
  assert.match(html,/id="faq"/);
  assert.match(html,/noindex,nofollow,noarchive/);
