@@ -10,6 +10,11 @@ function revisionOfLead(row) {
   if (!row || row.id == null) throw new TypeError('Lead revision needs an id');
   const data = [
     String(row.id),
+    String(row.business_name ?? ''),
+    String(row.website ?? ''),
+    String(row.address ?? ''),
+    String(row.industry ?? ''),
+    String(row.lead_intelligence_json ?? ''),
     String(row.contact_name ?? ''),
     String(row.phone ?? ''),
     String(row.email ?? ''),
