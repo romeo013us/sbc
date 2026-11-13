@@ -9,7 +9,7 @@ const html=read('public/index.html');
 const owner=read('public/app.js');
 assert.match(html,/sbc-command-center-focus-v1\.js/,'focused navigation must load');
 assert.match(html,/sbc-command-center-focus-v1\.css/,'focused styling must load');
-for(const view of ['dashboard','customers','callcenter','orders','acquisition','workforce','metrics'])assert.ok(js.includes("view:'"+view+"'"),'missing daily navigation route '+view);
+for(const view of ['dashboard','customers','crm','callcenter','orders','acquisition','workforce'])assert.ok(js.includes("view:'"+view+"'"),'missing daily navigation route '+view);
 assert.ok(js.includes("sbc-website-production-nav"),'existing website production must remain accessible');
 assert.ok(js.includes("sbcAdvancedNav"),'all original modules must remain in More tools');
 assert.ok(js.includes("groups.appendChild(child)"),'old groups must relocate, not be deleted');
