@@ -1,0 +1,188 @@
+/* SBC V66 Website Production readability rescue.
+ * Scopes all rules to the Website Production modal, not to CRM/Office Box.
+ * Do not use inherited OS text colors on pale panels. */
+#modal .v6526-studio .sbc-factory-light-panel,
+#modal .v6526-studio .sbc-website-hosting-guide,
+#modal .v6526-studio .sbc-website-walkthrough,
+#modal .v6526-studio .v6526-link-row,
+#modal .v6526-studio .v6526-delivery {
+ color:#14283f!important;
+ text-shadow:none!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel :is(h2,h3,h4,h5,h6,p,label,legend,summary,figcaption,strong,small,span,li),
+#modal .v6526-studio .sbc-website-hosting-guide :is(h3,h4,p,label,summary,strong,small,span,li),
+#modal .v6526-studio .sbc-website-walkthrough :is(h3,h4,p,label,strong,small,span),
+#modal .v6526-studio .v6526-link-row :is(p,label,strong,span,small),
+#modal .v6526-studio .v6526-delivery :is(h3,h4,p,label,strong,span,small) {
+ color:#14283f!important;
+ -webkit-text-fill-color:#14283f!important;
+ opacity:1!important;
+ text-shadow:none!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel{
+ border-color:#b1c4d9!important;
+ box-shadow:0 7px 23px rgba(14,37,64,.10);
+}
+#modal .v6526-studio .sbc-factory-checklist{
+ background:#f7fbff!important;
+ border-left:5px solid #0872bd!important;
+}
+#modal .v6526-studio .sbc-factory-checklist h4,
+#modal .v6526-studio .sbc-website-walkthrough h4 {
+ color:#14283f!important;
+ font-size:19px!important;
+ font-weight:900!important;
+ margin:0 0 13px!important;
+}
+#modal .v6526-studio .sbc-factory-checklist label,
+#modal .v6526-studio .sbc-website-walkthrough label {
+ display:flex!important;
+ align-items:flex-start!important;
+ gap:10px!important;
+ font-size:14px!important;
+ font-weight:700!important;
+ line-height:1.6!important;
+ padding:8px 0!important;
+}
+#modal .v6526-studio .sbc-website-walkthrough label.sbc-factory-meeting-label{
+ display:block!important;
+ font-size:14px!important;
+ font-weight:800!important;
+ line-height:1.65!important;
+ color:#14283f!important;
+}
+#modal .v6526-studio :is(#sbcFactoryCheckDetails,#sbcFactoryCheckVisuals,#sbcFactoryCheckContent,#sbcFactoryMeetingConfirmed){
+ flex:0 0 auto!important;
+ width:17px!important;
+ height:17px!important;
+ margin:4px 4px 0 0!important;
+ accent-color:#075e9f!important;
+ opacity:1!important;
+}
+#modal .v6526-studio .sbc-website-hosting-guide{
+ background:#f2f7ff!important;
+ border:1px solid #abc5df!important;
+ border-left:5px solid #036aa5!important;
+}
+#modal .v6526-studio .sbc-website-hosting-guide summary{
+ display:list-item!important;
+ font-size:15px!important;
+ font-weight:900!important;
+ padding:7px 3px!important;
+ cursor:pointer;
+}
+#modal .v6526-studio .sbc-website-hosting-guide[open]{
+ background:#f5f9ff!important;
+}
+#modal .v6526-studio .sbc-website-hosting-guide p{
+ font-size:13px!important;
+ line-height:1.72!important;
+}
+#modal .v6526-studio .sbc-website-walkthrough{
+ background:#f5f9ff!important;
+ border-left:5px solid #0b75b2!important;
+}
+#modal .v6526-studio #sbcFactoryMeetingTime,
+#modal .v6526-studio #sbcFactoryPublicUrl,
+#modal .v6526-studio #sbcFactoryTier,
+#modal .v6526-studio :is(input[type="text"],input[type="datetime-local"],select){
+ background:#fff!important;
+ color:#14283f!important;
+ -webkit-text-fill-color:#14283f!important;
+ color-scheme:light!important;
+ border:1px solid #8ca9c1!important;
+ border-radius:9px!important;
+ min-height:42px!important;
+ opacity:1!important;
+ font-size:14px!important;
+}
+#modal .v6526-studio #sbcFactoryMeetingTime{
+ display:block!important;
+ width:100%!important;
+ min-width:0!important;
+ padding:12px!important;
+ margin:8px 0 0!important;
+}
+#modal .v6526-studio :is(#sbcFactoryMeetingTime,#sbcFactoryPublicUrl,#sbcFactoryTier):focus-visible,
+#modal .v6526-studio .sbc-factory-light-panel :is(button,summary,a):focus-visible {
+ outline:3px solid #f4ac37!important;
+ outline-offset:3px!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel .btn.primary,
+#modal .v6526-studio #sbcFactoryApprove,
+#modal .v6526-studio #sbcFactoryBookMeeting{
+ background:#0869b3!important;
+ color:#fff!important;
+ -webkit-text-fill-color:#fff!important;
+ border-color:#065187!important;
+ font-weight:900!important;
+ text-shadow:none!important;
+ min-height:44px!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel :is(button:disabled,.btn:disabled){
+ background:#edf1f6!important;
+ border-color:#b0becd!important;
+ color:#405870!important;
+ -webkit-text-fill-color:#405870!important;
+ opacity:1!important;
+ cursor:not-allowed;
+}
+#modal .v6526-studio .sbc-factory-pitch{
+ padding:22px!important;
+ background:linear-gradient(120deg,#12345a,#172f4b)!important;
+ border:1px solid #3c789d!important;
+ border-radius:15px!important;
+ box-shadow:0 12px 25px rgba(10,23,45,.23);
+}
+#modal .v6526-studio .sbc-factory-pitch h4{
+ color:#f7dca1!important;
+ font-size:20px!important;
+ font-weight:900!important;
+ margin:0 0 14px!important;
+}
+#modal .v6526-studio #sbcFactoryPitch{
+ color:#fff!important;
+ -webkit-text-fill-color:#fff!important;
+ font-size:14px!important;
+ font-weight:650!important;
+ line-height:1.86!important;
+ white-space:pre-wrap!important;
+ overflow-wrap:anywhere!important;
+ opacity:1!important;
+}
+#modal .v6526-studio #sbcFactoryCopyPitch{
+ background:#f9c977!important;
+ color:#14283f!important;
+ -webkit-text-fill-color:#14283f!important;
+ font-weight:900!important;
+ border:1px solid #fedda4!important;
+}
+#modal .v6526-studio .v6526-link-row{
+ background:#eef6ff!important;
+ border:1px solid #a9c8e1!important;
+ border-radius:12px!important;
+}
+#modal .v6526-studio .v6526-delivery{
+ background:#f7fbff!important;
+ border:1px solid #b5cce1!important;
+ border-radius:12px!important;
+}
+#modal .v6526-studio .v6526-link-row :is(input,a,button),
+#modal .v6526-studio .v6526-delivery :is(button){
+ font-weight:800!important;
+}
+#modal .v6526-studio .sbc-factory-approved{
+ background:#ecfff5!important;
+ border-left:5px solid #149269!important;
+}
+#modal .v6526-studio .sbc-factory-private-note{
+ background:#fff6df!important;
+}
+@media(max-width:650px){
+ #modal .v6526-studio .sbc-factory-light-panel{padding:16px!important}
+ #modal .v6526-studio .sbc-factory-pitch{padding:16px!important}
+ #modal .v6526-studio #sbcFactoryPitch{font-size:13px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ #modal .v6526-studio .sbc-factory-light-panel{scroll-behavior:auto!important}
+}

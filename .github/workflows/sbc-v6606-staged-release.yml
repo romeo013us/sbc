@@ -346,7 +346,7 @@ jobs:
           SBC_SNAPSHOT_TENANT_EXPECT_STAGED=YES node --test test/sbc-snapshot-tenants.test.cjs test/sbc-market-intelligence.test.cjs
           node --test test/sbc-preview-to-appointment.test.cjs
           SBC_ISOLATED_PREVIEW_STAGE=YES node scripts/v66-stage-preview-to-appointment.cjs --apply
-          SBC_PREVIEW_EXPECT_STAGED=YES node --test test/sbc-preview-to-appointment.test.cjs test/sbc-prospect-site-factory.test.cjs test/sbc-prospect-site-god-tier-media.test.cjs test/sbc-website-production-shortcuts.test.cjs test/sbc-website-workorders.test.cjs test/sbc-website-production-routes.test.cjs test/sbc-website-appointments.test.cjs test/sbc-website-demo-creation.test.cjs
+          SBC_PREVIEW_EXPECT_STAGED=YES node --test test/sbc-preview-to-appointment.test.cjs test/sbc-prospect-site-factory.test.cjs test/sbc-prospect-site-god-tier-media.test.cjs test/sbc-website-production-shortcuts.test.cjs test/sbc-website-production-contrast-script.test.cjs test/sbc-website-workorders.test.cjs test/sbc-website-production-routes.test.cjs test/sbc-website-appointments.test.cjs test/sbc-website-demo-creation.test.cjs
           node --test test/sbc-website-sales-board.test.cjs
           SBC_ISOLATED_SALES_BOARD_STAGE=YES node scripts/v66-stage-website-sales-board.cjs --apply
           SBC_SALES_BOARD_EXPECT_STAGED=YES node --test test/sbc-website-sales-board.test.cjs
