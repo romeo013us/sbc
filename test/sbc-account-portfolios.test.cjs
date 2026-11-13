@@ -23,11 +23,19 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   return {
    async beginTransaction(){opened=true;},
    async query(sql,params){
-    if(sql.startsWith('SELECT assigned_to,status,follow_up'))return [[...working.filter(c=>c.tenant_id===params[0])],[]];
+    if(sql.startsWith('SELECT COALESCE(assigned_to')) {
+     const groups=new Map();
+     for(const row of working.filter(c=>c.tenant_id===params[0])){
+      const key=String(row.assigned_to||'')+':'+String(row.status||'');
+      if(!groups.has(key))groups.set(key,{manager_id:row.assigned_to||'',status:row.status,account_count:0,overdue_count:0});
+      const x=groups.get(key);x.account_count++;if(row.follow_up&&String(row.follow_up).slice(0,10)<'2026-11-13')x.overdue_count++;
+     }
+     return [[...groups.values()],[]];
+    }
     if(sql.startsWith('SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers')){
       if(sql.includes('id IN ('))return [[...working.filter(c=>c.tenant_id===params[0]&&params.slice(1).includes(c.id))],[]];
       if(sql.includes('AND id=?'))return [[...working.filter(c=>c.tenant_id===params[0]&&c.id===params[1])],[]];
-      return [[...working.filter(c=>c.tenant_id===params[0]&&(!c.assigned_to)&&!['Lost','Do Not Call'].includes(c.status)).sort((a,b)=>a.created_at.localeCompare(b.created_at)).slice(0,params[1])],[]];
+      return [[...working.filter(c=>c.tenant_id===params[0]&&(!c.assigned_to)&&!['lost','do not call','do not contact','dnc','opt out','unsubscribe'].includes(String(c.status||'').toLowerCase())).sort((a,b)=>a.created_at.localeCompare(b.created_at)).slice(0,params[1])],[]];
     }
     if(sql.startsWith('UPDATE sbc_customers SET assigned_to=')){
       const [next,stamp,tenant,id,prior]=params;
