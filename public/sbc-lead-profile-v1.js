@@ -70,15 +70,15 @@ function edit(){
 }
 async function save(event){
  event.preventDefault();if(busy||!ownerOnly()||blocked(current)||!revision)return;
- busy=true;var form=event.currentTarget,submit=form.querySelector('button[type=submit]'),msg=q('#sbcProfileEditStatus');
+ busy=true;var submittedId=currentId,form=event.currentTarget,submit=form.querySelector('button[type=submit]'),msg=q('#sbcProfileEditStatus');
  if(submit)submit.disabled=true;
  try{
   var payload=Object.fromEntries(new FormData(form).entries());payload.revision=revision;
-  var response=await fetch('/api/v6606/crm/leads/'+encodeURIComponent(currentId),{method:'PATCH',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify(payload)});
+  var response=await fetch('/api/v6606/crm/leads/'+encodeURIComponent(submittedId),{method:'PATCH',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify(payload)});
   var result=await response.json().catch(function(){return {};});
   if(!response.ok||result.ok!==true||result.durable!==true)throw Error(response.status===409?'Another team member updated this lead. Refresh before editing again.':result.code||'CRM did not confirm a durable save.');
-  var localRow=local(currentId);if(localRow){Object.keys(payload).forEach(function(k){if(k!=='revision'&&k!=='googleBusinessUrl')localRow[k]=payload[k];});localRow.googleBusinessUrl=payload.googleBusinessUrl;}
-  await open(currentId,'Profile saved and verified in the authoritative CRM.');
+  var localRow=local(submittedId);if(localRow){Object.keys(payload).forEach(function(k){if(k!=='revision'&&k!=='googleBusinessUrl')localRow[k]=payload[k];});localRow.googleBusinessUrl=payload.googleBusinessUrl;}
+  if(currentId===submittedId)await open(submittedId,'Profile saved and verified in the authoritative CRM.');
  }catch(err){if(msg)msg.textContent='Not saved: '+String(err.message||err);}
  finally{busy=false;if(submit)submit.disabled=false;}
 }
@@ -101,12 +101,17 @@ function callForm(){
  '<label>Outcome<select name="outcome">'+['No Answer','Left Voicemail','Interested','Appointment Requested','Call Back','Not Interested','Order Ready','Bad Number','Closed Business','Not Qualified','Duplicate','Do Not Call'].map(function(v){return '<option>'+E(v)+'</option>';}).join('')+'</select></label>'+
  '<label>Callback date & time<input type="datetime-local" name="callbackAt"></label>'+
  '<label class="sbc-profile-wide">Conversation notes / agreed next step<textarea name="notes" rows="4" required maxlength="4000" placeholder="Call disposition and what happens next"></textarea></label></div><div class="actions"><button class="btn primary" type="submit">Save call result</button><button class="btn" type="button" data-sbc-profile-action="cancel">Cancel</button></div><p class="mini" role="status" id="sbcProfileCallStatus"></p></form>');
- q('#sbcProfileCallForm')?.addEventListener('submit',async function(event){event.preventDefault();if(busy)return;busy=true;var submit=event.currentTarget.querySelector('button[type=submit]'),msg=q('#sbcProfileCallStatus');submit.disabled=true;
- try{var data=Object.fromEntries(new FormData(event.currentTarget).entries());data.customerId=currentId;data.services=[];data.appointmentRequested=data.outcome==='Appointment Requested';data.orderReady=data.outcome==='Order Ready';data.paymentGuideRequested=false;
+ q('#sbcProfileCallForm')?.addEventListener('submit',async function(event){event.preventDefault();if(busy)return;busy=true;var submittedId=currentId,submit=event.currentTarget.querySelector('button[type=submit]'),msg=q('#sbcProfileCallStatus');submit.disabled=true;
+ try{var data=Object.fromEntries(new FormData(event.currentTarget).entries());data.customerId=submittedId;data.services=[];data.appointmentRequested=data.outcome==='Appointment Requested';data.orderReady=data.outcome==='Order Ready';data.paymentGuideRequested=false;
  var response=await fetch('/api/call-reports',{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify(data)});
  var result=await response.json().catch(function(){return {};});if(!response.ok||result.error)throw Error(result.error||result.message||'Call result not accepted.');
- if(typeof window.loadSalesQueue==='function')window.loadSalesQueue().catch(function(){});
- render('Call result submitted to the SBC owner review pipeline. The queue refresh was requested.');
+ // Never enable further outreach from a stale customer-cache after a terminal disposition.
+  var terminal=['Do Not Call','Bad Number','Closed Business','Not Qualified','Duplicate','Not Interested'].includes(data.outcome);
+  var cached=local(submittedId);if(cached&&terminal){cached.salesSuppressed=true;cached.canCall=false;}
+  if(currentId===submittedId){if(current)current={...current,salesSuppressed:true,canCall:false};render('Call saved. Refreshing account clearance before further outreach…');}
+  if(typeof window.load==='function')await window.load();
+  if(typeof window.loadSalesQueue==='function')await window.loadSalesQueue().catch(function(){});
+  if(currentId===submittedId)await open(submittedId,'Call result saved and latest outreach status refreshed.');
  }catch(err){if(msg)msg.textContent='Not saved: '+String(err.message||err);}finally{busy=false;submit.disabled=false;}
  });
 }
