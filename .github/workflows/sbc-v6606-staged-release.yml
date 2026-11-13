@@ -38,6 +38,7 @@ jobs:
           node scripts/v6612-public-prospect-privacy.test.cjs
           node scripts/v6601-ui-revenue-resilience.test.cjs
           node scripts/v6613-browser-profile-stability.test.cjs
+          npm run test:v66:preview:policy
           node scripts/v6614-quick-checkout-ui.test.cjs
           node scripts/v6625-square-qa-link-reconcile.test.cjs
           node scripts/v6616-owner-qa-nav.test.cjs
