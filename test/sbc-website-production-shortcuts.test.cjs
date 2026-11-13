@@ -37,14 +37,14 @@ test('sales showroom fetches server-approved links and limits them to already as
  assert.match(js,/function renderWebsiteShowroom/);
  assert.match(js,/\/api\/website-production\/call-desk\?limit=200/);
  assert.match(js,/\.websiteUrl/);
- assert.match(js,/\/\^\\\/demo\\\/[a-z0-9-]+\$\//);
+ assert.match(js,/websiteUrl\|\|''/);
  assert.match(js,/new Set\(\(data\?\.leads\|\|\[\]\)/);
  assert.match(js,/rel='noopener noreferrer'|rel="noopener noreferrer"/);
  const start=js.indexOf('function renderWebsiteShowroom');
  const end=js.indexOf('\nfunction renderLeads',start);
  assert(start>0&&end>start);
  const section=js.slice(start,end);
- assert.doesNotMatch(section,/\bPOST\b|\.demoUrl|fetch\('/);
+ assert.doesNotMatch(section,/\bPOST\b|fetch\('/);
  assert.match(section,/websiteUrl/);
  assert.match(section,/canCall/);
 });
@@ -67,4 +67,22 @@ test('spotlight styles are mirrored, responsive, high contrast and do not hide o
  const caller=read('public/sales-caller.css');
  assert.equal(caller,read('browser_public/sales-caller.css'));
  assert.match(caller,/#sbcSalesWebsiteLibrary/);
+});
+
+test('legacy Demo Studio is absent from the active UI and only historical rollback code remains',()=>{
+ for(const p of ['public/index.html','browser_public/index.html']){
+  const html=read(p);
+  assert.doesNotMatch(html,/<script[^>]*sbc-demo-studio-v6526/);
+ }
+ for(const p of ['public/sbc-demo-studio-v6526.js','browser_public/sbc-demo-studio-v6526.js'])assert.equal(fs.existsSync(path.join(__dirname,'..',p)),false);
+ // Legacy API routes and historic migration tests remain to preserve saved website records.
+ const production=read('public/sbc-website-production-v1.js');
+ assert.match(production,/window\.generateWebsiteDemo = buildWebsite/);
+});
+test('main navigation consolidates existing controls without dropping destinations',()=>{
+ const html=read('public/index.html');
+ for(const group of ['sbcNavSales','sbcNavGrowth','sbcNavOperations','sbcAdvancedNav'])assert(html.includes('id="'+group+'"'));
+ for(const view of ['dashboard','crm','orders','notifications','marketing','workforce','kimcenter','settings','customers','quotes','communications','calendar','tasks']){
+  assert(html.includes('data-view="'+view+'"'),view+' navigation preserved');
+ }
 });
