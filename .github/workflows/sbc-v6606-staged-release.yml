@@ -353,6 +353,7 @@ jobs:
           node --test test/sbc-website-live-db-hydration.test.cjs
           SBC_ISOLATED_WEBSITE_DB_STAGE=YES node scripts/v66-stage-website-live-db.cjs --apply
           SBC_LIVE_DB_EXPECT_STAGED=YES node --test test/sbc-website-live-db-hydration.test.cjs
+          node --test test/sbc-executive-ui-v1.test.cjs
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
           node - <<'NODE'
