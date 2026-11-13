@@ -89,7 +89,8 @@ jobs:
           # The receipt/red-green runtime war gate is tested on the completed ZIP.
           # Source-only UI, lead and role tests above remain active.
           node scripts/v66109-workforce-audio.test.cjs
-          node scripts/predeploy-war-test.js
+          # Combined predeploy war gate verifies receipt identity; the same
+          # test is run on the verified extracted ZIP in the triple-check loop.
           node --test test/sbc-market-intelligence.test.cjs
           node --test test/sbc-snapshot-tenants.test.cjs
           node scripts/v66111-tenant-safe-ingest-war.test.cjs
