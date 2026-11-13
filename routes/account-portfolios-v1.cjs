@@ -70,23 +70,23 @@ function register(app,{auth,getContext}){
   let conn;
   try{
    conn=await x.ctx.mysqlPool.getConnection();
-   const [records]=await conn.query('SELECT assigned_to,status,follow_up FROM sbc_customers WHERE tenant_id=?',[x.tenant]);
+   const [records]=await conn.query("SELECT COALESCE(assigned_to,'') AS manager_id,status,COUNT(*) AS account_count,SUM(CASE WHEN follow_up < CURDATE() THEN 1 ELSE 0 END) AS overdue_count FROM sbc_customers WHERE tenant_id=? GROUP BY assigned_to,status",[x.tenant]);
    if(!Array.isArray(records))throw Error('PORTFOLIO_DB_READ_FAILED');
    const summary=new Map(),users=(x.ctx.db?.users||[]).filter(u=>u.role==='caller'&&u.active!==false&&Number(u.tenantId??u.tenant_id)===x.tenant);
-   const nowDay=new Date().toISOString().slice(0,10);
+   
    for(const u of users)summary.set(String(u.id),{id:String(u.id),name:String(u.name||u.username||u.id).slice(0,130),accounts:0,customers:0,prospects:0,overdue:0});
    let unassigned=0;
    for(const c of records){
-    const id=String(c.assigned_to||'');
-    if(!id){unassigned++;continue;}
+    const id=String(c.manager_id||'');
+    const count=Number(c.account_count||0),overdue=Number(c.overdue_count||0);
+    if(!id){unassigned+=count;continue;}
     if(!summary.has(id))summary.set(id,{id,name:'Inactive or historical account manager',accounts:0,customers:0,prospects:0,overdue:0});
     const m=summary.get(id);
-    m.accounts++;if(String(c.status||'').toLowerCase()==='customer')m.customers++;else m.prospects++;
-    const due=String(c.follow_up||'').slice(0,10);
-    if(/^\d{4}-\d{2}-\d{2}$/.test(due)&&due<nowDay)m.overdue++;
+    m.accounts+=count;if(String(c.status||'').toLowerCase()==='customer')m.customers+=count;else m.prospects+=count;
+    m.overdue+=overdue;
    }
    res.setHeader('Cache-Control','no-store');
-   return res.json({ok:true,managers:[...summary.values()].sort((a,b)=>a.name.localeCompare(b.name)),unassigned,total:records.length,readOnly:true});
+   return res.json({ok:true,managers:[...summary.values()].sort((a,b)=>a.name.localeCompare(b.name)),unassigned,total:unassigned+[...summary.values()].reduce((n,m)=>n+m.accounts,0),readOnly:true});
   }catch(_){return fail(res,503,'PORTFOLIO_SUMMARY_UNAVAILABLE')}
   finally{try{conn?.release()}catch(_){}}
  });
@@ -118,7 +118,7 @@ function register(app,{auth,getContext}){
      [selected]=await conn.query('SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND id IN ('+holders+') ORDER BY id ASC FOR UPDATE',[x.tenant,...ids]);
      if(!Array.isArray(selected)||selected.length!==ids.length)return {status:404,code:'ACCOUNT_NOT_FOUND'};
     }else{
-     [selected]=await conn.query("SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND (assigned_to IS NULL OR assigned_to='') AND status NOT IN ('Lost','Do Not Call') ORDER BY created_at ASC,id ASC LIMIT ? FOR UPDATE",[x.tenant,amount]);
+     [selected]=await conn.query("SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND (assigned_to IS NULL OR assigned_to='') AND LOWER(TRIM(status)) NOT IN ('lost','do not call','do not contact','dnc','opt out','unsubscribe') ORDER BY created_at ASC,id ASC LIMIT ? FOR UPDATE",[x.tenant,amount]);
     }
     if(!Array.isArray(selected))throw Error('ACCOUNT_DB_READ_FAILED');
     if(selected.some(c=>String(c.assigned_to||'')!==''))return {status:409,code:'ACCOUNT_ALREADY_ASSIGNED'};
