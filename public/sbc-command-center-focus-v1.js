@@ -62,12 +62,12 @@ function install(){
  var quick=[
   {view:'dashboard',label:'Home'},
   {view:'customers',label:'Leads & Accounts'},
+  {view:'crm',label:'Sales Pipeline'},
   {view:'callcenter',label:'Call Center'},
   {id:'sbc-website-production-nav'},
   {view:'orders',label:'Orders & Delivery'},
   {view:'acquisition',label:'Find Customers'},
-  {view:'workforce',label:'Team'},
-  {view:'metrics',label:'Performance'}
+  {view:'workforce',label:'Team'}
  ];
  quick.forEach(function(item){
   var node=item.id?document.getElementById(item.id):nav.querySelector('.nav-item[data-view="'+item.view+'"]');
