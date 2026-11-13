@@ -130,6 +130,14 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   assert.equal(notes[0].authorId,'m2');
   assert.match(notes[0].note,/website design/);
   assert(events.some(x=>x.customerId==='c'&&x.noteId===notes[0].id));
+  assert.equal((await call('GET',pre+'/c/history',null,'m1')).status,403,'previous manager loses access after transfer');
+  assert.equal((await call('GET',pre+'/d/history',null,'owner')).status,404,'foreign tenant notes remain private');
+  const visibleHistory=await call('GET',pre+'/c/history',null,'m2');
+  assert.equal(visibleHistory.status,200);
+  assert.equal(visibleHistory.data.assignedTo,'m2');
+  assert.equal(visibleHistory.data.notes[0].note,notes[0].note);
+  assert.equal((await call('GET',pre+'/c/history',null,'owner')).data.notes.length,1);
+
   const history=JSON.stringify(rows),priorSaves=writes;
   badAudit=true;
   assert.equal((await call('POST',pre+'/c/note',{note:'Uncommitted note should be rolled back'},'m2')).status,503);
