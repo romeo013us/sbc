@@ -60,3 +60,17 @@ test('fail closed on an inventory without the required current website files',()
  fs.writeFileSync(path.join(root,'SBC-FLAT-RELEASE-IDENTITY.json'),JSON.stringify({...identity,stagedInventorySha256:sha(raw)}));
  assert.throws(()=>verifyDeploymentArtifact(root),/required asset/i);
 }));
+
+test('fail closed when obsolete release notes are injected into an otherwise valid staged inventory',()=>using(({root,identity})=>{
+ const doc='RELEASE-NOTES-V65.1.26-DEMO-STUDIO.md';
+ const contents='Historic documentation: should stay in GitHub source only.\n';
+ fs.writeFileSync(path.join(root,doc),contents);
+ const inventoryPath=path.join(root,'SBC-STAGED-INVENTORY.json');
+ const inventory=JSON.parse(fs.readFileSync(inventoryPath,'utf8'));
+ inventory.files[doc]=sha(contents);
+ const raw=JSON.stringify(inventory,null,2)+'\n';
+ fs.writeFileSync(inventoryPath,raw);
+ fs.writeFileSync(path.join(root,'SBC-FLAT-RELEASE-IDENTITY.json'),
+  JSON.stringify({...identity,stagedInventorySha256:sha(raw)}));
+ assert.throws(()=>verifyDeploymentArtifact(root),/forbidden release member/i);
+}));
