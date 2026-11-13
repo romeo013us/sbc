@@ -96,7 +96,7 @@ function open(accountId){
   const b=followup.querySelector('button[type=submit]');b.disabled=true;status('Saving the next account review…');
   try{
    const data=new FormData(followup),dueDate=String(data.get('dueDate')||''),purpose=String(data.get('purpose')||'').trim();
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)||purpose.length<12)throw Error('Provide a valid date and specific reason.');
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)||purpose.length<12)throw Error('Provide a valid date and specific reason.');
    const result=await request('/'+encodeURIComponent(id)+'/follow-up',{method:'POST',body:JSON.stringify({dueDate,purpose})});
    if(result.durable!==true)throw Error('Follow-up confirmation missing.');
    account.followUp=result.followUp;account.followUpAt=result.followUp;
