@@ -22,8 +22,8 @@
      ? 'I came across your business online and couldn\'t find a website in the information I checked. Do you already have one?'
      : 'I was looking up your business online and wanted to ask—do you already have a website?';
   const no=approved
-   ? 'No worries. I actually went ahead and built a working example of a website for '+business+'. It has real pages you can click through, with example photos and a professional layout. It isn\'t live yet, and the final business details are personalized if you decide to move forward.'
-   : 'No worries. I can prepare a working website example for '+business+' for you to review once the owner has approved it. Nothing has been published or sent yet.';
+   ? 'No worries. I went ahead and built a working example of a website for '+business+'. It has real pages you can click through, with example photos and a professional layout. It isn\'t live yet, and the final business details are personalized if you decide to move forward.'
+   : 'No worries. I can prepare a website example for '+business+' for you to review once the owner has approved it. Nothing has been published or sent yet.';
   const yes=approved
    ? 'Oh, got it—that\'s good! I also put together an alternative website concept for '+business+'. If you\'re happy with your current site, no pressure at all. Would a quick comparison be useful?'
    : 'That\'s good to hear. Is there anything you wish your current website did better? I can put together a comparison if it would be useful.';
