@@ -37,7 +37,16 @@ test('owner assigns batches, customer relationship persists, transfers are audit
       if(sql.includes('AND id=?'))return [[...working.filter(c=>c.tenant_id===params[0]&&c.id===params[1])],[]];
       return [[...working.filter(c=>c.tenant_id===params[0]&&(!c.assigned_to)&&!['lost','do not call','do not contact','dnc','opt out','unsubscribe'].includes(String(c.status||'').toLowerCase())).sort((a,b)=>a.created_at.localeCompare(b.created_at)).slice(0,params[1])],[]];
     }
-    if(sql.startsWith('UPDATE sbc_customers SET assigned_to=')){
+    if(sql.startsWith('SELECT id,assigned_to,status,follow_up,account_notes_json,tenant_id FROM sbc_customers')){
+      return [[...working.filter(c=>c.tenant_id===params[0]&&c.id===params[1])],[]];
+     }
+     if(sql.startsWith('UPDATE sbc_customers SET account_notes_json=')){
+      const [json,stamp,tenant,id,assignee]=params;
+      const row=working.find(x=>x.tenant_id===tenant&&x.id===id);
+      if(!row||(assignee!=null&&row.assigned_to!==assignee))return [{affectedRows:0},[]];
+      row.account_notes_json=json;row.updated_at=stamp;return [{affectedRows:1},[]];
+     }
+     if(sql.startsWith('UPDATE sbc_customers SET assigned_to=')){
       const [next,stamp,tenant,id,prior]=params;
       const row=working.find(x=>x.tenant_id===tenant&&x.id===id);
       if(!row||((prior==null&&!['',null].includes(row.assigned_to))||(prior!=null&&row.assigned_to!==prior)))return [{affectedRows:0},[]];
@@ -110,6 +119,23 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   assert.equal(rows.find(x=>x.id==='c').follow_up,'2026-12-10');
   assert(events.some(x=>x.customerId==='c'&&String(x.purpose||'').includes('hosting')));
   assert.equal((await call('GET',pre+'/summary')).data.managers.some(x=>x.id==='m2'&&x.customers>=1),true);
+  assert.equal((await call('POST',pre+'/c/note',{note:'Notes by the previous account manager'},'m1')).status,403);
+  assert.equal((await call('POST',pre+'/c/note',{note:'Short'},'m2')).status,400);
+  assert.equal((await call('POST',pre+'/d/note',{note:'Cross tenant business notes must be blocked'})).status,404);
+  const savedNote=await call('POST',pre+'/c/note',{note:'Customer asked about new website design; escalate service options to the owner.'},'m2');
+  assert.equal(savedNote.status,200);
+  assert.equal(savedNote.data.durable,true);
+  const notes=JSON.parse(rows.find(x=>x.id==='c').account_notes_json);
+  assert.equal(notes.length,1);
+  assert.equal(notes[0].authorId,'m2');
+  assert.match(notes[0].note,/website design/);
+  assert(events.some(x=>x.customerId==='c'&&x.noteId===notes[0].id));
+  const history=JSON.stringify(rows),priorSaves=writes;
+  badAudit=true;
+  assert.equal((await call('POST',pre+'/c/note',{note:'Uncommitted note should be rolled back'},'m2')).status,503);
+  badAudit=false;
+  assert.equal(JSON.stringify(rows),history,'notes and source history must roll back on audit failures');
+  assert.equal(writes,priorSaves);
   const before=JSON.stringify(rows),priorWrites=writes;
   badAudit=true;
   assert.equal((await call('POST',pre+'/a/transfer',{managerId:'m2',expectedManagerId:'m1',reason:'Staff transition after account review'})).status,503);
