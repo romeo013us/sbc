@@ -51,6 +51,12 @@ function open(accountId){
     '<label>Reason for reassignment<textarea name="reason" minlength="12" maxlength="500" rows="3" placeholder="Document the transition and any customer handoff" required></textarea></label>'+
     '<button class="btn" type="submit">Transfer Account & Preserve History</button>':'<p class="mini">This account is not assigned. Use batch assignment for unassigned accounts.</p>')+
    '</form>':'')+
+  (id?'<form id="sbcPortfolioFollowUp" style="padding:15px;border:1px solid #d7e1ea;border-radius:12px;margin:18px 0">'+
+   '<h3>Next relationship review</h3>'+
+   '<p>Record a service check-in or renewal review for the existing account. This saves a CRM date, not an automatic call, text or email.</p>'+
+   '<label>Next follow-up<input name="dueDate" type="date" required value="'+esc(String(account.followUp||account.followUpAt||'').slice(0,10))+'"></label>'+
+   '<label>Reason / agreed next step<textarea name="purpose" rows="3" minlength="12" maxlength="500" required placeholder="Example: Check website launch and discuss ongoing maintenance"></textarea></label>'+
+   '<button class="btn primary" type="submit">Save Account Follow-up</button></form>':'')+
   '<p id="sbcPortfolioStatus" role="status" aria-live="polite" style="margin-top:16px">Ready. No portfolio changes have been made.</p></section>';
  if(typeof window.openModal!=='function')return;
  window.openModal('Account Manager Portfolios',html);
@@ -82,6 +88,21 @@ function open(accountId){
    status('Verified durable transfer. Account '+id+' now belongs to '+result.managerId+'. History and scheduled services were not erased.');
    await refreshSummary();
   }catch(e){status('Transfer not completed: '+String(e.message||e)+'. Refresh the account before retrying.')}
+  finally{b.disabled=false}
+ });
+ const followup=document.getElementById('sbcPortfolioFollowUp');
+ followup?.addEventListener('submit',async event=>{
+  event.preventDefault();if(!owner())return;
+  const b=followup.querySelector('button[type=submit]');b.disabled=true;status('Saving the next account review…');
+  try{
+   const data=new FormData(followup),dueDate=String(data.get('dueDate')||''),purpose=String(data.get('purpose')||'').trim();
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)||purpose.length<12)throw Error('Provide a valid date and specific reason.');
+   const result=await request('/'+encodeURIComponent(id)+'/follow-up',{method:'POST',body:JSON.stringify({dueDate,purpose})});
+   if(result.durable!==true)throw Error('Follow-up confirmation missing.');
+   account.followUp=result.followUp;account.followUpAt=result.followUp;
+   status('Saved next account review for '+result.followUp+'. No message or phone call was sent.');
+   await refreshSummary();
+  }catch(e){status('Follow-up not saved: '+String(e.message||e))}
   finally{b.disabled=false}
  });
  refreshSummary();
