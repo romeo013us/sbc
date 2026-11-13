@@ -22,6 +22,23 @@
   const basePath = demo => '/api/website-demos/' + encodeURIComponent(demo.id) + '/preview';
   const publicPath = demo => '/demo/' + encodeURIComponent(demo.slug || '');
   const isApproved = demo => demo?.status === 'Approved';
+  // Generate presentation words from current CRM evidence, even for old saved demos.
+  function scriptForWebsite(demo,customer){
+    const brief=customer?.leadIntelligence?.researchBrief||{};
+    const researched=['Verified','Sales Ready'].includes(String(customer?.verificationStatus||'')) &&
+      customer?.researchRejected!==true;
+    const input={
+      businessName:customer?.businessName||customer?.contactName||'your business',
+      googleVerified:researched && brief.googleBusinessPresence==='found',
+      websitePresence:researched && ['found','not_found'].includes(brief.websitePresence)
+        ? brief.websitePresence:'not_checked',
+      approved:isApproved(demo)
+    };
+    const builder=window.SBC_WEBSITE_SALES_SCRIPT?.build;
+    return typeof builder==='function'?builder(input):
+      'Hey, is this the owner of '+input.businessName+'? [PAUSE] This is [your first name] from Successful By Choice. Do you have a website? [PAUSE] Would you have 10 minutes for a short Zoom later today or tomorrow to discuss a website example?';
+  }
+
 
   function pageUrl(demo,page) {
     const start = isApproved(demo) ? publicPath(demo) : basePath(demo);
@@ -32,9 +49,9 @@
     if(element){ element.textContent=msg; element.style.color=error?'#a02c2c':'#334d63'; }
   }
   function reviewPanel(demo){
-    if(isApproved(demo)) return '<section style="padding:18px;border:1px solid #b6d8c7;border-radius:12px;background:#effaf3"><strong>Owner approved for prospect presentation</strong><p>The live concept link can now be shared with the prospect. Publishing to the client’s actual domain still requires a paid project and approved business details.</p></section>';
+    if(isApproved(demo)) return '<section class="sbc-factory-light-panel sbc-factory-approved" style="padding:18px;border:1px solid #b6d8c7;border-radius:12px;background:#effaf3"><strong>Owner approved for prospect presentation</strong><p>The live concept link can now be shared with the prospect. Publishing to the client’s actual domain still requires a paid project and approved business details.</p></section>';
     if(currentRole()!=='owner')return '<p style="font-size:13px;color:#6b7280">This full website is an internal draft. The owner must approve its pages, content and media before it can be shared externally.</p>';
-    return '<section style="padding:18px;border:1px solid #d7dce1;border-radius:12px;background:#fff">'+
+    return '<section class="sbc-factory-light-panel sbc-factory-checklist" style="padding:18px;border:1px solid #d7dce1;border-radius:12px;background:#fff">'+
       '<h4 style="margin:0 0 10px">Owner release checklist</h4>'+
       '<label style="display:block;margin:12px 0"><input type="checkbox" id="sbcFactoryCheckDetails"> Business identity, services and placeholder information are accurate and clearly labeled.</label>'+
       '<label style="display:block;margin:12px 0"><input type="checkbox" id="sbcFactoryCheckVisuals"> All pages work on phone and desktop; artwork and image rights are cleared.</label>'+
@@ -43,7 +60,7 @@
   }
   function appointmentPanel(demo){
     if(!isApproved(demo))return '';
-    return '<section class="sbc-website-walkthrough" style="padding:22px;border:1px solid #b7c5d5;border-radius:12px;background:#f5f8fe;margin:22px 0">'+
+    return '<section class="sbc-website-walkthrough sbc-factory-light-panel" style="padding:22px;border:1px solid #b7c5d5;border-radius:12px;background:#f5f8fe;margin:22px 0">'+
       '<h4 style="margin-top:0">Book a 10-minute website walkthrough</h4><p style="font-size:13px">Only create the appointment after the business owner agrees to meet. No texts, emails, or calendar invitations will be sent automatically.</p>'+
       '<label style="display:block;margin:12px 0">Confirmed meeting date and time (your local time) <input type="datetime-local" id="sbcFactoryMeetingTime" style="width:100%;padding:10px;margin-top:6px"></label>'+
       '<label style="display:block;margin:12px 0"><input type="checkbox" id="sbcFactoryMeetingConfirmed"> The prospect explicitly agreed to this date and time.</label>'+
@@ -53,7 +70,7 @@
   function hostingGuide(demo) {
     if(currentRole()!=='owner')return '';
     const starter=demo.offerTier==='starter';
-    return '<details class="sbc-website-hosting-guide" style="margin:18px 0;border:1px solid #b8cce0;border-radius:12px;padding:14px;background:#f3f8ff;color:#16334b">'+
+    return '<details class="sbc-website-hosting-guide sbc-factory-light-panel" style="margin:18px 0;border:1px solid #b8cce0;border-radius:12px;padding:14px;background:#f3f8ff;color:#16334b">'+
      '<summary style="font-weight:900;cursor:pointer">Hosting & fulfillment · What to buy after payment</summary>'+
      '<div style="padding:12px 4px;font-size:13px;line-height:1.7">'+
       '<p><strong>Current generator:</strong> HTML + CSS + JavaScript. This preview is not an automatic import into WordPress, GoDaddy Airo, or Websites + Marketing.</p>'+
@@ -76,10 +93,10 @@
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
       hostingGuide(demo)+
-      '<section style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(demo.salesScript||'Once the website is reviewed, introduce the owner to the finished site and offer a short walkthrough.')+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
+      '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
-      (isApproved(demo)?'<div class="v6526-link-row"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
-      '<div class="v6526-delivery"><div><h4>Owner-authorized presentation delivery</h4><p>Only send after the business requests or consents to the link. Do not send to suppressed contacts.</p></div><div class="v6526-delivery-actions"><button type="button" class="btn" id="sbcFactoryEmail" '+(currentRole()==='owner'&&isApproved(demo)&&customer.email&&!customer.doNotContact&&!customer.salesSuppressed?'':'disabled')+'>Email Website</button><button type="button" class="btn" id="sbcFactorySms" '+(currentRole()==='owner'&&isApproved(demo)&&customer.phone&&(customer.smsConsent===true||customer.consentToSms===true)&&!customer.smsOptOut&&!customer.doNotCall&&!customer.doNotContact&&!customer.salesSuppressed?'':'disabled')+'>Text Website</button></div></div>'+
+      (isApproved(demo)?'<div class="v6526-link-row sbc-factory-light-panel"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p class="sbc-factory-light-panel sbc-factory-private-note" style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
+      '<div class="v6526-delivery sbc-factory-light-panel"><div><h4>Owner-authorized presentation delivery</h4><p>Only send after the business requests or consents to the link. Do not send to suppressed contacts.</p></div><div class="v6526-delivery-actions"><button type="button" class="btn" id="sbcFactoryEmail" '+(currentRole()==='owner'&&isApproved(demo)&&customer.email&&!customer.doNotContact&&!customer.salesSuppressed?'':'disabled')+'>Email Website</button><button type="button" class="btn" id="sbcFactorySms" '+(currentRole()==='owner'&&isApproved(demo)&&customer.phone&&(customer.smsConsent===true||customer.consentToSms===true)&&!customer.smsOptOut&&!customer.doNotCall&&!customer.doNotContact&&!customer.salesSuppressed?'':'disabled')+'>Text Website</button></div></div>'+
       '<p id="sbcWebsiteFactoryStatus" role="status" style="padding:12px 0">'+esc(message||(isApproved(demo)?'Website ready for a human-led sales presentation.':'Website built and awaiting owner verification.'))+'</p>'+
       '<p style="font-size:12px;color:#67757e">This is a fully navigable sales website. The customer’s final verified photos, branding, services and contact integration are completed during paid fulfillment. No live inquiry data is collected from this pre-sale site.</p></div>';
     if (typeof openModal !== 'function')throw Error('Command Center modal is unavailable.');
@@ -98,7 +115,7 @@
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
     document.getElementById('sbcFactoryBookMeeting')?.addEventListener('click',bookWalkthrough);
     document.getElementById('sbcFactoryCopyLink')?.addEventListener('click',()=>copyText(pageUrl(demo,'home'),'Website link copied.'));
-    document.getElementById('sbcFactoryCopyPitch')?.addEventListener('click',()=>copyText(demo.salesScript||'','Sales opening copied.'));
+    document.getElementById('sbcFactoryCopyPitch')?.addEventListener('click',()=>copyText(scriptForWebsite(demo,customer),'Sales opening copied.'));
     document.getElementById('sbcFactoryEmail')?.addEventListener('click',()=>send('email'));
     document.getElementById('sbcFactorySms')?.addEventListener('click',()=>send('sms'));
   }
