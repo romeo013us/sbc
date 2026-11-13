@@ -34,6 +34,8 @@ const GROUPS=Object.freeze({
  ])
 });
 const digest=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
+// Modern isolated account/profile scripts added to the existing checked-in V66 bundle set.
+const ACCOUNT_SCRIPTS=Object.freeze(['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js']);
 function onlyIIFE(file,source){
  const noComments=source.replace(/^\s*(?:(?:\/\*[\s\S]*?\*\/)|(?:\/\/[^\n]*))\s*/gm,'').trimStart();
  if(!/^\(\s*(?:function\s*\(|\(\s*\)\s*=>)/.test(noComments) ||
@@ -68,7 +70,9 @@ function verify(root=path.resolve(__dirname,'..')){
  for(const dir of ['public','browser_public']){
   const html=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
-  if(tags.length!==92)throw Error('[SBC V66 JS] Expected 92 external script tags, got '+tags.length+' in '+dir);
+  const expectedTags=92+ACCOUNT_SCRIPTS.length;
+  if(tags.length!==expectedTags)throw Error('[SBC V66 JS] Expected '+expectedTags+' external script tags, got '+tags.length+' in '+dir);
+  for(const name of ACCOUNT_SCRIPTS)if(tags.filter(t=>t.split('?')[0]===name).length!==1)throw Error('[SBC V66 JS] Account workspace script not loaded exactly once: '+name);
   for(const value of values){
    const file=path.join(root,dir,value.filename);
    if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==value.content)throw Error('[SBC V66 JS] Missing/stale JS bundle: '+dir+'/'+value.filename);
