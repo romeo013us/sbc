@@ -230,3 +230,35 @@ html.sbc-motion-enabled .sbc-reveal.sbc-in-view{opacity:1;transform:none}
  .sample-gallery-card img,.service-card,.site-voice-button,.button,.nav-cta{transition:none!important;transform:none!important}
  html.sbc-motion-enabled .sbc-reveal{opacity:1!important;transform:none!important;transition:none!important}
 }
+
+
+/* SBC Native Website Experience v2: distinct industry layouts, accessible mobile actions. */
+.sbc-industry-spotlight{padding:76px 0;background:#eef0ec;color:#172b33;border-block:1px solid #d1dcd9}
+.sbc-spotlight-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:50px;align-items:center}
+.sbc-industry-spotlight .kicker{color:#244c5e;margin-bottom:15px}
+.sbc-industry-spotlight h2{font-size:clamp(2rem,4.4vw,4.2rem);line-height:1.08;max-width:700px;letter-spacing:-.045em}
+.sbc-industry-spotlight p{line-height:1.75;max-width:700px}
+.sbc-spotlight-facts{padding:30px;background:#fff;border:1px solid #cfdbda;border-radius:10px;color:#1b333d;box-shadow:0 12px 30px rgba(0,0,0,.06)}
+.sbc-fact-label{font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.1em}
+.sbc-fact-chips{display:flex;flex-wrap:wrap;gap:9px}.sbc-fact-chips span{background:#e3eff0;padding:8px 13px;border-radius:3px;font-weight:750;color:#163543}
+.sbc-fact-note{font-size:13px;color:#405966}.sbc-verified-address{font-weight:750;font-size:13px}
+.sbc-industry-spotlight--trade{background:#e5eeed;border-top:5px solid var(--site-primary)}
+.sbc-industry-spotlight--trade .sbc-spotlight-facts{border-radius:0 30px 0 0;border-left:5px solid var(--site-primary)}
+.sbc-industry-spotlight--professional{background:#f7f4ed;border-block:1px solid #c5bfae}
+.sbc-industry-spotlight--professional h2{font-family:var(--serif);font-weight:500;letter-spacing:-.035em}
+.sbc-industry-spotlight--professional .sbc-spotlight-facts{border-radius:0;border-top:3px solid #806b4f}
+.sbc-industry-spotlight--hospitality{background:#30222c;color:#fff}
+.sbc-industry-spotlight--hospitality .kicker{color:#ffdbbe}
+.sbc-industry-spotlight--hospitality h2{font-family:var(--serif);font-weight:500}
+.sbc-industry-spotlight--hospitality .sbc-spotlight-facts{border-radius:25px 25px 6px 6px;background:#fff6f1;border-color:#f1d6c3}
+.sbc-industry-spotlight--local{background:#edf1f8}
+.sbc-mobile-actionbar{display:none}
+@media(max-width:900px){.sbc-spotlight-grid{grid-template-columns:1fr;gap:20px}.sbc-industry-spotlight{padding:52px 0}}
+@media(max-width:680px){
+ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+ .sbc-mobile-actionbar{position:fixed;bottom:0;left:0;right:0;z-index:95;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px));background:#fffefa;border-top:1px solid #bac7c9;box-shadow:0 -10px 26px rgba(6,24,37,.12)}
+ .sbc-mobile-actionbar a{min-height:42px;display:grid;place-items:center;text-align:center;background:#e8ecec;color:#192e38;font-size:13px;font-weight:800;border-radius:7px;padding:7px}
+ .sbc-mobile-actionbar a:last-child{background:var(--site-ink);color:#fff}
+ .sbc-mobile-actionbar a:focus-visible{outline:3px solid #eb8d35;outline-offset:2px}
+}
+@media(prefers-reduced-motion:reduce){.sbc-mobile-actionbar a{transition:none!important}}
