@@ -175,6 +175,21 @@
     finally{busy=false;}
   }
 
+  function instantSiteBrief(customer){
+    const planner=window.SBC_ACCOUNT_SUCCESS;
+    if(!planner||typeof planner.plan!=='function')return '';
+    const p=planner.plan(customer),b=p.siteBrief;
+    const row=(label,value)=>'<span><strong>'+esc(label)+':</strong> '+esc(value||'Needs confirmation')+'</span>';
+    return '<section class="sbc-factory-light-panel sbc-instant-site-brief" style="padding:16px;border:1px solid #c9d6e0;border-radius:12px;background:#f5f9fd;color:#152e42">'+
+      '<h4 style="margin:0 0 8px">SBC Instant Sites · CRM design brief</h4>'+
+      '<p style="margin:0 0 12px;font-size:13px">Start with the business account you already researched. No retyping the company name or category.</p>'+
+      '<div style="display:grid;gap:7px;font-size:13px">'+row('Business',b.businessName)+row('Industry',b.industry)+row('Location',b.location)+
+      row('Existing website',b.existingWebsite||'Not recorded')+row('Services',b.services||'Not independently verified')+
+      row('Services check',b.servicesVerified?'Researcher marked verified — owner must still approve':'Verify services with the business owner')+'</div>'+
+      '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Customer launch requirements</summary><ul style="font-size:13px;line-height:1.6">'+
+      p.launchChecks.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></details>'+
+      '<p style="font-size:12px;margin-bottom:0">This creates a private site concept, not a published customer website. Domain, hosting, SSL, live forms, approved content and payment are separate fulfillment steps.</p></section>';
+  }
   async function buildWebsite(customerId,defaultTier='essentials',hint){
     const customer=salesCustomer(customerId,hint);
     if(!customer)return notify('CRM customer record not found. Reload Command Center.');
@@ -182,11 +197,11 @@
       return notify('Website production is blocked during recovery/read-only mode.');
     const tier=defaultTier==='starter'?'starter':'essentials';
     if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
-    openModal('SBC Website Production',
+    openModal('SBC Instant Sites · Website Production',
       '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+
+      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
       '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
+      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
     document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
       if(busy)return;busy=true;this.disabled=true;
       const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
