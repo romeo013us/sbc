@@ -76,13 +76,13 @@
    outcomes+'<p style="font-size:12px;color:#586679;line-height:1.6;margin:20px 0 5px"><strong>AI voice outbound:</strong> disabled. Separate written consent, do-not-call screening, disclosure requirements and legal review are mandatory before considering any autonomous AI calling.</p></div>';
  }
  function panel(){
-  return '<style>@media(max-width:720px){#sbcWebcallLayout{grid-template-columns:1fr!important}}</style><div style="max-width:1240px"><div style="display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap">'+
+  return '<style>@media(max-width:720px){#sbcWebcallLayout{grid-template-columns:1fr!important}}</style><div class="sbc-ops-surface sbc-call-surface" style="max-width:1240px"><div style="display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap">'+
    '<div><p style="font-size:11px;letter-spacing:.12em;font-weight:850;color:#15836e;margin:0">SUCCESSFUL BY CHOICE · VERIFIED LEAD → ACTUAL WEBSITE → SALE</p>'+
    '<h2 style="font-size:28px;margin:5px 0">SBC Website Call Desk</h2><p style="font-size:13px;color:#52667a">Lorna researches and imports. SBC builds a real website. The assigned human caller books the presentation.</p></div>'+
    '<button type="button" class="btn" id="sbcWebcallRefresh">Refresh</button></div>'+leader()+
    '<div style="display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:16px;align-items:start" id="sbcWebcallLayout">'+
    '<div style="max-height:620px;overflow:auto;padding:4px" aria-label="Assigned website leads">'+leadCards()+'</div>'+
-   '<div style="border:1px solid #e2e8f0;border-radius:14px;padding:18px;min-width:0">'+detail()+'</div></div>'+
+   '<div class="sbc-ops-detail" style="border:1px solid #e2e8f0;border-radius:14px;padding:18px;min-width:0">'+detail()+'</div></div>'+
    '<p id="sbcCallDeskNotice" role="status" style="margin:14px 0;font-size:13px;color:#1b6e58"></p>'+
    '<p style="font-size:11px;color:#748092;margin:0">Lead-level controls are enforced by the server. No contact is initiated when viewing a lead, copying a script, or recording a result.</p></div>';
  }
