@@ -165,6 +165,28 @@ function renderCallTarget(){
  selector.value=selectedLead?.canCall?selected:(nextEligible?.id||'');
  renderCallSelection();
 }
+async function loadAccountHistory(c,host){
+ const customerId=String(c.id);
+ const old=host.querySelector('[data-account-history]');
+ if(old)old.remove();
+ const panel=el('section',undefined,'sbc-caller-account-history');
+ panel.dataset.accountHistory=customerId;
+ panel.append(el('h3','Account interaction history'));
+ const content=el('div','Loading notes recorded by the SBC team…','muted');
+ panel.append(content);host.append(panel);
+ try{
+  const response=await api('/api/v6606/crm/account-portfolios/'+encodeURIComponent(customerId)+'/history');
+  if(String($('call-target').value)!==customerId||!host.contains(panel))return;
+  if(response.id!==customerId||!Array.isArray(response.notes))throw Error('Unexpected account history response.');
+  content.replaceChildren();
+  if(!response.notes.length){content.append(el('p','No account interaction notes yet. Log your first service review below.','muted'));return;}
+  for(const note of response.notes){
+   const row=el('article',undefined,'sbc-caller-account-history-row');
+   row.append(el('strong',note.authorName||'SBC team'),el('small',note.createdAt||'Date not recorded'),el('p',note.note||''));
+   content.append(row);
+  }
+ }catch(e){if(host.contains(panel))content.textContent='Account history unavailable: '+error(e)+'. No missing notes are assumed.';}
+}
 function renderCallerAccount(c){
  var host=$('lead-detail');if(!host)return;
  host.replaceChildren();if(!c){host.textContent='Select an assigned business to view its profile.';return;}
@@ -237,10 +259,12 @@ function renderCallerAccount(c){
    if(result?.durable!==true||String(result?.id)!==String(c.id))throw Error('SBC did not verify the account note.');
    serviceText.value='';
    serviceStatus.textContent='Saved to the permanent account record. No customer contact was sent.';
+   loadAccountHistory(c,host).catch(err=>console.warn('SBC account history unavailable',error(err)));
   }catch(err){serviceStatus.textContent='Account note not saved: '+error(err)+'. Verify assignment and try again.';}
   finally{serviceButton.disabled=false;}
  });
  noteSection.append(serviceForm);host.append(noteSection);
+ loadAccountHistory(c,host).catch(err=>console.warn('SBC account history unavailable',error(err)));
  host.append(el('p','Use the call and report controls below to log verified outcomes. Only the SBC owner can edit the master business record or approve outreach.','muted'));
 }
 function renderCallSelection(){
