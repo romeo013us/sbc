@@ -95,3 +95,22 @@ test('compiler refuses scripts with unsafe top-level assumptions or external ass
   assert.throws(()=>compile(temp,Object.keys(GROUPS)[0]),/IIFE|module|unsafe/i);
  }finally{fs.rmSync(temp,{recursive:true,force:true})}
 });
+
+test('revenue, lead, fulfillment, telephony and navigation-critical controllers remain isolated',()=>{
+ const unsafe=['v9.js','v10.js','v40-fulfillment.js','v41-operations.js',
+  'sbc-manual-dialer-v6696.js','sbc-website-production-v1.js',
+  'sbc-v6675-payment-readback.js','sbc-critical-navigation-v56-13-5.js'];
+ const bundled=Object.values(GROUPS).flat();
+ const page=read('public/index.html');
+ for(const file of unsafe){
+  assert(!bundled.includes(file),'High-risk controller cannot be automatically bundled: '+file);
+  assert(page.includes('src="/'+file+'?'),'Independent startup contract remains: '+file);
+ }
+ assert.deepEqual(GROUPS['legacy-growth-controls'],[
+  'v37-kim-automation.js','v38-kim-growth.js','v391-commercial-readiness.js'
+ ]);
+ assert.deepEqual(GROUPS['legacy-enterprise-controls'],[
+  'v43-edge-suite.js','v43-4-resilience-brand.js','v43-7-sales-velocity.js',
+  'kim-deep-ops.js','kim-founder-fortress.js'
+ ]);
+});
