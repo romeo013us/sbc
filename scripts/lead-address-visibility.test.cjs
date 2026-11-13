@@ -11,6 +11,7 @@ const editor = read('public/sbc-lead-edit-v6606.js');
 const route = read('routes/crm-edits-v6606.js');
 const form = read('public/lead-research.html');
 const csv = read('public/lead-research-import-core.js');
+const server = read('server.js');
 
 assert.match(owner, /z\.address=first\(z\.address/,'canonical CRM row must retain the saved business address');
 assert.match(owner, /<th>Address<\/th>/,'owner lead table must label the address column');
@@ -22,6 +23,7 @@ assert.match(researcher, /Business address','address'/,'researcher correction mu
 assert.match(researcher, /row\.record\.address/,'researcher CSV preview must show the imported address');
 assert.match(form, /name="address"/,'researcher creation form must preserve the address field');
 assert.match(csv, /address:\[/,'CSV import must map address headers');
+assert.match(server, /'city','zip','address','notes'/,'Lorna address corrections must actually persist in the versioned verification save path');
 assert.match(workspace, /<th>Address<\/th>/,'read-only CRM lead workspace must show addresses');
 assert.match(workspace, /r\.address/,'read-only CRM workspace filter must search addresses');
 assert.match(editor, /name="address"/,'durable CRM editor must expose the editable address');
