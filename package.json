@@ -102,7 +102,7 @@
     "verify:v66:artifact": "node scripts/v66-deployment-artifact-gate.cjs && node --check server.js && node --check public/app.js && node --check sbc-godaddy-flat-entrypoint.cjs",
     "verify:v66:ui": "node scripts/v66-safe-js-bundles.cjs --check && node scripts/v66-owner-ui-css-bundle.cjs --check && node --test test/v66-owner-ui-css-bundle.test.cjs test/sbc-website-production-shortcuts.test.cjs test/sbc-website-production-contrast-script.test.cjs && node --test test/v66-safe-js-bundles.test.cjs",
     "test:v66:preview:policy": "node --test test/v66-preview-browser-acceptance.test.cjs && node scripts/v66-preview-browser-acceptance.cjs --self-test",
-    "test:lead-accounts": "node scripts/lead-address-visibility.test.cjs && node scripts/unified-lead-profile.test.cjs && node scripts/command-center-focus.test.cjs && node scripts/caller-account-profile.test.cjs && node scripts/v6607-lead-revision-test.js && node scripts/v6606-crm-edits-test.js && node scripts/sbc-account-success.test.cjs && node scripts/lorna-address-notice.test.cjs"
+    "test:lead-accounts": "node scripts/lead-address-visibility.test.cjs && node scripts/unified-lead-profile.test.cjs && node scripts/command-center-focus.test.cjs && node scripts/caller-account-profile.test.cjs && node scripts/v6607-lead-revision-test.js && node scripts/v6606-crm-edits-test.js && node scripts/sbc-account-success.test.cjs && node scripts/lorna-address-notice.test.cjs && node scripts/sbc-instant-sites-quality.test.cjs"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
