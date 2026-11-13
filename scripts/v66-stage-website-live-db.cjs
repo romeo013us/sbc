@@ -13,6 +13,18 @@ const MODULES=[
 function patchServer(input){
  if(input.includes(MARK))return input;
  let result=input;
+ // Existing source may contain the preview, call-desk and sales-board routes
+ // but not the appointment registration. Restore that exact missing route.
+ const appointmentPrefix="require('./enterprise/sbc-website-appointments.cjs').register(app,{";
+ if(!result.includes(appointmentPrefix)){
+   assert(!result.includes("app.post('/api/website-production/appointments'"),'Duplicate appointment route conflict');
+   const productionPrefix="require('./enterprise/sbc-website-production-routes.cjs').register(app,{";
+   const productionRows=result.split('\n').filter(s=>s.includes(productionPrefix));
+   assert.equal(productionRows.length,1,'Must find exactly one website production route');
+   const row=productionRows[0];
+   const appointmentRegistration="require('./enterprise/sbc-website-appointments.cjs').register(app,{auth,requireTenant:requireRequestTenant,db,getStore:megaData,saveData,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady});";
+   result=result.replace(row,()=>row+'\n'+appointmentRegistration);
+ }
  for(const name of MODULES){
    const prefix="require('./enterprise/"+name+".cjs').register(app,{";
    const candidates=result.split('\n').filter(s=>s.includes(prefix));
