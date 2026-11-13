@@ -99,7 +99,7 @@ async function runBrowser(){
     await page.locator('#loginPassword').fill(password);
     await page.locator('#loginForm button').click();
     await page.waitForFunction(()=>!!document.getElementById('app')&&
-      !document.getElementById('app').classList.contains('hidden'),{timeout:30000});
+      !document.getElementById('app').classList.contains('hidden'),null,{timeout:30000});
     if(metrics.authPosts!==1)throw Error('login duplicate or not requested');
     if(new URL(page.url()).origin!==target.origin)throw Error('unexpected redirect');
    });
@@ -123,7 +123,7 @@ async function runBrowser(){
      if(!loaded)throw Error('customer 360 controller missing');
     });
     await check('manual-dialer-controller',async()=>{
-     await page.waitForFunction(()=>Boolean(window.SBCManualDialer),{timeout:8000});
+     await page.waitForFunction(()=>Boolean(window.SBCManualDialer),null,{timeout:8000});
     });
     await check('quick-checkout-modal-readonly',async()=>{
      const button=page.locator('#sbc-quick-checkout-nav-link');
