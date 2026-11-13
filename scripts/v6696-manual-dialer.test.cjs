@@ -9,7 +9,10 @@ const js=read('public/sbc-manual-dialer-v6696.js'),mirrorJs=read('browser_public
 const css=read('public/sbc-manual-dialer-v6696.css'),mirrorCss=read('browser_public/sbc-manual-dialer-v6696.css');
 const app=read('public/app.js'),mirrorApp=read('browser_public/app.js');
 assert.equal(html,mirrorHtml);assert.equal(js,mirrorJs);assert.equal(css,mirrorCss);assert.equal(app,mirrorApp);
-assert(html.includes('/sbc-manual-dialer-v6696.css?v=1')&&html.includes('/sbc-manual-dialer-v6696.js?v=1'));
+assert(html.includes('/sbc-manual-dialer-v6696.js?v=1'),'active manual dialer JS must remain');
+const compiled=require('./v66-owner-ui-css-bundle.cjs').compile(ROOT);
+assert(html.includes('/'+compiled.filename),'compiled owner UI stylesheet must be loaded');
+assert(compiled.content.includes(css),'original manual dialer CSS bytes must appear in owner UI bundle');
 assert(app.includes("if(typeof window!=='undefined'&&window.SBCManualDialer?.isBusy())"),'lead call must refuse simultaneous manual call');
 assert.equal(front.cleanPhone('305 555 0188'),'+13055550188');
 assert.equal(front.cleanPhone('1-305-555-0188'),'+13055550188');
