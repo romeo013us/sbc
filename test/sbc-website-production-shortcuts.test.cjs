@@ -10,7 +10,7 @@ test('owner Command Center gives Website Production prominent primary navigation
   const html=read(p);
   assert.match(html,/id="sbc-website-production-nav"/);
   assert.match(html,/sbc-website-spotlight-nav owner-only/);
-  assert.match(html,/SBC_WEBSITE_CALL_DESK\.open/);
+  assert.match(html,/SBC_WEBSITE_CALL_DESK\?\.open/);
   assert(html.indexOf('id="sbc-website-production-nav"')<html.indexOf('id="sbcAdvancedNav"'));
   assert.match(html,/sbc-website-revenue-shortcuts-v1\.css/);
  }
