@@ -79,7 +79,9 @@ function define(demo,opts={}) {
  const business=text(customer.businessName||customer.contactName||demo?.businessName||'Your Business',100);
  const industry=text(demo?.industry||customer.industry||'Local Business',100);
  const baseStyle=palettes.find(x=>x.match.test(industry))||generic;
- const designIndex=stableDesignIndex(business);
+ const edits=demo?.siteEdits&&typeof demo.siteEdits==='object'&&!Array.isArray(demo.siteEdits)?demo.siteEdits:{};
+ const choice=Number.isInteger(edits.themeVariant)&&edits.themeVariant>=1&&edits.themeVariant<=3?edits.themeVariant-1:null;
+ const designIndex=choice===null?stableDesignIndex(business):choice;
  const style={...baseStyle,...artDirections[baseStyle.category][designIndex]};
  const designVariant=baseStyle.category+'-'+(designIndex+1);
  const tier=['starter','essentials'].includes(String(demo?.offerTier))?demo.offerTier:'essentials';
@@ -91,11 +93,11 @@ function define(demo,opts={}) {
  const rawCity=text(customer.city||'',70),city=rawCity?esc(rawCity):'your community';
  const facts=EXPERIENCE.verifiedFacts(demo);
  const layout=EXPERIENCE.archetype(style.category);
- const names=facts?.services.length?facts.services:(serviceNames[style.category]||serviceNames.local);
+ const names=Array.isArray(edits.services)&&edits.services.length?edits.services:(facts?.services.length?facts.services:(serviceNames[style.category]||serviceNames.local));
  const questions=faqs[style.category]||faqs.local;
  const defaultPhotos=stockPhotos[style.category]||stockPhotos.local;
  const images=defaultPhotos.slice(designIndex).concat(defaultPhotos.slice(0,designIndex));
- const model={business,title,industry,safeIndustry,style,designVariant,tier,prefix,city,rawCity,layout,facts,names,questions,approved,slug,images,staticMode:opts.staticMode===true};
+ const model={business,title,industry,safeIndustry,style,designVariant,edits,tier,prefix,city,rawCity,layout,facts,names,questions,approved,slug,images,staticMode:opts.staticMode===true};
  model.publicationReady=EXPERIENCE.publicReleaseReady(model,opts);
  return model;
 }
@@ -158,7 +160,7 @@ function services(m,full=false){
  return '<section class="section section-cream" id="services"><div class="container">'+sectionHeading('01 / WHAT WE DO','Services made easy to explore','Every detail has a purpose: help customers understand the offer and take action.')+'<div class="service-grid">'+cards+'</div></div></section>';
 }
 function why(m){
- return '<section class="section contrast" id="about"><div class="container split"><div><p class="kicker light">02 / A BETTER FIRST IMPRESSION</p><h2 class="display">Built around <em>your</em> business.</h2><p class="contrast-copy">A website should make the right introduction before someone ever picks up the phone. This design creates a polished, clear experience from the first scroll to the final step.</p>'+
+ return '<section class="section contrast" id="about"><div class="container split"><div><p class="kicker light">02 / A BETTER FIRST IMPRESSION</p><h2 class="display">Built around <em>your</em> business.</h2><p class="contrast-copy">'+esc(m.edits.about||'A website should make the right introduction before someone ever picks up the phone. This design creates a polished, clear experience from the first scroll to the final step.')+'</p>'+
  '<a class="button button-outline" href="'+esc(anchor(m,'about',m.tier==='starter'?'about':''))+'">Get to know us <span aria-hidden="true">↗</span></a></div>'+
  '<div class="value-stack"><div class="value-item"><strong>01</strong><div><h3>Designed for real visitors</h3><p>Easy navigation, readable content, and mobile-first layouts.</p></div></div>'+
  '<div class="value-item"><strong>02</strong><div><h3>Clear from the first click</h3><p>Highlights, services, and next steps that are easy to find.</p></div></div>'+
@@ -178,10 +180,10 @@ function callout(m){
  return '<section class="cta-section" id="contact"><div class="container cta-inner"><p class="kicker light">LET’S MAKE THIS YOURS</p><h2>Make a great first<br><em>impression.</em></h2><p>The structure and design are ready. Final contact details, service details, and approved business information are completed before launch.</p><a class="button button-light" href="'+esc(anchor(m,'contact',m.tier==='starter'?'contact':''))+'">Contact information <span>↗</span></a></div></section>';
 }
 function home(m){
- return '<main id="main"><section class="hero"><div class="container hero-grid"><div class="hero-copy"><p class="kicker">'+esc(m.style.label)+' / DIGITAL EXPERIENCE</p><h1>'+m.title+'<span class="hero-period">.</span></h1><p class="hero-lede">'+esc(m.style.hero.charAt(0).toUpperCase()+m.style.hero.slice(1))+'.</p><p class="hero-desc">'+esc(EXPERIENCE.heroDescription(m))+'</p>'+
+ return '<main id="main"><section class="hero"><div class="container hero-grid"><div class="hero-copy"><p class="kicker">'+esc(m.style.label)+' / DIGITAL EXPERIENCE</p><h1>'+esc(m.edits.headline||m.business)+'<span class="hero-period">.</span></h1><p class="hero-lede">'+esc(m.style.hero.charAt(0).toUpperCase()+m.style.hero.slice(1))+'.</p><p class="hero-desc">'+esc(m.edits.subheadline||EXPERIENCE.heroDescription(m))+'</p>'+
  '<div class="hero-buttons"><a class="button button-main" href="'+esc(anchor(m,'services',m.tier==='starter'?'services':''))+'">Explore services <span>↗</span></a><a class="button button-ghost" href="'+esc(anchor(m,'contact',m.tier==='starter'?'contact':''))+'">Get in touch</a></div>'+voiceAction(m)+'<div class="hero-caption"><span>RESPONSIVE</span><i></i><span>CLEAR</span><i></i><span>CRAFTED WITH CARE</span></div></div>'+heroVisual(m)+'</div></section>'+
  '<div class="marquee" aria-hidden="true"><div class="container marquee-inner"><span>DESIGNED FOR THE WAY PEOPLE BROWSE</span><span>✦</span><span>BUILT TO MAKE A LASTING IMPRESSION</span><span>✦</span><span>MADE FOR YOUR NEXT CHAPTER</span></div></div>'+
- EXPERIENCE.industryPanel(m)+services(m)+visualGallery(m)+why(m)+videoExperience(m)+how(m)+faqsBlock(m)+callout(m)+'</main>';
+ EXPERIENCE.industryPanel(m)+services(m)+(m.edits.showGallery===false?'':visualGallery(m))+why(m)+(m.edits.showVideo===false?'':videoExperience(m))+how(m)+(m.edits.showFaq===false?'':faqsBlock(m))+callout(m)+'</main>';
 }
 function servicesPage(m){
  return '<main id="main"><section class="interior-hero"><div class="container"><p class="kicker">'+esc(m.style.label)+' / SERVICES</p><h1>What we <em>offer.</em></h1><p>Explore the services and experiences this business could present online. Final descriptions are confirmed with the owner before launch.</p>'+interiorVisual(m)+'</div></section>'+services(m,true)+visualGallery(m)+how(m)+callout(m)+'</main>';
