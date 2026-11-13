@@ -62,7 +62,7 @@
     if(!isApproved(demo))return '';
     return '<section class="sbc-website-walkthrough sbc-factory-light-panel" style="padding:22px;border:1px solid #b7c5d5;border-radius:12px;background:#f5f8fe;margin:22px 0">'+
       '<h4 style="margin-top:0">Book a 10-minute website walkthrough</h4><p style="font-size:13px">Only create the appointment after the business owner agrees to meet. No texts, emails, or calendar invitations will be sent automatically.</p>'+
-      '<label style="display:block;margin:12px 0">Confirmed meeting date and time (your local time) <input type="datetime-local" id="sbcFactoryMeetingTime" style="width:100%;padding:10px;margin-top:6px"></label>'+
+      '<label class="sbc-factory-meeting-label" style="display:block;margin:12px 0">Confirmed meeting date and time (your local time) <input type="datetime-local" id="sbcFactoryMeetingTime" style="width:100%;padding:10px;margin-top:6px"></label>'+
       '<label style="display:block;margin:12px 0"><input type="checkbox" id="sbcFactoryMeetingConfirmed"> The prospect explicitly agreed to this date and time.</label>'+
       '<button type="button" class="btn primary" id="sbcFactoryBookMeeting">Book Walkthrough in Command Center</button></section>';
   }
