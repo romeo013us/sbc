@@ -1,0 +1,59 @@
+name: SBC V66 GoDaddy Preview Browser Acceptance (authenticated, read-only)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbc-preview-browser-acceptance
+  cancel-in-progress: false
+
+jobs:
+  preview-owner-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tested source
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source-only read-only policy and selector regression checks
+        run: |
+          node --test test/v66-preview-browser-acceptance.test.cjs
+          node scripts/v66-preview-browser-acceptance.cjs --self-test
+      - name: Require configured GoDaddy Preview credentials and exact approved hostname
+        env:
+          SBC_PREVIEW_URL: ${{ secrets.SBC_PREVIEW_URL }}
+          SBC_PREVIEW_ALLOWED_HOST: ${{ vars.SBC_PREVIEW_ALLOWED_HOST }}
+          SBC_PREVIEW_OWNER_USERNAME: ${{ secrets.SBC_PREVIEW_OWNER_USERNAME }}
+          SBC_PREVIEW_OWNER_PASSWORD: ${{ secrets.SBC_PREVIEW_OWNER_PASSWORD }}
+        run: |
+          if [ -z "$SBC_PREVIEW_URL" ] || [ -z "$SBC_PREVIEW_ALLOWED_HOST" ] || [ -z "$SBC_PREVIEW_OWNER_USERNAME" ] || [ -z "$SBC_PREVIEW_OWNER_PASSWORD" ]; then
+            echo "::error::Configure Preview-only SBC_PREVIEW_URL, SBC_PREVIEW_ALLOWED_HOST, SBC_PREVIEW_OWNER_USERNAME and SBC_PREVIEW_OWNER_PASSWORD before running."
+            exit 1
+          fi
+          node -e "const {validatePreviewTarget}=require('./scripts/v66-preview-browser-acceptance.cjs');validatePreviewTarget(process.env.SBC_PREVIEW_URL,process.env.SBC_PREVIEW_ALLOWED_HOST);console.log('Preview host approved; no credentials printed')"
+      - name: Install isolated Playwright Chromium (only when manually triggered)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sbc-preview-browser" --no-save --no-package-lock --ignore-scripts playwright@1.55.0
+          "$RUNNER_TEMP/sbc-preview-browser/node_modules/.bin/playwright" install --with-deps chromium
+          echo "NODE_PATH=$RUNNER_TEMP/sbc-preview-browser/node_modules" >> "$GITHUB_ENV"
+      - name: Inspect authenticated Preview owner UI without changing customer state
+        env:
+          SBC_PREVIEW_URL: ${{ secrets.SBC_PREVIEW_URL }}
+          SBC_PREVIEW_ALLOWED_HOST: ${{ vars.SBC_PREVIEW_ALLOWED_HOST }}
+          SBC_PREVIEW_OWNER_USERNAME: ${{ secrets.SBC_PREVIEW_OWNER_USERNAME }}
+          SBC_PREVIEW_OWNER_PASSWORD: ${{ secrets.SBC_PREVIEW_OWNER_PASSWORD }}
+          SBC_PREVIEW_READ_ONLY_APPROVED: 'YES'
+        run: node scripts/v66-preview-browser-acceptance.cjs --run
+      - name: Upload sanitized metrics only (never screenshots or private data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-v66-preview-owner-metrics-only
+          path: sbc-preview-browser-evidence.json
+          if-no-files-found: warn
+          retention-days: 7
