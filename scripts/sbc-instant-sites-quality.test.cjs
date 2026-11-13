@@ -33,7 +33,8 @@ const approved=audit({status:'Approved',verifiedBusinessDetails:{verified:true,s
 assert.equal(approved.readyToPublish,false,'proposal approval and a couple verified facts are not hosting/payment/form readiness');
 assert(approved.checks.some(c=>c.state==='not_measured'),'real performance measurements still required');
 const generator=read('public/sbc-website-production-v1.js');
-assert.match(generator,/SBC_ACCOUNT_SUCCESS\.siteQuality/,'quality standard should be shown in website-production interface');
+assert.match(generator,/SBC_ACCOUNT_SUCCESS/,'quality system must use the shared account module');
+assert.match(generator,/engine\.siteQuality\(/,'quality standard must be called within website-production interface');
 assert.match(generator,/Site launch quality gate/);
 assert.equal(generator,read('browser_public/sbc-website-production-v1.js'));
 assert.equal(workerSource,read('browser_public/sbc-account-success-v1.js'));
