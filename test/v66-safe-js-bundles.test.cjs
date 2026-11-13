@@ -11,11 +11,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const htmlScripts=html=>[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
 const jsTag=name=>'<script src="/'+name+'?v=66.0.13-profile-stability"></script>';
 
-test('index replaces 11 old synchronous script tags with 2 version-hashed bundles and keeps Office Box configuration position',()=>{
+test('index replaces 19 synchronous controllers with 4 version-hashed bundles and keeps Office Box configuration position',()=>{
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const tags=htmlScripts(page);
-  assert.equal(tags.length,98,'107 => 98 external JS requests');
+  assert.equal(tags.length,92,'107 => 98 => 92 external JS requests');
   const bundles=Object.keys(GROUPS).map(group=>compile(root,group).filename);
   for(const file of bundles)assert(tags.some(t=>t.startsWith('/'+file)),file+' must load');
   for(const files of Object.values(GROUPS)){
@@ -38,8 +38,8 @@ test('bundles preserve exact source ordering, source integrity and browser mirro
   for(const file of GROUPS[group])assert(content.includes(read('public/'+file).trimEnd()));
  }
  const result=verify(root);
- assert.equal(result.scriptRequestsSaved,9);
- assert.equal(result.originalFiles,11);
+ assert.equal(result.scriptRequestsSaved,15);
+ assert.equal(result.originalFiles,19);
 });
 
 test('real scripts expose identical browser globals and event registrations when loaded separately or bundled',()=>{
@@ -94,4 +94,23 @@ test('compiler refuses scripts with unsafe top-level assumptions or external ass
   fs.writeFileSync(path.join(temp,'public',file),'let dangerousTopLevel=1;');
   assert.throws(()=>compile(temp,Object.keys(GROUPS)[0]),/IIFE|module|unsafe/i);
  }finally{fs.rmSync(temp,{recursive:true,force:true})}
+});
+
+test('revenue, lead, fulfillment, telephony and navigation-critical controllers remain isolated',()=>{
+ const unsafe=['v9.js','v10.js','v40-fulfillment.js','v41-operations.js',
+  'sbc-manual-dialer-v6696.js','sbc-website-production-v1.js',
+  'sbc-v6675-payment-readback.js','sbc-critical-navigation-v56-13-5.js'];
+ const bundled=Object.values(GROUPS).flat();
+ const page=read('public/index.html');
+ for(const file of unsafe){
+  assert(!bundled.includes(file),'High-risk controller cannot be automatically bundled: '+file);
+  assert(page.includes('src="/'+file+'?'),'Independent startup contract remains: '+file);
+ }
+ assert.deepEqual(GROUPS['legacy-growth-controls'],[
+  'v37-kim-automation.js','v38-kim-growth.js','v391-commercial-readiness.js'
+ ]);
+ assert.deepEqual(GROUPS['legacy-enterprise-controls'],[
+  'v43-edge-suite.js','v43-4-resilience-brand.js','v43-7-sales-velocity.js',
+  'kim-deep-ops.js','kim-founder-fortress.js'
+ ]);
 });

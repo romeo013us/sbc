@@ -25,8 +25,8 @@ assert.match(index,/\/app\.js\?v=66\.0\.91-voice-code/);
 assert.match(index,/\/sbc-browser-view-repair-v6601\.js\?v=66\.0\.13-profile-stability/);
 assert.match(index,/SBC_V6613_PROFILE_STABILITY/);
 const legacyVersioned=(index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length;
-assert.ok(legacyVersioned>=70,'remaining unbundled scripts must still have scoped versioned URLs');
-for(const group of ['growth-rail','experience-rail']){
+assert.ok(legacyVersioned>=60,'remaining unbundled scripts must still have scoped versioned URLs');
+for(const group of ['growth-rail','experience-rail','legacy-growth-controls','legacy-enterprise-controls']){
  const compiled=require('./v66-safe-js-bundles.cjs').compile(path.resolve(__dirname,'..'),group);
  assert(index.includes('/'+compiled.filename),'content-addressed JS bundle replaces old cache-busted requests');
 }
