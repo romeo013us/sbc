@@ -7004,7 +7004,7 @@ app.post('/api/v9/lead-verification/:id',auth,async(req,res)=>{
   /* SBC_WORKFORCE_CRM_TEXT_GATE */
   const badFields=require('./enterprise/crm-text-integrity-v66140.cjs').invalidFields(b);
   if(badFields.length)return res.status(400).json({ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',fields:badFields,error:'Unreadable lead text in '+badFields.join(', ')+'. Correct the fields and save again.'});
-  for(const k of ['businessName','contactName','phone','email','website','industry','city','zip','notes','source','verificationSource']) if(b[k]!==undefined)c[k]=String(b[k]||'');
+  for(const k of ['businessName','contactName','phone','email','website','industry','city','zip','address','notes','source','verificationSource']) if(b[k]!==undefined)c[k]=String(b[k]||'');
   if(researcher&&b.assignedTo!==undefined)return res.status(403).json({error:'Researchers may verify and submit leads, but only owner/manager may reassign them.'});
   if(['owner','manager'].includes(req.user.role)&&b.assignedTo!==undefined){const uid=String(b.assignedTo||'');const u=uid?(db.users||[]).find(x=>x.id===uid&&x.active!==false&&['lead_researcher','caller'].includes(x.role)):null;if(uid&&!u)return res.status(400).json({error:'Select an active lead researcher or sales manager/caller.'});c.assignedTo=uid;c.assignedToName=u?.name||'';}
   if(b.verificationStatus!==undefined)c.verificationStatus=['Needs Verification','Verified','Owner Review','Sales Ready'].includes(String(b.verificationStatus))?String(b.verificationStatus):'Needs Verification';
