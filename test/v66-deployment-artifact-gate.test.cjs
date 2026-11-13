@@ -17,7 +17,7 @@ function fixture(){
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v66-archive-gate-'));
  const files={};
  for(const name of [...required,...Array.from({length:100},(_,i)=>'test/synthetic-'+String(i).padStart(3,'0')+'.txt')]){
-  const content=name==='package.json'?JSON.stringify({main:'sbc-godaddy-flat-entrypoint.cjs'}):'Safe synthetic V66 fixture: '+name;
+  const content=name==='package.json'?JSON.stringify({main:'sbc-godaddy-flat-entrypoint.cjs',scripts:{start:'node sbc-godaddy-flat-entrypoint.cjs'}}):'Safe synthetic V66 fixture: '+name;
   const full=path.join(root,name);
   fs.mkdirSync(path.dirname(full),{recursive:true});
   fs.writeFileSync(full,content);
