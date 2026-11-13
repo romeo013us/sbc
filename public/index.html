@@ -105,24 +105,27 @@ body{overflow-x:hidden}
 <link rel="stylesheet" href="/sbc-manual-dialer-v6696.css?v=1" />
 <link rel="stylesheet" href="/sbc-owner-employee-switch-v6697.css?v=1" />
 <link rel="stylesheet" href="/sbc-executive-ui-v1.css?v=1" data-sbc-executive-ui="global" />
+<link rel="stylesheet" href="/sbc-website-revenue-shortcuts-v1.css?v=1" data-sbc-website-spotlight="true" />
 </head><body>
 <div id="toast" class="toast"></div>
 <div id="login" class="login-screen"><div class="login-card"><img class="brand-logo login-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div class="eyebrow">SUCCESSFUL BY CHOICE</div><h1>Business Command Center</h1><p>Private operating system for SBC sales, customers, quotes, payments, print orders and renewals.</p><form id="loginForm"><label>Username<input id="loginUsername" autocomplete="username" value="owner" required placeholder="owner"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your SBC password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="form-error"></div></form></div></div>
-<script src="/sbc-login-controller-v6623.js?v=66.0.23-login-access"></script><div id="app" class="app hidden v56-app"><aside class="sidebar"><div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div><strong>Successful By Choice</strong><span>Business Command Center</span></div></div><nav class="v56-primary-nav">
+<script src="/sbc-login-controller-v6623.js?v=66.0.23-login-access"></script><div id="app" class="app hidden v56-app"><aside class="sidebar"><div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice"><div><strong>Successful By Choice</strong><span>Business Command Center</span></div></div><nav class="v56-primary-nav sbc-clean-nav">
 <button data-view="dashboard" class="nav-item v56-nav-item active"><span>⌂</span> Home</button>
+<button type="button" id="sbc-website-production-nav" class="sbc-website-spotlight-nav owner-only" aria-label="Open SBC Website Production and Website Call Desk" onclick="window.SBC_WEBSITE_CALL_DESK?.open?.()"><span class="sbc-spotlight-icon" aria-hidden="true">🌐</span><span class="sbc-spotlight-copy"><strong>Website Production</strong><small>Build · Present · Close</small></span><span class="sbc-spotlight-arrow" aria-hidden="true">↗</span></button>
+<details id="sbcNavSales" class="sbc-nav-group"><summary class="sbc-nav-group-title">💰 Sales & Customers<span class="sbc-nav-caret" aria-hidden="true">⌄</span></summary><div class="sbc-nav-group-items"><button data-view="crm" class="nav-item v56-nav-item"><span>💰</span> Sales</button>
 <button type="button" id="sbc-quick-checkout-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start customer Quick Checkout"><span>⚡</span> Quick Checkout</button>
-<button type="button" id="sbc-owner-qa-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start owner-only internal $1 Square test"><span>🧪</span> $1 Test Checkout</button>
-<button data-view="notifications" class="nav-item v56-nav-item owner-only"><span>🔔</span> Notifications</button>
-<button data-view="crm" class="nav-item v56-nav-item"><span>💰</span> Sales</button>
 <button type="button" id="sbc-nextday-nav-link" class="nav-item v56-nav-item owner-only"><span>☎</span> Plan Next Week</button>
-<button data-view="revenue90" class="nav-item v56-nav-item"><span>🎯</span> 90-Day Revenue</button>
-<button data-view="marketing" class="nav-item v56-nav-item"><span>📣</span> Growth</button>
-<button data-view="orders" class="nav-item v56-nav-item"><span>📦</span> Delivery</button>
-<button data-view="workforce" class="nav-item v56-nav-item owner-only"><span>👥</span> Team</button>
+<button data-view="revenue90" class="nav-item v56-nav-item"><span>🎯</span> 90-Day Revenue</button></div></details>
+<details id="sbcNavGrowth" class="sbc-nav-group"><summary class="sbc-nav-group-title">📣 Growth & Intelligence<span class="sbc-nav-caret" aria-hidden="true">⌄</span></summary><div class="sbc-nav-group-items"><button data-view="marketing" class="nav-item v56-nav-item"><span>📣</span> Growth</button>
 <button data-view="kimcenter" class="nav-item v56-nav-item owner-only"><span>🤖</span> Intelligence</button>
 <button data-view="signature" class="nav-item v56-nav-item owner-only"><span>⚡</span> Money Radar</button>
-<button data-view="monetization" class="nav-item v56-nav-item owner-only"><span>💵</span> Monetization</button><button data-view="commercial" class="nav-item v56-nav-item owner-only"><span>📈</span> Commercial Readiness</button>
+<button data-view="monetization" class="nav-item v56-nav-item owner-only"><span>💵</span> Monetization</button>
+<button data-view="commercial" class="nav-item v56-nav-item owner-only"><span>📈</span> Commercial Readiness</button></div></details>
+<details id="sbcNavOperations" class="sbc-nav-group"><summary class="sbc-nav-group-title">📦 Delivery & Operations<span class="sbc-nav-caret" aria-hidden="true">⌄</span></summary><div class="sbc-nav-group-items"><button data-view="orders" class="nav-item v56-nav-item"><span>📦</span> Delivery</button>
+<button data-view="notifications" class="nav-item v56-nav-item owner-only"><span>🔔</span> Notifications</button>
+<button data-view="workforce" class="nav-item v56-nav-item owner-only"><span>👥</span> Team</button>
 <button data-view="settings" class="nav-item v56-nav-item owner-only"><span>⚙</span> Admin</button>
+<button type="button" id="sbc-owner-qa-nav-link" class="nav-item v56-nav-item" hidden aria-label="Start owner-only internal $1 Square test"><span>🧪</span> $1 Test Checkout</button></div></details>
 <details id="sbcAdvancedNav" class="sbc-advanced-nav"><summary class="sbc-advanced-toggle">Advanced tools</summary>
 <div class="v56-legacy-tools">
 <button data-view="customers" class="nav-item"><span>◉</span> Leads & Customers</button>

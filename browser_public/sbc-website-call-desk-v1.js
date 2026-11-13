@@ -138,7 +138,7 @@
   let button=document.getElementById('sbc-website-call-desk-topbar');
   if(!button){
    button=document.createElement('button');button.id='sbc-website-call-desk-topbar';button.type='button';
-   button.textContent='Website Call Desk';button.className='btn';
+   button.textContent='🌐 Website Production';button.className='btn';button.setAttribute('aria-label','Open SBC Website Production Call Desk');
    button.style.cssText='background:#0f735d;border:1px solid #0a5947;color:#fff;font-weight:800';
    button.addEventListener('click',open);anchor.insertAdjacentElement('afterend',button);
   }
