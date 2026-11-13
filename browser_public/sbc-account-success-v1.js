@@ -59,5 +59,32 @@ function plan(customer,context){
   launchChecks:Object.freeze(checks)
  });
 }
-root.SBC_ACCOUNT_SUCCESS=Object.freeze({plan:plan});
+// Evidence-led, non-AI site launch gate. This is NOT a Lighthouse score
+// and approval of a sales demo is NOT customer launch approval.
+function siteQuality(demo,customer){
+ var d=demo&&typeof demo==='object'?demo:{},c=customer&&typeof customer==='object'?customer:{};
+ var details=d.verifiedBusinessDetails&&typeof d.verifiedBusinessDetails==='object'?d.verifiedBusinessDetails:{};
+ var checked=d.status==='Approved'&&details.verified===true;
+ var review=[
+  {label:'Content accuracy',state:checked?'recorded':'pending',action:'Verify service offerings, location, claims and final copy with the customer.'},
+  {label:'Media rights',state:'pending',action:'Replace concept stock artwork with licensed or customer-approved media.'},
+  {label:'Accessibility',state:'not_measured',action:'Test keyboard navigation, labels, contrast and assistive technology on the completed pages.'},
+  {label:'Mobile performance',state:'not_measured',action:'Measure Core Web Vitals and real mobile loading after final images and hosting.'},
+  {label:'SEO',state:'not_measured',action:'Validate page titles, metadata, indexing, sitemap and structured data on the live domain.'},
+  {label:'Functional forms',state:'pending',action:'Configure and test actual inquiry delivery, anti-spam controls and privacy disclosures.'},
+  {label:'Hosting & SSL',state:'pending',action:'Verify customer domain authorization, DNS, HTTPS, redirects and a rollback path.'},
+  {label:'Customer approval',state:'pending',action:'Obtain explicit final customer approval and confirmed payment/fulfillment authorization.'},
+  {label:'Security & reliability',state:'not_measured',action:'Check site headers, external assets, backups, uptime and browser compatibility.'}
+ ];
+ return Object.freeze({
+  stage:d.status==='Approved'?'Approved sales concept':'Private sales concept',
+  businessName:clean(c.businessName||d.customer?.businessName||'Business',180),
+  checks:Object.freeze(review.map(x=>Object.freeze(x))),
+  readyToPublish:false,
+  score:null,
+  scoreMeaning:'No 9.5 grade can be issued without independent completed-site tests and a real launch review.',
+  buildMethod:'Deterministic native SBC templates; no paid AI generation required.'
+ });
+}
+root.SBC_ACCOUNT_SUCCESS=Object.freeze({plan:plan,siteQuality:siteQuality});
 })(typeof window!=='undefined'?window:globalThis);
