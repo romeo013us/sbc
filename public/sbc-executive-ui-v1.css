@@ -106,6 +106,32 @@ body :is(#app .content,#modal #modalBody) :is(
  :is(p,span,div,small,strong,h1,h2,h3,h4,h5,h6,td,th,label):not(.badge):not(.btn):not(.pill):not([role="status"]) {
  color:#17283a!important;
 }
+/* Previous bug: the Call Desk and sales metrics use near-white inline backgrounds,
+   not just "#fff". On a dark parent, inherited white text disappears. */
+body #modal .sbc-ops-surface :is(
+ [style*="background:#f7fafb"],[style*="background:#f6fbfa"],
+ [style*="background:#f6f8fb"],[style*="background:#f5f8fb"],
+ [style*="background:#effaf3"],[style*="background:#e8f4ef"],
+ [style*="background:#fff6e9"],[style*="background:#fff4dc"]
+):not(.btn):not(.badge) {
+ background-color:#f5f8fb!important;color:#17283a!important;border-color:#cbd7e3!important;
+}
+body #modal .sbc-ops-surface :is(
+ [style*="background:#f7fafb"],[style*="background:#f6fbfa"],
+ [style*="background:#f6f8fb"],[style*="background:#f5f8fb"],
+ [style*="background:#effaf3"],[style*="background:#e8f4ef"],
+ [style*="background:#fff6e9"],[style*="background:#fff4dc"]
+):not(.btn):not(.badge)
+ :is(p,span,div,small,strong,b,h1,h2,h3,h4,h5,h6,td,th,label):not(.btn):not(.badge):not([role="status"]) {
+ color:#17283a!important;
+}
+/* The built-in dashboard hero is dark in BOTH themes. */
+body[data-theme="light"] #app .content > .hero :is(h1,h2,h3),
+body[data-theme="dark"] #app .content > .hero :is(h1,h2,h3){color:#f2f7ff!important}
+body[data-theme="light"] #app .content > .hero p,
+body[data-theme="dark"] #app .content > .hero p{color:#d9e7f7!important}
+body #app .content > .hero .eyebrow{color:#f7a842!important}
+
 /* Form fields, tables, cards and scrolling containers throughout every OS view. */
 body[data-theme="light"] :is(#app,#modal) :is(input,select,textarea,option){
  background-color:#fff;color:#17283a;border-color:#bccbd8;color-scheme:light;
