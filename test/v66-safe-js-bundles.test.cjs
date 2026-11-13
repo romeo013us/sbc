@@ -11,11 +11,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const htmlScripts=html=>[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
 const jsTag=name=>'<script src="/'+name+'?v=66.0.13-profile-stability"></script>';
 
-test('index replaces 11 old synchronous script tags with 2 version-hashed bundles and keeps Office Box configuration position',()=>{
+test('index replaces 19 synchronous controllers with 4 version-hashed bundles and keeps Office Box configuration position',()=>{
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const tags=htmlScripts(page);
-  assert.equal(tags.length,98,'107 => 98 external JS requests');
+  assert.equal(tags.length,92,'107 => 98 => 92 external JS requests');
   const bundles=Object.keys(GROUPS).map(group=>compile(root,group).filename);
   for(const file of bundles)assert(tags.some(t=>t.startsWith('/'+file)),file+' must load');
   for(const files of Object.values(GROUPS)){
@@ -38,8 +38,8 @@ test('bundles preserve exact source ordering, source integrity and browser mirro
   for(const file of GROUPS[group])assert(content.includes(read('public/'+file).trimEnd()));
  }
  const result=verify(root);
- assert.equal(result.scriptRequestsSaved,9);
- assert.equal(result.originalFiles,11);
+ assert.equal(result.scriptRequestsSaved,15);
+ assert.equal(result.originalFiles,19);
 });
 
 test('real scripts expose identical browser globals and event registrations when loaded separately or bundled',()=>{
