@@ -25,7 +25,7 @@ function createCustomerRepository({ pool } = {}) {
     const id = String(customerId ?? '').trim();
     if (!id || id.length > 80) throw Object.assign(new Error('CUSTOMER_ID_INVALID'), { code: 'CUSTOMER_ID_INVALID' });
     const [rows] = await pool.execute(
-      `SELECT id, business_name, contact_name, phone, email, status, source, follow_up, notes, created_at, updated_at
+      `SELECT id, business_name, contact_name, phone, email, website, address, industry, status, source, follow_up, notes, lead_intelligence_json, created_at, updated_at
          FROM sbc_customers
         WHERE tenant_id = ? AND id = ?
         LIMIT 1`,
@@ -41,10 +41,10 @@ function createCustomerRepository({ pool } = {}) {
     const safeOffset = Math.max(0, Math.min(1000000, Math.trunc(Number(offset) || 0)));
     const statusValue = status == null || String(status).trim() === '' ? null : String(status).trim().slice(0, 40);
     const sql = statusValue
-      ? `SELECT id, business_name, contact_name, phone, email, status, source, follow_up, created_at, updated_at
+      ? `SELECT id, business_name, contact_name, phone, email, website, address, industry, status, source, follow_up, created_at, updated_at
            FROM sbc_customers WHERE tenant_id = ? AND status = ?
           ORDER BY updated_at DESC, id ASC LIMIT ? OFFSET ?`
-      : `SELECT id, business_name, contact_name, phone, email, status, source, follow_up, created_at, updated_at
+      : `SELECT id, business_name, contact_name, phone, email, website, address, industry, status, source, follow_up, created_at, updated_at
            FROM sbc_customers WHERE tenant_id = ?
           ORDER BY updated_at DESC, id ASC LIMIT ? OFFSET ?`;
     const params = statusValue ? [tenantId, statusValue, safeLimit, safeOffset] : [tenantId, safeLimit, safeOffset];
