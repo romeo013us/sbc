@@ -92,7 +92,7 @@
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
-      hostingGuide(demo)+
+      hostingGuide(demo)+qualityPanel(demo,customer)+
       '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row sbc-factory-light-panel"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p class="sbc-factory-light-panel sbc-factory-private-note" style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
@@ -175,6 +175,19 @@
     finally{busy=false;}
   }
 
+  function qualityPanel(demo,customer){
+    const engine=window.SBC_ACCOUNT_SUCCESS;
+    if(!engine||typeof engine.siteQuality!=='function')return '';
+    const report=engine.siteQuality(demo,customer);
+    const label=state=>state==='recorded'?'Business record reviewed':state==='not_measured'?'Test required':'Not yet approved';
+    const rows=report.checks.map(item=>'<li style="margin:9px 0"><strong>'+esc(item.label)+' · '+esc(label(item.state))+'</strong><span style="display:block;font-size:12px;margin-top:3px">'+esc(item.action)+'</span></li>').join('');
+    return '<section class="sbc-site-quality-panel sbc-factory-light-panel" style="padding:18px;border:1px solid #c5d5e1;border-radius:12px;background:#fff;color:#172f41;margin:20px 0">'+
+      '<h4 style="margin:0 0 8px">Site launch quality gate · SBC God Tier standard</h4>'+
+      '<p style="font-size:13px;line-height:1.6;margin:0 0 8px">'+esc(report.buildMethod)+' '+esc(report.stage)+'.</p>'+
+      '<p style="font-size:13px;margin:0 0 8px"><strong>Release status:</strong> Customer-domain publication not yet authorized. '+esc(report.scoreMeaning)+'</p>'+
+      '<details><summary style="font-weight:700;cursor:pointer">Review '+report.checks.length+' launch requirements</summary><ol style="font-size:13px;line-height:1.45">'+rows+'</ol></details>'+
+      '<p style="font-size:12px;margin-bottom:0">This checklist is not an automated performance test, paid order, domain provisioning, or permission to publish.</p></section>';
+  }
   function instantSiteBrief(customer){
     const planner=window.SBC_ACCOUNT_SUCCESS;
     if(!planner||typeof planner.plan!=='function')return '';
