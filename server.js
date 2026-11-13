@@ -6488,7 +6488,10 @@ async function createWebsiteDemo(customerId,overrides={}){
   const c=(db.customers||[]).find(x=>x.id===String(customerId)&&SBC_PREVIEW_SALES.canOperate(x,overrides.actor,overrides.tenantId));
   if(!c)throw new Error('DEMO_CUSTOMER_NOT_AUTHORIZED');
   const m=megaData(),base=demoSlug(c.businessName||c.contactName),existing=m.websiteDemos.find(x=>x.customerId===c.id&&!x.archived&&SBC_PREVIEW_SALES.sameTenant(x,overrides.tenantId));
-  // An owner-approved full website is immutable via generic Build Website.\n  // Returning the existing asset prevents accidentally revoking a live sales URL.\n  if(existing?.status==='Approved')return existing;\n  const slug=(existing?.status==='Draft'&&/-[a-f0-9]{32}$/.test(String(existing.slug||'')))?existing.slug:SBC_PREVIEW_SALES.newSlug(base);
+  // An owner-approved full website is immutable via generic Build Website.
+  // Returning the existing asset prevents accidentally revoking a live sales URL.
+  if(existing?.status==='Approved')return existing;
+  const slug=(existing?.status==='Draft'&&/-[a-f0-9]{32}$/.test(String(existing.slug||'')))?existing.slug:SBC_PREVIEW_SALES.newSlug(base);
   const sourceUrl=String(overrides.sourceUrl||c.website||c.websiteUrl||existing?.sourceUrl||'').trim();
   let liveAudit=existing?.leadIntelligence?.websiteAudit||null;
   if(sourceUrl && overrides.fast!==true){ try{ liveAudit=await LEAD_INTELLIGENCE.auditWebsite(sourceUrl,{timeoutMs:3500}); }catch(e){ liveAudit={url:sourceUrl,reachable:false,gaps:['website_audit_failed'],error:String(e.message||e).slice(0,220),checkedAt:new Date().toISOString()}; } }
