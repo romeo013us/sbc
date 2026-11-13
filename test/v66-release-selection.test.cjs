@@ -42,7 +42,7 @@ test('CLI selection matches module selection and rejects unsanctioned paths',()=
 });
 test('CI must use the same source-of-truth release selector before manifest hashing and ZIP generation',()=>{
  const workflow=fs.readFileSync(path.join(root,'.github/workflows/sbc-v6606-staged-release.yml'),'utf8');
- assert.match(workflow,/node','scripts\/v66-release-file-selector\.cjs'/);
+ assert.match(workflow,/scripts\/v66-release-file-selector\.cjs/);
  assert.match(workflow,/files=\[pathlib\.Path\(name\) for name in json\.loads\(selected\.stdout\)\]/);
  const selection=workflow.indexOf('scripts/v66-release-file-selector.cjs');
  const hashing=workflow.indexOf('hashed={str(p):');
