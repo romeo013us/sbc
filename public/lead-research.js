@@ -134,7 +134,7 @@ function displayLead(c,inQueue){
  var item=element('div','lead-row'+(isException(c)?' needs-correction':'')),left=element('div'),right=element('div');
  var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
- left.append(element('small',null,[c.city,c.industry,c.phone,secondaryPhoneLabel(c),c.email].filter(Boolean).join(' · ')||'Contact details pending'));
+ left.append(element('small',null,[c.city||c.address,c.industry,c.phone,secondaryPhoneLabel(c),c.email].filter(Boolean).join(' · ')||'Contact details pending'));
  left.append(element('small','lead-address','Address: '+String(c.address||'Not recorded')));
   if(isException(c))left.append(element('small','correction-reason','Reason: '+correctionReason(c)));
  right.append(element('span','pill',leadAutomationStatus(c)));
