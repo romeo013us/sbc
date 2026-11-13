@@ -79,3 +79,24 @@ test('native export retains dimensions and self-contained asset paths and respon
  assert.match(css,/sbc-industry-spotlight--hospitality/);
  assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);
 });
+test('approved verified contact facts replace placeholder details on real four-page contact view only',()=>{
+ const d=sample('Auto Repair',{verifiedBusinessDetails:facts,customer:{businessName:'Example Garage',city:'Miami'}});
+ const draft=Factory.renderPage(d,'contact');
+ assert.match(draft,/Business number — add before launch/);
+ assert.doesNotMatch(draft,/tel:\+13055550125/);
+ const approved=Factory.renderPage({...d,status:'Approved'},'contact');
+ assert.match(approved,/\+13055550125/);
+ assert.match(approved,/100 Main Street/);
+ assert.doesNotMatch(approved,/Business number — add before launch/);
+ assert.match(approved,/does not submit, save, or transmit/);
+});
+test('hero description reflects industry and verified owner-approved service, but never invents unverified claims',()=>{
+ const base=sample('Auto Repair',{customer:{businessName:'Example Garage',city:'Miami'}});
+ const draft=Factory.renderPage(base,'home');
+ assert.match(draft,/Auto Repair/);
+ assert.doesNotMatch(draft,/Engine diagnostics/);
+ const approved=Factory.renderPage({...base,status:'Approved',verifiedBusinessDetails:facts},'home');
+ assert.match(approved,/Engine diagnostics/);
+ assert.match(approved,/Miami/);
+ assert.doesNotMatch(approved,/24.hour|guaranteed|licensed|certified/i);
+});
