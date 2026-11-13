@@ -35,7 +35,7 @@ const GROUPS=Object.freeze({
 });
 const digest=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 // Modern isolated account/profile scripts added to the existing checked-in V66 bundle set.
-const ACCOUNT_SCRIPTS=Object.freeze(['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js']);
+const ACCOUNT_SCRIPTS=Object.freeze(['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js']);
 function onlyIIFE(file,source){
  const noComments=source.replace(/^\s*(?:(?:\/\*[\s\S]*?\*\/)|(?:\/\/[^\n]*))\s*/gm,'').trimStart();
  if(!/^\(\s*(?:function\s*\(|\(\s*\)\s*=>)/.test(noComments) ||
