@@ -167,6 +167,18 @@ function renderCallerAccount(c){
  var addLink=function(label,value){if(!value)return;try{var url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)return;var a=el('a',label);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';details.append(a);}catch(_){}};
  addLink('Open business website',c.website);addLink('Open Google Business Profile',c.researchBrief?.googleBusinessUrl);
  host.append(details);
+ var planner=window.SBC_ACCOUNT_SUCCESS;
+ if(planner&&typeof planner.plan==='function'){
+  var success=planner.plan(c);
+  var panel=el('section',undefined,'sbc-caller-account-plan');
+  panel.append(el('h3','Account manager · customer success'));
+  panel.append(el('p','Relationship: '+success.stage+' · Assigned account manager: '+success.accountManager,'muted'));
+  panel.append(el('p','Next touchpoint: '+success.nextTouchpoint));
+  panel.append(el('p','Recommended next action: '+success.nextAction));
+  panel.append(el('p','Instant Sites brief: '+success.siteBrief.industry+' · '+success.siteBrief.location+' · Services: '+(success.siteBrief.services||'confirm with customer')));
+  panel.append(el('p','Website concepts require owner approval. Existing client support, payments and fulfillment remain owner-controlled; staff cannot bypass calling consent or account assignment.','muted'));
+  host.append(panel);
+ }
  host.append(el('p','Use the call and report controls below to log verified outcomes. Only the SBC owner can edit the master business record or approve outreach.','muted'));
 }
 function renderCallSelection(){
