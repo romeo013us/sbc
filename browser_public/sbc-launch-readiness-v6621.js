@@ -85,12 +85,12 @@
    ['square','1 + 4 · Square payment preflight']
   ];
   window.openModal('SBC Launch Readiness — evidence only',
-   '<p class="mini">Read-only verification. This does not change records, create payments, contact leads, unlock recovery, or certify 9.5. Preview is intentionally read-only.</p>'+
+   '<div class="sbc-launch-surface"><p class="mini sbc-launch-intro">Read-only verification. This does not change records, create payments, contact leads, unlock recovery, or certify 9.5. Preview is intentionally read-only.</p>'+
    rows.map(([key,title])=>'<div class="detail-box" style="margin:10px 0"><strong>'+
     title+'</strong><p id="sbc-launch-'+key+'" class="mini" role="status">Not checked</p>'+
     '<p id="sbc-launch-'+key+'-detail" class="mini"></p></div>').join('')+
    '<p id="sbc-launch-footer" class="mini" role="status">Starting owner-only read checks…</p>'+
-   '<p class="mini"><strong>Acceptance evidence:</strong> Published release identity, CRM record readback, independent researcher and demo logins, existing Square payment and webhook records, Fantastic 4 handoff, backup restoration, and customer delivery.</p>');
+   '<p class="mini"><strong>Acceptance evidence:</strong> Published release identity, CRM record readback, independent researcher and demo logins, existing Square payment and webhook records, Fantastic 4 handoff, backup restoration, and customer delivery.</p></div>');
   if(!owner()){text('sbc-launch-footer','Owner session no longer verified. No checks were run.');return}
   for(const [name,url] of endpoints){
    if(!owner()){text('sbc-launch-footer','Owner session changed. Checks stopped.');return}
