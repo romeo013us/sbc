@@ -19,12 +19,13 @@ function canWrite(){return !preview&&me?.role==='caller';}
 function timeOpen(){return clock?.open&&!clock.open.clockOut?clock.open:null;}
 function readyCall(){return canWrite()&&Boolean(data?.canLiveCall)&&Boolean(timeOpen())&&!activeCall;}
 function setPage(name){
- const titles={attention:'Priority Follow-ups',today:'Daily Shift Plan',leads:'Assigned Leads',call:'Call & Notes',scripts:'English / Español',training:'Training & Certification',time:'Clock & Breaks'};
+ const titles={attention:'Priority Follow-ups',today:'Daily Shift Plan',leads:'Assigned Leads',call:'Call & Notes',scripts:'English / Español',websites:'Website Showroom',training:'Training & Certification',time:'Clock & Breaks'};
  if(!titles[name])return;current=name;
  document.querySelectorAll('[data-page]').forEach(x=>x.hidden=x.id!==name);
  document.querySelectorAll('[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===name));
  $('panel-title').textContent=titles[name];$('alert').hidden=true;
  if(name==='today')renderShift();
+  if(name==='websites')renderWebsiteShowroom().catch(e=>notice('Website showroom unavailable: '+error(e)));
 }
 function stamp(v){if(!v)return 'Not scheduled';const d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'medium',timeStyle:'short'}):String(v).slice(0,40);}
 function recordRow(head,sub,btnText,cb,priority=false){
@@ -81,6 +82,56 @@ function renderAttention(){
  if(issues.length>50)target.append(recordRow('More follow-ups available',String(issues.length-50)+' additional assigned follow-ups. Work this list and refresh to see the next items.'));
  for(const c of research.slice(0,20))target.append(recordRow(c.businessName,'Needs additional verification — owner review required',null,null,true));
 }
+async function renderWebsiteShowroom(){
+ const host=$('sbcSalesWebsiteLibrary'),count=$('sbcSalesWebsiteCount');
+ if(!host||!count)return;
+ host.replaceChildren(el('p','Loading approved websites for your assigned businesses…'));
+ count.textContent='—';
+ try{
+  // This read-only, tenant/assignment-scoped server projection marks sites Approved.
+  // Do not use lead.demoUrl here: it can be a stale draft or a historic URL.
+  const response=await api('/api/website-production/call-desk?limit=200');
+  if(!Array.isArray(response.rows))throw Error('Approved website list unavailable.');
+  const assigned=new Set((data?.leads||[]).map(c=>String(c.id)));
+  const rows=response.rows.filter(row=>
+   assigned.has(String(row.customerId)) &&
+   /^\/demo\/[a-z0-9-]+$/.test(String(row.websiteUrl||'')));
+  count.textContent=String(rows.length);
+  host.replaceChildren();
+  if(!rows.length){
+   const empty=el('div',undefined,'sbc-website-empty');
+   empty.append(el('strong','No approved website presentations in your assigned queue yet.'),
+    el('p','Ask the SBC owner to build and approve a website first. Drafts and unverified media are not available for prospect presentation.'));
+   host.append(empty);
+   return;
+  }
+  for(const row of rows){
+   const c=(data?.leads||[]).find(x=>String(x.id)===String(row.customerId));
+   if(!c)continue;
+   const card=el('article',undefined,'sbc-website-lead-card');
+   const intro=el('div',undefined,'sbc-website-card-intro');
+   const status=el('span','OWNER APPROVED · WEBSITE READY','sbc-website-status-pill');
+   const title=el('h3',String(c.businessName||row.businessName||'Assigned business'),'');
+   const descriptor=el('p',(row.websiteTier==='starter'?'Business Starter · $199 · One page':'Business Basic · $349 · Four pages')+' · Concept visuals and text are examples until the business confirms details.');
+   intro.append(status,title,descriptor);
+   const actions=el('div',undefined,'sbc-website-card-actions');
+   const link=el('a','↗ View Approved Website','sbc-website-open');
+   link.href=String(row.websiteUrl);
+   link.target='_blank';link.rel='noopener noreferrer';
+   const view=el('button',c.canCall?'Open calling preparation':'Review lead restrictions','sbc-website-lead-action');
+   view.type='button';view.addEventListener('click',()=>openLead(c.id));
+   actions.append(link,view);
+   const note=el('small',c.canCall?'A presentation still requires the prospect’s agreement. No automatic outreach.':'Do not contact this prospect without clearance. This gallery grants no calling or messaging permission.');
+   card.append(intro,actions,note);
+   host.append(card);
+  }
+  if(response.rows.length>=200)host.append(el('p','Showing approved sites within the first 200 website sales records. Use owner CRM for any additional records.','muted'));
+ }catch(e){
+  count.textContent='—';
+  host.replaceChildren(el('p','Website showroom unavailable: '+error(e)+'. Refresh after the service is available.'));
+ }
+}
+
 function renderLeads(){
  const target=$('lead-list'),q=$('search').value.toLowerCase().trim();target.replaceChildren();
  const rows=(data?.leads||[]).filter(c=>[c.businessName,c.contactName,c.phone,c.city].join(' ').toLowerCase().includes(q));
