@@ -198,3 +198,16 @@ html[data-sbc-theme="light"] #desk .nav.sidebar .sbc-website-nav{color:#fff!impo
 .sbc-caller-account-field strong{display:block;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
 .sbc-caller-account-fields>a{display:inline-flex;padding:8px 10px;border-radius:8px;border:1px solid #5383a3;font-weight:650}
 @media(max-width:760px){.sbc-caller-account-fields{grid-template-columns:1fr}}
+
+/* SBC account manager: relationship notes, customer-care follow-ups and handoff history. */
+#desk .sbc-caller-account-plan,#desk .sbc-account-next-touch,#desk .sbc-account-service-notes,#desk .sbc-caller-account-history{border:1px solid rgba(119,162,198,.52);border-radius:12px;padding:16px;margin:16px 0;background:rgba(67,124,171,.08);overflow-wrap:anywhere}
+#desk .sbc-account-next-touch form,#desk .sbc-account-service-notes form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end;margin-top:12px}
+#desk .sbc-account-next-touch label,#desk .sbc-account-service-notes label{display:grid;gap:6px;font-weight:650;font-size:14px}
+#desk .sbc-account-next-touch input,#desk .sbc-account-next-touch textarea,#desk .sbc-account-service-notes textarea{width:100%;max-width:100%;min-height:45px;border:1px solid #6995b6;border-radius:8px;padding:10px;background:#182c41;color:#f2f8ff}
+#desk .sbc-account-service-notes textarea{grid-column:1/-1;min-height:90px}
+#desk .sbc-account-next-touch form>p,#desk .sbc-account-service-notes form>p{grid-column:1/-1}
+#desk .sbc-caller-account-history-row{padding:11px 0;border-bottom:1px solid rgba(119,162,198,.3)}
+#desk .sbc-caller-account-history-row small{display:block;margin-top:4px;opacity:.75}
+#desk .sbc-caller-account-history-row p{white-space:pre-wrap;line-height:1.5}
+html[data-sbc-theme="light"] #desk .sbc-account-next-touch input,html[data-sbc-theme="light"] #desk .sbc-account-next-touch textarea,html[data-sbc-theme="light"] #desk .sbc-account-service-notes textarea{background:#fff;color:#1a3854;border-color:#759dbb}
+@media(max-width:760px){#desk .sbc-account-next-touch form,#desk .sbc-account-service-notes form{grid-template-columns:1fr}}
