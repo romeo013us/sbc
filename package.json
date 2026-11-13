@@ -96,7 +96,9 @@
     "test:v6568-stale-force-unlock": "node hotfix-assets/v6568-stale-force-unlock-test.js",
     "test:v6569-growth-503-sentry": "node hotfix-assets/v6569-growth-503-sentry-test.js",
     "test:v6570-lease-session-verification": "node hotfix-assets/v6570-lease-session-verification-test.js",
-    "test:v6571-bilingual-sales-ops": "node hotfix-assets/v6571-bilingual-sales-ops-test.js"
+    "test:v6571-bilingual-sales-ops": "node hotfix-assets/v6571-bilingual-sales-ops-test.js",
+    "verify:v66:release": "node --test test/v66-release-foundation.test.cjs && node scripts/v66155-release-hygiene.test.cjs && node scripts/v6603-flat-release-contract.test.cjs && node scripts/v66118-master-release-parity.test.cjs",
+    "verify:v66": "npm run verify:v66:release && node scripts/secret-audit.js && node scripts/v6605-crm-tenant-barrier-test.js && node scripts/v6685-protected-qa-reconciliation.test.cjs && node scripts/v6605-revenue-integrity.test.cjs"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
