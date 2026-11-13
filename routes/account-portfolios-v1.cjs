@@ -204,6 +204,31 @@ function register(app,{auth,getContext}){
    return res.json({ok:true,durable:true,id,followUp:dueDate,purpose,assignedTo:result.assignedTo,contactSent:false});
   }catch(_){return fail(res,503,'FOLLOW_UP_SAVE_FAILED')}
  });
+ app.get('/api/v6606/crm/account-portfolios/:id/history',auth,async(req,res)=>{
+  const x=context(req,res);
+  if(x.denied)return;
+  let id;try{id=safeId(req.params.id)}catch(e){return fail(res,400,String(e.message||e))}
+  let conn;
+  try{
+   conn=await x.ctx.mysqlPool.getConnection();
+   const [rows]=await conn.query('SELECT id,assigned_to,status,follow_up,account_notes_json,tenant_id FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[x.tenant,id]);
+   if(!Array.isArray(rows)||rows.length!==1)return fail(res,404,'ACCOUNT_NOT_FOUND');
+   const c=rows[0];
+   if(req.user.role!=='owner'&&String(c.assigned_to||'')!==String(req.user.id||''))return fail(res,403,'ACCOUNT_NOT_ASSIGNED');
+   let notes;
+   try{notes=c.account_notes_json?JSON.parse(c.account_notes_json):[]}
+   catch(_){return fail(res,503,'ACCOUNT_NOTES_UNREADABLE')}
+   if(!Array.isArray(notes))return fail(res,503,'ACCOUNT_NOTES_UNREADABLE');
+   res.setHeader('Cache-Control','no-store');
+   return res.json({ok:true,id,assignedTo:String(c.assigned_to||''),status:String(c.status||''),
+    followUp:c.follow_up||null,
+    notes:notes.filter(n=>n&&typeof n==='object').slice(0,25).map(n=>({
+      id:String(n.id||''),authorName:String(n.authorName||'SBC team').slice(0,160),
+      createdAt:String(n.createdAt||'').slice(0,45),note:String(n.note||'').slice(0,3000)
+    }))});
+  }catch(_){return fail(res,503,'ACCOUNT_HISTORY_UNAVAILABLE')}
+  finally{try{conn?.release()}catch(_){}}
+ });
  app.post('/api/v6606/crm/account-portfolios/:id/note',auth,async(req,res)=>{
   const x=context(req,res,true);if(x.denied)return;
   let id,note;
