@@ -1,9 +1,9 @@
 {
-  "sourceCommit": "c60efa5b30badef6efa5932a9ad19258ca45185c",
-  "sourceFingerprint": "62fe19756b944378f6ef5692f4b29ac49ba80991742f3b036d204bc2ddab5c31",
+  "sourceCommit": "7e56eaaa52657d4613e130de1d1933d0c3b6401c",
+  "sourceFingerprint": "e658943eda3fd0b35ad71b44686598ceacbdc01135ea02bfaeb11e5a17e0b987",
   "artifactType": "server.js",
   "artifactSha256": "ac6d21772080ddea9c6bf05cdf27ab63a9762ce20cb118cd76e8ed9ba821a261",
   "buildBranch": "a-sbc-master",
   "deployBranch": "a-sbc-master",
-  "createdBy": "SBC PR #350 source candidate verification — NOT DEPLOYED (CI must regenerate staged artifact receipt)"
+  "createdBy": "SBC V66 Verified Master Release GitHub Actions"
 }
