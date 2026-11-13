@@ -1,0 +1,676 @@
+/* SBC V66 OWNER UI COMPILED · SOURCE ORDER MUST REMAIN UNCHANGED */
+/* sbc-global-contrast-rescue-20261106.css */
+/* SBC 2026-11-06 global contrast rescue.
+   Presentation-only. No changes to checkout, CRM data, telephony, permissions or fulfillment.
+   Legacy component classes sometimes retain white backgrounds after switching themes. */
+:root { --sbc-contrast-paper:#ffffff; --sbc-contrast-ink:#17283a; --sbc-contrast-sub:#42586c; --sbc-contrast-night:#132234; --sbc-contrast-night-ink:#edf5ff; }
+/* White document previews are deliberately white in both themes (including print). */
+body #content .quote-preview,
+body #modal .quote-preview { background:#fff!important; color:#17283a!important; }
+body :is(#content,#modal) .quote-preview :is(h1,h2,h3,h4,h5,h6,p,span,div,strong,b,small,td,th,.title,.label,.value) {
+  color:#17283a!important;
+}
+/* All legacy white card types now get a matching foreground in LIGHT mode. */
+body[data-theme="light"] :is(#content,#modal) :is(
+ .card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.modal-card,
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card,.sbc-ai-msg.assistant .sbc-ai-bubble
+) { background:#fff!important; color:#17283a!important; border-color:#cbd7e3!important; }
+body[data-theme="light"] :is(#content,#modal) :is(
+ .card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.modal-card,
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card
+) :is(h1,h2,h3,h4,h5,h6,p,strong,b,.title,.label,.value,.price,.payment-price,.process-step-title)
+:not(.hero *):not(.btn *):not(.badge *) { color:#17283a!important; }
+body[data-theme="light"] :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
+:is(small,.mini,.meta,.sub,.muted,.description) { color:#42586c!important; }
+/* DARK mode: remove the unthemed legacy white surfaces rather than using white-on-white. */
+body[data-theme="dark"] :is(#content,#modal) :is(
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card,.sbc-ai-msg.assistant .sbc-ai-bubble
+) { background:#132234!important; color:#edf5ff!important; border-color:#38516c!important; }
+body[data-theme="dark"] :is(#content,#modal) :is(
+ .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
+ .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
+ .notes,.price-card
+) :is(h1,h2,h3,h4,h5,h6,p,strong,b,.title,.label,.value,.price,.payment-price,.process-step-title)
+:not(.btn *):not(.badge *) { color:#edf5ff!important; }
+body[data-theme="dark"] :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
+:is(small,.mini,.meta,.sub,.muted,.description) { color:#b7c9dc!important; }
+/* Colored instructional inset panels retain light surfaces, so use dark text inside them. */
+body :is(#content,#modal) :is(.process-if,.process-say,.process-then) { color:#17283a!important; }
+body :is(#content,#modal) :is(.process-if,.process-say,.process-then) :is(span,p,strong,b,small) { color:#17283a!important; }
+/* Form text stays visible; interactive action colors and state badges are not restyled. */
+body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea) { background:#fff!important; color:#17283a!important; }
+body[data-theme="dark"] :is(#content,#modal) :is(input,select,textarea) { background:#0e1c2d!important; color:#edf5ff!important; }
+body :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead) :is(a,button):focus-visible {
+ outline:2px solid #f47721!important; outline-offset:3px;
+}
+@media print {
+ body .quote-preview,body .quote-preview * { color:#111!important; background-color:#fff!important; }
+}
+
+/* SBC V66.92: final targeted legibility safeguard (theme-aware, no layout changes).
+ * Historic commerce cards and inline white "paper" surfaces used inherited white text. */
+body[data-theme="light"] :is(#content,#modal) :is(
+ .payment-card,.price-card,.presentation-card,.sales-service-row,.sales-cart-row,
+ .sbc-product,.sbc-checkout-box,.catalog-grid>.card,.quote-line,.quote-total,.total-row
+) :is(.price,.payment-price,.value,.amount,.sales-total,.feature-list,.feature-list li,.product-name,.service-name,.service-price,.item-price,.cart-total) {
+  color:#17283a!important;
+}
+body[data-theme="light"] :is(#content,#modal) :is(
+ .payment-card,.price-card,.presentation-card,.sales-service-row,.sales-cart-row,
+ .sbc-product,.sbc-checkout-box,.catalog-grid>.card,.quote-line,.quote-total,.total-row
+) :is(.mini,.meta,.sub,.description,small,.feature-list li) {color:#44576c!important;}
+/* Explicit white inline panels stay white in either theme, including previews and print.
+ * Exclude controls and branded status surfaces so their meaning remains visible. */
+body :is(#content,#modal) :is(
+ [style*="background:#fff"],[style*="background: #fff"],
+ [style*="background-color:#fff"],[style*="background-color: #fff"],
+ [style*="background:white"],[style*="background: white"],
+ [style*="background-color:white"],[style*="background-color: white"],
+ [style*="background:rgb(255, 255, 255)"],[style*="background: rgb(255, 255, 255)"]
+):not(.btn):not(.badge):not(.pill):not(.hero):not(.onboard-hero) {
+  color:#17283a!important;
+}
+body :is(#content,#modal) :is(
+ [style*="background:#fff"],[style*="background: #fff"],
+ [style*="background-color:#fff"],[style*="background-color: #fff"],
+ [style*="background:white"],[style*="background: white"],
+ [style*="background-color:white"],[style*="background-color: white"],
+ [style*="background:rgb(255, 255, 255)"],[style*="background: rgb(255, 255, 255)"]
+):not(.btn):not(.badge):not(.pill):not(.hero):not(.onboard-hero)
+:is(h1,h2,h3,h4,h5,h6,p,span,div,small,strong,b,em,label,td,th,li,.price,.value):not(.btn):not(.badge):not(.pill):not(.status):not(.alert):not(.hero *) {
+  color:#17283a!important;
+}
+/* Native options use the matching system palette and placeholders remain legible. */
+body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea,option) {
+  color-scheme:light;color:#17283a!important;
+}
+body[data-theme="dark"] :is(#content,#modal) :is(input,select,textarea,option) {
+  color-scheme:dark;color:#edf5ff!important;
+}
+body[data-theme="light"] :is(#content,#modal) :is(input,textarea)::placeholder {color:#667b8c!important;opacity:1;}
+body[data-theme="dark"] :is(#content,#modal) :is(input,textarea)::placeholder {color:#a5bacd!important;opacity:1;}
+/* Improve the previously 10px fine print in sales/product cards; no global font scaling. */
+body :is(#content,#modal) :is(.payment-card p,.feature-list,.feature-list li,
+ .sales-service-row span,.sales-cart-row span,.sbc-product span,.sales-group-title,
+ .payment-card small,.price-card small,.catalog-grid small) {
+  font-size:max(12px,.8rem)!important;line-height:1.5!important;
+}
+body :is(#content,#modal) :is(.payment-price,.price) {
+  font-size:max(22px,1.35rem)!important;line-height:1.25!important;
+}
+
+/* Form helper labels on white surfaces must clear WCAG AA 4.5:1. */
+body[data-theme="light"] :is(#content,#modal) :is(.form-grid,.fields) small {
+  color:#4e6073!important;
+}
+
+/* sbc-manual-dialer-v6696.css */
+/* SBC V66.96 — accessible open dial pad in Sales / Calling */
+#sbcManualDialer{border:1px solid #5c80a0;border-radius:16px;background:#162c46;color:#f6fbff;padding:18px;margin:0 0 20px}
+#sbcManualDialer h3{margin:0 0 8px;color:inherit;font-size:19px}
+#sbcManualDialer p{color:#cee2f5;line-height:1.5}
+#sbcManualDialer .md-columns{display:grid;grid-template-columns:minmax(235px,340px) minmax(260px,1fr);gap:20px}
+#sbcManualDialer label{display:block;font-weight:700;color:#dfebf7;margin:10px 0 5px;font-size:13px}
+#sbcManualDialer :is(input,textarea,select){display:block;box-sizing:border-box;width:100%;min-height:38px;background:#0b1d32;color:#fff!important;border:1px solid #698bad;border-radius:9px;padding:9px 12px}
+#sbcManualDialer #sbcManualNumber{font-size:22px;min-height:48px;font-variant-numeric:tabular-nums}
+#sbcManualDialer .md-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+#sbcManualDialer .md-keys button{font-weight:800;font-size:19px;min-height:43px;border:1px solid #6e9bbd;border-radius:9px;background:#244464;color:#fff}
+#sbcManualDialer .md-keys button:hover{background:#356088}
+#sbcManualDialer .md-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#sbcManualDialer .md-call{background:#147e50;color:#fff;border:0;border-radius:9px;padding:10px 15px;font-weight:800}
+#sbcManualDialer .md-end{background:#af2d3e;color:#fff;border:0;border-radius:9px;padding:10px 15px;font-weight:800}
+#sbcManualDialer :is(button,input):disabled{opacity:.55;cursor:not-allowed}
+#sbcManualDialer .md-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#sbcManualDialer .md-note{font-size:12px;color:#c1d9ed;line-height:1.5}
+#sbcManualStatus{padding:10px;border-radius:8px;background:#28445e;color:#fff;min-height:26px;overflow-wrap:anywhere}
+#sbcManualStatus[data-error=true]{background:#5b2836;color:#fff1f3}
+#sbcManualHistory{max-height:165px;overflow:auto}
+#sbcManualHistory>div{padding:9px;border-bottom:1px solid #42607b;overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px}
+#sbcManualActiveBar{position:fixed;z-index:10060;bottom:18px;left:50%;transform:translateX(-50%);background:#14382e;color:white;border:2px solid #8fe3b7;border-radius:12px;padding:11px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 34px #0008;max-width:95vw}
+#sbcManualActiveBar[hidden]{display:none!important}
+#sbcManualActiveBar button{background:white;color:#16382c;border:0;border-radius:8px;padding:8px;font-weight:800}
+body[data-theme=light] #sbcManualDialer{background:#edf5ff;color:#193149}
+body[data-theme=light] #sbcManualDialer :is(p,label,.md-note){color:#344f68}
+body[data-theme=light] #sbcManualDialer :is(input,textarea,select){background:#fff;color:#17283a!important;border-color:#708ca4}
+body[data-theme=light] #sbcManualDialer .md-keys button{background:#dbeafd;color:#17344c;border-color:#769cb8}
+body[data-theme=light] #sbcManualStatus{background:#d5e5f4;color:#16334b}
+body[data-theme=light] #sbcManualStatus[data-error=true]{background:#ffe1e5;color:#802039}
+@media(max-width:760px){#sbcManualDialer .md-columns{grid-template-columns:1fr}#sbcManualActiveBar{width:95vw;flex-wrap:wrap;justify-content:center}}
+
+/* sbc-owner-employee-switch-v6697.css */
+#sbcOwnerStaffLauncher{position:fixed;bottom:24px;right:24px;z-index:11030;background:#163c65;border:2px solid #9cd4ff;border-radius:999px;padding:13px 18px;color:#fff;font:800 13px/1.3 system-ui;box-shadow:0 8px 25px #0005;cursor:pointer}
+#sbcOwnerStaffSwitch{position:fixed;inset:0;z-index:11040;background:#03101fdb;display:flex;align-items:center;justify-content:center;padding:12px;color:#eff8ff}
+#sbcOwnerStaffSwitch .staff-modal{width:min(900px,100%);max-height:95vh;overflow:auto;border:1px solid #6898b7;border-radius:16px;background:#10233c;padding:23px;font:14px/1.5 system-ui;color:#eef8ff;box-shadow:0 15px 70px #0009}
+#sbcOwnerStaffSwitch *{box-sizing:border-box}
+#sbcOwnerStaffSwitch h2{font-size:22px;color:#fff;margin:0 0 9px}
+#sbcOwnerStaffSwitch h3{color:#e9f7ff;margin:15px 0 8px;font-size:17px}
+#sbcOwnerStaffSwitch p{color:#d2e5f7}
+#sbcOwnerStaffSwitch .staff-top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+#sbcOwnerStaffSwitch button{padding:10px 12px;border:1px solid #749bbe;border-radius:8px;background:#224f7b;color:#fff;font-weight:750;cursor:pointer}
+#sbcOwnerStaffSwitch button:disabled{opacity:.6;cursor:not-allowed}
+#sbcOwnerStaffSwitch button.staff-create{background:#126944;border-color:#58ba91}
+#sbcOwnerStaffSwitch .staff-box{border:1px solid #4d6b86;border-radius:12px;padding:14px;margin-top:13px}
+#sbcOwnerStaffSwitch .staff-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #35516d;flex-wrap:wrap}
+#sbcOwnerStaffSwitch .staff-row:last-child{border:0}
+#sbcOwnerStaffSwitch .staff-row small{color:#b7d0e7;display:block}
+#sbcOwnerStaffSwitch input{background:#f8fbff;color:#132b43;border:1px solid #8aa6c2;border-radius:8px;padding:10px;width:100%;min-width:0}
+#sbcOwnerStaffSwitch label{display:block;color:#eaf4ff;margin:12px 0 5px;font-weight:700}
+#sbcOwnerStaffSwitch .staff-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#sbcOwnerStaffSwitch .staff-result{padding:15px;background:#1a4032;border:1px solid #64b29a;border-radius:10px;color:#ecfff7;white-space:pre-wrap;overflow-wrap:anywhere}
+#sbcOwnerStaffSwitch .staff-status{color:#ffd995;font-weight:700;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#sbcOwnerStaffSwitch .staff-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){#sbcOwnerStaffSwitch .staff-modal{padding:13px}#sbcOwnerStaffSwitch .staff-form{grid-template-columns:1fr}#sbcOwnerStaffLauncher{bottom:12px;right:12px}}
+
+/* sbc-executive-ui-v1.css */
+/* SBC_EXECUTIVE_UI_V1 — GLOBAL COMMAND CENTER OS presentation and accessibility.
+   Covers all existing workspaces including Sales, Delivery, Research, Team,
+   Intelligence, Revenue OS, legacy tools and modal workflows.
+   CSS ONLY: no record access, authorization, payment, telephony or route changes.
+   Invariants: dark text on white surfaces, light text on dark surfaces,
+   >=4.5:1 for ordinary body text, keyboard access and responsive tables. */
+
+body[data-theme="light"] {
+ --sbc-os-bg:#f4f7fb; --sbc-os-surface:#ffffff; --sbc-os-soft:#f5f8fb;
+ --sbc-os-ink:#17283a; --sbc-os-muted:#43556a; --sbc-os-line:#d4dfeb;
+ --sbc-os-brand:#075aab; --sbc-os-focus:#0a67bf;
+}
+body[data-theme="dark"] {
+ --sbc-os-bg:#091420; --sbc-os-surface:#101d30; --sbc-os-soft:#17273a;
+ --sbc-os-ink:#f2f7ff; --sbc-os-muted:#b6cade; --sbc-os-line:#39516a;
+ --sbc-os-brand:#69bbff; --sbc-os-focus:#f6a844;
+}
+
+/* OS frame, global typography and readable workspace spacing. */
+body :is(#app,#modal) {font-size:14px;line-height:1.55}
+#app .main,#app .content,#app .topbar,#app .sidebar,#modal .modal-card {min-width:0}
+#app .content{width:100%;max-width:1600px;margin:0 auto;padding:clamp(16px,2.5vw,32px)}
+#app .content :is(h1,h2,h3,h4),#modal :is(h1,h2,h3,h4){line-height:1.2;letter-spacing:-.025em;overflow-wrap:anywhere}
+#app .content h2,#modal #modalBody h2 {font-size:clamp(19px,2vw,26px)}
+#app .content h3,#modal #modalBody h3 {font-size:clamp(17px,1.5vw,22px)}
+#app .content p,#modal #modalBody p {line-height:1.65}
+#app .content :is(.mini,.meta,.sub,small),#modal :is(.mini,.meta,.sub,small) {font-size:max(12px,.82em);line-height:1.55}
+#app .content :is(.card,.stat,.list-card,.detail-box,.table-wrap,.install-tip,.payment-card,.presentation-card),
+#modal #modalBody :is(.card,.stat,.list-card,.detail-box,.table-wrap,.install-tip,.payment-card,.presentation-card) {
+  border-radius:13px;min-width:0;overflow-wrap:anywhere;
+}
+#app .content .section{margin-block:clamp(16px,2.4vw,24px)}
+#app .content :is(.grid,.card-body,.actions,.toolbar){min-width:0}
+#app .content :is(.actions,.toolbar),#modal #modalBody .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+#app .content .card-head{gap:14px;flex-wrap:wrap;align-items:center}
+#app .content :is(.stat .value,.payment-price,.price) {font-variant-numeric:tabular-nums;word-break:break-word}
+#app .content .stat .label {font-size:11px;line-height:1.5;letter-spacing:.08em}
+#app .content .stat .sub{font-size:12px;line-height:1.5}
+
+/* Global light mode: defined foreground on every ordinary white work surface.
+   Keep branded, warning, success, dark heroes and buttons semantically colored. */
+body[data-theme="light"] #app .content :is(.card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,
+ .payment-card,.presentation-card,.crm-lead,.quote-line,.price-card,.sales-cart-row,.sales-service-row) {
+ background-color:var(--sbc-os-surface);color:var(--sbc-os-ink);border-color:var(--sbc-os-line);
+}
+body[data-theme="light"] #app .content :is(.card,.stat,.list-card,.detail-box,.table-wrap)
+ :is(p,span,div,h1,h2,h3,h4,h5,h6,strong,b,td,th,label):not(.badge):not(.btn):not(.pill):not([role="status"]):not(.status) {color:inherit}
+body[data-theme="light"] :is(#app,#modal) :is(.mini,.meta,.sub,.muted,.description,.helper-text) {
+ color:var(--sbc-os-muted);
+}
+body[data-theme="light"] :is(#app,#modal) :is(.stat .value,.card-head h2,.detail-box strong,.list-card strong){
+ color:var(--sbc-os-ink);
+}
+body[data-theme="light"] #modal .modal-card,body[data-theme="light"] #modal .modal-head,
+body[data-theme="light"] #modal #modalBody {
+ background:var(--sbc-os-surface);color:var(--sbc-os-ink);border-color:var(--sbc-os-line);
+}
+/* Launch Readiness and both website sales panels have explicit surface contracts. */
+body[data-theme="light"] #modal .sbc-ops-surface,
+body[data-theme="light"] #modal .sbc-launch-surface {background:var(--sbc-os-surface);color:var(--sbc-os-ink)}
+body[data-theme="light"] #modal .sbc-ops-surface :is(h1,h2,h3,h4,strong),
+body[data-theme="light"] #modal .sbc-launch-surface :is(h1,h2,h3,h4,strong) {color:#17283a}
+body[data-theme="light"] #modal .sbc-ops-surface :is(p,small,td,th,label,span,div),
+body[data-theme="light"] #modal .sbc-launch-surface :is(p,small,td,th,label,span,div) {color:inherit}
+body[data-theme="light"] #modal .sbc-ops-surface .sbc-ops-detail {background:#f5f8fb;color:#17283a;border-color:#d4dfeb}
+body[data-theme="light"] #modal .sbc-launch-surface .detail-box {background:#f5f8fb;color:#17283a;border-color:#d4dfeb}
+
+/* Dark mode surfaces retain their own readable text, including historic panels. */
+body[data-theme="dark"] #app .content :is(.card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,
+ .payment-card,.presentation-card,.crm-lead,.quote-line,.price-card,.sales-cart-row,.sales-service-row),
+body[data-theme="dark"] #modal .modal-card,
+body[data-theme="dark"] #modal .modal-head {
+ background-color:var(--sbc-os-surface)!important;color:var(--sbc-os-ink)!important;border-color:var(--sbc-os-line)!important;
+}
+body[data-theme="dark"] :is(#app .content,#modal #modalBody)
+ :is(.card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.payment-card,.presentation-card)
+ :is(h1,h2,h3,h4,h5,h6,strong,b,td,th,label,p) {color:var(--sbc-os-ink)}
+body[data-theme="dark"] :is(#app,#modal) :is(.mini,.meta,.sub,.muted,.description,.helper-text) {color:var(--sbc-os-muted)}
+body[data-theme="dark"] #modal .sbc-ops-surface,
+body[data-theme="dark"] #modal .sbc-launch-surface {background:var(--sbc-os-surface);color:var(--sbc-os-ink)}
+body[data-theme="dark"] #modal .sbc-ops-surface :is(h1,h2,h3,h4,strong),
+body[data-theme="dark"] #modal .sbc-launch-surface :is(h1,h2,h3,h4,strong) {color:#f2f7ff}
+body[data-theme="dark"] #modal .sbc-ops-surface :is(p,small,td,th,label,span,div),
+body[data-theme="dark"] #modal .sbc-launch-surface :is(p,small,td,th,label,span,div) {color:inherit}
+body[data-theme="dark"] #modal .sbc-ops-surface .sbc-ops-detail,
+body[data-theme="dark"] #modal .sbc-launch-surface .detail-box {background:#17273a!important;color:#f2f7ff!important;border:1px solid #39516a!important}
+body[data-theme="dark"] #modal .sbc-ops-surface .sbc-ops-detail :is(p,span,strong,small),
+body[data-theme="dark"] #modal .sbc-launch-surface .detail-box :is(p,span,strong,small) {color:#f2f7ff!important}
+
+/* Any deliberately white inline 'paper' panel stays white even in dark mode:
+   the important contrast repair is dark ink, NEVER inherited white text. */
+body :is(#app .content,#modal #modalBody) :is(
+ [style*="background:#fff"],[style*="background: #fff"],
+ [style*="background-color:#fff"],[style*="background-color: #fff"],
+ [style*="background:white"],[style*="background: white"],
+ [style*="background-color:white"],[style*="background-color: white"]
+):not(.btn):not(.badge):not(.pill):not(.hero):not(.nav-item) {
+ color:#17283a!important;
+}
+body :is(#app .content,#modal #modalBody) :is(
+ [style*="background:#fff"],[style*="background: #fff"],
+ [style*="background-color:#fff"],[style*="background-color: #fff"],
+ [style*="background:white"],[style*="background: white"],
+ [style*="background-color:white"],[style*="background-color: white"]
+):not(.btn):not(.badge):not(.pill):not(.hero):not(.nav-item)
+ :is(p,span,div,small,strong,h1,h2,h3,h4,h5,h6,td,th,label):not(.badge):not(.btn):not(.pill):not([role="status"]) {
+ color:#17283a!important;
+}
+/* Previous bug: the Call Desk and sales metrics use near-white inline backgrounds,
+   not just "#fff". On a dark parent, inherited white text disappears. */
+body #modal .sbc-ops-surface :is(
+ [style*="background:#f7fafb"],[style*="background:#f6fbfa"],
+ [style*="background:#f6f8fb"],[style*="background:#f5f8fb"],
+ [style*="background:#effaf3"],[style*="background:#e8f4ef"],
+ [style*="background:#fff6e9"],[style*="background:#fff4dc"]
+):not(.btn):not(.badge) {
+ background-color:#f5f8fb!important;color:#17283a!important;border-color:#cbd7e3!important;
+}
+body #modal .sbc-ops-surface :is(
+ [style*="background:#f7fafb"],[style*="background:#f6fbfa"],
+ [style*="background:#f6f8fb"],[style*="background:#f5f8fb"],
+ [style*="background:#effaf3"],[style*="background:#e8f4ef"],
+ [style*="background:#fff6e9"],[style*="background:#fff4dc"]
+):not(.btn):not(.badge)
+ :is(p,span,div,small,strong,b,h1,h2,h3,h4,h5,h6,td,th,label):not(.btn):not(.badge):not([role="status"]) {
+ color:#17283a!important;
+}
+/* The built-in dashboard hero is dark in BOTH themes. */
+body[data-theme="light"] #app .content > .hero :is(h1,h2,h3),
+body[data-theme="dark"] #app .content > .hero :is(h1,h2,h3){color:#f2f7ff!important}
+body[data-theme="light"] #app .content > .hero p,
+body[data-theme="dark"] #app .content > .hero p{color:#d9e7f7!important}
+body #app .content > .hero .eyebrow{color:#f7a842!important}
+
+/* Form fields, tables, cards and scrolling containers throughout every OS view. */
+body[data-theme="light"] :is(#app,#modal) :is(input,select,textarea,option){
+ background-color:#fff;color:#17283a;border-color:#bccbd8;color-scheme:light;
+}
+body[data-theme="dark"] :is(#app,#modal) :is(input,select,textarea,option){
+ background-color:#15263a;color:#f2f7ff;border-color:#456079;color-scheme:dark;
+}
+body :is(#app,#modal) :is(input,select,textarea) {max-width:100%;min-height:40px;border-radius:8px}
+body :is(#app,#modal) textarea{min-height:90px}
+body[data-theme="light"] :is(#app,#modal) :is(input,textarea)::placeholder {color:#55697c;opacity:1}
+body[data-theme="dark"] :is(#app,#modal) :is(input,textarea)::placeholder {color:#b7cade;opacity:1}
+body[data-theme="light"] :is(#app,#modal) :is(.table,table) th{background:#edf3f9;color:#17283a}
+body[data-theme="light"] :is(#app,#modal) :is(.table,table) td{color:#17283a;border-color:#d4dfeb}
+body[data-theme="dark"] :is(#app,#modal) :is(.table,table) th{background:#1c334a;color:#f2f7ff}
+body[data-theme="dark"] :is(#app,#modal) :is(.table,table) td{color:#f2f7ff;border-color:#39516a}
+body :is(#app,#modal) :is(.table-wrap,[style*="overflow-x:auto"],[style*="overflow-x: auto"]) {max-width:100%;min-width:0}
+body :is(#app,#modal) .btn{min-height:38px;white-space:normal;line-height:1.35;text-align:center}
+body :is(#app,#modal) :is(button,a,input,select,textarea,summary):focus-visible {
+ outline:3px solid var(--sbc-os-focus,#0a67bf)!important;outline-offset:3px!important;
+}
+
+/* Global topbar: notifications, owner checks and business actions never overlap. */
+#app .topbar{gap:14px;flex-wrap:wrap}
+#app .top-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;max-width:100%;min-width:0}
+#app .top-actions > :is(button,a){min-height:38px}
+#app .top-actions .sbc-build-version{font-size:11px;white-space:normal;max-width:240px}
+#app .top-actions .global-search{flex-shrink:1;min-width:160px}
+#app .topbar h1{font-size:clamp(21px,2.4vw,28px)}
+
+/* Navigation stays discoverable but secondary/legacy tools are collapsed. */
+#app .sidebar nav{min-width:0;overflow-y:auto;overscroll-behavior:contain}
+#app .sidebar .nav-item{min-height:42px;line-height:1.45;font-size:13px}
+#app .sidebar .sidebar-group-label{font-size:11px;letter-spacing:.09em}
+#app .sidebar .sbc-advanced-nav{display:block;padding:6px 7px 8px;border-top:1px solid #344b62;margin-top:12px}
+#app .sidebar #sbcAdvancedNav > summary{
+ display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+ padding:12px 14px;margin:2px 0;border:1px solid #405269;border-radius:10px;
+ font-size:13px;font-weight:800;color:#f2f7ff;background:#172c41;list-style:none;
+}
+#app .sidebar #sbcAdvancedNav > summary::-webkit-details-marker{display:none}
+#app .sidebar #sbcAdvancedNav > summary:after{content:"▾";font-size:15px}
+#app .sidebar #sbcAdvancedNav[open] > summary:after{transform:rotate(180deg)}
+#app .sidebar #sbcAdvancedNav:not([open]) > .v56-legacy-tools{display:none!important}
+#app .sidebar #sbcAdvancedNav[open] > .v56-legacy-tools{display:flex!important;flex-direction:column;gap:3px;padding:8px 3px}
+#app .sidebar #sbcAdvancedNav .nav-item{display:flex;width:100%;min-height:42px}
+#app .sidebar #sbcAdvancedNav .nav-item[hidden]{display:none!important}
+#app .sidebar .sidebar-bottom{gap:7px}
+
+/* Executive dashboard: 2–3 frequent actions, QA/less-common actions on demand. */
+#app .content > .hero:has(+ #sbcProductionControlDashboard){
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,360px);gap:24px;align-items:center;
+ padding:clamp(20px,2.8vw,32px);border-radius:18px;
+}
+#app .content > .hero:has(+ #sbcProductionControlDashboard) .hero-actions.sbc-exec-actions{
+ display:block!important;min-width:0
+}
+#app .sbc-exec-primary{display:flex;flex-direction:column;gap:9px}
+#app .sbc-exec-primary .btn{width:100%;min-height:44px;font-size:13px}
+#app .sbc-exec-more{margin-top:11px;position:relative}
+#app .sbc-exec-more>summary{
+ background:#ffffff18;color:#f2f7ff;border:1px solid #a8c2dd77;
+ border-radius:10px;padding:12px 15px;font-weight:800;font-size:13px;
+ cursor:pointer;list-style:none;text-align:center;
+}
+#app .sbc-exec-more>summary::-webkit-details-marker{display:none}
+#app .sbc-exec-more>summary:after{content:"  ▾"}
+#app .sbc-exec-more[open]>summary:after{content:"  ▴"}
+#app .sbc-exec-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+#app .sbc-exec-secondary .btn{min-height:42px;width:100%;font-size:12px;white-space:normal}
+#app .content > .hero:has(+ #sbcProductionControlDashboard) h2{font-size:clamp(25px,3.2vw,38px);line-height:1.16}
+#app .content > .hero:has(+ #sbcProductionControlDashboard) p{font-size:14px;line-height:1.7}
+
+/* Full-width modal workspaces and reliable scrolling, without affecting login. */
+#modal .modal-card{width:min(1200px,calc(100vw - 32px));max-width:1200px;max-height:calc(100dvh - 30px);margin:15px auto;display:flex;flex-direction:column;overflow:hidden}
+#modal .modal-head{flex:none;padding:16px 22px}
+#modal #modalBody{padding:clamp(16px,2.4vw,26px);min-height:0;overflow-y:auto;overflow-x:auto}
+#modal .sbc-ops-surface,#modal .sbc-launch-surface{min-width:0;max-width:100%;line-height:1.65}
+#modal .sbc-ops-surface :is(.sbc-ops-detail,.detail-box),
+#modal .sbc-launch-surface .detail-box{padding:16px;border:1px solid var(--sbc-os-line);border-radius:11px;margin:12px 0}
+#modal .sbc-ops-surface :is(.sbc-ops-detail,.detail-box) strong{font-size:14px}
+#modal .sbc-launch-intro{border-left:4px solid #0a79a7;padding:13px 17px;border-radius:7px;background:var(--sbc-os-soft);color:var(--sbc-os-ink);line-height:1.7}
+#modal .sbc-ops-surface .sbc-ops-detail{padding:14px}
+#modal .sbc-ops-surface :is(table,.table){min-width:620px;max-width:100%}
+
+@media(max-width:1050px){
+ #app .content > .hero:has(+ #sbcProductionControlDashboard){grid-template-columns:1fr}
+ #app .topbar{align-items:flex-start}
+ #app .top-actions{justify-content:flex-start}
+ #modal .modal-card{width:calc(100vw - 22px)}
+}
+@media(max-width:760px){
+ #app .content{padding:14px!important}
+ #app .content .grid{min-width:0}
+ #app .content > .hero:has(+ #sbcProductionControlDashboard){grid-template-columns:1fr;padding:20px!important}
+ #app .sbc-exec-secondary{grid-template-columns:1fr}
+ #app .topbar{gap:10px;flex-direction:column;align-items:stretch}
+ #app .top-actions{justify-content:flex-start;width:100%}
+ #app .top-actions .global-search{max-width:100%}
+ #app .sidebar #sbcAdvancedNav[open]>.v56-legacy-tools{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #modal .modal-card{width:calc(100vw - 14px);margin:7px auto;max-height:calc(100dvh - 14px)}
+ #modal #modalBody{padding:13px}
+ #modal .sbc-ops-surface :is(table,.table){min-width:580px}
+}
+@media(max-width:440px){
+ #app .sidebar #sbcAdvancedNav[open]>.v56-legacy-tools{grid-template-columns:1fr}
+ #app .top-actions .global-search{display:none}
+ #modal .modal-head{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ #app *,#modal *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+@media print{
+ #app .sidebar,#app .topbar,#app .sbc-exec-more,#modal .modal-head{display:none!important}
+ #modal .modal-card{max-height:none;overflow:visible;width:100%;box-shadow:none}
+}
+
+/* sbc-website-revenue-shortcuts-v1.css */
+/* SBC Website Production — protected primary navigation treatment. No route or data mutation. */
+#app #sbc-website-production-nav{
+ display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:11px;
+ width:calc(100% - 14px);min-height:78px;margin:11px 7px 15px;padding:12px 13px;
+ border:1px solid #70c2ff9c;border-left:4px solid #ffb35b;border-radius:14px;
+ color:#fff;background:linear-gradient(125deg,#114680,#1b70ae 55%,#244d8b);
+ box-shadow:0 12px 25px #061d3a45;text-align:left;cursor:pointer;
+ transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease
+}
+#app #sbc-website-production-nav[hidden],#app #sbc-website-production-nav.hidden{display:none!important}
+#app #sbc-website-production-nav .sbc-spotlight-icon{
+ width:42px;height:42px;display:grid;place-items:center;border-radius:11px;
+ font-size:23px;background:#ffffff22;border:1px solid #ffffff55
+}
+#app #sbc-website-production-nav .sbc-spotlight-copy{display:grid;gap:5px;min-width:0}
+#app #sbc-website-production-nav strong{font-size:14px;color:#fff;font-weight:950;line-height:1.2;letter-spacing:-.015em}
+#app #sbc-website-production-nav small{font-size:11px;color:#e5f6ff;font-weight:750;line-height:1.5}
+#app #sbc-website-production-nav .sbc-spotlight-arrow{font-size:21px;color:#ffd49c;font-weight:900}
+#app #sbc-website-production-nav:hover{transform:translateY(-2px);border-color:#ffe7b4;box-shadow:0 16px 30px #071d3f5c}
+#app #sbc-website-production-nav:focus-visible{
+ outline:3px solid #ffd08a!important;outline-offset:3px!important
+}
+#app #sbc-website-call-desk-topbar{
+ border:1px solid #a6ddff!important;border-radius:10px!important;
+ background:linear-gradient(115deg,#0c5776,#086b75)!important;
+ color:#fff!important;font-weight:900!important;min-height:43px;
+ box-shadow:0 8px 20px #06334238
+}
+#app #sbc-website-call-desk-topbar[hidden]{display:none!important}
+body[data-theme="light"] #app #sbc-website-production-nav{
+ background:linear-gradient(125deg,#10427a,#156da4 60%,#24529a);
+ border-color:#3e88ca;border-left-color:#f2972d
+}
+@media(max-width:760px){
+ #app #sbc-website-production-nav{width:calc(100% - 10px);margin:9px 5px;min-height:67px;gap:8px;padding:10px}
+ #app #sbc-website-production-nav .sbc-spotlight-icon{width:37px;height:37px;font-size:20px}
+ #app #sbc-website-production-nav strong{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ #app #sbc-website-production-nav{transition:none!important}
+ #app #sbc-website-production-nav:hover{transform:none!important}
+}
+/* SBC Command Center clean navigation: native, keyboard-accessible collapsible groups. */
+#app .sbc-clean-nav{display:block;padding-bottom:12px}
+#app .sbc-nav-group{margin:6px 3px;border:1px solid #526f8b69;border-radius:12px;background:#0e1e31b5;overflow:visible}
+#app .sbc-nav-group-title{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 12px;color:#e5efff;font-size:13px;line-height:1.45;font-weight:900;list-style:none;user-select:none;transition:background .2s}
+#app .sbc-nav-group-title::-webkit-details-marker{display:none}
+#app .sbc-nav-group-title:hover{background:#2f587755}
+#app .sbc-nav-group-title:focus-visible{outline:3px solid #f7c987;outline-offset:2px;border-radius:10px}
+#app .sbc-nav-caret{font-size:17px;color:#8ccbf9;transition:transform .2s}
+#app .sbc-nav-group[open] .sbc-nav-caret{transform:rotate(180deg)}
+#app .sbc-nav-group-items{display:grid;gap:3px;padding:8px 8px 11px;border-top:1px solid #4a6a8355}
+#app .sbc-nav-group-items .nav-item,#app .sbc-nav-group-items a.nav-item{font-size:12px;min-height:36px;max-width:100%;width:100%;margin:0;border-radius:9px;text-align:left}
+#app .sbc-nav-group-items .nav-item.active{box-shadow:inset 3px 0 0 #ffc67e}
+#app #sbcAdvancedNav{margin:7px 3px;padding:0;border-radius:12px;overflow:visible}
+#app #sbcAdvancedNav summary{padding:13px 12px;font-size:13px;font-weight:850;cursor:pointer}
+#app #sbcAdvancedNav .v56-legacy-tools{padding:7px 8px 10px;display:grid;gap:3px}
+#app #sbcAdvancedNav .v56-legacy-tools .nav-item{max-width:100%;min-height:36px;font-size:12px}
+html[data-sbc-theme="light"] #app .sbc-nav-group{background:#e2edf9;border-color:#aec7df}
+html[data-sbc-theme="light"] #app .sbc-nav-group-title{color:#193852}
+html[data-sbc-theme="light"] #app .sbc-nav-group-title:hover{background:#cedff0}
+html[data-sbc-theme="light"] #app .sbc-nav-caret{color:#235b86}
+@media(max-width:700px){#app .sbc-nav-group-title{min-height:45px;font-size:13px}#app .sbc-nav-group-items{padding:6px}}
+@media(prefers-reduced-motion:reduce){#app .sbc-nav-group-title,#app .sbc-nav-caret{transition:none!important}}
+
+/* sbc-website-production-contrast-v1.css */
+/* SBC V66 Website Production readability rescue.
+ * Scopes all rules to the Website Production modal, not to CRM/Office Box.
+ * Do not use inherited OS text colors on pale panels. */
+#modal .v6526-studio .sbc-factory-light-panel,
+#modal .v6526-studio .sbc-website-hosting-guide,
+#modal .v6526-studio .sbc-website-walkthrough,
+#modal .v6526-studio .v6526-link-row,
+#modal .v6526-studio .v6526-delivery {
+ color:#14283f!important;
+ text-shadow:none!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel :is(h2,h3,h4,h5,h6,p,label,legend,summary,figcaption,strong,small,span,li),
+#modal .v6526-studio .sbc-website-hosting-guide :is(h3,h4,p,label,summary,strong,small,span,li),
+#modal .v6526-studio .sbc-website-walkthrough :is(h3,h4,p,label,strong,small,span),
+#modal .v6526-studio .v6526-link-row :is(p,label,strong,span,small),
+#modal .v6526-studio .v6526-delivery :is(h3,h4,p,label,strong,span,small) {
+ color:#14283f!important;
+ -webkit-text-fill-color:#14283f!important;
+ opacity:1!important;
+ text-shadow:none!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel{
+ border-color:#b1c4d9!important;
+ box-shadow:0 7px 23px rgba(14,37,64,.10);
+}
+#modal .v6526-studio .sbc-factory-checklist{
+ background:#f7fbff!important;
+ border-left:5px solid #0872bd!important;
+}
+#modal .v6526-studio .sbc-factory-checklist h4,
+#modal .v6526-studio .sbc-website-walkthrough h4 {
+ color:#14283f!important;
+ font-size:19px!important;
+ font-weight:900!important;
+ margin:0 0 13px!important;
+}
+#modal .v6526-studio .sbc-factory-checklist label,
+#modal .v6526-studio .sbc-website-walkthrough label {
+ display:flex!important;
+ align-items:flex-start!important;
+ gap:10px!important;
+ font-size:14px!important;
+ font-weight:700!important;
+ line-height:1.6!important;
+ padding:8px 0!important;
+}
+#modal .v6526-studio .sbc-website-walkthrough label.sbc-factory-meeting-label{
+ display:block!important;
+ font-size:14px!important;
+ font-weight:800!important;
+ line-height:1.65!important;
+ color:#14283f!important;
+}
+#modal .v6526-studio :is(#sbcFactoryCheckDetails,#sbcFactoryCheckVisuals,#sbcFactoryCheckContent,#sbcFactoryMeetingConfirmed){
+ flex:0 0 auto!important;
+ width:17px!important;
+ height:17px!important;
+ margin:4px 4px 0 0!important;
+ accent-color:#075e9f!important;
+ opacity:1!important;
+}
+#modal .v6526-studio .sbc-website-hosting-guide{
+ background:#f2f7ff!important;
+ border:1px solid #abc5df!important;
+ border-left:5px solid #036aa5!important;
+}
+#modal .v6526-studio .sbc-website-hosting-guide summary{
+ display:list-item!important;
+ font-size:15px!important;
+ font-weight:900!important;
+ padding:7px 3px!important;
+ cursor:pointer;
+}
+#modal .v6526-studio .sbc-website-hosting-guide[open]{
+ background:#f5f9ff!important;
+}
+#modal .v6526-studio .sbc-website-hosting-guide p{
+ font-size:13px!important;
+ line-height:1.72!important;
+}
+#modal .v6526-studio .sbc-website-walkthrough{
+ background:#f5f9ff!important;
+ border-left:5px solid #0b75b2!important;
+}
+#modal .v6526-studio #sbcFactoryMeetingTime,
+#modal .v6526-studio #sbcFactoryPublicUrl,
+#modal .v6526-studio #sbcFactoryTier,
+#modal .v6526-studio :is(input[type="text"],input[type="datetime-local"],select){
+ background:#fff!important;
+ color:#14283f!important;
+ -webkit-text-fill-color:#14283f!important;
+ color-scheme:light!important;
+ border:1px solid #8ca9c1!important;
+ border-radius:9px!important;
+ min-height:42px!important;
+ opacity:1!important;
+ font-size:14px!important;
+}
+#modal .v6526-studio #sbcFactoryMeetingTime{
+ display:block!important;
+ width:100%!important;
+ min-width:0!important;
+ padding:12px!important;
+ margin:8px 0 0!important;
+}
+#modal .v6526-studio :is(#sbcFactoryMeetingTime,#sbcFactoryPublicUrl,#sbcFactoryTier):focus-visible,
+#modal .v6526-studio .sbc-factory-light-panel :is(button,summary,a):focus-visible {
+ outline:3px solid #f4ac37!important;
+ outline-offset:3px!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel .btn.primary,
+#modal .v6526-studio #sbcFactoryApprove,
+#modal .v6526-studio #sbcFactoryBookMeeting{
+ background:#0869b3!important;
+ color:#fff!important;
+ -webkit-text-fill-color:#fff!important;
+ border-color:#065187!important;
+ font-weight:900!important;
+ text-shadow:none!important;
+ min-height:44px!important;
+}
+#modal .v6526-studio .sbc-factory-light-panel :is(button:disabled,.btn:disabled){
+ background:#edf1f6!important;
+ border-color:#b0becd!important;
+ color:#405870!important;
+ -webkit-text-fill-color:#405870!important;
+ opacity:1!important;
+ cursor:not-allowed;
+}
+#modal .v6526-studio .sbc-factory-pitch{
+ padding:22px!important;
+ background:linear-gradient(120deg,#12345a,#172f4b)!important;
+ border:1px solid #3c789d!important;
+ border-radius:15px!important;
+ box-shadow:0 12px 25px rgba(10,23,45,.23);
+}
+#modal .v6526-studio .sbc-factory-pitch h4{
+ color:#f7dca1!important;
+ font-size:20px!important;
+ font-weight:900!important;
+ margin:0 0 14px!important;
+}
+#modal .v6526-studio #sbcFactoryPitch{
+ color:#fff!important;
+ -webkit-text-fill-color:#fff!important;
+ font-size:14px!important;
+ font-weight:650!important;
+ line-height:1.86!important;
+ white-space:pre-wrap!important;
+ overflow-wrap:anywhere!important;
+ opacity:1!important;
+}
+#modal .v6526-studio #sbcFactoryCopyPitch{
+ background:#f9c977!important;
+ color:#14283f!important;
+ -webkit-text-fill-color:#14283f!important;
+ font-weight:900!important;
+ border:1px solid #fedda4!important;
+}
+#modal .v6526-studio .v6526-link-row{
+ background:#eef6ff!important;
+ border:1px solid #a9c8e1!important;
+ border-radius:12px!important;
+}
+#modal .v6526-studio .v6526-delivery{
+ background:#f7fbff!important;
+ border:1px solid #b5cce1!important;
+ border-radius:12px!important;
+}
+#modal .v6526-studio .v6526-link-row :is(input,a,button),
+#modal .v6526-studio .v6526-delivery :is(button){
+ font-weight:800!important;
+}
+#modal .v6526-studio .sbc-factory-approved{
+ background:#ecfff5!important;
+ border-left:5px solid #149269!important;
+}
+#modal .v6526-studio .sbc-factory-private-note{
+ background:#fff6df!important;
+}
+@media(max-width:650px){
+ #modal .v6526-studio .sbc-factory-light-panel{padding:16px!important}
+ #modal .v6526-studio .sbc-factory-pitch{padding:16px!important}
+ #modal .v6526-studio #sbcFactoryPitch{font-size:13px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ #modal .v6526-studio .sbc-factory-light-panel{scroll-behavior:auto!important}
+}
+

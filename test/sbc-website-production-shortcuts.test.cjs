@@ -12,7 +12,7 @@ test('owner Command Center gives Website Production prominent primary navigation
   assert.match(html,/sbc-website-spotlight-nav owner-only/);
   assert.match(html,/SBC_WEBSITE_CALL_DESK\?\.open/);
   assert(html.indexOf('id="sbc-website-production-nav"')<html.indexOf('id="sbcAdvancedNav"'));
-  assert.match(html,/sbc-website-revenue-shortcuts-v1\.css/);
+  assert.match(html,/sbc-v66-owner-ui-core\.[a-f0-9]{16}\.css/);
  }
  const ui=read('public/sbc-website-call-desk-v1.js');
  assert.equal(ui,read('browser_public/sbc-website-call-desk-v1.js'));
