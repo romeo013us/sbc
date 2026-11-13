@@ -148,7 +148,7 @@ jobs:
       - name: Legacy CRM tenant guards
         run: node scripts/v6620-legacy-crm-tenant-guard-test.cjs
       - name: Full website production, site generation and role-based fulfillment
-        run: node --test test/sbc-preview-to-appointment.test.cjs test/sbc-prospect-site-factory.test.cjs test/sbc-prospect-site-god-tier-media.test.cjs test/sbc-website-production-shortcuts.test.cjs test/sbc-website-production-contrast-script.test.cjs test/v66-owner-ui-css-bundle.test.cjs test/v66-safe-js-bundles.test.cjs test/sbc-website-workorders.test.cjs test/sbc-website-production-routes.test.cjs test/sbc-website-appointments.test.cjs test/sbc-website-sales-board.test.cjs test/sbc-website-call-desk.test.cjs test/sbc-website-live-db-hydration.test.cjs test/sbc-executive-ui-v1.test.cjs
+        run: node --test test/sbc-preview-to-appointment.test.cjs test/sbc-prospect-site-factory.test.cjs test/sbc-prospect-site-god-tier-media.test.cjs test/sbc-native-site-god-tier-v2.test.cjs test/sbc-website-production-shortcuts.test.cjs test/sbc-website-production-contrast-script.test.cjs test/v66-owner-ui-css-bundle.test.cjs test/v66-safe-js-bundles.test.cjs test/sbc-website-workorders.test.cjs test/sbc-website-production-routes.test.cjs test/sbc-website-appointments.test.cjs test/sbc-website-sales-board.test.cjs test/sbc-website-call-desk.test.cjs test/sbc-website-live-db-hydration.test.cjs test/sbc-executive-ui-v1.test.cjs
       - name: Tenant repository isolation
         run: node scripts/tenant-repository-isolation-test.js
 
