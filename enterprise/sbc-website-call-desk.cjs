@@ -4,6 +4,7 @@
 // calendar invite, payment, or vendor side effects occur in this module.
 const {randomUUID}=require('node:crypto');
 const POLICY=require('./sbc-preview-sales-policy.cjs');
+const WEBSITE_PITCH=require('../public/sbc-website-sales-script-v1.js');
 const OUTCOMES=new Set(['NO_ANSWER','INTERESTED','CALLBACK_REQUESTED','NOT_INTERESTED','BAD_NUMBER','DO_NOT_CALL','ALREADY_HAS_WEBSITE','APPOINTMENT_REQUESTED']);
 const int=value=>{const n=Number(value);return Number.isSafeInteger(n)&&n>0?n:0};
 const tenantId=x=>int(x?.tenantId??x?.tenant_id);
@@ -36,21 +37,15 @@ function research(c){
   googleBusinessUrl:/^https:\/\/(?:www\.)?(?:google\.com|maps\.google\.com)\//i.test(String(v.googleBusinessUrl||''))?String(v.googleBusinessUrl).slice(0,400):''};
 }
 function createCallScript(customer,site){
- const name=String(customer?.businessName||customer?.contactName||'your business').trim().slice(0,120);
- const r=research(customer),have=site?.status==='Approved'&&site.archived!==true&&String(site.customerId||'')===String(customer?.id||'');
- const platform=r.googleVerified?'I was checking out your Google Business Profile.':'I was looking up your business online.';
- const greeting='Hello, am I speaking with the owner of '+name+'? Hi, this is [your real first and last name] calling from Successful By Choice.';
- const question='Do you already have a website?';
- const pitch=have
-  ? "If no: The good news is, I went ahead and built a website for your business. It's a fully navigable website, not just a picture. I can show you what I've put together in about 10 minutes. Would today or tomorrow work better?"
-  : "If no: I can prepare a website for your business to look through. If you like it, we can talk about getting it finished and launched.";
- const yes=have
-  ? "If yes: Perfect, thanks for clarifying. I'm not calling to tell you that you don't have one. I also put together an alternative design. Would a quick, no-obligation comparison be useful?"
-  : 'If yes: Thanks for clarifying. Is there anything you wish your current website did better?';
- return greeting+'\n\n'+platform+'\n'+question+'\n\n'+pitch+'\n\n'+yes+
- '\n\nIf they ask the price: SBC Business Starter is $199 for our one-page option. Business Basic starts at $349 for our four-page option. Hosting, ongoing management, and other services are discussed separately where applicable.'+
- '\n\nIf they agree: Great—what exact time today or tomorrow works? Book the meeting only after they confirm.'+
- '\n\nIf they decline or ask not to be called: Thank them, record their preference, and stop outreach. Never claim a referral or promise guaranteed customers.';
+ const r=research(customer);
+ const approved=site?.status==='Approved'&&site.archived!==true&&
+  String(site.customerId||'')===String(customer?.id||'');
+ return WEBSITE_PITCH.build({
+  businessName:customer?.businessName||customer?.contactName||'your business',
+  googleVerified:r.verified&&r.googleVerified,
+  websitePresence:r.verified?r.websitePresence:'not_checked',
+  approved
+ });
 }
 function coach(){
  return {
