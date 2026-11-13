@@ -43,7 +43,7 @@ const ownerUi=read('public/app.js');
 assert.match(ownerUi,/Account Portfolio Assignment/,'owner should assign portfolios, not disposable call lists');
 assert.match(ownerUi,/assignedTo/,'portfolio uses the existing assigned customer record');
 assert.match(ownerUi,/Existing customers assigned/,'customer status must not erase portfolio ownership');
-assert.match(ownerUi,/api\/v9\/assign-batch/,'use existing guarded assignment workflow instead of inventing a parallel datastore');
+assert.match(ownerUi,/api\/v6606\/crm\/account-portfolios\/assign-batch/,'owner must use tenant-safe audited account ownership API');
 assert.match(read('public/index.html'),/src="\/sbc-account-success-v1\.js/);
 assert.match(read('public/sales-caller.html'),/src="\/sbc-account-success-v1\.js/);
 for(const name of ['sbc-account-success-v1.js','sbc-lead-profile-v1.js','sbc-website-production-v1.js','sales-caller.js'])
