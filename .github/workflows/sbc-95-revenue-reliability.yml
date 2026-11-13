@@ -135,6 +135,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Deterministic packaging and mirrored-browser integrity
+        run: npm run verify:v66:release
       - name: Session security
         run: node scripts/v65112-auth-session-safety-test.js
       - name: CRM tenant isolation
