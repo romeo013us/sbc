@@ -27,6 +27,7 @@ jobs:
           node scripts/v6606-quote-server-hardening.test.cjs
           node scripts/v66155-release-hygiene.test.cjs
           node --test test/v66-release-foundation.test.cjs
+          node --test test/v66-deployment-artifact-gate.test.cjs
           node scripts/v66-static-mirror-gate.cjs
           node scripts/secret-audit.js
           node --check hotfix-assets/apply-v6693-quarantine-legacy-officebox.js
@@ -599,7 +600,8 @@ jobs:
           node --check server.js
           node --check sbc-godaddy-flat-entrypoint.cjs
           node scripts/v6611-verify-stage-inventory.cjs .
-          echo '[SBC GODADDY HOST PREFLIGHT] npm production install, build and stage integrity PASS'
+          npm run verify:v66:artifact
+          echo '[SBC GODADDY HOST PREFLIGHT] npm production install, build, artifact gate and stage integrity PASS'
       - name: Upload isolated staging candidate (never publish)
         uses: actions/upload-artifact@v4
         with:

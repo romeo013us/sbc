@@ -137,6 +137,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Deterministic packaging and mirrored-browser integrity
         run: npm run verify:v66:release
+      - name: Synthetic extracted deployment artifact adversarial proof
+        run: node --test test/v66-deployment-artifact-gate.test.cjs
       - name: Session security
         run: node scripts/v65112-auth-session-safety-test.js
       - name: CRM tenant isolation
