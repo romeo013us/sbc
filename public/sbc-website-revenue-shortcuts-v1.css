@@ -40,3 +40,25 @@ body[data-theme="light"] #app #sbc-website-production-nav{
  #app #sbc-website-production-nav{transition:none!important}
  #app #sbc-website-production-nav:hover{transform:none!important}
 }
+/* SBC Command Center clean navigation: native, keyboard-accessible collapsible groups. */
+#app .sbc-clean-nav{display:block;padding-bottom:12px}
+#app .sbc-nav-group{margin:6px 3px;border:1px solid #526f8b69;border-radius:12px;background:#0e1e31b5;overflow:visible}
+#app .sbc-nav-group-title{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 12px;color:#e5efff;font-size:13px;line-height:1.45;font-weight:900;list-style:none;user-select:none;transition:background .2s}
+#app .sbc-nav-group-title::-webkit-details-marker{display:none}
+#app .sbc-nav-group-title:hover{background:#2f587755}
+#app .sbc-nav-group-title:focus-visible{outline:3px solid #f7c987;outline-offset:2px;border-radius:10px}
+#app .sbc-nav-caret{font-size:17px;color:#8ccbf9;transition:transform .2s}
+#app .sbc-nav-group[open] .sbc-nav-caret{transform:rotate(180deg)}
+#app .sbc-nav-group-items{display:grid;gap:3px;padding:8px 8px 11px;border-top:1px solid #4a6a8355}
+#app .sbc-nav-group-items .nav-item,#app .sbc-nav-group-items a.nav-item{font-size:12px;min-height:36px;max-width:100%;width:100%;margin:0;border-radius:9px;text-align:left}
+#app .sbc-nav-group-items .nav-item.active{box-shadow:inset 3px 0 0 #ffc67e}
+#app #sbcAdvancedNav{margin:7px 3px;padding:0;border-radius:12px;overflow:visible}
+#app #sbcAdvancedNav summary{padding:13px 12px;font-size:13px;font-weight:850;cursor:pointer}
+#app #sbcAdvancedNav .v56-legacy-tools{padding:7px 8px 10px;display:grid;gap:3px}
+#app #sbcAdvancedNav .v56-legacy-tools .nav-item{max-width:100%;min-height:36px;font-size:12px}
+html[data-sbc-theme="light"] #app .sbc-nav-group{background:#e2edf9;border-color:#aec7df}
+html[data-sbc-theme="light"] #app .sbc-nav-group-title{color:#193852}
+html[data-sbc-theme="light"] #app .sbc-nav-group-title:hover{background:#cedff0}
+html[data-sbc-theme="light"] #app .sbc-nav-caret{color:#235b86}
+@media(max-width:700px){#app .sbc-nav-group-title{min-height:45px;font-size:13px}#app .sbc-nav-group-items{padding:6px}}
+@media(prefers-reduced-motion:reduce){#app .sbc-nav-group-title,#app .sbc-nav-caret{transition:none!important}}
