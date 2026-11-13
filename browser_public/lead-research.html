@@ -44,6 +44,13 @@
 <main>
 <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="page-title">My Dashboard</h1><p id="page-subtitle">Research businesses. Verify details. Send quality prospects to SBC.</p></div><div class="actions"><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span class="sync" id="sync-label">Connecting to CRM…</span><button type="button" class="outline" id="refresh">Refresh data</button></div></header>
 <div id="notice" class="notice" hidden role="status"></div>
+<section id="sbc-address-research-notice" class="attention-priority" role="note" aria-labelledby="sbc-address-research-title">
+ <div><div class="eyebrow">NEW OWNER ASSIGNMENT · LORNA / LEAD RESEARCH</div>
+ <h2 id="sbc-address-research-title">Add the business address to each researched lead</h2>
+ <p>Research the full street address, city, state and ZIP when a reliable public source provides it. Record the original source and only enter what you can support. If the business is mobile, service-area-only, or no address is published, leave the street address blank—never guess.</p>
+ <p id="sbc-address-missing-count" aria-live="polite">Loading submitted-lead address coverage…</p></div>
+ <button type="button" class="attention-open" data-go="add">Add lead with business address</button>
+</section>
 <section id="attention-priority" class="attention-priority" role="status" aria-live="polite" hidden>
  <div><div class="eyebrow">PRIORITY 1 · CORRECTIONS FIRST</div><h2 id="attention-priority-title">Lead corrections need your attention</h2><p id="attention-priority-detail">Review returned leads and correct the details from a reliable source.</p></div>
  <button type="button" class="attention-open" data-go="queue">Open Needs Attention</button>
@@ -65,7 +72,7 @@
 <div class="stat"><small>Session status</small><strong id="metric-session">Verified</strong><span>Access scoped by server</span></div>
 </div>
 <div class="two">
-<div class="card"><h3>Today's research workflow</h3><ol><li>Find a real local business from a trustworthy public source.</li><li>Record its business name and reliable phone, email or website.</li><li>Record the source you actually consulted, and avoid duplicates.</li><li>Submit it to the existing SBC CRM and confirm the save.</li><li>SBC automatically checks the record. Fix only leads returned with a specific issue.</li></ol></div>
+<div class="card"><h3>Today's research workflow</h3><ol><li>Find a real local business from a trustworthy public source.</li><li>Record its business name, reliable contact information, and researched business address when available.</li><li>Record the source you actually consulted, and avoid duplicates.</li><li>Submit it to the existing SBC CRM and confirm the save.</li><li>SBC automatically checks the record. Fix only leads returned with a specific issue.</li></ol></div>
 <div class="card"><h3>Quality standard</h3><p>Never invent phone numbers, email addresses, decision makers or business information. If a fact cannot be confirmed, leave it blank and document the source.</p><p>SBC Lead Assist—not the employee—decides whether a record qualifies for automatic verification. Records without enough evidence stay for review; only an authorized person should resolve exceptions.</p></div>
 </div>
 </section>
@@ -87,9 +94,16 @@
 <label>Primary phone<input name="phone" type="tel" maxlength="80" placeholder="Google / business listing phone"></label><label>Email<input name="email" type="email" maxlength="250" placeholder="Business email"></label>
 <label>Secondary phone (optional)<input name="secondaryPhone" type="tel" maxlength="80" placeholder="Different number from LinkedIn or another source"></label><label>Secondary phone source (optional)<input name="secondaryPhoneSource" maxlength="120" placeholder="LinkedIn, business website, Google…"></label>
 <label>Website<input name="website" maxlength="300" placeholder="https://example.com"></label><label>Industry<input name="industry" maxlength="160" placeholder="Barber, restaurant, salon…"></label>
-<label class="wide">Business address<input name="address" maxlength="350" placeholder="Verified street, city, state and ZIP (leave blank if unknown)"></label>
+
 <label class="wide">Research notes<textarea name="notes" rows="4" maxlength="2000" placeholder="Where you verified the details; opportunity and follow-up notes."></textarea></label>
 <label class="wide">Research source<input name="verificationSource" maxlength="300" placeholder="Public business website, Google Business Profile, or directory you actually checked"></label></div>
+<fieldset class="sbc-research-audit" id="sbc-address-entry-section">
+ <legend>Business address research</legend>
+ <p class="muted">For accurate account profiles and future website builds: confirm the public business location, then enter it below. Use the Research source field above to document where you found it. Never invent a location or assume a mobile business has a storefront.</p>
+ <div class="fields"><label class="wide">Verified business address (street, city, state, ZIP)
+ <input name="address" autocomplete="street-address" maxlength="350" placeholder="Example: 123 Main Street, Miami, FL 33101 — leave blank if unverified"></label></div>
+ <p class="muted">If no physical location is listed, write “Service-area business; address not published” in research notes instead of fabricating a street address.</p>
+</fieldset>
 <fieldset class="sbc-research-audit" id="sbc-research-checklist">
  <legend>Business research checklist</legend>
  <p class="muted">Check each item from a real source. “Not checked” is different from “Not found.” Missing website or Google Business Profile can be a sales opportunity; it does not make a business a bad lead.</p>
