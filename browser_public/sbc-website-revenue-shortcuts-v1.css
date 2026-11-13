@@ -1,0 +1,42 @@
+/* SBC Website Production — protected primary navigation treatment. No route or data mutation. */
+#app #sbc-website-production-nav{
+ display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:11px;
+ width:calc(100% - 14px);min-height:78px;margin:11px 7px 15px;padding:12px 13px;
+ border:1px solid #70c2ff9c;border-left:4px solid #ffb35b;border-radius:14px;
+ color:#fff;background:linear-gradient(125deg,#114680,#1b70ae 55%,#244d8b);
+ box-shadow:0 12px 25px #061d3a45;text-align:left;cursor:pointer;
+ transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease
+}
+#app #sbc-website-production-nav[hidden],#app #sbc-website-production-nav.hidden{display:none!important}
+#app #sbc-website-production-nav .sbc-spotlight-icon{
+ width:42px;height:42px;display:grid;place-items:center;border-radius:11px;
+ font-size:23px;background:#ffffff22;border:1px solid #ffffff55
+}
+#app #sbc-website-production-nav .sbc-spotlight-copy{display:grid;gap:5px;min-width:0}
+#app #sbc-website-production-nav strong{font-size:14px;color:#fff;font-weight:950;line-height:1.2;letter-spacing:-.015em}
+#app #sbc-website-production-nav small{font-size:11px;color:#e5f6ff;font-weight:750;line-height:1.5}
+#app #sbc-website-production-nav .sbc-spotlight-arrow{font-size:21px;color:#ffd49c;font-weight:900}
+#app #sbc-website-production-nav:hover{transform:translateY(-2px);border-color:#ffe7b4;box-shadow:0 16px 30px #071d3f5c}
+#app #sbc-website-production-nav:focus-visible{
+ outline:3px solid #ffd08a!important;outline-offset:3px!important
+}
+#app #sbc-website-call-desk-topbar{
+ border:1px solid #a6ddff!important;border-radius:10px!important;
+ background:linear-gradient(115deg,#0c5776,#086b75)!important;
+ color:#fff!important;font-weight:900!important;min-height:43px;
+ box-shadow:0 8px 20px #06334238
+}
+#app #sbc-website-call-desk-topbar[hidden]{display:none!important}
+body[data-theme="light"] #app #sbc-website-production-nav{
+ background:linear-gradient(125deg,#10427a,#156da4 60%,#24529a);
+ border-color:#3e88ca;border-left-color:#f2972d
+}
+@media(max-width:760px){
+ #app #sbc-website-production-nav{width:calc(100% - 10px);margin:9px 5px;min-height:67px;gap:8px;padding:10px}
+ #app #sbc-website-production-nav .sbc-spotlight-icon{width:37px;height:37px;font-size:20px}
+ #app #sbc-website-production-nav strong{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ #app #sbc-website-production-nav{transition:none!important}
+ #app #sbc-website-production-nav:hover{transform:none!important}
+}
