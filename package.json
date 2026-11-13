@@ -97,7 +97,7 @@
     "test:v6569-growth-503-sentry": "node hotfix-assets/v6569-growth-503-sentry-test.js",
     "test:v6570-lease-session-verification": "node hotfix-assets/v6570-lease-session-verification-test.js",
     "test:v6571-bilingual-sales-ops": "node hotfix-assets/v6571-bilingual-sales-ops-test.js",
-    "verify:v66:release": "node scripts/v66-safe-js-bundles.cjs --check && node scripts/v66-owner-ui-css-bundle.cjs --check && node --test test/v66-release-foundation.test.cjs && node scripts/v66155-release-hygiene.test.cjs && node scripts/v6603-flat-release-contract.test.cjs && node scripts/v66118-master-release-parity.test.cjs",
+    "verify:v66:release": "node --test test/v66-release-selection.test.cjs && node scripts/v66-safe-js-bundles.cjs --check && node scripts/v66-owner-ui-css-bundle.cjs --check && node --test test/v66-release-foundation.test.cjs && node scripts/v66155-release-hygiene.test.cjs && node scripts/v6603-flat-release-contract.test.cjs && node scripts/v66118-master-release-parity.test.cjs",
     "verify:v66": "npm run verify:v66:release && node scripts/secret-audit.js && node scripts/v6605-crm-tenant-barrier-test.js && node scripts/v6685-protected-qa-reconciliation.test.cjs && node scripts/v6605-revenue-integrity.test.cjs",
     "verify:v66:artifact": "node scripts/v66-deployment-artifact-gate.cjs && node --check server.js && node --check public/app.js && node --check sbc-godaddy-flat-entrypoint.cjs",
     "verify:v66:ui": "node scripts/v66-safe-js-bundles.cjs --check && node scripts/v66-owner-ui-css-bundle.cjs --check && node --test test/v66-owner-ui-css-bundle.test.cjs test/sbc-website-production-shortcuts.test.cjs test/sbc-website-production-contrast-script.test.cjs && node --test test/v66-safe-js-bundles.test.cjs"

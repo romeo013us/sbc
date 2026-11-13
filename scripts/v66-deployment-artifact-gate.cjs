@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {verifyStagedInventory}=require('./v6611-verify-stage-inventory.cjs');
+const {excludedReleasePath}=require('../enterprise/v66155-public-asset-policy.cjs');
 const sha256=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const SHA64=/^[a-f0-9]{64}$/;
 const SHA40=/^[a-f0-9]{40}$/;
@@ -39,6 +40,10 @@ function verifyDeploymentArtifact(base){
  const proof=verifyStagedInventory(root,identity);
  if(proof.legacy||proof.checked<100)throw Error('[SBC ARTIFACT GATE] staged inventory incomplete');
  const inventory=load(root,'SBC-STAGED-INVENTORY.json');
+ for(const name of Object.keys(inventory.files||{})){
+  if(excludedReleasePath(name))
+   throw Error('[SBC ARTIFACT GATE] forbidden release member: '+name);
+ }
  for(const name of REQUIRED){
   if(!Object.hasOwn(inventory.files,name))throw Error('[SBC ARTIFACT GATE] required asset omitted: '+name);
  }

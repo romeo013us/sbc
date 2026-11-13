@@ -27,6 +27,7 @@ jobs:
           node scripts/v6606-quote-server-hardening.test.cjs
           node scripts/v66155-release-hygiene.test.cjs
           node --test test/v66-release-foundation.test.cjs
+          node --test test/v66-release-selection.test.cjs
           node --test test/v66-deployment-artifact-gate.test.cjs
           node scripts/v66-static-mirror-gate.cjs
           node scripts/secret-audit.js
@@ -399,23 +400,18 @@ jobs:
           root=pathlib.Path('.').resolve()
           out=root/'dist-stage'
           out.mkdir(exist_ok=True)
-          banned={'.git','.github','node_modules','dist','dist-stage','data','backups','starter-leads','__pycache__','.pytest_cache'}
-          files=[]
-          for p in root.rglob('*'):
-              if not p.is_file():continue
-              rel=p.relative_to(root)
-              # The checked-out master already contains the previous manifest;
-              # write exactly ONE fresh staged inventory record into this ZIP.
-              if str(rel)=='SBC-STAGED-INVENTORY.json':continue
-              if any(part in banned for part in rel.parts):continue
-              if p.name=='.env' or p.name.startswith('.env.'):continue
-              if p.suffix.lower() in ('.zip','.tgz','.tar','.gz','.sqlite','.db','.csv','.pem','.p12','.pfx','.key','.log','.bak','.orig','.swp'):continue
-              if str(rel) in ('public/diag2.html','browser_public/diag2.html','public/index.html.pre-commercial','browser_public/index.html.pre-commercial'):continue
-              if p.name in ('credentials.json','service-account.json','service-account-key.json'):continue
-              if rel.parts[0] in ('public','browser_public') and p.suffix.lower()=='.sql':continue
-              if rel.parts[0]=='releases':continue
-              files.append(rel)
-          files.sort(key=str)
+          # Enumerate physical sources, but let the audited Node release policy
+          # make the final inclusion decision. Never copy a stale inventory:
+          # this release writes exactly one fresh inventory from selected files.
+          candidates=[str(p.relative_to(root)) for p in root.rglob('*')
+                      if p.is_file() and str(p.relative_to(root))!='SBC-STAGED-INVENTORY.json']
+          selected=subprocess.run(['node','scripts/v66-release-file-selector.cjs'],
+             input=json.dumps(candidates),text=True,capture_output=True)
+          assert selected.returncode==0,'SBC release selector failed: '+selected.stderr[-1500:]
+          files=[pathlib.Path(name) for name in json.loads(selected.stdout)]
+          assert len(files)==len(set(files)),'Duplicated release member selected'
+          assert not any(str(p).endswith('.md') and len(p.parts)==1 and p.name!='README.md' for p in files),\
+              'Historical root docs must not ship in GoDaddy ZIP'
           checked=subprocess.run(['node','scripts/v66155-release-hygiene.cjs','--paths-stdin',str(root)],
              input=json.dumps({'files':[str(f) for f in files],'zipName':'SBC-V66-QUOTE-SAFETY-STAGING.zip'}),
              text=True,capture_output=True)

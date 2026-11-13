@@ -6,6 +6,9 @@ function excludedReleasePath(name){
  if(typeof name!=='string'||!name||name.startsWith('/')||name.includes('\\')||name.includes('\0'))return true;
  const bits=name.split('/');if(bits.some(x=>!x||x==='.'||x==='..'||BANNED_DIRS.has(x)))return true;
  const file=bits[bits.length-1];
+ // Repository-root Markdown is source history, never a GoDaddy runtime dependency.
+ // Keep README.md for platform/operator orientation; preserve all docs in GitHub.
+ if(bits.length===1&&/\.md$/i.test(file)&&file!=='README.md')return true;
  if(file==='.env'||file.startsWith('.env.')||DANGEROUS.test(file))return true;
  if(/^(public|browser_public)\//.test(name)&&/\.sql$/i.test(file))return true;
  if(/^(?:id_rsa|id_ed25519|credentials\.json|service-account(?:-key)?\.json)$/i.test(file))return true;
