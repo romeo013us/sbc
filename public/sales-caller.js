@@ -166,6 +166,9 @@ function renderCallerAccount(c){
  entries.forEach(function(pair){var row=el('div',undefined,'sbc-caller-account-field');row.append(el('small',pair[0]),el('strong',pair[1]||'Not recorded'));details.append(row);});
  var addLink=function(label,value){if(!value)return;try{var url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)return;var a=el('a',label);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';details.append(a);}catch(_){}};
  addLink('Open business website',c.website);addLink('Open Google Business Profile',c.researchBrief?.googleBusinessUrl);
+ var lookup=[c.businessName,c.city||c.address].filter(Boolean).join(' ');
+ if(lookup)addLink('Research business address (verify source before saving)','https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(lookup));
+ if(!String(c.address||'').trim())details.append(el('p','Business address not recorded. Confirm it with the research team or a reliable business source before using it for customer service or website publication.','muted'));
  host.append(details);
  var planner=window.SBC_ACCOUNT_SUCCESS;
  if(planner&&typeof planner.plan==='function'){
