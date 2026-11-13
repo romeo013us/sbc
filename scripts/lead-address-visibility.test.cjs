@@ -16,7 +16,7 @@ assert.match(owner, /z\.address=first\(z\.address/,'canonical CRM row must retai
 assert.match(owner, /<th>Address<\/th>/,'owner lead table must label the address column');
 assert.match(owner, /<td>\$\{esc\(c\.address\|\|'Not recorded'\)\}<\/td>/,'owner lead row must escape the address and show an honest missing-data label');
 assert.match(owner, /c\.address,c\.city/,'owner lead search must include business location');
-assert.match(owner, /name="address"[^>]*value=/,'owner lead entry/edit must capture the address');
+assert.match(owner, /function newCustomer\([^\n]*name="address"[^>]*value=/,'owner lead entry/edit must capture the address');
 assert.match(researcher, /Address: /,'researcher submitted and exception lists must label the full address');
 assert.match(researcher, /Business address','address'/,'researcher correction must be able to update the address');
 assert.match(researcher, /row\.record\.address/,'researcher CSV preview must show the imported address');
