@@ -13,7 +13,8 @@ test('the owner dashboard uses ONE content-addressed CSS bundle instead of SIX l
  for(const base of ['public','browser_public']){
   const html=read(base+'/index.html');
   const links=cssLinks(html);
-  assert.equal(links.length,5,'Expected 10 => 5 stylesheet requests for owner dashboard');
+  assert.equal(links.length,6,'Expected the five verified owner stylesheets plus one focused-workspace stylesheet');
+  assert.equal(links.filter(x=>x.includes('/sbc-command-center-focus-v1.css?')).length,1,'Focused workspace CSS must load once');
   const last=links.at(-1);
   assert.match(last,/sbc-v66-owner-ui-core\.[a-f0-9]{16}\.css/);
   assert.match(last,/data-sbc-contrast-rescue="global"/);

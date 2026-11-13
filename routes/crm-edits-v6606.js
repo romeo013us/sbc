@@ -5,7 +5,8 @@ const {positiveTenantId}=require('../enterprise/repositories/customer-repository
 const {revisionOfLead}=require('../enterprise/crm-revision-v6607.cjs');
 const CRM_TEXT=require('../enterprise/crm-text-integrity-v66140.cjs');
 // SBC_V6607_LEAD_REVISION_GUARD
-const FIELDS=Object.freeze({contactName:['contact_name',255],phone:['phone',80],email:['email',255],status:['status',40],notes:['notes',4000]});
+const FIELDS=Object.freeze({businessName:['business_name',255],contactName:['contact_name',255],phone:['phone',80],email:['email',255],website:['website',300],address:['address',500],industry:['industry',160],status:['status',40],notes:['notes',4000]});
+const OWNER_PROFILE_FIELDS=new Set(['businessName','website','industry','googleBusinessUrl']);
 const STATUS=new Set(['Lead','Prospect','Contacted','Follow Up','Qualified','Interested','Not Interested','Appointment Set','Customer','Not Qualified','Do Not Call','Lost']);
 const deny=(res,status,code)=>res.status(status).json({ok:false,code});
 function tenantFor(req){
@@ -27,7 +28,7 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
   const role=String(req.user?.role||'');
   if(!['owner','lead_researcher','caller'].includes(role))return deny(res,403,'LEAD_EDIT_FORBIDDEN');
   if(!ctx.mysqlPool||typeof ctx.mysqlPool.getConnection!=='function')return deny(res,503,'MYSQL_UNAVAILABLE');
-  let tenant,id,edits;
+  let tenant,id,edits,googleBusinessUrl=null;
   try{
    tenant=tenantFor(req);
    id=String(req.params?.id||'').trim();
@@ -38,25 +39,35 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
    const keys=Object.keys(body).filter(key=>key!=='revision');
    if(typeof body.revision!=='string'||!(/^[a-f0-9]{64}$/).test(body.revision))throw Object.assign(new Error('LEAD_REVISION_REQUIRED'),{code:'LEAD_REVISION_REQUIRED'});
    if(!keys.length)throw Object.assign(new Error('EMPTY_EDIT'),{code:'EMPTY_EDIT'});
-   if(keys.some(key=>!Object.hasOwn(FIELDS,key)))throw Object.assign(new Error('UNAPPROVED_EDIT_FIELD'),{code:'UNAPPROVED_EDIT_FIELD'});
-   edits=keys.map(key=>{
+   if(keys.some(key=>!Object.hasOwn(FIELDS,key)&&key!=='googleBusinessUrl'))throw Object.assign(new Error('UNAPPROVED_EDIT_FIELD'),{code:'UNAPPROVED_EDIT_FIELD'});
+    if(role!=='owner'&&keys.some(key=>OWNER_PROFILE_FIELDS.has(key)))throw Object.assign(new Error('LEAD_PROFILE_OWNER_REQUIRED'),{code:'LEAD_PROFILE_OWNER_REQUIRED'});
+    if(Object.hasOwn(body,'googleBusinessUrl')){
+     if(typeof body.googleBusinessUrl!=='string'||body.googleBusinessUrl.length>500)throw Object.assign(new Error('INVALID_GOOGLE_BUSINESS_URL'),{code:'INVALID_GOOGLE_BUSINESS_URL'});
+     googleBusinessUrl=body.googleBusinessUrl.trim();
+     if(googleBusinessUrl){
+      let url;try{url=new URL(googleBusinessUrl);}catch(_){throw Object.assign(new Error('INVALID_GOOGLE_BUSINESS_URL'),{code:'INVALID_GOOGLE_BUSINESS_URL'});}
+      if(url.protocol!=='https:'||url.username||url.password)throw Object.assign(new Error('INVALID_GOOGLE_BUSINESS_URL'),{code:'INVALID_GOOGLE_BUSINESS_URL'});
+     }
+    }
+   edits=keys.filter(key=>key!=='googleBusinessUrl').map(key=>{
     const [column,max]=FIELDS[key];
     if(typeof body[key]!=='string'||body[key].length>max)throw Object.assign(new Error('INVALID_EDIT_VALUE'),{code:'INVALID_EDIT_VALUE'});
     const value=body[key].trim();
     if(CRM_TEXT.invalidText(value,{allowLineBreaks:key==='notes'}))throw Object.assign(new Error('CORRUPT_CRM_TEXT_REJECTED'),{code:'CORRUPT_CRM_TEXT_REJECTED'});
+    if(key==='businessName'&&!value)throw Object.assign(new Error('BUSINESS_NAME_REQUIRED'),{code:'BUSINESS_NAME_REQUIRED'});
     if(key==='status'&&!STATUS.has(value))throw Object.assign(new Error('INVALID_LEAD_STATUS'),{code:'INVALID_LEAD_STATUS'});
     if(key==='email'&&value&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))throw Object.assign(new Error('INVALID_EMAIL'),{code:'INVALID_EMAIL'});
     return {key,column,value:key==='email'?value.toLowerCase():value};
    });
   }catch(e){
-   const forbidden=['TENANT_CONTEXT_MISSING','VALID_TENANT_CONTEXT_REQUIRED','TENANT_DATABASE_ID_INVALID','TENANT_CONTEXT_MISMATCH'].includes(e.code);
+   const forbidden=['TENANT_CONTEXT_MISSING','VALID_TENANT_CONTEXT_REQUIRED','TENANT_DATABASE_ID_INVALID','TENANT_CONTEXT_MISMATCH','LEAD_PROFILE_OWNER_REQUIRED'].includes(e.code);
    return deny(res,forbidden?403:400,e.code||'INVALID_LEAD_EDIT');
   }
   let conn=null,tx=false;
   try{
    conn=await ctx.mysqlPool.getConnection();
    await conn.beginTransaction();tx=true;
-   const [matched]=await conn.query('SELECT id,assigned_to,contact_name,phone,email,status,notes,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);
+   const [matched]=await conn.query('SELECT id,assigned_to,business_name,contact_name,phone,email,website,address,industry,status,notes,lead_intelligence_json,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);
    if(!Array.isArray(matched)||matched.length!==1){
     await conn.rollback();tx=false;return deny(res,404,'LEAD_NOT_FOUND');
    }
@@ -67,13 +78,25 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
    if(role==='caller'&&(!actor||String(matched[0].assigned_to||'').trim()!==actor)){
     await conn.rollback();tx=false;return deny(res,403,'LEAD_ASSIGNMENT_REQUIRED');
    }
+   if(googleBusinessUrl!==null){
+    let meta={};
+    if(matched[0].lead_intelligence_json){
+     try{meta=typeof matched[0].lead_intelligence_json==='string'?JSON.parse(matched[0].lead_intelligence_json):matched[0].lead_intelligence_json;}
+     catch(_){throw Error('LEAD_RESEARCH_DATA_UNREADABLE');}
+     if(!meta||typeof meta!=='object'||Array.isArray(meta))throw Error('LEAD_RESEARCH_DATA_UNREADABLE');
+    }
+    const prior=meta.researchBrief;
+    if(prior!=null&&(typeof prior!=='object'||Array.isArray(prior)))throw Error('LEAD_RESEARCH_DATA_UNREADABLE');
+    meta={...meta,researchBrief:{...(prior||{}),googleBusinessUrl}};
+    edits.push({key:'googleBusinessUrl',column:'lead_intelligence_json',value:JSON.stringify(meta)});
+   }
    const stamp=new Date().toISOString().slice(0,19).replace('T',' ');
    const params=[...edits.map(x=>x.value),stamp,tenant,id];
    const sql='UPDATE sbc_customers SET '+edits.map(x=>x.column+'=?').join(', ')+', updated_at=? WHERE tenant_id=? AND id=?';
    const [updated]=await conn.query(sql,params);
    if(updated?.affectedRows!==1)throw Error('LEAD_EDIT_NOT_PERSISTED');
    const [verified]=await conn.query(
-    'SELECT id,tenant_id,contact_name,phone,email,status,notes,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[tenant,id]
+    'SELECT id,tenant_id,business_name,contact_name,phone,email,website,address,industry,status,notes,lead_intelligence_json,updated_at FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[tenant,id]
    );
    if(!Array.isArray(verified)||verified.length!==1||Number(verified[0].tenant_id)!==tenant)
     throw Error('LEAD_EDIT_READBACK_FAILED');
@@ -86,7 +109,13 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
    await conn.commit();tx=false;
    const existing=Array.isArray(ctx.db?.customers)?ctx.db.customers.find(c=>String(c.id)===id&&Number(c.tenantId??c.tenant_id)===tenant):null;
    if(existing){
-    for(const edit of edits){existing[edit.key]=edit.value;existing[edit.column]=edit.value;}
+    for(const edit of edits){
+      if(edit.key==='googleBusinessUrl'){
+       existing.googleBusinessUrl=googleBusinessUrl;
+       existing.leadIntelligence=JSON.parse(edit.value);
+       existing.lead_intelligence_json=edit.value;
+      }else{existing[edit.key]=edit.value;existing[edit.column]=edit.value;}
+     }
     existing.updatedAt=stamp;
    }
    try{ctx.audit?.(req.user,'lead_updated_direct_mysql','CRM lead updated',{customerId:id,tenantId:tenant,fields:edits.map(x=>x.key),requestId:req.requestId||null});}catch(_){}

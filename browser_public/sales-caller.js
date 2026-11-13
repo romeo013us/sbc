@@ -134,12 +134,12 @@ async function renderWebsiteShowroom(){
 
 function renderLeads(){
  const target=$('lead-list'),q=$('search').value.toLowerCase().trim();target.replaceChildren();
- const rows=(data?.leads||[]).filter(c=>[c.businessName,c.contactName,c.phone,c.city].join(' ').toLowerCase().includes(q));
+ const rows=(data?.leads||[]).filter(c=>[c.businessName,c.contactName,c.phone,c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(q));
  if(!rows.length){target.append(recordRow('No matching assigned leads','Ask the owner to assign a reviewed lead batch.'));return;}
  rows.slice(0,150).forEach(c=>{
   const state=c.canCall?'Callable with clearance':(c.queueReason||c.reason||'Not callable');
-  target.append(recordRow(c.businessName||'Unnamed lead',[c.contactName,c.phone,c.city,c.status,c.followUpAt?('Due '+stamp(c.followUpAt)):'',c.demoUrl?'Website preview ready':'',state].filter(Boolean).join(' · '),
-   data.role==='caller'?'Select for call':'View details',()=>openLead(c.id),!c.canCall));
+  target.append(recordRow(c.businessName||'Unnamed lead',[c.contactName,c.phone,c.address||'Address not recorded',c.status,c.followUpAt?('Due '+stamp(c.followUpAt)):'',c.demoUrl?'Website preview ready':'',state].filter(Boolean).join(' · '),
+   'Open business profile',()=>openLead(c.id),false));
  });
 }
 function openLead(id){
@@ -155,10 +155,24 @@ function renderCallTarget(){
  selector.value=selectedLead?.canCall?selected:(nextEligible?.id||'');
  renderCallSelection();
 }
+function renderCallerAccount(c){
+ var host=$('lead-detail');if(!host)return;
+ host.replaceChildren();if(!c){host.textContent='Select an assigned business to view its profile.';return;}
+ host.classList.add('sbc-caller-account-profile');
+ host.append(el('h3',c.businessName||'Unnamed business'));
+ host.append(el('p',(c.industry||'Category not recorded')+' · '+(c.status||'Lead')+' · '+(c.canCall?'Calling clearance subject to shift/training':'Not callable — review only'),'muted'));
+ var details=el('div',undefined,'sbc-caller-account-fields');
+ var entries=[['Contact / decision maker',c.contactName],['Business phone',c.phone],['Email',c.email],['Business address',c.address],['Website status',c.researchBrief?.websitePresence],['Google profile status',c.researchBrief?.googleBusinessPresence],['Research notes',c.researchBrief?.originalNotes]];
+ entries.forEach(function(pair){var row=el('div',undefined,'sbc-caller-account-field');row.append(el('small',pair[0]),el('strong',pair[1]||'Not recorded'));details.append(row);});
+ var addLink=function(label,value){if(!value)return;try{var url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)return;var a=el('a',label);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';details.append(a);}catch(_){}};
+ addLink('Open business website',c.website);addLink('Open Google Business Profile',c.researchBrief?.googleBusinessUrl);
+ host.append(details);
+ host.append(el('p','Use the call and report controls below to log verified outcomes. Only the SBC owner can edit the master business record or approve outreach.','muted'));
+}
 function renderCallSelection(){
  const id=$('call-target').value,c=data?.leads.find(x=>x.id===id);
  $('dial-number').value=c?.phone||'';
- $('lead-detail').textContent=c?([c.businessName,c.contactName,c.status,c.queueReason||c.reason||''].filter(Boolean).join(' · ')):'Select an assigned lead to call.';
+ renderCallerAccount(c);
  const preview=$('sbc-caller-demo-link');
  if(preview){
   preview.replaceChildren();

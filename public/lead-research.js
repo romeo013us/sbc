@@ -135,7 +135,8 @@ function displayLead(c,inQueue){
  var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
  left.append(element('strong',null,c.businessName||'Unnamed business'));
  left.append(element('small',null,[c.city||c.address,c.industry,c.phone,secondaryPhoneLabel(c),c.email].filter(Boolean).join(' · ')||'Contact details pending'));
- if(isException(c))left.append(element('small','correction-reason','Reason: '+correctionReason(c)));
+ left.append(element('small','lead-address','Address: '+String(c.address||'Not recorded')));
+  if(isException(c))left.append(element('small','correction-reason','Reason: '+correctionReason(c)));
  right.append(element('span','pill',leadAutomationStatus(c)));
  var actionable=own&&isException(c);
  var button=element('button','outline',actionable?'Correct information':'View details');
@@ -168,10 +169,19 @@ function openReview(item,lead,editable){
  var otherPhone=splitSecondaryPhoneNotes(lead.notes);
  if(!editable){
   form.append(element('p',null,'Research source: '+String(lead.researchSource||lead.source||'Not recorded')));
+   form.append(element('p',null,'Contact / decision maker: '+String(lead.contactName||'Not recorded')));
+   form.append(element('p',null,'Email: '+String(lead.email||'Not recorded')));
   form.append(element('p',null,'Primary phone: '+String(lead.phone||'Not recorded')));
   form.append(element('p',null,'Secondary phone: '+(otherPhone.phone||'Not recorded')+(otherPhone.source?' · Source: '+otherPhone.source:'')));
   form.append(element('p',null,'Category: '+String(lead.industry||'Not recorded')));
+   form.append(element('p',null,'Business address: '+String(lead.address||'Not recorded')));
   form.append(element('p',null,'Website: '+String(lead.website||'Not recorded — requires checking')));
+   var intelligence=lead.leadIntelligence||{},brief=intelligence.researchBrief||lead.researchBrief||{};
+   var gbp=String(lead.googleBusinessUrl||brief.googleBusinessUrl||'').trim();
+   var p=element('p',null,'Google Business Profile: ');
+   try{var url=new URL(gbp);if(['http:','https:'].includes(url.protocol)&&!url.username&&!url.password){var a=element('a',null,gbp);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';p.append(a);}else p.append(element('span',null,'Not recorded'));}
+   catch(_){p.append(element('span',null,'Not recorded'));}
+   form.append(p);
   form.append(element('p',null,'Original CRM research notes: '+String(lead.notes||'Not recorded')));
   form.append(element('p','muted','Full structured research from newly submitted leads is saved with the CRM record and available in the assigned caller view.')); 
   var close=element('button','outline','Close');close.type='button';close.onclick=function(){form.remove();};form.append(close);item.append(form);return;
@@ -180,7 +190,7 @@ function openReview(item,lead,editable){
  var editableFields=[
   ['Business name','businessName'],['Contact person','contactName'],
   ['Phone','phone'],['Secondary phone','secondaryPhone'],['Secondary phone source','secondaryPhoneSource'],['Email','email'],['Website','website'],
-  ['Industry','industry'],['City','city'],['Research source','verificationSource']
+  ['Industry','industry'],['City','city'],['Business address','address'],['Research source','verificationSource']
  ];
  editableFields.forEach(function(pair){
   var label=element('label',null,pair[0]),input=element('input');input.name=pair[1];
@@ -589,7 +599,7 @@ function importRowElement(row){
  div.id='import-row-'+row.index;
  var index=element('span',null,String(row.rowNumber));
  var name=element('strong',null,row.record.businessName||'Missing business name');
- var detail=element('small',null,[row.record.contactName,row.record.phone,row.record.email,row.record.website].filter(Boolean).join(' · ')||'No verified contact details supplied');
+ var detail=element('small',null,[row.record.contactName,row.record.phone,row.record.email,row.record.website,row.record.address?'Address: '+row.record.address:'Address not recorded'].filter(Boolean).join(' · ')||'No verified contact details supplied');
  var result=element('span','result',rowResult(row));
  var missing=[!row.record.contactName?'contact person missing':null,!row.record.phone?'phone missing for calls':null,
   !row.record.website?'website not checked':null,'Google profile not checked by CSV import',

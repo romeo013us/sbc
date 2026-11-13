@@ -108,6 +108,7 @@
   }
   const originalSafeOpen=window.openCustomer360Safe;
   window.openCustomer360Safe=async function(id){
+    if(window.SBC_LEAD_PROFILE&&typeof window.SBC_LEAD_PROFILE.open==='function')return window.SBC_LEAD_PROFILE.open(id);
     let c=customerById(id);
     if(!c && typeof window.load==='function'){try{await window.load();}catch{} c=customerById(id);}
     if(!c){if(typeof toast==='function')toast('Customer record could not be loaded.');return;}

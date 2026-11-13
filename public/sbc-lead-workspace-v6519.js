@@ -26,8 +26,8 @@
         <div class="slw-notice"><strong>Recovery protection active:</strong> existing records stay intact. Saving a new lead uses the guarded CRM endpoint; if recovery is locked, the lead stays in browser-session staging and can be exported. No recovery lock is bypassed.</div>
         <div class="slw-body">
           <section class="slw-card"><h3>Existing CRM records</h3>
-            <div class="slw-tools"><input id="slw-search" type="search" placeholder="Filter this page by business, contact, email, phone" aria-label="Filter current page"><button id="slw-refresh" class="slw-btn" type="button">Refresh</button></div>
-            <div class="slw-table-wrap"><table><thead><tr><th>Business</th><th>Contact</th><th>Email / Phone</th><th>Status</th></tr></thead><tbody id="slw-rows"><tr><td colspan="4" class="slw-empty">Open workspace to load records.</td></tr></tbody></table></div>
+            <div class="slw-tools"><input id="slw-search" type="search" placeholder="Filter this page by business, contact, address, email, phone" aria-label="Filter current page"><button id="slw-refresh" class="slw-btn" type="button">Refresh</button></div>
+            <div class="slw-table-wrap"><table><thead><tr><th>Business</th><th>Contact</th><th>Email / Phone</th><th>Address</th><th>Status</th></tr></thead><tbody id="slw-rows"><tr><td colspan="5" class="slw-empty">Open workspace to load records.</td></tr></tbody></table></div>
             <div class="slw-tools" style="margin-top:10px"><button id="slw-prev" class="slw-btn" type="button">Previous</button><span id="slw-page" class="slw-status">Page 1</span><button id="slw-next" class="slw-btn" type="button">Next</button></div>
             <div id="slw-list-status" class="slw-status" aria-live="polite"></div>
           </section>
@@ -67,7 +67,7 @@
     if (reset) state.offset = 0;
     state.loading = true;
     byId('slw-list-status').textContent = 'Loading read-only CRM records…';
-    byId('slw-rows').innerHTML = '<tr><td colspan="4" class="slw-empty">Loading…</td></tr>';
+    byId('slw-rows').innerHTML = '<tr><td colspan="5" class="slw-empty">Loading…</td></tr>';
     try {
       const r = await fetch(`/api/v6519/crm/leads?limit=${state.limit}&offset=${state.offset}`, { credentials: 'include', headers: { Accept: 'application/json' }, cache: 'no-store' });
       const body = await r.json().catch(() => ({}));
@@ -80,14 +80,14 @@
       byId('slw-list-status').textContent = `Read-only mode · ${state.rows.length} records returned · database unchanged`;
     } catch (e) {
       state.rows = [];
-      byId('slw-rows').innerHTML = `<tr><td colspan="4" class="slw-empty">${esc(e.message)}</td></tr>`;
+      byId('slw-rows').innerHTML = `<tr><td colspan="5" class="slw-empty">${esc(e.message)}</td></tr>`;
       byId('slw-list-status').textContent = 'Unable to load existing records. No data was changed.';
     } finally { state.loading = false; }
   }
   function renderRows() {
     const q = String(byId('slw-search')?.value || '').trim().toLowerCase();
-    const rows = state.rows.filter(r => [r.business_name, r.contact_name, r.email, r.phone, r.status].some(v => String(v || '').toLowerCase().includes(q)));
-    byId('slw-rows').innerHTML = rows.length ? rows.map(r => `<tr><td><strong>${esc(r.business_name || 'Unnamed business')}</strong><div class="slw-muted">ID ${esc(r.id)}</div></td><td>${esc(r.contact_name || '—')}</td><td>${esc(r.email || '—')}<div class="slw-muted">${esc(r.phone || '—')}</div></td><td>${esc(r.status || 'Unspecified')}<button class="slw-btn" type="button" data-sbc-lead-edit-id="${esc(r.id)}">Edit</button></td></tr>`).join('') : '<tr><td colspan="4" class="slw-empty">No matching records on this page.</td></tr>';
+    const rows = state.rows.filter(r => [r.business_name, r.contact_name, r.email, r.phone, r.address, r.status].some(v => String(v || '').toLowerCase().includes(q)));
+    byId('slw-rows').innerHTML = rows.length ? rows.map(r => `<tr><td><strong>${esc(r.business_name || 'Unnamed business')}</strong><div class="slw-muted">ID ${esc(r.id)}</div></td><td>${esc(r.contact_name || '—')}</td><td>${esc(r.email || '—')}<div class="slw-muted">${esc(r.phone || '—')}</div></td><td>${esc(r.address || 'Not recorded')}</td><td>${esc(r.status || 'Unspecified')}<button class="slw-btn" type="button" data-sbc-lead-edit-id="${esc(r.id)}">Edit</button></td></tr>`).join('') : '<tr><td colspan="5" class="slw-empty">No matching records on this page.</td></tr>';
   }
   async function saveOrStageLead(event) {
     event.preventDefault();

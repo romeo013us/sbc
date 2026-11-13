@@ -41,7 +41,9 @@ function verify(root=path.join(__dirname,'..'),opts={}){
   if(opts.checkIndex===false)continue;
   const page=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
   const links=[...page.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/gi)].map(m=>m[0]);
-  if(links.length!==5)throw Error('[SBC V66 CSS] Expected five stylesheet requests, got '+links.length+' in '+dir);
+  const ownerFocusCss='/sbc-command-center-focus-v1.css';
+  if(links.length!==6)throw Error('[SBC V66 CSS] Expected six stylesheet requests including focused workspace styling, got '+links.length+' in '+dir);
+  if(links.filter(x=>x.includes('href="'+ownerFocusCss+'?')).length!==1)throw Error('[SBC V66 CSS] Owner focus stylesheet not present exactly once in '+dir);
   const last=links.at(-1)||'';
   if(!last.includes('/'+expected.filename))throw Error('[SBC V66 CSS] owner UI bundle missing from '+dir+' index');
   for(const original of COMPONENTS)if(page.includes('href="/'+original))

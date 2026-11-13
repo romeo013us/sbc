@@ -1,0 +1,32 @@
+/* SBC daily Command Center: clean hierarchy, preserved advanced modules. */
+#sbcFocusNav{display:grid;gap:5px;margin:4px 0 12px}
+.sbc-focus-caption{font-size:10px;font-weight:800;letter-spacing:1.5px;opacity:.65;margin:11px 12px 6px}
+#sbcFocusNav>.nav-item,#sbcFocusNav>#sbc-website-production-nav{display:flex;align-items:center;width:100%;min-height:43px;border-radius:11px;box-sizing:border-box;text-align:left;margin:0}
+#sbcFocusNav>.nav-item{font-size:14px;font-weight:650;padding:10px 13px;gap:8px}
+#sbcFocusNav>.nav-item span{display:inline-block;min-width:24px}
+#sbcFocusNav>.nav-item:focus-visible,#sbcFocusToggle:focus-visible,.sbc-focus-more summary:focus-visible{outline:3px solid #f5a94f;outline-offset:2px}
+.sbc-focus-more{border-top:1px solid rgba(160,183,204,.22);margin-top:8px;padding-top:8px}
+.sbc-focus-more>summary{cursor:pointer;padding:11px 12px;border-radius:8px;font-size:13px;font-weight:730}
+.sbc-focus-secondary{margin-bottom:5px}
+.sbc-focus-toggle{width:100%;min-height:34px;font-size:12px;opacity:.9;cursor:pointer}
+html[data-sbc-focus-mode="focus"] #sbcAgentOSPanel{display:none!important}
+html[data-sbc-focus-mode="focus"] #sbc-owner-qa-topbar,
+html[data-sbc-focus-mode="focus"] #sbc-launch-readiness-topbar,
+html[data-sbc-focus-mode="focus"] #storageLabel,
+html[data-sbc-focus-mode="focus"] #sbcBuildVersion{display:none!important}
+html[data-sbc-focus-mode="focus"] #app .topbar{gap:12px}
+html[data-sbc-focus-mode="focus"] #app .top-actions{gap:8px;flex-wrap:wrap}
+html[data-sbc-focus-mode="focus"] .sidebar .sbc-focus-more:not([open]) .v56-legacy-tools{display:none!important}
+html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:14px;border-radius:12px}
+html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead .actions{display:flex;gap:8px;flex-wrap:wrap}
+html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead .meta{margin-top:6px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:760px){#sbcFocusNav>.nav-item{min-height:48px}html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead{grid-template-columns:1fr}}
+
+/* Existing buttons move into a reversible accessible disclosure — no handler is replaced. */
+.sbc-page-more-actions{position:relative;min-width:134px}
+.sbc-page-more-actions>summary{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:38px;border:1px solid rgba(132,163,191,.5);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:720}
+.sbc-page-more-actions[open]{z-index:2}
+.sbc-page-extra-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;padding:10px;border:1px solid rgba(132,163,191,.35);border-radius:10px;background:var(--card,#132539)}
+.sbc-page-extra-buttons>.btn{flex:1 1 auto}
+.sbc-page-more-actions>summary:focus-visible{outline:3px solid #f5a94f;outline-offset:2px}
+@media(max-width:760px){.sbc-page-more-actions{width:100%}.sbc-page-more-actions>summary{width:100%}}

@@ -65,6 +65,7 @@ function projectAssigned(customers,user,tenantId){
   contactName:String(c.contactName||'').slice(0,160),phone:String(c.phone||'').slice(0,80),
   email:String(c.email||'').slice(0,250),website:String(c.website||'').slice(0,300),
   industry:String(c.industry||c.businessCategory||'').slice(0,100),city:String(c.city||'').slice(0,100),
+  address:String(c.address||c.businessAddress||'').slice(0,500),
   status:String(c.status||'Lead').slice(0,70),verificationStatus:String(c.verificationStatus||'').slice(0,80),
   leadTemperature:String(c.leadTemperature||'').slice(0,30),assignedTo:String(c.assignedTo||''),
   nextAction:String(c.nextAction||'').slice(0,500),
