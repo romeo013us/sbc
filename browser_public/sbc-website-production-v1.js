@@ -50,6 +50,20 @@
       '<button type="button" class="btn primary" id="sbcFactoryBookMeeting">Book Walkthrough in Command Center</button></section>';
   }
 
+  function hostingGuide(demo) {
+    if(currentRole()!=='owner')return '';
+    const starter=demo.offerTier==='starter';
+    return '<details class="sbc-website-hosting-guide" style="margin:18px 0;border:1px solid #b8cce0;border-radius:12px;padding:14px;background:#f3f8ff;color:#16334b">'+
+     '<summary style="font-weight:900;cursor:pointer">Hosting & fulfillment · What to buy after payment</summary>'+
+     '<div style="padding:12px 4px;font-size:13px;line-height:1.7">'+
+      '<p><strong>Current generator:</strong> HTML + CSS + JavaScript. This preview is not an automatic import into WordPress, GoDaddy Airo, or Websites + Marketing.</p>'+
+      (starter
+       ? '<p><strong>$199 Business Starter:</strong> This package is currently advertised with one year of domain and GoDaddy Websites + Marketing. If you deliver that promised product, purchase the eligible Websites + Marketing plan and recreate/adapt this one-page design inside the builder; the exported custom HTML cannot simply be uploaded as its editable template. If you prefer to deliver the exact HTML/CSS/JavaScript design on cPanel instead, get the buyer’s agreement to a revised offer and check the cost/margin first.</p>'
+       : '<p><strong>$349 Business Basic:</strong> The four-page HTML/CSS/JavaScript output can be hosted on compatible cPanel/static hosting after assets and contact integration are finalized. Check the customer quote for what domain, hosting, SSL, maintenance and transfer rights are included. WordPress requires conversion to a theme/pages; Websites + Marketing requires rebuilding the layout in its editor.</p>')+
+      '<p><strong>Owner fulfillment checklist:</strong> Verify payment evidence, confirm domain ownership, select and record the hosting product and supplier cost, secure stock-image usage, add approved copy and photos, configure SSL and live forms, test mobile/navigation, then get final launch approval. No provider purchase or domain change happens from this guide.</p>'+
+     '</div></details>';
+  }
+
   function showSite(demo,customer,message='') {
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
@@ -61,6 +75,7 @@
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
+      hostingGuide(demo)+
       '<section style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(demo.salesScript||'Once the website is reviewed, introduce the owner to the finished site and offer a short walkthrough.')+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
