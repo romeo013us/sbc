@@ -15,12 +15,12 @@
  function build({businessName='your business',googleVerified=false,websitePresence='not_checked',approved=false}={}){
   const business=clean(businessName,'your business');
   const observed=(googleVerified===true&&websitePresence==='not_found')
-   ? 'I was looking at your Google Business Profile, and I didn\'t see a website linked there. Do you already have one?'
+   ? 'I was looking at your Google Business Profile, and I didn\'t see a website linked there. Do you already have a website?'
    : googleVerified===true
     ? 'I was checking out your Google Business Profile, and I wanted to ask—do you already have a website?'
     : websitePresence==='not_found'
      ? 'I came across your business online and couldn\'t find a website in the information I checked. Do you already have one?'
-     : 'I came across your business online and wanted to ask—do you already have a website?';
+     : 'I was looking up your business online and wanted to ask—do you already have a website?';
   const no=approved
    ? 'No worries. I actually went ahead and built a working example of a website for '+business+'. It has real pages you can click through, with example photos and a professional layout. It isn\'t live yet, and the final business details are personalized if you decide to move forward.'
    : 'No worries. I can prepare a working website example for '+business+' for you to review once the owner has approved it. Nothing has been published or sent yet.';
