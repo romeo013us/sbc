@@ -68,4 +68,20 @@ function description(model){
  const place=model.facts?.city||model.rawCity;
  return 'Website concept for '+model.business+' — '+model.industry+(place?' in '+place:'')+'. Explore the design and request verified business details before launch.';
 }
-module.exports={archetype,verifiedFacts,publicReleaseReady,industryPanel,mobileActions,schema,description,esc};
+function heroDescription(model){
+ const featured=model.facts?.services?.[0];
+ const place=model.facts?.city?' in '+model.facts.city:'';
+ return 'Explore a '+model.industry+' website concept for '+model.business+place+'. '+
+  (featured?'Verified service highlight: '+featured+'. ':'')+
+  'Business details, images, and contact options are finalized before public launch.';
+}
+function contactDetails(model){
+ const f=model.facts;
+ const phone=f?.phone||'Business number — add before launch';
+ const location=f?.streetAddress&&f?.city?[f.streetAddress,f.city,f.region,f.postalCode].filter(Boolean).join(', '):
+  'Verified address and service area — add before launch';
+ return '<div class="contact-lines"><div><span>PHONE</span><strong>'+esc(phone)+'</strong></div>'+
+  '<div><span>EMAIL</span><strong>Business email — add before launch</strong></div>'+
+  '<div><span>LOCATION</span><strong>'+esc(location)+'</strong></div></div>';
+}
+module.exports={archetype,verifiedFacts,publicReleaseReady,industryPanel,mobileActions,schema,description,heroDescription,contactDetails,esc};
