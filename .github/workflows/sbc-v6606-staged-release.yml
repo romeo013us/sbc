@@ -86,7 +86,8 @@ jobs:
           node scripts/v66104-sales-workspace.test.cjs
           node scripts/v66106-sales-playbook.test.cjs
           node scripts/v66107-elite-academy.test.cjs
-          node scripts/v66108-war-gate.test.cjs
+          # The receipt/red-green runtime war gate is tested on the completed ZIP.
+          # Source-only UI, lead and role tests above remain active.
           node scripts/v66109-workforce-audio.test.cjs
           node scripts/predeploy-war-test.js
           node --test test/sbc-market-intelligence.test.cjs
@@ -602,6 +603,7 @@ jobs:
           npm run verify:v66:artifact
           # Verify the pinned launch contract only against the freshly regenerated ZIP.
           node scripts/v6603-flat-release-contract.test.cjs
+          node scripts/v66108-war-gate.test.cjs
           echo '[SBC GODADDY HOST PREFLIGHT] npm production install, build, artifact gate and stage integrity PASS'
       - name: Upload isolated staging candidate (never publish)
         uses: actions/upload-artifact@v4
