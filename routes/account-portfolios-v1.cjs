@@ -204,5 +204,45 @@ function register(app,{auth,getContext}){
    return res.json({ok:true,durable:true,id,followUp:dueDate,purpose,assignedTo:result.assignedTo,contactSent:false});
   }catch(_){return fail(res,503,'FOLLOW_UP_SAVE_FAILED')}
  });
+ app.post('/api/v6606/crm/account-portfolios/:id/note',auth,async(req,res)=>{
+  const x=context(req,res,true);if(x.denied)return;
+  let id,note;
+  try{
+   id=safeId(req.params.id);
+   if(typeof req.body?.note!=='string')throw Error('ACCOUNT_NOTE_REQUIRED');
+   note=req.body.note.trim();
+   if(note.length<12||note.length>3000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(note))
+    throw Error('ACCOUNT_NOTE_INVALID');
+  }catch(e){return fail(res,400,String(e.message||e))}
+  try{
+   const result=await withTx(x.ctx,async conn=>{
+    const [records]=await conn.query('SELECT id,assigned_to,status,follow_up,account_notes_json,tenant_id FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[x.tenant,id]);
+    if(!Array.isArray(records)||records.length!==1)return {status:404,code:'ACCOUNT_NOT_FOUND'};
+    const assigned=String(records[0].assigned_to||'');
+    if(req.user.role!=='owner'&&assigned!==String(req.user.id||''))return {status:403,code:'ACCOUNT_NOT_ASSIGNED'};
+    let previous;
+    try{previous=records[0].account_notes_json?JSON.parse(records[0].account_notes_json):[]}
+    catch(_){throw Error('ACCOUNT_NOTES_UNREADABLE')}
+    if(!Array.isArray(previous)||previous.some(x=>!x||typeof x!=='object'))throw Error('ACCOUNT_NOTES_UNREADABLE');
+    const createdAt=new Date().toISOString();
+    const record={
+      id:'anote_'+randomUUID().replace(/-/g,''),customerId:id,
+      authorId:String(req.user.id||''),authorName:String(req.user.name||req.user.username||'SBC Account Manager').slice(0,160),
+      note,createdAt
+    };
+    const notes=[record,...previous].slice(0,100),at=stamp();
+    const [saved]=await conn.query('UPDATE sbc_customers SET account_notes_json=?,updated_at=? WHERE tenant_id=? AND id=? AND assigned_to=?',[JSON.stringify(notes),at,x.tenant,id,assigned]);
+    if(saved?.affectedRows!==1)throw Error('ACCOUNT_NOTE_NOT_PERSISTED');
+    const ev=eventData(id,'account_note','Account manager recorded an account interaction',
+      {noteId:record.id,actorId:record.authorId,assignedTo:assigned,createdAt},x.tenant);
+    await conn.query(ev.sql,ev.params);
+    return {status:200,record,notes};
+   });
+   if(result.status!==200)return fail(res,result.status,result.code);
+   const c=(x.ctx.db?.customers||[]).find(c=>String(c.id)===id&&Number(c.tenantId??c.tenant_id)===x.tenant);
+   if(c)c.accountNotes=result.notes;
+   return res.json({ok:true,durable:true,id,note:result.record,contactSent:false});
+  }catch(_){return fail(res,503,'ACCOUNT_NOTE_SAVE_FAILED')}
+ });
 }
 module.exports=register;
