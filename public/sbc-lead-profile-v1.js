@@ -20,17 +20,34 @@ function cardField(label,v,asLink){return '<div class="sbc-profile-field"><span>
 function noteList(c){var account=Array.isArray(c.accountNotes)?c.accountNotes:[];return account.slice(-15).reverse().map(function(n){return '<div class="sbc-profile-event"><strong>'+E(n.authorName||'SBC team')+'</strong><small>'+E(n.createdAt||'')+'</small><p>'+E(n.note||'')+'</p></div>';}).join('')||'<p class="mini">No account notes yet.</p>';}
 function eventList(id){var events=(window.state&&state.data&&state.data.activities||[]).filter(function(a){return String(a.meta&&a.meta.customerId||a.customerId||'')===id;});return events.slice(-12).reverse().map(function(a){return '<div class="sbc-profile-event"><strong>'+E(a.type||'Activity')+'</strong><small>'+E(a.createdAt||'')+'</small><p>'+E(a.message||'')+'</p></div>';}).join('')||'<p class="mini">No logged activity in the loaded CRM view.</p>';}
 function btn(action,label,disabled,tip){return '<button class="btn'+(action==='edit'?' primary':'')+'" type="button" data-sbc-profile-action="'+action+'"'+(disabled?' disabled':'')+(tip?' title="'+E(tip)+'"':'')+'>'+E(label)+'</button>';}
+function relatedHistory(id){
+ var db=window.state&&state.data||{},find=function(x){return String(x.customerId||x.customer_id||'')===id;};
+ var quotes=Array.isArray(db.quotes)?db.quotes.filter(find):[];
+ var orders=Array.isArray(db.orders)?db.orders.filter(find):[];
+ var ops=db.megaOps||{};
+ var projects=Array.isArray(ops.projects)?ops.projects.filter(find):[];
+ var tickets=Array.isArray(ops.tickets)?ops.tickets.filter(find):[];
+ var renderRows=function(rows,title,type){return '<div class="sbc-profile-history-list"><strong>'+E(title)+' · '+rows.length+'</strong>'+rows.slice(-5).reverse().map(function(row){
+   return '<div class="sbc-profile-event">'+E(row.quoteNumber||row.subject||row.product||row.name||type)+' · '+E(row.status||'Status not recorded')+'</div>';
+ }).join('')+'</div>';};
+ return '<section class="sbc-profile-panel"><h3>Sales & service history</h3>'+
+ renderRows(quotes,'Quotes','Quote')+renderRows(orders,'Orders','Order')+renderRows(projects,'Projects','Project')+renderRows(tickets,'Support tickets','Ticket')+
+ '<p class="mini">Shows related records currently loaded by the Command Center. It does not assume missing records are absent from the database.</p></section>';
+}
+function authoritativeNotes(raw){
+ try{var v=typeof raw==='string'?JSON.parse(raw||'[]'):raw;return Array.isArray(v)?v.filter(function(x){return x&&typeof x==='object';}).slice(-50):null;}catch(_){return null;}
+}
 function render(message){
  var c=current||local(currentId);if(!c)return;
  var d=detailed(c),canEdit=ownerOnly()&&!blocked(c),canContact=!blocked(c)&&!suppressed(c);
  var html='<section id="sbcLeadAccount360" data-sbc-lead-id="'+E(currentId)+'" class="sbc-lead-account"><div class="sbc-profile-head"><div><p class="mini">SBC · ACCOUNT 360 · CRM RECORD '+E(currentId)+'</p><h2>'+E(c.businessName||c.business_name||'Unnamed business')+'</h2><p>'+E(c.industry||c.category||'Industry not recorded')+' · '+E(c.status||'Lead')+' · '+E(c.source||'Source not recorded')+'</p></div><span class="badge '+(suppressed(c)?'red':'blue')+'">'+E(suppressed(c)?'Contact suppressed':blocked(c)?'Recovery read-only':'CRM account')+'</span></div>'+
  '<div role="status" aria-live="polite" class="mini" id="sbcProfileStatus">'+E(message||(!revision?'Display mode — authoritative edit record not verified.':'Account loaded from the authenticated CRM.'))+'</div>'+
- '<div class="sbc-profile-actions">'+btn('call','☎ Call from SBC',!canContact||!c.phone,'Requires a callable phone and no suppression')+btn('edit','✎ Edit Profile',!canEdit||!revision,'Requires owner access and verified CRM revision')+btn('note','＋ Save Note',!canEdit,'Append an account note')+'<details class="sbc-profile-more"><summary>More account actions</summary><div class="sbc-profile-more-buttons">'+btn('email','✉ Email',!canContact||!c.email,'Opens existing SBC email composer')+btn('text','▣ Text',!canContact||!c.phone,'Only send with documented consent')+btn('website','🌐 Build Website',!canEdit,'Existing SBC native website production')+btn('callreport','✓ Log Call',blocked(c),'Submit the call result to the existing sales pipeline')+btn('refresh','↻ Refresh',false)+btn('delete','Delete Lead',!canEdit,'Owner only; requires explicit confirmation')+'</div></details></div>'+
+ '<div class="sbc-profile-actions">'+btn('call','☎ Call from SBC',!canContact||!c.phone,'Requires a callable phone and no suppression')+btn('edit','✎ Edit Profile',!canEdit||!revision,'Requires owner access and verified CRM revision')+btn('note','＋ Save Note',!canEdit,'Append an account note')+'<details class="sbc-profile-more"><summary>More account actions</summary><div class="sbc-profile-more-buttons">'+btn('email','✉ Email',!canContact||!c.email,'Opens existing SBC email composer')+btn('text','▣ Text',!canContact||!c.phone,'Only send with documented consent')+btn('website','🌐 Build Website',!canEdit,'Existing SBC native website production')+btn('openwebsite','↗ Open Saved Website',blocked(c),'Read existing SBC website without rebuilding')+btn('callreport','✓ Log Call',blocked(c),'Submit the call result to the existing sales pipeline')+btn('refresh','↻ Refresh',false)+btn('delete','Delete Lead',!canEdit,'Owner only; requires explicit confirmation')+'</div></details></div>'+
  '<div id="sbcProfileActionSlot"></div>'+
  '<div class="sbc-profile-columns"><section class="sbc-profile-panel"><h3>Business & decision maker</h3><div class="sbc-profile-fields">'+
  cardField('Business name',c.businessName||c.business_name)+cardField('Decision maker',c.contactName||c.contact_name)+cardField('Primary phone',c.phone)+cardField('Email',c.email)+cardField('Street / city / state / ZIP',c.address)+cardField('Industry / business type',c.industry)+cardField('Website',c.website,true)+cardField('Google Business Profile',d.googleBusinessUrl,true)+cardField('Research source',d.researchSource,true)+cardField('Status',c.status)+cardField('Next follow-up',c.followUp||c.follow_up)+cardField('Assigned to',c.assignedTo||c.assigned_to)+'</div></section>'+
  '<section class="sbc-profile-panel"><h3>Research & opportunity</h3><div class="sbc-profile-fields">'+cardField('Website status',c.websiteStatus||c.website_status)+cardField('GBP research check',d.researchBrief.googleBusinessPresence)+cardField('Years in business',d.researchBrief.yearsInBusiness)+cardField('Verified services',d.researchBrief.specificServices)+cardField('Lead notes',c.notes)+'</div><p class="mini">Researcher observations are not automatically verified. Missing information stays marked as not recorded.</p></section>'+
- '<section class="sbc-profile-panel"><h3>Account notes</h3>'+noteList(c)+'</section>'+
+ relatedHistory(currentId)+'<section class="sbc-profile-panel"><h3>Account notes</h3>'+noteList(c)+'</section>'+
  '<section class="sbc-profile-panel"><h3>Activity history</h3>'+eventList(currentId)+'</section></div></section>';
  if(typeof window.openModal==='function')window.openModal('Lead Account 360',html);
  var node=q('#sbcLeadAccount360');if(node)node.addEventListener('click',handleClick);
@@ -109,6 +126,7 @@ async function open(id,message){
   revision=/^[a-f0-9]{64}$/.test(result.data.revision||'')?result.data.revision:'';
   var d=result.data,currentLocal=local(start)||{};
   current={...currentLocal,...d,businessName:d.business_name,contactName:d.contact_name,phone:d.phone,email:d.email,website:d.website,address:d.address,industry:d.industry,status:d.status,notes:d.notes,source:d.source,followUp:d.follow_up};
+  var savedNotes=authoritativeNotes(d.account_notes_json);if(savedNotes!==null)current.accountNotes=savedNotes;
   render(message||'Latest CRM details verified; no edits made.');
  }catch(error){revision='';render('Read-only local profile; authoritative CRM refresh failed: '+String(error.message||error));}
 }
@@ -133,6 +151,10 @@ function handleClick(event){
  if(a==='call'){if(c.phone&&typeof window.openSbcDialer==='function')window.openSbcDialer(currentId);else status('No callable number or SBC dialer is available.');}
  if(a==='email'){if(c.email&&typeof window.sendEmailToLead==='function')window.sendEmailToLead(currentId);else status('No customer email or SBC composer is available.');}
  if(a==='text'){if(c.phone&&typeof window.sendSmsToLead==='function')window.sendSmsToLead(currentId);else status('No customer phone or SBC SMS composer is available. Only send with documented consent.');}
+ if(a==='openwebsite'){
+  if(window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.openExisting==='function')window.SBC_WEBSITE_PRODUCTION.openExisting(currentId,c);
+  else status('The existing SBC website viewer is unavailable.');
+ }
  if(a==='website'){
   if(!ownerOnly())return status('Website builds require owner permission.');
   if(window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(currentId,'essentials',c);
