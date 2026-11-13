@@ -60,7 +60,7 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
     return {key,column,value:key==='email'?value.toLowerCase():value};
    });
   }catch(e){
-   const forbidden=['TENANT_CONTEXT_MISSING','VALID_TENANT_CONTEXT_REQUIRED','TENANT_DATABASE_ID_INVALID','TENANT_CONTEXT_MISMATCH'].includes(e.code);
+   const forbidden=['TENANT_CONTEXT_MISSING','VALID_TENANT_CONTEXT_REQUIRED','TENANT_DATABASE_ID_INVALID','TENANT_CONTEXT_MISMATCH','LEAD_PROFILE_OWNER_REQUIRED'].includes(e.code);
    return deny(res,forbidden?403:400,e.code||'INVALID_LEAD_EDIT');
   }
   let conn=null,tx=false;
