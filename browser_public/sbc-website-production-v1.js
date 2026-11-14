@@ -183,7 +183,12 @@
       '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0">Accessible image description<input name="photoAlt" type="text" maxlength="180" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0"><input type="checkbox" name="rightsConfirmed"> I verified that we may use this image in the customer concept.</label></details>'+
-      '<button class="btn primary" type="submit">Save Design & Preview</button></form><p id="sbcStudioVisualStatus" role="status" aria-live="polite">Loading design controls…</p></section>';
+      '<button class="btn primary" type="submit">Save Design & Preview</button>'+
+      '<details style="margin:16px 0;border:1px solid #b9cbd6;padding:12px;border-radius:10px"><summary style="cursor:pointer;font-weight:800">Saved design revisions</summary>'+
+      '<p style="font-size:.87rem">Recover an earlier saved design without changing verified customer facts. Restoring creates a new saved version.</p>'+
+      '<label>Choose saved design<select id="sbcStudioSavedRevisions" style="width:100%"><option value="">No previous revision selected</option></select></label>'+
+      '<button type="button" class="btn" id="sbcStudioRestoreRevision" disabled>Restore selected design</button></details>'+
+      '</form><p id="sbcStudioVisualStatus" role="status" aria-live="polite">Loading design controls…</p></section>';
   }
   const studioVisualMessage=text=>{const p=document.getElementById('sbcStudioVisualStatus');if(p)p.textContent=text;};
   // Private Preview runs in an opaque CSP sandbox. The only permitted channel
@@ -306,6 +311,7 @@
       v3History={site:demo.id,present:studioSnapshot(form),undo:[],redo:[]};
       form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
       studioVisualMessage(result.canEdit?'Visual Studio revision '+result.version+' ready. These edits affect private smart previews only.':'This site is locked for editing.');
+      loadStudioHistory(demo).catch(()=>undefined);
     }catch(e){studioVisualMessage(String(e?.message||'Visual Studio unavailable.'));}
   }
   // Instant, owner-only V2 remix. GET is read-only; Save remains an explicit,
@@ -328,6 +334,52 @@
     const at=choices.indexOf(select.value);
     select.value=choices[(at+1)%choices.length];
     rememberStudioDraft();tryStudioRemix();
+  }
+  async function loadStudioHistory(demo){
+    const dropdown=document.getElementById('sbcStudioSavedRevisions');
+    const button=document.getElementById('sbcStudioRestoreRevision');
+    if(!demo||!dropdown||!button||currentRole()!=='owner')return;
+    try{
+      const data=await serviceApi(studioBase(demo)+'/visual/history');
+      if(!data?.ok||!Array.isArray(data.revisions))throw Error('History unavailable');
+      if(active?.demo?.id!==demo.id||!dropdown.isConnected)return;
+      dropdown.textContent='';
+      const blank=document.createElement('option');blank.value='';blank.textContent='Select a saved design';dropdown.append(blank);
+      for(const row of data.revisions){
+        if(!Number.isSafeInteger(row.version)||row.version<0)continue;
+        const option=document.createElement('option');
+        option.value=String(row.version);
+        option.textContent='Revision '+row.version+(row.editedAt?' · '+String(row.editedAt).slice(0,16):' · Initial design');
+        dropdown.append(option);
+      }
+      button.disabled=!data.canRestore||data.revisions.length===0;
+      dropdown.disabled=!data.canRestore||data.revisions.length===0;
+    }catch(e){if(dropdown.isConnected){dropdown.textContent='';button.disabled=true;}}
+  }
+  async function restoreStudioRevision(){
+    const demo=active?.demo,form=document.getElementById('sbcStudioVisualForm');
+    const select=document.getElementById('sbcStudioSavedRevisions');
+    if(!demo||!form||!select||currentRole()!=='owner'||isApproved(demo)||demo.archived||busy)return;
+    if(select.value==='')return studioVisualMessage('Choose a previously saved design first.');
+    const restoreVersion=Number(select.value),expectedVersion=Number(form.dataset.version);
+    if(!Number.isSafeInteger(restoreVersion)||restoreVersion<0||!Number.isSafeInteger(expectedVersion)||expectedVersion<0)return;
+    if(!window.confirm('Restore saved design revision '+restoreVersion+'? The currently saved design will remain in history. Approved customer facts and published websites will not change.'))return;
+    busy=true;studioVisualMessage('Restoring selected private design…');
+    try{
+      const result=await serviceApi(studioBase(demo)+'/visual/restore',{method:'POST',
+        body:JSON.stringify({expectedVersion,restoreVersion})});
+      if(!result?.ok||result.durable!==true)throw Error(result?.code||'Restore failed');
+      if(active?.demo?.id!==demo.id)return;
+      await loadStudioVisual(demo);
+      active.previewMode='smart';
+      const url=new URL(absolute(studioBase(demo)+'/auto-preview'));
+      const page=active.previewPage||'home';
+      if(page!=='home')url.searchParams.set('page',page);
+      url.searchParams.set('visualVersion',String(result.version));
+      const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url.href;
+      studioVisualMessage('Restored revision '+restoreVersion+' as new revision '+result.version+'. Nothing was published.');
+    }catch(e){studioVisualMessage('Restore not completed: '+String(e?.message||e)+'. Reload and check current revision.');}
+    finally{busy=false;}
   }
   async function saveStudioVisual(event){
     event.preventDefault();
@@ -355,6 +407,7 @@
       document.getElementById('sbcFactorySmartMode')?.classList.add('primary');
       document.getElementById('sbcFactoryClassicMode')?.classList.remove('primary');
       studioVisualMessage('Saved design revision '+out.version+'. Private art-directed preview updated; no public website changed.');
+      loadStudioHistory(demo).catch(()=>undefined);
     }catch(e){studioVisualMessage('Not saved: '+String(e?.message||e)+'. Reload Visual Studio if someone else edited this project.');}
     finally{busy=false;if(submit)submit.disabled=false;}
   }
@@ -426,6 +479,7 @@
     document.getElementById('sbcStudioMoveSectionDown')?.addEventListener('click',()=>moveStudioSection(1));
     document.getElementById('sbcStudioUndo')?.addEventListener('click',()=>studioHistoryStep('undo'));
     document.getElementById('sbcStudioRedo')?.addEventListener('click',()=>studioHistoryStep('redo'));
+    document.getElementById('sbcStudioRestoreRevision')?.addEventListener('click',restoreStudioRevision);
     document.getElementById('sbcStudioBrowseMedia')?.addEventListener('click',loadStudioMediaIdeas);
     document.getElementById('sbcStudioShuffleVibe')?.addEventListener('click',()=>cycleStudioChoice('vibe',['original','cinematic','minimal','warm']));
     document.getElementById('sbcStudioSwapLayout')?.addEventListener('click',()=>cycleStudioChoice('serviceLayout',['auto','bento','grid','editorial']));
