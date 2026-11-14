@@ -647,6 +647,7 @@
       '</main><aside id="sbcStudioToolRail" class="sbc-studio-rail" aria-label="Website editing tools">'+
       '<div class="sbc-studio-toolbar"><strong>Edit your website</strong><div role="group" aria-label="Editor difficulty"><button type="button" class="btn primary" id="sbcStudioModeSimple" aria-pressed="true">Simple</button><button type="button" class="btn" id="sbcStudioModePro" aria-pressed="false">Pro Design</button></div></div>'+
       studioVisualPanel(demo)+
+      (currentRole()==='owner'?'<details id="sbcStudioHybridAI" style="margin:14px 0;border:1px solid #bacbde;padding:14px;border-radius:12px;background:#fff"><summary style="font-weight:800;cursor:pointer">✨ Hybrid AI Studio · $40 monthly cap</summary><p style="font-size:13px;line-height:1.6">New SBC-built sites receive automatic AI art direction when configured. Existing sites change only when you choose an upgrade. Customer facts, forms, payments and publishing are never automatically approved.</p><p id="sbcStudioAIBudget" role="status">Checking Studio AI allowance…</p><button id="sbcStudioAIUpgrade" class="btn primary" type="button">'+(isApproved(demo)?'Upgrade existing website · private proposal':'✨ Upgrade This Website With AI')+'</button><p id="sbcStudioAIStatus" role="status" aria-live="polite">No external AI request will be made until you choose the button for this existing site.</p><div id="sbcStudioAIProposal" style="font-size:13px;line-height:1.5;white-space:pre-wrap"></div><p style="font-size:11px;color:#566">AI text is a suggestion only. Confirm all facts before customer use. Approved sites are never overwritten; they receive private proposals.</p></details>':'')+
       '<details id="sbcStudioBusinessDetails" style="margin:14px 0;border:1px solid #c5d7e5;padding:12px;border-radius:10px"><summary style="font-weight:700;cursor:pointer">Verify Business Details</summary>'+studioPanel()+'</details>'+
       '<details style="margin:14px 0;border:1px solid #c5d7e5;padding:12px;border-radius:10px"><summary style="font-weight:700;cursor:pointer">Classic Page Editor</summary>'+nativeEditorPanel(demo)+'</details>'+
       '</aside></div><details id="sbcFactoryPublishDrawer" class="sbc-studio-publish-drawer"><summary>Publish &amp; QA · Owner release review</summary><div style="padding:12px">'+
@@ -736,6 +737,8 @@
     loadNativeEditor(demo).catch(e=>console.warn('SBC editor load blocked',String(e.message||e)));
     loadStudioProfile(demo).catch(e=>console.warn('SBC Studio load blocked',String(e.message||e)));
     loadStudioVisual(demo).catch(e=>console.warn('SBC Visual Studio load blocked',String(e.message||e)));
+    loadHybridAI(demo).catch(e=>console.warn('SBC Hybrid AI status unavailable',String(e.message||e)));
+    document.getElementById('sbcStudioAIUpgrade')?.addEventListener('click',upgradeHybridAI);
     document.getElementById('sbcStudioVisualForm')?.addEventListener('submit',saveStudioVisual);
     document.getElementById('sbcStudioVisualForm')?.addEventListener('input',rememberStudioDraft);
     document.getElementById('sbcStudioVisualForm')?.addEventListener('change',rememberStudioDraft);
@@ -766,6 +769,44 @@
     document.getElementById('sbcFactoryCopyPitch')?.addEventListener('click',()=>copyText(scriptForWebsite(demo,customer),'Sales opening copied.'));
     document.getElementById('sbcFactoryEmail')?.addEventListener('click',()=>send('email'));
     document.getElementById('sbcFactorySms')?.addEventListener('click',()=>send('sms'));
+  }
+  async function loadHybridAI(demo){
+    if(currentRole()!=='owner')return;
+    const budget=document.getElementById('sbcStudioAIBudget'),message=document.getElementById('sbcStudioAIStatus'),proposal=document.getElementById('sbcStudioAIProposal');
+    if(!budget||!message||!proposal)return;
+    try{
+      const out=await serviceApi(studioBase(demo)+'/ai');
+      if(active?.demo?.id!==demo.id||!budget.isConnected)return;
+      if(!out?.ok)throw Error(out?.code||'AI status unavailable.');
+      const b=out.budget||{};
+      budget.textContent='Website Studio AI · $'+Number(b.usedUsd||0).toFixed(4)+' used of $40 · $'+Number(b.remainingUsd||0).toFixed(2)+' available this month · '+(b.configured?'Ready':'Disabled / key not configured');
+      const a=out.ai;
+      if(!a){message.textContent=b.configured?'No AI proposal saved for this website yet.':'Existing SBC design remains available without AI.';proposal.textContent='';return}
+      message.textContent=a.status==='PROPOSAL_ONLY_APPROVED_SITE'?'AI upgrade is saved as a private proposal. The approved website was NOT modified.':a.status==='ENHANCED_PRIVATE_DRAFT'?'Private AI design is saved. Review its appearance and verify all customer facts.':String(a.status||'Review required');
+      if(a.design){const d=a.design;proposal.textContent='Design: '+[d.vibe,d.heroStyle,d.serviceLayout,d.density].filter(Boolean).join(' · ')+'\nSuggested headline (not published): '+String(d.headlineSuggestion||'')+'\nSuggested subheadline (not published): '+String(d.subheadlineSuggestion||'')+'\nCreative direction: '+String(d.rationale||'');}
+    }catch(e){if(message)message.textContent='AI status unavailable: '+String(e.message||e)}
+  }
+  async function upgradeHybridAI(){
+    const demo=active?.demo,button=document.getElementById('sbcStudioAIUpgrade'),message=document.getElementById('sbcStudioAIStatus');
+    if(!demo||currentRole()!=='owner'||!button||busy)return;
+    if(!window.confirm('Request a budget-controlled AI design upgrade for this website? Existing approved sites will receive PRIVATE proposals only.'))return;
+    busy=true;button.disabled=true;if(message)message.textContent='Requesting AI art direction with Studio budget controls…';
+    try{
+      const result=await serviceApi(studioBase(demo)+'/ai/upgrade',{method:'POST',body:'{}'});
+      if(active?.demo?.id!==demo.id)return;
+      if(!result?.ok)throw Error(result?.status||result?.code||'AI upgrade unavailable');
+      await loadHybridAI(demo);
+      if(result.status==='ENHANCED_PRIVATE_DRAFT'){
+        // Refresh the private design only. NEVER refresh the public approved URL.
+        if(active.previewMode==='smart'&&!isApproved(demo)){
+          const frame=document.getElementById('sbcFactoryFrame');
+          if(frame)frame.src=studioBase(demo)+'/auto-preview?aiRevision='+encodeURIComponent(String(Date.now()));
+        }
+        await loadStudioVisual(demo);
+      }
+      updateStatus(result.status==='PROPOSAL_ONLY_APPROVED_SITE'?'Private AI proposal saved. Approved site is unchanged.':'AI-enhanced private design saved. Review before presenting.');
+    }catch(e){if(message)message.textContent='AI upgrade not completed: '+String(e.message||e)}
+    finally{busy=false;if(button)button.disabled=false}
   }
   async function copyText(value,message){
     if(!value)return updateStatus('No text is available to copy.',true);
@@ -962,7 +1003,7 @@
       try{
         const result=await serviceApi('/api/website-demos',{method:'POST',body:JSON.stringify({customerId:customer.id,fast:true,offerTier})});
         if(!result?.demo)throw Error(result?.error||'Website construction failed.');
-        showSite(result.demo,customer,'Website pages generated. Check every page before approval.');
+        showSite(result.demo,customer,result.ai?.status==='ENHANCED_PRIVATE_DRAFT'?'Website built with budget-controlled AI art direction. Review private design and customer facts.':'Website pages generated using SBC engine. AI: '+String(result.ai?.status||'not requested')+'. Check every page before approval.');
       }catch(error){updateStatus(error.message||'Build failed. No contact was sent.',true);this.disabled=false;}
       finally{busy=false;}
     });
