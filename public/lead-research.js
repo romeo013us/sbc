@@ -606,7 +606,10 @@ function importRowElement(row){
  var detail=element('small',null,[row.record.contactName,row.record.phone,row.record.email,row.record.website,row.record.address?'Address: '+row.record.address:'Address not recorded'].filter(Boolean).join(' · ')||'No verified contact details supplied');
  var result=element('span','result',rowResult(row));
  var missing=[!row.record.contactName?'contact person missing':null,!row.record.phone?'phone missing for calls':null,
-  !row.record.website?'website not checked':null,'Google profile not checked by CSV import',
+  !row.record.website?'website not checked':null,!row.record.googleBusinessUrl?'Google profile link missing':null,
+  !row.record.googleListingAddress?'Google-listed street address not verified':null,
+  !row.record.streetAddressEvidenceUrl?'Street address source not documented':null,
+  !row.record.googleAddressEvidenceUrl?'Google address source not documented':null,
   !row.record.source&&!row.record.verificationSource?'research source missing':null].filter(Boolean);
  var quality=element('small','muted','Research review: '+missing.join(' · '));
  div.append(index,name,detail,quality,result);return div;
@@ -670,20 +673,33 @@ async function confirmImport(){
     // Bulk imports use the same stored brief schema, without claiming that
     // an unlisted website or Google profile has been checked.
     var record=row.record||{};
+    // CSV columns are researcher-reported evidence, never independent verification.
+    // Unknown CRM columns are kept in researchBrief instead of being sent to
+    // the canonical lead insert API, which has its own approved fields.
     var importBrief={
-      version:1,websitePresence:record.website?'found':'not_checked',
-      googleBusinessPresence:'not_checked',googleBusinessUrl:'',
-      yearsInBusiness:'Not verified',businessHistory:'',specificServices:'',
+      version:1,websitePresence:record.websitePresence|| (record.website?'found':'not_checked'),
+      googleBusinessPresence:record.googleBusinessPresence||'not_checked',
+      googleBusinessUrl:record.googleBusinessUrl||'',
+      googleListingAddress:record.googleListingAddress||'',
+      streetAddressVerification:record.streetAddressVerification||'not_checked',
+      streetAddressEvidenceUrl:record.streetAddressEvidenceUrl||'',
+      googleAddressVerification:record.googleAddressVerification||'not_checked',
+      googleAddressEvidenceUrl:record.googleAddressEvidenceUrl||'',
+      nextFollowupNote:record.nextFollowupNote||'',
+      leadStatusNote:record.leadStatusNote||'',
+      streetCity:record.streetCity||'',streetState:record.streetState||'',streetZip:record.streetZip||'',
+      yearsInBusiness:record.yearsInBusiness||'Not verified',
+      businessHistory:record.businessHistory||'',specificServices:record.specificServices||'',
       servicesVerified:false,likelyCustomerTypes:'',likelyCustomerTypesStatus:'industry_estimate',
-      suggestedSbcOffer:'',offerCondition:'',openingQuestion:'',
-      researchEvidenceUrl:'',originalBrief:'',ownerContactVerified:false,
+      suggestedSbcOffer:record.suggestedSbcOffer||'',offerCondition:'',openingQuestion:record.openingQuestion||'',
+      researchEvidenceUrl:record.researchEvidenceUrl||'',originalBrief:'',ownerContactVerified:false,
       claimedBusinessFactsVerified:false,submittedFrom:'researcher_bulk_import'
     };
-    var importPayload=Object.assign({},record,{
-      leadIntelligence:Object.assign({},record.leadIntelligence||{},{
-        researchBrief:importBrief
-      })
+    var importPayload={};
+    ['businessName','contactName','phone','email','website','industry','address','notes','source','verificationSource'].forEach(function(key){
+      if(Object.prototype.hasOwnProperty.call(record,key))importPayload[key]=record[key];
     });
+    importPayload.leadIntelligence={researchBrief:importBrief};
     var result=await api('/api/workforce/leads',{method:'POST',body:JSON.stringify(importPayload)});
     if(!result||!result.id||result.persistence?.verified!==true)
       throw Error('CRM save could not be verified. Stop and check SBC before importing again.');
