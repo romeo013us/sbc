@@ -361,3 +361,29 @@ test('legacy malformed approved profile does not break owner visual inspector re
  assert.equal(read.body.maxEditableServices,0);
  assert.equal(fx.saves(),0);
 });
+
+
+test('Studio owner review reports possible category/service mismatch and blank location without changing CRM',async()=>{
+ const fx=fixture();
+ const site=fx.store().websiteDemos[0];
+ site.industry='Handyman Services';
+ site.customer.city='';
+ site.customer.region='';
+ site.customer.websiteVerifiedDetails={verified:true,services:['Window Tinting']};
+ const before=structuredClone(fx.store());
+ const result=await fx.call('GET');
+ assert.equal(result.statusCode,200);
+ assert.equal(result.body.businessReview.status,'needs_review');
+ assert(result.body.businessReview.issues.some(x=>x.code==='MISSING_CITY'));
+ assert(result.body.businessReview.issues.some(x=>x.code==='MISSING_REGION'));
+ assert(result.body.businessReview.issues.some(x=>x.code==='POSSIBLE_CATEGORY_SERVICE_MISMATCH'));
+ assert.equal(result.body.approvedProfile,null);
+ const draft=await fx.call('GET','/auto-preview');
+ assert.equal(draft.statusCode,200);
+ assert.match(draft.body,/SBC_STUDIO_CONSISTENCY_NOTICE/);
+ assert.match(draft.body,/PRIVATE DRAFT/);
+ assert.deepEqual(fx.store(),before,'read-only review cannot auto-approve or change records');
+ assert.equal(fx.saves(),0);
+ assert.equal((await fx.call('GET',undefined,undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET',undefined,undefined,'owner','site-b')).statusCode,404);
+});
