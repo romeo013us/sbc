@@ -13,7 +13,7 @@ function actor(v){const tenantId=Number(v?.tenantId),id=str(v?.id,120),role=str(
 const isSuppressed=c=>c.doNotContact===true||c.salesSuppressed===true||c.isSuppressed===true||['dnc','do not call','do not contact','opt out','unsubscribed','duplicate','lost','closed'].includes(str(c.status).toLowerCase());
 const isReady=c=>c.leadAssistStatus==='AUTO_VERIFIED'||['verified','research complete','research-complete'].includes(str(c.verificationStatus).toLowerCase());
 function createHandoffService({repository,clock=()=>new Date()}={}){
- if(!repository||typeof repository.customer!=='function'||typeof repository.createHandoff!=='function'||typeof repository.returnFeedback!=='function')throw new TypeError('HANDOFF_DURABLE_REPOSITORY_REQUIRED');
+ if(!repository||typeof repository.customer!=='function'||typeof repository.createHandoff!=='function'||typeof repository.returnFeedback!=='function'||typeof repository.assignment!=='function')throw new TypeError('HANDOFF_DURABLE_REPOSITORY_REQUIRED');
  const timestamp=()=>new Date(clock()).toISOString();
  async function worker(a,requiredRole){const w=await repository.worker(a.tenantId,a.id);
   if(!w||w.active===false||String(w.role)!==requiredRole)fail(requiredRole==='lead_researcher'?'RESEARCHER_INACTIVE':'MANAGER_INVALID');return w;}
@@ -36,7 +36,10 @@ function createHandoffService({repository,clock=()=>new Date()}={}){
  async function queue(input){const a=actor(input);if(a.role!=='owner'&&a.role!=='account_manager')fail('ACCOUNT_ACCESS_DENIED');
   if(a.role==='account_manager')await worker(a,'account_manager');
   const rows=await repository.handoffs(a.tenantId);
-  return clone(rows.filter(h=>a.role==='owner'||h.managerId===a.id));}
+  if(a.role==='owner')return clone(rows);
+  const active=[];for(const h of rows){const current=await repository.assignment(a.tenantId,h.customerId);
+   if(current&&String(current.managerId)===a.id)active.push({...h,managerId:a.id});}
+  return clone(active);}
  async function researchQueue(input){const {a}=await researcher(input);
   return clone((await repository.feedbackForResearcher(a.tenantId,a.id)).filter(x=>x.status==='OPEN'));}
  async function assign(input,{handoffId,managerId}={}){
@@ -52,7 +55,9 @@ function createHandoffService({repository,clock=()=>new Date()}={}){
  async function returnForResearch(input,{handoffId,issue,reason}={}){
   const a=actor(input),id=str(handoffId,120),code=str(issue,40),note=str(reason,2000);
   if(a.role!=='account_manager')fail('ACCOUNT_ACCESS_DENIED');await worker(a,'account_manager');
-  const h=await repository.handoff(a.tenantId,id);if(!h||h.managerId!==a.id)fail('ACCOUNT_ACCESS_DENIED');
+  const h=await repository.handoff(a.tenantId,id);
+  const current=h?await repository.assignment(a.tenantId,h.customerId):null;
+  if(!h||!current||String(current.managerId)!==a.id)fail('ACCOUNT_ACCESS_DENIED');
   if(h.status==='NEEDS_OWNER_REVIEW')fail('OWNER_REVIEW_REQUIRED');
   if(h.status!=='ASSIGNED')fail('RESEARCH_ALREADY_RETURNED');
   if(!['BAD_NUMBER','INCORRECT_BUSINESS','MISSING_CONTACT','SOURCE_CONFLICT'].includes(code)||note.length<10)fail('RESEARCH_FEEDBACK_INVALID');
@@ -78,9 +83,11 @@ function createHandoffService({repository,clock=()=>new Date()}={}){
  return {submit,queue,researchQueue,assign,returnForResearch,resolve,summary};
 }
 function createMemoryHandoffRepository({customers=[],workers=[]}={}){
- const data=clone(customers),staff=clone(workers),handoffs=new Map(),feedbacks=new Map(),audits=[];
+ const data=clone(customers),staff=clone(workers),handoffs=new Map(),feedbacks=new Map(),assignments=new Map(),audits=[];
  const key=(t,id)=>`${t}:${id}`;
  const repo={audits,
+  setAccountManager(t,cid,managerId){assignments.set(key(t,cid),{tenantId:Number(t),customerId:String(cid),managerId:String(managerId)});},
+  async assignment(t,cid){return clone(assignments.get(key(t,cid))||null);},
   disableWorker(t,id){const w=staff.find(x=>x.tenantId===Number(t)&&x.id===id);if(w)w.active=false;},
   async customer(t,id){return clone(data.find(x=>x.tenantId===Number(t)&&String(x.id)===String(id))||null);},
   async worker(t,id){return clone(staff.find(x=>x.tenantId===Number(t)&&String(x.id)===String(id))||null);},
@@ -88,10 +95,10 @@ function createMemoryHandoffRepository({customers=[],workers=[]}={}){
   async handoff(t,id){return clone(handoffs.get(key(t,id))||null);},
   async handoffs(t){return clone([...handoffs.values()].filter(x=>x.tenantId===Number(t)));},
   async createHandoff(row){const old=await repo.handoffForCustomer(row.tenantId,row.customerId);if(old)return old;handoffs.set(key(row.tenantId,row.id),clone(row));return clone(row);},
-  async changeHandoff(t,id,old,status,updates={}){const h=handoffs.get(key(t,id));if(!h||h.status!==old)return null;const updated={...h,...clone(updates),status};handoffs.set(key(t,id),updated);return clone(updated);},
+  async changeHandoff(t,id,old,status,updates={}){const h=handoffs.get(key(t,id));if(!h||h.status!==old)return null;const updated={...h,...clone(updates),status};handoffs.set(key(t,id),updated);if(old==='READY_FOR_REVIEW'&&status==='ASSIGNED')repo.setAccountManager(t,h.customerId,updates.managerId);return clone(updated);},
   async feedback(t,id){return clone(feedbacks.get(key(t,id))||null);},
   async feedbackForResearcher(t,id){return clone([...feedbacks.values()].filter(x=>x.tenantId===Number(t)&&x.researcherId===id));},
-  async returnFeedback(h,fb,stamp){const row=await repo.changeHandoff(h.tenantId,h.id,'ASSIGNED','RESEARCH_RETURNED',{retryNotBefore:fb.retryNotBefore,updatedAt:stamp});if(!row)return null;feedbacks.set(key(fb.tenantId,fb.id),clone(fb));return clone(fb);},
+  async returnFeedback(h,fb,stamp){const row=await repo.changeHandoff(h.tenantId,h.id,'ASSIGNED','RESEARCH_RETURNED',{retryNotBefore:fb.retryNotBefore,updatedAt:stamp,managerId:fb.managerId});if(!row)return null;feedbacks.set(key(fb.tenantId,fb.id),clone(fb));return clone(fb);},
   async resolveFeedback(fb,updates){const r=feedbacks.get(key(fb.tenantId,fb.id));if(!r||r.status!=='OPEN')return null;const changed={...r,...clone(updates)};feedbacks.set(key(fb.tenantId,fb.id),changed);
    const status=updates.status==='ESCALATED'?'NEEDS_OWNER_REVIEW':'ASSIGNED';
    await repo.changeHandoff(fb.tenantId,fb.handoffId,'RESEARCH_RETURNED',status,{updatedAt:updates.resolvedAt});return clone(changed);},
