@@ -24,3 +24,15 @@ test('the site completion gate refuses to label concept as delivered without ind
  const status=evaluateCompletion({});assert.equal(status.readyToPublish,false);assert.equal(status.complete,false);assert(status.missing.length>=7);
  const forged=evaluateCompletion({contentApproved:true,mediaApproved:true,formsTested:true,domainAuthorized:true,sslVerified:true,accessibilityPassed:true,seoPassed:true,performancePassed:true,customerSignedOff:true,rollbackReady:true});assert.equal(forged.complete,false,'bare booleans are not auditable receipts');
 });
+
+test('20 representative local businesses all generate intact private sites without outside API calls',()=>{
+ const industries=['Window Tinting','Auto Repair','Auto Detailing','Barber Shop','Hair Salon','Nail Spa','Restaurant','Bakery','Roofing Contractor','Plumbing','HVAC','Landscaping','Electrician','Insurance Agency','Law Firm','Tax Preparation','Retail Store','Pet Groomer','Photography Studio','Fitness Coach'];
+ for(const [i,category] of industries.entries()){
+  const p=profile('Example Business '+(i+1),category);
+  const result=createPrivateConcept({verified_profile:p,quoteEstimatorEnabled:i%2===0});
+  const gate=checkPrivateBundle(result.bundle);
+  assert.equal(gate.passed,true,category+' failed: '+gate.issues.join(','));
+  assert.equal(result.bundle.publicationReady,false);
+  assert.match(result.bundle.files['index.html'],/First approved service/);
+ }
+});
