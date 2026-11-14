@@ -16,7 +16,10 @@ const MONTHLY_SPEND_CAP=boundedCap(process.env.SBC_AI_MONTHLY_SPEND_CAP_USD,25);
 // until owner confirms an enforced hard $25/month cap in the OpenAI platform.
 // This module loads after SBC's secure env loader and before AI route initialization.
 const PROVIDER_HARD_CAP_CONFIRMED=process.env.SBC_OPENAI_HARD_CAP_CONFIRMED==='YES';
-if(!PROVIDER_HARD_CAP_CONFIRMED)delete process.env.OPENAI_API_KEY;
+if(!PROVIDER_HARD_CAP_CONFIRMED){
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.SBC_AI_PROVIDER_KEY;
+}
 
 function requestId(req,res,next){
   const incoming=String(req.get('x-request-id')||'').trim();
