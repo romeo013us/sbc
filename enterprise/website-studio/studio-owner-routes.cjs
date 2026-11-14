@@ -120,6 +120,21 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const category=String(site.industry||site.customer?.industry||'').slice(0,120);
   return res.json({ok:true,...suggestMedia(category)});
  }));
+ const visualHistory=site=>{
+  const entries=Array.isArray(site.websiteStudioVisualHistory)?site.websiteStudioVisualHistory.slice(-20):[];
+  return entries.filter(x=>x&&Number.isSafeInteger(x.version)&&x.version>=0&&x.visual&&typeof x.visual==='object')
+   .map(x=>({version:x.version,visual:Visual.normalizeVisual(x.visual),editedAt:String(x.editedAt||'').slice(0,40)}));
+ };
+ const captureRevision=(site,expected)=>({
+  version:expected,
+  visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),
+  editedAt:String(site.websiteStudioVisualAudit?.editedAt||'').slice(0,40)
+ });
+ // Owner-only read of bounded per-site version snapshots. Never changes data.
+ app.get(ROOT+'/visual/history',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
+  res.json({ok:true,id:String(site.id),currentVersion:site.websiteStudioVisualVersion||0,
+   canRestore:!site.archived&&['Draft','Pending'].includes(site.status),
+   revisions:visualHistory(site)})));
  app.get(ROOT+'/visual',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
   res.json({ok:true,visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),version:site.websiteStudioVisualVersion||0,
    canEdit:!site.archived&&['Draft','Pending'].includes(site.status)})));
@@ -136,7 +151,9 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const expected=site.websiteStudioVisualVersion||0;
    if(data.expectedVersion!==expected)throw Error('STALE_SITE_VERSION');
    const visual=Visual.normalizeVisual(data.visual);
+   const revisions=[...visualHistory(site),captureRevision(site,expected)].slice(-20);
    const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
+    websiteStudioVisualHistory:revisions,
     websiteStudioVisualAudit:{action:'OWNER_STUDIO_VISUAL_EDIT',actorId:String(req.user?.id||''),editedAt:new Date().toISOString(),version:expected+1}};
    const current=getStore();
    const next={...current,websiteDemos:current.websiteDemos.map(s=>String(s.id)===String(site.id)&&Number(s.tenantId)===Number(site.tenantId)?nextSite:s)};
@@ -147,6 +164,42 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const operation=serializeSiteMutation?serializeSiteMutation(work):approvalQueue.catch(()=>undefined).then(work);
   if(!serializeSiteMutation)approvalQueue=operation.then(()=>undefined,()=>undefined);
   try{const result=await operation;return res.status(result.status).json(result.body)}catch(e){return responseError(res,e)}
+ });
+ // Owner-gated restore appends a *new* revision; it never rewinds shared CRM
+ // or overwrites an approved site, and honors the same writer serialization.
+ app.post(ROOT+'/visual/restore',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!writerReady())return respond(res,'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE',423);
+  const work=async()=>{
+   if(!writerReady())return {status:423,body:{ok:false,code:'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'}};
+   const site=locate(req);if(!site)return {status:404,body:{ok:false,code:'WEBSITE_NOT_FOUND'}};
+   if(site.archived)throw Error('SITE_ARCHIVED');
+   if(!['Draft','Pending'].includes(site.status))throw Error('APPROVED_SITE_LOCKED');
+   const data=req.body;
+   if(!strictKeys(data,['expectedVersion','restoreVersion'])||
+    !Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0||
+    !Number.isSafeInteger(data.restoreVersion)||data.restoreVersion<0)throw Error('INVALID_STUDIO_VERSION');
+   const expected=site.websiteStudioVisualVersion||0;
+   if(data.expectedVersion!==expected)throw Error('STALE_SITE_VERSION');
+   const history=visualHistory(site);
+   const saved=history.find(x=>x.version===data.restoreVersion);
+   if(!saved)return {status:404,body:{ok:false,code:'STUDIO_REVISION_NOT_FOUND'}};
+   const visual=Visual.normalizeVisual(saved.visual);
+   const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
+    websiteStudioVisualHistory:[...history,captureRevision(site,expected)].slice(-20),
+    websiteStudioVisualAudit:{action:'OWNER_STUDIO_VISUAL_RESTORE',
+     actorId:String(req.user?.id||''),editedAt:new Date().toISOString(),
+     version:expected+1,restoredFromVersion:saved.version}};
+   const current=getStore();
+   const next={...current,websiteDemos:current.websiteDemos.map(s=>
+    String(s.id)===String(site.id)&&Number(s.tenantId)===Number(site.tenantId)?nextSite:s)};
+   const stored=await saveStore(next);
+   if(stored?.ok===false||stored?.skipped===true||stored?.durable===false)throw Error('STUDIO_SAVE_NOT_DURABLE');
+   return {status:200,body:{ok:true,durable:true,version:expected+1,visual,restoredFromVersion:saved.version}};
+  };
+  const op=serializeSiteMutation?serializeSiteMutation(work):approvalQueue.catch(()=>undefined).then(work);
+  if(!serializeSiteMutation)approvalQueue=op.then(()=>undefined,()=>undefined);
+  try{const result=await op;return res.status(result.status).json(result.body)}catch(e){return responseError(res,e)}
  });
  const concept=(req,res,mode)=>readonly(req,res,site=>{
   // One-click private art-directed draft: never silently rebuild an approved site.
