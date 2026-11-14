@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/sbc-workforce-academy-v6697.css?v=1">
 <link rel="stylesheet" href="/sbc-workforce-audio-v66109.css?v=1">
 <link rel="stylesheet" href="/sbc-workforce-theme-v6698.css?v=1">
-<script src="/lead-research-import-core.js?v=3" defer></script>
+<script src="/lead-research-import-core.js?v=4" defer></script>
 <script src="/sbc-research-lesson-reader.js?v=3" defer></script>
 <script src="/sbc-role-shift-plan.js?v=2" defer></script>
 <script src="/sbc-workforce-theme-v6698.js?v=1" defer></script>
@@ -19,9 +19,9 @@
 <script src="/sbc-workforce-academy-v6697.js?v=1" defer></script>
 <script src="/sbc-lorna-queue-filter-v66105.js?v=1"></script>
 <script src="/sbc-lorna-phone-recovery-v66137.js?v=1" defer></script>
-<link rel="stylesheet" href="/sbc-lorna-checklist.css?v=1">
-<script src="/sbc-lorna-checklist.js?v=1" defer></script>
-<script src="/lead-research.js?v=10" defer></script>
+<link rel="stylesheet" href="/sbc-lorna-checklist.css?v=2">
+<script src="/sbc-lorna-checklist.js?v=2" defer></script>
+<script src="/lead-research.js?v=12" defer></script>
 </head>
 <body data-workspace-role="lead_researcher">
 <div id="access" role="status" class="access">Checking your SBC session…</div>
@@ -44,6 +44,14 @@
 <main>
 <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="page-title">My Dashboard</h1><p id="page-subtitle">Research businesses. Verify details. Send quality prospects to SBC.</p></div><div class="actions"><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span class="sync" id="sync-label">Connecting to CRM…</span><button type="button" class="outline" id="refresh">Refresh data</button></div></header>
 <div id="notice" class="notice" hidden role="status"></div>
+<section id="sbc-full-research-urgent" class="attention-priority sbc-urgent-research" role="alert" aria-labelledby="sbc-urgent-research-title">
+ <div><div class="eyebrow">URGENT · OWNER ASSIGNMENT · LORNA LEAD RESEARCH</div>
+ <h2 id="sbc-urgent-research-title">Complete ALL research fields — verify street address + Google address separately</h2>
+ <p><strong>Priority account: Miranda Maintenance &amp; Repair Corp.</strong> Find the existing CRM record; do not create a duplicate. Review business identity, decision maker, primary phone, email, industry, website, Google Business Profile URL, exact Google-listed address, street / city / state / ZIP, real source URLs, lead status and next follow-up. Missing facts must say <strong>not verified</strong>, never be guessed.</p>
+ <p><strong>Two separate checks are mandatory:</strong> (1) street/business address with reliable public evidence, and (2) the address actually displayed on the Google listing. Compare both; flag mismatches, service-area businesses, and residential/apartment addresses for review. A Maps short link is not proof of address verification.</p>
+ <p>The checklist must be completed with evidence before marking a lead research-ready. The CRM and employee roles remain protected; this alert does not send an outbound message or automatically approve facts.</p><div id="sbc-urgent-lead-details" role="status" aria-live="polite"><p>Checking your authorized research queue for this account…</p></div></div>
+ <button type="button" class="attention-open" data-go="mine">Open My Submitted Leads</button>
+</section>
 <section id="sbc-address-research-notice" class="attention-priority" role="note" aria-labelledby="sbc-address-research-title">
  <div><div class="eyebrow">NEW OWNER ASSIGNMENT · LORNA / LEAD RESEARCH</div>
  <h2 id="sbc-address-research-title">Add the business address to each researched lead</h2>
@@ -100,8 +108,10 @@
 <fieldset class="sbc-research-audit" id="sbc-address-entry-section">
  <legend>Business address research</legend>
  <p class="muted">For accurate account profiles and future website builds: confirm the public business location, then enter it below. Use the Research source field above to document where you found it. Never invent a location or assume a mobile business has a storefront.</p>
- <div class="fields"><label class="wide">Verified business address (street, city, state, ZIP)
- <input name="address" autocomplete="street-address" maxlength="350" placeholder="Example: 123 Main Street, Miami, FL 33101 — leave blank if unverified"></label></div>
+ <div class="fields"><label class="wide">Street / business address (street, city, state, ZIP) — candidate until verified
+ <input name="address" autocomplete="street-address" maxlength="350" placeholder="Full public street address or leave blank if not found"></label>
+ <label>Street address verification<select name="streetAddressVerification"><option value="not_checked">Not checked / not verified</option><option value="verified">Verified against reliable source</option><option value="not_public">Service-area / no public street address</option><option value="conflict">Conflicting or residential address — owner review</option></select></label>
+ <label class="wide">Street address source URL<input name="streetAddressEvidenceUrl" type="url" maxlength="1200" placeholder="https://public-business-registry.example/..."></label></div>
  <p class="muted">If no physical location is listed, write “Service-area business; address not published” in research notes instead of fabricating a street address.</p>
 </fieldset>
 <fieldset class="sbc-research-audit" id="sbc-research-checklist">
@@ -121,6 +131,10 @@
   <label class="wide">Google Business Profile link (when found)
    <input name="googleBusinessUrl" type="url" maxlength="500" placeholder="https://maps.google.com/... or Google profile link">
   </label>
+  <label class="wide">Google-listed street address (copy exactly as displayed, if shown)
+   <input name="googleListingAddress" maxlength="350" placeholder="Do not copy the supplied business address unless Maps actually displays it"></label>
+  <label>Google address verification<select name="googleAddressVerification"><option value="not_checked">Not checked / not verified</option><option value="matches">Checked — matches street address</option><option value="different">Checked — different address / owner review</option><option value="not_published">Google shows service area only / no address</option><option value="listing_not_found">Checked — no valid business listing found</option></select></label>
+  <label class="wide">Google listing evidence URL<input name="googleAddressEvidenceUrl" type="url" maxlength="1200" placeholder="https://www.google.com/maps/place/..."></label>
  </div>
 
  <div class="sbc-research-grid">
@@ -157,6 +171,8 @@
   <label class="wide">Original research link / business registry
    <input name="researchEvidenceUrl" type="url" maxlength="1200" placeholder="https://search.sunbiz.org/..."/>
   </label>
+  <label class="wide">Lead status / next follow-up research notes
+ <input name="nextFollowupNote" maxlength="260" placeholder="Lead · follow-up not recorded. Research only; sales schedules remain owner controlled"></label>
   <label class="wide">Paste complete existing business brief (optional)
    <textarea name="originalResearchBrief" maxlength="3500" rows="5" placeholder="Paste research details here. They will be saved with the lead, not presented as independently verified facts."></textarea>
   </label>
@@ -182,7 +198,7 @@
 <div id="import-preview-list" class="import-results"></div>
 <div class="form-actions"><button type="button" id="import-confirm" class="primary">Import valid rows for SBC automatic checks</button></div>
 <div id="import-run-status" class="import-run-status" role="status" aria-live="polite"></div>
-</div><p class="muted">Common column names are automatically mapped (Business Name, Contact, Phone, Email, Website, Industry, Address, Notes, Source). The CSV Source column becomes research evidence, not the CRM import channel. Long sources are preserved in Notes when space permits; otherwise the preview explains what to edit. Without a header, CSV columns use that order. One-name-per-line lists are also supported. Existing CRM duplicates are skipped by the server.</p>
+</div><p class="muted">Common column names are automatically mapped (Business Name, Decision Maker, Primary Phone, Email, Website, Industry, Street Address, Google Business Profile, Google Listing Address, Street Address / Google Evidence URLs, verification status, Notes, Source). The CSV Source column becomes research evidence, not the CRM import channel. Long sources are preserved in Notes when space permits; otherwise the preview explains what to edit. Without a header, CSV columns use that order. One-name-per-line lists are also supported. Existing CRM duplicates are skipped by the server.</p>
 <p class="muted"><strong>Important:</strong> Imported names without phone, email or website can be saved but still need research. SBC Lead Assist automatically checks saved leads; Lorna does not manually approve them. Never fabricate missing information. Each business is saved individually with SBC's normal CRM safeguards—no automatic retries.</p>
 </div></section>
 <section class="pane" data-pane="mine" hidden><div class="card"><h2>My Leads and Auto-Verification Status</h2><p>Your submissions in the active SBC CRM, including queued checks, automatically verified results and items needing a specific correction. Not an all-time report.</p><div id="mine-list" class="list"><p class="muted">Loading submissions…</p></div></div></section>

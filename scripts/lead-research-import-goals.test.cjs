@@ -84,7 +84,7 @@ assert.match(html,/id="import-confirm"/);
 assert.match(html,/id="goal-track"/);
 assert.match(html,/id="goal-current"/);
 assert.match(html,/lead-research-import-core\.js\?v=\d+/);
-assert.match(html,/lead-research-import-core\.js\?v=3/,'updated CSV parser must not be cached');
+assert.ok(html.includes('/lead-research-import-core.js?v=4'),'extended Google/address CSV parser must be cache-busted');
 assert.match(html,/Import valid rows for SBC automatic checks/);
 const idxHtml=html.search(/\/lead-research-import-core\.js\?v=\d+/),idxJs=html.search(/\/lead-research\.js\?v=\d+/);
 assert.ok(idxHtml<idxJs,'parser must load before UI');
