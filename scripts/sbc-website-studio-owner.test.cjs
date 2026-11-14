@@ -105,3 +105,20 @@ test('concurrent approvals honor expectedVersion with a single durable winner',a
  const [a,b]=await Promise.all([fx.call('PATCH','/approved-profile',payload),fx.call('PATCH','/approved-profile',payload)]);
  assert.deepEqual([a.statusCode,b.statusCode].sort(),[200,409]);assert.equal(fx.saves(),1);
 });
+
+test('art-directed private auto-preview works for a first-time draft without fact approval',async()=>{
+ const fx=fixture();
+ assert.equal((await fx.call('GET','/auto-preview',undefined,'none')).statusCode,401);
+ assert.equal((await fx.call('GET','/auto-preview',undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET','/auto-preview',undefined,'owner','site-b')).statusCode,404);
+ const r=await fx.call('GET','/auto-preview');
+ assert.equal(r.statusCode,200);
+ assert.match(r.headers['content-security-policy'],/sandbox/);
+ assert.match(r.body,/UNVERIFIED DESIGN CONCEPT/);
+ assert.match(r.body,/DESIGN PLANNING ONLY/);
+ assert.match(r.body,/data-sbc-composition="performance-bay"/);
+ assert.doesNotMatch(r.body,/Car audio installations|Luxury guarantees/i);
+ assert.equal(fx.saves(),0,'new preview must never write or approve the customer record');
+ assert.equal((await fx.call('GET','/auto-preview',undefined,'owner','site-approved')).statusCode,409);
+ assert.equal((await fx.call('GET','/preview')).statusCode,409,'approved-only preview remains locked');
+});
