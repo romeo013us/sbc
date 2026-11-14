@@ -88,3 +88,16 @@ test('owner summary is based on real handoff states, not invented sales/revenue'
  assert.deepEqual(summary.counts,{ready:0,assigned:1,returned:0,ownerReview:0});
  assert.equal(summary.paidSalesVerified,false);assert.equal(summary.revenueAttributed,null);
 });
+
+test('reassigning an account immediately revokes the former manager handoff queue and research return permissions',async()=>{
+ const f=fixture();const original=await f.service.submit(lorna,{customerId:'c1',summary:'Verified original lead'});
+ await f.service.assign(owner,{handoffId:original.id,managerId:'alice'});
+ assert.equal((await f.service.queue(alice)).length,1);
+ // Simulate owner reassignment via the Account Manager portfolio endpoint.
+ f.repo.setAccountManager(1,'c1','bob');
+ assert.equal((await f.service.queue(alice)).length,0,'former manager loses pending handoff');
+ assert.equal((await f.service.queue(bob)).length,1,'current account owner receives handoff');
+ await assert.rejects(f.service.returnForResearch(alice,{handoffId:original.id,issue:'BAD_NUMBER',reason:'Old manager must not create followup'}),/ACCOUNT_ACCESS_DENIED/);
+ const feedback=await f.service.returnForResearch(bob,{handoffId:original.id,issue:'BAD_NUMBER',reason:'Current manager confirmed bad number'});
+ assert.equal(feedback.managerId,'bob');
+});
