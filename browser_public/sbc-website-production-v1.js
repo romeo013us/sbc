@@ -463,6 +463,21 @@
       form.dataset.ready='1';
       v3History={site:demo.id,present:studioSnapshot(form),undo:[],redo:[]};
       form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
+      const allowedCards=Math.min(6,Math.max(0,Number(result.maxEditableServices)||0));
+      const gridChoices=form.elements.namedItem('gridNodeFocus');
+      if(gridChoices){
+        for(const option of gridChoices.options){
+          option.disabled=Number(option.value.slice(8))>allowedCards;
+        }
+        if(Number(gridChoices.value.slice(8))>allowedCards)gridChoices.value='service-1';
+      }
+      for(const id of ['sbcStudioGridEnabled','sbcStudioGridApply','sbcStudioGridReset']){
+        const el=document.getElementById(id);if(el)el.disabled=!result.canEdit||allowedCards===0;
+      }
+      if(allowedCards===0&&result.canEdit){
+        studioVisualMessage('Verify the business services first. The freeform grid cannot style unverified offerings.');
+      }
+
       studioVisualMessage(result.canEdit?'Visual Studio revision '+result.version+' ready. These edits affect private smart previews only.':'This site is locked for editing.');
       loadStudioHistory(demo).catch(()=>undefined);
     }catch(e){studioVisualMessage(String(e?.message||'Visual Studio unavailable.'));}
