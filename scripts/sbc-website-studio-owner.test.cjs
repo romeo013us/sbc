@@ -249,3 +249,37 @@ test('visual revisions include 20 max saved snapshots and owner UI offers explic
  assert.match(ui,/\/visual\/restore/);
  assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-website-production-v1.js'),'utf8'));
 });
+
+
+test('V4 brand and actual-work photo edits remain owner-only, versioned, tenant-isolated and private',async()=>{
+ const fx=fixture();
+ const before='https://res.cloudinary.com/sbc-client-demo/image/upload/v11223344/before.jpg';
+ const after='https://res.cloudinary.com/sbc-client-demo/image/upload/v11223344/after.jpg';
+ const visual={
+  brandKit:{primary:'#163047',accent:'#99440D',ownerConfirmed:true},
+  beforeAfter:{title:'Actual client detailing project',beforeUrl:before,afterUrl:after,
+   beforeAlt:'Before detailing',afterAlt:'After detailing',rightsConfirmed:true,actualWorkConfirmed:true}
+ };
+ assert.equal((await fx.call('PATCH','/visual',{expectedVersion:0,visual},'staff')).statusCode,403);
+ assert.equal((await fx.call('PATCH','/visual',{expectedVersion:0,visual},'owner','site-b')).statusCode,404);
+ const saved=await fx.call('PATCH','/visual',{expectedVersion:0,visual});
+ assert.equal(saved.statusCode,200,JSON.stringify(saved.body));
+ assert.equal(saved.body.visual.brandKit.enabled,true);
+ assert.equal(saved.body.visual.beforeAfter.enabled,true);
+ assert.equal(fx.saves(),1);
+ const preview=await fx.call('GET','/auto-preview');
+ assert.equal(preview.statusCode,200);
+ assert.match(preview.body,/data-sbc-v4-comparison/);
+ assert.match(preview.body,/sbc-v4-range/);
+ assert.match(preview.body,/actual customer project/i);
+ assert.match(preview.headers['content-security-policy'],/https:\/\/res\.cloudinary\.com/);
+ const history=await fx.call('GET','/visual/history');
+ assert.equal(history.statusCode,200);
+ assert.deepEqual(history.body.revisions.map(x=>x.version),[0]);
+ const undo=await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:0});
+ assert.equal(undo.statusCode,200);
+ const reverted=await fx.call('GET','/auto-preview');
+ assert.doesNotMatch(reverted.body,/data-sbc-v4-comparison/);
+ assert.equal(fx.saves(),2);
+ assert.equal((await fx.call('PATCH','/visual',{expectedVersion:2,visual},'owner','site-approved')).statusCode,409);
+});
