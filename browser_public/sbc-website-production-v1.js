@@ -183,6 +183,21 @@
       '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0">Accessible image description<input name="photoAlt" type="text" maxlength="180" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0"><input type="checkbox" name="rightsConfirmed"> I verified that we may use this image in the customer concept.</label></details>'+
+      '<details style="margin:14px 0;border:1px solid #bdcbd6;border-radius:10px;padding:13px"><summary style="font-weight:800;cursor:pointer">V4 Brand Kit · Owner-confirmed colors</summary>'+
+      '<p style="font-size:.88rem">Use two approved six-digit brand colors with readable white text. Logo uploads and automatic extraction are not enabled yet.</p>'+
+      '<label>Primary color (#RRGGBB)<input id="sbcStudioBrandPrimary" name="brandPrimary" maxlength="7" placeholder="#163047" style="width:100%"></label>'+
+      '<label>Accent color (#RRGGBB)<input id="sbcStudioBrandAccent" name="brandAccent" maxlength="7" placeholder="#99440D" style="width:100%"></label>'+
+      '<label><input type="checkbox" name="brandConfirmed"> I confirm these colors belong to this customer or are approved for this draft.</label></details>'+
+      '<details style="margin:14px 0;border:1px solid #bdcbd6;border-radius:10px;padding:13px"><summary style="font-weight:800;cursor:pointer">V4 Authentic Before / After comparison</summary>'+
+      '<p style="font-size:.88rem">Use TWO photos from the SAME real customer project. Supported source: direct HTTPS Cloudinary image links only (res.cloudinary.com). This is not for stock images or invented results.</p>'+
+      '<label>Project description<input name="comparisonTitle" maxlength="110" placeholder="Owner-verified project photos" style="width:100%"></label>'+
+      '<label>Before photo URL<input id="sbcStudioComparisonBefore" name="comparisonBefore" type="url" maxlength="350" style="width:100%" placeholder="https://res.cloudinary.com/.../image/upload/.../before.jpg"></label>'+
+      '<label>After photo URL<input id="sbcStudioComparisonAfter" name="comparisonAfter" type="url" maxlength="350" style="width:100%" placeholder="https://res.cloudinary.com/.../image/upload/.../after.jpg"></label>'+
+      '<label>Before photo description<input name="comparisonBeforeAlt" maxlength="180" style="width:100%"></label>'+
+      '<label>After photo description<input name="comparisonAfterAlt" maxlength="180" style="width:100%"></label>'+
+      '<label style="display:block"><input id="sbcStudioComparisonRights" type="checkbox" name="comparisonRights"> The business and photographer authorized BOTH images for this concept.</label>'+
+      '<label style="display:block"><input id="sbcStudioActualWorkConfirmed" type="checkbox" name="actualWorkConfirmed"> Both images show the SAME actual project completed by this business, with permission to make that claim.</label>'+
+      '<p style="font-size:.8rem">A comparison stays completely hidden until all fields and attestations are valid. No image is uploaded and nothing publishes automatically.</p></details>'+
       '<button class="btn primary" type="submit">Save Design & Preview</button>'+
       '<details style="margin:16px 0;border:1px solid #b9cbd6;padding:12px;border-radius:10px"><summary style="cursor:pointer;font-weight:800">Saved design revisions</summary>'+
       '<p style="font-size:.87rem">Recover an earlier saved design without changing verified customer facts. Restoring creates a new saved version.</p>'+
@@ -210,14 +225,14 @@
     studioVisualMessage('Edited on the private canvas. Click Save Design & Preview to keep this change.');
   });
   const v3SectionKeys=['showcase','path','questions','conversion'];
-  const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder'];
+  const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder','brandPrimary','brandAccent','brandConfirmed','comparisonTitle','comparisonBefore','comparisonAfter','comparisonBeforeAlt','comparisonAfterAlt','comparisonRights','actualWorkConfirmed'];
   let v3History={site:null,present:null,undo:[],redo:[]};
   function studioSnapshot(form){
     if(!form)return null;
     const result={};
     for(const key of v3VisualFields){
       const field=form.elements.namedItem(key);if(!field)return null;
-      result[key]=key==='rightsConfirmed' ? field.checked===true : String(field.value||'');
+      result[key]=['rightsConfirmed','brandConfirmed','comparisonRights','actualWorkConfirmed'].includes(key) ? field.checked===true : String(field.value||'');
     }
     return JSON.stringify(result);
   }
@@ -236,7 +251,7 @@
     for(const key of v3VisualFields){
       const field=form.elements.namedItem(key);
       if(!field)continue;
-      if(key==='rightsConfirmed')field.checked=values[key]===true;
+      if(['rightsConfirmed','brandConfirmed','comparisonRights','actualWorkConfirmed'].includes(key))field.checked=values[key]===true;
       else field.value=String(values[key]||'');
     }
   }
@@ -307,6 +322,15 @@
       form.elements.namedItem('serviceLayout').value=v.serviceLayout||'auto';
       form.elements.namedItem('sectionOrder').value=Array.isArray(v.sectionOrder)?v.sectionOrder.join(','):v3SectionKeys.join(',');
       form.elements.namedItem('rightsConfirmed').checked=v.rightsConfirmed===true;
+      const brand=v.brandKit?.enabled?v.brandKit:{};
+      form.elements.namedItem('brandPrimary').value=brand.primary||'';
+      form.elements.namedItem('brandAccent').value=brand.accent||'';
+      form.elements.namedItem('brandConfirmed').checked=brand.ownerConfirmed===true;
+      const comparison=v.beforeAfter?.enabled?v.beforeAfter:{};
+      for(const [field,key] of [['comparisonTitle','title'],['comparisonBefore','beforeUrl'],['comparisonAfter','afterUrl'],['comparisonBeforeAlt','beforeAlt'],['comparisonAfterAlt','afterAlt']])
+        form.elements.namedItem(field).value=comparison[key]||'';
+      form.elements.namedItem('comparisonRights').checked=comparison.rightsConfirmed===true;
+      form.elements.namedItem('actualWorkConfirmed').checked=comparison.actualWorkConfirmed===true;
       form.dataset.ready='1';
       v3History={site:demo.id,present:studioSnapshot(form),undo:[],redo:[]};
       form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
@@ -388,6 +412,16 @@
     const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
     const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),vibe:get('vibe'),heroStyle:get('heroStyle'),serviceLayout:get('serviceLayout'),sectionOrder:get('sectionOrder').split(','),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
     if(visual.photoUrl&&(!visual.photoAlt||!visual.rightsConfirmed))return studioVisualMessage('An approved photo requires an alt description and your explicit image-rights confirmation.');
+    const brandEnabled=Boolean(get('brandPrimary')||get('brandAccent')||form.elements.namedItem('brandConfirmed').checked);
+    visual.brandKit=brandEnabled?{primary:get('brandPrimary'),accent:get('brandAccent'),
+      ownerConfirmed:form.elements.namedItem('brandConfirmed').checked}:{};
+    const comparisonEnabled=['comparisonTitle','comparisonBefore','comparisonAfter','comparisonBeforeAlt','comparisonAfterAlt'].some(k=>Boolean(get(k)))||
+      form.elements.namedItem('comparisonRights').checked||form.elements.namedItem('actualWorkConfirmed').checked;
+    visual.beforeAfter=comparisonEnabled?{
+      title:get('comparisonTitle'),beforeUrl:get('comparisonBefore'),afterUrl:get('comparisonAfter'),
+      beforeAlt:get('comparisonBeforeAlt'),afterAlt:get('comparisonAfterAlt'),
+      rightsConfirmed:form.elements.namedItem('comparisonRights').checked,
+      actualWorkConfirmed:form.elements.namedItem('actualWorkConfirmed').checked}:{};
     const submit=form.querySelector('button[type=submit]');
     busy=true;if(submit)submit.disabled=true;
     studioVisualMessage('Saving art direction to the correct customer website…');
