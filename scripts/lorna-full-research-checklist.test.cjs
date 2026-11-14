@@ -43,12 +43,12 @@ function fakeForm(){
  const fields=new Map();
  return {elements:{namedItem(name){if(!fields.has(name))fields.set(name,{value:'',maxLength:1200});return fields.get(name);}}};
 }
-const sourceSearch='Business name: Miranda Maintenance & Repair Corp\\nAddress research https://www.google.com/maps/search/?api=1&query=Miranda';
+const sourceSearch=['Business name: Miranda Maintenance & Repair Corp','Address research https://www.google.com/maps/search/?api=1&query=Miranda'].join(String.fromCharCode(10));
 const onlySearch=fakeForm();
 browser.window.SBCResearchBriefV1.parseBrief(sourceSearch,onlySearch);
 assert.equal(onlySearch.elements.namedItem('googleBusinessUrl').value,'','Google Maps SEARCH is not a verified business profile');
 const profileForm=fakeForm();
-browser.window.SBCResearchBriefV1.parseBrief(sourceSearch+'\\nGoogle Business Profile https://maps.app.goo.gl/rtTGRPAxt9mBt6ft9',profileForm);
+browser.window.SBCResearchBriefV1.parseBrief(sourceSearch+String.fromCharCode(10)+'Google Business Profile https://maps.app.goo.gl/rtTGRPAxt9mBt6ft9',profileForm);
 assert.equal(profileForm.elements.namedItem('googleBusinessUrl').value,'https://maps.app.goo.gl/rtTGRPAxt9mBt6ft9');
 assert.equal(browser.window.SBCResearchBriefV1.collect(profileForm).googleBusinessPresence,'not_checked','link alone never verifies Google listing');
 
