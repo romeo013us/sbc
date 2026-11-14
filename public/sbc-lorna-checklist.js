@@ -13,7 +13,8 @@ function collect(form){
  var website=safe(get(form,'website'),300),websitePresence=pres(get(form,'websitePresence'));
  var google=safe(get(form,'googleBusinessUrl'),500),googlePresence=pres(get(form,'googleBusinessPresence'));
  if(website&&web(website))websitePresence='found';
- if(google&&web(google))googlePresence='found';
+ // A Maps URL alone is not proof that a verified Google Business Profile exists.
+ // Keep the researcher's explicit presence choice; it defaults to not_checked.
  return {
    version:1,
    websitePresence,googleBusinessPresence:googlePresence,googleBusinessUrl:google,
@@ -127,7 +128,7 @@ function parseBrief(raw,form){
   var label=pair[0],hit=txt.match(new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:—-]?\\s*([^\\n]+)','i'));
   if(hit){var v=hit[1].trim();if(!/^(not recorded|none|—|not verified)$/i.test(v)&&!/^\[/.test(v))set(pair[1],v);}
  });
- var mapsLink=txt.match(/https:\/\/(?:maps\.app\.goo\.gl|www\.google\.com\/maps|maps\.google\.com)\/[^\s)\]>]+/i);
+ var mapsLink=txt.match(/https:\/\/maps\.app\.goo\.gl\/[^\s)\]>]+/i) || txt.match(/https:\/\/(?:www\.google\.com|maps\.google\.com)\/maps\/place\/[^\s)\]>]+/i);
  if(mapsLink)set('googleBusinessUrl',mapsLink[0].replace(/[.,]+$/,''));
  set('phone',parts.phone);
  if(parts.email&&!/^(—|none|not recorded)$/i.test(parts.email))set('email',parts.email);
