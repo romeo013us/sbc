@@ -163,6 +163,8 @@
     const smartDraft=currentRole()==='owner'&&!isApproved(demo)&&demo.archived!==true;
     const smartUrl=smartDraft?absolute(studioBase(demo)+'/auto-preview'):'';
     let previewMode=smartDraft?'smart':'classic';
+    active.previewMode=previewMode;
+    active.previewPage='home';
     const links=pages.map((page,i)=>'<button type="button" class="btn '+(i===0?'primary':'')+'" data-factory-page="'+esc(page)+'">'+esc(page[0].toUpperCase()+page.slice(1))+'</button>').join('');
     const html='<div class="v6526-studio" style="max-width:1100px">'+
       '<div class="v6526-studio-top"><div><p class="v6526-kicker">SBC WEBSITE PRODUCTION · REAL WORKING WEBSITES</p><h3>'+esc(customer.businessName||customer.contactName||'Website project')+'</h3><p>Built website: '+esc(demo.offerTier==='starter'?'Business Starter':'Business Basic')+' · '+price+' · '+pages.length+' page'+(pages.length>1?'s':'')+'. The remaining business-specific information is completed after purchase.</p></div><span class="v6526-ready">'+esc(demo.status||'Draft')+'</span></div>'+
@@ -186,6 +188,7 @@
       const frame=document.getElementById('sbcFactoryFrame');if(!frame)return;
       const smart=mode==='smart'&&smartDraft;
       previewMode=smart?'smart':'classic';
+      if(active?.demo?.id===demo.id){active.previewMode=previewMode;active.previewPage=page;}
       const url=smart?(smartUrl+(page==='home'?'':'?page='+encodeURIComponent(page))):pageUrl(demo,page);
       frame.src=url;
       if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Not customer-ready':new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
@@ -361,10 +364,12 @@
       const address=document.getElementById('sbcFactoryAddress');
       const frame=document.getElementById('sbcFactoryFrame');
       if(frame){
-        const url=new URL(pageUrl(active.demo,'home'));
+        const smart=active.previewMode==='smart'&&currentRole()==='owner'&&!isApproved(active.demo);
+        const url=new URL(smart?absolute(studioBase(active.demo)+'/auto-preview'):pageUrl(active.demo,'home'));
+        if(smart&&active.previewPage&&active.previewPage!=='home')url.searchParams.set('page',active.previewPage);
         url.searchParams.set('editVersion',String(result.site.siteEditsVersion));
         frame.src=url.href;
-        if(address)address.textContent=url.host+url.pathname;
+        if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Saved Design':url.host+url.pathname;
       }
       const badge=document.getElementById('sbcInstantSiteVersion');
       if(badge)badge.textContent='Saved version '+result.site.siteEditsVersion;
