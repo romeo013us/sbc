@@ -4,6 +4,7 @@
 // changes demo approval, purchases services or publishes a public website.
 const {verifiedProfile}=require('./contracts.cjs');
 const {createPrivateConcept}=require('./index.cjs');
+const {createDraftConcept}=require('./draft-concept.cjs');
 const {checkPrivateBundle}=require('./qa-gate.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
 // CRM suggestions are review-only. The owner must attest them before compilation.
@@ -107,9 +108,11 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   try{const result=await operation;return res.status(result.status).json(result.body)}catch(e){return responseError(res,e)}
  });
  const concept=(req,res,mode)=>readonly(req,res,site=>{
+  // One-click private art-directed draft: never silently rebuild an approved site.
+  if(mode==='auto-preview'&&(site.status==='Approved'||site.archived===true))return respond(res,'STUDIO_AUTO_PREVIEW_LOCKED',409);
   const profile=fetchApproved(site);
-  if(!profile)return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
-  const {bundle}=createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true});
+  if(!profile&&mode!=='auto-preview')return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
+  const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true}):createDraftConcept(site);
   const qa=checkPrivateBundle(bundle);
   if(!qa.passed)return respond(res,'STUDIO_STATIC_QA_FAILED',503);
   if(mode==='bundle')return res.json({ok:true,publicationReady:false,staticPreflight:qa,files:bundle.files});
@@ -125,6 +128,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   return res.send(html);
  });
  app.get(ROOT+'/preview',auth,ownerOnly,(req,res)=>concept(req,res,'preview'));
+ app.get(ROOT+'/auto-preview',auth,ownerOnly,(req,res)=>concept(req,res,'auto-preview'));
  app.get(ROOT+'/bundle',auth,ownerOnly,(req,res)=>concept(req,res,'bundle'));
 }
 module.exports={register,buildApprovedProfile};
