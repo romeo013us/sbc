@@ -34,4 +34,22 @@ assert.equal(lead.googleAddressVerification,'not_checked');
 assert.equal(lead.contactName,'Alexeis Alonso Miranda');
 assert.equal(lead.verificationSource,'Lead Research - Bulk Import');
 for(const file of ['public/lead-research.js','public/sbc-lorna-checklist.js'])new vm.Script(read(file),{filename:file});
+// A Google Maps *search* link must never masquerade as a verified Google
+// Business Profile. A real supplied profile shortlink should be extractable
+// without automatically claiming independent verification.
+const browser={window:{},document:{readyState:'loading',addEventListener(){},getElementById(){return null;}},URL,setTimeout(){}};
+vm.runInNewContext(check,browser,{filename:'sbc-lorna-checklist.js'});
+function fakeForm(){
+ const fields=new Map();
+ return {elements:{namedItem(name){if(!fields.has(name))fields.set(name,{value:'',maxLength:1200});return fields.get(name);}}};
+}
+const sourceSearch='Business name: Miranda Maintenance & Repair Corp\\nAddress research https://www.google.com/maps/search/?api=1&query=Miranda';
+const onlySearch=fakeForm();
+browser.window.SBCResearchBriefV1.parseBrief(sourceSearch,onlySearch);
+assert.equal(onlySearch.elements.namedItem('googleBusinessUrl').value,'','Google Maps SEARCH is not a verified business profile');
+const profileForm=fakeForm();
+browser.window.SBCResearchBriefV1.parseBrief(sourceSearch+'\\nGoogle Business Profile https://maps.app.goo.gl/rtTGRPAxt9mBt6ft9',profileForm);
+assert.equal(profileForm.elements.namedItem('googleBusinessUrl').value,'https://maps.app.goo.gl/rtTGRPAxt9mBt6ft9');
+assert.equal(browser.window.SBCResearchBriefV1.collect(profileForm).googleBusinessPresence,'not_checked','link alone never verifies Google listing');
+
 console.log('PASS urgent Lorna workbook fields, per-source evidence, research-checklist persistence and CSV mapping');
