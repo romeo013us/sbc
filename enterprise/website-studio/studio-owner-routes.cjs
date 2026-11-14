@@ -155,6 +155,12 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   if(mode==='auto-preview')for(const key of ['vibe','serviceLayout','heroStyle']){
    if(req.query?.[key]!==undefined)visualDraft[key]=req.query[key];
   }
+  if(mode==='auto-preview'&&req.query?.sectionOrder!==undefined){
+   // Strict allowlisted permutation; never accepts arbitrary tags, scripts,
+   // sections or approved business identity as a move target.
+   if(typeof req.query.sectionOrder!=='string')throw Error('INVALID_STUDIO_SECTION_ORDER');
+   visualDraft.sectionOrder=req.query.sectionOrder.split(',');
+  }
   const customized=mode==='auto-preview'?Visual.applyVisual(bundle,visualDraft):bundle;
   const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle:customized,offerTier:site.offerTier,isDraft:!profile}):customized;
   const qa=checkPrivateBundle(output);

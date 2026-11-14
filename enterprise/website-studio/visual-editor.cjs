@@ -3,7 +3,16 @@
 // Does NOT change verified facts, publish a site, permit arbitrary HTML or upload images.
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isRecord=o=>!!o&&typeof o==='object'&&!Array.isArray(o);
-const keys=['headline','subheadline','density','photoUrl','photoAlt','rightsConfirmed','vibe','serviceLayout','heroStyle'];
+const keys=['headline','subheadline','density','photoUrl','photoAlt','rightsConfirmed','vibe','serviceLayout','heroStyle','sectionOrder'];
+// Only the four optional V2 presentation blocks may be rearranged.
+// Identity, approved facts, hero, primary contact and required disclosure stay put.
+const V3_SECTIONS=Object.freeze(['showcase','path','questions','conversion']);
+function sectionOrder(input){
+ if(input===undefined)return Object.freeze([...V3_SECTIONS]);
+ if(!Array.isArray(input)||input.length!==V3_SECTIONS.length||new Set(input).size!==V3_SECTIONS.length||
+  input.some(x=>typeof x!=='string'||!V3_SECTIONS.includes(x)))throw Error('INVALID_STUDIO_SECTION_ORDER');
+ return Object.freeze([...input]);
+}
 const vibes=new Set(['original','cinematic','minimal','warm']);
 const serviceLayouts=new Set(['auto','bento','grid','editorial']);
 const heroStyles=new Set(['auto','split','stacked','cinema']);
@@ -31,6 +40,7 @@ function normalizeVisual(raw={}){
  const density=raw.density??'original';if(!densities.has(density))throw Error('INVALID_STUDIO_LAYOUT');
  const vibe=raw.vibe??'original',serviceLayout=raw.serviceLayout??'auto',heroStyle=raw.heroStyle??'auto';
  if(!vibes.has(vibe)||!serviceLayouts.has(serviceLayout)||!heroStyles.has(heroStyle))throw Error('INVALID_STUDIO_ART_DIRECTION');
+ const order=sectionOrder(raw.sectionOrder);
  const photoUrl=mediaURL(raw.photoUrl??'');
  const photoAlt=safeText(raw.photoAlt??'',180);
  if(raw.rightsConfirmed!==undefined&&typeof raw.rightsConfirmed!=='boolean')throw Error('INVALID_STUDIO_MEDIA_RIGHTS');
@@ -38,7 +48,7 @@ function normalizeVisual(raw={}){
  if(photoUrl&&!rightsConfirmed)throw Error('STUDIO_MEDIA_RIGHTS_REQUIRED');
  if(photoUrl&&!photoAlt)throw Error('STUDIO_MEDIA_ALT_REQUIRED');
  if(!photoUrl&&photoAlt)throw Error('INVALID_STUDIO_PHOTO');
- return Object.freeze({headline,subheadline,density,photoUrl,photoAlt,rightsConfirmed,vibe,serviceLayout,heroStyle});
+ return Object.freeze({headline,subheadline,density,photoUrl,photoAlt,rightsConfirmed,vibe,serviceLayout,heroStyle,sectionOrder:order});
 }
 function applyVisual(bundle,options){
  const v=normalizeVisual(options||{});
@@ -64,6 +74,21 @@ function applyVisual(bundle,options){
   const hero=/<section class="composed-hero[\s\S]*?<\/section>/;
   if(!hero.test(html))throw Error('STUDIO_HERO_NOT_FOUND');
   html=html.replace(hero,m=>m+feature);
+ }
+ // Only recompose the contiguous, compiler-generated V2 sections. Never edit
+ // customer-approved business facts, hero copy, contact or any HTML from clients.
+ const pattern=/<section class="sbc-v2-(showcase|path|questions|conversion)"[^>]*>[\s\S]*?<\/section>/g;
+ const matches=[...html.matchAll(pattern)];
+ if(matches.length){
+  const byType=new Map();
+  for(const match of matches){
+   if(byType.has(match[1]))throw Error('STUDIO_V3_SECTION_DUPLICATE');
+   byType.set(match[1],match[0]);
+  }
+  const original=matches.map(match=>match[0]).join('');
+  if(!html.includes(original))throw Error('STUDIO_V3_SECTION_REGION_INVALID');
+  const next=v.sectionOrder.filter(key=>byType.has(key)).map(key=>byType.get(key)).join('');
+  html=html.replace(original,next);
  }
  files['index.html']=html;
  files['styles.css']+='\n.sbc-layout-airy .composed-services{padding-block:130px}.sbc-layout-dense .composed-services{padding-block:46px}.sbc-layout-dense .service-composition{gap:12px}.sbc-approved-visual{margin:0;background:#101820;padding:24px max(24px,calc((100vw - 1160px)/2));color:white}.sbc-approved-visual img{display:block;width:100%;height:auto;max-height:520px;object-fit:cover;border-radius:12px}.sbc-approved-visual figcaption{font-size:.7rem;letter-spacing:.09em;padding:12px 0;line-height:1.5}@media(max-width:750px){.sbc-layout-airy .composed-services{padding-block:70px}.sbc-approved-visual{padding:18px}.sbc-approved-visual img{max-height:340px}}\n';
