@@ -150,7 +150,7 @@
       if(!out?.ok||!out.approvedProfile)throw Error('First approve this business’s verified profile.');
       const frame=document.getElementById('sbcFactoryFrame');
       if(!frame)throw Error('Website preview frame not available.');
-      frame.src=studioBase(demo)+'/preview';
+      frame.src=studioBase(demo)+'/auto-preview';
       const address=document.getElementById('sbcFactoryAddress');if(address)address.textContent='SBC Website Studio · Private approved-facts concept';
       studioMessage('Showing private Website Studio concept. No form submissions or public publishing are enabled.');
     }catch(e){studioMessage(String(e?.message||'Unable to open Studio preview.'));}
@@ -162,11 +162,12 @@
     const price=demo.offerTier==='starter'?'$199':'$349';
     const smartDraft=currentRole()==='owner'&&!isApproved(demo)&&demo.archived!==true;
     const smartUrl=smartDraft?absolute(studioBase(demo)+'/auto-preview'):'';
+    let previewMode=smartDraft?'smart':'classic';
     const links=pages.map((page,i)=>'<button type="button" class="btn '+(i===0?'primary':'')+'" data-factory-page="'+esc(page)+'">'+esc(page[0].toUpperCase()+page.slice(1))+'</button>').join('');
     const html='<div class="v6526-studio" style="max-width:1100px">'+
       '<div class="v6526-studio-top"><div><p class="v6526-kicker">SBC WEBSITE PRODUCTION · REAL WORKING WEBSITES</p><h3>'+esc(customer.businessName||customer.contactName||'Website project')+'</h3><p>Built website: '+esc(demo.offerTier==='starter'?'Business Starter':'Business Basic')+' · '+price+' · '+pages.length+' page'+(pages.length>1?'s':'')+'. The remaining business-specific information is completed after purchase.</p></div><span class="v6526-ready">'+esc(demo.status||'Draft')+'</span></div>'+
       '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0"><strong style="margin-right:12px">Classic website pages:</strong>'+links+'</div>'+ 
-      (smartDraft?'<div class="sbc-factory-light-panel" style="padding:15px;border:1px solid #bdd0de;border-radius:10px"><strong>Choose design preview</strong><div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0"><button id="sbcFactorySmartMode" class="btn primary" type="button">★ Art-directed preview (default)</button><button id="sbcFactoryClassicMode" class="btn" type="button">Classic 4-page builder</button></div><p id="sbcFactoryModeInfo" role="status">The art-directed version is a PRIVATE one-page concept. Example sections need fact approval. Your original '+(pages.length>1?'four-page':'one-page')+' site and its editor remain available under Classic.</p></div>':'')+
+      (smartDraft?'<div class="sbc-factory-light-panel" style="padding:15px;border:1px solid #bdd0de;border-radius:10px"><strong>Choose design preview</strong><div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0"><button id="sbcFactorySmartMode" class="btn primary" type="button">★ Art-directed preview (default)</button><button id="sbcFactoryClassicMode" class="btn" type="button">Classic 4-page builder</button></div><p id="sbcFactoryModeInfo" role="status">The art-directed version is a PRIVATE '+(pages.length>1?'four-page':'one-page')+' concept. Example sections need fact approval. Your original '+(pages.length>1?'four-page':'one-page')+' site and its editor remain available under Classic.</p></div>':'')+
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(smartDraft?smartUrl:pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
@@ -184,7 +185,8 @@
     const switchPreview=(mode,page='home')=>{
       const frame=document.getElementById('sbcFactoryFrame');if(!frame)return;
       const smart=mode==='smart'&&smartDraft;
-      const url=smart?smartUrl:pageUrl(demo,page);
+      previewMode=smart?'smart':'classic';
+      const url=smart?(smartUrl+(page==='home'?'':'?page='+encodeURIComponent(page))):pageUrl(demo,page);
       frame.src=url;
       if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Not customer-ready':new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
       document.getElementById('sbcFactorySmartMode')?.classList.toggle('primary',smart);
@@ -196,7 +198,7 @@
     document.getElementById('sbcFactoryClassicMode')?.addEventListener('click',()=>switchPreview('classic'));
     document.querySelectorAll('[data-factory-page]').forEach(button=>button.addEventListener('click',()=>{
       const page=button.dataset.factoryPage;const url=pageUrl(demo,page);
-      switchPreview('classic',page);
+      switchPreview(previewMode,page);
     }));
     document.querySelectorAll('[data-factory-device]').forEach(button=>button.addEventListener('click',()=>{
       document.querySelector('.v6526-preview-shell')?.classList.toggle('is-mobile',button.dataset.factoryDevice==='mobile');
