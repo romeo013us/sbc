@@ -18,6 +18,19 @@ const stagedServer=hrStage.patchServer(canonicalServer);
 if(!stagedServer.includes(hrStage.MARK))throw Error('HR_ROUTE_ABSENT_IN_STAGED_AUDIT');
 const srv=[stagedServer,...readModules(path.join(root,'routes'))].join('\n');
 const routes=[...srv.matchAll(/\b(?:app|router)\.(?:get|post|put|patch|delete|all|use)\(\s*['"`]([^'"`]+)['"`]/g)].map(m=>m[1]);
+// Registered feature routers build absolute API paths from a constant prefix and
+// typed relative routes. Resolve ONLY declarations actually present in the source;
+// don't turn off validation or create a blanket static-audit allowlist.
+for(const file of ['sbc-account-social-v1.cjs','sbc-lorna-handoff-v1.cjs']){
+ const absolute=path.join(root,'routes',file);
+ if(!fs.existsSync(absolute))continue;
+ const src=read(absolute);
+ const prefix=src.match(/const\s+(?:PATH|BASE)\s*=\s*['"](\/api\/[^'"]+)['"]/);
+ if(!prefix)continue;
+ for(const match of src.matchAll(/\broute\(\s*['"](?:get|post|put|patch|delete)['"]\s*,\s*['"](\/[^'"]+)['"]/g)){
+  routes.push(prefix[1]+match[1]);
+ }
+}
 const toRe=r=>new RegExp('^'+r.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replace(/:[A-Za-z_]+/g,'[^/]+').replace(/\*/g,'.*')+'/?$');
 // Catch-all routes (containing '*' or mounted at '/') would make EVERY path look valid, so they are excluded.
 const specific=routes.filter(r=>!r.includes('*')&&r!=='/'&&r!=='/api');

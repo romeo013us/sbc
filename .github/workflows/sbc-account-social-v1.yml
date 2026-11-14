@@ -1,0 +1,41 @@
+name: SBC Account Social + Lorna Prove-It
+on:
+  pull_request:
+    paths:
+      - 'enterprise/sbc-account-social-*.cjs'
+      - 'enterprise/sbc-lorna-handoff-*.cjs'
+      - 'routes/sbc-account-social-*.cjs'
+      - 'routes/sbc-lorna-handoff-v1.cjs'
+      - 'sql/sbc-account-social-*.sql'
+      - 'sql/sbc-lorna-account-handoff-v1.sql'
+      - 'scripts/*account*.test.cjs'
+      - 'scripts/stage-*-handoff-v1.cjs'
+      - 'public/sbc-*-v1.*'
+      - 'browser_public/sbc-*-v1.*'
+      - 'routes/crm.js'
+      - '.github/workflows/sbc-account-social-v1.yml'
+  push:
+    paths:
+      - 'enterprise/sbc-account-social-*.cjs'
+      - 'enterprise/sbc-lorna-handoff-*.cjs'
+      - 'routes/sbc-account-social-*.cjs'
+      - 'routes/sbc-lorna-handoff-v1.cjs'
+      - 'scripts/*account*.test.cjs'
+      - 'scripts/stage-*-handoff-v1.cjs'
+      - '.github/workflows/sbc-account-social-v1.yml'
+permissions:
+  contents: read
+jobs:
+  feature-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check service, route, browser and staging code
+        run: |
+          for file in enterprise/sbc-account-social-*.cjs enterprise/sbc-lorna-handoff-*.cjs routes/sbc-account-social-*.cjs routes/sbc-lorna-handoff-v1.cjs public/sbc-account-manager-v1.js public/sbc-lorna-handoff-v1.js scripts/stage-account-social-v1.cjs scripts/stage-lorna-handoff-v1.cjs; do node --check "$file"; done
+      - name: Isolated account, research and social regression suite
+        run: |
+          node --test scripts/account-social-core.test.cjs scripts/account-social-meta.test.cjs scripts/account-social-mysql.test.cjs scripts/account-social-routes.test.cjs scripts/account-social-integration.test.cjs scripts/stage-account-social-v1.test.cjs scripts/lorna-account-handoff.test.cjs scripts/lorna-account-mysql.test.cjs scripts/lorna-account-routes.test.cjs scripts/stage-lorna-handoff-v1.test.cjs scripts/account-manager-ui.test.cjs

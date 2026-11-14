@@ -29,6 +29,16 @@ function positiveTenantIdOrZero(input) {
 }
 
 module.exports = function registerCRM(app, { auth, getContext }) {
+  // SBC_ACCOUNT_SOCIAL_V1_SAFE_MOUNT: opt-in, fail-closed Account Manager / Lorna / Social integration.
+  // No new routes, migrations or provider calls are mounted unless flag is explicitly enabled.
+  if (process.env.SBC_ACCOUNT_SOCIAL_V1 === '1') {
+    require('./sbc-account-social-integration-v1.cjs').registerAccountSocialIntegration(app, {
+      enabled: true, auth, getContext
+      // Writer lease, scoped vault credentials and publishing remain disabled
+      // until separately reviewed and connected to the verified production adapter.
+    });
+  }
+
   app.get('/api/v566/crm/customer-360/:id', auth, async (req, res) => {
     try {
       const ctx = getContext();
