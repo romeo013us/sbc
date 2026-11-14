@@ -5,6 +5,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'
 const text=(v,max=160)=>String(v??'').trim().slice(0,max);
 const EXPERIENCE=require('./sbc-prospect-site-experience-v2.cjs');
 const palettes=[
+ {match:/window tint|auto tint|car tint|tinting|window film/i,label:'WINDOW FILM & TINT',ink:'#101721',p:'#24a8ba',soft:'#e8f6fa',hero:'Shade. Style. A new perspective.',category:'tint'},
  {match:/auto|mechanic|tire|detailing|collision|body shop|car wash/i,label:'AUTOMOTIVE',ink:'#0b1426',p:'#d84829',soft:'#fff1e8',hero:'precision in every detail',category:'automotive'},
  {match:/salon|beauty|barber|spa|lash|nail|hair/i,label:'BEAUTY & CARE',ink:'#251824',p:'#a44f83',soft:'#fff0f8',hero:'a beautiful experience starts here',category:'beauty'},
  {match:/restaurant|cafe|bakery|catering|kitchen|food|grill/i,label:'DINING & FOOD',ink:'#242015',p:'#a97625',soft:'#faf2e4',hero:'good taste deserves a great first impression',category:'dining'},
@@ -13,6 +14,7 @@ const palettes=[
 ];
 const generic={label:'LOCAL BUSINESS',ink:'#16283f',p:'#416fbb',soft:'#eef4ff',hero:'local excellence, beautifully presented',category:'local'};
 const serviceNames={
+ tint:['Tint consultation','Window film options','Care and maintenance','Request a tint estimate'],
  automotive:['Services & maintenance','Detailing & care','Request an estimate','Why choose this business'],
  beauty:['Treatments & services','Appointment experience','Personalized consultation','Discover the studio'],
  dining:['Explore the menu','Visit & discover','Special occasions','Get in touch'],
@@ -21,6 +23,7 @@ const serviceNames={
  local:['What we do','Our approach','Request a quote','Get in touch']
 };
 const faqs={
+ tint:[['What tint options are available?','Film types, shade levels and availability are confirmed directly with the business.'],['How do I request an estimate?','Contact details and the approved inquiry process are connected before the website launches.']],
  automotive:[['Can I request an estimate?','Yes—this finished site will link to the business’s approved estimate process after launch.'],['How can I schedule service?','Scheduling information and availability are added during client onboarding.']],
  beauty:[['How do I book?','Approved booking links and current availability are added before the website goes live.'],['Are service prices listed?','The owner can supply a current service menu and prices during onboarding.']],
  dining:[['Can I view a menu?','An approved menu can be published after the business confirms items and pricing.'],['Where is the restaurant?','The verified location and operating hours are added before launch.']],
@@ -58,7 +61,18 @@ const stockPhotos={
 };
 // No generative API needed: stable client-specific art direction within each
 // industry, never a random theme that changes after a refresh.
+stockPhotos.tint=stockPhotos.automotive;
+const creativeCopy=Object.freeze({
+ tint:{headline:'Your ride. A sharper look.',description:'Explore a modern window-tinting concept with film options, vehicle-focused visuals and a simple path to ask about a tint project. All products and claims require owner confirmation.',servicesTitle:'Explore your tint project',services:['Start with a conversation about your vehicle, preferred appearance and practical needs.','See where approved film types, shade choices and product details will appear after confirmation.','Give drivers a clear place to review approved film-care instructions and appointment details.','Make it easy to request pricing once the business connects its verified estimate process.'],journey:['Tell us about your vehicle','Review confirmed film options','Request an approved estimate']},
+ automotive:{headline:'Confidence starts with the details.',description:'A vehicle-service website concept designed to make information clear and connect drivers with the right next step.',servicesTitle:'Explore vehicle services',services:['Introduce verified maintenance and repair work by vehicle or service need.','Explain how customers can discuss symptoms, timing and available service options.','Show approved inspection or estimate procedures before a customer books.','Help visitors find accurate contact details and next steps.'],journey:['Describe your vehicle','Explore confirmed services','Contact the shop']},
+ beauty:{headline:'Your next look begins here.',description:'An editorial studio concept centered on approved treatments, style inspiration and a calm appointment journey.',servicesTitle:'Discover your studio experience',services:['Present confirmed treatments in a clear, browsable format.','Help visitors explore approved looks and service details.','Show the actual appointment process once confirmed by the studio.','Introduce the team and consultation experience using approved information.'],journey:['Explore treatments','Choose your style','Request an appointment']},
+ dining:{headline:'An appetite for something special.',description:'A food-forward website concept with space for an approved menu, inviting photography and easy directions.',servicesTitle:'Explore the dining experience',services:['Feature verified dishes and menu categories with owner-approved descriptions.','Explain dining, takeaway or catering options only when available.','Show approved hours, location and reservation details.','Give guests a clear way to ask about their visit.'],journey:['Browse the approved menu','Plan your visit','Get in touch']},
+ trades:{headline:'Made for the work that matters.',description:'An organized service-business concept that makes projects, service areas and estimate requests easy to explore.',servicesTitle:'Explore the service experience',services:['Display verified services and project types with straightforward explanations.','Describe the approved estimate process and what clients should prepare.','Show confirmed service areas and availability.','Present real project examples only when approved by the business.'],journey:['Describe your project','Confirm service coverage','Request an estimate']},
+ professional:{headline:'Clarity makes the difference.',description:'An authoritative, approachable concept for introducing verified expertise, services and client intake.',servicesTitle:'Explore professional services',services:['Explain confirmed practice or service areas in plain language.','Describe the consultation and onboarding process after approval.','Make verified credentials, contact information and disclosures easy to find.','Guide visitors to the approved intake process.'],journey:['Review services','Understand the process','Request a consultation']},
+ local:{headline:'Built around your next step.',description:'A flexible concept that will present real services, images and business details once the owner has approved them.',servicesTitle:'Explore what is possible',services:['Introduce what the business provides once the owner confirms it.','Explain the customer experience with accurate and approved details.','Make it easy to learn about available services and pricing.','Connect visitors to an approved contact or booking channel.'],journey:['Explore the business','Review confirmed services','Get in touch']}
+});
 const artDirections=Object.freeze({
+ tint:[{ink:'#09131c',p:'#18a2b8',soft:'#e8f7f9'},{ink:'#15191f',p:'#dd6538',soft:'#f8eee7'},{ink:'#101925',p:'#c2a36c',soft:'#f8f3e7'}],
  automotive:[{ink:'#0b1426',p:'#d84829',soft:'#fff1e8'},{ink:'#142530',p:'#177d89',soft:'#ecf9f9'},{ink:'#191b25',p:'#ac5e22',soft:'#fff2e5'}],
  beauty:[{ink:'#251824',p:'#a44f83',soft:'#fff0f8'},{ink:'#1f2632',p:'#925c69',soft:'#f9eff0'},{ink:'#25302b',p:'#6b7760',soft:'#f1f5eb'}],
  dining:[{ink:'#242015',p:'#a97625',soft:'#faf2e4'},{ink:'#29211d',p:'#ac4f31',soft:'#fcf1e8'},{ink:'#162b28',p:'#5b8066',soft:'#eaf4eb'}],
@@ -92,12 +106,12 @@ function define(demo,opts={}) {
  const title=esc(business),safeIndustry=esc(industry);
  const rawCity=text(customer.city||'',70),city=rawCity?esc(rawCity):'your community';
  const facts=EXPERIENCE.verifiedFacts(demo);
- const layout=EXPERIENCE.archetype(style.category);
+ const layout=EXPERIENCE.archetype(style.category==='tint'?'automotive':style.category);
  const names=Array.isArray(edits.services)&&edits.services.length?edits.services:(facts?.services.length?facts.services:(serviceNames[style.category]||serviceNames.local));
  const questions=faqs[style.category]||faqs.local;
  const defaultPhotos=stockPhotos[style.category]||stockPhotos.local;
  const images=defaultPhotos.slice(designIndex).concat(defaultPhotos.slice(0,designIndex));
- const model={business,title,industry,safeIndustry,style,designVariant,edits,tier,prefix,city,rawCity,layout,facts,names,questions,approved,slug,images,staticMode:opts.staticMode===true};
+ const model={business,title,industry,safeIndustry,style,designVariant,edits,tier,prefix,city,rawCity,layout,facts,names,questions,approved,slug,images,creative:creativeCopy[style.category]||creativeCopy.local,staticMode:opts.staticMode===true};
  model.publicationReady=EXPERIENCE.publicReleaseReady(model,opts);
  return model;
 }
@@ -155,9 +169,9 @@ function services(m,full=false){
  const s=m.names.slice(0,full?4:3);
  const cards=s.map((name,index)=>'<article class="service-card"><div class="service-counter">0'+(index+1)+' / '+esc(m.style.label)+'</div>'+
  '<div class="service-shape service-shape-'+(index%3)+'" aria-hidden="true"></div>'+
- '<h3>'+esc(name)+'</h3><p>'+esc(index===0?'Discover the essential services this business can present with clarity, personality, and professionalism.':index===1?'Make it simple for visitors to explore the experience and find the right next step.':index===2?'Turn interest into an inquiry with a clear, focused path that makes sense on any device.':'A dedicated place for the details that matter most to your customers.')+'</p>'+
+ '<h3>'+esc(name)+'</h3><p>'+esc(m.creative.services[index]||'The owner can add verified details for this service before publication.')+'</p>'+
  '<a href="'+esc(anchor(m,'contact',m.tier==='starter'?'contact':''))+'" class="text-link">Explore the next step <span aria-hidden="true">↗</span></a></article>').join('');
- return '<section class="section section-cream" id="services"><div class="container">'+sectionHeading('01 / WHAT WE DO','Services made easy to explore','Every detail has a purpose: help customers understand the offer and take action.')+'<div class="service-grid">'+cards+'</div></div></section>';
+ return '<section class="section section-cream" id="services"><div class="container">'+sectionHeading('01 / WHAT WE DO',m.creative.servicesTitle,'A purpose-built website concept. Actual offerings are confirmed with the business before launch.')+'<div class="service-grid">'+cards+'</div></div></section>';
 }
 function why(m){
  return '<section class="section contrast" id="about"><div class="container split"><div><p class="kicker light">02 / A BETTER FIRST IMPRESSION</p><h2 class="display">Built around <em>your</em> business.</h2><p class="contrast-copy">'+esc(m.edits.about||'A website should make the right introduction before someone ever picks up the phone. This design creates a polished, clear experience from the first scroll to the final step.')+'</p>'+
@@ -168,9 +182,7 @@ function why(m){
 }
 function how(m){
  return '<section class="section"><div class="container">'+sectionHeading('03 / SIMPLE BY DESIGN','A clear path, start to finish','A natural journey that helps visitors know what comes next.')+
- '<div class="steps"><div><span>STEP 01</span><h3>Discover</h3><p>Learn about the business and what it offers.</p></div>'+
- '<div><span>STEP 02</span><h3>Explore</h3><p>Find the right service, information, or solution.</p></div>'+
- '<div><span>STEP 03</span><h3>Connect</h3><p>Use the approved contact method when the site is launched.</p></div></div></div></section>';
+ '<div class="steps">'+m.creative.journey.map((step,i)=>'<div><span>STEP 0'+(i+1)+'</span><h3>'+esc(step)+'</h3><p>'+esc(i===2?'The approved booking or contact channel is connected before launch.':'Details are personalized with verified customer-approved information.')+'</p></div>').join('')+'</div></div></section>';
 }
 function faqsBlock(m){
  return '<section class="section section-cream" id="faq"><div class="container narrow">'+sectionHeading('04 / GOOD TO KNOW','Frequently asked questions','Useful answers without guessing about a business’s operations.')+
@@ -180,7 +192,7 @@ function callout(m){
  return '<section class="cta-section" id="contact"><div class="container cta-inner"><p class="kicker light">LET’S MAKE THIS YOURS</p><h2>Make a great first<br><em>impression.</em></h2><p>The structure and design are ready. Final contact details, service details, and approved business information are completed before launch.</p><a class="button button-light" href="'+esc(anchor(m,'contact',m.tier==='starter'?'contact':''))+'">Contact information <span>↗</span></a></div></section>';
 }
 function home(m){
- return '<main id="main"><section class="hero"><div class="container hero-grid"><div class="hero-copy"><p class="kicker">'+esc(m.style.label)+' / DIGITAL EXPERIENCE</p><h1>'+esc(m.edits.headline||m.business)+'<span class="hero-period">.</span></h1><p class="hero-lede">'+esc(m.style.hero.charAt(0).toUpperCase()+m.style.hero.slice(1))+'.</p><p class="hero-desc">'+esc(m.edits.subheadline||EXPERIENCE.heroDescription(m))+'</p>'+
+ return '<main id="main"><section class="hero"><div class="container hero-grid"><div class="hero-copy"><p class="kicker">'+esc(m.style.label)+' / DIGITAL EXPERIENCE</p><h1>'+esc(m.edits.headline||m.business)+'<span class="hero-period">.</span></h1><p class="hero-lede">'+esc(m.creative.headline)+'.</p><p class="hero-desc">'+esc(m.edits.subheadline||m.creative.description)+'</p>'+
  '<div class="hero-buttons"><a class="button button-main" href="'+esc(anchor(m,'services',m.tier==='starter'?'services':''))+'">Explore services <span>↗</span></a><a class="button button-ghost" href="'+esc(anchor(m,'contact',m.tier==='starter'?'contact':''))+'">Get in touch</a></div>'+voiceAction(m)+'<div class="hero-caption"><span>RESPONSIVE</span><i></i><span>CLEAR</span><i></i><span>CRAFTED WITH CARE</span></div></div>'+heroVisual(m)+'</div></section>'+
  '<div class="marquee" aria-hidden="true"><div class="container marquee-inner"><span>DESIGNED FOR THE WAY PEOPLE BROWSE</span><span>✦</span><span>BUILT TO MAKE A LASTING IMPRESSION</span><span>✦</span><span>MADE FOR YOUR NEXT CHAPTER</span></div></div>'+
  EXPERIENCE.industryPanel(m)+services(m)+(m.edits.showGallery===false?'':visualGallery(m))+why(m)+(m.edits.showVideo===false?'':videoExperience(m))+how(m)+(m.edits.showFaq===false?'':faqsBlock(m))+callout(m)+'</main>';
