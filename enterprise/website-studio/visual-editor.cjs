@@ -3,7 +3,10 @@
 // Does NOT change verified facts, publish a site, permit arbitrary HTML or upload images.
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isRecord=o=>!!o&&typeof o==='object'&&!Array.isArray(o);
-const keys=['headline','subheadline','density','photoUrl','photoAlt','rightsConfirmed'];
+const keys=['headline','subheadline','density','photoUrl','photoAlt','rightsConfirmed','vibe','serviceLayout','heroStyle'];
+const vibes=new Set(['original','cinematic','minimal','warm']);
+const serviceLayouts=new Set(['auto','bento','grid','editorial']);
+const heroStyles=new Set(['auto','split','stacked','cinema']);
 const densities=new Set(['original','airy','dense']);
 const safeText=(raw,max)=>{
  if(typeof raw!=='string'||raw.length>max||/[<>\u0000-\u001f\u007f]/.test(raw))throw Error('INVALID_STUDIO_COPY');
@@ -26,6 +29,8 @@ function normalizeVisual(raw={}){
  if(!isRecord(raw)||Object.keys(raw).some(key=>!keys.includes(key)))throw Error('INVALID_STUDIO_VISUAL');
  const headline=safeText(raw.headline??'',120),subheadline=safeText(raw.subheadline??'',280);
  const density=raw.density??'original';if(!densities.has(density))throw Error('INVALID_STUDIO_LAYOUT');
+ const vibe=raw.vibe??'original',serviceLayout=raw.serviceLayout??'auto',heroStyle=raw.heroStyle??'auto';
+ if(!vibes.has(vibe)||!serviceLayouts.has(serviceLayout)||!heroStyles.has(heroStyle))throw Error('INVALID_STUDIO_ART_DIRECTION');
  const photoUrl=mediaURL(raw.photoUrl??'');
  const photoAlt=safeText(raw.photoAlt??'',180);
  if(raw.rightsConfirmed!==undefined&&typeof raw.rightsConfirmed!=='boolean')throw Error('INVALID_STUDIO_MEDIA_RIGHTS');
@@ -33,7 +38,7 @@ function normalizeVisual(raw={}){
  if(photoUrl&&!rightsConfirmed)throw Error('STUDIO_MEDIA_RIGHTS_REQUIRED');
  if(photoUrl&&!photoAlt)throw Error('STUDIO_MEDIA_ALT_REQUIRED');
  if(!photoUrl&&photoAlt)throw Error('INVALID_STUDIO_PHOTO');
- return Object.freeze({headline,subheadline,density,photoUrl,photoAlt,rightsConfirmed});
+ return Object.freeze({headline,subheadline,density,photoUrl,photoAlt,rightsConfirmed,vibe,serviceLayout,heroStyle});
 }
 function applyVisual(bundle,options){
  const v=normalizeVisual(options||{});
@@ -51,7 +56,9 @@ function applyVisual(bundle,options){
   if(!target.test(html))throw Error('STUDIO_HERO_NOT_FOUND');
   html=html.replace(target,(_all,start,_old,end)=>start+escapeHTML(v.subheadline)+end);
  }
- html=html.replace(/<body(\s|>)/,(_all,next)=>'<body class="sbc-layout-'+v.density+'"'+next);
+ html=html.replace(/<body(\s|>)/,(_all,next)=>'<body class="sbc-layout-'+v.density+'" data-sbc-vibe="'+v.vibe+'"'+next);
+ if(v.serviceLayout!=='auto')html=html.replace(/data-sbc-service-layout="[^"]*"/,'data-sbc-service-layout="'+v.serviceLayout+'"');
+ if(v.heroStyle!=='auto')html=html.replace(/data-sbc-hero-style="[^"]*"/,'data-sbc-hero-style="'+v.heroStyle+'"');
  if(v.photoUrl){
   const feature='<figure class="sbc-approved-visual"><img loading="lazy" decoding="async" alt="'+escapeHTML(v.photoAlt)+'" src="'+escapeHTML(v.photoUrl)+'" width="1600" height="900"><figcaption>PHOTO PROVIDED FOR CONCEPT · Owner confirmed media usage rights; final client approval required.</figcaption></figure>';
   const hero=/<section class="composed-hero[\s\S]*?<\/section>/;
