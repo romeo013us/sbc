@@ -106,6 +106,7 @@
     const form=document.getElementById('sbcStudioApprovalForm');if(!form)return;
     try{
       const out=await serviceApi(studioBase(demo));
+      if(active?.demo?.id!==demo.id||!form.isConnected)return;
       if(!out?.ok)throw Error(out?.code||'Website Studio is unavailable.');
       const p=out.approvedProfile||null,b=p?.business||out.identity||{},c=p?.contact||{};
       form.dataset.version=String(out.version||0);
@@ -121,6 +122,7 @@
   async function saveStudioProfile(event){
     event.preventDefault();const form=event.currentTarget;
     if(currentRole()!=='owner'||!active?.demo)return;
+    const demo=active.demo;
     const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
     const services=get('services').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
       const split=line.indexOf('|');return {name:(split<0?line:line.slice(0,split)).trim(),description:split<0?'':line.slice(split+1).trim()};
@@ -132,20 +134,23 @@
       profile:{business:{name:get('businessName'),category:get('category'),city:get('city'),region:get('region')},services,contact:{phone:get('phone'),email:get('email')}}};
     try{
       studioMessage('Saving approved facts in Command Center…');
-      const out=await serviceApi(studioBase(active.demo)+'/approved-profile',{method:'PATCH',body:JSON.stringify(payload)});
+      const out=await serviceApi(studioBase(demo)+'/approved-profile',{method:'PATCH',body:JSON.stringify(payload)});
       if(!out?.ok||out.durable!==true)throw Error(out?.code||'Facts were not saved.');
-      await loadStudioProfile(active.demo);
+      if(active?.demo?.id!==demo.id)return;
+      await loadStudioProfile(demo);
       studioMessage('Approved facts saved to the correct account. You may now view the private Website Studio concept.');
     }catch(e){studioMessage(String(e?.message||'Unable to save facts. Reload and try again.'));}
   }
   async function previewStudioConcept(){
     if(currentRole()!=='owner'||!active?.demo)return;
+    const demo=active.demo;
     try{
-      const out=await serviceApi(studioBase(active.demo));
+      const out=await serviceApi(studioBase(demo));
+      if(active?.demo?.id!==demo.id)return;
       if(!out?.ok||!out.approvedProfile)throw Error('First approve this business’s verified profile.');
       const frame=document.getElementById('sbcFactoryFrame');
       if(!frame)throw Error('Website preview frame not available.');
-      frame.src=studioBase(active.demo)+'/preview';
+      frame.src=studioBase(demo)+'/preview';
       const address=document.getElementById('sbcFactoryAddress');if(address)address.textContent='SBC Website Studio · Private approved-facts concept';
       studioMessage('Showing private Website Studio concept. No form submissions or public publishing are enabled.');
     }catch(e){studioMessage(String(e?.message||'Unable to open Studio preview.'));}
