@@ -67,7 +67,7 @@ function compileGridCSS(normalized){
  if(!normalized.enabled)return '';
  const base='body[data-sbc-studio-version="2"] .sbc-v2-showcase .sbc-v2-service-grid.sbc-freeform-grid';
  const rules=[
-  base+'{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row dense;gap:var(--sbc-studio-gap,18px);align-items:stretch}',
+  base+'{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row;gap:var(--sbc-studio-gap,18px);align-items:stretch}',
   base+' > [data-sbc-grid-node]{min-width:0;grid-column:span 4;grid-row:span 1;align-self:stretch;z-index:1;position:relative}',
   '@media(max-width:1024px){'+base+' > [data-sbc-grid-node]{grid-column:span 6!important;grid-row:span 1!important}}',
   '@media(max-width:640px){'+base+' > [data-sbc-grid-node]{grid-column:span 12!important;grid-row:span 1!important}}'
