@@ -4,12 +4,16 @@ on:
     paths:
       - 'enterprise/v56135-kim-mission-controller.js'
       - 'enterprise/sbc-runtime-hardening-v56130.js'
+      - 'enterprise/integration/sbc-snapshot-tenants.cjs'
+      - 'test/sbc-snapshot-tenants.test.cjs'
       - 'scripts/v6624-*-diagnostics.test.cjs'
       - '.github/workflows/sbc-v6624-incident-diagnostics.yml'
   push:
     paths:
       - 'enterprise/v56135-kim-mission-controller.js'
       - 'enterprise/sbc-runtime-hardening-v56130.js'
+      - 'enterprise/integration/sbc-snapshot-tenants.cjs'
+      - 'test/sbc-snapshot-tenants.test.cjs'
       - 'scripts/v6624-*-diagnostics.test.cjs'
       - '.github/workflows/sbc-v6624-incident-diagnostics.yml'
 permissions:
@@ -28,6 +32,8 @@ jobs:
           node --check enterprise/sbc-runtime-hardening-v56130.js
       - name: Reproduce and guard qualification/slow-request incidents
         run: node --test scripts/v6624-advisory-diagnostics.test.cjs scripts/v6624-slow-request-diagnostics.test.cjs
+      - name: Verify authoritative verification-state durability and tenant isolation
+        run: node --test test/sbc-snapshot-tenants.test.cjs
       - name: Check existing owner veto and writer recovery
         run: |
           node scripts/v66154-kevin-recovery-callback.test.cjs
