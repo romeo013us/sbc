@@ -9,6 +9,7 @@ const {compileMultiPageConcept}=require('./multi-page-concept.cjs');
 const {checkPrivateBundle}=require('./qa-gate.cjs');
 const Visual=require('./visual-editor.cjs');
 const {suggestMedia}=require('./media-catalog.cjs');
+const {reviewBusinessConsistency}=require('./business-consistency.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
 // CRM suggestions are review-only. The owner must attest them before compilation.
 // Ignore research notes, social snippets, and unverified service guesses.
@@ -84,9 +85,11 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
  };
  app.get(ROOT,auth,ownerOnly,(req,res)=>readonly(req,res,site=>{
   const c=site.customer||{};
-  return res.json({ok:true,id:String(site.id),status:String(site.status||''),archived:site.archived===true,version:site.websiteStudioProfileVersion||0,
+  const approvedProfile=fetchApproved(site),suggestedProfile=suggestFromCRM(site,db,Number(requireTenant(req)));
+  const businessReview=reviewBusinessConsistency(approvedProfile||suggestedProfile,{ownerApproved:Boolean(approvedProfile)});
+  return res.json({ok:true,businessReview,id:String(site.id),status:String(site.status||''),archived:site.archived===true,version:site.websiteStudioProfileVersion||0,
    identity:{name:String(c.businessName||''),category:String(site.industry||c.industry||''),city:String(c.city||''),region:String(c.region||'')},
-   approvedProfile:fetchApproved(site),suggestedProfile:suggestFromCRM(site,db,Number(requireTenant(req))),canApprove:site.archived!==true&&['Draft','Pending'].includes(site.status)});
+   approvedProfile,suggestedProfile,canApprove:site.archived!==true&&['Draft','Pending'].includes(site.status)});
  }));
  app.patch(ROOT+'/approved-profile',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
@@ -220,6 +223,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   // One-click private art-directed draft: never silently rebuild an approved site.
   if(mode==='auto-preview'&&(site.status==='Approved'||site.archived===true))return respond(res,'STUDIO_AUTO_PREVIEW_LOCKED',409);
   const profile=fetchApproved(site);
+  const businessReview=reviewBusinessConsistency(profile||suggestFromCRM(site,db,Number(requireTenant(req))),{ownerApproved:Boolean(profile)});
   if(!profile&&mode!=='auto-preview')return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
   const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true,themeVariant:site.siteEdits?.themeVariant}):createDraftConcept(site);
   const isSmart=mode==='auto-preview';
@@ -269,6 +273,15 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    .replace('<link rel="stylesheet" href="styles.css">','<style>'+css+'</style>')
    .replace('<script defer src="site.js"></script>','')
    .replace('</body>','<script>'+js+'</script></body>');
+  // Advisory pre-render check, never turns CRM snippets into verified copy.
+  // Only the private owner preview receives the notice. No customer data is
+  // modified and published static files remain unchanged.
+  if(isSmart&&businessReview.requiresHumanReview){
+   const notice='<aside class="sbc-studio-consistency-notice" data-sbc-review="SBC_STUDIO_CONSISTENCY_NOTICE" role="status" style="padding:14px 20px;background:#fff4dd;color:#493010;border-bottom:2px solid #e9b963;font:600 14px/1.5 system-ui">'+
+     'PRIVATE DRAFT · Needs Review: '+businessReview.issues.map(item=>item.code.replace(/_/g,' ')).join(' · ')+
+     '. Confirm customer facts in Command Center before any presentation.</aside>';
+   html=html.replace(/<body([^>]*)>/,'<body$1>'+notice);
+  }
   if(isSmart){
    const url=ROOT.replace(':id',encodeURIComponent(String(site.id)))+'/auto-preview';
    html=html.replace(/href="(index|services|about|contact)\.html"/g,(_m,p)=>'href="'+url+(p==='index'?'':'?page='+p)+'"');
@@ -317,10 +330,15 @@ rules.forEach(function(rule){
 .sbc-v2-tile[data-sbc-grid-node]{outline-offset:5px;cursor:default}
 .sbc-v2-tile[data-sbc-grid-node]:focus-within{outline:2px dashed #2563eb}
 .sbc-grid-handle{position:absolute;right:0;top:40%;width:32px;min-height:50px;z-index:10;cursor:ew-resize;border-radius:6px 0 0 6px;border:1px solid #1e4060;background:#fff;color:#1e4060;font-weight:900;touch-action:none}
+.sbc-grid-handle{display:none}.sbc-studio-pro .sbc-grid-handle{display:block}
 .sbc-grid-handle:focus-visible{outline:3px solid #e7ab56;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.sbc-grid-handle{transition:none!important}}
 </style><script data-sbc-grid-inspector-script>(function(){
 'use strict';
+window.addEventListener('message',function(event){
+ if(event.source!==window.parent||!event.data||event.data.type!=='SBC_STUDIO_DESIGN_MODE')return;
+ document.documentElement.classList.toggle('sbc-studio-pro',event.data.mode==='pro');
+});
 var cards=Array.prototype.slice.call(document.querySelectorAll('.sbc-v2-showcase .sbc-v2-service-grid > article.sbc-v2-tile'),0,6);
 cards.forEach(function(card,index){
  var id='service-'+(index+1);

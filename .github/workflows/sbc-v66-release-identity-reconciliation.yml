@@ -38,3 +38,4 @@ jobs:
           node --test scripts/sbc-website-studio-v4-brand-comparison.test.cjs
           node --test scripts/sbc-website-studio-v4-freeform-grid.test.cjs
           node --test scripts/sbc-website-studio-soft-contrast.test.cjs
+          node --test scripts/sbc-website-studio-workspace.test.cjs
