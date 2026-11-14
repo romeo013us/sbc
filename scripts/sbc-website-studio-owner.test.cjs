@@ -291,19 +291,25 @@ test('V4 freeform GET preview is owner-only, read-only and rejects hostile layou
  const grid={enabled:true,nodes:[node]},query='/auto-preview?freeformGrid='+encodeURIComponent(JSON.stringify(grid));
  assert.equal((await fx.call('GET',query,undefined,'staff')).statusCode,403);
  assert.equal((await fx.call('GET',query,undefined,'owner','site-b')).statusCode,404);
- const beforeSaves=fx.saves(),preview=await fx.call('GET',query);
+ const beforeSaves=fx.saves();
+ assert.equal((await fx.call('GET',query)).statusCode,409,'unverified draft may not display invented services');
+ const approved=await fx.call('PATCH','/approved-profile',{expectedVersion:0,ownerConfirmed:true,profile});
+ assert.equal(approved.statusCode,200);
+ const preview=await fx.call('GET',query);
  assert.equal(preview.statusCode,200);
  assert.match(preview.body,/data-sbc-grid-node="service-1"/);
  assert.match(preview.body,/grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
  assert.match(preview.headers['content-security-policy'],/sandbox allow-scripts/);
- assert.equal(fx.saves(),beforeSaves);
+ assert.equal(fx.saves(),beforeSaves+1);
  const injected={enabled:true,nodes:[{id:'contact',grid:{colSpan:8}}]};
  assert.equal((await fx.call('GET','/auto-preview?freeformGrid='+encodeURIComponent(JSON.stringify(injected)))).statusCode,400);
  assert.equal((await fx.call('GET','/auto-preview?freeformGrid=not-json')).statusCode,400);
- assert.equal(fx.saves(),beforeSaves);
+ assert.equal(fx.saves(),beforeSaves+1);
 });
 test('owner versioned Studio save/restore keeps freeform grid draft distinct from facts and Published',async()=>{
  const fx=fixture();
+ const approve=await fx.call('PATCH','/approved-profile',{expectedVersion:0,ownerConfirmed:true,profile});
+ assert.equal(approve.statusCode,200);
  const spec={enabled:true,nodes:[{id:'service-1',grid:{colSpan:8}}]};
  const saved=await fx.call('PATCH','/visual',{expectedVersion:0,visual:{freeformGrid:spec}});
  assert.equal(saved.statusCode,200);
@@ -317,5 +323,5 @@ test('owner versioned Studio save/restore keeps freeform grid draft distinct fro
  assert.equal(restore.statusCode,200);
  const returned=await fx.call('GET','/visual');
  assert.deepEqual(returned.body.visual.freeformGrid,{enabled:false,nodes:[]});
- assert.equal(fx.saves(),2);
+ assert.equal(fx.saves(),3);
 });
