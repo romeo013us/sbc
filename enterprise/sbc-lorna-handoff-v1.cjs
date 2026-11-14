@@ -11,7 +11,7 @@ function actor(v){const tenantId=Number(v?.tenantId),id=str(v?.id,120),role=str(
  if(!Number.isSafeInteger(tenantId)||tenantId<1||!id||!role)fail('AUTHENTICATED_CONTEXT_REQUIRED');
  return {tenantId,id,role};}
 const isSuppressed=c=>c.doNotContact===true||c.salesSuppressed===true||c.isSuppressed===true||['dnc','do not call','do not contact','opt out','unsubscribed','duplicate','lost','closed'].includes(str(c.status).toLowerCase());
-const isReady=c=>c.leadAssistStatus==='AUTO_VERIFIED'||['verified','research complete','research-complete'].includes(str(c.verificationStatus).toLowerCase());
+const isReady=c=>c.leadAssistStatus==='AUTO_VERIFIED'||['verified','sales ready','research complete','research-complete'].includes(str(c.verificationStatus).toLowerCase());
 function createHandoffService({repository,clock=()=>new Date()}={}){
  if(!repository||typeof repository.customer!=='function'||typeof repository.createHandoff!=='function'||typeof repository.returnFeedback!=='function'||typeof repository.assignment!=='function')throw new TypeError('HANDOFF_DURABLE_REPOSITORY_REQUIRED');
  const timestamp=()=>new Date(clock()).toISOString();
@@ -37,7 +37,12 @@ function createHandoffService({repository,clock=()=>new Date()}={}){
   if(a.role==='account_manager')await worker(a,'account_manager');
   const rows=await repository.handoffs(a.tenantId);
   if(a.role==='owner')return clone(rows);
-  const active=[];for(const h of rows){const current=await repository.assignment(a.tenantId,h.customerId);
+  const active=[];const asOf=Date.parse(timestamp());for(const h of rows){
+   // A bad-number retry is not an actionable manager task until its hold ends.
+   // The owner retains unfiltered visibility into returned/escalated work.
+   const retry=Date.parse(h.retryNotBefore||'');
+   if(Number.isFinite(retry)&&retry>asOf)continue;
+   const current=await repository.assignment(a.tenantId,h.customerId);
    if(current&&String(current.managerId)===a.id)active.push({...h,managerId:a.id});}
   return clone(active);}
  async function researchQueue(input){const {a}=await researcher(input);
