@@ -11,6 +11,11 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  // Serializes draft saves within the published writer process, so two editors
  // cannot read the same version and both claim successful persistence.
  let editQueue=Promise.resolve();
+ const serializeSiteMutation=work=>{
+   const operation=editQueue.catch(()=>undefined).then(work);
+   editQueue=operation.then(()=>undefined,()=>undefined);
+   return operation;
+ };
  const readSite=(req)=>{
    const t=tenant(req);
    const m=getStore();
@@ -26,7 +31,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  app.patch('/api/website-production/sites/:id/editor',auth,ownerOnly,async(req,res)=>{
    if(!available(res))return;
    let result;
-   const operation=editQueue.catch(()=>{}).then(async()=>{
+   const operation=serializeSiteMutation(async()=>{
      // Resolve the row and expectedVersion INSIDE the serialized critical section.
      const site=readSite(req);
      if(!site)return {status:404,body:{ok:false,code:'WEBSITE_NOT_FOUND'}};
@@ -44,14 +49,13 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
      if(saved?.skipped===true||saved?.ok===false)throw Error('WEBSITE_EDIT_NOT_DURABLE');
      return {status:200,body:{ok:true,site:Editor.view(updated),durable:true}};
    });
-   editQueue=operation.then(()=>undefined,()=>undefined);
    try{result=await operation;}catch(e){return respond(res,e)}
    res.setHeader('Cache-Control','no-store');
    return res.status(result.status).json(result.body);
  });
 
  // New approved-facts Studio operates alongside existing editor, not in place of it.
- StudioOwner.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady});
+ StudioOwner.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation});
 
  const project=(req)=>{const tid=tenant(req);return orders().find(w=>String(w.id)===String(req.params.id)&&Number(w.tenantId)===tid)};
  const visible=(work,user)=>P.sameTenant(work,user)&&(String(user.role)==='owner'||(work.tasks||[]).some(t=>String(t.assignedTo)===String(user.id)));
