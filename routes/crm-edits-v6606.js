@@ -126,4 +126,8 @@ module.exports=function registerLeadEdits(app,{auth,getContext}){
    return deny(res,503,'LEAD_EDIT_FAILED');
   }finally{try{conn?.release();}catch(_){}}
  });
+ // Additive owner-controlled portfolio operations share tenant ALS and the same MySQL writer.
+ // Lightweight v6606 unit stubs may implement only PATCH; production Express exposes all verbs.
+ if(typeof app.get==='function'&&typeof app.post==='function')
+  require('./account-portfolios-v1.cjs')(app,{auth,getContext});
 };

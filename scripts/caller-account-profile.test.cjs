@@ -7,6 +7,7 @@ const research=read('public/lead-research.js');
 assert.match(caller,/function renderCallerAccount\(/,'caller must have a full account view');
 assert.match(caller,/c\.address/,'assigned account must display the business address');
 assert.match(caller,/googleBusinessUrl/,'caller must see Google listing when researcher supplied a link');
+assert.match(caller,/Research business address/,'account manager needs user-initiated location research');
 assert.match(caller,/Open business profile/,'caller must open the business profile before calling');
 assert.match(caller,/openLead\(c\.id\),false/,'uncallable leads must remain reviewable for accurate dispositions');
 assert.match(caller,/\$\('call-button'\)\.disabled=!readyCall\(\)/,'opening a profile must not bypass calling clearance');

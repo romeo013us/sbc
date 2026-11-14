@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-store"><meta name="robots" content="noindex,nofollow">
-<title>SBC — Spanish Sales Caller Workspace</title>
+<title>SBC — Account Manager / Sales Caller Workspace</title>
 <link rel="icon" href="/assets/sbc-logo.jpg" type="image/jpeg">
 <link rel="stylesheet" href="/lead-research.css?v=7">
 <link rel="stylesheet" href="/sales-caller.css?v=4">
@@ -17,18 +17,19 @@
 <script defer src="/sbc-workforce-audio-v66109.js?v=1"></script>
 <script defer src="/sbc-sales-workspace-locale-v66104.js?v=1"></script>
 <script defer src="/sbc-sales-playbook-v66106.js?v=1"></script>
+<script defer src="/sbc-account-success-v1.js?v=20261113-account-success"></script>
 <script defer src="/sales-caller.js?v=3"></script>
 </head>
 <body data-workspace-role="caller">
 <div id="loading" role="status">Verifying SBC employee access…</div>
 <div id="desk" class="sbc-workforce-layout" hidden>
  <aside class="nav sidebar">
-  <div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice official logo" width="48" height="48"><div><strong>Successful By Choice</strong><small>Sales Caller Workspace</small></div></div>
-  <div class="identity"><span class="dot"></span><div><strong id="employee-name">Sales Caller</strong><small>Verified employee session</small></div></div>
+  <div class="brand"><img class="brand-logo" src="/assets/sbc-logo.jpg" alt="Successful By Choice official logo" width="48" height="48"><div><strong>Successful By Choice</strong><small>Account Manager Workspace</small></div></div>
+  <div class="identity"><span class="dot"></span><div><strong id="employee-name">Account Manager</strong><small>Verified employee session</small></div></div>
   <nav aria-label="Sales desk navigation">
    <button type="button" class="queue-nav active" data-panel="attention">⚠ <span>Needs Attention</span><strong id="attention-count" class="queue-nav-count">—</strong></button>
    <button type="button" data-panel="today">☑ <span>Today’s Tasks</span></button>
-   <button type="button" data-panel="leads">✓ <span>My Assigned Leads</span></button>
+   <button type="button" data-panel="leads">✓ <span>My Assigned Accounts</span></button>
     <button type="button" class="sbc-website-nav" data-panel="websites">🌐 <span>Website Showroom</span><strong class="sbc-website-nav-badge">NEW</strong></button>
    <button type="button" data-panel="call">☎ <span>My Calling Desk</span></button>
    <button type="button" data-panel="scripts">🌐 <span>Sales Scripts / Español</span></button>
@@ -39,12 +40,12 @@
   <div class="nav-bottom"><button class="signout" type="button" id="signout">Sign out</button></div>
  </aside>
  <main>
-  <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="panel-title">Sales Caller Desk</h1><p id="panel-hint">Work assigned prospects, document conversations, and escalate orders.</p></div><div class="actions header-actions"><div class="sbc-lang-switch" role="group" aria-label="Whole-workspace language"><span>Language</span><button type="button" id="lang-en" class="primary" aria-pressed="true">English</button><button type="button" id="lang-es" class="outline" aria-pressed="false">Español</button></div><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span id="clock-indicator">Clock status pending</span><button type="button" id="reload" class="outline">Refresh</button></div></header>
+  <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="panel-title">Account Manager Desk</h1><p id="panel-hint">Own assigned relationships, document conversations, coordinate service needs and follow through after the first sale.</p></div><div class="actions header-actions"><div class="sbc-lang-switch" role="group" aria-label="Whole-workspace language"><span>Language</span><button type="button" id="lang-en" class="primary" aria-pressed="true">English</button><button type="button" id="lang-es" class="outline" aria-pressed="false">Español</button></div><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span id="clock-indicator">Clock status pending</span><button type="button" id="reload" class="outline">Refresh</button></div></header>
   <section id="preview-banner" class="warning" hidden><strong>OWNER PREVIEW — READ ONLY</strong><p>You are viewing a staff-scoped projection, not impersonating the employee. Calling, clocking, account changes and record edits are disabled.</p><a href="/">Return to Owner Command Center</a></section>
   <section id="alert" class="warning" role="status" hidden></section>
   <section class="metrics"><article><small>Assigned Leads</small><strong id="m-leads">—</strong></article><article><small>Callable</small><strong id="m-callable">—</strong></article><article><small>Priority Follow-ups</small><strong id="m-attention">—</strong></article><article><small>Calling Clearance</small><strong id="m-clearance">Checking…</strong></article></section>
   <section id="attention" data-page>
-   <div class="welcome"><div class="eyebrow">YOUR DAILY SALES MISSION</div><h2>Connect with businesses. Build lasting relationships.</h2><p>Review assigned prospects, make helpful calls, record real conversations, and pass interested customers to the SBC owner. Only your work appears here.</p></div>
+   <div class="welcome"><div class="eyebrow">YOUR ACCOUNT MANAGEMENT MISSION</div><h2>Connect with businesses. Build lasting relationships.</h2><p>Review assigned prospects, make helpful calls, record real conversations, and pass interested customers to the SBC owner. Only your work appears here.</p></div>
     <div class="sbc-sales-website-promo"><div><strong>🌐 SBC Website Showroom</strong><p>Open approved 85%-ready sample websites for your assigned businesses. Show the design, then explain that final photos, services and contact details are completed after purchase.</p></div><button type="button" class="sbc-website-go" data-panel="websites">View Approved Websites ↗</button></div>
    <h2>Priority 1 — Callbacks & Notifications</h2><p>Overdue callbacks appear first, followed by unscheduled requests and upcoming appointments. Only assigned, callable leads are shown. Do not contact opted-out or suppressed numbers.</p>
    <div id="attention-list" class="list">Loading follow-ups…</div>
@@ -53,7 +54,7 @@
    <h2>My Daily Shift Checklist</h2><label for="sales-shift-length" id="sales-shift-label">Shift schedule (display only — actual hours follow the time clock)</label><select id="sales-shift-length" aria-describedby="plan-clock"><option value="240">4-hour shift</option><option value="360">6-hour shift</option></select><p id="plan-clock">Clock in to begin the timed schedule.</p><div class="progress"><div id="task-progress"></div></div><p id="task-count">0 completed</p><div id="shift-tasks" class="list"></div><p class="muted">Checklist progress is saved in this browser. It does not change payroll or substitute for saved CRM call reports.</p>
   </section>
   <section id="leads" data-page hidden>
-   <h2>Assigned Sales Prospects</h2><label for="search">Search business, contact or phone</label><input id="search" type="search" placeholder="Type business name or phone…" autocomplete="off">
+   <h2>My Assigned Business Accounts</h2><label for="search">Search business, contact or phone</label><input id="search" type="search" placeholder="Type business name or phone…" autocomplete="off">
    <div id="lead-list" class="list"></div><p class="muted">Only leads assigned to this employee in the tenant are displayed. Assignment changes require owner approval.</p>
   </section>
   <section id="websites" data-page hidden>
@@ -64,7 +65,7 @@
    <div id="sbcSalesWebsiteLibrary" class="sbc-sales-website-library" aria-live="polite"><p>Open this tab to load approved websites.</p></div>
   </section>
   <section id="call" data-page hidden>
-   <h2>Call & Document</h2>
+   <h2>Customer Conversations & Call Reports</h2>
    <div class="columns"><div class="card">
     <label for="call-target">Assigned prospect</label><select id="call-target"><option value="">Select an assigned lead</option></select>
     <p id="lead-detail">Choose a prospect to view its verified contact number.</p>

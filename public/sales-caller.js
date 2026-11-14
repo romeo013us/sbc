@@ -19,7 +19,7 @@ function canWrite(){return !preview&&me?.role==='caller';}
 function timeOpen(){return clock?.open&&!clock.open.clockOut?clock.open:null;}
 function readyCall(){return canWrite()&&Boolean(data?.canLiveCall)&&Boolean(timeOpen())&&!activeCall;}
 function setPage(name){
- const titles={attention:'Priority Follow-ups',today:'Daily Shift Plan',leads:'Assigned Leads',call:'Call & Notes',scripts:'English / Español',websites:'Website Showroom',training:'Training & Certification',time:'Clock & Breaks'};
+ const titles={attention:'Priority Follow-ups',today:'Daily Shift Plan',leads:'Assigned Accounts',call:'Account Conversations',scripts:'English / Español',websites:'Website Showroom',training:'Training & Certification',time:'Clock & Breaks'};
  if(!titles[name])return;current=name;
  document.querySelectorAll('[data-page]').forEach(x=>x.hidden=x.id!==name);
  document.querySelectorAll('[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===name));
@@ -41,11 +41,11 @@ async function load(){
  data=result;
  const shiftSelector=$('sales-shift-length');if(shiftSelector){try{shiftSelector.value=localStorage.getItem('sbc-sales-shift-minutes-v1:'+result.user.id)==='360'?'360':'240';}catch(_){shiftSelector.value='240';}}
  if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(result.role,result.user.id);
- $('employee-name').textContent=(result.user?.name||'Employee')+' · '+result.role.replace('_',' ');
+ $('employee-name').textContent=(result.user?.name||'Employee')+' · '+(result.role==='caller'?'Account Manager':result.role.replace('_',' '));
  $('preview-banner').hidden=!preview;
  $('m-leads').textContent=result.metrics.assigned;
  $('m-callable').textContent=result.role==='caller'?result.metrics.callable:'—';
- $('m-attention').textContent=result.role==='caller'?(window.SBCFollowupPriority?priorityCalls().length:'Unavailable'):result.metrics.needsAttention;
+ $('m-attention').textContent=result.role==='caller'?(window.SBCFollowupPriority?priorityCalls().length+accountCareItems().length:'Unavailable'):result.metrics.needsAttention;
  $('m-clearance').textContent=result.role==='caller'?(result.canLiveCall?'Approved':'Training required'):'Research only';
  if(preview){
   clock={open:result.time.find(x=>!x.clockOut)||null,entries:result.time};
@@ -65,6 +65,14 @@ async function loadClock(){
 function priorityCalls(){
  return window.SBCFollowupPriority?.buildQueue(data?.leads||[],data?.calls||[],Date.now())||[];
 }
+function accountCareItems(){
+ const now=new Date().toISOString().slice(0,10);
+ return (data?.leads||[]).filter(c=>String(c.status||'').toLowerCase()==='customer'&&
+   /^\d{4}-\d{2}-\d{2}$/.test(String(c.followUpAt||'').slice(0,10)))
+  .map(c=>({id:c.id,name:c.businessName||'Customer account',date:String(c.followUpAt).slice(0,10)}))
+  .filter(c=>c.date<=new Date(Date.now()+30*86400000).toISOString().slice(0,10))
+  .sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name)).slice(0,50);
+}
 function renderAttention(){
  const target=$('attention-list');target.replaceChildren();
  if(data?.role==='caller'&&!window.SBCFollowupPriority){
@@ -72,8 +80,10 @@ function renderAttention(){
   return;
  }
  const issues=data?.role==='caller'?priorityCalls():[];
+ const careItems=data?.role==='caller'?accountCareItems():[];
  const research=(data?.leads||[]).filter(x=>x.needsAttention);
- if(!issues.length&&!research.length){target.append(recordRow('No follow-ups currently listed','Check assigned leads and notifications; absence here does not prove callbacks were completed.'));return;}
+ if(!issues.length&&!research.length&&!careItems.length){target.append(recordRow('No follow-ups currently listed','Check assigned leads and notifications; absence here does not prove callbacks were completed.'));return;}
+ for(const item of careItems){target.append(recordRow('Customer care · '+item.name,'Account review scheduled: '+item.date+' · confirm customer agreement and service needs','Open account',()=>openLead(item.id),item.date<=new Date().toISOString().slice(0,10)));}
  for(const item of issues.slice(0,50)){
   const when=item.dueAt?stamp(item.dueAt):'Confirm a callback time with the owner';
   const detail=[item.label,when,item.outcome,item.nextAction].filter(Boolean).join(' · ');
@@ -155,6 +165,28 @@ function renderCallTarget(){
  selector.value=selectedLead?.canCall?selected:(nextEligible?.id||'');
  renderCallSelection();
 }
+async function loadAccountHistory(c,host){
+ const customerId=String(c.id);
+ const old=host.querySelector('[data-account-history]');
+ if(old)old.remove();
+ const panel=el('section',undefined,'sbc-caller-account-history');
+ panel.dataset.accountHistory=customerId;
+ panel.append(el('h3','Account interaction history'));
+ const content=el('div','Loading notes recorded by the SBC team…','muted');
+ panel.append(content);host.append(panel);
+ try{
+  const response=await api('/api/v6606/crm/account-portfolios/'+encodeURIComponent(customerId)+'/history');
+  if(String($('call-target').value)!==customerId||!host.contains(panel))return;
+  if(response.id!==customerId||!Array.isArray(response.notes))throw Error('Unexpected account history response.');
+  content.replaceChildren();
+  if(!response.notes.length){content.append(el('p','No account interaction notes yet. Log your first service review below.','muted'));return;}
+  for(const note of response.notes){
+   const row=el('article',undefined,'sbc-caller-account-history-row');
+   row.append(el('strong',note.authorName||'SBC team'),el('small',note.createdAt||'Date not recorded'),el('p',note.note||''));
+   content.append(row);
+  }
+ }catch(e){if(host.contains(panel))content.textContent='Account history unavailable: '+error(e)+'. No missing notes are assumed.';}
+}
 function renderCallerAccount(c){
  var host=$('lead-detail');if(!host)return;
  host.replaceChildren();if(!c){host.textContent='Select an assigned business to view its profile.';return;}
@@ -166,7 +198,73 @@ function renderCallerAccount(c){
  entries.forEach(function(pair){var row=el('div',undefined,'sbc-caller-account-field');row.append(el('small',pair[0]),el('strong',pair[1]||'Not recorded'));details.append(row);});
  var addLink=function(label,value){if(!value)return;try{var url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)return;var a=el('a',label);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';details.append(a);}catch(_){}};
  addLink('Open business website',c.website);addLink('Open Google Business Profile',c.researchBrief?.googleBusinessUrl);
+ var lookup=[c.businessName,c.city||c.address].filter(Boolean).join(' ');
+ if(lookup)addLink('Research business address (verify source before saving)','https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(lookup));
+ if(!String(c.address||'').trim())details.append(el('p','Business address not recorded. Confirm it with the research team or a reliable business source before using it for customer service or website publication.','muted'));
  host.append(details);
+ var planner=window.SBC_ACCOUNT_SUCCESS;
+ if(planner&&typeof planner.plan==='function'){
+  var success=planner.plan(c);
+  var panel=el('section',undefined,'sbc-caller-account-plan');
+  panel.append(el('h3','Account manager · customer success'));
+  panel.append(el('p','Relationship: '+success.stage+' · Assigned account manager: '+success.accountManager,'muted'));
+  panel.append(el('p','Next touchpoint: '+success.nextTouchpoint));
+  panel.append(el('p','Recommended next action: '+success.nextAction));
+  panel.append(el('p','Instant Sites brief: '+success.siteBrief.industry+' · '+success.siteBrief.location+' · Services: '+(success.siteBrief.services||'confirm with customer')));
+  panel.append(el('p','Website concepts require owner approval. Existing client support, payments and fulfillment remain owner-controlled; staff cannot bypass calling consent or account assignment.','muted'));
+  host.append(panel);
+ }
+ // Existing paying customers stay in this assigned account desk beyond the first sale.
+ var care=el('section',undefined,'sbc-account-next-touch');
+ care.append(el('h3','Account follow-up · ongoing relationship'));
+ care.append(el('p','Schedule an agreed review, renewal or service check-in. Saving creates a CRM follow-up only; it does not call, text or email anyone.','muted'));
+ var form=el('form'),line=el('label','Next account review date');
+ var due=el('input');due.type='date';due.required=true;due.name='dueDate';due.value=/^\d{4}-\d{2}-\d{2}$/.test(String(c.followUpAt||'').slice(0,10))?String(c.followUpAt).slice(0,10):'';
+ line.append(due);
+ var note=el('label','Reason / customer-agreed next step');
+ var purpose=el('textarea');purpose.name='purpose';purpose.required=true;purpose.minLength=12;purpose.maxLength=500;purpose.rows=3;purpose.placeholder='Example: Review website launch, hosting renewal or support request';note.append(purpose);
+ var submit=el('button','Save CRM Follow-up','primary');submit.type='submit';
+ var feedback=el('p','Only the assigned account manager can schedule this account. Owner can review and transfer ownership.','muted');
+ const closed=['do not call','do not contact','dnc','opt out','unsubscribe','lost'].includes(String(c.status||'').toLowerCase());
+ if(!canWrite()||closed){submit.disabled=true;feedback.textContent='Read-only: account follow-up changes are not authorized for this role/status.';}
+ form.append(line,note,submit,feedback);
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(!canWrite()||closed)return;
+  submit.disabled=true;feedback.textContent='Saving the next touchpoint in the authoritative CRM…';
+  try{
+   const result=await api('/api/v6606/crm/account-portfolios/'+encodeURIComponent(String(c.id))+'/follow-up',{
+    method:'POST',body:JSON.stringify({dueDate:due.value,purpose:purpose.value.trim()})});
+   if(result?.durable!==true||String(result?.id)!==String(c.id))throw Error('SBC did not confirm a durable follow-up.');
+   c.followUpAt=result.followUp;renderLeads();renderAttention();
+   feedback.textContent='Saved. Follow-up due '+result.followUp+'; no message or call was sent.';
+  }catch(err){feedback.textContent='Not saved: '+error(err)+'. Check assignment and CRM availability.';}
+  finally{submit.disabled=false;}
+ });
+ care.append(form);host.append(care);
+ var noteSection=el('section',undefined,'sbc-account-service-notes');
+ noteSection.append(el('h3','Record account interaction · customer service'));
+ noteSection.append(el('p','Keep the customer relationship in SBC. Log service requests, website changes and agreed next steps here; no payment card details or passwords.','muted'));
+ const serviceForm=el('form'),serviceText=el('textarea');serviceText.name='note';serviceText.rows=3;serviceText.minLength=12;serviceText.maxLength=3000;serviceText.required=true;
+ serviceText.placeholder='Example: Customer asked about updating their website. Explained next steps and scheduled a service review.';
+ const serviceButton=el('button','Save Account Interaction','primary');serviceButton.type='submit';
+ const serviceStatus=el('p','A saved account note is visible to SBC management and follows the account when ownership changes.','muted');
+ serviceButton.disabled=!canWrite();
+ serviceForm.append(serviceText,serviceButton,serviceStatus);
+ serviceForm.addEventListener('submit',async event=>{
+  event.preventDefault();if(!canWrite())return;
+  serviceButton.disabled=true;serviceStatus.textContent='Saving the customer interaction in SBC…';
+  try{
+   const result=await api('/api/v6606/crm/account-portfolios/'+encodeURIComponent(String(c.id))+'/note',
+    {method:'POST',body:JSON.stringify({note:serviceText.value.trim()})});
+   if(result?.durable!==true||String(result?.id)!==String(c.id))throw Error('SBC did not verify the account note.');
+   serviceText.value='';
+   serviceStatus.textContent='Saved to the permanent account record. No customer contact was sent.';
+   loadAccountHistory(c,host).catch(err=>console.warn('SBC account history unavailable',error(err)));
+  }catch(err){serviceStatus.textContent='Account note not saved: '+error(err)+'. Verify assignment and try again.';}
+  finally{serviceButton.disabled=false;}
+ });
+ noteSection.append(serviceForm);host.append(noteSection);
+ loadAccountHistory(c,host).catch(err=>console.warn('SBC account history unavailable',error(err)));
  host.append(el('p','Use the call and report controls below to log verified outcomes. Only the SBC owner can edit the master business record or approve outreach.','muted'));
 }
 function renderCallSelection(){

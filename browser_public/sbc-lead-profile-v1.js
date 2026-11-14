@@ -17,6 +17,14 @@ function detailed(c){var intel=parseJson(c.lead_intelligence_json||c.leadIntelli
 function blocked(c){return Boolean(recovery()||c&&c._recoveryProjection);}
 function suppressed(c){return Boolean(c&&(c.doNotContact||c.doNotCall||c.salesSuppressed||c.isSuppressed||['do not call','do not contact','dnc','opt out','unsubscribe'].includes(String(c.status||'').toLowerCase())));}
 function cardField(label,v,asLink){return '<div class="sbc-profile-field"><span>'+E(label)+'</span><strong>'+(asLink?htmlLink(v):E(v||'Not recorded'))+'</strong></div>';}
+function addressResearchLink(c){
+ var business=name(c.businessName||c.business_name||'');
+ if(!business)return '';
+ // Read-only, user-initiated lookup. A search result never updates or verifies SBC CRM.
+ var query=[business,name(c.city||c.address||'')].filter(Boolean).join(' ');
+ var href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(query);
+ return '<div class="sbc-profile-field"><span>Address research</span><strong><a href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="Search public map listings. Confirm accuracy before changing the SBC account.">Research business address ↗</a></strong><small>Search results are unverified; confirm against a reliable business source.</small></div>';
+}
 function noteList(c){var account=Array.isArray(c.accountNotes)?c.accountNotes:[];return account.slice(-15).reverse().map(function(n){return '<div class="sbc-profile-event"><strong>'+E(n.authorName||'SBC team')+'</strong><small>'+E(n.createdAt||'')+'</small><p>'+E(n.note||'')+'</p></div>';}).join('')||'<p class="mini">No account notes yet.</p>';}
 function eventList(id){var events=(window.state&&state.data&&state.data.activities||[]).filter(function(a){return String(a.meta&&a.meta.customerId||a.customerId||'')===id;});return events.slice(-12).reverse().map(function(a){return '<div class="sbc-profile-event"><strong>'+E(a.type||'Activity')+'</strong><small>'+E(a.createdAt||'')+'</small><p>'+E(a.message||'')+'</p></div>';}).join('')||'<p class="mini">No logged activity in the loaded CRM view.</p>';}
 function btn(action,label,disabled,tip){return '<button class="btn'+(action==='edit'?' primary':'')+'" type="button" data-sbc-profile-action="'+action+'"'+(disabled?' disabled':'')+(tip?' title="'+E(tip)+'"':'')+'>'+E(label)+'</button>';}
@@ -37,15 +45,35 @@ function relatedHistory(id){
 function authoritativeNotes(raw){
  try{var v=typeof raw==='string'?JSON.parse(raw||'[]'):raw;return Array.isArray(v)?v.filter(function(x){return x&&typeof x==='object';}).slice(-50):null;}catch(_){return null;}
 }
+function accountRelationship(c){
+ var planner=window.SBC_ACCOUNT_SUCCESS;
+ if(!planner||typeof planner.plan!=='function')return '';
+ var db=window.state&&state.data||{},ops=db.megaOps||{},id=String(currentId);
+ var belongs=function(x){return String(x.customerId||x.customer_id||'')===id&&
+   (!c.tenantId||!x.tenantId||String(c.tenantId)===String(x.tenantId));};
+ var quotes=Array.isArray(db.quotes)?db.quotes.filter(belongs):[];
+ var tickets=Array.isArray(ops.tickets)?ops.tickets.filter(belongs):[];
+ var p=planner.plan(c,{quotes:quotes,openTickets:tickets}),brief=p.siteBrief;
+ return '<section id="sbcAccountRelationship" class="sbc-profile-panel"><h3>Account relationship plan</h3>'+
+  '<p class="mini">Account manager · '+E(p.accountManager)+' · '+E(p.stage)+' · Next touchpoint: '+E(p.nextTouchpoint)+'</p>'+
+  '<p><strong>Recommended next action:</strong> '+E(p.nextAction)+'</p>'+
+  '<p class="mini">Related records currently loaded: '+E(p.recordedQuotes)+' quote(s), '+E(p.recordedOpenTickets)+' open support request(s). '+E(p.relationshipNote)+'</p>'+
+  '<details class="sbc-profile-more"><summary>SBC Instant Sites · CRM-prepared website brief</summary>'+
+  '<div class="sbc-profile-fields">'+cardField('Business',brief.businessName)+cardField('Category',brief.industry)+cardField('Location',brief.location)+
+   cardField('Existing site',brief.existingWebsite||'Not recorded')+cardField('Services',brief.services||'Needs confirmation')+
+   cardField('Service accuracy',brief.servicesVerified?'Research record marked verified; owner approval still required':'Customer confirmation required')+'</div>'+
+  '<p class="mini">Before publishing to a customer domain:</p><ul>'+p.launchChecks.map(function(item){return '<li>'+E(item)+'</li>';}).join('')+'</ul>'+
+  '<p class="mini">Use More account actions → Build Website to create an internal draft. Payment, hosting, ownership, and launch approvals remain separate.</p></details></section>';
+}
 function render(message){
  var c=current||local(currentId);if(!c)return;
  var d=detailed(c),canEdit=ownerOnly()&&!blocked(c),canContact=!blocked(c)&&!suppressed(c);
  var html='<section id="sbcLeadAccount360" data-sbc-lead-id="'+E(currentId)+'" class="sbc-lead-account"><div class="sbc-profile-head"><div><p class="mini">SBC · ACCOUNT 360 · CRM RECORD '+E(currentId)+'</p><h2>'+E(c.businessName||c.business_name||'Unnamed business')+'</h2><p>'+E(c.industry||c.category||'Industry not recorded')+' · '+E(c.status||'Lead')+' · '+E(c.source||'Source not recorded')+'</p></div><span class="badge '+(suppressed(c)?'red':'blue')+'">'+E(suppressed(c)?'Contact suppressed':blocked(c)?'Recovery read-only':'CRM account')+'</span></div>'+
  '<div role="status" aria-live="polite" class="mini" id="sbcProfileStatus">'+E(message||(!revision?'Display mode — authoritative edit record not verified.':'Account loaded from the authenticated CRM.'))+'</div>'+
- '<div class="sbc-profile-actions">'+btn('call','☎ Call from SBC',!canContact||!c.phone,'Requires a callable phone and no suppression')+btn('edit','✎ Edit Profile',!canEdit||!revision,'Requires owner access and verified CRM revision')+btn('note','＋ Save Note',!canEdit,'Append an account note')+'<details class="sbc-profile-more"><summary>More account actions</summary><div class="sbc-profile-more-buttons">'+btn('email','✉ Email',!canContact||!c.email,'Opens existing SBC email composer')+btn('text','▣ Text',!canContact||!c.phone,'Only send with documented consent')+btn('website','🌐 Build Website',!canEdit,'Existing SBC native website production')+btn('openwebsite','↗ Open Saved Website',blocked(c),'Read existing SBC website without rebuilding')+btn('callreport','✓ Log Call',blocked(c),'Submit the call result to the existing sales pipeline')+btn('refresh','↻ Refresh',false)+btn('delete','Delete Lead',!canEdit,'Owner only; requires explicit confirmation')+'</div></details></div>'+
- '<div id="sbcProfileActionSlot"></div>'+
+ '<div class="sbc-profile-actions">'+btn('call','☎ Call from SBC',!canContact||!c.phone,'Requires a callable phone and no suppression')+btn('edit','✎ Edit Profile',!canEdit||!revision,'Requires owner access and verified CRM revision')+btn('note','＋ Save Note',!canEdit,'Append an account note')+btn('portfolios','👥 Account Portfolios',!canEdit,'Owner-only portfolio batches and account transfers')+'<details class="sbc-profile-more"><summary>More account actions</summary><div class="sbc-profile-more-buttons">'+btn('email','✉ Email',!canContact||!c.email,'Opens existing SBC email composer')+btn('text','▣ Text',!canContact||!c.phone,'Only send with documented consent')+btn('website','🌐 Build Website · SBC Instant Sites',!canEdit,'Generate an internal site concept from the existing CRM record')+btn('openwebsite','↗ Open Saved Website',blocked(c),'Read existing SBC website without rebuilding')+btn('callreport','✓ Log Call',blocked(c),'Submit the call result to the existing sales pipeline')+btn('refresh','↻ Refresh',false)+btn('delete','Delete Lead',!canEdit,'Owner only; requires explicit confirmation')+'</div></details></div>'+
+ '<div id="sbcProfileActionSlot"></div>'+accountRelationship(c)+
  '<div class="sbc-profile-columns"><section class="sbc-profile-panel"><h3>Business & decision maker</h3><div class="sbc-profile-fields">'+
- cardField('Business name',c.businessName||c.business_name)+cardField('Decision maker',c.contactName||c.contact_name)+cardField('Primary phone',c.phone)+cardField('Email',c.email)+cardField('Street / city / state / ZIP',c.address)+cardField('Industry / business type',c.industry)+cardField('Website',c.website,true)+cardField('Google Business Profile',d.googleBusinessUrl,true)+cardField('Research source',d.researchSource,true)+cardField('Status',c.status)+cardField('Next follow-up',c.followUp||c.follow_up)+cardField('Assigned to',c.assignedTo||c.assigned_to)+'</div></section>'+
+ cardField('Business name',c.businessName||c.business_name)+cardField('Decision maker',c.contactName||c.contact_name)+cardField('Primary phone',c.phone)+cardField('Email',c.email)+cardField('Street / city / state / ZIP',c.address)+addressResearchLink(c)+cardField('Industry / business type',c.industry)+cardField('Website',c.website,true)+cardField('Google Business Profile',d.googleBusinessUrl,true)+cardField('Research source',d.researchSource,true)+cardField('Status',c.status)+cardField('Next follow-up',c.followUp||c.follow_up)+cardField('Assigned to',c.assignedTo||c.assigned_to)+'</div></section>'+
  '<section class="sbc-profile-panel"><h3>Research & opportunity</h3><div class="sbc-profile-fields">'+cardField('Website status',c.websiteStatus||c.website_status)+cardField('GBP research check',d.researchBrief.googleBusinessPresence)+cardField('Years in business',d.researchBrief.yearsInBusiness)+cardField('Verified services',d.researchBrief.specificServices)+cardField('Lead notes',c.notes)+'</div><p class="mini">Researcher observations are not automatically verified. Missing information stays marked as not recorded.</p></section>'+
  relatedHistory(currentId)+'<section class="sbc-profile-panel"><h3>Account notes</h3>'+noteList(c)+'</section>'+
  '<section class="sbc-profile-panel"><h3>Activity history</h3>'+eventList(currentId)+'</section></div></section>';
@@ -150,6 +178,7 @@ function handleClick(event){
  if(a==='cancel'){var x=q('#sbcProfileActionSlot');if(x)x.innerHTML='';return;}
  if(a==='edit')return edit();
  if(a==='note')return noteForm();
+ if(a==='portfolios'){if(window.SBC_ACCOUNT_PORTFOLIOS&&typeof window.SBC_ACCOUNT_PORTFOLIOS.open==='function')return window.SBC_ACCOUNT_PORTFOLIOS.open(currentId);return status('Account portfolio manager is unavailable. Refresh the workspace.');}
  if(a==='callreport')return callForm();
  if(a==='delete')return deleteLead();
  if(blocked(c)||suppressed(c))return status('Outreach is blocked for a recovered or suppressed account.');

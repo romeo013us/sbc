@@ -39,7 +39,7 @@ const held=core.projectAssigned([{id:'held',tenantId:7,assignedTo:'u-sales',busi
 assert.equal(held[0].canCall,false,'existing phone recovery hold must block worker dialing');
 assert.equal(held[0].reason,'PHONE_RECOVERY_HOLD');
 const html=read('public/sales-caller.html'),js=read('public/sales-caller.js');
-assert(html.includes('Español')&&html.includes('Spanish Sales Caller Workspace'));
+assert(html.includes('Español')&&html.includes('Account Manager / Sales Caller Workspace')&&html.includes('data-workspace-role="caller"'));
 assert(html.includes('read-only')||html.includes('READ ONLY'));
 assert(js.includes('previewUserId')&&js.includes('canWrite()'));
 assert(js.includes('SBCWorkforceTheme.attach'));

@@ -92,7 +92,7 @@
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
-      hostingGuide(demo)+
+      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+
       '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row sbc-factory-light-panel"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p class="sbc-factory-light-panel sbc-factory-private-note" style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
@@ -112,6 +112,8 @@
     document.querySelectorAll('[data-factory-device]').forEach(button=>button.addEventListener('click',()=>{
       document.querySelector('.v6526-preview-shell')?.classList.toggle('is-mobile',button.dataset.factoryDevice==='mobile');
     }));
+    document.getElementById('sbcInstantSiteEditor')?.addEventListener('submit',saveNativeEditor);
+    loadNativeEditor(demo).catch(e=>console.warn('SBC editor load blocked',String(e.message||e)));
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
     document.getElementById('sbcFactoryBookMeeting')?.addEventListener('click',bookWalkthrough);
     document.getElementById('sbcFactoryCopyLink')?.addEventListener('click',()=>copyText(pageUrl(demo,'home'),'Website link copied.'));
@@ -175,6 +177,122 @@
     finally{busy=false;}
   }
 
+  function qualityPanel(demo,customer){
+    const engine=window.SBC_ACCOUNT_SUCCESS;
+    if(!engine||typeof engine.siteQuality!=='function')return '';
+    const report=engine.siteQuality(demo,customer);
+    const label=state=>state==='recorded'?'Business record reviewed':state==='not_measured'?'Test required':'Not yet approved';
+    const rows=report.checks.map(item=>'<li style="margin:9px 0"><strong>'+esc(item.label)+' · '+esc(label(item.state))+'</strong><span style="display:block;font-size:12px;margin-top:3px">'+esc(item.action)+'</span></li>').join('');
+    return '<section class="sbc-site-quality-panel sbc-factory-light-panel" style="padding:18px;border:1px solid #c5d5e1;border-radius:12px;background:#fff;color:#172f41;margin:20px 0">'+
+      '<h4 style="margin:0 0 8px">Site launch quality gate · SBC God Tier standard</h4>'+
+      '<p style="font-size:13px;line-height:1.6;margin:0 0 8px">'+esc(report.buildMethod)+' '+esc(report.stage)+'.</p>'+
+      '<p style="font-size:13px;margin:0 0 8px"><strong>Release status:</strong> Customer-domain publication not yet authorized. '+esc(report.scoreMeaning)+'</p>'+
+      '<details><summary style="font-weight:700;cursor:pointer">Review '+report.checks.length+' launch requirements</summary><ol style="font-size:13px;line-height:1.45">'+rows+'</ol></details>'+
+      '<p style="font-size:12px;margin-bottom:0">This checklist is not an automated performance test, paid order, domain provisioning, or permission to publish.</p></section>';
+  }
+
+  function nativeEditorPanel(demo){
+    if(currentRole()!=='owner')return '';
+    if(demo.status==='Approved')return '<p class="sbc-factory-light-panel" style="padding:15px;background:#f7f9fc;color:#243d4d">This concept is approved and locked. Owner must create a revision before editing or republishing it.</p>';
+    if(demo.status!=='Draft'&&demo.status!=='Pending')return '';
+    return '<section class="sbc-factory-light-panel" style="padding:18px;background:#fff;color:#152c3f;border:1px solid #d6e1ea;border-radius:12px;margin:20px 0">'+
+     '<h4 style="margin:0 0 10px">SBC Instant Sites · Edit your website</h4>'+
+     '<p class="mini">Edit the actual generated website. Save will update its private preview; no AI credits, email, payment, domain or public publishing.</p>'+
+     '<form id="sbcInstantSiteEditor" aria-label="Instant Sites visual content editor" hidden>'+
+      '<div class="sbc-profile-editgrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">'+
+       '<label>Headline<input name="headline" maxlength="130" placeholder="Your memorable headline"></label>'+
+       '<label>Design direction<select name="themeVariant"><option value="0">Smart industry default</option><option value="1">Signature</option><option value="2">Contemporary</option><option value="3">Editorial</option></select></label>'+
+       '<label style="grid-column:1/-1">Supporting copy<textarea name="subheadline" maxlength="280" rows="3" placeholder="Introduce the business and its value"></textarea></label>'+
+       '<label style="grid-column:1/-1">About section<textarea name="about" maxlength="1200" rows="4" placeholder="Approved story or business details"></textarea></label>'+
+       '<label style="grid-column:1/-1">Service titles — one per line, maximum 6<textarea name="services" maxlength="600" rows="5" placeholder="Example: Haircuts&#10;Beard trimming&#10;Styling"></textarea></label>'+
+      '</div><fieldset style="margin:18px 0"><legend>Website sections</legend>'+
+      '<label style="display:block;margin:8px 0"><input type="checkbox" name="showGallery" checked> Show photo gallery</label>'+
+      '<label style="display:block;margin:8px 0"><input type="checkbox" name="showVideo" checked> Show sample video</label>'+
+      '<label style="display:block;margin:8px 0"><input type="checkbox" name="showFaq" checked> Show FAQ section</label></fieldset>'+
+      '<button type="submit" class="btn primary" id="sbcInstantSiteSave">Save Website & Refresh Preview</button>'+
+      '<span id="sbcInstantSiteVersion" class="mini" style="margin-left:12px"></span></form>'+
+     '<p id="sbcInstantSiteEditorStatus" role="status" aria-live="polite">Loading the latest editable website revision…</p></section>';
+  }
+  async function loadNativeEditor(demo){
+    if(currentRole()!=='owner'||!['Draft','Pending'].includes(demo?.status))return;
+    const form=document.getElementById('sbcInstantSiteEditor'),message=document.getElementById('sbcInstantSiteEditorStatus');
+    if(!form||!message)return;
+    const id=String(demo.id);
+    try{
+      const result=await serviceApi('/api/website-production/sites/'+encodeURIComponent(id)+'/editor',{method:'GET'});
+      if(active?.demo?.id!==id)return;
+      if(!result?.ok||result.site?.id!==id||!Number.isSafeInteger(result.site.siteEditsVersion))throw Error('The editor did not return a verified version.');
+      const edits=result.site.siteEdits||{};
+      form.dataset.siteId=id;
+      form.dataset.version=String(result.site.siteEditsVersion);
+      for(const field of ['headline','subheadline','about'])form.elements.namedItem(field).value=String(edits[field]||'');
+      form.elements.namedItem('services').value=(Array.isArray(edits.services)?edits.services:[]).join('\n');
+      form.elements.namedItem('themeVariant').value=String(edits.themeVariant||0);
+      for(const name of ['showGallery','showVideo','showFaq'])form.elements.namedItem(name).checked=edits[name]!==false;
+      form.hidden=false;
+      const version=document.getElementById('sbcInstantSiteVersion');
+      if(version)version.textContent='Saved version '+result.site.siteEditsVersion;
+      message.textContent='Ready to edit. Changes save to this private site only.';
+    }catch(e){
+      form.hidden=true;
+      message.textContent='Editor unavailable: '+String(e.message||e)+'. The existing website has not changed.';
+    }
+  }
+  async function saveNativeEditor(event){
+    event.preventDefault();
+    const form=event.currentTarget,submit=form.querySelector('button[type=submit]'),message=document.getElementById('sbcInstantSiteEditorStatus');
+    if(busy||currentRole()!=='owner'||!active||!form.dataset.siteId||form.dataset.siteId!==String(active.demo.id))return;
+    const id=form.dataset.siteId,version=Number(form.dataset.version);
+    const services=String(form.elements.namedItem('services').value||'').split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
+    if(services.length>6){message.textContent='Maximum 6 services. Remove extra lines before saving.';return;}
+    const siteEdits={
+      headline:form.elements.namedItem('headline').value,
+      subheadline:form.elements.namedItem('subheadline').value,
+      about:form.elements.namedItem('about').value,
+      services,
+      themeVariant:Number(form.elements.namedItem('themeVariant').value),
+      showGallery:form.elements.namedItem('showGallery').checked,
+      showVideo:form.elements.namedItem('showVideo').checked,
+      showFaq:form.elements.namedItem('showFaq').checked
+    };
+    busy=true;submit.disabled=true;message.textContent='Saving your website changes in SBC…';
+    try{
+      const result=await serviceApi('/api/website-production/sites/'+encodeURIComponent(id)+'/editor',{
+        method:'PATCH',body:JSON.stringify({expectedVersion:version,siteEdits})
+      });
+      if(!result?.ok||result.durable!==true||result.site?.id!==id)throw Error(result?.code||'Website changes were not verified as saved.');
+      if(active?.demo?.id!==id)return;
+      form.dataset.version=String(result.site.siteEditsVersion);
+      active.demo={...active.demo,siteEdits:result.site.siteEdits,siteEditsVersion:result.site.siteEditsVersion};
+      const address=document.getElementById('sbcFactoryAddress');
+      const frame=document.getElementById('sbcFactoryFrame');
+      if(frame){
+        const url=new URL(pageUrl(active.demo,'home'));
+        url.searchParams.set('editVersion',String(result.site.siteEditsVersion));
+        frame.src=url.href;
+        if(address)address.textContent=url.host+url.pathname;
+      }
+      const badge=document.getElementById('sbcInstantSiteVersion');
+      if(badge)badge.textContent='Saved version '+result.site.siteEditsVersion;
+      message.textContent='Saved to SBC. Private preview refreshed; customer-domain website remains unchanged.';
+    }catch(e){message.textContent='Not saved: '+String(e.message||e)+'. Refresh editor if another teammate changed this site.';}
+    finally{busy=false;submit.disabled=false;}
+  }
+  function instantSiteBrief(customer){
+    const planner=window.SBC_ACCOUNT_SUCCESS;
+    if(!planner||typeof planner.plan!=='function')return '';
+    const p=planner.plan(customer),b=p.siteBrief;
+    const row=(label,value)=>'<span><strong>'+esc(label)+':</strong> '+esc(value||'Needs confirmation')+'</span>';
+    return '<section class="sbc-factory-light-panel sbc-instant-site-brief" style="padding:16px;border:1px solid #c9d6e0;border-radius:12px;background:#f5f9fd;color:#152e42">'+
+      '<h4 style="margin:0 0 8px">SBC Instant Sites · CRM design brief</h4>'+
+      '<p style="margin:0 0 12px;font-size:13px">Start with the business account you already researched. No retyping the company name or category.</p>'+
+      '<div style="display:grid;gap:7px;font-size:13px">'+row('Business',b.businessName)+row('Industry',b.industry)+row('Location',b.location)+
+      row('Existing website',b.existingWebsite||'Not recorded')+row('Services',b.services||'Not independently verified')+
+      row('Services check',b.servicesVerified?'Researcher marked verified — owner must still approve':'Verify services with the business owner')+'</div>'+
+      '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Customer launch requirements</summary><ul style="font-size:13px;line-height:1.6">'+
+      p.launchChecks.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></details>'+
+      '<p style="font-size:12px;margin-bottom:0">This creates a private site concept, not a published customer website. Domain, hosting, SSL, live forms, approved content and payment are separate fulfillment steps.</p></section>';
+  }
   async function buildWebsite(customerId,defaultTier='essentials',hint){
     const customer=salesCustomer(customerId,hint);
     if(!customer)return notify('CRM customer record not found. Reload Command Center.');
@@ -182,11 +300,11 @@
       return notify('Website production is blocked during recovery/read-only mode.');
     const tier=defaultTier==='starter'?'starter':'essentials';
     if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
-    openModal('SBC Website Production',
+    openModal('SBC Instant Sites · Website Production',
       '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+
+      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
       '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
+      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
     document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
       if(busy)return;busy=true;this.disabled=true;
       const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
