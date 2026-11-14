@@ -26,7 +26,7 @@ const exampleCatalog=Object.freeze({
  local:['Service categories','How to get started','Customer inquiries']
 });
 function createDraftConcept(site){
- const profile=deriveDraftProfile(site),designTokens=createDesignTokens(profile);
+ const profile=deriveDraftProfile(site),designTokens=createDesignTokens(profile,{themeVariant:site.siteEdits?.themeVariant});
  const layoutAst=architectSite(profile,{quoteEstimatorEnabled:false});
  const produced=compileArtDirectedSite({profile,designTokens,layoutAst});
  const files={...produced.files};
