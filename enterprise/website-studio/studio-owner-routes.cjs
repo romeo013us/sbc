@@ -181,6 +181,43 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const url=ROOT.replace(':id',encodeURIComponent(String(site.id)))+'/auto-preview';
    html=html.replace(/href="(index|services|about|contact)\.html"/g,(_m,p)=>'href="'+url+(p==='index'?'':'?page='+p)+'"');
   }
+  // Opaque, owner-authenticated Preview: only the displayed hero copy is editable.
+  // There is no network, arbitrary HTML, public write, or auto-save channel.
+  if(isSmart&&requested==='home'){
+   const editorScript=`<style data-sbc-owner-inline-style>
+[data-sbc-inline-field]{cursor:text;outline-offset:6px;transition:outline-color .15s}
+[data-sbc-inline-field]:hover{outline:1px dashed currentColor}
+[data-sbc-inline-field]:focus{outline:3px solid #e9a75d;border-radius:4px}
+</style><script data-sbc-owner-inline-edit>(function(){
+'use strict';
+var rules=[{selector:'section.composed-hero h1',field:'headline',max:120},
+ {selector:'section.composed-hero p.hero-description',field:'subheadline',max:280}];
+rules.forEach(function(rule){
+ var node=document.querySelector(rule.selector);
+ if(!node)return;
+ var prior=node.textContent||'';
+ node.setAttribute('contenteditable','plaintext-only');
+ node.setAttribute('data-sbc-inline-field',rule.field);
+ node.setAttribute('role','textbox');
+ node.setAttribute('aria-label','Edit private '+rule.field);
+ node.setAttribute('title','Click to edit private '+rule.field+' (save separately)');
+ node.addEventListener('keydown',function(event){
+  if(event.key==='Enter'){event.preventDefault();node.blur();}
+  if(event.key==='Escape'){node.textContent=prior;node.blur();}
+ });
+ node.addEventListener('blur',function(){
+  var value=String(node.textContent||'').trim();
+  if(!value||value.length>rule.max||/[<>\\u0000-\\u001f\\u007f]/.test(value)){
+   node.textContent=prior;return;
+  }
+  if(value===prior)return;
+  prior=value;
+  window.parent.postMessage({type:'SBC_STUDIO_V3_INLINE_TEXT',field:rule.field,value:value},'*');
+ });
+});
+})();</script>`;
+   html=html.replace('</body>',editorScript+'</body>');
+  }
   res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://images.unsplash.com https://images.pexels.com; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
   res.setHeader('Content-Type','text/html; charset=utf-8');
   return res.send(html);

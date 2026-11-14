@@ -160,7 +160,7 @@
   function studioVisualPanel(demo){
     if(currentRole()!=='owner'||isApproved(demo)||demo.archived===true)return '';
     return '<section class="sbc-factory-light-panel" style="padding:20px;margin:24px 0;border:1px solid #acc5d5;border-radius:12px;background:#f4f8fd;color:#18334a">'+
-      '<h4>Website Studio V2 · Elite Design Lab</h4><p>Try a new design mood, hero composition, or service layout instantly. Your original website and verified facts remain unchanged until you save. No AI credits used.</p>'+
+      '<h4>Website Studio V3 · Visual Experience Lab</h4><p>Try design moods and layouts instantly. On the private preview, click the main headline or subtitle to edit the words right on the page. Edits are unsaved until you click Save Design & Preview. Verified facts remain protected. No AI credits used.</p>'+
       '<form id="sbcStudioVisualForm">'+
       '<label style="display:block;margin:10px 0">Website hero headline<input name="headline" type="text" maxlength="120" placeholder="Leave empty to use the business name" style="width:100%"></label>'+
       '<label style="display:block;margin:10px 0">Hero subtitle<textarea name="subheadline" rows="3" maxlength="280" placeholder="Leave empty to use the industry-specific copy" style="width:100%"></textarea></label>'+
@@ -184,6 +184,24 @@
       '<button class="btn primary" type="submit">Save Design & Preview</button></form><p id="sbcStudioVisualStatus" role="status" aria-live="polite">Loading design controls…</p></section>';
   }
   const studioVisualMessage=text=>{const p=document.getElementById('sbcStudioVisualStatus');if(p)p.textContent=text;};
+  // Private Preview runs in an opaque CSP sandbox. The only permitted channel
+  // is bounded copy to an OWNER's unsaved form, never an automatic CRM write.
+  window.addEventListener('message',function receiveStudioInlineEdit(event){
+    const frame=document.getElementById('sbcFactoryFrame'),form=document.getElementById('sbcStudioVisualForm');
+    if(!frame||event.source!==frame.contentWindow||currentRole()!=='owner'||
+      active?.previewMode!=='smart'||!active?.demo||isApproved(active.demo)||active.demo.archived===true||
+      !form||form.dataset.ready!=='1')return;
+    const data=event.data;
+    if(!data||typeof data!=='object'||data.type!=='SBC_STUDIO_V3_INLINE_TEXT')return;
+    if(!['headline','subheadline'].includes(data.field)||typeof data.value!=='string')return;
+    const text=data.value.trim(),max=data.field==='headline'?120:280;
+    if(!text||text.length>max||/[<>\u0000-\u001f\u007f]/.test(text))return;
+    const field=form.elements.namedItem(data.field);
+    if(!field||field.disabled)return;
+    field.value=text;
+    rememberStudioDraft();
+    studioVisualMessage('Edited on the private canvas. Click Save Design & Preview to keep this change.');
+  });
   const v3SectionKeys=['showcase','path','questions','conversion'];
   const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder'];
   let v3History={site:null,present:null,undo:[],redo:[]};
