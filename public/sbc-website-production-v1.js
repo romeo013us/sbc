@@ -244,14 +244,14 @@
     studioVisualMessage('Edited on the private canvas. Click Save Design & Preview to keep this change.');
   });
   const v3SectionKeys=['showcase','path','questions','conversion'];
-  const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder','brandPrimary','brandAccent','brandConfirmed','comparisonTitle','comparisonBefore','comparisonAfter','comparisonBeforeAlt','comparisonAfterAlt','comparisonRights','actualWorkConfirmed'];
+  const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder','brandPrimary','brandAccent','brandConfirmed','comparisonTitle','comparisonBefore','comparisonAfter','comparisonBeforeAlt','comparisonAfterAlt','comparisonRights','actualWorkConfirmed','gridEnabled','gridState'];
   let v3History={site:null,present:null,undo:[],redo:[]};
   function studioSnapshot(form){
     if(!form)return null;
     const result={};
     for(const key of v3VisualFields){
       const field=form.elements.namedItem(key);if(!field)return null;
-      result[key]=['rightsConfirmed','brandConfirmed','comparisonRights','actualWorkConfirmed'].includes(key) ? field.checked===true : String(field.value||'');
+      result[key]=['rightsConfirmed','brandConfirmed','comparisonRights','actualWorkConfirmed','gridEnabled'].includes(key) ? field.checked===true : String(field.value||'');
     }
     return JSON.stringify(result);
   }
@@ -270,7 +270,7 @@
     for(const key of v3VisualFields){
       const field=form.elements.namedItem(key);
       if(!field)continue;
-      if(['rightsConfirmed','brandConfirmed','comparisonRights','actualWorkConfirmed'].includes(key))field.checked=values[key]===true;
+      if(['rightsConfirmed','brandConfirmed','comparisonRights','actualWorkConfirmed','gridEnabled'].includes(key))field.checked=values[key]===true;
       else field.value=String(values[key]||'');
     }
   }
@@ -279,7 +279,7 @@
     if(!stack.length||currentRole()!=='owner'||v3History.site!==active?.demo?.id)return;
     const opposite=direction==='undo'?v3History.redo:v3History.undo;
     opposite.push(v3History.present);v3History.present=stack.pop();
-    restoreStudioSnapshot(v3History.present);tryStudioRemix();
+    restoreStudioSnapshot(v3History.present);syncStudioGridInspector();tryStudioRemix();
     studioVisualMessage('Restored unsaved '+direction+' state. Save to preserve this revision.');
   }
   async function loadStudioMediaIdeas(){
@@ -350,6 +350,10 @@
         form.elements.namedItem(field).value=comparison[key]||'';
       form.elements.namedItem('comparisonRights').checked=comparison.rightsConfirmed===true;
       form.elements.namedItem('actualWorkConfirmed').checked=comparison.actualWorkConfirmed===true;
+      const loadedGrid=v.freeformGrid?.enabled===true?v.freeformGrid:{enabled:false,nodes:[]};
+      form.elements.namedItem('gridEnabled').checked=loadedGrid.enabled;
+      form.elements.namedItem('gridState').value=JSON.stringify(loadedGrid);
+      syncStudioGridInspector();
       form.dataset.ready='1';
       v3History={site:demo.id,present:studioSnapshot(form),undo:[],redo:[]};
       form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
