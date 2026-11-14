@@ -186,3 +186,18 @@ test('V3 parent accepts inline edits only from its active owner Preview frame an
  assert.match(source,/currentRole\(\)\s*!==\s*'owner'/);
  assert.match(source,/rememberStudioDraft\(\)/);
 });
+
+
+test('private media suggestion endpoint is owner-only, tenant-isolated and does not mutate client records',async()=>{
+ const fx=fixture();
+ const ok=await fx.call('GET','/media-suggestions');
+ assert.equal(ok.statusCode,200);
+ assert.equal(ok.body.ok,true);
+ assert.equal(ok.body.requiresOwnerRightsReview,true);
+ assert(ok.body.nichesCovered>=50);
+ assert(Array.isArray(ok.body.candidates)&&ok.body.candidates.length>0);
+ assert.equal(fx.saves(),0);
+ assert.equal((await fx.call('GET','/media-suggestions',undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET','/media-suggestions',undefined,'none')).statusCode,401);
+ assert.equal((await fx.call('GET','/media-suggestions',undefined,'owner','site-b')).statusCode,404);
+});
