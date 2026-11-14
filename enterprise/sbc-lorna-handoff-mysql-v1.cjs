@@ -19,6 +19,7 @@ function createMysqlHandoffRepository({pool,lookupCustomer,lookupWorker}={}){
  const api={
   async customer(t,id){const r=await lookupCustomer(t,id);return r&&Number(r.tenantId??r.tenant_id)===Number(t)?r:null},
   async worker(t,id){const r=await lookupWorker(t,id);return r&&Number(r.tenantId??r.tenant_id)===Number(t)?r:null},
+  async assignment(t,cid){const [rows]=await run('SELECT manager_id FROM sbc_account_ownership_v1 WHERE tenant_id=? AND customer_id=? LIMIT 1',[t,cid]);return rows[0]?{tenantId:Number(t),customerId:String(cid),managerId:String(rows[0].manager_id)}:null;},
   async handoff(t,id){const [rows]=await run('SELECT * FROM sbc_lead_handoffs_v1 WHERE tenant_id=? AND id=? LIMIT 1',[t,id]);return handoffRow(rows[0]);},
   async handoffForCustomer(t,id){const [rows]=await run('SELECT * FROM sbc_lead_handoffs_v1 WHERE tenant_id=? AND customer_id=? LIMIT 1',[t,id]);return handoffRow(rows[0]);},
   async handoffs(t){const [rows]=await run('SELECT * FROM sbc_lead_handoffs_v1 WHERE tenant_id=? ORDER BY updated_at DESC LIMIT 2500',[t]);return rows.map(handoffRow);},
@@ -50,8 +51,8 @@ function createMysqlHandoffRepository({pool,lookupCustomer,lookupWorker}={}){
   async feedbackForResearcher(t,id){const [rows]=await run('SELECT * FROM sbc_research_feedback_v1 WHERE tenant_id=? AND researcher_id=? ORDER BY created_at DESC LIMIT 1000',[t,id]);return rows.map(feedbackRow);},
   async returnFeedback(h,fb,stamp){
    const saved=await transact(async conn=>{
-    const [result]=await conn.query("UPDATE sbc_lead_handoffs_v1 SET status='RESEARCH_RETURNED',retry_not_before=?,updated_at=? WHERE tenant_id=? AND id=? AND status='ASSIGNED' AND manager_id=?",
-     [dateSql(fb.retryNotBefore),dateSql(stamp),h.tenantId,h.id,h.managerId]);
+    const [result]=await conn.query("UPDATE sbc_lead_handoffs_v1 h INNER JOIN sbc_account_ownership_v1 o ON o.tenant_id=h.tenant_id AND o.customer_id=h.customer_id SET h.status='RESEARCH_RETURNED',h.retry_not_before=?,h.updated_at=?,h.manager_id=? WHERE h.tenant_id=? AND h.id=? AND h.status='ASSIGNED' AND o.manager_id=?",
+     [dateSql(fb.retryNotBefore),dateSql(stamp),fb.managerId,h.tenantId,h.id,fb.managerId]);
     if(result.affectedRows!==1)return false;
     await conn.query('INSERT INTO sbc_research_feedback_v1 (tenant_id,id,handoff_id,customer_id,researcher_id,manager_id,issue,reason,status,created_at,resolved_at,retry_not_before,resolution_action,resolution_note,evidence_url) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
      [fb.tenantId,fb.id,fb.handoffId,fb.customerId,fb.researcherId,fb.managerId,fb.issue,fb.reason,fb.status,dateSql(fb.createdAt),null,dateSql(fb.retryNotBefore),null,null,'']);
