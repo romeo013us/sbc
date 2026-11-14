@@ -12,7 +12,8 @@ test('draft owners see art-directed site preview first with classic escape hatch
  assert.match(src,/src="'\+esc\(smartDraft\?smartUrl:pageUrl\(demo,'home'\)\)/);
  assert.match(src,/id="sbcFactoryClassicMode"/);
  assert.match(src,/id="sbcFactorySmartMode"/);
- assert.match(src,/switchPreview\('classic',page\)/);
+ assert.match(src,/smartUrl\+\(page==='home'/);
+ assert.match(src,/switchPreview\(previewMode,page\)/);
  assert.match(src,/No public URL or outbound message is available before owner approval/);
  assert.doesNotMatch(src,/setTimeout\([^)]*publish|autoPublish/i);
 });
