@@ -116,6 +116,25 @@
         const field=form.elements.namedItem(name);if(field)field.value=String(value);
       }
       form.elements.namedItem('services').value=(p?.services||suggested?.services||[]).map(s=>s.name+(s.description?' | '+s.description:'')).join('\n');
+      const businessReview=out.businessReview||{status:'needs_review',issues:[]};
+      active.businessReview=businessReview;
+      const warnings=Array.isArray(businessReview.issues)?businessReview.issues:[];
+      const reviewBox=document.getElementById('sbcStudioConsistency');
+      const banner=document.getElementById('sbcFactoryReviewBanner');
+      const acknowledgment=document.getElementById('sbcFactoryReviewAcknowledgment');
+      if(reviewBox){
+        reviewBox.textContent=warnings.length?
+          'Needs Review: '+warnings.map(x=>String(x.message||'Business information needs confirmation.')).join(' '):
+          'Business consistency check passed for private drafting. Final customer approval is still required.';
+        reviewBox.style.background=warnings.length?'#fff4de':'#effaf3';
+      }
+      if(banner){
+        banner.textContent=warnings.length?
+          'Needs Review · '+warnings.map(x=>String(x.message||'Confirm business facts.')).join(' '):
+          'Private website preview · Business facts checked. Final presentation approval is separate.';
+        banner.style.display=warnings.length?'block':'none';
+      }
+      if(acknowledgment)acknowledgment.style.display=warnings.length?'block':'none';
       document.getElementById('sbcStudioViewPreview').disabled=!p;
       form.querySelectorAll('input:not([readonly]),textarea,button[type=submit]').forEach(el=>{el.disabled=!out.canApprove});
       studioMessage(p?'Business facts approved (revision '+out.version+'). Preview is ready.':out.canApprove?'CRM fields have been prefilled for REVIEW ONLY. Confirm the phone, services, and business details before approving this private concept.':'This site is locked; no approved Studio profile is available.');
@@ -641,7 +660,40 @@
     if (typeof openModal !== 'function')throw Error('Command Center modal is unavailable.');
     openModal('SBC Website Production',html);
     const address=document.getElementById('sbcFactoryAddress');
-    if(address)address.textContent=smartDraft?'SBC Art-Directed · Unverified Private Concept':new URL(pageUrl(demo,'home')).host+new URL(pageUrl(demo,'home')).pathname;
+    // Always report the actual iframe URL, not the last selected legacy page.
+    function syncStudioPreviewAddress(){
+      const frame=document.getElementById('sbcFactoryFrame');
+      if(!address||!frame)return;
+      try{
+        const url=new URL(frame.src,window.location.href);
+        const smart=url.pathname.includes('/studio/auto-preview');
+        address.textContent=(smart?'Art-directed private draft · ':'Classic website · ')+url.pathname+url.search;
+      }catch{address.textContent='SBC Website Studio · Preview unavailable';}
+    }
+    document.getElementById('sbcFactoryFrame')?.addEventListener('load',syncStudioPreviewAddress);
+    syncStudioPreviewAddress();
+    function switchStudioMode(pro){
+      const workspace=document.getElementById('sbcStudioWorkspace');
+      if(!workspace)return;
+      workspace.classList.toggle('is-pro',pro===true);
+      const simple=document.getElementById('sbcStudioModeSimple'),advanced=document.getElementById('sbcStudioModePro');
+      if(simple){simple.classList.toggle('primary',!pro);simple.setAttribute('aria-pressed',String(!pro))}
+      if(advanced){advanced.classList.toggle('primary',pro);advanced.setAttribute('aria-pressed',String(pro))}
+      // The existing grid handles are limited to the owner-only iframe.
+      // Selection, resize, versioning and tenant checks stay unchanged.
+    }
+    document.getElementById('sbcStudioModeSimple')?.addEventListener('click',()=>switchStudioMode(false));
+    document.getElementById('sbcStudioModePro')?.addEventListener('click',()=>switchStudioMode(true));
+    document.getElementById('sbcStudioTopUndo')?.addEventListener('click',()=>document.getElementById('sbcStudioUndo')?.click());
+    document.getElementById('sbcStudioTopRedo')?.addEventListener('click',()=>document.getElementById('sbcStudioRedo')?.click());
+    document.getElementById('sbcStudioTopSave')?.addEventListener('click',()=>{
+      const form=document.getElementById('sbcStudioVisualForm');
+      if(form&&form.dataset.ready==='1'&&currentRole()==='owner'&&!isApproved(active?.demo))form.requestSubmit();
+    });
+    document.getElementById('sbcStudioTopQA')?.addEventListener('click',()=>{
+      const drawer=document.getElementById('sbcFactoryPublishDrawer');
+      if(drawer){drawer.open=true;drawer.scrollIntoView({behavior:'smooth',block:'start'});}
+    });
     const switchPreview=(mode,page='home')=>{
       const frame=document.getElementById('sbcFactoryFrame');if(!frame)return;
       const smart=mode==='smart'&&smartDraft;
@@ -649,11 +701,11 @@
       if(active?.demo?.id===demo.id){active.previewMode=previewMode;active.previewPage=page;}
       const url=smart?(smartUrl+(page==='home'?'':'?page='+encodeURIComponent(page))):pageUrl(demo,page);
       frame.src=url;
-      if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Not customer-ready':new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
+      syncStudioPreviewAddress();
       document.getElementById('sbcFactorySmartMode')?.classList.toggle('primary',smart);
       document.getElementById('sbcFactoryClassicMode')?.classList.toggle('primary',!smart);
       const info=document.getElementById('sbcFactoryModeInfo');if(info)info.textContent=smart?'Art-directed design concept. Every proposed service must be verified before customer delivery.':'Classic website pages. Existing owner editing controls apply to this layout.';
-      document.querySelectorAll('[data-factory-page]').forEach(b=>b.classList.toggle('primary',!smart&&b.dataset.factoryPage===page));
+      document.querySelectorAll('[data-factory-page]').forEach(b=>b.classList.toggle('primary',b.dataset.factoryPage===page));
     };
     document.getElementById('sbcFactorySmartMode')?.addEventListener('click',()=>switchPreview('smart'));
     document.getElementById('sbcFactoryClassicMode')?.addEventListener('click',()=>switchPreview('classic'));
@@ -714,6 +766,8 @@
     if(!active||busy||currentRole()!=='owner')return;
     if(!['sbcFactoryCheckDetails','sbcFactoryCheckVisuals','sbcFactoryCheckContent'].every(id=>document.getElementById(id)?.checked))
       return updateStatus('Review all three required items before release.',true);
+    if(active.businessReview?.requiresHumanReview===true&&!document.getElementById('sbcFactoryReviewAcknowledged')?.checked)
+      return updateStatus('Review and acknowledge the flagged business information before presentation approval.',true);
     busy=true;
     try{
       const out=await serviceApi('/api/website-demos/'+encodeURIComponent(active.demo.id)+'/approve',{
