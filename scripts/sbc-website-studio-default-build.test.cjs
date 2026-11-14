@@ -23,3 +23,14 @@ test('new auto-preview keeps owner-only and tenant guards in website production 
  assert.match(routes,/site\.status==='Approved'\|\|site\.archived===true/);
  assert.match(routes,/const profile=fetchApproved\(site\)/);
 });
+
+test('owner Visual Studio editing UI and mirrored browser script use versioned private endpoints',()=>{
+ const src=read('public/sbc-website-production-v1.js');
+ assert.match(src,/id="sbcStudioVisualForm"/);
+ assert.match(src,/studioBase\(demo\)\+'\/visual'/);
+ assert.match(src,/expectedVersion:Number\(form\.dataset\.version\|\|0\)/);
+ assert.match(src,/id="sbcStudioVisualStatus"/);
+ assert.match(src,/studioVisualPanel\(demo\)/);
+ assert.match(src,/private smart previews only/i);
+ assert.equal(src,read('browser_public/sbc-website-production-v1.js'));
+});
