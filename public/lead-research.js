@@ -219,6 +219,43 @@ function openReview(item,lead,editable){
  };
  item.append(form);
 }
+function renderUrgentCase(own){
+ var host=$('sbc-urgent-lead-details');if(!host)return;
+ host.replaceChildren();
+ // Only display an account from the CURRENT RESEARCHER'S submitted/visible
+ // CRM records. Never fetch a business using an unscoped name lookup.
+ var lead=Array.isArray(own)?own.find(function(c){
+  return String(c?.businessName||'').trim().toLowerCase()==='miranda maintenance & repair corp';
+ }):null;
+ if(!lead){
+  host.append(element('p','muted','Miranda account is not in your authorized submitted-lead queue. Ask the owner to assign or return the existing record for research; do not import a duplicate.'));
+  return;
+ }
+ var research=lead.leadIntelligence?.researchBrief||lead.researchBrief||{};
+ var status=element('strong',null,'URGENT · Existing CRM record located · researcher review required');host.append(status);
+ var fields=[
+  ['Business name',lead.businessName],['Decision maker',lead.contactName],['Primary phone',lead.phone],
+  ['Email',lead.email],['Street/business address',lead.address],['Industry',lead.industry],
+  ['Website',lead.website],['Google-listed street address',research.googleListingAddress],
+  ['Street address verification',research.streetAddressVerification],['Google address verification',research.googleAddressVerification],
+  ['Lead status',lead.status],['Next follow-up',lead.nextFollowup||lead.nextFollowUpAt||research.nextFollowupNote],
+  ['Original research source',lead.verificationSource||research.researchEvidenceUrl||lead.researchSource||lead.source]
+ ];
+ fields.forEach(function(row){host.append(element('p',null,row[0]+': '+String(row[1]||'Not recorded / needs confirmation')));});
+ function external(label,candidate){
+  var wrap=element('p',null,label+': ');
+  try{var u=new URL(String(candidate||''));if(u.protocol==='https:'&&!u.username&&!u.password){
+    var a=element('a',null,u.href);a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';wrap.append(a);
+  }else wrap.append(element('span',null,'Not recorded / needs confirmation'));}
+  catch(_){wrap.append(element('span',null,'Not recorded / needs confirmation'));}
+  host.append(wrap);
+ }
+ external('Google Business Profile link',lead.googleBusinessUrl||research.googleBusinessUrl);
+ external('Street address evidence',research.streetAddressEvidenceUrl);
+ external('Google address evidence',research.googleAddressEvidenceUrl);
+ host.append(element('p','muted','Visible fields are taken from your authorized CRM record, not from unverified web snippets. Use existing correction/handoff permissions; source disagreements require owner review.'));
+}
+
 function drawLeads(){
  if(!leads)return;
  var q=$('queue-list'),m=$('mine-list'),filter=String($('search').value||'').trim().toLowerCase();
@@ -231,6 +268,7 @@ function drawLeads(){
   return;
  }
  var own=leads.filter(function(c){return submittedIds.has(String(c.id))&&researchDisplayable(c);});
+ renderUrgentCase(own);
  var attention=own.filter(isException);
  var missingAddress=own.filter(function(c){return !String(c.address||'').trim();}).length;
  txt('sbc-address-missing-count',missingAddress+' of your '+own.length+' visible submitted leads have no recorded address. Research when available; do not invent one.');
