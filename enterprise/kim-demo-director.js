@@ -37,6 +37,7 @@ function safePlan(input, fallback){
 
 async function callOpenAI(prompt){
   // Explicit opt-in: missing/empty API credits must never slow down demo creation.
+  if(process.env.SBC_STUDIO_AI_ENABLED==='true')return null; // Hybrid V5 owns paid design calls and their $40 Studio ledger.
   if(String(process.env.SBC_DEMO_AI_ENABLED||'false').toLowerCase()!=='true')return null;
   const key=process.env.OPENAI_API_KEY;if(!key)return null;
   // Demo-specific low-cost model; do not inherit a costly global reasoning model.
