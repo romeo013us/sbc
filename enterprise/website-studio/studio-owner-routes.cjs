@@ -4,6 +4,7 @@
 // changes demo approval, purchases services or publishes a public website.
 const {verifiedProfile}=require('./contracts.cjs');
 const {createPrivateConcept}=require('./index.cjs');
+const {checkPrivateBundle}=require('./qa-gate.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
 const isRecord=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const strictKeys=(value,permitted)=>isRecord(value)&&Object.keys(value).every(k=>permitted.includes(k));
@@ -91,7 +92,9 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const profile=fetchApproved(site);
   if(!profile)return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
   const {bundle}=createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true});
-  if(mode==='bundle')return res.json({ok:true,publicationReady:false,files:bundle.files});
+  const qa=checkPrivateBundle(bundle);
+  if(!qa.passed)return respond(res,'STUDIO_STATIC_QA_FAILED',503);
+  if(mode==='bundle')return res.json({ok:true,publicationReady:false,staticPreflight:qa,files:bundle.files});
   // CSP sandbox isolates preview from Command Center and disables network and forms.
   const css=bundle.files['styles.css'].replace(/<\/style/gi,'<\\/style');
   const js=bundle.files['site.js'].replace(/<\/script/gi,'<\\/script');
