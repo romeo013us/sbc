@@ -55,7 +55,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  });
 
  // New approved-facts Studio operates alongside existing editor, not in place of it.
- StudioOwner.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation});
+ StudioOwner.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation,db});
 
  const project=(req)=>{const tid=tenant(req);return orders().find(w=>String(w.id)===String(req.params.id)&&Number(w.tenantId)===tid)};
  const visible=(work,user)=>P.sameTenant(work,user)&&(String(user.role)==='owner'||(work.tasks||[]).some(t=>String(t.assignedTo)===String(user.id)));
