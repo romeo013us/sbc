@@ -29,6 +29,7 @@ test('validated grid renders only verified service cards, never arbitrary HTML, 
  assert.match(html,/Outside Service/);
  assert.match(css,/grid-template-columns:\s*repeat\(12,\s*minmax\(0,\s*1fr\)\)/);
  assert.match(css,/grid-column:\s*span 8/);
+ assert.doesNotMatch(css,/grid-auto-flow:\s*row dense/,'visual and keyboard order must agree');
  assert.match(css,/@media\s*\(max-width:\s*1024px\)/);
  assert.match(css,/@media\s*\(max-width:\s*640px\)/);
  assert.match(css,/prefers-reduced-motion:\s*reduce/);
