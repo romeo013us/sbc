@@ -1,6 +1,7 @@
 'use strict';
 const P=require('./sbc-website-workorders.cjs');
 const Editor=require('./sbc-instant-site-editor.cjs');
+const StudioOwner=require('./website-studio/studio-owner-routes.cjs');
 function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,paidGuard}){
  const respond=(res,e)=>{const code=String(e?.message||e);const status=/TENANT_CONTEXT|NOT_ASSIGNED|OWNER_REQUIRED|ASSIGNEE_INVALID/.test(code)?403:/PAYMENT_EVIDENCE|PREREQUISITES|WEBSITE_NOT_APPROVED|CUSTOMER_MISMATCH|ALREADY_COMPLETED/.test(code)?409:/UNKNOWN_TASK|INVALID|REQUIRED/.test(code)?400:503;return res.status(status).json({ok:false,code})};
  const tenant=req=>{const n=Number(requireTenant(req));if(!Number.isSafeInteger(n)||n<1)throw Error('TENANT_CONTEXT_REQUIRED');return n};
@@ -48,6 +49,9 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    res.setHeader('Cache-Control','no-store');
    return res.status(result.status).json(result.body);
  });
+
+ // New approved-facts Studio operates alongside existing editor, not in place of it.
+ StudioOwner.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady});
 
  const project=(req)=>{const tid=tenant(req);return orders().find(w=>String(w.id)===String(req.params.id)&&Number(w.tenantId)===tid)};
  const visible=(work,user)=>P.sameTenant(work,user)&&(String(user.role)==='owner'||(work.tasks||[]).some(t=>String(t.assignedTo)===String(user.id)));
