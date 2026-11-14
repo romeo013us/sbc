@@ -25,6 +25,24 @@ function validatePreviewTarget(raw,expectedHost){
  }
  return url;
 }
+/** Read the actual compiled application source identity from the a-sbc-master release. */
+function readApprovedPreviewSourceCommit(root=path.resolve(__dirname,'..')){
+ let receipt,identity;
+ try{
+  receipt=JSON.parse(fs.readFileSync(path.join(root,'SBC-DEPLOY-RECEIPT.json'),'utf8'));
+  identity=JSON.parse(fs.readFileSync(path.join(root,'SBC-FLAT-RELEASE-IDENTITY.json'),'utf8'));
+ }catch{throw Error('SBC_PREVIEW_RELEASE_RECEIPT_MISSING_OR_INVALID')}
+ const sha=receipt?.sourceCommit;
+ const validSha=typeof sha==='string'&&/^[a-f0-9]{40}$/.test(sha);
+ const hex64=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+ if(!validSha||receipt?.buildBranch!=='a-sbc-master'||
+  receipt?.deployBranch!=='a-sbc-master'||receipt?.artifactType!=='server.js'||
+  !hex64(receipt?.sourceFingerprint)||!hex64(receipt?.artifactSha256)||
+  identity?.sourceCommit!==sha||identity?.sourceFingerprint!==receipt.sourceFingerprint||
+  identity?.serverSha256!==receipt.artifactSha256)
+  throw Error('SBC_PREVIEW_RELEASE_RECEIPT_INCONSISTENT');
+ return sha;
+}
 /** Fail closed if the isolated Preview app does not run this exact approved release. */
 async function verifyPreviewSourceIdentity(target,expectedSha,transport=globalThis.fetch){
  if(typeof expectedSha!=='string'||!/^[a-f0-9]{40}$/.test(expectedSha))
@@ -75,7 +93,7 @@ async function runBrowser(){
  const password=String(process.env.SBC_PREVIEW_OWNER_PASSWORD||'');
  if(!username||!password||process.env.SBC_PREVIEW_READ_ONLY_APPROVED!=='YES')
   throw Error('SBC_PREVIEW_MISSING_APPROVED_CREDENTIALS_OR_READ_ONLY_ACK');
- await verifyPreviewSourceIdentity(target,process.env.SBC_PREVIEW_EXPECTED_SOURCE_SHA);
+ await verifyPreviewSourceIdentity(target,readApprovedPreviewSourceCommit());
  const metrics={domReadyMs:0,loadMs:0,resourceRequests:0,requestFailures:0,
   http5xx:0,pageErrors:0,consoleErrors:0,blockedWrites:0,authPosts:0,
   mobileOverflowPx:0,lightContrast:0,darkContrast:0};
@@ -229,4 +247,4 @@ if(require.main===module){
   process.exitCode=2;
  }
 }
-module.exports={validatePreviewTarget,requestPolicy,sanitizeReport,verifyPreviewSourceIdentity};
+module.exports={validatePreviewTarget,requestPolicy,sanitizeReport,verifyPreviewSourceIdentity,readApprovedPreviewSourceCommit};
