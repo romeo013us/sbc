@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sbcmia.com/schemas/website-studio/verified-profile.v1.json",
+  "title": "SBC Approved Business Profile",
+  "description": "A trusted CRM server may construct this object after an authenticated owner approval. Never construct it directly from research_signals.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "business", "services", "reviews", "contact", "verification"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "business": {"type": "object", "additionalProperties": false, "required": ["name", "category"], "properties": {
+      "name": {"type": "string", "minLength": 1, "maxLength": 120},
+      "category": {"type": "string", "minLength": 1, "maxLength": 90},
+      "city": {"type": ["string", "null"], "maxLength": 90},
+      "region": {"type": ["string", "null"], "maxLength": 60}
+    }},
+    "services": {"type": "array", "maxItems": 12, "items": {"type": "object", "additionalProperties": false, "required": ["name"], "properties": {
+      "name": {"type": "string", "minLength": 1, "maxLength": 90},
+      "description": {"type": "string", "maxLength": 280},
+      "provenance": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {
+        "kind": {"enum": ["owner_confirmed", "approved_signal"]},
+        "source_url": {"type": "string", "format": "uri", "pattern": "^https?://"}
+      }}
+    }}},
+    "reviews": {"type": "array", "maxItems": 10, "items": {"type": "object", "additionalProperties": false, "required": ["quote", "attribution", "approved"], "properties": {
+      "quote": {"type": "string", "minLength": 1, "maxLength": 350},
+      "attribution": {"type": "string", "minLength": 1, "maxLength": 120},
+      "approved": {"type": "boolean"},
+      "source_url": {"type": "string", "format": "uri", "pattern": "^https?://"}
+    }}},
+    "contact": {"type": "object", "additionalProperties": false, "required": ["phone", "email"], "properties": {
+      "phone": {"type": ["string", "null"], "maxLength": 32},
+      "email": {"type": ["string", "null"], "maxLength": 160}
+    }},
+    "verification": {"type": "object", "additionalProperties": false, "required": ["approvedBy", "approvedAt"], "properties": {
+      "approvedBy": {"type": "string", "minLength": 1, "maxLength": 100},
+      "approvedAt": {"type": "string", "format": "date-time"}
+    }}
+  }
+}
