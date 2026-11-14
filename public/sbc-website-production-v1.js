@@ -156,6 +156,66 @@
     }catch(e){studioMessage(String(e?.message||'Unable to open Studio preview.'));}
   }
 
+
+  function studioVisualPanel(demo){
+    if(currentRole()!=='owner'||isApproved(demo)||demo.archived===true)return '';
+    return '<section class="sbc-factory-light-panel" style="padding:20px;margin:24px 0;border:1px solid #acc5d5;border-radius:12px;background:#f4f8fd;color:#18334a">'+
+      '<h4>Visual Studio · Art-directed Design Controls</h4><p>Edit the private smart website without changing verified business facts. Saves are versioned and preview-only.</p>'+
+      '<form id="sbcStudioVisualForm">'+
+      '<label style="display:block;margin:10px 0">Website hero headline<input name="headline" type="text" maxlength="120" placeholder="Leave empty to use the business name" style="width:100%"></label>'+
+      '<label style="display:block;margin:10px 0">Hero subtitle<textarea name="subheadline" rows="3" maxlength="280" placeholder="Leave empty to use the industry-specific copy" style="width:100%"></textarea></label>'+
+      '<label style="display:block;margin:10px 0">Visual rhythm<select name="density" style="width:100%"><option value="original">Original art direction</option><option value="airy">Airy editorial spacing</option><option value="dense">Compact service-focused spacing</option></select></label>'+
+      '<details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Add licensed hero photography (optional)</summary><p>Use a direct, licensed images.unsplash.com or images.pexels.com photo URL. This does not upload, purchase, or verify an image license automatically. Your browser will request the photo from that provider.</p>'+
+      '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
+      '<label style="display:block;margin:9px 0">Accessible image description<input name="photoAlt" type="text" maxlength="180" style="width:100%"></label>'+
+      '<label style="display:block;margin:9px 0"><input type="checkbox" name="rightsConfirmed"> I verified that we may use this image in the customer concept.</label></details>'+
+      '<button class="btn primary" type="submit">Save Design & Preview</button></form><p id="sbcStudioVisualStatus" role="status" aria-live="polite">Loading design controls…</p></section>';
+  }
+  const studioVisualMessage=text=>{const p=document.getElementById('sbcStudioVisualStatus');if(p)p.textContent=text;};
+  async function loadStudioVisual(demo){
+    const form=document.getElementById('sbcStudioVisualForm');if(!form)return;
+    try{
+      const result=await serviceApi(studioBase(demo)+'/visual');
+      if(active?.demo?.id!==demo.id||!form.isConnected)return;
+      if(!result?.ok)throw Error(result?.code||'Visual Studio is unavailable');
+      form.dataset.version=String(result.version||0);
+      const v=result.visual||{};
+      for(const field of ['headline','subheadline','photoUrl','photoAlt'])form.elements.namedItem(field).value=String(v[field]||'');
+      form.elements.namedItem('density').value=v.density||'original';
+      form.elements.namedItem('rightsConfirmed').checked=v.rightsConfirmed===true;
+      form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
+      studioVisualMessage(result.canEdit?'Visual Studio revision '+result.version+' ready. These edits affect private smart previews only.':'This site is locked for editing.');
+    }catch(e){studioVisualMessage(String(e?.message||'Visual Studio unavailable.'));}
+  }
+  async function saveStudioVisual(event){
+    event.preventDefault();
+    if(currentRole()!=='owner'||!active?.demo||busy)return;
+    const demo=active.demo,form=event.currentTarget;
+    const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
+    const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
+    if(visual.photoUrl&&(!visual.photoAlt||!visual.rightsConfirmed))return studioVisualMessage('An approved photo requires an alt description and your explicit image-rights confirmation.');
+    const submit=form.querySelector('button[type=submit]');
+    busy=true;if(submit)submit.disabled=true;
+    studioVisualMessage('Saving art direction to the correct customer website…');
+    try{
+      const out=await serviceApi(studioBase(demo)+'/visual',{method:'PATCH',body:JSON.stringify({expectedVersion:Number(form.dataset.version||0),visual})});
+      if(!out?.ok||out.durable!==true)throw Error(out?.code||'Visual changes were not saved.');
+      if(active?.demo?.id!==demo.id)return;
+      form.dataset.version=String(out.version);
+      active.previewMode='smart';
+      const page=active.previewPage||'home';
+      const url=new URL(absolute(studioBase(demo)+'/auto-preview'));
+      if(page!=='home')url.searchParams.set('page',page);
+      url.searchParams.set('visualVersion',String(out.version));
+      const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url.href;
+      const address=document.getElementById('sbcFactoryAddress');if(address)address.textContent='SBC Visual Studio · Private Saved Preview';
+      document.getElementById('sbcFactorySmartMode')?.classList.add('primary');
+      document.getElementById('sbcFactoryClassicMode')?.classList.remove('primary');
+      studioVisualMessage('Saved design revision '+out.version+'. Private art-directed preview updated; no public website changed.');
+    }catch(e){studioVisualMessage('Not saved: '+String(e?.message||e)+'. Reload Visual Studio if someone else edited this project.');}
+    finally{busy=false;if(submit)submit.disabled=false;}
+  }
+
   function showSite(demo,customer,message='') {
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
@@ -173,7 +233,7 @@
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(smartDraft?smartUrl:pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
-      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+studioPanel()+
+      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+studioVisualPanel(demo)+studioPanel()+
       '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row sbc-factory-light-panel"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p class="sbc-factory-light-panel sbc-factory-private-note" style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
@@ -209,6 +269,8 @@
     document.getElementById('sbcInstantSiteEditor')?.addEventListener('submit',saveNativeEditor);
     loadNativeEditor(demo).catch(e=>console.warn('SBC editor load blocked',String(e.message||e)));
     loadStudioProfile(demo).catch(e=>console.warn('SBC Studio load blocked',String(e.message||e)));
+    loadStudioVisual(demo).catch(e=>console.warn('SBC Visual Studio load blocked',String(e.message||e)));
+    document.getElementById('sbcStudioVisualForm')?.addEventListener('submit',saveStudioVisual);
     document.getElementById('sbcStudioApprovalForm')?.addEventListener('submit',saveStudioProfile);
     document.getElementById('sbcStudioViewPreview')?.addEventListener('click',previewStudioConcept);
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
