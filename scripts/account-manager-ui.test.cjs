@@ -19,3 +19,12 @@ test('Lorna extension is optional and never replaces her original workspace',()=
  for(const asset of ['sbc-account-manager-v1.html','sbc-account-manager-v1.css','sbc-account-manager-v1.js','sbc-lorna-handoff-v1.js','sbc-lorna-handoff-v1.css'])
   assert.equal(read('public/'+asset),read('browser_public/'+asset),'asset trees must be mirrored: '+asset);
 });
+test('Account Manager UI derives role from authenticated server and never offers owner-only approval to manager',()=>{
+ const js=read('public/sbc-account-manager-v1.js');
+ assert(js.includes("fetch('/api/me',{credentials:'same-origin'"),'must resolve actual authenticated role');
+ assert(js.includes("state.role=identity.user.role"),'role must not come from query string or localStorage');
+ assert(js.includes("state.role==='owner'"),'owner-only actions must be hidden for managers');
+ assert(js.includes("h.status==='READY_FOR_REVIEW'&&state.role==='owner'"),'manager cannot self-assign research handoffs');
+ assert(js.includes("p.status==='PENDING_APPROVAL'&&state.role==='owner'"),'manager cannot approve social post');
+ assert(js.includes("p.status==='APPROVED'&&state.role==='owner'"),'manager cannot schedule social post');
+});
