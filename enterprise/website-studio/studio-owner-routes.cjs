@@ -221,6 +221,13 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    if(typeof req.query.sectionOrder!=='string')throw Error('INVALID_STUDIO_SECTION_ORDER');
    visualDraft.sectionOrder=req.query.sectionOrder.split(',');
   }
+  if(mode==='auto-preview'&&req.query?.freeformGrid!==undefined){
+   // Strict owner-only GET, no mutation: drafts live only in the current URL.
+   const raw=req.query.freeformGrid;
+   if(typeof raw!=='string'||raw.length>7000)throw Error('INVALID_STUDIO_GRID');
+   try{visualDraft.freeformGrid=JSON.parse(raw)}
+   catch{throw Error('INVALID_STUDIO_GRID')}
+  }
   const customized=mode==='auto-preview'?Visual.applyVisual(bundle,visualDraft):bundle;
   const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle:customized,offerTier:site.offerTier,isDraft:!profile}):customized;
   const qa=checkPrivateBundle(output);
@@ -277,6 +284,69 @@ rules.forEach(function(rule){
 });
 })();</script>`;
    html=html.replace('</body>',editorScript+'</body>');
+  }
+  // Grid handles are injected ONLY into this authenticated, sandboxed owner
+  // Preview, never into customer-facing websites or compiled static bundles.
+  if(isSmart&&requested==='home'){
+   const gridEditorScript=`<style data-sbc-grid-inspector-style>
+.sbc-v2-tile[data-sbc-grid-node]{outline-offset:5px;cursor:default}
+.sbc-v2-tile[data-sbc-grid-node]:focus-within{outline:2px dashed #2563eb}
+.sbc-grid-handle{position:absolute;right:0;top:40%;width:22px;min-height:50px;z-index:10;cursor:ew-resize;border-radius:6px 0 0 6px;border:1px solid #1e4060;background:#fff;color:#1e4060;font-weight:900;touch-action:none}
+.sbc-grid-handle:focus-visible{outline:3px solid #e7ab56;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.sbc-grid-handle{transition:none!important}}
+</style><script data-sbc-grid-inspector-script>(function(){
+'use strict';
+var cards=Array.prototype.slice.call(document.querySelectorAll('.sbc-v2-showcase .sbc-v2-service-grid > article.sbc-v2-tile'),0,6);
+cards.forEach(function(card,index){
+ var id='service-'+(index+1);
+ card.setAttribute('data-sbc-grid-node',id);
+ card.style.position='relative';
+ function notify(type,extra){
+  var payload={type:type,nodeId:id};
+  if(extra)payload.deltaColumns=extra;
+  window.parent.postMessage(payload,'*');
+ }
+ card.addEventListener('click',function(ev){
+  if(ev.target.closest('a,button,input,textarea,summary'))return;
+  notify('SBC_STUDIO_GRID_SELECT');
+ });
+ var handle=document.createElement('button');
+ handle.type='button';
+ handle.className='sbc-grid-handle';
+ handle.setAttribute('data-sbc-grid-handle',id);
+ handle.setAttribute('aria-label','Resize '+id+' service card; arrow keys change width');
+ handle.textContent='⋮';
+ handle.addEventListener('click',function(ev){ev.stopPropagation();notify('SBC_STUDIO_GRID_SELECT')});
+ handle.addEventListener('keydown',function(ev){
+  if(ev.key!=='ArrowLeft'&&ev.key!=='ArrowRight')return;
+  ev.preventDefault();ev.stopPropagation();
+  notify('SBC_STUDIO_GRID_RESIZE',ev.key==='ArrowRight'?1:-1);
+ });
+ handle.addEventListener('pointerdown',function(ev){
+  if(ev.pointerType==='mouse'&&ev.button!==0)return;
+  ev.preventDefault();ev.stopPropagation();
+  var start=ev.clientX,width=card.parentElement.getBoundingClientRect().width,pointer=ev.pointerId;
+  if(!Number.isFinite(width)||width<=0)return;
+  try{handle.setPointerCapture(pointer)}catch{}
+  function cleanup(){
+   handle.removeEventListener('pointerup',end);
+   handle.removeEventListener('pointercancel',cancel);
+  }
+  function cancel(event){if(event.pointerId!==pointer)return;cleanup()}
+  function end(event){
+   if(event.pointerId!==pointer)return;
+   cleanup();
+   var delta=Math.max(-12,Math.min(12,Math.round((event.clientX-start)/(width/12))));
+   if(delta)notify('SBC_STUDIO_GRID_RESIZE',delta);
+   else notify('SBC_STUDIO_GRID_SELECT');
+  }
+  handle.addEventListener('pointerup',end);
+  handle.addEventListener('pointercancel',cancel);
+ });
+ card.appendChild(handle);
+});
+})();</script>`;
+   html=html.replace('</body>',gridEditorScript+'</body>');
   }
   res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://images.unsplash.com https://images.pexels.com https://res.cloudinary.com; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
   res.setHeader('Content-Type','text/html; charset=utf-8');
