@@ -28,3 +28,17 @@ test('optional integration registers independent Lorna handoff routes without ex
  assert(a.routes.some(x=>x[1]==='/api/account-social/v1/research/feedback'));
  assert.equal(out.publishingEnabled,false);
 });
+
+test('database projection recognizes real SBC auto verification and Sales Ready fields, never promotes unknown rows',()=>{
+ const {projectCustomerEvidence}=require('../routes/sbc-account-social-integration-v1.cjs');
+ const verified=projectCustomerEvidence({id:'c1',tenant_id:1,businessName:'Barber',assignedTo:'lorna',status:'Lead',lead_intelligence_json:JSON.stringify({autoVerificationStatus:'AUTO_VERIFIED',verificationStatus:'Sales Ready',researchSubmittedBy:'lorna'})});
+ assert.equal(verified.leadAssistStatus,'AUTO_VERIFIED');
+ assert.equal(verified.verificationStatus,'Sales Ready');
+ assert.equal(verified.assignedTo,'lorna');
+ const human=projectCustomerEvidence({id:'c2',tenant_id:1,businessName:'Store',status:'Lead',lead_intelligence_json:{autoVerificationStatus:'HUMAN_APPROVED',verificationStatus:'Sales Ready'}});
+ assert.equal(human.leadAssistStatus,'HUMAN_APPROVED');
+ assert.equal(human.verificationStatus,'Sales Ready');
+ const failed=projectCustomerEvidence({id:'c3',tenant_id:1,lead_intelligence_json:'{INVALID'});
+ assert.notEqual(failed.leadAssistStatus,'AUTO_VERIFIED');
+ assert.notEqual(failed.verificationStatus,'Sales Ready');
+});
