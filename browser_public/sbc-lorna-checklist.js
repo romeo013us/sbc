@@ -52,11 +52,14 @@ function score(form){
  if(industry)good.push('Business category recorded');else needed.push('Business category');
  if(address)good.push('Candidate street/business address recorded (not verified until a source is checked)');else uncertain.push('Street address not recorded; research public location or service-area status');
  if(!['verified','not_public'].includes(d.streetAddressVerification))needed.push('Street address verification: verify source, resolve conflict, or document service-area-only status');
+ if(d.streetAddressVerification==='verified'&&!address)needed.push('Cannot verify a missing street address');
+ if(d.streetAddressVerification==='not_public'&&address)uncertain.push('Service-area business: do not advertise the supplied street address as a storefront');
  else if(!d.streetAddressEvidenceUrl||!web(d.streetAddressEvidenceUrl))needed.push('Street address source: add a reliable public evidence URL');
  else good.push('Street address source and research status recorded');
  if(d.googleBusinessUrl&&!d.googleListingAddress&&d.googleAddressVerification==='not_published')good.push('Google listing is reported as service-area only');
  else if(d.googleBusinessUrl&&!d.googleListingAddress)uncertain.push('Google-listed street address not checked; inspect the actual Maps listing');
  if(!['matches','not_published','listing_not_found'].includes(d.googleAddressVerification))needed.push('Google-listed street address: verify against Maps and flag conflicting addresses');
+ if(d.googleAddressVerification==='matches'&&(!d.googleListingAddress||!address))needed.push('To mark a Google address match, record both the street and exact Google-listed address');
  else if(!d.googleAddressEvidenceUrl||!web(d.googleAddressEvidenceUrl))needed.push('Google address evidence: add the actual listing/search source URL');
  else good.push('Google-listed street address status and evidence recorded');
  var sourceIsReal=!!source&&!/^(lead research(?:\s*-\s*bulk import)?|bulk import|csv import|unknown|not verified)$/i.test(source);
