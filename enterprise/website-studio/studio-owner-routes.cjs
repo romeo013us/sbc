@@ -151,6 +151,11 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const expected=site.websiteStudioVisualVersion||0;
    if(data.expectedVersion!==expected)throw Error('STALE_SITE_VERSION');
    const visual=Visual.normalizeVisual(data.visual);
+   if(visual.freeformGrid?.enabled===true){
+    const approved=fetchApproved(site);
+    if(!approved||!Array.isArray(approved.services)||approved.services.length===0)throw Error('STUDIO_GRID_APPROVED_SERVICES_REQUIRED');
+   }
+
    const revisions=[...visualHistory(site),captureRevision(site,expected)].slice(-20);
    const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
     websiteStudioVisualHistory:revisions,
@@ -185,6 +190,11 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const saved=history.find(x=>x.version===data.restoreVersion);
    if(!saved)return {status:404,body:{ok:false,code:'STUDIO_REVISION_NOT_FOUND'}};
    const visual=Visual.normalizeVisual(saved.visual);
+   if(visual.freeformGrid?.enabled===true){
+    const approved=fetchApproved(site);
+    if(!approved||!Array.isArray(approved.services)||approved.services.length===0)throw Error('STUDIO_GRID_APPROVED_SERVICES_REQUIRED');
+   }
+
    const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
     websiteStudioVisualHistory:[...history,captureRevision(site,expected)].slice(-20),
     websiteStudioVisualAudit:{action:'OWNER_STUDIO_VISUAL_RESTORE',
