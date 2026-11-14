@@ -30,3 +30,4 @@ jobs:
         run: |
           node --test test/v66-preview-browser-acceptance.test.cjs
           node scripts/v66-preview-browser-acceptance.cjs --self-test
+          node --test scripts/v66-owner-openai-budget.test.cjs
