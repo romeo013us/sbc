@@ -14,7 +14,7 @@ function assessResearch(input={}){
     !types.has(signal.type)||!string(signal.value,350)||!validURL(signal.source_url)||
     typeof signal.confidence_score!=='number'||signal.confidence_score<0||signal.confidence_score>1||!Number.isFinite(signal.confidence_score)||!statuses.has(signal.status)||
     (signal.website_state!==undefined&&(signal.type!=='website'||!websiteStates.has(signal.website_state)))||
-    (signal.status==='approved'&&(!string(signal.approvedBy,100)||!string(signal.approvedAt,40))))throw Error('INVALID_RESEARCH_SIGNAL');
+    (signal.status==='approved'&&(!string(signal.approvedBy,100)||!string(signal.approvedAt,40)||Number.isNaN(Date.parse(signal.approvedAt)))))throw Error('INVALID_RESEARCH_SIGNAL');
   return Object.freeze({...signal});
  });
  const approved=cleaned.filter(s=>s.status==='approved');
