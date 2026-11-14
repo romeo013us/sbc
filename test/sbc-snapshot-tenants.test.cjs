@@ -181,3 +181,26 @@ test('MySQL preserves row ownership, tombstones and uniqueness through commit an
     await conn.end();
   }
 });
+
+test('verification decisions survive MySQL snapshot persistence and restart without automatic promotion',async()=>{
+  const writes=[];
+  const conn={async query(sql,params){if(sql.startsWith('SELECT'))return [[]];writes.push({sql,params});return [{affectedRows:1}];}};
+  const customers=[
+    {id:'verified',tenantId:1,verificationStatus:'Sales Ready',verificationMethod:'SBC_AUTO_RECORD_CHECK_V55.4.1',leadIntelligence:{researchSource:'csv'},createdAt:stamp},
+    {id:'unverified',tenantId:1,verificationStatus:'Needs Verification',leadIntelligence:{researchSource:'web'},createdAt:stamp},
+    {id:'unknown',tenantId:2,leadIntelligence:{researchSource:'manual'},createdAt:stamp}
+  ];
+  await persist(conn,prepare({customers},1),dates);
+  const byId=new Map();
+  for(const {sql,params} of writes){
+    if(!sql.startsWith('INSERT INTO sbc_customers'))continue;
+    const cols=sql.match(/INSERT INTO sbc_customers \(([^)]+)\)/)[1].split(', ').map(s=>s.trim());
+    const data=Object.fromEntries(cols.map((col,i)=>[col,params[i]]));
+    byId.set(data.id,JSON.parse(data.lead_intelligence_json));
+  }
+  assert.equal(byId.get('verified')?.verificationStatus,'Sales Ready','existing verified decision must not disappear at restart');
+  assert.equal(byId.get('verified')?.researchSource,'csv','existing lead intelligence must survive unchanged');
+  assert.equal(byId.get('unverified')?.verificationStatus,'Needs Verification');
+  assert.equal(byId.get('unknown')?.verificationStatus,undefined,'missing verification must not be invented');
+  assert.equal(customers[0].leadIntelligence.verificationStatus,undefined,'projection must not mutate live CRM object');
+});
