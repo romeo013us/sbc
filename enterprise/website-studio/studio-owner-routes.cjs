@@ -278,7 +278,7 @@ rules.forEach(function(rule){
 })();</script>`;
    html=html.replace('</body>',editorScript+'</body>');
   }
-  res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://images.unsplash.com https://images.pexels.com; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
+  res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://images.unsplash.com https://images.pexels.com https://res.cloudinary.com; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
   res.setHeader('Content-Type','text/html; charset=utf-8');
   return res.send(html);
  });
