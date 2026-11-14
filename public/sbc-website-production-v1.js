@@ -160,11 +160,17 @@
   function studioVisualPanel(demo){
     if(currentRole()!=='owner'||isApproved(demo)||demo.archived===true)return '';
     return '<section class="sbc-factory-light-panel" style="padding:20px;margin:24px 0;border:1px solid #acc5d5;border-radius:12px;background:#f4f8fd;color:#18334a">'+
-      '<h4>Visual Studio · Art-directed Design Controls</h4><p>Edit the private smart website without changing verified business facts. Saves are versioned and preview-only.</p>'+
+      '<h4>Website Studio V2 · Elite Design Lab</h4><p>Try a new design mood, hero composition, or service layout instantly. Your original website and verified facts remain unchanged until you save. No AI credits used.</p>'+
       '<form id="sbcStudioVisualForm">'+
       '<label style="display:block;margin:10px 0">Website hero headline<input name="headline" type="text" maxlength="120" placeholder="Leave empty to use the business name" style="width:100%"></label>'+
       '<label style="display:block;margin:10px 0">Hero subtitle<textarea name="subheadline" rows="3" maxlength="280" placeholder="Leave empty to use the industry-specific copy" style="width:100%"></textarea></label>'+
       '<label style="display:block;margin:10px 0">Visual rhythm<select name="density" style="width:100%"><option value="original">Original art direction</option><option value="airy">Airy editorial spacing</option><option value="dense">Compact service-focused spacing</option></select></label>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'+
+      '<label>Design mood<select name="vibe" style="width:100%"><option value="original">Industry original</option><option value="cinematic">Cinematic premium</option><option value="minimal">Minimal editorial</option><option value="warm">Warm community</option></select></label>'+
+      '<label>Hero layout<select name="heroStyle" style="width:100%"><option value="auto">Industry recommended</option><option value="split">Asymmetric split</option><option value="stacked">Editorial stack</option><option value="cinema">Dark cinema</option></select></label>'+
+      '<label>Service layout<select name="serviceLayout" style="width:100%"><option value="auto">Industry recommended</option><option value="bento">Bento showcase</option><option value="grid">Modern grid</option><option value="editorial">Editorial cards</option></select></label></div>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:12px 0"><button type="button" class="btn" id="sbcStudioShuffleVibe">Shuffle Vibe</button><button type="button" class="btn" id="sbcStudioSwapLayout">Swap Layout</button><button type="button" class="btn" id="sbcStudioTryRemix">Preview these choices</button></div>'+
+      '<p style="font-size:.84rem">AI Polish is disabled while the $25/month OpenAI hard limit remains unenforced. The zero-AI design engine works without it.</p>'+
       '<details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Add licensed hero photography (optional)</summary><p>Use a direct, licensed images.unsplash.com or images.pexels.com photo URL. This does not upload, purchase, or verify an image license automatically. Your browser will request the photo from that provider.</p>'+
       '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0">Accessible image description<input name="photoAlt" type="text" maxlength="180" style="width:100%"></label>'+
@@ -182,17 +188,41 @@
       const v=result.visual||{};
       for(const field of ['headline','subheadline','photoUrl','photoAlt'])form.elements.namedItem(field).value=String(v[field]||'');
       form.elements.namedItem('density').value=v.density||'original';
+      form.elements.namedItem('vibe').value=v.vibe||'original';
+      form.elements.namedItem('heroStyle').value=v.heroStyle||'auto';
+      form.elements.namedItem('serviceLayout').value=v.serviceLayout||'auto';
       form.elements.namedItem('rightsConfirmed').checked=v.rightsConfirmed===true;
       form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
       studioVisualMessage(result.canEdit?'Visual Studio revision '+result.version+' ready. These edits affect private smart previews only.':'This site is locked for editing.');
     }catch(e){studioVisualMessage(String(e?.message||'Visual Studio unavailable.'));}
+  }
+  // Instant, owner-only V2 remix. GET is read-only; Save remains an explicit,
+  // versioned action. Preview overrides cannot change approved CRM facts.
+  function tryStudioRemix(){
+    const demo=active?.demo,form=document.getElementById('sbcStudioVisualForm');
+    if(!demo||!form||isApproved(demo)||demo.archived===true)return;
+    const value=name=>String(form.elements.namedItem(name)?.value||'');
+    const page=active.previewPage||'home',url=new URL(absolute(studioBase(demo)+'/auto-preview'));
+    if(page!=='home')url.searchParams.set('page',page);
+    for(const name of ['vibe','heroStyle','serviceLayout'])url.searchParams.set(name,value(name));
+    const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url.href;
+    active.previewMode='smart';
+    studioVisualMessage('Previewing V2 design without saving or using AI. Save Design & Preview to keep these choices.');
+  }
+  function cycleStudioChoice(field,choices){
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!form||!active?.demo)return;
+    const select=form.elements.namedItem(field);if(!select||select.disabled)return;
+    const at=choices.indexOf(select.value);
+    select.value=choices[(at+1)%choices.length];
+    tryStudioRemix();
   }
   async function saveStudioVisual(event){
     event.preventDefault();
     if(currentRole()!=='owner'||!active?.demo||busy)return;
     const demo=active.demo,form=event.currentTarget;
     const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
-    const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
+    const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),vibe:get('vibe'),heroStyle:get('heroStyle'),serviceLayout:get('serviceLayout'),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
     if(visual.photoUrl&&(!visual.photoAlt||!visual.rightsConfirmed))return studioVisualMessage('An approved photo requires an alt description and your explicit image-rights confirmation.');
     const submit=form.querySelector('button[type=submit]');
     busy=true;if(submit)submit.disabled=true;
@@ -271,6 +301,9 @@
     loadStudioProfile(demo).catch(e=>console.warn('SBC Studio load blocked',String(e.message||e)));
     loadStudioVisual(demo).catch(e=>console.warn('SBC Visual Studio load blocked',String(e.message||e)));
     document.getElementById('sbcStudioVisualForm')?.addEventListener('submit',saveStudioVisual);
+    document.getElementById('sbcStudioShuffleVibe')?.addEventListener('click',()=>cycleStudioChoice('vibe',['original','cinematic','minimal','warm']));
+    document.getElementById('sbcStudioSwapLayout')?.addEventListener('click',()=>cycleStudioChoice('serviceLayout',['auto','bento','grid','editorial']));
+    document.getElementById('sbcStudioTryRemix')?.addEventListener('click',tryStudioRemix);
     document.getElementById('sbcStudioApprovalForm')?.addEventListener('submit',saveStudioProfile);
     document.getElementById('sbcStudioViewPreview')?.addEventListener('click',previewStudioConcept);
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
