@@ -32,3 +32,16 @@ test('media selection is deterministic and never invents customer proofs, AI act
  assert.equal(suggestMedia('Retail Store').group,'local');
  assert.doesNotMatch(JSON.stringify(NICHE_GROUPS),/4\.9 rated|guaranteed|licensed and insured|same day dispatch/i);
 });
+
+
+test('owner design lab provides zero-AI photo search controls without presuming licensed customer work',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const ui=fs.readFileSync(path.join(__dirname,'../public/sbc-website-production-v1.js'),'utf8');
+ const mirror=fs.readFileSync(path.join(__dirname,'../browser_public/sbc-website-production-v1.js'),'utf8');
+ assert.equal(ui,mirror);
+ assert(ui.includes('sbcStudioBrowseMedia'), 'photo browse button');
+ assert(ui.includes('sbcStudioMediaIdeas'), 'photo idea grid');
+ assert(ui.includes('/media-suggestions'), 'tenant-scoped suggestion endpoint');
+ assert(ui.includes('rightsConfirmed'));
+ assert(ui.includes('checked=false'), 'choosing a photo must not auto-approve its rights');
+});
