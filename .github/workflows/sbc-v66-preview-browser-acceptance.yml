@@ -15,9 +15,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout tested source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
       - name: Source-only read-only policy and selector regression checks
@@ -48,10 +48,11 @@ jobs:
           SBC_PREVIEW_OWNER_USERNAME: ${{ secrets.SBC_PREVIEW_OWNER_USERNAME }}
           SBC_PREVIEW_OWNER_PASSWORD: ${{ secrets.SBC_PREVIEW_OWNER_PASSWORD }}
           SBC_PREVIEW_READ_ONLY_APPROVED: 'YES'
+          SBC_PREVIEW_EXPECTED_SOURCE_SHA: ${{ github.sha }}
         run: node scripts/v66-preview-browser-acceptance.cjs --run
       - name: Upload sanitized metrics only (never screenshots or private data)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbc-v66-preview-owner-metrics-only
           path: sbc-preview-browser-evidence.json
