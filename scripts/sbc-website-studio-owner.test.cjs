@@ -19,8 +19,9 @@ function fixture(){
   writerReady:()=>writer});
  const pattern='/api/website-production/sites/:id/studio';
  async function call(method,suffix='',body,who='owner',id='site-a'){
-  const handlers=app.routes.get(method+' '+pattern+suffix);assert(handlers,method+' route '+suffix);
-  const req={params:{id},body,user:people[who]||null};
+  const pathname=String(suffix||'').split('?')[0],query=Object.fromEntries(new URLSearchParams(String(suffix||'').split('?')[1]||''));
+  const handlers=app.routes.get(method+' '+pattern+pathname);assert(handlers,method+' route '+suffix);
+  const req={params:{id},body,query,user:people[who]||null};
   const res={statusCode:200,headers:{},body:null,status(n){this.statusCode=n;return this},json(x){this.body=x;return this},setHeader(k,v){this.headers[k.toLowerCase()]=v;return this},type(t){this.headers['content-type']=t;return this},send(v){this.body=v;return this}};
   for(let i=0;i<handlers.length;i++){
    let nexted=false;await handlers[i](req,res,()=>{nexted=true});
@@ -121,4 +122,18 @@ test('art-directed private auto-preview works for a first-time draft without fac
  assert.equal(fx.saves(),0,'new preview must never write or approve the customer record');
  assert.equal((await fx.call('GET','/auto-preview',undefined,'owner','site-approved')).statusCode,409);
  assert.equal((await fx.call('GET','/preview')).statusCode,409,'approved-only preview remains locked');
+});
+
+test('Business Basic auto-preview serves four private pages with working internal navigation',async()=>{
+ const fx=fixture();
+ fx.store().websiteDemos[0].offerTier='essentials';
+ for(const page of ['home','services','about','contact']){
+  const response=await fx.call('GET','/auto-preview'+(page==='home'?'':'?page='+page));
+  assert.equal(response.statusCode,200,page);
+  assert.match(response.headers['content-security-policy'],/sandbox/);
+  assert.match(response.body,/noindex,nofollow,noarchive/);
+  assert.match(response.body,/studio\/auto-preview\?page=services/);
+ }
+ assert.equal((await fx.call('GET','/auto-preview?page=pricing')).statusCode,404);
+ assert.equal(fx.saves(),0,'inspecting multi-page concepts cannot mutate CRM');
 });
