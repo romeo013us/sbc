@@ -350,3 +350,14 @@ test('grid inspector only offers existing owner-approved service cards and rejec
  assert.equal(response.body.code,'STUDIO_GRID_UNKNOWN_SERVICE');
  assert.equal(fx.saves(),1);
 });
+
+
+test('legacy malformed approved profile does not break owner visual inspector read-only load',async()=>{
+ const fx=fixture(),site=fx.store().websiteDemos[0];
+ site.websiteStudioProfileVersion=1;
+ site.websiteStudioApprovedProfile={business:{name:'Other Tenant'},services:[{name:'Incorrect'}]};
+ const read=await fx.call('GET','/visual');
+ assert.equal(read.statusCode,200);
+ assert.equal(read.body.maxEditableServices,0);
+ assert.equal(fx.saves(),0);
+});
