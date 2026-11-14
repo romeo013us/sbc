@@ -6,12 +6,13 @@ const {assessResearch}=require('./research-classifier.cjs');
 const {createDesignTokens}=require('./creative-director.cjs');
 const {architectSite}=require('./website-architect.cjs');
 const {compileStaticSite}=require('./static-compiler.cjs');
+const {compileArtDirectedSite}=require('./art-directed-compiler.cjs');
 function createPrivateConcept({verified_profile,research_signals=[],researchCompleted=false,quoteEstimatorEnabled=false}){
  const research=assessResearch({signals:research_signals,researchCompleted});
  // Deliberately pass ONLY the trusted approved profile to the two compilers.
  const designTokens=createDesignTokens(verified_profile);
  const layoutAst=architectSite(verified_profile,{quoteEstimatorEnabled});
- const bundle=compileStaticSite({profile:verified_profile,designTokens,layoutAst});
+ const bundle=compileArtDirectedSite({profile:verified_profile,designTokens,layoutAst});
  return {research,designTokens,layoutAst,bundle};
 }
-module.exports={createPrivateConcept,assessResearch,createDesignTokens,architectSite,compileStaticSite};
+module.exports={createPrivateConcept,assessResearch,createDesignTokens,architectSite,compileStaticSite,compileArtDirectedSite};
