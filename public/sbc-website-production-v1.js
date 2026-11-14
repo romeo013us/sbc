@@ -243,6 +243,29 @@
     rememberStudioDraft();
     studioVisualMessage('Edited on the private canvas. Click Save Design & Preview to keep this change.');
   });
+  // Accept only messages from the current owner-visible, isolated Preview iframe.
+  // Never accepts arbitrary CSS, node markup, PII or a visitor-supplied tenant.
+  window.addEventListener('message',function receiveStudioGridInteraction(event){
+    const frame=document.getElementById('sbcFactoryFrame');
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!frame||event.source!==frame.contentWindow||currentRole()!=='owner'||
+       active?.previewMode!=='smart'||!active?.demo||isApproved(active.demo)||
+       active.demo.archived===true||!form||form.dataset.ready!=='1')return;
+    const msg=event.data;
+    if(!msg||typeof msg!=='object'||!['SBC_STUDIO_GRID_SELECT','SBC_STUDIO_GRID_RESIZE'].includes(msg.type)||
+       typeof msg.nodeId!=='string'||!/^service-[1-6]$/.test(msg.nodeId))return;
+    selectStudioGridCard(msg.nodeId);
+    if(msg.type==='SBC_STUDIO_GRID_RESIZE'){
+      if(!Number.isInteger(msg.deltaColumns)||Math.abs(msg.deltaColumns)>12)return;
+      const span=form.elements.namedItem('gridSpan');
+      const current=Number(span.value);
+      if(!Number.isInteger(current))return;
+      span.value=String(Math.min(12,Math.max(1,current+msg.deltaColumns)));
+      form.elements.namedItem('gridEnabled').checked=true;
+      if(commitStudioGridInspector())tryStudioRemix();
+    }
+  });
+
   const v3SectionKeys=['showcase','path','questions','conversion'];
   const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder','brandPrimary','brandAccent','brandConfirmed','comparisonTitle','comparisonBefore','comparisonAfter','comparisonBeforeAlt','comparisonAfterAlt','comparisonRights','actualWorkConfirmed','gridEnabled','gridState'];
   let v3History={site:null,present:null,undo:[],redo:[]};
@@ -453,6 +476,12 @@
     const page=active.previewPage||'home',url=new URL(absolute(studioBase(demo)+'/auto-preview'));
     if(page!=='home')url.searchParams.set('page',page);
     for(const name of ['vibe','heroStyle','serviceLayout','sectionOrder'])url.searchParams.set(name,value(name));
+    // Read-only preview override uses server-side allowlist validation and
+    // never saves to GoDaddy's shared Preview/Published database.
+    if(form.dataset.ready==='1'){
+      const gridDraft=String(form.elements.namedItem('gridState')?.value||'');
+      if(gridDraft&&gridDraft.length<=7000)url.searchParams.set('freeformGrid',gridDraft);
+    }
     const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url.href;
     active.previewMode='smart';
     studioVisualMessage('Previewing V2 design without saving or using AI. Save Design & Preview to keep these choices.');
@@ -516,7 +545,9 @@
     if(currentRole()!=='owner'||!active?.demo||busy)return;
     const demo=active.demo,form=event.currentTarget;
     const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
+    if(!commitStudioGridInspector())return studioVisualMessage('Fix the grid inspector inputs before saving.');
     const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),vibe:get('vibe'),heroStyle:get('heroStyle'),serviceLayout:get('serviceLayout'),sectionOrder:get('sectionOrder').split(','),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
+    visual.freeformGrid=studioGridValue(form);
     if(visual.photoUrl&&(!visual.photoAlt||!visual.rightsConfirmed))return studioVisualMessage('An approved photo requires an alt description and your explicit image-rights confirmation.');
     const brandEnabled=Boolean(get('brandPrimary')||get('brandAccent')||form.elements.namedItem('brandConfirmed').checked);
     visual.brandKit=brandEnabled?{primary:get('brandPrimary'),accent:get('brandAccent'),
@@ -624,6 +655,16 @@
     document.getElementById('sbcStudioShuffleVibe')?.addEventListener('click',()=>cycleStudioChoice('vibe',['original','cinematic','minimal','warm']));
     document.getElementById('sbcStudioSwapLayout')?.addEventListener('click',()=>cycleStudioChoice('serviceLayout',['auto','bento','grid','editorial']));
     document.getElementById('sbcStudioTryRemix')?.addEventListener('click',tryStudioRemix);
+    document.getElementById('sbcStudioGridNode')?.addEventListener('change',syncStudioGridInspector);
+    document.getElementById('sbcStudioGridApply')?.addEventListener('click',()=>{
+      if(commitStudioGridInspector())tryStudioRemix();
+    });
+    document.getElementById('sbcStudioGridReset')?.addEventListener('click',resetStudioGrid);
+    document.getElementById('sbcStudioGridEnabled')?.addEventListener('change',()=>{
+      if(document.getElementById('sbcStudioGridEnabled')?.checked){
+        if(commitStudioGridInspector())tryStudioRemix();
+      }else resetStudioGrid();
+    });
     document.getElementById('sbcStudioApprovalForm')?.addEventListener('submit',saveStudioProfile);
     document.getElementById('sbcStudioViewPreview')?.addEventListener('click',previewStudioConcept);
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
