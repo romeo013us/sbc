@@ -66,6 +66,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const code=String(e?.message||'STUDIO_ERROR');
   if(code==='TENANT_CONTEXT_REQUIRED')return respond(res,code,403);
   if(code==='STUDIO_MEDIA_RIGHTS_REQUIRED'||code==='STUDIO_MEDIA_ALT_REQUIRED')return respond(res,code,400);
+  if(code==='STUDIO_GRID_UNKNOWN_SERVICE')return respond(res,code,400);
   if(code==='CUSTOMER_IDENTITY_MISMATCH'||code==='STALE_SITE_VERSION'||code==='APPROVED_SITE_LOCKED'||code==='SITE_ARCHIVED'||code==='STUDIO_NOT_EDITABLE'||code==='STUDIO_PROFILE_NOT_APPROVED'||code==='STUDIO_GRID_APPROVED_SERVICES_REQUIRED')return respond(res,code,409);
   if(code==='STUDIO_SAVE_NOT_DURABLE')return respond(res,code,503);
   return respond(res,/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?code:'STUDIO_ERROR',/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?400:503);
@@ -137,6 +138,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    revisions:visualHistory(site)})));
  app.get(ROOT+'/visual',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
   res.json({ok:true,visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),version:site.websiteStudioVisualVersion||0,
+   maxEditableServices:Math.min(6,fetchApproved(site)?.services?.length||0),
    canEdit:!site.archived&&['Draft','Pending'].includes(site.status)})));
  app.patch(ROOT+'/visual',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
