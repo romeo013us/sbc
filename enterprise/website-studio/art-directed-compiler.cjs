@@ -6,6 +6,7 @@
  * vetted static compiler and remains fail-closed.
  */
 const {compileStaticSite}=require('./static-compiler.cjs');
+const {upgradePrivateBundle}=require('./elite-v2.cjs');
 const escape=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const definitions=Object.freeze({
  tint:{composition:'performance-bay',hero:'kinetic-hero',services:'service-bay',eyebrow:'PRECISION / VEHICLE EXPERIENCE',action:'Explore the options',motto:'DESIGNED AROUND THE DETAILS'},
@@ -91,6 +92,6 @@ function compileArtDirectedSite({profile,designTokens,layoutAst}){
   throw Error('INVALID_LAYOUT_AST');
  }).join('\n');
  const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><meta name="description" content="Private website concept for ${escape(b.name)}${b.city?' in '+escape(b.city):''}."><meta name="referrer" content="no-referrer"><title>${escape(b.name)} | SBC Website Studio</title><link rel="stylesheet" href="styles.css"><script defer src="site.js"></script></head><body data-sbc-composition="${d.composition}" data-sbc-design-variant="${escape(designTokens.identity.variant)}"><a class="skip-link" href="#main">Skip to content</a><div class="preview-alert">PRIVATE DESIGN CONCEPT · NOT A PUBLISHED BUSINESS WEBSITE</div><header class="topbar"><div class="wrap topbar-inner"><a class="wordmark" href="#home">${escape(b.name)}</a><button type="button" class="nav-toggle" aria-controls="main-nav" aria-expanded="false" data-nav-toggle>Menu</button><nav id="main-nav" class="nav-links" aria-label="Main navigation"><a href="#home">Home</a>${hasServices?'<a href="#services">Services</a>':''}${hasQuote?'<a href="#quote">Request</a>':''}<a href="#contact">Contact</a></nav></div></header><main id="main">${blocks}</main><footer class="footer"><div class="wrap"><strong>${escape(b.name)}</strong><p>Private concept by Successful By Choice. Final publication requires verified customer content, image rights, form delivery, approvals, live hosting and testing.</p></div></footer></body></html>`;
- return {...baseline,files:{...baseline.files,'index.html':html,'styles.css':baseline.files['styles.css']+'\n'+artCss},publicationReady:false};
+ return upgradePrivateBundle({bundle:{...baseline,files:{...baseline.files,'index.html':html,'styles.css':baseline.files['styles.css']+'\n'+artCss},publicationReady:false},profile,designTokens});
 }
 module.exports={compileArtDirectedSite,definitions};
