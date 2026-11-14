@@ -170,6 +170,12 @@
       '<label>Hero layout<select name="heroStyle" style="width:100%"><option value="auto">Industry recommended</option><option value="split">Asymmetric split</option><option value="stacked">Editorial stack</option><option value="cinema">Dark cinema</option></select></label>'+
       '<label>Service layout<select name="serviceLayout" style="width:100%"><option value="auto">Industry recommended</option><option value="bento">Bento showcase</option><option value="grid">Modern grid</option><option value="editorial">Editorial cards</option></select></label></div>'+
       '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:12px 0"><button type="button" class="btn" id="sbcStudioShuffleVibe">Shuffle Vibe</button><button type="button" class="btn" id="sbcStudioSwapLayout">Swap Layout</button><button type="button" class="btn" id="sbcStudioTryRemix">Preview these choices</button></div>'+
+      '<fieldset style="border:1px solid #b9cbd6;border-radius:10px;padding:14px;margin:14px 0"><legend style="font-weight:800">Section Manager · Move and compare</legend>'+
+      '<p style="font-size:.87rem">Rearrange the four optional design sections. Business facts, the hero and contact details stay protected.</p>'+
+      '<input name="sectionOrder" id="sbcStudioSectionOrder" type="hidden" value="showcase,path,questions,conversion">'+
+      '<label>Selected section<select name="sectionFocus" style="width:100%"><option value="showcase">Service showcase</option><option value="path">How it works</option><option value="questions">Frequently asked questions</option><option value="conversion">Call to action</option></select></label>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px"><button class="btn" type="button" id="sbcStudioMoveSectionUp">Move Up ↑</button><button class="btn" type="button" id="sbcStudioMoveSectionDown">Move Down ↓</button><button class="btn" type="button" id="sbcStudioUndo">Undo Draft</button><button class="btn" type="button" id="sbcStudioRedo">Redo Draft</button></div>'+
+      '<p style="font-size:.8rem">Undo/redo affects unsaved edits only. Save Design & Preview to persist a versioned revision.</p></fieldset>'+
       '<p style="font-size:.84rem">AI Polish is disabled while the $25/month OpenAI hard limit remains unenforced. The zero-AI design engine works without it.</p>'+
       '<details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Add licensed hero photography (optional)</summary><p>Use a direct, licensed images.unsplash.com or images.pexels.com photo URL. This does not upload, purchase, or verify an image license automatically. Your browser will request the photo from that provider.</p>'+
       '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
@@ -178,6 +184,56 @@
       '<button class="btn primary" type="submit">Save Design & Preview</button></form><p id="sbcStudioVisualStatus" role="status" aria-live="polite">Loading design controls…</p></section>';
   }
   const studioVisualMessage=text=>{const p=document.getElementById('sbcStudioVisualStatus');if(p)p.textContent=text;};
+  const v3SectionKeys=['showcase','path','questions','conversion'];
+  const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder'];
+  let v3History={site:null,present:null,undo:[],redo:[]};
+  function studioSnapshot(form){
+    if(!form)return null;
+    const result={};
+    for(const key of v3VisualFields){
+      const field=form.elements.namedItem(key);if(!field)return null;
+      result[key]=key==='rightsConfirmed' ? field.checked===true : String(field.value||'');
+    }
+    return JSON.stringify(result);
+  }
+  function rememberStudioDraft(){
+    const form=document.getElementById('sbcStudioVisualForm'),site=active?.demo?.id;
+    if(!form||form.dataset.ready!=='1'||currentRole()!=='owner'||v3History.site!==site)return;
+    const current=studioSnapshot(form);
+    if(!current||current===v3History.present)return;
+    if(v3History.present!==null)v3History.undo.push(v3History.present);
+    v3History.undo=v3History.undo.slice(-50);
+    v3History.present=current;v3History.redo=[];
+  }
+  function restoreStudioSnapshot(snapshot){
+    const form=document.getElementById('sbcStudioVisualForm');if(!form||!snapshot)return;
+    const values=JSON.parse(snapshot);
+    for(const key of v3VisualFields){
+      const field=form.elements.namedItem(key);
+      if(!field)continue;
+      if(key==='rightsConfirmed')field.checked=values[key]===true;
+      else field.value=String(values[key]||'');
+    }
+  }
+  function studioHistoryStep(direction){
+    const stack=direction==='undo'?v3History.undo:v3History.redo;
+    if(!stack.length||currentRole()!=='owner'||v3History.site!==active?.demo?.id)return;
+    const opposite=direction==='undo'?v3History.redo:v3History.undo;
+    opposite.push(v3History.present);v3History.present=stack.pop();
+    restoreStudioSnapshot(v3History.present);tryStudioRemix();
+    studioVisualMessage('Restored unsaved '+direction+' state. Save to preserve this revision.');
+  }
+  function moveStudioSection(step){
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!form||form.dataset.ready!=='1'||currentRole()!=='owner')return;
+    const field=form.elements.namedItem('sectionOrder'),selected=form.elements.namedItem('sectionFocus');
+    const order=String(field.value||'').split(',');
+    if(order.length!==4||new Set(order).size!==4||order.some(k=>!v3SectionKeys.includes(k)))return;
+    const from=order.indexOf(selected.value),to=from+step;
+    if(from<0||to<0||to>=order.length)return;
+    [order[from],order[to]]=[order[to],order[from]];
+    field.value=order.join(',');rememberStudioDraft();tryStudioRemix();
+  }
   async function loadStudioVisual(demo){
     const form=document.getElementById('sbcStudioVisualForm');if(!form)return;
     try{
@@ -191,7 +247,10 @@
       form.elements.namedItem('vibe').value=v.vibe||'original';
       form.elements.namedItem('heroStyle').value=v.heroStyle||'auto';
       form.elements.namedItem('serviceLayout').value=v.serviceLayout||'auto';
+      form.elements.namedItem('sectionOrder').value=Array.isArray(v.sectionOrder)?v.sectionOrder.join(','):v3SectionKeys.join(',');
       form.elements.namedItem('rightsConfirmed').checked=v.rightsConfirmed===true;
+      form.dataset.ready='1';
+      v3History={site:demo.id,present:studioSnapshot(form),undo:[],redo:[]};
       form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
       studioVisualMessage(result.canEdit?'Visual Studio revision '+result.version+' ready. These edits affect private smart previews only.':'This site is locked for editing.');
     }catch(e){studioVisualMessage(String(e?.message||'Visual Studio unavailable.'));}
@@ -204,7 +263,7 @@
     const value=name=>String(form.elements.namedItem(name)?.value||'');
     const page=active.previewPage||'home',url=new URL(absolute(studioBase(demo)+'/auto-preview'));
     if(page!=='home')url.searchParams.set('page',page);
-    for(const name of ['vibe','heroStyle','serviceLayout'])url.searchParams.set(name,value(name));
+    for(const name of ['vibe','heroStyle','serviceLayout','sectionOrder'])url.searchParams.set(name,value(name));
     const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url.href;
     active.previewMode='smart';
     studioVisualMessage('Previewing V2 design without saving or using AI. Save Design & Preview to keep these choices.');
@@ -215,14 +274,14 @@
     const select=form.elements.namedItem(field);if(!select||select.disabled)return;
     const at=choices.indexOf(select.value);
     select.value=choices[(at+1)%choices.length];
-    tryStudioRemix();
+    rememberStudioDraft();tryStudioRemix();
   }
   async function saveStudioVisual(event){
     event.preventDefault();
     if(currentRole()!=='owner'||!active?.demo||busy)return;
     const demo=active.demo,form=event.currentTarget;
     const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
-    const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),vibe:get('vibe'),heroStyle:get('heroStyle'),serviceLayout:get('serviceLayout'),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
+    const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),vibe:get('vibe'),heroStyle:get('heroStyle'),serviceLayout:get('serviceLayout'),sectionOrder:get('sectionOrder').split(','),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
     if(visual.photoUrl&&(!visual.photoAlt||!visual.rightsConfirmed))return studioVisualMessage('An approved photo requires an alt description and your explicit image-rights confirmation.');
     const submit=form.querySelector('button[type=submit]');
     busy=true;if(submit)submit.disabled=true;
@@ -232,6 +291,7 @@
       if(!out?.ok||out.durable!==true)throw Error(out?.code||'Visual changes were not saved.');
       if(active?.demo?.id!==demo.id)return;
       form.dataset.version=String(out.version);
+      v3History={site:demo.id,present:studioSnapshot(form),undo:[],redo:[]};
       active.previewMode='smart';
       const page=active.previewPage||'home';
       const url=new URL(absolute(studioBase(demo)+'/auto-preview'));
@@ -260,7 +320,7 @@
       '<div class="v6526-studio-top"><div><p class="v6526-kicker">SBC WEBSITE PRODUCTION · REAL WORKING WEBSITES</p><h3>'+esc(customer.businessName||customer.contactName||'Website project')+'</h3><p>Built website: '+esc(demo.offerTier==='starter'?'Business Starter':'Business Basic')+' · '+price+' · '+pages.length+' page'+(pages.length>1?'s':'')+'. The remaining business-specific information is completed after purchase.</p></div><span class="v6526-ready">'+esc(demo.status||'Draft')+'</span></div>'+
       '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0"><strong style="margin-right:12px">Classic website pages:</strong>'+links+'</div>'+ 
       (smartDraft?'<div class="sbc-factory-light-panel" style="padding:15px;border:1px solid #bdd0de;border-radius:10px"><strong>Choose design preview</strong><div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0"><button id="sbcFactorySmartMode" class="btn primary" type="button">★ Art-directed preview (default)</button><button id="sbcFactoryClassicMode" class="btn" type="button">Classic 4-page builder</button></div><p id="sbcFactoryModeInfo" role="status">The art-directed version is a PRIVATE '+(pages.length>1?'four-page':'one-page')+' concept. Example sections need fact approval. Your original '+(pages.length>1?'four-page':'one-page')+' site and its editor remain available under Classic.</p></div>':'')+
-      '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
+      '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn primary" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="tablet">Tablet</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(smartDraft?smartUrl:pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
       hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+studioVisualPanel(demo)+studioPanel()+
@@ -294,13 +354,25 @@
       switchPreview(previewMode,page);
     }));
     document.querySelectorAll('[data-factory-device]').forEach(button=>button.addEventListener('click',()=>{
-      document.querySelector('.v6526-preview-shell')?.classList.toggle('is-mobile',button.dataset.factoryDevice==='mobile');
+      const selected=button.dataset.factoryDevice;
+      const shell=document.querySelector('.v6526-preview-shell');
+      if(!shell||!['desktop','tablet','mobile'].includes(selected))return;
+      shell.classList.toggle('is-mobile',selected==='mobile');
+      shell.style.width=selected==='tablet'?'min(100%, 820px)':selected==='mobile'?'min(100%, 390px)':'100%';
+      shell.style.marginInline='auto';
+      document.querySelectorAll('[data-factory-device]').forEach(b=>b.classList.toggle('primary',b===button));
     }));
     document.getElementById('sbcInstantSiteEditor')?.addEventListener('submit',saveNativeEditor);
     loadNativeEditor(demo).catch(e=>console.warn('SBC editor load blocked',String(e.message||e)));
     loadStudioProfile(demo).catch(e=>console.warn('SBC Studio load blocked',String(e.message||e)));
     loadStudioVisual(demo).catch(e=>console.warn('SBC Visual Studio load blocked',String(e.message||e)));
     document.getElementById('sbcStudioVisualForm')?.addEventListener('submit',saveStudioVisual);
+    document.getElementById('sbcStudioVisualForm')?.addEventListener('input',rememberStudioDraft);
+    document.getElementById('sbcStudioVisualForm')?.addEventListener('change',rememberStudioDraft);
+    document.getElementById('sbcStudioMoveSectionUp')?.addEventListener('click',()=>moveStudioSection(-1));
+    document.getElementById('sbcStudioMoveSectionDown')?.addEventListener('click',()=>moveStudioSection(1));
+    document.getElementById('sbcStudioUndo')?.addEventListener('click',()=>studioHistoryStep('undo'));
+    document.getElementById('sbcStudioRedo')?.addEventListener('click',()=>studioHistoryStep('redo'));
     document.getElementById('sbcStudioShuffleVibe')?.addEventListener('click',()=>cycleStudioChoice('vibe',['original','cinematic','minimal','warm']));
     document.getElementById('sbcStudioSwapLayout')?.addEventListener('click',()=>cycleStudioChoice('serviceLayout',['auto','bento','grid','editorial']));
     document.getElementById('sbcStudioTryRemix')?.addEventListener('click',tryStudioRemix);
