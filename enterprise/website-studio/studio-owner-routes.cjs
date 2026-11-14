@@ -66,7 +66,8 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const code=String(e?.message||'STUDIO_ERROR');
   if(code==='TENANT_CONTEXT_REQUIRED')return respond(res,code,403);
   if(code==='STUDIO_MEDIA_RIGHTS_REQUIRED'||code==='STUDIO_MEDIA_ALT_REQUIRED')return respond(res,code,400);
-  if(code==='CUSTOMER_IDENTITY_MISMATCH'||code==='STALE_SITE_VERSION'||code==='APPROVED_SITE_LOCKED'||code==='SITE_ARCHIVED'||code==='STUDIO_NOT_EDITABLE'||code==='STUDIO_PROFILE_NOT_APPROVED')return respond(res,code,409);
+  if(code==='STUDIO_GRID_UNKNOWN_SERVICE')return respond(res,code,400);
+  if(code==='CUSTOMER_IDENTITY_MISMATCH'||code==='STALE_SITE_VERSION'||code==='APPROVED_SITE_LOCKED'||code==='SITE_ARCHIVED'||code==='STUDIO_NOT_EDITABLE'||code==='STUDIO_PROFILE_NOT_APPROVED'||code==='STUDIO_GRID_APPROVED_SERVICES_REQUIRED')return respond(res,code,409);
   if(code==='STUDIO_SAVE_NOT_DURABLE')return respond(res,code,503);
   return respond(res,/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?code:'STUDIO_ERROR',/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?400:503);
  };
@@ -137,6 +138,10 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    revisions:visualHistory(site)})));
  app.get(ROOT+'/visual',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
   res.json({ok:true,visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),version:site.websiteStudioVisualVersion||0,
+   // Reporting inspector capacity must never break a legacy CRM editor when
+   // a historic approved profile is malformed; actual saves still fail closed.
+   maxEditableServices:(()=>{try{return Math.min(6,fetchApproved(site)?.services?.length||0)}
+     catch{return 0}})(),
    canEdit:!site.archived&&['Draft','Pending'].includes(site.status)})));
  app.patch(ROOT+'/visual',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
@@ -151,6 +156,11 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const expected=site.websiteStudioVisualVersion||0;
    if(data.expectedVersion!==expected)throw Error('STALE_SITE_VERSION');
    const visual=Visual.normalizeVisual(data.visual);
+   if(visual.freeformGrid?.enabled===true){
+    const approved=fetchApproved(site);
+    if(!approved||!Array.isArray(approved.services)||approved.services.length===0)throw Error('STUDIO_GRID_APPROVED_SERVICES_REQUIRED');
+   }
+
    const revisions=[...visualHistory(site),captureRevision(site,expected)].slice(-20);
    const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
     websiteStudioVisualHistory:revisions,
@@ -185,6 +195,11 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const saved=history.find(x=>x.version===data.restoreVersion);
    if(!saved)return {status:404,body:{ok:false,code:'STUDIO_REVISION_NOT_FOUND'}};
    const visual=Visual.normalizeVisual(saved.visual);
+   if(visual.freeformGrid?.enabled===true){
+    const approved=fetchApproved(site);
+    if(!approved||!Array.isArray(approved.services)||approved.services.length===0)throw Error('STUDIO_GRID_APPROVED_SERVICES_REQUIRED');
+   }
+
    const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
     websiteStudioVisualHistory:[...history,captureRevision(site,expected)].slice(-20),
     websiteStudioVisualAudit:{action:'OWNER_STUDIO_VISUAL_RESTORE',
@@ -220,6 +235,23 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    // sections or approved business identity as a move target.
    if(typeof req.query.sectionOrder!=='string')throw Error('INVALID_STUDIO_SECTION_ORDER');
    visualDraft.sectionOrder=req.query.sectionOrder.split(',');
+  }
+  // The prospect-only concept is illustrative; its fake/example topics are
+  // not actual service facts and must never receive a verified-service grid.
+  // Use the approved profile before enabling service-card presentation edits.
+  const candidateGrid=mode==='auto-preview'&&req.query?.freeformGrid!==undefined
+   ?req.query.freeformGrid:site.websiteStudioVisual?.freeformGrid;
+  if(mode==='auto-preview'&&!profile&&candidateGrid!==undefined){
+   let g;
+   try{g=typeof candidateGrid==='string'?JSON.parse(candidateGrid):candidateGrid}catch{throw Error('INVALID_STUDIO_GRID')}
+   if(g?.enabled===true)return respond(res,'STUDIO_GRID_APPROVED_SERVICES_REQUIRED',409);
+  }
+  if(mode==='auto-preview'&&req.query?.freeformGrid!==undefined){
+   // Strict owner-only GET, no mutation: drafts live only in the current URL.
+   const raw=req.query.freeformGrid;
+   if(typeof raw!=='string'||raw.length>7000)throw Error('INVALID_STUDIO_GRID');
+   try{visualDraft.freeformGrid=JSON.parse(raw)}
+   catch{throw Error('INVALID_STUDIO_GRID')}
   }
   const customized=mode==='auto-preview'?Visual.applyVisual(bundle,visualDraft):bundle;
   const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle:customized,offerTier:site.offerTier,isDraft:!profile}):customized;
@@ -277,6 +309,69 @@ rules.forEach(function(rule){
 });
 })();</script>`;
    html=html.replace('</body>',editorScript+'</body>');
+  }
+  // Grid handles are injected ONLY into this authenticated, sandboxed owner
+  // Preview, never into customer-facing websites or compiled static bundles.
+  if(isSmart&&requested==='home'){
+   const gridEditorScript=`<style data-sbc-grid-inspector-style>
+.sbc-v2-tile[data-sbc-grid-node]{outline-offset:5px;cursor:default}
+.sbc-v2-tile[data-sbc-grid-node]:focus-within{outline:2px dashed #2563eb}
+.sbc-grid-handle{position:absolute;right:0;top:40%;width:32px;min-height:50px;z-index:10;cursor:ew-resize;border-radius:6px 0 0 6px;border:1px solid #1e4060;background:#fff;color:#1e4060;font-weight:900;touch-action:none}
+.sbc-grid-handle:focus-visible{outline:3px solid #e7ab56;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.sbc-grid-handle{transition:none!important}}
+</style><script data-sbc-grid-inspector-script>(function(){
+'use strict';
+var cards=Array.prototype.slice.call(document.querySelectorAll('.sbc-v2-showcase .sbc-v2-service-grid > article.sbc-v2-tile'),0,6);
+cards.forEach(function(card,index){
+ var id='service-'+(index+1);
+ card.setAttribute('data-sbc-grid-node',id);
+ card.style.position='relative';
+ function notify(type,extra){
+  var payload={type:type,nodeId:id};
+  if(extra)payload.deltaColumns=extra;
+  window.parent.postMessage(payload,'*');
+ }
+ card.addEventListener('click',function(ev){
+  if(ev.target.closest('a,button,input,textarea,summary'))return;
+  notify('SBC_STUDIO_GRID_SELECT');
+ });
+ var handle=document.createElement('button');
+ handle.type='button';
+ handle.className='sbc-grid-handle';
+ handle.setAttribute('data-sbc-grid-handle',id);
+ handle.setAttribute('aria-label','Resize '+id+' service card; arrow keys change width');
+ handle.textContent='⋮';
+ handle.addEventListener('click',function(ev){ev.stopPropagation();notify('SBC_STUDIO_GRID_SELECT')});
+ handle.addEventListener('keydown',function(ev){
+  if(ev.key!=='ArrowLeft'&&ev.key!=='ArrowRight')return;
+  ev.preventDefault();ev.stopPropagation();
+  notify('SBC_STUDIO_GRID_RESIZE',ev.key==='ArrowRight'?1:-1);
+ });
+ handle.addEventListener('pointerdown',function(ev){
+  if(ev.pointerType==='mouse'&&ev.button!==0)return;
+  ev.preventDefault();ev.stopPropagation();
+  var start=ev.clientX,width=card.parentElement.getBoundingClientRect().width,pointer=ev.pointerId;
+  if(!Number.isFinite(width)||width<=0)return;
+  try{handle.setPointerCapture(pointer)}catch{}
+  function cleanup(){
+   handle.removeEventListener('pointerup',end);
+   handle.removeEventListener('pointercancel',cancel);
+  }
+  function cancel(event){if(event.pointerId!==pointer)return;cleanup()}
+  function end(event){
+   if(event.pointerId!==pointer)return;
+   cleanup();
+   var delta=Math.max(-12,Math.min(12,Math.round((event.clientX-start)/(width/12))));
+   if(delta)notify('SBC_STUDIO_GRID_RESIZE',delta);
+   else notify('SBC_STUDIO_GRID_SELECT');
+  }
+  handle.addEventListener('pointerup',end);
+  handle.addEventListener('pointercancel',cancel);
+ });
+ card.appendChild(handle);
+});
+})();</script>`;
+   html=html.replace('</body>',gridEditorScript+'</body>');
   }
   res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://images.unsplash.com https://images.pexels.com https://res.cloudinary.com; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
   res.setHeader('Content-Type','text/html; charset=utf-8');

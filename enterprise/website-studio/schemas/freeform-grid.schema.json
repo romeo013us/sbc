@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sbcmia.com/schemas/website-studio/freeform-grid.v1.json",
+  "title": "SBC V4 owner-only bounded grid styling for approved service showcase",
+  "description": "Optional styling sidecar; does not add or modify business content. Existing layout AST remains unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "enabled",
+    "nodes"
+  ],
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "nodes": {
+      "type": "array",
+      "maxItems": 12,
+      "uniqueItems": false,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "grid"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^service-(?:[1-9]|1[0-2])$"
+          },
+          "grid": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "colSpan"
+            ],
+            "properties": {
+              "colStart": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "colSpan": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "rowSpan": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "zIndex": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
+            }
+          },
+          "style": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "paddingPx": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 64
+              },
+              "radiusPx": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 36
+              },
+              "glassBlurPx": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 18
+              },
+              "shadow": {
+                "enum": [
+                  "none",
+                  "soft",
+                  "elevated",
+                  "glow"
+                ]
+              },
+              "align": {
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
+              },
+              "accentOverride": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              }
+            }
+          },
+          "motion": {
+            "enum": [
+              "none",
+              "fade-up",
+              "scale-in",
+              "hover-lift"
+            ]
+          },
+          "breakpoints": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tablet": {
+                "$ref": "#/$defs/viewport"
+              },
+              "mobile": {
+                "$ref": "#/$defs/viewport"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "colSpan": {
+          "enum": [
+            6,
+            12
+          ]
+        },
+        "paddingPx": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 48
+        },
+        "hide": {
+          "const": false
+        }
+      }
+    }
+  }
+}
