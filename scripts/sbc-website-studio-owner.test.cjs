@@ -163,3 +163,26 @@ test('simultaneous Visual Studio updates save only one version without losing fi
  assert.deepEqual(results.map(r=>r.statusCode).sort(),[200,409]);
  assert.equal(fx.saves(),1);
 });
+
+
+test('owner can edit headline and subtitle inside isolated private Preview without enabling visitor submissions',async()=>{
+ const fx=fixture();
+ const response=await fx.call('GET','/auto-preview');
+ assert.equal(response.statusCode,200);
+ assert.match(response.body,/SBC_STUDIO_V3_INLINE_TEXT/);
+ assert.match(response.body,/data-sbc-inline-field/);
+ assert.match(response.body,/contenteditable/);
+ assert.match(response.body,/parent\.postMessage/);
+ assert.match(response.headers['content-security-policy'],/sandbox allow-scripts/);
+ assert.equal(fx.saves(),0);
+ assert.equal((await fx.call('GET','/auto-preview',undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET','/auto-preview',undefined,'none')).statusCode,401);
+ assert.doesNotMatch(response.body,/name="creditCard"|document\.cookie|localStorage\.getItem/);
+});
+test('V3 parent accepts inline edits only from its active owner Preview frame and bounded text fields',()=>{
+ const source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../public/sbc-website-production-v1.js'),'utf8');
+ assert.match(source,/SBC_STUDIO_V3_INLINE_TEXT/);
+ assert.match(source,/event\.source\s*!==\s*frame\.contentWindow/);
+ assert.match(source,/currentRole\(\)\s*!==\s*'owner'/);
+ assert.match(source,/rememberStudioDraft\(\)/);
+});
