@@ -35,3 +35,4 @@ jobs:
           node --test scripts/sbc-website-studio-v3-editor.test.cjs
           node --test scripts/sbc-website-studio-owner.test.cjs
           node --test scripts/sbc-website-studio-media.test.cjs
+          node --test scripts/sbc-website-studio-v4-brand-comparison.test.cjs
