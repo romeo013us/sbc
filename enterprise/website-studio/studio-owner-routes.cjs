@@ -7,6 +7,7 @@ const {createPrivateConcept}=require('./index.cjs');
 const {createDraftConcept,deriveDraftProfile}=require('./draft-concept.cjs');
 const {compileMultiPageConcept}=require('./multi-page-concept.cjs');
 const {checkPrivateBundle}=require('./qa-gate.cjs');
+const Visual=require('./visual-editor.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
 // CRM suggestions are review-only. The owner must attest them before compilation.
 // Ignore research notes, social snippets, and unverified service guesses.
@@ -63,6 +64,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
  const responseError=(res,e)=>{
   const code=String(e?.message||'STUDIO_ERROR');
   if(code==='TENANT_CONTEXT_REQUIRED')return respond(res,code,403);
+  if(code==='STUDIO_MEDIA_RIGHTS_REQUIRED'||code==='STUDIO_MEDIA_ALT_REQUIRED')return respond(res,code,400);
   if(code==='CUSTOMER_IDENTITY_MISMATCH'||code==='STALE_SITE_VERSION'||code==='APPROVED_SITE_LOCKED'||code==='SITE_ARCHIVED'||code==='STUDIO_NOT_EDITABLE'||code==='STUDIO_PROFILE_NOT_APPROVED')return respond(res,code,409);
   if(code==='STUDIO_SAVE_NOT_DURABLE')return respond(res,code,503);
   return respond(res,/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?code:'STUDIO_ERROR',/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?400:503);
@@ -108,6 +110,37 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   if(!serializeSiteMutation)approvalQueue=operation.then(()=>undefined,()=>undefined);
   try{const result=await operation;return res.status(result.status).json(result.body)}catch(e){return responseError(res,e)}
  });
+
+ // Owner-only, optimistic visual controls; shares the writer queue with both
+ // site editing and approved-facts saves, and never changes published sites.
+ app.get(ROOT+'/visual',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
+  res.json({ok:true,visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),version:site.websiteStudioVisualVersion||0,
+   canEdit:!site.archived&&['Draft','Pending'].includes(site.status)})));
+ app.patch(ROOT+'/visual',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!writerReady())return respond(res,'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE',423);
+  const work=async()=>{
+   if(!writerReady())return {status:423,body:{ok:false,code:'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'}};
+   const site=locate(req);if(!site)return {status:404,body:{ok:false,code:'WEBSITE_NOT_FOUND'}};
+   if(site.archived)throw Error('SITE_ARCHIVED');
+   if(!['Draft','Pending'].includes(site.status))throw Error('APPROVED_SITE_LOCKED');
+   const data=req.body;
+   if(!strictKeys(data,['expectedVersion','visual'])||!Number.isSafeInteger(data.expectedVersion)||data.expectedVersion<0)throw Error('INVALID_STUDIO_VERSION');
+   const expected=site.websiteStudioVisualVersion||0;
+   if(data.expectedVersion!==expected)throw Error('STALE_SITE_VERSION');
+   const visual=Visual.normalizeVisual(data.visual);
+   const nextSite={...site,websiteStudioVisual:visual,websiteStudioVisualVersion:expected+1,
+    websiteStudioVisualAudit:{action:'OWNER_STUDIO_VISUAL_EDIT',actorId:String(req.user?.id||''),editedAt:new Date().toISOString(),version:expected+1}};
+   const current=getStore();
+   const next={...current,websiteDemos:current.websiteDemos.map(s=>String(s.id)===String(site.id)&&Number(s.tenantId)===Number(site.tenantId)?nextSite:s)};
+   const saved=await saveStore(next);
+   if(saved?.ok===false||saved?.skipped===true||saved?.durable===false)throw Error('STUDIO_SAVE_NOT_DURABLE');
+   return {status:200,body:{ok:true,durable:true,version:expected+1,visual}};
+  };
+  const operation=serializeSiteMutation?serializeSiteMutation(work):approvalQueue.catch(()=>undefined).then(work);
+  if(!serializeSiteMutation)approvalQueue=operation.then(()=>undefined,()=>undefined);
+  try{const result=await operation;return res.status(result.status).json(result.body)}catch(e){return responseError(res,e)}
+ });
  const concept=(req,res,mode)=>readonly(req,res,site=>{
   // One-click private art-directed draft: never silently rebuild an approved site.
   if(mode==='auto-preview'&&(site.status==='Approved'||site.archived===true))return respond(res,'STUDIO_AUTO_PREVIEW_LOCKED',409);
@@ -115,7 +148,8 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   if(!profile&&mode!=='auto-preview')return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
   const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true,themeVariant:site.siteEdits?.themeVariant}):createDraftConcept(site);
   const isSmart=mode==='auto-preview';
-  const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle,offerTier:site.offerTier,isDraft:!profile}):bundle;
+  const customized=mode==='auto-preview'?Visual.applyVisual(bundle,site.websiteStudioVisual||{}):bundle;
+  const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle:customized,offerTier:site.offerTier,isDraft:!profile}):customized;
   const qa=checkPrivateBundle(output);
   if(!qa.passed)return respond(res,'STUDIO_STATIC_QA_FAILED',503);
   if(mode==='bundle')return res.json({ok:true,publicationReady:false,staticPreflight:qa,files:output.files});
@@ -134,7 +168,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const url=ROOT.replace(':id',encodeURIComponent(String(site.id)))+'/auto-preview';
    html=html.replace(/href="(index|services|about|contact)\.html"/g,(_m,p)=>'href="'+url+(p==='index'?'':'?page='+p)+'"');
   }
-  res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
+  res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://images.unsplash.com https://images.pexels.com; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
   res.setHeader('Content-Type','text/html; charset=utf-8');
   return res.send(html);
  });
