@@ -120,8 +120,7 @@ function parseBrief(raw,form){
  // Extended CRM brief labels; missing fields are never invented or auto-verified.
  var pairs=[['Business name','businessName'],['Decision maker','contactName'],['Primary phone','phone'],['Street / city / state / ZIP','address'],['Google Business Profile','googleBusinessUrl'],['Google-listed street address','googleListingAddress'],['Google address','googleListingAddress'],['Address research','streetAddressEvidenceUrl'],['Industry / business type','industry'],['Research source','verificationSource'],['Next follow-up','nextFollowupNote']];
  pairs.forEach(function(pair){
-  var key=pair[0].replace(/[.*+?^${}()|[\]\\]/g,'\\ set('contactName',parts.owner||parts['contact person']);');
-  var hit=txt.match(new RegExp('(?:^|\\n)\\s*'+key+'\\s*[:—-]?\\s*([^\\n]+)','i'));
+  var label=pair[0],hit=txt.match(new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:—-]?\\s*([^\\n]+)','i'));
   if(hit){var v=hit[1].trim();if(!/^(not recorded|none|—|not verified)$/i.test(v)&&!/^\\[/.test(v))set(pair[1],v);}
  });
  set('phone',parts.phone);
