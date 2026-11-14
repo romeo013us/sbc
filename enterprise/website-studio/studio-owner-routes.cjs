@@ -66,7 +66,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const code=String(e?.message||'STUDIO_ERROR');
   if(code==='TENANT_CONTEXT_REQUIRED')return respond(res,code,403);
   if(code==='STUDIO_MEDIA_RIGHTS_REQUIRED'||code==='STUDIO_MEDIA_ALT_REQUIRED')return respond(res,code,400);
-  if(code==='CUSTOMER_IDENTITY_MISMATCH'||code==='STALE_SITE_VERSION'||code==='APPROVED_SITE_LOCKED'||code==='SITE_ARCHIVED'||code==='STUDIO_NOT_EDITABLE'||code==='STUDIO_PROFILE_NOT_APPROVED')return respond(res,code,409);
+  if(code==='CUSTOMER_IDENTITY_MISMATCH'||code==='STALE_SITE_VERSION'||code==='APPROVED_SITE_LOCKED'||code==='SITE_ARCHIVED'||code==='STUDIO_NOT_EDITABLE'||code==='STUDIO_PROFILE_NOT_APPROVED'||code==='STUDIO_GRID_APPROVED_SERVICES_REQUIRED')return respond(res,code,409);
   if(code==='STUDIO_SAVE_NOT_DURABLE')return respond(res,code,503);
   return respond(res,/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?code:'STUDIO_ERROR',/^(INVALID_|BUSINESS_IDENTITY_REQUIRED|DUPLICATE_)/.test(code)?400:503);
  };
@@ -220,6 +220,16 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    // sections or approved business identity as a move target.
    if(typeof req.query.sectionOrder!=='string')throw Error('INVALID_STUDIO_SECTION_ORDER');
    visualDraft.sectionOrder=req.query.sectionOrder.split(',');
+  }
+  // The prospect-only concept is illustrative; its fake/example topics are
+  // not actual service facts and must never receive a verified-service grid.
+  // Use the approved profile before enabling service-card presentation edits.
+  const candidateGrid=mode==='auto-preview'&&req.query?.freeformGrid!==undefined
+   ?req.query.freeformGrid:site.websiteStudioVisual?.freeformGrid;
+  if(mode==='auto-preview'&&!profile&&candidateGrid!==undefined){
+   let g;
+   try{g=typeof candidateGrid==='string'?JSON.parse(candidateGrid):candidateGrid}catch{throw Error('INVALID_STUDIO_GRID')}
+   if(g?.enabled===true)return respond(res,'STUDIO_GRID_APPROVED_SERVICES_REQUIRED',409);
   }
   if(mode==='auto-preview'&&req.query?.freeformGrid!==undefined){
    // Strict owner-only GET, no mutation: drafts live only in the current URL.
