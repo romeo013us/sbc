@@ -25,6 +25,7 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           node scripts/v6606-quote-server-hardening.cjs
           node scripts/v6606-quote-server-hardening.test.cjs
+          node --test scripts/v66-owner-openai-budget.test.cjs
           node scripts/v66155-release-hygiene.test.cjs
           node --test test/v66-release-foundation.test.cjs
           node --test test/v66-release-selection.test.cjs
