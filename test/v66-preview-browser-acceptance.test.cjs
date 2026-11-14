@@ -67,7 +67,7 @@ test('Browser acceptance workflow only runs on manual dispatch and never publish
  assert.match(yml,/SBC_PREVIEW_OWNER_USERNAME:\s*\$\{\{ secrets\.SBC_PREVIEW_OWNER_USERNAME \}\}/);
  assert.match(yml,/SBC_PREVIEW_OWNER_PASSWORD:\s*\$\{\{ secrets\.SBC_PREVIEW_OWNER_PASSWORD \}\}/);
  assert.match(yml,/scripts\/v66-preview-browser-acceptance\.cjs --run/);
- assert.doesNotMatch(yml,/secrets\.GODADDY|GODADDY_API_KEY|deploy|publish|upload-to-godaddy/i);
+ assert.doesNotMatch(yml,/secrets\.GODADDY|GODADDY_API_KEY|upload-to-godaddy|npm\s+run\s+(?:deploy|publish)|\bgodaddy\s+(?:deploy|publish)/i);
 });
 
 test('Preview release fingerprint rejects stale, absent or unverified commits before owner authentication',async()=>{
@@ -90,8 +90,8 @@ test('Preview release fingerprint rejects stale, absent or unverified commits be
 
 test('Preview workflow uses the verified master release receipt instead of its packaging commit',()=>{
  const yml=fs.readFileSync(path.join(__dirname,'../.github/workflows/sbc-v66-preview-browser-acceptance.yml'),'utf8');
- assert.doesNotMatch(yml,/SBC_PREVIEW_EXPECTED_SOURCE_SHA|github\\.sha/);
- assert.match(yml,/SBC-DEPLOY-RECEIPT\\.json/);
+ assert.doesNotMatch(yml,/SBC_PREVIEW_EXPECTED_SOURCE_SHA|github\.sha/);
+ assert.match(yml,/SBC-DEPLOY-RECEIPT\.json/);
  assert.doesNotMatch(yml,/uses:\s*actions\/(?:checkout|setup-node|upload-artifact)@v\d+/);
  assert.match(yml,/run:\s*node scripts\/v66-preview-browser-acceptance\.cjs --run/);
 });
