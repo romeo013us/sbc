@@ -283,3 +283,39 @@ test('V4 brand and actual-work photo edits remain owner-only, versioned, tenant-
  assert.equal(fx.saves(),2);
  assert.equal((await fx.call('PATCH','/visual',{expectedVersion:2,visual},'owner','site-approved')).statusCode,409);
 });
+
+
+test('V4 freeform GET preview is owner-only, read-only and rejects hostile layout objects',async()=>{
+ const fx=fixture();
+ const node={id:'service-1',grid:{colSpan:8,rowSpan:2},breakpoints:{tablet:{colSpan:6},mobile:{colSpan:12}}};
+ const grid={enabled:true,nodes:[node]},query='/auto-preview?freeformGrid='+encodeURIComponent(JSON.stringify(grid));
+ assert.equal((await fx.call('GET',query,undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET',query,undefined,'owner','site-b')).statusCode,404);
+ const beforeSaves=fx.saves(),preview=await fx.call('GET',query);
+ assert.equal(preview.statusCode,200);
+ assert.match(preview.body,/data-sbc-grid-node="service-1"/);
+ assert.match(preview.body,/grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
+ assert.match(preview.headers['content-security-policy'],/sandbox allow-scripts/);
+ assert.equal(fx.saves(),beforeSaves);
+ const injected={enabled:true,nodes:[{id:'contact',grid:{colSpan:8}}]};
+ assert.equal((await fx.call('GET','/auto-preview?freeformGrid='+encodeURIComponent(JSON.stringify(injected)))).statusCode,400);
+ assert.equal((await fx.call('GET','/auto-preview?freeformGrid=not-json')).statusCode,400);
+ assert.equal(fx.saves(),beforeSaves);
+});
+test('owner versioned Studio save/restore keeps freeform grid draft distinct from facts and Published',async()=>{
+ const fx=fixture();
+ const spec={enabled:true,nodes:[{id:'service-1',grid:{colSpan:8}}]};
+ const saved=await fx.call('PATCH','/visual',{expectedVersion:0,visual:{freeformGrid:spec}});
+ assert.equal(saved.statusCode,200);
+ assert.equal(saved.body.visual.freeformGrid.nodes[0].grid.colSpan,8);
+ const preview=await fx.call('GET','/auto-preview');
+ assert.equal(preview.statusCode,200);
+ assert.match(preview.body,/data-sbc-grid-node="service-1"/);
+ assert.equal(fx.store().websiteDemos[0].status,'Draft');
+ assert.equal(fx.store().websiteDemos[0].customer.businessName,'CJ Window Tinters');
+ const restore=await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:0});
+ assert.equal(restore.statusCode,200);
+ const returned=await fx.call('GET','/visual');
+ assert.deepEqual(returned.body.visual.freeformGrid,{enabled:false,nodes:[]});
+ assert.equal(fx.saves(),2);
+});
