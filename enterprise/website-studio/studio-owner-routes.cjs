@@ -113,7 +113,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   if(mode==='auto-preview'&&(site.status==='Approved'||site.archived===true))return respond(res,'STUDIO_AUTO_PREVIEW_LOCKED',409);
   const profile=fetchApproved(site);
   if(!profile&&mode!=='auto-preview')return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
-  const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true}):createDraftConcept(site);
+  const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true,themeVariant:site.siteEdits?.themeVariant}):createDraftConcept(site);
   const isSmart=mode==='auto-preview';
   const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle,offerTier:site.offerTier,isDraft:!profile}):bundle;
   const qa=checkPrivateBundle(output);
