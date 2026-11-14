@@ -25,9 +25,9 @@ for(const file of ['sbc-account-social-v1.cjs','sbc-lorna-handoff-v1.cjs']){
  const absolute=path.join(root,'routes',file);
  if(!fs.existsSync(absolute))continue;
  const src=read(absolute);
- const prefix=src.match(/const\\s+(?:PATH|BASE)\\s*=\\s*['"\x60](\\/api\\/[^'"\x60]+)['"\x60]/);
+ const prefix=src.match(/const\s+(?:PATH|BASE)\s*=\s*['"](\/api\/[^'"]+)['"]/);
  if(!prefix)continue;
- for(const match of src.matchAll(/\\broute\\(\\s*['"\x60](?:get|post|put|patch|delete)['"\x60]\\s*,\\s*['"\x60](\\/[^'"\x60]+)['"\x60]/g)){
+ for(const match of src.matchAll(/\broute\(\s*['"](?:get|post|put|patch|delete)['"]\s*,\s*['"](\/[^'"]+)['"]/g)){
   routes.push(prefix[1]+match[1]);
  }
 }
