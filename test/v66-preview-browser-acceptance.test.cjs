@@ -69,3 +69,28 @@ test('Browser acceptance workflow only runs on manual dispatch and never publish
  assert.match(yml,/scripts\/v66-preview-browser-acceptance\.cjs --run/);
  assert.doesNotMatch(yml,/secrets\.GODADDY|GODADDY_API_KEY|deploy|publish|upload-to-godaddy/i);
 });
+
+test('Preview release fingerprint rejects stale, absent or unverified commits before owner authentication',async()=>{
+ const {verifyPreviewSourceIdentity}=require('../scripts/v66-preview-browser-acceptance.cjs');
+ const target=validatePreviewTarget('https://preview.example.test/','preview.example.test');
+ const approved='a'.repeat(40),old='b'.repeat(40);
+ const fake=(status,sha,overrides={})=>async(url,opts)=>{
+  assert.equal(url,'https://preview.example.test/healthz');
+  assert.equal(opts.method,'GET');
+  assert.equal(opts.redirect,'error');
+  assert.equal(opts.credentials,'omit');
+  return {status,headers:{get(name){assert.equal(name,'x-sbc-source-commit');return sha;}},...overrides};
+ };
+ assert.equal(await verifyPreviewSourceIdentity(target,approved,fake(200,approved)),true);
+ await assert.rejects(verifyPreviewSourceIdentity(target,approved,fake(200,old)),/SBC_PREVIEW_RELEASE_MISMATCH/);
+ await assert.rejects(verifyPreviewSourceIdentity(target,approved,fake(200,null)),/SBC_PREVIEW_RELEASE_MISMATCH/);
+ await assert.rejects(verifyPreviewSourceIdentity(target,approved,fake(503,approved)),/SBC_PREVIEW_RELEASE_MISMATCH/);
+ await assert.rejects(verifyPreviewSourceIdentity(target,'not-a-commit',fake(200,approved)),/SBC_PREVIEW_EXPECTED_SOURCE_INVALID/);
+});
+
+test('Preview workflow pins supply chain dependencies and uses workflow source SHA as release expected value',()=>{
+ const yml=fs.readFileSync(path.join(__dirname,'../.github/workflows/sbc-v66-preview-browser-acceptance.yml'),'utf8');
+ assert.match(yml,/SBC_PREVIEW_EXPECTED_SOURCE_SHA:\s*\$\{\{ github\.sha \}\}/);
+ assert.doesNotMatch(yml,/uses:\s*actions\/(?:checkout|setup-node|upload-artifact)@v\d+/);
+ assert.match(yml,/run:\s*node scripts\/v66-preview-browser-acceptance\.cjs --run/);
+});

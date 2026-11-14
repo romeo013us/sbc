@@ -25,6 +25,19 @@ function validatePreviewTarget(raw,expectedHost){
  }
  return url;
 }
+/** Fail closed if the isolated Preview app does not run this exact approved release. */
+async function verifyPreviewSourceIdentity(target,expectedSha,transport=globalThis.fetch){
+ if(typeof expectedSha!=='string'||!/^[a-f0-9]{40}$/.test(expectedSha))
+  throw Error('SBC_PREVIEW_EXPECTED_SOURCE_INVALID');
+ // Never follow redirects or attach browser cookies/secrets to this GET.
+ const response=await transport(target.origin+'/healthz',{
+  method:'GET',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(10000)
+ });
+ const observed=response?.headers?.get?.('x-sbc-source-commit');
+ if(response?.status!==200||observed!==expectedSha)
+  throw Error('SBC_PREVIEW_RELEASE_MISMATCH');
+ return true;
+}
 function requestPolicy(method,url,origin){
  let parsed;
  try{parsed=new URL(url);}catch{return 'block'}
@@ -62,6 +75,7 @@ async function runBrowser(){
  const password=String(process.env.SBC_PREVIEW_OWNER_PASSWORD||'');
  if(!username||!password||process.env.SBC_PREVIEW_READ_ONLY_APPROVED!=='YES')
   throw Error('SBC_PREVIEW_MISSING_APPROVED_CREDENTIALS_OR_READ_ONLY_ACK');
+ await verifyPreviewSourceIdentity(target,process.env.SBC_PREVIEW_EXPECTED_SOURCE_SHA);
  const metrics={domReadyMs:0,loadMs:0,resourceRequests:0,requestFailures:0,
   http5xx:0,pageErrors:0,consoleErrors:0,blockedWrites:0,authPosts:0,
   mobileOverflowPx:0,lightContrast:0,darkContrast:0};
@@ -215,4 +229,4 @@ if(require.main===module){
   process.exitCode=2;
  }
 }
-module.exports={validatePreviewTarget,requestPolicy,sanitizeReport};
+module.exports={validatePreviewTarget,requestPolicy,sanitizeReport,verifyPreviewSourceIdentity};
