@@ -313,7 +313,7 @@ rules.forEach(function(rule){
    const gridEditorScript=`<style data-sbc-grid-inspector-style>
 .sbc-v2-tile[data-sbc-grid-node]{outline-offset:5px;cursor:default}
 .sbc-v2-tile[data-sbc-grid-node]:focus-within{outline:2px dashed #2563eb}
-.sbc-grid-handle{position:absolute;right:0;top:40%;width:22px;min-height:50px;z-index:10;cursor:ew-resize;border-radius:6px 0 0 6px;border:1px solid #1e4060;background:#fff;color:#1e4060;font-weight:900;touch-action:none}
+.sbc-grid-handle{position:absolute;right:0;top:40%;width:32px;min-height:50px;z-index:10;cursor:ew-resize;border-radius:6px 0 0 6px;border:1px solid #1e4060;background:#fff;color:#1e4060;font-weight:900;touch-action:none}
 .sbc-grid-handle:focus-visible{outline:3px solid #e7ab56;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.sbc-grid-handle{transition:none!important}}
 </style><script data-sbc-grid-inspector-script>(function(){
