@@ -11,6 +11,13 @@ const {createMysqlHandoffRepository}=require('../enterprise/sbc-lorna-handoff-my
 const {createHandoffService}=require('../enterprise/sbc-lorna-handoff-v1.cjs');
 const {registerHandoffRoutes}=require('./sbc-lorna-handoff-v1.cjs');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
+function projectLeadEvidence(row){
+ // Project the existing CRM's authoritative JSON fields. Missing or corrupt
+ // evidence is always unverified; never infer verification from a display label.
+ let evidence={};try{const raw=row.lead_intelligence_json;evidence=typeof raw==='string'?JSON.parse(raw):raw||{}}catch{}
+ return {...row,tenantId:Number(row.tenant_id),leadAssistStatus:String(evidence.autoVerificationStatus||evidence.leadAssistStatus||''),
+  verificationStatus:String(evidence.verificationStatus||''),doNotContact:evidence.doNotContact===true,salesSuppressed:evidence.salesSuppressed===true};
+}
 function registerAccountSocialIntegration(app,{
  enabled=false,auth,getContext,resolveSessionActor=req=>req.user,
  requireTenant=requireTenantContext,isWriterReady=()=>false,resolveSecret=null,
@@ -23,12 +30,10 @@ function registerAccountSocialIntegration(app,{
  const getPool=()=>{const pool=getContext()?.mysqlPool;if(!pool||typeof pool.query!=='function')throw Error('MYSQL_WRITER_UNAVAILABLE');return pool};
  // The pool reference is late-bound: the existing Command Center owns DB lifecycle.
  const pool={query:(sql,args)=>getPool().query(sql,args),getConnection:()=>{const p=getPool();if(typeof p.getConnection!=='function')throw Error('TRANSACTIONAL_MYSQL_WRITER_REQUIRED');return p.getConnection();}};
+ const projectCustomerEvidence=projectLeadEvidence;
  const lookupCustomer=async(t,id)=>{
   const [rows]=await pool.query('SELECT id,tenant_id,business_name AS businessName,status,phone,assigned_to AS assignedTo,lead_intelligence_json FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[t,id]);
-  if(!rows[0])return null;
-  let intelligence={};try{const raw=rows[0].lead_intelligence_json;intelligence=typeof raw==='string'?JSON.parse(raw):raw||{}}catch{}
-  return {...rows[0],tenantId:Number(rows[0].tenant_id),leadAssistStatus:String(intelligence.leadAssistStatus||''),verificationStatus:String(intelligence.verificationStatus||''),
-   doNotContact:intelligence.doNotContact===true,salesSuppressed:intelligence.salesSuppressed===true};
+  return rows[0]?projectCustomerEvidence(rows[0]):null;
  };
  const lookupWorker=async(t,id)=>{
   const ctx=getContext();
@@ -53,4 +58,4 @@ function registerAccountSocialIntegration(app,{
  registerHandoffRoutes(app,{enabled:true,service:handoffService,auth,resolveActor,writeReady:writerReady});
  return {routesEnabled:true,publishingEnabled:publishingEnabled===true,service,handoffService};
 }
-module.exports={registerAccountSocialIntegration};
+module.exports={registerAccountSocialIntegration,projectCustomerEvidence:projectLeadEvidence};

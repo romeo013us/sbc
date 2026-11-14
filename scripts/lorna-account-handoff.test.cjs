@@ -72,7 +72,8 @@ test('Lorna cannot resolve feedback without evidence and can escalate when no be
  await assert.rejects(f.service.resolve(bob,{feedbackId:feedback.id,action:'ESCALATED',note:'n/a'}),/RESEARCH_ROLE_REQUIRED/);
  const resolved=await f.service.resolve(lorna,{feedbackId:feedback.id,action:'ESCALATED',note:'The original number remains published, no verified alternative found.'});
  assert.equal(resolved.status,'ESCALATED');assert.equal((await f.service.researchQueue(lorna)).length,0);
- assert.equal((await f.service.queue(alice))[0].status,'NEEDS_OWNER_REVIEW');
+ assert.equal((await f.service.queue(owner))[0].status,'NEEDS_OWNER_REVIEW');
+ assert.equal((await f.service.queue(alice)).length,0,'manager work queue honors bad-number hold while owner reviews');
 });
 test('manager cannot send Lorna a loop of repeated research requests after no-new-info escalation',async()=>{
  const f=fixture(),row=await f.service.submit(lorna,{customerId:'c1',summary:'verified'});
@@ -100,4 +101,25 @@ test('reassigning an account immediately revokes the former manager handoff queu
  await assert.rejects(f.service.returnForResearch(alice,{handoffId:original.id,issue:'BAD_NUMBER',reason:'Old manager must not create followup'}),/ACCOUNT_ACCESS_DENIED/);
  const feedback=await f.service.returnForResearch(bob,{handoffId:original.id,issue:'BAD_NUMBER',reason:'Current manager confirmed bad number'});
  assert.equal(feedback.managerId,'bob');
+});
+
+test('existing SBC Sales Ready leads can hand off; Owner Review remains blocked',async()=>{
+ const {isReady}=require('../enterprise/sbc-lorna-handoff-v1.cjs');
+ assert.equal(isReady({verificationStatus:'Sales Ready',leadAssistStatus:'HUMAN_APPROVED'}),true);
+ assert.equal(isReady({verificationStatus:'Sales Ready'}),true);
+ assert.equal(isReady({verificationStatus:'Owner Review',leadAssistStatus:'NEEDS_HUMAN_REVIEW'}),false);
+ assert.equal(isReady({verificationStatus:'Needs Verification',leadAssistStatus:'QUEUED'}),false);
+});
+
+test('bad-number handoff disappears from manager priority queue until 15-day retry, owner retains visibility',async()=>{
+ const f=fixture(),row=await f.service.submit(lorna,{customerId:'c1',summary:'Verified number from listing'});
+ await f.service.assign(owner,{handoffId:row.id,managerId:'alice'});
+ assert.equal((await f.service.queue(alice)).length,1);
+ const fb=await f.service.returnForResearch(alice,{handoffId:row.id,issue:'BAD_NUMBER',reason:'Disconnected on outbound call'});
+ assert.equal((await f.service.queue(alice)).length,0,'bad number no longer pollutes daily work');
+ assert.equal((await f.service.queue(owner)).length,1,'owner can still audit research status');
+ await f.service.resolve(lorna,{feedbackId:fb.id,action:'RESOLVED',note:'Source verified: updated listing with supporting details',evidenceUrl:'https://example.org/company'});
+ assert.equal((await f.service.queue(alice)).length,0,'resolved research does not bypass the 15-day hold');
+ const later=createHandoffService({repository:f.repo,clock:()=>new Date('2026-11-29T16:00:00Z')});
+ assert.equal((await later.queue(alice)).length,1,'manager can work account again after retry date');
 });
