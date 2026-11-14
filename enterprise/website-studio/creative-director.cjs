@@ -11,9 +11,9 @@ const catalog=Object.freeze({
 });
 function vertical(category){const s=String(category||'');return /tint|window film/i.test(s)?'tint':/auto|mechanic|car|truck|vehicle|collision/i.test(s)?'automotive':/salon|beauty|barber|spa|lash|nail|hair/i.test(s)?'beauty':/restaurant|cafe|bistro|food|grill|catering|bakery/i.test(s)?'dining':/roof|plumb|electric|construction|contractor|hvac|landscap|pool|repair|cleaning/i.test(s)?'trades':/law|legal|attorney|insurance|tax|account|finance|notary|consult/i.test(s)?'professional':'local';}
 function stableChoice(name){let h=2166136261;for(const ch of name.toLowerCase()){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}return (h>>>0)%3;}
-function createDesignTokens(profile){
+function createDesignTokens(profile,options={}){
  verifiedProfile(profile);
- const v=vertical(profile.business.category),choice=stableChoice(profile.business.name),direction=catalog[v][choice];
+ const v=vertical(profile.business.category),choice=Number.isInteger(options.themeVariant)&&options.themeVariant>=1&&options.themeVariant<=3?options.themeVariant-1:stableChoice(profile.business.name),direction=catalog[v][choice];
  const [background,surface,ink,accent,soft,border]=direction.palette;
  return Object.freeze({schemaVersion:1,identity:{vertical:v,variant:`${v}-${choice+1}`,mood:direction.mood},palette:{background,surface,ink,accent,soft,border},typography:{display:v==='beauty'||v==='dining'?'Georgia':'system-ui',body:'system-ui'},shape:{radius:v==='tint'||v==='automotive'?'12px':'20px',shadow:v==='tint'?'crisp':'soft'}});
 }
