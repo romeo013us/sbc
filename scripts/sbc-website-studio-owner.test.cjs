@@ -335,3 +335,18 @@ test('unverified prospect drafts cannot persist a verified-service freeform layo
  assert.equal(denied.body.code,'STUDIO_GRID_APPROVED_SERVICES_REQUIRED');
  assert.equal(fx.saves(),0);
 });
+
+
+test('grid inspector only offers existing owner-approved service cards and rejects missing indexes',async()=>{
+ const fx=fixture();
+ const first=await fx.call('GET','/visual');
+ assert.equal(first.body.maxEditableServices,0);
+ await fx.call('PATCH','/approved-profile',{expectedVersion:0,ownerConfirmed:true,profile});
+ const ready=await fx.call('GET','/visual');
+ assert.equal(ready.body.maxEditableServices,2);
+ const attempted={enabled:true,nodes:[{id:'service-6',grid:{colSpan:6}}]};
+ const response=await fx.call('GET','/auto-preview?freeformGrid='+encodeURIComponent(JSON.stringify(attempted)));
+ assert.equal(response.statusCode,400);
+ assert.equal(response.body.code,'STUDIO_GRID_UNKNOWN_SERVICE');
+ assert.equal(fx.saves(),1);
+});
