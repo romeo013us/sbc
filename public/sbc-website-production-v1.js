@@ -198,6 +198,25 @@
       '<label style="display:block"><input id="sbcStudioComparisonRights" type="checkbox" name="comparisonRights"> The business and photographer authorized BOTH images for this concept.</label>'+
       '<label style="display:block"><input id="sbcStudioActualWorkConfirmed" type="checkbox" name="actualWorkConfirmed"> Both images show the SAME actual project completed by this business, with permission to make that claim.</label>'+
       '<p style="font-size:.8rem">A comparison stays completely hidden until all fields and attestations are valid. No image is uploaded and nothing publishes automatically.</p></details>'+
+      '<details id="sbcStudioGridInspector" style="margin:16px 0;padding:16px;border:1px solid #aac0d4;border-radius:12px;background:#fff"><summary style="font-weight:800;cursor:pointer">Freeform Grid · 12-column Style Inspector</summary>'+
+      '<p>Opt-in: resize verified SERVICE cards only. Business facts, pricing, legal information and contact buttons remain protected. Desktop, tablet and mobile reflow automatically; no AI required.</p>'+
+      '<label style="display:block"><input type="checkbox" name="gridEnabled" id="sbcStudioGridEnabled"> Enable freeform service grid for this private design</label>'+
+      '<input name="gridState" id="sbcStudioGridState" type="hidden">'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:15px 0">'+
+      '<label>Selected service card<select id="sbcStudioGridNode" name="gridNodeFocus"><option value="service-1">Service 1</option><option value="service-2">Service 2</option><option value="service-3">Service 3</option><option value="service-4">Service 4</option><option value="service-5">Service 5</option><option value="service-6">Service 6</option></select></label>'+
+      '<label>Desktop columns (1-12)<input id="sbcStudioGridSpan" name="gridSpan" type="number" min="1" max="12" step="1" value="6"></label>'+
+      '<label>Row span (1-3)<input name="gridRow" type="number" min="1" max="3" value="1"></label>'+
+      '<label>Stacking order (1-5)<input name="gridZ" type="number" min="1" max="5" value="1"></label>'+
+      '<label>Padding (0-64 px)<input id="sbcStudioGridPadding" name="gridPadding" type="number" min="0" max="64" value="24"></label>'+
+      '<label>Corner radius (0-36 px)<input id="sbcStudioGridRadius" name="gridRadius" type="number" min="0" max="36" value="18"></label>'+
+      '<label>Glass blur (0-18 px)<input name="gridBlur" type="number" min="0" max="18" value="0"></label>'+
+      '<label>Tablet span<select name="gridTablet"><option value="6">Half width</option><option value="12">Full width</option></select></label>'+
+      '<label>Mobile span<select id="sbcStudioGridMobile" name="gridMobile"><option value="12">Full width (recommended)</option><option value="6">Half width</option></select></label>'+
+      '<label>Shadow<select name="gridShadow"><option value="none">None</option><option value="soft">Soft</option><option value="elevated">Elevated</option><option value="glow">Accent glow</option></select></label>'+
+      '<label>Text alignment<select name="gridAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>'+
+      '<label>Motion<select name="gridMotion"><option value="none">None</option><option value="fade-up">Fade up</option><option value="scale-in">Scale in</option><option value="hover-lift">Hover lift</option></select></label></div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn primary" id="sbcStudioGridApply">Apply grid to private preview</button><button type="button" class="btn" id="sbcStudioGridReset">Return to standard layout</button></div>'+
+      '<p style="font-size:.83rem">Click a service card inside the private preview to select it, or drag its right-edge handle to change its desktop span. All edits remain unsaved until you choose Save Design & Preview.</p></details>'+
       '<button class="btn primary" type="submit">Save Design & Preview</button>'+
       '<details style="margin:16px 0;border:1px solid #b9cbd6;padding:12px;border-radius:10px"><summary style="cursor:pointer;font-weight:800">Saved design revisions</summary>'+
       '<p style="font-size:.87rem">Recover an earlier saved design without changing verified customer facts. Restoring creates a new saved version.</p>'+
