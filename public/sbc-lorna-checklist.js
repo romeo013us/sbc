@@ -125,7 +125,7 @@ function parseBrief(raw,form){
  var pairs=[['Business name','businessName'],['Decision maker','contactName'],['Primary phone','phone'],['Street / city / state / ZIP','address'],['Google Business Profile','googleBusinessUrl'],['Google-listed street address','googleListingAddress'],['Google address','googleListingAddress'],['Address research','streetAddressEvidenceUrl'],['Industry / business type','industry'],['Research source','verificationSource'],['Next follow-up','nextFollowupNote']];
  pairs.forEach(function(pair){
   var label=pair[0],hit=txt.match(new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:—-]?\\s*([^\\n]+)','i'));
-  if(hit){var v=hit[1].trim();if(!/^(not recorded|none|—|not verified)$/i.test(v)&&!/^\\[/.test(v))set(pair[1],v);}
+  if(hit){var v=hit[1].trim();if(!/^(not recorded|none|—|not verified)$/i.test(v)&&!/^\[/.test(v))set(pair[1],v);}
  });
  var mapsLink=txt.match(/https:\/\/(?:maps\.app\.goo\.gl|www\.google\.com\/maps|maps\.google\.com)\/[^\s)\]>]+/i);
  if(mapsLink)set('googleBusinessUrl',mapsLink[0].replace(/[.,]+$/,''));
