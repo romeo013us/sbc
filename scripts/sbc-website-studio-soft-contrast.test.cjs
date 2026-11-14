@@ -29,7 +29,9 @@ test('alternate design vibes keep readable soft headings and respect reduced-mot
  const bundle=createPrivateConcept({verified_profile:mk('Auto Repair')}).bundle;
  const css=bundle.files['styles.css'];
  for(const [vibe,soft] of [['cinematic','#111c2d'],['minimal','#edf2ed'],['warm','#f1e0d1']]){
-  const match=css.match(new RegExp('body\\\\[data-sbc-vibe="'+vibe+'"\\\\]\\\\{--sbc-v2-soft-contrast-ink:(#[A-Fa-f0-9]{6})\\\\}'));
+  const marker='body[data-sbc-vibe="'+vibe+'"]{--sbc-v2-soft-contrast-ink:';
+  const start=css.indexOf(marker);
+  const match=start<0?null:css.slice(start+marker.length).match(/^(#[A-Fa-f0-9]{6})}/);
   assert(match,'missing '+vibe+' contrast');
   assert(contrastRatio(match[1],soft)>=4.5,vibe);
  }
