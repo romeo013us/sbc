@@ -88,9 +88,33 @@ test('Preview release fingerprint rejects stale, absent or unverified commits be
  await assert.rejects(verifyPreviewSourceIdentity(target,'not-a-commit',fake(200,approved)),/SBC_PREVIEW_EXPECTED_SOURCE_INVALID/);
 });
 
-test('Preview workflow pins supply chain dependencies and uses workflow source SHA as release expected value',()=>{
+test('Preview workflow uses the verified master release receipt instead of its packaging commit',()=>{
  const yml=fs.readFileSync(path.join(__dirname,'../.github/workflows/sbc-v66-preview-browser-acceptance.yml'),'utf8');
- assert.match(yml,/SBC_PREVIEW_EXPECTED_SOURCE_SHA:\s*\$\{\{ github\.sha \}\}/);
+ assert.doesNotMatch(yml,/SBC_PREVIEW_EXPECTED_SOURCE_SHA|github\\.sha/);
+ assert.match(yml,/SBC-DEPLOY-RECEIPT\\.json/);
  assert.doesNotMatch(yml,/uses:\s*actions\/(?:checkout|setup-node|upload-artifact)@v\d+/);
  assert.match(yml,/run:\s*node scripts\/v66-preview-browser-acceptance\.cjs --run/);
+});
+
+test('Preview source identity is read from consistent a-sbc-master receipts rather than a GitHub packaging commit',()=>{
+ const {readApprovedPreviewSourceCommit}=require('../scripts/v66-preview-browser-acceptance.cjs');
+ const os=require('node:os');
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-preview-receipt-'));
+ const sha='a'.repeat(40),fingerprint='b'.repeat(64),server='c'.repeat(64);
+ const receipt={sourceCommit:sha,sourceFingerprint:fingerprint,artifactType:'server.js',
+  artifactSha256:server,buildBranch:'a-sbc-master',deployBranch:'a-sbc-master'};
+ const identity={sourceCommit:sha,sourceFingerprint:fingerprint,serverSha256:server};
+ const write=(name,v)=>fs.writeFileSync(path.join(temp,name),JSON.stringify(v));
+ try{
+  write('SBC-DEPLOY-RECEIPT.json',receipt);
+  write('SBC-FLAT-RELEASE-IDENTITY.json',identity);
+  assert.equal(readApprovedPreviewSourceCommit(temp),sha);
+  write('SBC-DEPLOY-RECEIPT.json',{...receipt,deployBranch:'main'});
+  assert.throws(()=>readApprovedPreviewSourceCommit(temp),/SBC_PREVIEW_RELEASE_RECEIPT/);
+  write('SBC-DEPLOY-RECEIPT.json',receipt);
+  write('SBC-FLAT-RELEASE-IDENTITY.json',{...identity,sourceCommit:'d'.repeat(40)});
+  assert.throws(()=>readApprovedPreviewSourceCommit(temp),/SBC_PREVIEW_RELEASE_RECEIPT/);
+  fs.unlinkSync(path.join(temp,'SBC-DEPLOY-RECEIPT.json'));
+  assert.throws(()=>readApprovedPreviewSourceCommit(temp),/SBC_PREVIEW_RELEASE_RECEIPT/);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
