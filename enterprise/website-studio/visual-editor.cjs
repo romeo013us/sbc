@@ -4,7 +4,8 @@
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isRecord=o=>!!o&&typeof o==='object'&&!Array.isArray(o);
 const V4=require('./v4-brand-comparison.cjs');
-const keys=['headline','subheadline','density','photoUrl','photoAlt','rightsConfirmed','vibe','serviceLayout','heroStyle','sectionOrder','brandKit','beforeAfter'];
+const Grid=require('./freeform-grid-compiler.cjs');
+const keys=['headline','subheadline','density','photoUrl','photoAlt','rightsConfirmed','vibe','serviceLayout','heroStyle','sectionOrder','brandKit','beforeAfter','freeformGrid'];
 // Only the four optional V2 presentation blocks may be rearranged.
 // Identity, approved facts, hero, primary contact and required disclosure stay put.
 const V3_SECTIONS=Object.freeze(['showcase','path','questions','conversion']);
@@ -43,6 +44,7 @@ function normalizeVisual(raw={}){
  if(!vibes.has(vibe)||!serviceLayouts.has(serviceLayout)||!heroStyles.has(heroStyle))throw Error('INVALID_STUDIO_ART_DIRECTION');
  const order=sectionOrder(raw.sectionOrder);
  const brandKit=V4.normalizeBrand(raw.brandKit);
+ const freeformGrid=Grid.normalizeGrid(raw.freeformGrid);
  const beforeAfter=V4.normalizeComparison(raw.beforeAfter);
  const photoUrl=mediaURL(raw.photoUrl??'');
  const photoAlt=safeText(raw.photoAlt??'',180);
@@ -51,7 +53,7 @@ function normalizeVisual(raw={}){
  if(photoUrl&&!rightsConfirmed)throw Error('STUDIO_MEDIA_RIGHTS_REQUIRED');
  if(photoUrl&&!photoAlt)throw Error('STUDIO_MEDIA_ALT_REQUIRED');
  if(!photoUrl&&photoAlt)throw Error('INVALID_STUDIO_PHOTO');
- return Object.freeze({headline,subheadline,density,photoUrl,photoAlt,rightsConfirmed,vibe,serviceLayout,heroStyle,sectionOrder:order,brandKit,beforeAfter});
+ return Object.freeze({headline,subheadline,density,photoUrl,photoAlt,rightsConfirmed,vibe,serviceLayout,heroStyle,sectionOrder:order,brandKit,beforeAfter,freeformGrid});
 }
 function applyVisual(bundle,options){
  const v=normalizeVisual(options||{});
@@ -95,6 +97,6 @@ function applyVisual(bundle,options){
  }
  files['index.html']=html;
  files['styles.css']+='\n.sbc-layout-airy .composed-services{padding-block:130px}.sbc-layout-dense .composed-services{padding-block:46px}.sbc-layout-dense .service-composition{gap:12px}.sbc-approved-visual{margin:0;background:#101820;padding:24px max(24px,calc((100vw - 1160px)/2));color:white}.sbc-approved-visual img{display:block;width:100%;height:auto;max-height:520px;object-fit:cover;border-radius:12px}.sbc-approved-visual figcaption{font-size:.7rem;letter-spacing:.09em;padding:12px 0;line-height:1.5}@media(max-width:750px){.sbc-layout-airy .composed-services{padding-block:70px}.sbc-approved-visual{padding:18px}.sbc-approved-visual img{max-height:340px}}\n';
- return V4.applyV4({...bundle,files,publicationReady:false},v.brandKit,v.beforeAfter);
+ return Grid.applyGridToPrivateBundle(V4.applyV4({...bundle,files,publicationReady:false},v.brandKit,v.beforeAfter),v.freeformGrid);
 }
 module.exports={normalizeVisual,applyVisual,mediaURL};
