@@ -32,3 +32,4 @@ jobs:
           node scripts/v66-preview-browser-acceptance.cjs --self-test
           node --test scripts/v66-owner-openai-budget.test.cjs
           node --test scripts/sbc-website-studio-v2-elite.test.cjs
+          node --test scripts/sbc-website-studio-v3-editor.test.cjs
