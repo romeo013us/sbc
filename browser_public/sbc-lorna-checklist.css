@@ -13,3 +13,10 @@
 .sbc-opportunity li::marker{color:#ae7d26}
 .sbc-unknown li::marker{color:#6b7280}
 @media(max-width:680px){.sbc-research-audit{padding:12px}.sbc-research-grid{grid-template-columns:1fr}}
+
+/* Owner urgency: persistent until the research policy is updated, no dismissal. */
+.sbc-urgent-research{border:2px solid #a92c35!important;border-left:7px solid #a92c35!important;background:#fff5ee!important;color:#4a2024!important;box-shadow:0 4px 18px rgba(87,31,32,.09)}
+.sbc-urgent-research h2{color:#76232b!important}
+.sbc-urgent-research .eyebrow{color:#9b1823!important;font-weight:850;letter-spacing:.08em}
+.sbc-urgent-research p{line-height:1.65}
+.sbc-urgent-research .attention-open{white-space:normal;min-height:44px}
