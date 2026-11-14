@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sbcmia.com/schemas/website-studio/design-tokens.v1.json",
+  "title": "SBC Deterministic Agency Design Tokens",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "identity", "palette", "typography", "shape"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "identity": {"type": "object", "additionalProperties": false, "required": ["vertical", "variant", "mood"], "properties": {
+      "vertical": {"type": "string", "maxLength": 40},
+      "variant": {"type": "string", "maxLength": 40},
+      "mood": {"type": "string", "maxLength": 70}
+    }},
+    "palette": {"type": "object", "additionalProperties": false, "required": ["background", "surface", "ink", "accent", "soft", "border"], "properties": {
+      "background": {"$ref": "#/$defs/hex"}, "surface": {"$ref": "#/$defs/hex"}, "ink": {"$ref": "#/$defs/hex"},
+      "accent": {"$ref": "#/$defs/hex"}, "soft": {"$ref": "#/$defs/hex"}, "border": {"$ref": "#/$defs/hex"}
+    }},
+    "typography": {"type": "object", "additionalProperties": false, "required": ["display", "body"], "properties": {
+      "display": {"enum": ["system-ui", "Georgia"]}, "body": {"const": "system-ui"}
+    }},
+    "shape": {"type": "object", "additionalProperties": false, "required": ["radius", "shadow"], "properties": {
+      "radius": {"enum": ["12px", "16px", "20px"]}, "shadow": {"enum": ["soft", "crisp"]}
+    }}
+  },
+  "$defs": {"hex": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}}
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sbcmia.com/schemas/website-studio/layout-ast.v1.json",
+  "title": "SBC Approved Website Component Tree",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "sections"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "kind": {"const": "SBCStaticSite"},
+    "sections": {"type": "array", "minItems": 2, "maxItems": 10, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "title"],
+      "properties": {
+        "type": {"enum": ["hero", "services", "socialProof", "quoteRequest", "contact", "cta"]},
+        "title": {"type": "string", "minLength": 1, "maxLength": 180},
+        "description": {"type": "string", "maxLength": 450},
+        "layout": {"enum": ["grid", "bento", "stack"]},
+        "items": {"type": "array", "maxItems": 12, "items": {"type": "object", "additionalProperties": false, "required": ["title"], "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 160},
+          "description": {"type": "string", "maxLength": 450},
+          "attribution": {"type": "string", "maxLength": 120}
+        }}}
+      }
+    }}
+  }
+}

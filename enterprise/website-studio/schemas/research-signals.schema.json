@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sbcmia.com/schemas/website-studio/research-signals.v1.json",
+  "title": "SBC Business Research Evidence (NOT verified site facts)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "researchCompleted",
+    "signals"
+  ],
+  "properties": {
+    "researchCompleted": {
+      "type": "boolean"
+    },
+    "signals": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value",
+          "source_url",
+          "confidence_score",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "website",
+              "directory",
+              "social",
+              "service",
+              "hours",
+              "phone",
+              "review"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 350
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://"
+          },
+          "confidence_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "enum": [
+              "unverified",
+              "approved",
+              "rejected"
+            ]
+          },
+          "website_state": {
+            "enum": [
+              "active",
+              "broken",
+              "parked"
+            ]
+          },
+          "approvedBy": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "approved"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "approvedBy",
+                "approvedAt"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "website_state"
+              ]
+            },
+            "then": {
+              "properties": {
+                "type": {
+                  "const": "website"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

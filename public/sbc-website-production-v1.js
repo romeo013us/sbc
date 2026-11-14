@@ -81,18 +81,159 @@
      '</div></details>';
   }
 
+
+  // Owner-governed Website Studio: research notes never auto-populate approved facts.
+  function studioPanel(){
+    if(currentRole()!=='owner')return '';
+    return '<section class="sbc-factory-light-panel" style="padding:20px;margin:24px 0;border:1px solid #c9d6e1;border-radius:12px">'+
+      '<h4>Website Studio · Verified Business Profile</h4><p>Approve only facts you confirmed with the business. Search snippets, assumptions, and Lorna research do not become website claims automatically. This creates a <strong>private concept only</strong>.</p>'+
+      '<form id="sbcStudioApprovalForm"><label>Business identity (from Account 360)<input name="businessName" type="text" readonly required style="width:100%"></label>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">'+
+      '<label>Verified business category<input name="category" type="text" maxlength="90" required style="width:100%"></label>'+
+      '<label>Verified city<input name="city" type="text" maxlength="90" style="width:100%"></label>'+
+      '<label>Verified state/region<input name="region" type="text" maxlength="60" style="width:100%"></label></div>'+
+      '<label>Verified services · one per line (optionally: Service | Confirmed description)<textarea name="services" rows="5" maxlength="4000" placeholder="Window Tinting | Discuss approved film options" style="width:100%"></textarea></label>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">'+
+      '<label>Confirmed business phone<input name="phone" maxlength="32" type="tel" style="width:100%"></label>'+
+      '<label>Confirmed business email<input name="email" maxlength="160" type="email" style="width:100%"></label></div>'+
+      '<label style="display:flex;align-items:center;gap:8px;margin:12px 0"><input id="sbcStudioOwnerVerified" type="checkbox" required> I verified these business facts and approve their use in a private preview.</label>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit">Save approved business facts</button><button class="btn" id="sbcStudioViewPreview" type="button" disabled>View new Website Studio concept</button></div></form>'+
+      '<p id="sbcStudioStatus" role="status" aria-live="polite">Loading verified profile…</p></section>';
+  }
+  const studioBase=demo=>'/api/website-production/sites/'+encodeURIComponent(demo.id)+'/studio';
+  function studioMessage(value){const p=document.getElementById('sbcStudioStatus');if(p)p.textContent=value;}
+  async function loadStudioProfile(demo){
+    const form=document.getElementById('sbcStudioApprovalForm');if(!form)return;
+    try{
+      const out=await serviceApi(studioBase(demo));
+      if(active?.demo?.id!==demo.id||!form.isConnected)return;
+      if(!out?.ok)throw Error(out?.code||'Website Studio is unavailable.');
+      const p=out.approvedProfile||null,suggested=out.suggestedProfile||null,b=p?.business||suggested?.business||out.identity||{},c=p?.contact||suggested?.contact||{};
+      form.dataset.version=String(out.version||0);
+      for(const [name,value] of Object.entries({businessName:b.name||'',category:b.category||'',city:b.city||'',region:b.region||'',phone:c.phone||'',email:c.email||''})){
+        const field=form.elements.namedItem(name);if(field)field.value=String(value);
+      }
+      form.elements.namedItem('services').value=(p?.services||suggested?.services||[]).map(s=>s.name+(s.description?' | '+s.description:'')).join('\n');
+      document.getElementById('sbcStudioViewPreview').disabled=!p;
+      form.querySelectorAll('input:not([readonly]),textarea,button[type=submit]').forEach(el=>{el.disabled=!out.canApprove});
+      studioMessage(p?'Business facts approved (revision '+out.version+'). Preview is ready.':out.canApprove?'CRM fields have been prefilled for REVIEW ONLY. Confirm the phone, services, and business details before approving this private concept.':'This site is locked; no approved Studio profile is available.');
+    }catch(e){studioMessage(String(e?.message||'Website Studio unavailable.'));}
+  }
+  async function saveStudioProfile(event){
+    event.preventDefault();const form=event.currentTarget;
+    if(currentRole()!=='owner'||!active?.demo)return;
+    const demo=active.demo;
+    const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
+    const services=get('services').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
+      const split=line.indexOf('|');return {name:(split<0?line:line.slice(0,split)).trim(),description:split<0?'':line.slice(split+1).trim()};
+    });
+    if(services.length>12)return studioMessage('Use up to 12 confirmed services.');
+    if(!document.getElementById('sbcStudioOwnerVerified')?.checked)return studioMessage('Confirm that you verified these details first.');
+    if(!window.confirm('Save these as OWNER-APPROVED business facts for the private Website Studio concept?'))return;
+    const payload={expectedVersion:Number(form.dataset.version||0),ownerConfirmed:true,
+      profile:{business:{name:get('businessName'),category:get('category'),city:get('city'),region:get('region')},services,contact:{phone:get('phone'),email:get('email')}}};
+    try{
+      studioMessage('Saving approved facts in Command Center…');
+      const out=await serviceApi(studioBase(demo)+'/approved-profile',{method:'PATCH',body:JSON.stringify(payload)});
+      if(!out?.ok||out.durable!==true)throw Error(out?.code||'Facts were not saved.');
+      if(active?.demo?.id!==demo.id)return;
+      await loadStudioProfile(demo);
+      studioMessage('Approved facts saved to the correct account. You may now view the private Website Studio concept.');
+    }catch(e){studioMessage(String(e?.message||'Unable to save facts. Reload and try again.'));}
+  }
+  async function previewStudioConcept(){
+    if(currentRole()!=='owner'||!active?.demo)return;
+    const demo=active.demo;
+    try{
+      const out=await serviceApi(studioBase(demo));
+      if(active?.demo?.id!==demo.id)return;
+      if(!out?.ok||!out.approvedProfile)throw Error('First approve this business’s verified profile.');
+      const frame=document.getElementById('sbcFactoryFrame');
+      if(!frame)throw Error('Website preview frame not available.');
+      frame.src=studioBase(demo)+'/auto-preview';
+      const address=document.getElementById('sbcFactoryAddress');if(address)address.textContent='SBC Website Studio · Private approved-facts concept';
+      studioMessage('Showing private Website Studio concept. No form submissions or public publishing are enabled.');
+    }catch(e){studioMessage(String(e?.message||'Unable to open Studio preview.'));}
+  }
+
+
+  function studioVisualPanel(demo){
+    if(currentRole()!=='owner'||isApproved(demo)||demo.archived===true)return '';
+    return '<section class="sbc-factory-light-panel" style="padding:20px;margin:24px 0;border:1px solid #acc5d5;border-radius:12px;background:#f4f8fd;color:#18334a">'+
+      '<h4>Visual Studio · Art-directed Design Controls</h4><p>Edit the private smart website without changing verified business facts. Saves are versioned and preview-only.</p>'+
+      '<form id="sbcStudioVisualForm">'+
+      '<label style="display:block;margin:10px 0">Website hero headline<input name="headline" type="text" maxlength="120" placeholder="Leave empty to use the business name" style="width:100%"></label>'+
+      '<label style="display:block;margin:10px 0">Hero subtitle<textarea name="subheadline" rows="3" maxlength="280" placeholder="Leave empty to use the industry-specific copy" style="width:100%"></textarea></label>'+
+      '<label style="display:block;margin:10px 0">Visual rhythm<select name="density" style="width:100%"><option value="original">Original art direction</option><option value="airy">Airy editorial spacing</option><option value="dense">Compact service-focused spacing</option></select></label>'+
+      '<details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Add licensed hero photography (optional)</summary><p>Use a direct, licensed images.unsplash.com or images.pexels.com photo URL. This does not upload, purchase, or verify an image license automatically. Your browser will request the photo from that provider.</p>'+
+      '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
+      '<label style="display:block;margin:9px 0">Accessible image description<input name="photoAlt" type="text" maxlength="180" style="width:100%"></label>'+
+      '<label style="display:block;margin:9px 0"><input type="checkbox" name="rightsConfirmed"> I verified that we may use this image in the customer concept.</label></details>'+
+      '<button class="btn primary" type="submit">Save Design & Preview</button></form><p id="sbcStudioVisualStatus" role="status" aria-live="polite">Loading design controls…</p></section>';
+  }
+  const studioVisualMessage=text=>{const p=document.getElementById('sbcStudioVisualStatus');if(p)p.textContent=text;};
+  async function loadStudioVisual(demo){
+    const form=document.getElementById('sbcStudioVisualForm');if(!form)return;
+    try{
+      const result=await serviceApi(studioBase(demo)+'/visual');
+      if(active?.demo?.id!==demo.id||!form.isConnected)return;
+      if(!result?.ok)throw Error(result?.code||'Visual Studio is unavailable');
+      form.dataset.version=String(result.version||0);
+      const v=result.visual||{};
+      for(const field of ['headline','subheadline','photoUrl','photoAlt'])form.elements.namedItem(field).value=String(v[field]||'');
+      form.elements.namedItem('density').value=v.density||'original';
+      form.elements.namedItem('rightsConfirmed').checked=v.rightsConfirmed===true;
+      form.querySelectorAll('input,textarea,select,button').forEach(input=>{input.disabled=!result.canEdit});
+      studioVisualMessage(result.canEdit?'Visual Studio revision '+result.version+' ready. These edits affect private smart previews only.':'This site is locked for editing.');
+    }catch(e){studioVisualMessage(String(e?.message||'Visual Studio unavailable.'));}
+  }
+  async function saveStudioVisual(event){
+    event.preventDefault();
+    if(currentRole()!=='owner'||!active?.demo||busy)return;
+    const demo=active.demo,form=event.currentTarget;
+    const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
+    const visual={headline:get('headline'),subheadline:get('subheadline'),density:get('density'),photoUrl:get('photoUrl'),photoAlt:get('photoAlt'),rightsConfirmed:form.elements.namedItem('rightsConfirmed').checked};
+    if(visual.photoUrl&&(!visual.photoAlt||!visual.rightsConfirmed))return studioVisualMessage('An approved photo requires an alt description and your explicit image-rights confirmation.');
+    const submit=form.querySelector('button[type=submit]');
+    busy=true;if(submit)submit.disabled=true;
+    studioVisualMessage('Saving art direction to the correct customer website…');
+    try{
+      const out=await serviceApi(studioBase(demo)+'/visual',{method:'PATCH',body:JSON.stringify({expectedVersion:Number(form.dataset.version||0),visual})});
+      if(!out?.ok||out.durable!==true)throw Error(out?.code||'Visual changes were not saved.');
+      if(active?.demo?.id!==demo.id)return;
+      form.dataset.version=String(out.version);
+      active.previewMode='smart';
+      const page=active.previewPage||'home';
+      const url=new URL(absolute(studioBase(demo)+'/auto-preview'));
+      if(page!=='home')url.searchParams.set('page',page);
+      url.searchParams.set('visualVersion',String(out.version));
+      const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url.href;
+      const address=document.getElementById('sbcFactoryAddress');if(address)address.textContent='SBC Visual Studio · Private Saved Preview';
+      document.getElementById('sbcFactorySmartMode')?.classList.add('primary');
+      document.getElementById('sbcFactoryClassicMode')?.classList.remove('primary');
+      studioVisualMessage('Saved design revision '+out.version+'. Private art-directed preview updated; no public website changed.');
+    }catch(e){studioVisualMessage('Not saved: '+String(e?.message||e)+'. Reload Visual Studio if someone else edited this project.');}
+    finally{busy=false;if(submit)submit.disabled=false;}
+  }
+
   function showSite(demo,customer,message='') {
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
     const price=demo.offerTier==='starter'?'$199':'$349';
+    const smartDraft=currentRole()==='owner'&&!isApproved(demo)&&demo.archived!==true;
+    const smartUrl=smartDraft?absolute(studioBase(demo)+'/auto-preview'):'';
+    let previewMode=smartDraft?'smart':'classic';
+    active.previewMode=previewMode;
+    active.previewPage='home';
     const links=pages.map((page,i)=>'<button type="button" class="btn '+(i===0?'primary':'')+'" data-factory-page="'+esc(page)+'">'+esc(page[0].toUpperCase()+page.slice(1))+'</button>').join('');
     const html='<div class="v6526-studio" style="max-width:1100px">'+
       '<div class="v6526-studio-top"><div><p class="v6526-kicker">SBC WEBSITE PRODUCTION · REAL WORKING WEBSITES</p><h3>'+esc(customer.businessName||customer.contactName||'Website project')+'</h3><p>Built website: '+esc(demo.offerTier==='starter'?'Business Starter':'Business Basic')+' · '+price+' · '+pages.length+' page'+(pages.length>1?'s':'')+'. The remaining business-specific information is completed after purchase.</p></div><span class="v6526-ready">'+esc(demo.status||'Draft')+'</span></div>'+
-      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0"><strong style="margin-right:12px">Visit website pages:</strong>'+links+'</div>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0"><strong style="margin-right:12px">Classic website pages:</strong>'+links+'</div>'+ 
+      (smartDraft?'<div class="sbc-factory-light-panel" style="padding:15px;border:1px solid #bdd0de;border-radius:10px"><strong>Choose design preview</strong><div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0"><button id="sbcFactorySmartMode" class="btn primary" type="button">★ Art-directed preview (default)</button><button id="sbcFactoryClassicMode" class="btn" type="button">Classic 4-page builder</button></div><p id="sbcFactoryModeInfo" role="status">The art-directed version is a PRIVATE '+(pages.length>1?'four-page':'one-page')+' concept. Example sections need fact approval. Your original '+(pages.length>1?'four-page':'one-page')+' site and its editor remain available under Classic.</p></div>':'')+
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
-      '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
+      '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(smartDraft?smartUrl:pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
-      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+
+      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+studioVisualPanel(demo)+studioPanel()+
       '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row sbc-factory-light-panel"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p class="sbc-factory-light-panel sbc-factory-private-note" style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
@@ -102,18 +243,36 @@
     if (typeof openModal !== 'function')throw Error('Command Center modal is unavailable.');
     openModal('SBC Website Production',html);
     const address=document.getElementById('sbcFactoryAddress');
-    if(address)address.textContent=new URL(pageUrl(demo,'home')).host+new URL(pageUrl(demo,'home')).pathname;
+    if(address)address.textContent=smartDraft?'SBC Art-Directed · Unverified Private Concept':new URL(pageUrl(demo,'home')).host+new URL(pageUrl(demo,'home')).pathname;
+    const switchPreview=(mode,page='home')=>{
+      const frame=document.getElementById('sbcFactoryFrame');if(!frame)return;
+      const smart=mode==='smart'&&smartDraft;
+      previewMode=smart?'smart':'classic';
+      if(active?.demo?.id===demo.id){active.previewMode=previewMode;active.previewPage=page;}
+      const url=smart?(smartUrl+(page==='home'?'':'?page='+encodeURIComponent(page))):pageUrl(demo,page);
+      frame.src=url;
+      if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Not customer-ready':new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
+      document.getElementById('sbcFactorySmartMode')?.classList.toggle('primary',smart);
+      document.getElementById('sbcFactoryClassicMode')?.classList.toggle('primary',!smart);
+      const info=document.getElementById('sbcFactoryModeInfo');if(info)info.textContent=smart?'Art-directed design concept. Every proposed service must be verified before customer delivery.':'Classic website pages. Existing owner editing controls apply to this layout.';
+      document.querySelectorAll('[data-factory-page]').forEach(b=>b.classList.toggle('primary',!smart&&b.dataset.factoryPage===page));
+    };
+    document.getElementById('sbcFactorySmartMode')?.addEventListener('click',()=>switchPreview('smart'));
+    document.getElementById('sbcFactoryClassicMode')?.addEventListener('click',()=>switchPreview('classic'));
     document.querySelectorAll('[data-factory-page]').forEach(button=>button.addEventListener('click',()=>{
       const page=button.dataset.factoryPage;const url=pageUrl(demo,page);
-      const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url;
-      if(address)address.textContent=new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
-      document.querySelectorAll('[data-factory-page]').forEach(b=>b.classList.toggle('primary',b===button));
+      switchPreview(previewMode,page);
     }));
     document.querySelectorAll('[data-factory-device]').forEach(button=>button.addEventListener('click',()=>{
       document.querySelector('.v6526-preview-shell')?.classList.toggle('is-mobile',button.dataset.factoryDevice==='mobile');
     }));
     document.getElementById('sbcInstantSiteEditor')?.addEventListener('submit',saveNativeEditor);
     loadNativeEditor(demo).catch(e=>console.warn('SBC editor load blocked',String(e.message||e)));
+    loadStudioProfile(demo).catch(e=>console.warn('SBC Studio load blocked',String(e.message||e)));
+    loadStudioVisual(demo).catch(e=>console.warn('SBC Visual Studio load blocked',String(e.message||e)));
+    document.getElementById('sbcStudioVisualForm')?.addEventListener('submit',saveStudioVisual);
+    document.getElementById('sbcStudioApprovalForm')?.addEventListener('submit',saveStudioProfile);
+    document.getElementById('sbcStudioViewPreview')?.addEventListener('click',previewStudioConcept);
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
     document.getElementById('sbcFactoryBookMeeting')?.addEventListener('click',bookWalkthrough);
     document.getElementById('sbcFactoryCopyLink')?.addEventListener('click',()=>copyText(pageUrl(demo,'home'),'Website link copied.'));
@@ -267,10 +426,12 @@
       const address=document.getElementById('sbcFactoryAddress');
       const frame=document.getElementById('sbcFactoryFrame');
       if(frame){
-        const url=new URL(pageUrl(active.demo,'home'));
+        const smart=active.previewMode==='smart'&&currentRole()==='owner'&&!isApproved(active.demo);
+        const url=new URL(smart?absolute(studioBase(active.demo)+'/auto-preview'):pageUrl(active.demo,'home'));
+        if(smart&&active.previewPage&&active.previewPage!=='home')url.searchParams.set('page',active.previewPage);
         url.searchParams.set('editVersion',String(result.site.siteEditsVersion));
         frame.src=url.href;
-        if(address)address.textContent=url.host+url.pathname;
+        if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Saved Design':url.host+url.pathname;
       }
       const badge=document.getElementById('sbcInstantSiteVersion');
       if(badge)badge.textContent='Saved version '+result.site.siteEditsVersion;
