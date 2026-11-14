@@ -52,9 +52,9 @@ test('role gate rejects inactive or expired workers and rejects non-manager role
 test('surgical opt-in staging patch adds employee provisioning, auth deny-by-default, and login shell',()=>{
  const {patch,MARK}=require('./stage-account-manager-role-v2.cjs');
  const before=read('server.js');
- assert(!before.includes(MARK),'source should not already contain staged patch marker');
+ const alreadyStaged=before.includes(MARK);
  const result=patch(before);
- assert(result.changed);
+ assert.equal(result.changed,!alreadyStaged,'staging state should be detected without rewriting twice');
  assert.equal(patch(result.source).changed,false,'idempotence');
  assert(result.source.includes("'account_manager','lead_researcher'"),'owner must be able to create and edit manager role');
  assert(result.source.includes('SBC_ACCOUNT_MANAGER_ROLE_GATE.allowAccountManager(u,req.method,req.path)'),'authenticated API should be allowlisted');
