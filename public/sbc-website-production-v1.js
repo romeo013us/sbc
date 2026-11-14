@@ -81,6 +81,76 @@
      '</div></details>';
   }
 
+
+  // Owner-governed Website Studio: research notes never auto-populate approved facts.
+  function studioPanel(){
+    if(currentRole()!=='owner')return '';
+    return '<section class="sbc-factory-light-panel" style="padding:20px;margin:24px 0;border:1px solid #c9d6e1;border-radius:12px">'+
+      '<h4>Website Studio · Verified Business Profile</h4><p>Approve only facts you confirmed with the business. Search snippets, assumptions, and Lorna research do not become website claims automatically. This creates a <strong>private concept only</strong>.</p>'+
+      '<form id="sbcStudioApprovalForm"><label>Business identity (from Account 360)<input name="businessName" type="text" readonly required style="width:100%"></label>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">'+
+      '<label>Verified business category<input name="category" type="text" maxlength="90" required style="width:100%"></label>'+
+      '<label>Verified city<input name="city" type="text" maxlength="90" style="width:100%"></label>'+
+      '<label>Verified state/region<input name="region" type="text" maxlength="60" style="width:100%"></label></div>'+
+      '<label>Verified services · one per line (optionally: Service | Confirmed description)<textarea name="services" rows="5" maxlength="4000" placeholder="Window Tinting | Discuss approved film options" style="width:100%"></textarea></label>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">'+
+      '<label>Confirmed business phone<input name="phone" maxlength="32" type="tel" style="width:100%"></label>'+
+      '<label>Confirmed business email<input name="email" maxlength="160" type="email" style="width:100%"></label></div>'+
+      '<label style="display:flex;align-items:center;gap:8px;margin:12px 0"><input id="sbcStudioOwnerVerified" type="checkbox" required> I verified these business facts and approve their use in a private preview.</label>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit">Save approved business facts</button><button class="btn" id="sbcStudioViewPreview" type="button" disabled>View new Website Studio concept</button></div></form>'+
+      '<p id="sbcStudioStatus" role="status" aria-live="polite">Loading verified profile…</p></section>';
+  }
+  const studioBase=demo=>'/api/website-production/sites/'+encodeURIComponent(demo.id)+'/studio';
+  function studioMessage(value){const p=document.getElementById('sbcStudioStatus');if(p)p.textContent=value;}
+  async function loadStudioProfile(demo){
+    const form=document.getElementById('sbcStudioApprovalForm');if(!form)return;
+    try{
+      const out=await serviceApi(studioBase(demo));
+      if(!out?.ok)throw Error(out?.code||'Website Studio is unavailable.');
+      const p=out.approvedProfile||null,b=p?.business||out.identity||{},c=p?.contact||{};
+      form.dataset.version=String(out.version||0);
+      for(const [name,value] of Object.entries({businessName:b.name||'',category:b.category||'',city:b.city||'',region:b.region||'',phone:c.phone||'',email:c.email||''})){
+        const field=form.elements.namedItem(name);if(field)field.value=String(value);
+      }
+      form.elements.namedItem('services').value=(p?.services||[]).map(s=>s.name+(s.description?' | '+s.description:'')).join('\n');
+      document.getElementById('sbcStudioViewPreview').disabled=!p;
+      form.querySelectorAll('input:not([readonly]),textarea,button[type=submit]').forEach(el=>{el.disabled=!out.canApprove});
+      studioMessage(p?'Business facts approved (revision '+out.version+'). Preview is ready.':out.canApprove?'Confirm the facts before building the private Studio preview.':'This site is locked; no approved Studio profile is available.');
+    }catch(e){studioMessage(String(e?.message||'Website Studio unavailable.'));}
+  }
+  async function saveStudioProfile(event){
+    event.preventDefault();const form=event.currentTarget;
+    if(currentRole()!=='owner'||!active?.demo)return;
+    const get=name=>String(form.elements.namedItem(name)?.value||'').trim();
+    const services=get('services').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
+      const split=line.indexOf('|');return {name:(split<0?line:line.slice(0,split)).trim(),description:split<0?'':line.slice(split+1).trim()};
+    });
+    if(services.length>12)return studioMessage('Use up to 12 confirmed services.');
+    if(!document.getElementById('sbcStudioOwnerVerified')?.checked)return studioMessage('Confirm that you verified these details first.');
+    if(!window.confirm('Save these as OWNER-APPROVED business facts for the private Website Studio concept?'))return;
+    const payload={expectedVersion:Number(form.dataset.version||0),ownerConfirmed:true,
+      profile:{business:{name:get('businessName'),category:get('category'),city:get('city'),region:get('region')},services,contact:{phone:get('phone'),email:get('email')}}};
+    try{
+      studioMessage('Saving approved facts in Command Center…');
+      const out=await serviceApi(studioBase(active.demo)+'/approved-profile',{method:'PATCH',body:JSON.stringify(payload)});
+      if(!out?.ok||out.durable!==true)throw Error(out?.code||'Facts were not saved.');
+      await loadStudioProfile(active.demo);
+      studioMessage('Approved facts saved to the correct account. You may now view the private Website Studio concept.');
+    }catch(e){studioMessage(String(e?.message||'Unable to save facts. Reload and try again.'));}
+  }
+  async function previewStudioConcept(){
+    if(currentRole()!=='owner'||!active?.demo)return;
+    try{
+      const out=await serviceApi(studioBase(active.demo));
+      if(!out?.ok||!out.approvedProfile)throw Error('First approve this business’s verified profile.');
+      const frame=document.getElementById('sbcFactoryFrame');
+      if(!frame)throw Error('Website preview frame not available.');
+      frame.src=studioBase(active.demo)+'/preview';
+      const address=document.getElementById('sbcFactoryAddress');if(address)address.textContent='SBC Website Studio · Private approved-facts concept';
+      studioMessage('Showing private Website Studio concept. No form submissions or public publishing are enabled.');
+    }catch(e){studioMessage(String(e?.message||'Unable to open Studio preview.'));}
+  }
+
   function showSite(demo,customer,message='') {
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
@@ -92,7 +162,7 @@
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
       '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
-      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+
+      hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+studioPanel()+
       '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
       appointmentPanel(demo)+
       (isApproved(demo)?'<div class="v6526-link-row sbc-factory-light-panel"><div><strong>Approved presentation URL</strong><input id="sbcFactoryPublicUrl" readonly value="'+esc(pageUrl(demo,'home'))+'"></div><button type="button" class="btn" id="sbcFactoryCopyLink">Copy Website Link</button><a class="btn" href="'+esc(pageUrl(demo,'home'))+'" target="_blank" rel="noopener noreferrer">Open Website ↗</a></div>':'<p class="sbc-factory-light-panel sbc-factory-private-note" style="padding:12px;background:#fff4dc;border-radius:9px"><strong>Private production draft.</strong> No public URL or outbound message is available before owner approval.</p>')+
@@ -114,6 +184,9 @@
     }));
     document.getElementById('sbcInstantSiteEditor')?.addEventListener('submit',saveNativeEditor);
     loadNativeEditor(demo).catch(e=>console.warn('SBC editor load blocked',String(e.message||e)));
+    loadStudioProfile(demo).catch(e=>console.warn('SBC Studio load blocked',String(e.message||e)));
+    document.getElementById('sbcStudioApprovalForm')?.addEventListener('submit',saveStudioProfile);
+    document.getElementById('sbcStudioViewPreview')?.addEventListener('click',previewStudioConcept);
     document.getElementById('sbcFactoryApprove')?.addEventListener('click',approve);
     document.getElementById('sbcFactoryBookMeeting')?.addEventListener('click',bookWalkthrough);
     document.getElementById('sbcFactoryCopyLink')?.addEventListener('click',()=>copyText(pageUrl(demo,'home'),'Website link copied.'));
