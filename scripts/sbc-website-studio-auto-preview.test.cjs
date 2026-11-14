@@ -29,3 +29,10 @@ test('approved and archived customer websites are preserved unchanged',()=>{
  assert.throws(()=>createDraftConcept({...lead('Already Live','Restaurant'),status:'Approved'}),/STUDIO_DRAFT_UNAVAILABLE/);
  assert.throws(()=>createDraftConcept({...lead('Archived','Roofing'),archived:true}),/STUDIO_DRAFT_UNAVAILABLE/);
 });
+
+test('owner-selected design themes 1, 2 and 3 change the private smart website identity',()=>{
+ const site=lead('Silverline Window Studio','Window Tinting');
+ const variants=[1,2,3].map(themeVariant=>createDraftConcept({...site,siteEdits:{themeVariant}}).bundle.files['index.html'].match(/data-sbc-design-variant="([^"]+)"/)[1]);
+ assert.deepEqual(variants,['tint-1','tint-2','tint-3']);
+ assert.equal(createDraftConcept({...site,siteEdits:{themeVariant:3}}).publicationReady,false);
+});
