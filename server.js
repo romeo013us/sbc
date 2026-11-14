@@ -7533,11 +7533,28 @@ app.post('/api/acquisition/outreach-draft/:customerId',auth,async(req,res)=>{
   const channel=String(req.body?.channel||'email').toLowerCase()==='sms'?'sms':'email';const d=ACQUISITION.draft(c,channel,o.demoUrl||'');const row={id:ACQUISITION.id('draft'),opportunityId:o.id,customerId:c.id,channel,subject:d.subject,body:d.body,status:'DRAFT',createdAt:now()};await persistAcquisitionDraft(row);o.outreachDraftCount=Number(o.outreachDraftCount||0)+1;o.lastAction='outreach_draft_created';o.updatedAt=now();await persistAcquisitionOpportunity(o);res.status(201).json({ok:true,draft:row,opportunity:o});
 });
 const SBC_LIVE_DB=require('./enterprise/sbc-live-db-view.cjs').createLiveDbView(()=>db); // SBC_WEBSITE_LIVE_DB_AFTER_MYSQL_HYDRATION_V1
-require('./enterprise/sbc-website-production-routes.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,paidGuard:SBC_V6651_REQUIRE_PAID});
+const SBC_HYBRID_STUDIO=require('./enterprise/sbc-website-production-routes.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,paidGuard:SBC_V6651_REQUIRE_PAID,recordGlobalSpend:({tenantId,id,amountUsd})=>RUNTIME_GATE.recordSpend({tenantId,provider:'openai',purpose:'website-studio-hybrid',amountUsd,idempotencyKey:'studio-hybrid:'+id})});
 require('./enterprise/sbc-website-appointments.cjs').register(app,{auth,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveData,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady});
 require('./enterprise/sbc-website-call-desk.cjs').register(app,{auth,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}); // SBC_VERIFIED_WEBSITE_CALL_DESK_V1
 require('./enterprise/sbc-website-sales-board.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,paidGuard:SBC_V6651_REQUIRE_PAID}); // SBC_WEBSITE_SALES_BOARD_V1
-app.post('/api/website-demos',auth,async(req,res)=>{if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY||!sbcWriterLeaseReady)return res.status(423).json({ok:false,error:'DEMO_WRITER_UNAVAILABLE'});try{const tenantId=requireRequestTenant(req);const d=await createWebsiteDemo(String(req.body?.customerId||''),{...(req.body||{}),tenantId,actor:req.user});const c=(db.customers||[]).find(x=>x.id===d.customerId&&SBC_PREVIEW_SALES.sameTenant(x,tenantId));res.status(201).json({ok:true,demo:{...d,html:undefined,salesScript:SBC_PREVIEW_SALES.salesScript(c,d)}});}catch(e){res.status(e.message==='DEMO_CUSTOMER_NOT_AUTHORIZED'?404:400).json({ok:false,error:e.message})}});
+app.post('/api/website-demos',auth,async(req,res)=>{
+ if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY||!sbcWriterLeaseReady)return res.status(423).json({ok:false,error:'DEMO_WRITER_UNAVAILABLE'});
+ try{
+  const tenantId=requireRequestTenant(req),customerId=String(req.body?.customerId||'');
+  const existed=megaData().websiteDemos?.some(x=>String(x.customerId)===customerId&&Number(x.tenantId)===tenantId&&x.archived!==true);
+  const d=await createWebsiteDemo(customerId,{...(req.body||{}),tenantId,actor:req.user});
+  // Only a genuinely NEW owner-created website receives automatic AI polish.
+  // Existing records, staff-built sites and approved sites are not bulk-upgraded.
+  let ai={status:'SKIPPED_EXISTING_OR_NON_OWNER'};
+  if(!existed&&req.user?.role==='owner'){
+   try{ai=await SBC_HYBRID_STUDIO.enhance({siteId:d.id,tenantId,mode:'auto-new',createdNow:true})}
+   catch{ai={status:'AI_NOT_APPLIED_SAFELY'}}
+  }
+  const latest=(megaData().websiteDemos||[]).find(x=>String(x.id)===String(d.id)&&Number(x.tenantId)===tenantId)||d;
+  const c=(db.customers||[]).find(x=>x.id===d.customerId&&SBC_PREVIEW_SALES.sameTenant(x,tenantId));
+  res.status(201).json({ok:true,ai,demo:{...latest,html:undefined,salesScript:SBC_PREVIEW_SALES.salesScript(c,latest)}});
+ }catch(e){res.status(e.message==='DEMO_CUSTOMER_NOT_AUTHORIZED'?404:400).json({ok:false,error:e.message})}
+});
 app.get('/api/website-demos/:id/preview',auth,(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex,nofollow,noarchive');
   let tid;try{tid=requireRequestTenant(req)}catch{return res.status(403).end()}
