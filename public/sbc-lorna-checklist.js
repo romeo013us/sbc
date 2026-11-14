@@ -59,7 +59,8 @@ function score(form){
  if(!['matches','not_published','listing_not_found'].includes(d.googleAddressVerification))needed.push('Google-listed street address: verify against Maps and flag conflicting addresses');
  else if(!d.googleAddressEvidenceUrl||!web(d.googleAddressEvidenceUrl))needed.push('Google address evidence: add the actual listing/search source URL');
  else good.push('Google-listed street address status and evidence recorded');
- if(source)good.push('Research source recorded');else needed.push('Source supporting this record');
+ var sourceIsReal=!!source&&!/^(lead research(?:\s*-\s*bulk import)?|bulk import|csv import|unknown|not verified)$/i.test(source);
+ if(sourceIsReal)good.push('Real research source recorded');else needed.push('Actual public research evidence source, not the CSV import channel');
  if(website&&!web(website))needed.push('Check website URL format');
  if(d.websitePresence==='found')good.push('Website found (researcher-reported)');
  else if(d.websitePresence==='not_found')opportunities.push('Website not found after checking: possible website opportunity');
@@ -72,7 +73,7 @@ function score(form){
  if(d.yearsInBusiness==='Not verified')uncertain.push('Years in business not verified');
  if(!d.servicesVerified)uncertain.push('Specific services and history not independently verified');
  if(d.suggestedSbcOffer)uncertain.push('Suggested SBC offer is conditional until business needs are confirmed');
- return {good,needed,opportunities,uncertain,complete:!!name&&ph(phone)&&!!source,fullResearchReady:!!name&&ph(phone)&&!!source&&needed.length===0,
+ return {good,needed,opportunities,uncertain,complete:!!name&&ph(phone)&&sourceIsReal,fullResearchReady:!!name&&ph(phone)&&sourceIsReal&&needed.length===0,
    safeToCall:false,noMarketingPermissionImplied:true};
 }
 function render(form){
@@ -123,6 +124,8 @@ function parseBrief(raw,form){
   var label=pair[0],hit=txt.match(new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:—-]?\\s*([^\\n]+)','i'));
   if(hit){var v=hit[1].trim();if(!/^(not recorded|none|—|not verified)$/i.test(v)&&!/^\\[/.test(v))set(pair[1],v);}
  });
+ var mapsLink=txt.match(/https:\/\/(?:maps\.app\.goo\.gl|www\.google\.com\/maps|maps\.google\.com)\/[^\s)\]>]+/i);
+ if(mapsLink)set('googleBusinessUrl',mapsLink[0].replace(/[.,]+$/,''));
  set('phone',parts.phone);
  if(parts.email&&!/^(—|none|not recorded)$/i.test(parts.email))set('email',parts.email);
  set('industry',parts['crm category']);
