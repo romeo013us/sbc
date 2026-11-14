@@ -141,7 +141,7 @@ function upgradePrivateBundle({bundle,profile,designTokens}){
  if(!bundle||bundle.publicationReady!==false||typeof bundle.files?.['index.html']!=='string'||typeof bundle.files?.['styles.css']!=='string')throw Error('INVALID_SITE_BUNDLE');
  const plan=buildPlan(profile,designTokens),direction=directions[plan.vertical];
  let html=bundle.files['index.html'];
- if(!html.includes('<main id="main">')||!html.includes('class="composition-art"'))throw Error('STUDIO_V2_COMPILER_STRUCTURE_MISMATCH');
+ if(!html.includes('<main id="main">')||!html.includes('id="contact"'))throw Error('STUDIO_V2_COMPILER_STRUCTURE_MISMATCH');
  html=html.replace(/<body\s/,'<body data-sbc-studio-version="2" data-sbc-v2-direction="'+plan.direction+'" data-sbc-hero-style="'+plan.heroStyle+'" data-sbc-service-layout="'+plan.serviceLayout+'" ');
  html=html.replace('<main id="main">','<main id="main">'+verifiedFacts(profile));
  html=html.replace('<div class="composition-art">','<div class="composition-art">'+graphic(direction));
