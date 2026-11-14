@@ -60,8 +60,21 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
   const warmHot=all.filter(c=>['warm','hot'].includes(String(c?.leadTemperature||'').trim().toLowerCase()));
   const verified=all.filter(eligible);
   const ready=verified.filter(c=>!recentMission(c));
+  // Mutually exclusive, tenant-scoped reason codes. A warm/hot temperature
+  // measures research priority, never verified consent or permission to call.
+  // Deliberately return counts only; no names, phones, IDs or notes in logs.
+  const qualificationReasons={warmHotTotal:warmHot.length,warmHotQualified:0,warmHotNeedsVerification:0,
+    warmHotSuppressed:0,warmHotExistingCustomer:0,warmHotOther:0};
+  for(const c of warmHot){
+    const status=String(c?.status||'').trim().toLowerCase();
+    if(suppressed(c))qualificationReasons.warmHotSuppressed++;
+    else if(['active_customer','fulfilled','active'].includes(status))qualificationReasons.warmHotExistingCustomer++;
+    else if(!strictVerified(c))qualificationReasons.warmHotNeedsVerification++;
+    else if(eligible(c))qualificationReasons.warmHotQualified++;
+    else qualificationReasons.warmHotOther++;
+  }
   return {ok:true,advisoryOnly:true,tenantId:scopedId,tenantCustomers:all.length,tenantWarmHot:warmHot.length,unresolvedTenantRecords,
-    qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,
+    qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,qualificationReasons,
     prospects:Math.min(cap,ready.length),missions:0,externalActions:0,writeAttempts:0};
 }
 function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain,closer,consultative,revenueSupervisor,globalBIOS,superbrain,dispatchCall,godKim,createConsultativeCheckout,createFulfillmentJobsForOrder,processReadyFulfillmentJobs,vendorCapabilities,catalog,sendCustomerStatus,ownerThreshold=10000,logger=console}={}){
@@ -156,7 +169,13 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
   async function cycle({limit=MAX_BATCH,reason='scheduled',tenantId=null,advisoryOnly=false}={}){
     if(state.running)return {ok:true,skipped:true,reason:'cycle_already_running'};
     refreshCanonicalDb();
-    if(advisoryOnly)return sbcAdvisoryScreen(db,tenantId,limit,eligible,recentMission);
+    if(advisoryOnly){
+      const screened=sbcAdvisoryScreen(db,tenantId,limit,eligible,recentMission);
+      // Plain production logs should explain zero qualified prospects without
+      // weakening outreach rules or exposing any customer-identifying data.
+      try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons}));}catch(_){/* diagnostics never block runtime */}
+      return screened;
+    }
     state.running=true;const started=Date.now();
     try{
       const cap=Math.min(MAX_BATCH,Math.max(1,Number(limit)||MAX_BATCH));

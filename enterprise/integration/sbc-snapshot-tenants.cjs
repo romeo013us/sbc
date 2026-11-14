@@ -103,12 +103,25 @@ async function persistTable(conn, table, records, columnsFor, { tombstones = fal
   }
 }
 
+// The authoritative CRM keeps verificationStatus at the customer root, while
+// MySQL hydration reads it from lead_intelligence_json. Without this bridge,
+// a successful Sales Ready decision disappears after restart. This serializes
+// existing decisions only: it never derives verification from temperature,
+// lead score or AUTO_VERIFIED flags, and never mutates the in-memory record.
+function persistedLeadIntelligence(c){
+  const src=c?.leadIntelligence;
+  const out=src&&typeof src==='object'&&!Array.isArray(src)?{...src}:{};
+  const existing=String(c?.verificationStatus??'').trim();
+  if(existing && existing.length<=100)out.verificationStatus=existing;
+  return out;
+}
+
 async function persist(conn, { scope }, { sqlDate, sqlDateTime, now }) {
   await persistTable(conn, 'sbc_customers', scope.customers, c => ({
     business_name: c.businessName || '', contact_name: c.contactName || '', phone: c.phone || '', email: c.email || '',
     status: c.status || 'Lead', source: c.source || 'Walk-in', follow_up: sqlDate(c.followUp), notes: c.notes || '',
     website: c.website || '', industry: c.industry || '', website_status: c.websiteStatus || '', assigned_to: c.assignedTo || '',
-    account_notes_json: JSON.stringify(c.accountNotes || []), lead_intelligence_json: JSON.stringify(c.leadIntelligence || {}),
+    account_notes_json: JSON.stringify(c.accountNotes || []), lead_intelligence_json: JSON.stringify(persistedLeadIntelligence(c)),
     created_at: sqlDateTime(c.createdAt), updated_at: sqlDateTime(c.updatedAt)
   }), { tombstones: true });
   await persistTable(conn, 'sbc_quotes', scope.quotes, q => ({
