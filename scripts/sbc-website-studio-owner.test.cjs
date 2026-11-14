@@ -137,3 +137,29 @@ test('Business Basic auto-preview serves four private pages with working interna
  assert.equal((await fx.call('GET','/auto-preview?page=pricing')).statusCode,404);
  assert.equal(fx.saves(),0,'inspecting multi-page concepts cannot mutate CRM');
 });
+
+test('owner Visual Studio revisions are durable, private, tenant-scoped, and reject stale revisions',async()=>{
+ const fx=fixture(),route='/visual';
+ assert.equal((await fx.call('GET',route,undefined,'none')).statusCode,401);
+ assert.equal((await fx.call('GET',route,undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET',route,undefined,'owner','site-b')).statusCode,404);
+ const before=await fx.call('GET',route);assert.equal(before.body.version,0);
+ const payload={expectedVersion:0,visual:{headline:'A sharper look',subheadline:'Preview of a customized website',density:'airy',photoUrl:'',photoAlt:'',rightsConfirmed:false}};
+ assert.equal((await fx.call('PATCH',route,payload,'staff')).statusCode,403);
+ assert.equal((await fx.call('PATCH',route,payload,'owner','site-b')).statusCode,404);
+ assert.equal((await fx.call('PATCH',route,{...payload,visual:{...payload.visual,photoUrl:'https://evil.example/stuff.jpg',photoAlt:'Bad',rightsConfirmed:true}})).statusCode,400);
+ fx.setWriter(false);assert.equal((await fx.call('PATCH',route,payload)).statusCode,423);fx.setWriter(true);
+ const saved=await fx.call('PATCH',route,payload);assert.equal(saved.statusCode,200);
+ assert.equal(saved.body.version,1);assert.equal(saved.body.durable,true);
+ assert.equal((await fx.call('GET',route)).body.visual.headline,'A sharper look');
+ const preview=await fx.call('GET','/auto-preview');assert.match(preview.body,/A sharper look/);
+ assert.equal((await fx.call('PATCH',route,payload)).statusCode,409);
+ assert.equal((await fx.call('PATCH',route,{...payload,expectedVersion:1},'owner','site-approved')).statusCode,409);
+ assert.equal(fx.saves(),1);
+});
+test('simultaneous Visual Studio updates save only one version without losing first editor state',async()=>{
+ const fx=fixture(),payload={expectedVersion:0,visual:{headline:'First look',density:'dense'}};
+ const results=await Promise.all([fx.call('PATCH','/visual',payload),fx.call('PATCH','/visual',{...payload,visual:{headline:'Second look'}})]);
+ assert.deepEqual(results.map(r=>r.statusCode).sort(),[200,409]);
+ assert.equal(fx.saves(),1);
+});
