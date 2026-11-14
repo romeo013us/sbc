@@ -6,6 +6,24 @@ const {verifiedProfile}=require('./contracts.cjs');
 const {createPrivateConcept}=require('./index.cjs');
 const {checkPrivateBundle}=require('./qa-gate.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
+// CRM suggestions are review-only. The owner must attest them before compilation.
+// Ignore research notes, social snippets, and unverified service guesses.
+function suggestFromCRM(site,db,tenant){
+ const customer=(Array.isArray(db?.customers)?db.customers:[]).find(c=>String(c.id)===String(site.customerId)&&Number(c.tenantId)===tenant)||site.customer||{};
+ const seed=site.customer||{};
+ const supplied=site.verifiedBusinessDetails?.verified===true?site.verifiedBusinessDetails:
+   customer.websiteVerifiedDetails?.verified===true?customer.websiteVerifiedDetails:
+   seed.websiteVerifiedDetails?.verified===true?seed.websiteVerifiedDetails:null;
+ const rawServices=Array.isArray(supplied?.services)?supplied.services:[];
+ const services=rawServices.filter(v=>typeof v==='string'||(v&&typeof v==='object')).slice(0,12).map(v=>{
+  const name=typeof v==='string'?v: v.name;
+  return {name:String(name||'').trim().slice(0,90),description:typeof v==='object'&&typeof v.description==='string'?v.description.trim().slice(0,280):''};
+ }).filter(x=>x.name);
+ const clean=(value,max)=>typeof value==='string'?value.trim().slice(0,max):'';
+ return {business:{name:clean(seed.businessName,120),category:clean(site.industry||customer.industry||seed.industry,90),city:clean(customer.city||seed.city,90),region:clean(customer.region||seed.region,60)},
+  services,contact:{phone:clean(customer.phone||seed.phone,32),email:clean(customer.email||seed.email,160)},reviewRequired:true,source:supplied?'CRM_CONFIRMED_FIELDS':'CRM_REVIEW_REQUIRED'};
+}
+
 const isRecord=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const strictKeys=(value,permitted)=>isRecord(value)&&Object.keys(value).every(k=>permitted.includes(k));
 const trimmed=value=>typeof value==='string'?value.trim():value;
@@ -28,7 +46,7 @@ function buildApprovedProfile(raw,site,actor){
  verifiedProfile(profile);
  return profile;
 }
-function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation}){
+function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation,db}){
  if(typeof auth!=='function'||typeof ownerOnly!=='function'||typeof requireTenant!=='function'||typeof getStore!=='function'||typeof saveStore!=='function'||typeof writerReady!=='function')throw Error('STUDIO_DEPENDENCY_REQUIRED');
  let approvalQueue=Promise.resolve();
  const respond=(res,code,status=400)=>res.status(status).json({ok:false,code});
@@ -62,7 +80,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const c=site.customer||{};
   return res.json({ok:true,id:String(site.id),status:String(site.status||''),archived:site.archived===true,version:site.websiteStudioProfileVersion||0,
    identity:{name:String(c.businessName||''),category:String(site.industry||c.industry||''),city:String(c.city||''),region:String(c.region||'')},
-   approvedProfile:fetchApproved(site),canApprove:site.archived!==true&&['Draft','Pending'].includes(site.status)});
+   approvedProfile:fetchApproved(site),suggestedProfile:suggestFromCRM(site,db,Number(requireTenant(req))),canApprove:site.archived!==true&&['Draft','Pending'].includes(site.status)});
  }));
  app.patch(ROOT+'/approved-profile',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
