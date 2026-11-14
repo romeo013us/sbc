@@ -6,15 +6,38 @@
  else root.SBCResearchImportCore=api;
 })(typeof window!=='undefined'?window:{},function(){
  'use strict';
- var ORDER=['businessName','contactName','phone','email','website','industry','address','notes','source'];
+ var ORDER=['businessName','contactName','phone','email','website','industry','address','notes','source',
+ 'googleBusinessUrl','googleListingAddress','streetAddressEvidenceUrl','googleAddressEvidenceUrl',
+ 'streetAddressVerification','googleAddressVerification','nextFollowupNote','leadStatusNote',
+ 'streetCity','streetState','streetZip','websitePresence','googleBusinessPresence','yearsInBusiness',
+ 'specificServices','businessHistory','researchEvidenceUrl','suggestedSbcOffer','openingQuestion'];
  var ALIASES={
   businessName:['business','businessname','businesslegalname','company','companyname','organization','storename','name'],
   contactName:['contact','contactname','contactperson','owner','ownername','decisionmaker','contactfullname'],
-  phone:['phone','phonenumber','businessphone','telephone','tel','mobile','mobilephone'],
+  phone:['phone','primaryphone','phonenumber','businessphone','telephone','tel','mobile','mobilephone'],
   email:['email','emailaddress','businessemail','contactemail'],
   website:['website','web','site','url','weburl','businesswebsite'],
   industry:['industry','category','businesscategory','businesstype','type'],
-  address:['address','businessaddress','streetaddress','location','city','businesslocation'],
+  address:['address','businessaddress','streetaddress','location','businesslocation','fullstreetaddress'],
+  streetCity:['city','businesscity','streetcity'],
+  streetState:['state','region','province','streetstate'],
+  streetZip:['zip','zipcode','postalcode','postcode','streetzip'],
+  googleBusinessUrl:['googlebusinessprofile','googlebusinessprofileurl','googlebusinesslink','googlemapsurl','googlemapslink','googlelistingurl','googlemap','googleprofileurl','gbpurl'],
+  googleListingAddress:['googlelistingaddress','googleaddress','googlelistedstreetaddress','googlemapsaddress','addressongoogle'],
+  streetAddressEvidenceUrl:['streetaddressevidenceurl','streetaddresssourceurl','addresssource','addresssourceurl','streetaddresssource','streetevidenceurl'],
+  googleAddressEvidenceUrl:['googleaddressevidenceurl','googlelistingevidenceurl','googlemapsourceurl','googleaddresssourceurl','googleaddresssource'],
+  streetAddressVerification:['streetaddressverification','addressverification','streetaddressstatus'],
+  googleAddressVerification:['googleaddressverification','googleaddressstatus','googlelistingaddressstatus'],
+  nextFollowupNote:['nextfollowup','nextfollowupnote','followup','nextaction'],
+  leadStatusNote:['leadstatus','status','crmstatus'],
+  websitePresence:['websitepresence','websitecheck','websitestatus'],
+  googleBusinessPresence:['googlebusinesspresence','googleprofilecheck','googleprofilestatus'],
+  yearsInBusiness:['yearsinbusiness','yearsactive'],
+  specificServices:['specificservices','servicesoffered','services'],
+  businessHistory:['businesshistory','history'],
+  researchEvidenceUrl:['researchevidenceurl','originalresearchlink','registryurl'],
+  suggestedSbcOffer:['suggestedsbcoffer','suggestedoffer'],
+  openingQuestion:['openingquestion','suggestedopeningquestion'],
   notes:['notes','note','researchnotes','description','details'],
   source:['source','leadsource','researchsource']
  };
@@ -93,6 +116,9 @@
     if(val)record[key]=val;
    });
    ORDER.forEach(function(key){record[key]=String(record[key]||'').trim();});
+   if(record.address&&record.streetCity&&!record.address.toLowerCase().includes(record.streetCity.toLowerCase())){
+    record.address+=', '+record.streetCity+(record.streetState?', '+record.streetState:'')+(record.streetZip?' '+record.streetZip:'');
+   }
    // "Source" is evidence about a prospect, not the short CRM intake channel.
    // Keep the short provenance constant for the canonical SBC CRM; map the
    // original source into the dedicated research evidence field instead.
@@ -121,7 +147,16 @@
    });
    if(!record.phone&&!record.email&&!record.website)warnings.push('Add contact details when available');
    if(record.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email))errors.push('Email address appears invalid');
-   var limit={businessName:200,contactName:150,phone:80,email:250,website:300,industry:160,address:350,notes:2000,source:160,verificationSource:300};
+   ['googleBusinessUrl','streetAddressEvidenceUrl','googleAddressEvidenceUrl','researchEvidenceUrl'].forEach(function(key){
+    if(record[key]&&!/^https?:\/\/[^\s]+$/i.test(record[key]))errors.push(key+' must be an https/http research URL');
+   });
+   if(record.streetAddressVerification&&!['not_checked','verified','not_public','conflict'].includes(record.streetAddressVerification))errors.push('Street address verification status is unsupported');
+   if(record.googleAddressVerification&&!['not_checked','matches','different','not_published','listing_not_found'].includes(record.googleAddressVerification))errors.push('Google address verification status is unsupported');
+   var limit={businessName:200,contactName:150,phone:80,email:250,website:300,industry:160,address:350,notes:2000,source:160,verificationSource:300,
+  googleBusinessUrl:500,googleListingAddress:350,streetAddressEvidenceUrl:1200,googleAddressEvidenceUrl:1200,
+  streetAddressVerification:40,googleAddressVerification:40,nextFollowupNote:260,leadStatusNote:80,
+  streetCity:90,streetState:60,streetZip:20,websitePresence:40,googleBusinessPresence:40,
+  yearsInBusiness:65,specificServices:500,businessHistory:500,researchEvidenceUrl:1200,suggestedSbcOffer:180,openingQuestion:350};
    Object.keys(limit).forEach(function(key){if(record[key].length>limit[key])errors.push(key+' is too long');});
    var name=record.businessName.toLowerCase().replace(/\s+/g,' '),phone=record.phone.replace(/\D/g,''),email=record.email.toLowerCase();
    if(name&&seenNames.has(name) || phone&&seenPhones.has(phone) || email&&seenEmails.has(email))errors.push('Duplicate within this batch');
