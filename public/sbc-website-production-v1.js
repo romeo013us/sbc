@@ -246,6 +246,89 @@
   const v3SectionKeys=['showcase','path','questions','conversion'];
   const v3VisualFields=['headline','subheadline','density','vibe','heroStyle','serviceLayout','photoUrl','photoAlt','rightsConfirmed','sectionOrder','brandPrimary','brandAccent','brandConfirmed','comparisonTitle','comparisonBefore','comparisonAfter','comparisonBeforeAlt','comparisonAfterAlt','comparisonRights','actualWorkConfirmed','gridEnabled','gridState'];
   let v3History={site:null,present:null,undo:[],redo:[]};
+
+  // Grid inspector is *presentation only*. The server validates the complete
+  // allowlist and the existing tenant/owner/version gates before saving.
+  const studioGridValue=form=>{
+    const text=String(form?.elements.namedItem('gridState')?.value||'');
+    try{
+      const value=JSON.parse(text);
+      if(value&&typeof value==='object'&&Array.isArray(value.nodes))return value;
+    }catch{}
+    return {enabled:false,nodes:[]};
+  };
+  const studioGridInt=(form,name,min,max)=>{
+    const value=Number(form.elements.namedItem(name)?.value);
+    if(!Number.isInteger(value)||value<min||value>max)throw Error('Invalid '+name+'; expected '+min+'-'+max);
+    return value;
+  };
+  function syncStudioGridInspector(){
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!form)return;
+    const value=studioGridValue(form),id=String(form.elements.namedItem('gridNodeFocus')?.value||'service-1');
+    const node=value.nodes.find(n=>n.id===id)||{},g=node.grid||{},st=node.style||{},bp=node.breakpoints||{};
+    const defaults={gridSpan:g.colSpan??6,gridRow:g.rowSpan??1,gridZ:g.zIndex??1,
+      gridPadding:st.paddingPx??24,gridRadius:st.radiusPx??18,gridBlur:st.glassBlurPx??0,
+      gridTablet:bp.tablet?.colSpan??6,gridMobile:bp.mobile?.colSpan??12,
+      gridShadow:st.shadow??'soft',gridAlign:st.align??'left',gridMotion:node.motion??'none'};
+    for(const [key,v] of Object.entries(defaults)){
+      const field=form.elements.namedItem(key);if(field)field.value=String(v);
+    }
+    form.elements.namedItem('gridEnabled').checked=value.enabled===true;
+  }
+  function commitStudioGridInspector(){
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!form||form.dataset.ready!=='1'||currentRole()!=='owner'||!active?.demo||
+      isApproved(active.demo)||active.demo.archived===true)return false;
+    const enabled=form.elements.namedItem('gridEnabled').checked===true;
+    if(!enabled){
+      form.elements.namedItem('gridState').value=JSON.stringify({enabled:false,nodes:[]});
+      rememberStudioDraft();return true;
+    }
+    const id=String(form.elements.namedItem('gridNodeFocus')?.value||'');
+    if(!/^service-[1-6]$/.test(id))return false;
+    try{
+      const node={id,grid:{colSpan:studioGridInt(form,'gridSpan',1,12),
+        rowSpan:studioGridInt(form,'gridRow',1,3),zIndex:studioGridInt(form,'gridZ',1,5)},
+        style:{paddingPx:studioGridInt(form,'gridPadding',0,64),
+          radiusPx:studioGridInt(form,'gridRadius',0,36),
+          glassBlurPx:studioGridInt(form,'gridBlur',0,18),
+          shadow:String(form.elements.namedItem('gridShadow')?.value||'soft'),
+          align:String(form.elements.namedItem('gridAlign')?.value||'left')},
+        motion:String(form.elements.namedItem('gridMotion')?.value||'none'),
+        breakpoints:{tablet:{colSpan:studioGridInt(form,'gridTablet',6,12)},
+          mobile:{colSpan:studioGridInt(form,'gridMobile',6,12)}}};
+      if(![6,12].includes(node.breakpoints.tablet.colSpan)||![6,12].includes(node.breakpoints.mobile.colSpan))
+        throw Error('Only half-width or full-width tablet/mobile spans are allowed.');
+      const current=studioGridValue(form);
+      const nodes=Array.isArray(current.nodes)&&current.enabled===true?current.nodes.filter(n=>n.id!==id):[];
+      if(nodes.length>=12)throw Error('Maximum 12 service nodes');
+      nodes.push(node);
+      nodes.sort((a,b)=>Number(a.id.slice(8))-Number(b.id.slice(8)));
+      const draft=JSON.stringify({enabled:true,nodes});
+      if(draft.length>7000)throw Error('Grid draft is too large');
+      form.elements.namedItem('gridState').value=draft;
+      rememberStudioDraft();return true;
+    }catch(error){studioVisualMessage('Grid not applied: '+String(error.message||error));return false}
+  }
+  function selectStudioGridCard(id){
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!form||form.dataset.ready!=='1'||!/^service-[1-6]$/.test(id))return;
+    const choice=form.elements.namedItem('gridNodeFocus');
+    if(!choice||!Array.from(choice.options).some(o=>o.value===id))return;
+    choice.value=id;
+    document.getElementById('sbcStudioGridInspector')?.setAttribute('open','');
+    syncStudioGridInspector();
+    studioVisualMessage('Selected '+id+'. Adjust the inspector then apply your private design.');
+  }
+  function resetStudioGrid(){
+    const form=document.getElementById('sbcStudioVisualForm');
+    if(!form||form.dataset.ready!=='1'||currentRole()!=='owner')return;
+    form.elements.namedItem('gridEnabled').checked=false;
+    form.elements.namedItem('gridState').value=JSON.stringify({enabled:false,nodes:[]});
+    rememberStudioDraft();syncStudioGridInspector();tryStudioRemix();
+  }
+
   function studioSnapshot(form){
     if(!form)return null;
     const result={};
