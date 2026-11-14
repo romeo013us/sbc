@@ -8,6 +8,7 @@ const {createDraftConcept,deriveDraftProfile}=require('./draft-concept.cjs');
 const {compileMultiPageConcept}=require('./multi-page-concept.cjs');
 const {checkPrivateBundle}=require('./qa-gate.cjs');
 const Visual=require('./visual-editor.cjs');
+const {suggestMedia}=require('./media-catalog.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
 // CRM suggestions are review-only. The owner must attest them before compilation.
 // Ignore research notes, social snippets, and unverified service guesses.
@@ -113,6 +114,12 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
 
  // Owner-only, optimistic visual controls; shares the writer queue with both
  // site editing and approved-facts saves, and never changes published sites.
+ // Read-only, tenant-scoped source of illustrative image ideas. Never marks
+ // candidate imagery as licensed for the business or modifies the customer's data.
+ app.get(ROOT+'/media-suggestions',auth,ownerOnly,(req,res)=>readonly(req,res,site=>{
+  const category=String(site.industry||site.customer?.industry||'').slice(0,120);
+  return res.json({ok:true,...suggestMedia(category)});
+ }));
  app.get(ROOT+'/visual',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
   res.json({ok:true,visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),version:site.websiteStudioVisualVersion||0,
    canEdit:!site.archived&&['Draft','Pending'].includes(site.status)})));
