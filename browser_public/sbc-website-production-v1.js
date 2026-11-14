@@ -670,7 +670,12 @@
         address.textContent=(smart?'Art-directed private draft · ':'Classic website · ')+url.pathname+url.search;
       }catch{address.textContent='SBC Website Studio · Preview unavailable';}
     }
-    document.getElementById('sbcFactoryFrame')?.addEventListener('load',syncStudioPreviewAddress);
+    document.getElementById('sbcFactoryFrame')?.addEventListener('load',()=>{
+      syncStudioPreviewAddress();
+      const frame=document.getElementById('sbcFactoryFrame');
+      const pro=document.getElementById('sbcStudioWorkspace')?.classList.contains('is-pro');
+      if(frame?.contentWindow)frame.contentWindow.postMessage({type:'SBC_STUDIO_DESIGN_MODE',mode:pro?'pro':'simple'},'*');
+    });
     syncStudioPreviewAddress();
     function switchStudioMode(pro){
       const workspace=document.getElementById('sbcStudioWorkspace');
@@ -679,8 +684,9 @@
       const simple=document.getElementById('sbcStudioModeSimple'),advanced=document.getElementById('sbcStudioModePro');
       if(simple){simple.classList.toggle('primary',!pro);simple.setAttribute('aria-pressed',String(!pro))}
       if(advanced){advanced.classList.toggle('primary',pro);advanced.setAttribute('aria-pressed',String(pro))}
-      // The existing grid handles are limited to the owner-only iframe.
-      // Selection, resize, versioning and tenant checks stay unchanged.
+      const frame=document.getElementById('sbcFactoryFrame');
+      if(frame?.contentWindow)frame.contentWindow.postMessage({type:'SBC_STUDIO_DESIGN_MODE',mode:pro?'pro':'simple'},'*');
+      // The iframe still enforces its own owner-only editing and sandbox rules.
     }
     document.getElementById('sbcStudioModeSimple')?.addEventListener('click',()=>switchStudioMode(false));
     document.getElementById('sbcStudioModePro')?.addEventListener('click',()=>switchStudioMode(true));
@@ -688,7 +694,11 @@
     document.getElementById('sbcStudioTopRedo')?.addEventListener('click',()=>document.getElementById('sbcStudioRedo')?.click());
     document.getElementById('sbcStudioTopSave')?.addEventListener('click',()=>{
       const form=document.getElementById('sbcStudioVisualForm');
-      if(form&&form.dataset.ready==='1'&&currentRole()==='owner'&&!isApproved(active?.demo))form.requestSubmit();
+      if(currentRole()!=='owner'||isApproved(active?.demo))return;
+      if(active?.previewMode==='classic'){
+        const classic=document.getElementById('sbcInstantSiteEditor');
+        if(classic&&!classic.hidden)classic.requestSubmit();
+      }else if(form&&form.dataset.ready==='1')form.requestSubmit();
     });
     document.getElementById('sbcStudioTopQA')?.addEventListener('click',()=>{
       const drawer=document.getElementById('sbcFactoryPublishDrawer');
