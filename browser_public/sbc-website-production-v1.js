@@ -160,12 +160,15 @@
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
     const price=demo.offerTier==='starter'?'$199':'$349';
+    const smartDraft=currentRole()==='owner'&&!isApproved(demo)&&demo.archived!==true;
+    const smartUrl=smartDraft?absolute(studioBase(demo)+'/auto-preview'):'';
     const links=pages.map((page,i)=>'<button type="button" class="btn '+(i===0?'primary':'')+'" data-factory-page="'+esc(page)+'">'+esc(page[0].toUpperCase()+page.slice(1))+'</button>').join('');
     const html='<div class="v6526-studio" style="max-width:1100px">'+
       '<div class="v6526-studio-top"><div><p class="v6526-kicker">SBC WEBSITE PRODUCTION · REAL WORKING WEBSITES</p><h3>'+esc(customer.businessName||customer.contactName||'Website project')+'</h3><p>Built website: '+esc(demo.offerTier==='starter'?'Business Starter':'Business Basic')+' · '+price+' · '+pages.length+' page'+(pages.length>1?'s':'')+'. The remaining business-specific information is completed after purchase.</p></div><span class="v6526-ready">'+esc(demo.status||'Draft')+'</span></div>'+
-      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0"><strong style="margin-right:12px">Visit website pages:</strong>'+links+'</div>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0"><strong style="margin-right:12px">Classic website pages:</strong>'+links+'</div>'+ 
+      (smartDraft?'<div class="sbc-factory-light-panel" style="padding:15px;border:1px solid #bdd0de;border-radius:10px"><strong>Choose design preview</strong><div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0"><button id="sbcFactorySmartMode" class="btn primary" type="button">★ Art-directed preview (default)</button><button id="sbcFactoryClassicMode" class="btn" type="button">Classic 4-page builder</button></div><p id="sbcFactoryModeInfo" role="status">The art-directed version is a PRIVATE one-page concept. Example sections need fact approval. Your original '+(pages.length>1?'four-page':'one-page')+' site and its editor remain available under Classic.</p></div>':'')+
       '<div class="v6526-device-tabs" style="display:flex;gap:9px;margin:12px 0"><button type="button" class="btn" data-factory-device="desktop">Desktop</button><button type="button" class="btn" data-factory-device="mobile">Mobile</button></div>'+
-      '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
+      '<div class="v6526-preview-shell"><div class="v6526-browser"><small id="sbcFactoryAddress">SBC website production</small></div><iframe id="sbcFactoryFrame" src="'+esc(smartDraft?smartUrl:pageUrl(demo,'home'))+'" title="Full prospective customer website" referrerpolicy="no-referrer" style="width:100%;min-height:580px;border:0;background:white"></iframe></div>'+
       '<div style="margin:24px 0">'+reviewPanel(demo)+'</div>'+
       hostingGuide(demo)+qualityPanel(demo,customer)+nativeEditorPanel(demo)+studioPanel()+
       '<section class="sbc-factory-pitch" style="margin:20px 0"><h4>Prospect presentation</h4><p style="line-height:1.7;white-space:pre-wrap" id="sbcFactoryPitch">'+esc(scriptForWebsite(demo,customer))+'</p><button type="button" class="btn" id="sbcFactoryCopyPitch">Copy sales opening</button></section>'+
@@ -177,12 +180,23 @@
     if (typeof openModal !== 'function')throw Error('Command Center modal is unavailable.');
     openModal('SBC Website Production',html);
     const address=document.getElementById('sbcFactoryAddress');
-    if(address)address.textContent=new URL(pageUrl(demo,'home')).host+new URL(pageUrl(demo,'home')).pathname;
+    if(address)address.textContent=smartDraft?'SBC Art-Directed · Unverified Private Concept':new URL(pageUrl(demo,'home')).host+new URL(pageUrl(demo,'home')).pathname;
+    const switchPreview=(mode,page='home')=>{
+      const frame=document.getElementById('sbcFactoryFrame');if(!frame)return;
+      const smart=mode==='smart'&&smartDraft;
+      const url=smart?smartUrl:pageUrl(demo,page);
+      frame.src=url;
+      if(address)address.textContent=smart?'SBC Art-Directed · Private Draft · Not customer-ready':new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
+      document.getElementById('sbcFactorySmartMode')?.classList.toggle('primary',smart);
+      document.getElementById('sbcFactoryClassicMode')?.classList.toggle('primary',!smart);
+      const info=document.getElementById('sbcFactoryModeInfo');if(info)info.textContent=smart?'Art-directed design concept. Every proposed service must be verified before customer delivery.':'Classic website pages. Existing owner editing controls apply to this layout.';
+      document.querySelectorAll('[data-factory-page]').forEach(b=>b.classList.toggle('primary',!smart&&b.dataset.factoryPage===page));
+    };
+    document.getElementById('sbcFactorySmartMode')?.addEventListener('click',()=>switchPreview('smart'));
+    document.getElementById('sbcFactoryClassicMode')?.addEventListener('click',()=>switchPreview('classic'));
     document.querySelectorAll('[data-factory-page]').forEach(button=>button.addEventListener('click',()=>{
       const page=button.dataset.factoryPage;const url=pageUrl(demo,page);
-      const frame=document.getElementById('sbcFactoryFrame');if(frame)frame.src=url;
-      if(address)address.textContent=new URL(url).host+new URL(url).pathname+(page==='home'?'':'?page='+page);
-      document.querySelectorAll('[data-factory-page]').forEach(b=>b.classList.toggle('primary',b===button));
+      switchPreview('classic',page);
     }));
     document.querySelectorAll('[data-factory-device]').forEach(button=>button.addEventListener('click',()=>{
       document.querySelector('.v6526-preview-shell')?.classList.toggle('is-mobile',button.dataset.factoryDevice==='mobile');
