@@ -138,7 +138,10 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    revisions:visualHistory(site)})));
  app.get(ROOT+'/visual',auth,ownerOnly,(req,res)=>readonly(req,res,site=>
   res.json({ok:true,visual:Visual.normalizeVisual(site.websiteStudioVisual||{}),version:site.websiteStudioVisualVersion||0,
-   maxEditableServices:Math.min(6,fetchApproved(site)?.services?.length||0),
+   // Reporting inspector capacity must never break a legacy CRM editor when
+   // a historic approved profile is malformed; actual saves still fail closed.
+   maxEditableServices:(()=>{try{return Math.min(6,fetchApproved(site)?.services?.length||0)}
+     catch{return 0}})(),
    canEdit:!site.archived&&['Draft','Pending'].includes(site.status)})));
  app.patch(ROOT+'/visual',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
