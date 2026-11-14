@@ -4,7 +4,8 @@
 // changes demo approval, purchases services or publishes a public website.
 const {verifiedProfile}=require('./contracts.cjs');
 const {createPrivateConcept}=require('./index.cjs');
-const {createDraftConcept}=require('./draft-concept.cjs');
+const {createDraftConcept,deriveDraftProfile}=require('./draft-concept.cjs');
+const {compileMultiPageConcept}=require('./multi-page-concept.cjs');
 const {checkPrivateBundle}=require('./qa-gate.cjs');
 const ROOT='/api/website-production/sites/:id/studio';
 // CRM suggestions are review-only. The owner must attest them before compilation.
@@ -113,16 +114,26 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const profile=fetchApproved(site);
   if(!profile&&mode!=='auto-preview')return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
   const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true}):createDraftConcept(site);
-  const qa=checkPrivateBundle(bundle);
+  const isSmart=mode==='auto-preview';
+  const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle,offerTier:site.offerTier,isDraft:!profile}):bundle;
+  const qa=checkPrivateBundle(output);
   if(!qa.passed)return respond(res,'STUDIO_STATIC_QA_FAILED',503);
-  if(mode==='bundle')return res.json({ok:true,publicationReady:false,staticPreflight:qa,files:bundle.files});
+  if(mode==='bundle')return res.json({ok:true,publicationReady:false,staticPreflight:qa,files:output.files});
+  const requested=isSmart?String(req.query?.page||'home').toLowerCase():'home';
+  if(!['home','services','about','contact'].includes(requested)||(requested!=='home'&&site.offerTier!=='essentials'))return respond(res,'STUDIO_PAGE_NOT_AVAILABLE',404);
+  const file=requested==='home'?'index.html':requested+'.html';
+  if(!output.files[file])return respond(res,'STUDIO_PAGE_NOT_AVAILABLE',404);
   // CSP sandbox isolates preview from Command Center and disables network and forms.
-  const css=bundle.files['styles.css'].replace(/<\/style/gi,'<\\/style');
-  const js=bundle.files['site.js'].replace(/<\/script/gi,'<\\/script');
-  const html=bundle.files['index.html']
+  const css=output.files['styles.css'].replace(/<\/style/gi,'<\\/style');
+  const js=output.files['site.js'].replace(/<\/script/gi,'<\\/script');
+  let html=output.files[file]
    .replace('<link rel="stylesheet" href="styles.css">','<style>'+css+'</style>')
    .replace('<script defer src="site.js"></script>','')
    .replace('</body>','<script>'+js+'</script></body>');
+  if(isSmart){
+   const url=ROOT.replace(':id',encodeURIComponent(String(site.id)))+'/auto-preview';
+   html=html.replace(/href="(index|services|about|contact)\.html"/g,(_m,p)=>'href="'+url+(p==='index'?'':'?page='+p)+'"');
+  }
   res.setHeader('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'; base-uri 'none'");
   res.setHeader('Content-Type','text/html; charset=utf-8');
   return res.send(html);
