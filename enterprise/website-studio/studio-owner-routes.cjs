@@ -148,7 +148,14 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   if(!profile&&mode!=='auto-preview')return respond(res,'STUDIO_PROFILE_NOT_APPROVED',409);
   const {bundle}=profile?createPrivateConcept({verified_profile:profile,quoteEstimatorEnabled:true,themeVariant:site.siteEdits?.themeVariant}):createDraftConcept(site);
   const isSmart=mode==='auto-preview';
-  const customized=mode==='auto-preview'?Visual.applyVisual(bundle,site.websiteStudioVisual||{}):bundle;
+  // Owner-only V2 visual remix is read-only. Only three bounded controls can
+  // be previewed without saving. Existing approved facts and published output
+  // cannot be modified by query parameters.
+  const visualDraft={...(site.websiteStudioVisual||{})};
+  if(mode==='auto-preview')for(const key of ['vibe','serviceLayout','heroStyle']){
+   if(req.query?.[key]!==undefined)visualDraft[key]=req.query[key];
+  }
+  const customized=mode==='auto-preview'?Visual.applyVisual(bundle,visualDraft):bundle;
   const output=isSmart?compileMultiPageConcept({profile:profile||deriveDraftProfile(site),bundle:customized,offerTier:site.offerTier,isDraft:!profile}):customized;
   const qa=checkPrivateBundle(output);
   if(!qa.passed)return respond(res,'STUDIO_STATIC_QA_FAILED',503);
