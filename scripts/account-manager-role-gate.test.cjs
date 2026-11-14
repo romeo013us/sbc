@@ -72,3 +72,10 @@ test('staging patch refuses unexpected server source instead of installing permi
  const {patch}=require('./stage-account-manager-role-v2.cjs');
  assert.throws(()=>patch('test'),/ACCOUNT_MANAGER_ROLE_PATCH_ANCHOR/);
 });
+
+
+test('repo module-inventory auditor accepts the source-only installer without false runtime imports',()=>{
+ const audit=require('./predeploy-war-test.js');
+ const report=audit.auditModules(ROOT);
+ assert.equal(report.ok,true,report.missing.slice(0,10).join(' | '));
+});
