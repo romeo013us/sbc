@@ -14,6 +14,39 @@ const directions=Object.freeze({
 const VIBES=Object.freeze(['original','cinematic','minimal','warm']);
 const HERO_STYLES=Object.freeze(['auto','split','stacked','cinema']);
 const SERVICE_LAYOUTS=Object.freeze(['auto','bento','grid','editorial']);
+
+function luminance(hex){
+ if(typeof hex!=='string'||!/^#[A-Fa-f0-9]{6}$/.test(hex))throw Error('INVALID_STUDIO_PALETTE');
+ const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+ const linear=rgb.map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);
+ return linear[0]*.2126+linear[1]*.7152+linear[2]*.0722;
+}
+function contrastRatio(a,b){
+ const x=luminance(a),y=luminance(b);
+ return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+function resolveSoftSurfaceInk(palette){
+ if(!palette||typeof palette!=='object')throw Error('INVALID_STUDIO_PALETTE');
+ const soft=palette.soft;
+ // Prefer the palette's brand dark/light color, then fail safe to a maximum
+ // contrast neutral. Never assume "ink" is readable on the *soft* surface.
+ for(const candidate of [palette.background,palette.ink]){
+  if(typeof candidate==='string'&&/^#[A-Fa-f0-9]{6}$/.test(candidate)&&contrastRatio(candidate,soft)>=4.5)
+   return candidate.toUpperCase();
+ }
+ return contrastRatio('#000000',soft)>=contrastRatio('#FFFFFF',soft)?'#000000':'#FFFFFF';
+}
+function softHeadingContrastCSS(palette){
+ const safe=resolveSoftSurfaceInk(palette);
+ return '\nbody[data-sbc-studio-version="2"]{--sbc-v2-soft-contrast-ink:'+safe+'}\n'+
+ '.sbc-v2-showcase .sbc-v2-heading{color:var(--sbc-v2-soft-contrast-ink)}\n'+
+ '.sbc-v2-showcase .sbc-v2-heading .eyebrow{color:var(--sbc-v2-soft-contrast-ink);opacity:1}\n'+
+ '.sbc-v2-questions{color:var(--sbc-v2-soft-contrast-ink)}\n'+
+ 'body[data-sbc-vibe="cinematic"]{--sbc-v2-soft-contrast-ink:#F8FAFC}\n'+
+ 'body[data-sbc-vibe="minimal"]{--sbc-v2-soft-contrast-ink:#1B302A}\n'+
+ 'body[data-sbc-vibe="warm"]{--sbc-v2-soft-contrast-ink:#36271F}\n';
+}
+
 function buildPlan(profile,tokens){
  verifiedProfile(profile);
  const vertical=directions[tokens?.identity?.vertical]?tokens.identity.vertical:'local';
@@ -149,6 +182,6 @@ function upgradePrivateBundle({bundle,profile,designTokens}){
  const contact='<section class="section contact composed-contact" id="contact">';
  if(!html.includes(contact))throw Error('STUDIO_V2_CONTACT_SECTION_MISSING');
  html=html.replace(contact,additions+contact);
- return {...bundle,files:{...bundle.files,'index.html':html,'styles.css':bundle.files['styles.css']+'\n'+styles},publicationReady:false};
+ return {...bundle,files:{...bundle.files,'index.html':html,'styles.css':bundle.files['styles.css']+'\n'+styles+softHeadingContrastCSS(designTokens.palette)},publicationReady:false};
 }
-module.exports={buildPlan,upgradePrivateBundle,directions,VIBES,HERO_STYLES,SERVICE_LAYOUTS};
+module.exports={buildPlan,upgradePrivateBundle,directions,VIBES,HERO_STYLES,SERVICE_LAYOUTS,resolveSoftSurfaceInk,contrastRatio};
