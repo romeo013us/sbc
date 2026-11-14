@@ -330,10 +330,15 @@ rules.forEach(function(rule){
 .sbc-v2-tile[data-sbc-grid-node]{outline-offset:5px;cursor:default}
 .sbc-v2-tile[data-sbc-grid-node]:focus-within{outline:2px dashed #2563eb}
 .sbc-grid-handle{position:absolute;right:0;top:40%;width:32px;min-height:50px;z-index:10;cursor:ew-resize;border-radius:6px 0 0 6px;border:1px solid #1e4060;background:#fff;color:#1e4060;font-weight:900;touch-action:none}
+.sbc-grid-handle{display:none}.sbc-studio-pro .sbc-grid-handle{display:block}
 .sbc-grid-handle:focus-visible{outline:3px solid #e7ab56;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.sbc-grid-handle{transition:none!important}}
 </style><script data-sbc-grid-inspector-script>(function(){
 'use strict';
+window.addEventListener('message',function(event){
+ if(event.source!==window.parent||!event.data||event.data.type!=='SBC_STUDIO_DESIGN_MODE')return;
+ document.documentElement.classList.toggle('sbc-studio-pro',event.data.mode==='pro');
+});
 var cards=Array.prototype.slice.call(document.querySelectorAll('.sbc-v2-showcase .sbc-v2-service-grid > article.sbc-v2-tile'),0,6);
 cards.forEach(function(card,index){
  var id='service-'+(index+1);
