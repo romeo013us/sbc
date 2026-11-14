@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const {register}=require('../enterprise/website-studio/studio-owner-routes.cjs');
 const {verifiedProfile}=require('../enterprise/website-studio/contracts.cjs');
 function fixture(){
- const app={routes:new Map(),get(path,...handlers){this.routes.set('GET '+path,handlers)},patch(path,...handlers){this.routes.set('PATCH '+path,handlers)}};
+ const app={routes:new Map(),get(path,...handlers){this.routes.set('GET '+path,handlers)},patch(path,...handlers){this.routes.set('PATCH '+path,handlers)},post(path,...handlers){this.routes.set('POST '+path,handlers)}};
  const people={owner:{id:'owner-a',role:'owner',tenantId:11},staff:{id:'staff-a',role:'caller',tenantId:11},foreign:{id:'owner-b',role:'owner',tenantId:22}};
  let store={websiteDemos:[
   {id:'site-a',tenantId:11,customerId:'cust-a',status:'Draft',industry:'Window Tinting Service',customer:{businessName:'CJ Window Tinters',city:'Miami',region:'FL'},unverifiedServices:['Car audio installations'],researchSignals:[{title:'Luxury guarantees are everywhere'}]},
@@ -200,4 +200,52 @@ test('private media suggestion endpoint is owner-only, tenant-isolated and does 
  assert.equal((await fx.call('GET','/media-suggestions',undefined,'staff')).statusCode,403);
  assert.equal((await fx.call('GET','/media-suggestions',undefined,'none')).statusCode,401);
  assert.equal((await fx.call('GET','/media-suggestions',undefined,'owner','site-b')).statusCode,404);
+});
+
+
+test('saved private design revisions can be read and restored by the owner without affecting business facts',async()=>{
+ const fx=fixture(),a={expectedVersion:0,visual:{headline:'First art direction',vibe:'minimal'}};
+ const one=await fx.call('PATCH','/visual',a);assert.equal(one.statusCode,200);
+ const two=await fx.call('PATCH','/visual',{expectedVersion:1,visual:{headline:'Second art direction',vibe:'cinematic'}});
+ assert.equal(two.statusCode,200);
+ const history=await fx.call('GET','/visual/history');
+ assert.equal(history.statusCode,200);
+ assert.deepEqual(history.body.revisions.map(r=>r.version),[0,1]);
+ assert.equal(history.body.revisions[1].visual.headline,'First art direction');
+ assert.equal((await fx.call('GET','/visual/history',undefined,'staff')).statusCode,403);
+ assert.equal((await fx.call('GET','/visual/history',undefined,'owner','site-b')).statusCode,404);
+ const restored=await fx.call('POST','/visual/restore',{expectedVersion:2,restoreVersion:1});
+ assert.equal(restored.statusCode,200);
+ assert.equal(restored.body.version,3);
+ assert.equal(restored.body.visual.headline,'First art direction');
+ assert.equal(fx.store().websiteDemos[0].websiteStudioVisualAudit.action,'OWNER_STUDIO_VISUAL_RESTORE');
+ assert.equal(fx.store().websiteDemos[0].websiteStudioVisualAudit.restoredFromVersion,1);
+ assert.equal(fx.store().websiteDemos[0].customer.businessName,'CJ Window Tinters');
+ assert.equal(fx.store().websiteDemos[0].status,'Draft');
+ const newer=await fx.call('GET','/visual/history');
+ assert.deepEqual(newer.body.revisions.map(r=>r.version),[0,1,2]);
+ assert.equal(newer.body.revisions[2].visual.headline,'Second art direction');
+ assert.equal(fx.saves(),3);
+});
+test('revision restore rejects cross-tenant, stale, unpublished, archived and unauthorized attempts',async()=>{
+ const fx=fixture();
+ await fx.call('PATCH','/visual',{expectedVersion:0,visual:{headline:'Save one'}});
+ assert.equal((await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:0},'staff')).statusCode,403);
+ assert.equal((await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:0},'owner','site-b')).statusCode,404);
+ assert.equal((await fx.call('POST','/visual/restore',{expectedVersion:0,restoreVersion:0})).statusCode,409);
+ assert.equal((await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:999})).statusCode,404);
+ fx.setWriter(false);
+ assert.equal((await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:0})).statusCode,423);
+ fx.setWriter(true);
+ assert.equal((await fx.call('POST','/visual/restore',{expectedVersion:1,restoreVersion:0},'owner','site-approved')).statusCode,409);
+ assert.equal(fx.saves(),1);
+});
+test('visual revisions include 20 max saved snapshots and owner UI offers explicit restore, not silent rollback',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const ui=fs.readFileSync(path.join(__dirname,'../public/sbc-website-production-v1.js'),'utf8');
+ assert.match(ui,/sbcStudioSavedRevisions/);
+ assert.match(ui,/sbcStudioRestoreRevision/);
+ assert.match(ui,/\/visual\/history/);
+ assert.match(ui,/\/visual\/restore/);
+ assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-website-production-v1.js'),'utf8'));
 });
