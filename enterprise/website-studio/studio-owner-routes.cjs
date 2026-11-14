@@ -27,7 +27,7 @@ function buildApprovedProfile(raw,site,actor){
  verifiedProfile(profile);
  return profile;
 }
-function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady}){
+function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation}){
  if(typeof auth!=='function'||typeof ownerOnly!=='function'||typeof requireTenant!=='function'||typeof getStore!=='function'||typeof saveStore!=='function'||typeof writerReady!=='function')throw Error('STUDIO_DEPENDENCY_REQUIRED');
  let approvalQueue=Promise.resolve();
  const respond=(res,code,status=400)=>res.status(status).json({ok:false,code});
@@ -66,7 +66,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
  app.patch(ROOT+'/approved-profile',auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!writerReady())return respond(res,'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE',423);
-  const operation=approvalQueue.catch(()=>undefined).then(async()=>{
+  const work=async()=>{
    if(!writerReady())return {status:423,body:{ok:false,code:'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'}};
    const site=locate(req);if(!site)return {status:404,body:{ok:false,code:'WEBSITE_NOT_FOUND'}};
    if(site.archived===true)throw Error('SITE_ARCHIVED');
@@ -82,8 +82,9 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
    const saved=await saveStore(next);
    if(saved?.ok===false||saved?.skipped===true||saved?.durable===false)throw Error('STUDIO_SAVE_NOT_DURABLE');
    return {status:200,body:{ok:true,durable:true,id:String(site.id),version:expected+1,approvedProfile:approved}};
-  });
-  approvalQueue=operation.then(()=>undefined,()=>undefined);
+  };
+  const operation=serializeSiteMutation ? serializeSiteMutation(work) : approvalQueue.catch(()=>undefined).then(work);
+  if(!serializeSiteMutation)approvalQueue=operation.then(()=>undefined,()=>undefined);
   try{const result=await operation;return res.status(result.status).json(result.body)}catch(e){return responseError(res,e)}
  });
  const concept=(req,res,mode)=>readonly(req,res,site=>{
