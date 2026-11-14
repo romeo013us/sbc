@@ -108,15 +108,15 @@
       const out=await serviceApi(studioBase(demo));
       if(active?.demo?.id!==demo.id||!form.isConnected)return;
       if(!out?.ok)throw Error(out?.code||'Website Studio is unavailable.');
-      const p=out.approvedProfile||null,b=p?.business||out.identity||{},c=p?.contact||{};
+      const p=out.approvedProfile||null,suggested=out.suggestedProfile||null,b=p?.business||suggested?.business||out.identity||{},c=p?.contact||suggested?.contact||{};
       form.dataset.version=String(out.version||0);
       for(const [name,value] of Object.entries({businessName:b.name||'',category:b.category||'',city:b.city||'',region:b.region||'',phone:c.phone||'',email:c.email||''})){
         const field=form.elements.namedItem(name);if(field)field.value=String(value);
       }
-      form.elements.namedItem('services').value=(p?.services||[]).map(s=>s.name+(s.description?' | '+s.description:'')).join('\n');
+      form.elements.namedItem('services').value=(p?.services||suggested?.services||[]).map(s=>s.name+(s.description?' | '+s.description:'')).join('\n');
       document.getElementById('sbcStudioViewPreview').disabled=!p;
       form.querySelectorAll('input:not([readonly]),textarea,button[type=submit]').forEach(el=>{el.disabled=!out.canApprove});
-      studioMessage(p?'Business facts approved (revision '+out.version+'). Preview is ready.':out.canApprove?'Confirm the facts before building the private Studio preview.':'This site is locked; no approved Studio profile is available.');
+      studioMessage(p?'Business facts approved (revision '+out.version+'). Preview is ready.':out.canApprove?'CRM fields have been prefilled for REVIEW ONLY. Confirm the phone, services, and business details before approving this private concept.':'This site is locked; no approved Studio profile is available.');
     }catch(e){studioMessage(String(e?.message||'Website Studio unavailable.'));}
   }
   async function saveStudioProfile(event){
