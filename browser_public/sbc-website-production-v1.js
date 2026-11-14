@@ -177,7 +177,9 @@
       '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px"><button class="btn" type="button" id="sbcStudioMoveSectionUp">Move Up ↑</button><button class="btn" type="button" id="sbcStudioMoveSectionDown">Move Down ↓</button><button class="btn" type="button" id="sbcStudioUndo">Undo Draft</button><button class="btn" type="button" id="sbcStudioRedo">Redo Draft</button></div>'+
       '<p style="font-size:.8rem">Undo/redo affects unsaved edits only. Save Design & Preview to persist a versioned revision.</p></fieldset>'+
       '<p style="font-size:.84rem">Zero-AI design works at $0 API cost. AI Polish remains disabled in this release until its application-side budget gate and fact review are verified.</p>'+
-      '<details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Add licensed hero photography (optional)</summary><p>Use a direct, licensed images.unsplash.com or images.pexels.com photo URL. This does not upload, purchase, or verify an image license automatically. Your browser will request the photo from that provider.</p>'+
+      '<details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Illustrative industry photography (optional)</summary><p>Browse private photo ideas for the customer\'s business category. These are stock-style examples, NOT photographs of the customer\'s actual team or work. Verify license, depicted brands and individuals before use. Images load from Unsplash in your browser; no AI credits are used.</p>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap"><button type="button" id="sbcStudioBrowseMedia" class="btn">Find photo ideas</button><a href="https://unsplash.com/license" target="_blank" rel="noopener noreferrer">Review Unsplash license</a></div>'+
+      '<div id="sbcStudioMediaIdeas" role="region" aria-live="polite" aria-label="Illustrative photo suggestions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0"></div>'+
       '<label style="display:block;margin:9px 0">Approved image URL<input name="photoUrl" type="url" maxlength="400" placeholder="https://images.unsplash.com/photo-…" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0">Accessible image description<input name="photoAlt" type="text" maxlength="180" style="width:100%"></label>'+
       '<label style="display:block;margin:9px 0"><input type="checkbox" name="rightsConfirmed"> I verified that we may use this image in the customer concept.</label></details>'+
@@ -240,6 +242,39 @@
     opposite.push(v3History.present);v3History.present=stack.pop();
     restoreStudioSnapshot(v3History.present);tryStudioRemix();
     studioVisualMessage('Restored unsaved '+direction+' state. Save to preserve this revision.');
+  }
+  async function loadStudioMediaIdeas(){
+    const demo=active?.demo,form=document.getElementById('sbcStudioVisualForm'),grid=document.getElementById('sbcStudioMediaIdeas');
+    if(!demo||!form||!grid||form.dataset.ready!=='1'||currentRole()!=='owner'||isApproved(demo)||demo.archived)return;
+    grid.textContent='Loading industry photo suggestions…';
+    try{
+      const results=await serviceApi(studioBase(demo)+'/media-suggestions');
+      if(!results?.ok||!Array.isArray(results.candidates))throw Error(results?.code||'Photo suggestions unavailable');
+      if(active?.demo?.id!==demo.id||!grid.isConnected)return;
+      grid.textContent='';
+      if(!results.candidates.length){grid.textContent='No curated ideas for this business category yet.';return;}
+      for(const item of results.candidates){
+        const url=new URL(String(item.url||''));
+        if(url.protocol!=='https:'||url.hostname!=='images.unsplash.com'||item.illustrativeOnly!==true||item.rightsConfirmed!==false)continue;
+        const button=document.createElement('button');button.type='button';
+        button.className='btn';button.style.cssText='display:grid;gap:8px;text-align:left;white-space:normal;padding:8px;background:#fff;color:#18334a;border:1px solid #b9ccdd';
+        const picture=document.createElement('img');picture.src=url.href;picture.alt=String(item.alt||'Illustrative stock idea').slice(0,180);
+        picture.loading='lazy';picture.decoding='async';picture.width=250;picture.height=140;
+        picture.style.cssText='display:block;width:100%;height:140px;object-fit:cover;border-radius:8px';
+        const title=document.createElement('span');title.textContent=String(item.title||'Illustrative photo idea').slice(0,100);
+        const note=document.createElement('small');note.textContent='Illustrative only · rights review required';
+        button.append(picture,title,note);
+        button.addEventListener('click',()=>{
+          if(form.dataset.ready!=='1'||active?.demo?.id!==demo.id)return;
+          form.elements.namedItem('photoUrl').value=url.href;
+          form.elements.namedItem('photoAlt').value=String(item.alt||'Illustrative stock photograph').slice(0,180);
+          form.elements.namedItem('rightsConfirmed').checked=false;
+          rememberStudioDraft();
+          studioVisualMessage('Photo idea selected but NOT approved. Verify its individual license and depicted people/brands, then check image rights before saving. Never describe it as the customer\'s actual work.');
+        });
+        grid.append(button);
+      }
+    }catch(e){if(grid.isConnected)grid.textContent='Could not load photo ideas. You can still paste an authorized image URL.';}
   }
   function moveStudioSection(step){
     const form=document.getElementById('sbcStudioVisualForm');
@@ -391,6 +426,7 @@
     document.getElementById('sbcStudioMoveSectionDown')?.addEventListener('click',()=>moveStudioSection(1));
     document.getElementById('sbcStudioUndo')?.addEventListener('click',()=>studioHistoryStep('undo'));
     document.getElementById('sbcStudioRedo')?.addEventListener('click',()=>studioHistoryStep('redo'));
+    document.getElementById('sbcStudioBrowseMedia')?.addEventListener('click',loadStudioMediaIdeas);
     document.getElementById('sbcStudioShuffleVibe')?.addEventListener('click',()=>cycleStudioChoice('vibe',['original','cinematic','minimal','warm']));
     document.getElementById('sbcStudioSwapLayout')?.addEventListener('click',()=>cycleStudioChoice('serviceLayout',['auto','bento','grid','editorial']));
     document.getElementById('sbcStudioTryRemix')?.addEventListener('click',tryStudioRemix);
