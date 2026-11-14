@@ -92,7 +92,8 @@ function createService({repository,provider,clock=()=>new Date(),publishingEnabl
   const post={id:crypto.randomUUID(),tenantId:a.tenantId,customerId:ch.customerId,channelId:ch.id,platform:ch.platform,body:content,mediaUrl:media,ctaUrl:cta,status:'DRAFT',approvedAt:null,approvedBy:null,scheduledAt:null,remoteId:null,createdBy:a.id,createdAt:instant(),attempts:0};
   await repository.insertPost(post);await audit(a,'SOCIAL_DRAFT_CREATED',post.id);return clone(post);
  }
- async function posts(actor,customerId){const a=context(actor);await checkAccess(a,customerId);return clone(await repository.postsForCustomer(a.tenantId,str(customerId,120)));}
+ async function posts(actor,customerId){const a=context(actor);await checkAccess(a,customerId);
+  return clone(await repository.postsForCustomer(a.tenantId,str(customerId,120)));}
  async function getPost(actor,postId){
   const a=context(actor),post=await repository.post(a.tenantId,postId);
   if(!post)fail('POST_NOT_FOUND');await checkAccess(a,post.customerId);return clone(post);
