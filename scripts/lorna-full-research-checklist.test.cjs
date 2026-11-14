@@ -14,6 +14,11 @@ assert.match(check,/Full research checklist|Research coverage/i);
 assert.match(check,/Google-listed street address/i);
 assert.match(check,/Street address source/i);
 assert.match(ui,/googleListingAddress/,'CSV import must preserve Google-listed street address');
+assert.match(html,/id="sbc-urgent-lead-details"/,'urgent task must show the authorized CRM account data');
+assert.match(ui,/function renderUrgentCase/,'Lorna sees the full urgent account profile when assigned to her');
+assert.match(ui,/renderUrgentCase\(own\)/,'urgent account must respect the researcher-owned submission filter');
+assert.match(ui,/googleBusinessUrl|researchBrief/,'Google profile URL must come from authorized CRM data');
+
 assert.match(ui,/streetAddressVerification/,'CSV import must not erase street evidence status');
 assert.match(ui,/researchBrief:importBrief/,'full structured research in CRM brief');
 for(const key of ['googleBusinessUrl','googleListingAddress','streetAddressEvidenceUrl','googleAddressEvidenceUrl','streetAddressVerification','googleAddressVerification','nextFollowupNote']){
