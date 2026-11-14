@@ -325,3 +325,13 @@ test('owner versioned Studio save/restore keeps freeform grid draft distinct fro
  assert.deepEqual(returned.body.visual.freeformGrid,{enabled:false,nodes:[]});
  assert.equal(fx.saves(),3);
 });
+
+
+test('unverified prospect drafts cannot persist a verified-service freeform layout',async()=>{
+ const fx=fixture();
+ const spec={enabled:true,nodes:[{id:'service-1',grid:{colSpan:8}}]};
+ const denied=await fx.call('PATCH','/visual',{expectedVersion:0,visual:{freeformGrid:spec}});
+ assert.equal(denied.statusCode,409);
+ assert.equal(denied.body.code,'STUDIO_GRID_APPROVED_SERVICES_REQUIRED');
+ assert.equal(fx.saves(),0);
+});
