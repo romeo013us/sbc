@@ -1,0 +1,35 @@
+name: SBC V66.24 Incident Diagnostics (No Mutations)
+on:
+  pull_request:
+    paths:
+      - 'enterprise/v56135-kim-mission-controller.js'
+      - 'enterprise/sbc-runtime-hardening-v56130.js'
+      - 'scripts/v6624-*-diagnostics.test.cjs'
+      - '.github/workflows/sbc-v6624-incident-diagnostics.yml'
+  push:
+    paths:
+      - 'enterprise/v56135-kim-mission-controller.js'
+      - 'enterprise/sbc-runtime-hardening-v56130.js'
+      - 'scripts/v6624-*-diagnostics.test.cjs'
+      - '.github/workflows/sbc-v6624-incident-diagnostics.yml'
+permissions:
+  contents: read
+jobs:
+  read-only-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check enterprise/v56135-kim-mission-controller.js
+          node --check enterprise/sbc-runtime-hardening-v56130.js
+      - name: Reproduce and guard qualification/slow-request incidents
+        run: node --test scripts/v6624-advisory-diagnostics.test.cjs scripts/v6624-slow-request-diagnostics.test.cjs
+      - name: Check existing owner veto and writer recovery
+        run: |
+          node scripts/v66154-kevin-recovery-callback.test.cjs
+          node scripts/v6617-writer-lease-heartbeat-test.cjs
+          node scripts/v66155-release-hygiene.test.cjs
