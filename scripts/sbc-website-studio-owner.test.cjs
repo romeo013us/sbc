@@ -32,6 +32,24 @@ function fixture(){
 }
 const profile={business:{name:'CJ Window Tinters',category:'Window Tinting Service',city:'Miami',region:'FL'},services:[{name:'Automotive Window Tinting',description:'Window film consultation and options'},{name:'Paint Protection Film',description:'Only if the owner verifies this offering'}],contact:{phone:'305-555-0119',email:'hello@example.com'}};
 
+test('CRM can prefill a private review form without auto-approving site facts',async()=>{
+ const fx=fixture();
+ const draft=fx.store().websiteDemos[0];
+ draft.customer.phone='305-555-0123';
+ draft.customer.email='owner@example.com';
+ draft.customer.websiteVerifiedDetails={verified:true,services:['Automotive Window Tinting','Ceramic Film Options']};
+ draft.customer.leadIntelligence={researchBrief:{services:['Unverified Audio Installation']}};
+ const r=await fx.call('GET');
+ assert.equal(r.statusCode,200);
+ assert.equal(r.body.approvedProfile,null);
+ assert.equal(r.body.suggestedProfile.business.name,'CJ Window Tinters');
+ assert.equal(r.body.suggestedProfile.contact.phone,'305-555-0123');
+ assert.equal(r.body.suggestedProfile.services[0].name,'Automotive Window Tinting');
+ assert.doesNotMatch(JSON.stringify(r.body.suggestedProfile),/Unverified Audio Installation/);
+ assert.equal(r.body.suggestedProfile.reviewRequired,true);
+ assert.equal(fx.saves(),0);
+});
+
 test('owner-only studio read is tenant isolated and does not trust research',async()=>{
  const fx=fixture();
  assert.equal((await fx.call('GET',undefined,undefined,'none')).statusCode,401);
