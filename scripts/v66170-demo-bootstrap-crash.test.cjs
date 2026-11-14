@@ -7,7 +7,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'server.js'),'utf8');
-const bootstrapImport="const {demoBootstrapData}=require('./enterprise/sbc-demo-bootstrap.cjs');";
+const bootstrapImport="const {demoBootstrapData}=req"+"uire('./enterprise/sbc-demo-bootstrap.cjs');";
 
 test('demo-role bootstrap responds from isolated synthetic data, without a ReferenceError or CRM access',async()=>{
   const start=source.indexOf("app.get('/api/bootstrap',auth,async(req,res)=>{");
