@@ -157,6 +157,8 @@ jobs:
         run: |
           node scripts/v66106-sales-playbook.test.cjs
           node --test scripts/sbc-website-value-selling.test.cjs
+      - name: New SBC website pricing, Square link and historical order safety
+        run: node --test scripts/sbc-public-price-v20261115.test.cjs
       - name: Tenant repository isolation
         run: node scripts/tenant-repository-isolation-test.js
 
