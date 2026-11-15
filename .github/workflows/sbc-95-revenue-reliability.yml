@@ -153,6 +153,10 @@ jobs:
         run: |
           node --test scripts/sbc-website-hybrid-ai.test.cjs scripts/v66-owner-openai-budget.test.cjs scripts/v66170-demo-bootstrap-crash.test.cjs
           npm run test:lead-accounts
+      - name: Website value sales response and approved-scope safety
+        run: |
+          node scripts/v66106-sales-playbook.test.cjs
+          node --test scripts/sbc-website-value-selling.test.cjs
       - name: Tenant repository isolation
         run: node scripts/tenant-repository-isolation-test.js
 
