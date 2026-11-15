@@ -12,14 +12,14 @@ new vm.Script(caller,{filename:'sales-caller.js'});
 new vm.Script(script,{filename:'sbc-sales-playbook-v66106.js'});
 const moduleApi=require('../public/sbc-sales-playbook-v66106.js');
 const status=moduleApi.check();
-assert.deepEqual(status,{count:33,unique:true,bilingual:true});
+assert.deepEqual(status,{count:38,unique:true,bilingual:true});
 const en=moduleApi.getSections('en'),es=moduleApi.getSections('es');
-assert.equal(en.length,5);
-assert.equal(es.length,5);
+assert.equal(en.length,6);
+assert.equal(es.length,6);
 assert.deepEqual(en.map(x=>x.id),es.map(x=>x.id));
 assert.deepEqual(en.flatMap(x=>x.items.map(i=>i.id)),es.flatMap(x=>x.items.map(i=>i.id)));
 for(const [language,sections] of [['en',en],['es',es]]){
- assert.equal(sections.reduce((n,s)=>n+s.items.length,0),33);
+ assert.equal(sections.reduce((n,s)=>n+s.items.length,0),38);
  for(const section of sections)for(const i of section.items){
   assert(i.title.length>=5&&i.say.length>=35&&i.coach.length>=15,'readable '+language+' '+i.id);
   assert(!/<script\b/i.test(i.say)&&!/<script\b/i.test(i.coach));
@@ -44,4 +44,4 @@ assert(css.includes('#desk #scripts .sbc-script-card'),'script-specific styling 
 for(const phrase of ['Do Not Call','do-not-call','Stop','STOP']){
  assert(script.toLowerCase().includes(phrase.toLowerCase()),'DNC safeguard missing: '+phrase);
 }
-console.log('[SBC V66.106] PASS: 33 original bilingual sales talk tracks; no missing language, mirrored staged assets, scoped script UX, unchanged Twilio/dialer/training/4-6h shift/owner permissions, DNC guardrails');
+console.log('[SBC V66.106] PASS: 38 original bilingual sales talk tracks; no missing language, mirrored staged assets, scoped script UX, unchanged Twilio/dialer/training/4-6h shift/owner permissions, DNC guardrails');
