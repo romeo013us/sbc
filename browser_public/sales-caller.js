@@ -122,7 +122,7 @@ async function renderWebsiteShowroom(){
    const intro=el('div',undefined,'sbc-website-card-intro');
    const status=el('span','OWNER APPROVED · WEBSITE READY','sbc-website-status-pill');
    const title=el('h3',String(c.businessName||row.businessName||'Assigned business'),'');
-   const descriptor=el('p',(row.websiteTier==='starter'?'Business Starter · $199 · One page':'Business Basic · $349 · Four pages')+' · Concept visuals and text are examples until the business confirms details.');
+   const descriptor=el('p',(row.websiteTier==='starter'?'Business Starter · $199 · One page':'Business Basic · $499 · Four pages')+' · Concept visuals and text are examples until the business confirms details.');
    intro.append(status,title,descriptor);
    const actions=el('div',undefined,'sbc-website-card-actions');
    const link=el('a','↗ View Approved Website','sbc-website-open');
