@@ -25,7 +25,7 @@
     '<button type="button" class="btn" data-sbc-sales-open="'+esc(x.customerId)+'" data-sbc-sales-site="'+(x.websiteId?'1':'0')+'">'+(x.websiteId?'Open Website':'Build Website')+'</button>';
    return '<tr><td style="padding:12px;border-bottom:1px solid #e2e8f0"><strong>'+esc(x.businessName)+'</strong><div style="font-size:12px;color:#64748b">'+esc(x.industry||'Industry not verified')+'</div></td>'+
     '<td style="padding:12px;border-bottom:1px solid #e2e8f0">'+esc(stages[x.stage]||x.stage)+'</td>'+
-    '<td style="padding:12px;border-bottom:1px solid #e2e8f0">'+esc(x.offerTier==='starter'?'$199 one-page':x.offerTier==='essentials'?'$349 four-page':'—')+'</td>'+
+    '<td style="padding:12px;border-bottom:1px solid #e2e8f0">'+esc(x.offerTier==='starter'?'$199 one-page':x.offerTier==='essentials'?'$499 four-page':'—')+'</td>'+
     '<td style="padding:12px;border-bottom:1px solid #e2e8f0">'+esc(x.appointmentAt?new Date(x.appointmentAt).toLocaleString():'—')+'</td>'+
     '<td style="padding:12px;border-bottom:1px solid #e2e8f0">'+esc(x.paidOrders?money(x.paidRevenueCents):'—')+'</td>'+
     '<td style="padding:12px;border-bottom:1px solid #e2e8f0"><div style="font-size:12px;color:#475569;margin-bottom:6px">'+esc(x.nextAction)+'</div>'+action+'</td></tr>';
