@@ -37,7 +37,7 @@ const db={
 let sequence=0,payLinks=0,writes=0,activities=0;
 const scope={
  app:{post:(url,...args)=>{handlers[url]=args.at(-1)}},
- auth:()=>{},v25SalesAccess:()=>{},
+ auth:()=>{},v25SalesAccess:()=>{},sbcV20261115FixedSquarePriceGate:()=>{},
  FINANCIAL_GOVERNOR:{middleware:()=>()=>{}},
  SBC_V6670_QUOTE_ORDER:helper,SBC_V66120_OB_COMMERCE:require('../enterprise/v66120-officebox-commerce-boundary.cjs'),db,Math,JSON,String,Number,Boolean,
  v25OrderItems:a=>Array.isArray(a)?a:[],
