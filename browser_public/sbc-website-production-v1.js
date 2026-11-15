@@ -624,7 +624,7 @@
   function showSite(demo,customer,message='') {
     active={demo,customer};busy=false;
     const pages=demo.offerTier==='starter'?['home']:['home','services','about','contact'];
-    const price=demo.offerTier==='starter'?'$199':'$349';
+    const price=demo.offerTier==='starter'?'$199':'$499';
     const smartDraft=currentRole()==='owner'&&!isApproved(demo)&&demo.archived!==true;
     const smartUrl=smartDraft?absolute(studioBase(demo)+'/auto-preview'):'';
     let previewMode=smartDraft?'smart':'classic';
