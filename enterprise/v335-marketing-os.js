@@ -34,7 +34,7 @@ function createGrowthLaunch(input){
   const campaign=createCampaign({name:'SBC Growth Launch — Big 3',objective:'Generate qualified conversations and demos for the SBC Big 3 ecosystem.',audience,offer,channels:['local-search','social','email','referral','partner'],budget:0,owner:'Romeo'});
   const topics=[
     ['SOCIAL','Why a website alone is not the whole business system','Show Website → Office Box → Command Center as one connected journey.'],
-    ['SOCIAL','The $199 vs $349 vs $699 SBC decision','Explain what changes at each tier without giving away Office Box at the entry level.'],
+    ['SOCIAL','The $199 vs $499 vs $799 vs $999 SBC decision','Explain what changes at each tier without giving away Office Box at the entry level.'],
     ['SOCIAL','Business technology should save you time','Educational post about connected customer, document and follow-up workflows.'],
     ['SOCIAL','Ask a local business owner: what is costing you customers?','Conversation starter focused on website, Google visibility and follow-up gaps.'],
     ['EMAIL','Meet the SBC Big 3','Short educational email introducing Website, Office Box and Command Center.']
