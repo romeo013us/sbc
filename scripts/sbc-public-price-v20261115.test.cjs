@@ -22,7 +22,7 @@ test('historical orders remain snapshots; existing $79 care remains independentl
 });
 test('Command Center catalog and V25 bundles use new checkout references',()=>{
  const s=read('server.js');
- assert(s.includes("require('./enterprise/sbc-public-package-pricing-v20261115.cjs')"));
+ assert(s.includes("require("+"'./enterprise/sbc-public-package-pricing-v20261115.cjs'"+")"));
  for(const [id,price] of [['basic',499],['essentials',799],['professional',999]]){
   assert(new RegExp("id:'"+id+"'[^\\n]{0,900}price:"+price).test(s),'catalog '+id);
  }
