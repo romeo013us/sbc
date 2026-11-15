@@ -9,18 +9,18 @@ function probe(vars={}){
  const r=spawnSync(process.execPath,['-e',code],{encoding:'utf8',env:{...process.env,OPENAI_API_KEY:'fake-key-for-test',SBC_AI_PROVIDER_KEY:'fake-alias-for-test',...vars}});
  assert.equal(r.status,0,r.stderr);return JSON.parse(r.stdout);
 }
-test('Owner budget defaults to $0.75/day and $25/month, never $50/day',()=>{
+test('Owner budget defaults to $1.25/day and $40/month, never $50/day',()=>{
  const p=probe({SBC_AI_DAILY_SPEND_CAP_USD:''});
- assert.equal(p.daily,0.75);
- assert.equal(p.monthly,25);
- assert.equal(p.status.aiSpend.dailyCapUsd,0.75);
- assert.equal(p.status.aiSpend.monthlyCapUsd,25);
+ assert.equal(p.daily,1.25);
+ assert.equal(p.monthly,40);
+ assert.equal(p.status.aiSpend.dailyCapUsd,1.25);
+ assert.equal(p.status.aiSpend.monthlyCapUsd,40);
 });
 test('Environment cannot raise daily or monthly budget beyond owner-approved maxima',()=>{
  for(const setting of ['50','500','Infinity','NaN','-1','2']){
   const p=probe({SBC_AI_DAILY_SPEND_CAP_USD:setting,SBC_AI_MONTHLY_SPEND_CAP_USD:'999'});
-  assert(p.daily<=0.75&&p.daily>=0,JSON.stringify({setting,cap:p.daily}));
-  assert(p.monthly<=25&&p.monthly>=0,JSON.stringify({setting,cap:p.monthly}));
+  assert(p.daily<=1.25&&p.daily>=0,JSON.stringify({setting,cap:p.daily}));
+  assert(p.monthly<=40&&p.monthly>=0,JSON.stringify({setting,cap:p.monthly}));
  }
 });
 test('All server-side OpenAI access pauses until provider hard spend cap is confirmed',()=>{

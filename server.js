@@ -5019,6 +5019,7 @@ app.post('/api/autonomy/control/resume',auth,ownerOnly,async(req,res)=>{try{if(M
 app.post('/api/autonomy/control/sweep',auth,ownerOnly,async(req,res)=>{try{if(MYSQL_RECOVERY_REQUIRED)return res.status(423).json({ok:false,error:'MYSQL_RECOVERY_REQUIRED',readOnly:true});const result=SBC_AUTONOMY.sweep(db,db);await saveData();res.json({ok:true,version:BUILD_VERSION,result});}catch(e){res.status(400).json({ok:false,error:e.message});}});
 app.get('/api/autonomy/control/simulate',auth,ownerOnly,async(req,res)=>res.json({ok:true,version:BUILD_VERSION,simulation:SBC_AUTONOMY.simulate()}));
 
+const {demoBootstrapData}=require('./enterprise/sbc-demo-bootstrap.cjs');
 app.get('/api/bootstrap',auth,async(req,res)=>{res.setHeader('Cache-Control','no-store');let recovery=null;let recoveryProjection=[];if(req.user.role==='demo'){const d=demoBootstrapData();return res.json({settings:{businessName:'Successful By Choice',tagline:'Digital & Print Solutions',slogan:'Because Why Not?',phone:'305-496-1065',email:'demo@example.com',city:'Miami, Florida',website:'https://sbcmia.com',websites:'https://sbcwebsites.com',office:'DEMO MODE'},customers:d.customers,activities:d.activities,catalog:CATALOG,callScripts:CALL_SCRIPTS,callReports:d.callReports,storage:storageMode,version:BUILD_VERSION,recovery:recovery,recoveryProjection:MYSQL_RECOVERY_REQUIRED?recoveryProjection:[],user:{id:req.user.id,username:req.user.username,name:req.user.name,role:req.user.role},quotes:d.quotes,orders:d.orders,renewals:d.renewals,appointments:d.appointments,sequences:d.sequences,sequenceEnrollments:d.sequenceEnrollments,emailTemplates:d.emailTemplates,tasks:d.tasks,portalAccounts:d.portalAccounts,portalMessages:d.portalMessages,hotWebLeads:[],ecosystem:{webLeadBridge:true,squareWebhook:false,customerIntake:true,orderPipelines:{digital:{orders:1,value:699},print:{orders:0,value:0}}},opsSummary:{role:'demo',permissions:SBC_ROLE_PERMISSIONS.demo||[]}});}if(req.user.role==='owner'&&!MYSQL_RECOVERY_REQUIRED){ensureCoreTeamProfiles();}
   if(MYSQL_RECOVERY_REQUIRED){
     recovery={required:true,version:BUILD_VERSION,reason:'Authoritative MySQL recovery/reconciliation is required. No startup mutation pipeline is running.',counts:{},identity:{},migrations:{},verifiedBaseline:{customers:VERIFIED_PRE_CORRUPTION_CRM_COUNT,activeLeads:VERIFIED_PRE_CORRUPTION_ACTIVE_LEADS},relationalCore:0,restoredVerifiedLeads:Number((db.customers||[]).filter(c=>c?.leadIntelligence?.recoverySource==='sbc_lead_mesh').length),localCoreCount:(db.customers||[]).length+(db.quotes||[]).length+(db.orders||[]).length+(db.renewals||[]).length};
@@ -7533,11 +7534,28 @@ app.post('/api/acquisition/outreach-draft/:customerId',auth,async(req,res)=>{
   const channel=String(req.body?.channel||'email').toLowerCase()==='sms'?'sms':'email';const d=ACQUISITION.draft(c,channel,o.demoUrl||'');const row={id:ACQUISITION.id('draft'),opportunityId:o.id,customerId:c.id,channel,subject:d.subject,body:d.body,status:'DRAFT',createdAt:now()};await persistAcquisitionDraft(row);o.outreachDraftCount=Number(o.outreachDraftCount||0)+1;o.lastAction='outreach_draft_created';o.updatedAt=now();await persistAcquisitionOpportunity(o);res.status(201).json({ok:true,draft:row,opportunity:o});
 });
 const SBC_LIVE_DB=require('./enterprise/sbc-live-db-view.cjs').createLiveDbView(()=>db); // SBC_WEBSITE_LIVE_DB_AFTER_MYSQL_HYDRATION_V1
-require('./enterprise/sbc-website-production-routes.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,paidGuard:SBC_V6651_REQUIRE_PAID});
+const SBC_HYBRID_STUDIO=require('./enterprise/sbc-website-production-routes.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,paidGuard:SBC_V6651_REQUIRE_PAID,recordGlobalSpend:({tenantId,id,amountUsd})=>RUNTIME_GATE.recordSpend({tenantId,provider:'openai',purpose:'website-studio-hybrid',amountUsd,idempotencyKey:'studio-hybrid:'+id})});
 require('./enterprise/sbc-website-appointments.cjs').register(app,{auth,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveData,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady});
 require('./enterprise/sbc-website-call-desk.cjs').register(app,{auth,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,saveStore:megaSave,writerReady:()=>!SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}); // SBC_VERIFIED_WEBSITE_CALL_DESK_V1
 require('./enterprise/sbc-website-sales-board.cjs').register(app,{auth,ownerOnly,requireTenant:requireRequestTenant,db:SBC_LIVE_DB,getStore:megaData,paidGuard:SBC_V6651_REQUIRE_PAID}); // SBC_WEBSITE_SALES_BOARD_V1
-app.post('/api/website-demos',auth,async(req,res)=>{if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY||!sbcWriterLeaseReady)return res.status(423).json({ok:false,error:'DEMO_WRITER_UNAVAILABLE'});try{const tenantId=requireRequestTenant(req);const d=await createWebsiteDemo(String(req.body?.customerId||''),{...(req.body||{}),tenantId,actor:req.user});const c=(db.customers||[]).find(x=>x.id===d.customerId&&SBC_PREVIEW_SALES.sameTenant(x,tenantId));res.status(201).json({ok:true,demo:{...d,html:undefined,salesScript:SBC_PREVIEW_SALES.salesScript(c,d)}});}catch(e){res.status(e.message==='DEMO_CUSTOMER_NOT_AUTHORIZED'?404:400).json({ok:false,error:e.message})}});
+app.post('/api/website-demos',auth,async(req,res)=>{
+ if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||SBC_RUNTIME_READ_ONLY||!sbcWriterLeaseReady)return res.status(423).json({ok:false,error:'DEMO_WRITER_UNAVAILABLE'});
+ try{
+  const tenantId=requireRequestTenant(req),customerId=String(req.body?.customerId||'');
+  const existed=megaData().websiteDemos?.some(x=>String(x.customerId)===customerId&&Number(x.tenantId)===tenantId&&x.archived!==true);
+  const d=await createWebsiteDemo(customerId,{...(req.body||{}),tenantId,actor:req.user});
+  // Only a genuinely NEW owner-created website receives automatic AI polish.
+  // Existing records, staff-built sites and approved sites are not bulk-upgraded.
+  let ai={status:'SKIPPED_EXISTING_OR_NON_OWNER'};
+  if(!existed&&req.user?.role==='owner'){
+   try{ai=await SBC_HYBRID_STUDIO.enhance({siteId:d.id,tenantId,mode:'auto-new',createdNow:true})}
+   catch{ai={status:'AI_NOT_APPLIED_SAFELY'}}
+  }
+  const latest=(megaData().websiteDemos||[]).find(x=>String(x.id)===String(d.id)&&Number(x.tenantId)===tenantId)||d;
+  const c=(db.customers||[]).find(x=>x.id===d.customerId&&SBC_PREVIEW_SALES.sameTenant(x,tenantId));
+  res.status(201).json({ok:true,ai,demo:{...latest,html:undefined,salesScript:SBC_PREVIEW_SALES.salesScript(c,latest)}});
+ }catch(e){res.status(e.message==='DEMO_CUSTOMER_NOT_AUTHORIZED'?404:400).json({ok:false,error:e.message})}
+});
 app.get('/api/website-demos/:id/preview',auth,(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex,nofollow,noarchive');
   let tid;try{tid=requireRequestTenant(req)}catch{return res.status(403).end()}

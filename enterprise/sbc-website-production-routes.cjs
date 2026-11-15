@@ -2,7 +2,8 @@
 const P=require('./sbc-website-workorders.cjs');
 const Editor=require('./sbc-instant-site-editor.cjs');
 const StudioOwner=require('./website-studio/studio-owner-routes.cjs');
-function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,paidGuard}){
+const {createController}=require('./website-studio/hybrid-ai.cjs');
+function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,paidGuard,hybridAIController,recordGlobalSpend}){
  const respond=(res,e)=>{const code=String(e?.message||e);const status=/TENANT_CONTEXT|NOT_ASSIGNED|OWNER_REQUIRED|ASSIGNEE_INVALID/.test(code)?403:/PAYMENT_EVIDENCE|PREREQUISITES|WEBSITE_NOT_APPROVED|CUSTOMER_MISMATCH|ALREADY_COMPLETED/.test(code)?409:/UNKNOWN_TASK|INVALID|REQUIRED/.test(code)?400:503;return res.status(status).json({ok:false,code})};
  const tenant=req=>{const n=Number(requireTenant(req));if(!Number.isSafeInteger(n)||n<1)throw Error('TENANT_CONTEXT_REQUIRED');return n};
  const available=(res)=>{if(!writerReady()){res.status(423).json({ok:false,code:'WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'});return false}return true};
@@ -56,6 +57,31 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
 
  // New approved-facts Studio operates alongside existing editor, not in place of it.
  StudioOwner.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation,db});
+ // Hybrid AI is separate from legacy paid-demo generation. Read-only private
+ // status and owner-authorized manual upgrade are tenant-scoped and fail closed.
+ const hybridAI=hybridAIController||createController({getStore,saveStore,writerReady,requireGlobalCap:true,reserveGlobal:recordGlobalSpend});
+ app.get('/api/website-production/hybrid-ai/status',auth,ownerOnly,(req,res)=>{
+   res.setHeader('Cache-Control','no-store');
+   try{tenant(req);return res.json({ok:true,...hybridAI.status()})}catch(e){return respond(res,e)}
+ });
+ app.get('/api/website-production/sites/:id/studio/ai',auth,ownerOnly,(req,res)=>{
+   res.setHeader('Cache-Control','no-store');
+   let site;try{site=readSite(req)}catch(e){return respond(res,e)}
+   if(!site)return res.status(404).json({ok:false,code:'WEBSITE_NOT_FOUND'});
+   return res.json({ok:true,ai:site.websiteStudioAI||null,budget:hybridAI.status(),siteStatus:site.status});
+ });
+ app.post('/api/website-production/sites/:id/studio/ai/upgrade',auth,ownerOnly,async(req,res)=>{
+   res.setHeader('Cache-Control','no-store');
+   let tid;try{tid=tenant(req)}catch(e){return respond(res,e)}
+   if(req.body&&Object.keys(req.body).length)return res.status(400).json({ok:false,code:'AI_UPGRADE_ACCEPTS_NO_UNVERIFIED_FIELDS'});
+   try{
+     const result=await hybridAI.enhance({siteId:String(req.params.id||''),tenantId:tid,mode:'manual-upgrade'});
+     const code=result.status;
+     const http=code==='WEBSITE_NOT_FOUND'?404:code==='WRITER_UNAVAILABLE'?423:code==='AI_BUDGET_EXHAUSTED'?429:code==='AI_NOT_CONFIGURED'?503:
+       ['AI_PROVIDER_UNAVAILABLE','AI_USAGE_UNVERIFIED','AI_OUTPUT_REJECTED','AI_RESERVATION_LOST','AI_VISUAL_CONFLICT','AI_USAGE_OVER_RESERVATION'].includes(code)?502:200;
+     return res.status(http).json({ok:http===200,...result});
+   }catch(e){return respond(res,'STUDIO_AI_UPGRADE_FAILED')}
+ });
 
  const project=(req)=>{const tid=tenant(req);return orders().find(w=>String(w.id)===String(req.params.id)&&Number(w.tenantId)===tid)};
  const visible=(work,user)=>P.sameTenant(work,user)&&(String(user.role)==='owner'||(work.tasks||[]).some(t=>String(t.assignedTo)===String(user.id)));
@@ -118,5 +144,6 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    try{return res.json({ok:true,workOrder:await persist(P.proposeContractor(w,req.body,req.user))})}
    catch(e){return respond(res,e)}
  });
+ return hybridAI;
 }
 module.exports={register};

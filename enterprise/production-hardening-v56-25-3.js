@@ -3,17 +3,17 @@ const crypto = require('crypto');
 
 const VERSION='56.25.3';
 const KILL_STATES=['AUTONOMOUS_OUTREACH','AGENT_WORKERS','REVENUE_AUTOPILOT','FULFILLMENT_AUTOMATION','NEW_CHECKOUTS','ROUTINE_AUTOMATION'];
-// Owner-approved OpenAI spend budget: $25/month and at most $0.75/day (UTC).
+// Owner-approved OpenAI spend budget: $40/month and at most $1.25/day (UTC).
 // Environment variables may reduce, but can NEVER increase, these ceilings.
 function boundedCap(raw,maximum){
  if(raw===undefined||raw===null||raw==='')return maximum;
  const n=Number(raw);return Number.isFinite(n)&&n>=0?Math.min(maximum,n):0;
 }
-const DEFAULT_SPEND_CAP=boundedCap(process.env.SBC_AI_DAILY_SPEND_CAP_USD,0.75);
-const MONTHLY_SPEND_CAP=boundedCap(process.env.SBC_AI_MONTHLY_SPEND_CAP_USD,25);
+const DEFAULT_SPEND_CAP=boundedCap(process.env.SBC_AI_DAILY_SPEND_CAP_USD,1.25);
+const MONTHLY_SPEND_CAP=boundedCap(process.env.SBC_AI_MONTHLY_SPEND_CAP_USD,40);
 // The ledger has historically covered only a subset of OpenAI callsites.
 // Fail closed for ALL consumers of OPENAI_API_KEY (including unmetered callers)
-// until owner confirms an enforced hard $25/month cap in the OpenAI platform.
+// until owner confirms an enforced hard $40/month cap in the OpenAI platform.
 // This module loads after SBC's secure env loader and before AI route initialization.
 const PROVIDER_HARD_CAP_CONFIRMED=process.env.SBC_OPENAI_HARD_CAP_CONFIRMED==='YES';
 if(!PROVIDER_HARD_CAP_CONFIRMED){
