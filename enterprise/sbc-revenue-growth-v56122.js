@@ -34,8 +34,8 @@ const daysAgo=(d,ref=Date.now())=>ref-Number(d)*86400000;
 const OFFER_LADDER=[
   {sku:'SBC-99-STARTER',price:99,fit:['weakPresence','noWebsite','budgetLow']},
   {sku:'SBC-199-STARTER',price:199,fit:['presence','email','hosting']},
-  {sku:'SBC-349-ESSENTIALS',price:349,fit:['securityGap','emailControl','hostingControl']},
-  {sku:'SBC-699-COMPLETE',price:699,fit:['needsWebsite','needsCards','highUrgency']}
+  {sku:'SBC-ESSENTIALS-799',price:799,fit:['securityGap','emailControl','hostingControl']},
+  {sku:'SBC-COMPLETE-999',price:999,fit:['needsWebsite','needsCards','highUrgency']}
 ];
 
 function freshness(customer){
