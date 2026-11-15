@@ -647,7 +647,7 @@
       '</main><aside id="sbcStudioToolRail" class="sbc-studio-rail" aria-label="Website editing tools">'+
       '<div class="sbc-studio-toolbar"><strong>Edit your website</strong><div role="group" aria-label="Editor difficulty"><button type="button" class="btn primary" id="sbcStudioModeSimple" aria-pressed="true">Simple</button><button type="button" class="btn" id="sbcStudioModePro" aria-pressed="false">Pro Design</button></div></div>'+
       studioVisualPanel(demo)+
-      (currentRole()==='owner'?'<details id="sbcStudioHybridAI" style="margin:14px 0;border:1px solid #bacbde;padding:14px;border-radius:12px;background:#fff"><summary style="font-weight:800;cursor:pointer">✨ Hybrid AI Studio · $40 monthly cap</summary><p style="font-size:13px;line-height:1.6">New SBC-built sites receive automatic AI art direction when configured. Existing sites change only when you choose an upgrade. Customer facts, forms, payments and publishing are never automatically approved.</p><p id="sbcStudioAIBudget" role="status">Checking Studio AI allowance…</p><button id="sbcStudioAIUpgrade" class="btn primary" type="button">'+(isApproved(demo)?'Upgrade existing website · private proposal':'✨ Upgrade This Website With AI')+'</button><p id="sbcStudioAIStatus" role="status" aria-live="polite">No external AI request will be made until you choose the button for this existing site.</p><div id="sbcStudioAIProposal" style="font-size:13px;line-height:1.5;white-space:pre-wrap"></div><p style="font-size:11px;color:#566">AI text is a suggestion only. Confirm all facts before customer use. Approved sites are never overwritten; they receive private proposals.</p></details>':'')+
+      (currentRole()==='owner'?'<details id="sbcStudioHybridAI" style="margin:14px 0;border:1px solid #bacbde;padding:14px;border-radius:12px;background:#fff"><summary style="font-weight:800;cursor:pointer">✨ Hybrid AI Studio · $40 monthly cap</summary><p style="font-size:13px;line-height:1.6">New SBC-built sites receive automatic AI art direction when configured. Existing sites change only when you choose an upgrade. Customer facts, forms, payments and publishing are never automatically approved.</p><p id="sbcStudioAIBudget" role="status">Checking Studio AI allowance…</p><label for="sbcStudioAIProvider" style="display:block;font-weight:700;margin:10px 0 6px">Choose AI design engine</label><select id="sbcStudioAIProvider" style="width:100%;padding:10px;border:1px solid #bacbde;border-radius:8px;background:white;color:#182c44"><option value="openai">OpenAI · Hybrid AI</option><option value="gemini">Google Gemini · AI Studio-inspired design</option></select><p style="font-size:12px;color:#506477">Google Gemini uses Google’s Gemini API, not the AI Studio Build Mode interface. Both providers use the same private design editor and shared $40 Studio allowance.</p><button id="sbcStudioAIUpgrade" class="btn primary" type="button">'+(isApproved(demo)?'Upgrade existing website · private proposal':'✨ Upgrade This Website With AI')+'</button><p id="sbcStudioAIStatus" role="status" aria-live="polite">No external AI request will be made until you choose the button for this existing site.</p><div id="sbcStudioAIProposal" style="font-size:13px;line-height:1.5;white-space:pre-wrap"></div><p style="font-size:11px;color:#566">AI text is a suggestion only. Confirm all facts before customer use. Approved sites are never overwritten; they receive private proposals.</p></details>':'')+
       '<details id="sbcStudioBusinessDetails" style="margin:14px 0;border:1px solid #c5d7e5;padding:12px;border-radius:10px"><summary style="font-weight:700;cursor:pointer">Verify Business Details</summary>'+studioPanel()+'</details>'+
       '<details style="margin:14px 0;border:1px solid #c5d7e5;padding:12px;border-radius:10px"><summary style="font-weight:700;cursor:pointer">Classic Page Editor</summary>'+nativeEditorPanel(demo)+'</details>'+
       '</aside></div><details id="sbcFactoryPublishDrawer" class="sbc-studio-publish-drawer"><summary>Publish &amp; QA · Owner release review</summary><div style="padding:12px">'+
@@ -739,6 +739,7 @@
     loadStudioVisual(demo).catch(e=>console.warn('SBC Visual Studio load blocked',String(e.message||e)));
     loadHybridAI(demo).catch(e=>console.warn('SBC Hybrid AI status unavailable',String(e.message||e)));
     document.getElementById('sbcStudioAIUpgrade')?.addEventListener('click',upgradeHybridAI);
+    document.getElementById('sbcStudioAIProvider')?.addEventListener('change',e=>{e.target.dataset.userSelected='true';});
     document.getElementById('sbcStudioVisualForm')?.addEventListener('submit',saveStudioVisual);
     document.getElementById('sbcStudioVisualForm')?.addEventListener('input',rememberStudioDraft);
     document.getElementById('sbcStudioVisualForm')?.addEventListener('change',rememberStudioDraft);
@@ -779,7 +780,10 @@
       if(active?.demo?.id!==demo.id||!budget.isConnected)return;
       if(!out?.ok)throw Error(out?.code||'AI status unavailable.');
       const b=out.budget||{};
-      budget.textContent='Website Studio AI · $'+Number(b.usedUsd||0).toFixed(4)+' used of $40 · $'+Number(b.remainingUsd||0).toFixed(2)+' available this month · '+(b.configured?'Ready':'Disabled / key not configured');
+      const aiSelect=document.getElementById('sbcStudioAIProvider');
+      if(aiSelect&&b.defaultProvider&&['openai','gemini'].includes(b.defaultProvider)&&!aiSelect.dataset.userSelected)aiSelect.value=b.defaultProvider;
+      if(aiSelect){aiSelect.dataset.googleAvailable=String(Boolean(b.providers?.gemini?.configured));}
+      budget.textContent='Website Studio AI · $'+Number(b.usedUsd||0).toFixed(4)+' used of $40 · $'+Number(b.remainingUsd||0).toFixed(2)+' available this month · '+(b.configured?'Ready':'Disabled / key not configured')+' · Google Gemini: '+(b.providers?.gemini?.configured?'Ready':'Not configured');
       const a=out.ai;
       if(!a){message.textContent=b.configured?'No AI proposal saved for this website yet.':'Existing SBC design remains available without AI.';proposal.textContent='';return}
       message.textContent=a.status==='PROPOSAL_ONLY_APPROVED_SITE'?'AI upgrade is saved as a private proposal. The approved website was NOT modified.':a.status==='ENHANCED_PRIVATE_DRAFT'?'Private AI design is saved. Review its appearance and verify all customer facts.':String(a.status||'Review required');
@@ -787,12 +791,14 @@
     }catch(e){if(message)message.textContent='AI status unavailable: '+String(e.message||e)}
   }
   async function upgradeHybridAI(){
-    const demo=active?.demo,button=document.getElementById('sbcStudioAIUpgrade'),message=document.getElementById('sbcStudioAIStatus');
+    const demo=active?.demo,button=document.getElementById('sbcStudioAIUpgrade'),message=document.getElementById('sbcStudioAIStatus'),providerSelect=document.getElementById('sbcStudioAIProvider');
     if(!demo||currentRole()!=='owner'||!button||busy)return;
-    if(!window.confirm('Request a budget-controlled AI design upgrade for this website? Existing approved sites will receive PRIVATE proposals only.'))return;
+    const provider=providerSelect?.value==='gemini'?'gemini':'openai';
+    if(provider==='gemini'&&providerSelect?.dataset.googleAvailable!=='true'){if(message)message.textContent='Google Gemini is not configured. Enable the server-side Gemini API key and budget guard before testing.';return;}
+    if(!window.confirm('Request a budget-controlled '+(provider==='gemini'?'Google Gemini':'OpenAI')+' design upgrade for this website? Existing approved sites will receive PRIVATE proposals only.'))return;
     busy=true;button.disabled=true;if(message)message.textContent='Requesting AI art direction with Studio budget controls…';
     try{
-      const result=await serviceApi(studioBase(demo)+'/ai/upgrade',{method:'POST',body:'{}'});
+      const result=await serviceApi(studioBase(demo)+'/ai/upgrade',{method:'POST',body:JSON.stringify({provider})});
       if(active?.demo?.id!==demo.id)return;
       if(!result?.ok)throw Error(result?.status||result?.code||'AI upgrade unavailable');
       await loadHybridAI(demo);
