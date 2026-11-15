@@ -46,8 +46,9 @@
     const templates=[
       {name:'Business Visibility · $99',items:['Google Business Profile setup/cleanup','Up to 2 social profiles','100 business cards','Business email setup guidance']},
       {name:'SBC Business Starter · $199',items:['Customer onboarding','Approved package deliverables','Payment/order linkage','Fulfillment checklist','Customer approval']},
-      {name:'SBC Business Essentials · $349',items:['Customer onboarding','Approved package deliverables','Payment/order linkage','Fulfillment checklist','Customer approval','Final handoff']},
-      {name:'SBC Complete Launch · $699',items:['Website/domain workflow','Business email','Managed hosting','Security/SSL','Business cards','Customer approval','Final handoff']}
+      {name:'SBC Business Basic · $499',items:['Four-page website','Responsive design','Contact options','Foundational SEO','Customer approval','Final handoff']},
+      {name:'SBC Business Essentials · $799',items:['Customer onboarding','Approved package deliverables','Payment/order linkage','Fulfillment checklist','Customer approval','Final handoff']},
+      {name:'SBC Complete Launch · $999',items:['Website/domain workflow','Business email','Managed hosting','Security/SSL','Business cards','Customer approval','Final handoff']}
     ];
     return `<div class="v322-shell">
       <div class="hero"><div><div class="eyebrow" style="color:#f7a842">V32.2 · FIRST-CUSTOMER OPERATIONS UPGRADE</div><h2>Run SBC from the money all the way to delivery.</h2><p>Payment → Order → Fulfillment → Approval → Handoff. Exceptions are surfaced instead of hidden.</p></div><div class="hero-actions"><button class="btn primary" onclick="openV322Reconcile()">💳 Verify Payment</button><button class="btn ghost" onclick="window.sbcAskKim?.('Review the SBC Operations 360 panel and identify the highest-priority exception.')">🤖 Ask Kim</button></div></div>
