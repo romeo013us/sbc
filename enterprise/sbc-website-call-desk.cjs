@@ -51,7 +51,7 @@ function coach(){
  return {
   busy:"Absolutely. I don't want to interrupt your work. Would tomorrow at a specific time be better for a quick 10-minute look? If not, no problem.",
   website:"That's good to hear. I don't want to assume you don't have one. Would you be open to comparing a different design, or is your current site meeting your needs?",
-  price:"Our basic one-page website starts at $199, and the more complete four-page option starts at $349. I can show you the exact site before you decide.",
+  price:"Our basic one-page website starts at $199, and the more complete four-page option starts at $499. I can show you the exact site before you decide.",
   send:"Of course. May I send the approved website link to the email address you prefer? We'll only send it with your permission.",
   notInterested:"Understood, thanks for your time. I won't keep pitching you."
  };
