@@ -633,7 +633,7 @@ Successful By Choice makes it easier to build a professional business presence w
 <div class="hero-note"><i class="fa-solid fa-user"></i><span>One place. Multiple solutions. A real person behind the solution.</span></div>
 
  <div class="hero-actions">
- <a class="btn btn-orange" href="#pricing"><i class="fa-solid fa-layer-group"></i> See the $99 / $199 / $349 / $699 Packages</a>
+ <a class="btn btn-orange" href="#pricing"><i class="fa-solid fa-layer-group"></i> See the $99 / $199 / $499 / $799 / $999 Packages</a>
  <a class="btn btn-light" href="https://sbcwebsites.com" target="_blank" rel="noopener"><i class="fa-solid fa-globe"></i> Visit SBC Websites</a>
  </div>
 
@@ -797,7 +797,7 @@ Successful By Choice makes it easier to build a professional business presence w
    <span>Every package is designed around a real business need. If you are not sure which one fits, call SBC and we’ll help you choose.</span>
   </div>
 
-  <div class="price-grid" style="grid-template-columns:repeat(4,1fr);max-width:1200px;margin:0 auto;">
+  <div class="price-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,215px),1fr));gap:18px;max-width:1400px;margin:0 auto;">
    <article class="price-card popular">
     <span class="popular-tag">Best Fallback Offer</span>
     <span class="package-badge"><i class="fa-solid fa-location-dot"></i> Visibility</span>
@@ -815,60 +815,71 @@ Successful By Choice makes it easier to build a professional business presence w
     </ul>
     <a class="btn btn-orange price-btn" href="https://square.link/u/h7pS4Z9i?src=sheet" target="_blank" rel="noopener">Start at $99</a>
    </article>
-
    <article class="price-card">
-    <span class="package-badge"><i class="fa-solid fa-rocket"></i> Starter</span>
+    <span class="package-badge"><i class="fa-solid fa-globe"></i> Starter</span>
     <h3>SBC Business Starter</h3>
-    <p class="desc">A professional starting point for a new or small business ready to establish its online presence.</p>
-    <div class="price">$199 <small>setup</small></div>
-    <div class="value">Built to get you started</div>
+    <p class="desc">A professional mobile-friendly one-page website with a clear introduction, services and contact options.</p>
+    <div class="price">$199 <small>one-time setup</small></div>
+    <div class="value">The smart first website</div>
     <ul class="price-list">
-     <li><i class="fa-solid fa-check"></i> Domain setup</li>
-     <li><i class="fa-solid fa-check"></i> Basic hosting</li>
-     <li><i class="fa-solid fa-check"></i> 1-page website</li>
-     <li><i class="fa-solid fa-check"></i> 100 business cards</li>
-     <li><i class="fa-solid fa-check"></i> Basic setup support</li>
+     <li><i class="fa-solid fa-check"></i> One-page responsive business website</li>
+     <li><i class="fa-solid fa-check"></i> Business introduction and service overview</li>
+     <li><i class="fa-solid fa-check"></i> Contact information and click-to-call setup</li>
+     <li><i class="fa-solid fa-check"></i> First-year domain and website service under Starter terms</li>
+     <li><i class="fa-solid fa-check"></i> Optional Website Care available separately</li>
     </ul>
-    <a class="btn btn-orange price-btn" href="https://square.link/u/lKxGXNQs?src=sheet" target="_blank" rel="noopener">Start for $199</a>
+    <a class="btn btn-orange price-btn" href="https://square.link/u/xD1tRvlT" target="_blank" rel="noopener noreferrer">Start for $199</a>
    </article>
-
-   <article class="price-card featured">
-    <span class="popular-tag">Most Popular</span>
-    <span class="package-badge"><i class="fa-solid fa-briefcase"></i> Essentials</span>
-    <h3>Business Essentials</h3>
-    <p class="desc">A stronger everyday package for an established small business that needs a more complete professional presence.</p>
-    <div class="price">$349 <small>setup</small></div>
-    <div class="value">More tools. More presence.</div>
-    <ul class="price-list">
-     <li><i class="fa-solid fa-check"></i> Domain + hosting</li>
-     <li><i class="fa-solid fa-check"></i> Up to 4-page website</li>
-     <li><i class="fa-solid fa-check"></i> Mobile optimization</li>
-     <li><i class="fa-solid fa-check"></i> 250 business cards, with three design concepts and standard shipping</li>
-     <li><i class="fa-solid fa-check"></i> Basic maintenance support</li>
-    </ul>
-    <a class="btn btn-orange price-btn" href="https://square.link/u/uf53mzCR" target="_blank" rel="noopener">Choose $349 Essentials</a>
-   </article>
-
    <article class="price-card">
-    <span class="package-badge"><i class="fa-solid fa-building"></i> Complete Launch</span>
-    <h3>SBC Complete Business Launch</h3>
-    <p class="desc">A premium launch package for businesses that want the major pieces handled together from the start.</p>
-    <div class="price">$699 <small>setup</small></div>
-    <div class="value">A complete business launch</div>
+    <span class="package-badge"><i class="fa-solid fa-globe"></i> Business Basic</span>
+    <h3>SBC Business Basic</h3>
+    <p class="desc">A four-page branded business website that gives customers a professional place to learn about your company.</p>
+    <div class="price">$499 <small>one-time setup</small></div>
+    <div class="value">Four pages built around your business</div>
     <ul class="price-list">
-     <li><i class="fa-solid fa-check"></i> Professional website</li>
-     <li><i class="fa-solid fa-check"></i> Domain + domain protection</li>
-     <li><i class="fa-solid fa-check"></i> Free SSL</li>
-     <li><i class="fa-solid fa-check"></i> Microsoft 365 business email</li>
-     <li><i class="fa-solid fa-check"></i> Managed WordPress hosting</li>
-     <li><i class="fa-solid fa-check"></i> 500 business cards</li>
+     <li><i class="fa-solid fa-check"></i> Home, Services, About and Contact pages</li>
+     <li><i class="fa-solid fa-check"></i> Mobile-friendly responsive design</li>
+     <li><i class="fa-solid fa-check"></i> Business branding and contact details</li>
+     <li><i class="fa-solid fa-check"></i> Basic on-page SEO configuration</li>
+     <li><i class="fa-solid fa-check"></i> Hosting, renewals and care according to agreed terms</li>
     </ul>
-    <a class="btn btn-orange price-btn" href="tel:305-496-1065" rel="nofollow">Call SBC to order for $699</a>
-    <div class="small-note">Provider terms, taxes, shipping, premium domains, and special production requests may affect the final total where applicable.</div>
+    <a class="btn btn-orange price-btn" href="https://square.link/u/2mkZwvXa" target="_blank" rel="noopener noreferrer">Choose $499 Basic</a>
+   </article>
+   <article class="price-card featured">
+    <span class="popular-tag">Business Bundle</span>
+    <span class="package-badge"><i class="fa-solid fa-globe"></i> Essentials</span>
+    <h3>Business Essentials</h3>
+    <p class="desc">A four-page website with professional communication tools and printed branding for your business.</p>
+    <div class="price">$799 <small>one-time setup</small></div>
+    <div class="value">Website, email and printed branding</div>
+    <ul class="price-list">
+     <li><i class="fa-solid fa-check"></i> Professionally designed four-page website</li>
+     <li><i class="fa-solid fa-check"></i> Business branding and professional email setup</li>
+     <li><i class="fa-solid fa-check"></i> 500 printed business cards</li>
+     <li><i class="fa-solid fa-check"></i> Foundational website SEO configuration</li>
+     <li><i class="fa-solid fa-check"></i> Third-party licenses, hosting renewals and care according to agreed terms</li>
+    </ul>
+    <a class="btn btn-orange price-btn" href="https://square.link/u/atJchS8R" target="_blank" rel="noopener noreferrer">Choose $799 Essentials</a>
+   </article>
+   <article class="price-card">
+    <span class="package-badge"><i class="fa-solid fa-globe"></i> Complete Launch</span>
+    <h3>SBC Complete Business Launch</h3>
+    <p class="desc">A more coordinated business launch combining a multi-page website with key branding and business setup services.</p>
+    <div class="price">$999 <small>one-time setup</small></div>
+    <div class="value">The coordinated business launch</div>
+    <ul class="price-list">
+     <li><i class="fa-solid fa-check"></i> Professionally designed multi-page website</li>
+     <li><i class="fa-solid fa-check"></i> Professional email setup and 500 business cards</li>
+     <li><i class="fa-solid fa-check"></i> Google Business Profile setup assistance</li>
+     <li><i class="fa-solid fa-check"></i> Foundational website SEO configuration</li>
+     <li><i class="fa-solid fa-check"></i> Initial Office Box workspace onboarding; subscription sold separately</li>
+    </ul>
+    <a class="btn btn-orange price-btn" href="https://square.link/u/YdzUoWl3" target="_blank" rel="noopener noreferrer">Choose $999 Launch</a>
    </article>
   </div>
+  <p class="small-note" style="max-width:1100px;margin:18px auto 0;text-align:center">The amounts above are one-time package prices, not monthly charges. Optional Website Care is $79/month, billed separately. Starter includes first-year domain and website service under its package terms; maintenance services and future renewals must be disclosed before purchase. Office Box recurring plans are separate. Existing paid orders retain their original agreed terms.</p>
 
-  <div class="sales-steps" aria-label="How the SBC package process works">
+    <div class="sales-steps" aria-label="How the SBC package process works">
    <div class="sales-step"><strong>1. Tell us what you need</strong><span>Call, request help, or choose a package.</span></div>
    <div class="sales-step"><strong>2. Choose your path</strong><span>SBC helps match the solution to your business.</span></div>
    <div class="sales-step"><strong>3. Pay securely</strong><span>Use the available SBC checkout option.</span></div>
