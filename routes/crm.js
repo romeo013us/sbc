@@ -29,6 +29,8 @@ function positiveTenantIdOrZero(input) {
 }
 
 module.exports = function registerCRM(app, { auth, getContext }) {
+  // SBC_RENEWAL_CENTER_V1: authenticated tenant-scoped owner desk on existing sbc_renewals table.
+  require('./sbc-renewal-center.cjs').register(app,{auth,getContext,tenantForRead});
   // SBC_ACCOUNT_SOCIAL_V1_SAFE_MOUNT: opt-in, fail-closed Account Manager / Lorna / Social integration.
   // No new routes, migrations or provider calls are mounted unless flag is explicitly enabled.
   if (process.env.SBC_ACCOUNT_SOCIAL_V1 === '1') {
