@@ -77,7 +77,7 @@
       '<p><strong>Current generator:</strong> HTML + CSS + JavaScript. This preview is not an automatic import into WordPress, GoDaddy Airo, or Websites + Marketing.</p>'+
       (starter
        ? '<p><strong>$199 Business Starter:</strong> This package is currently advertised with one year of domain and GoDaddy Websites + Marketing. If you deliver that promised product, purchase the eligible Websites + Marketing plan and recreate/adapt this one-page design inside the builder; the exported custom HTML cannot simply be uploaded as its editable template. If you prefer to deliver the exact HTML/CSS/JavaScript design on cPanel instead, get the buyer’s agreement to a revised offer and check the cost/margin first.</p>'
-       : '<p><strong>$349 Business Basic:</strong> The four-page HTML/CSS/JavaScript output can be hosted on compatible cPanel/static hosting after assets and contact integration are finalized. Check the customer quote for what domain, hosting, SSL, maintenance and transfer rights are included. WordPress requires conversion to a theme/pages; Websites + Marketing requires rebuilding the layout in its editor.</p>')+
+       : '<p><strong>$499 Business Basic:</strong> The four-page HTML/CSS/JavaScript output can be hosted on compatible cPanel/static hosting after assets and contact integration are finalized. Check the customer quote for what domain, hosting, SSL, maintenance and transfer rights are included. WordPress requires conversion to a theme/pages; Websites + Marketing requires rebuilding the layout in its editor.</p>')+
       '<p><strong>Owner fulfillment checklist:</strong> Verify payment evidence, confirm domain ownership, select and record the hosting product and supplier cost, secure stock-image usage, add approved copy and photos, configure SSL and live forms, test mobile/navigation, then get final launch approval. No provider purchase or domain change happens from this guide.</p>'+
      '</div></details>';
   }
@@ -1000,7 +1000,7 @@
     openModal('SBC Instant Sites · Website Production',
       '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
       '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
-      '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
+      '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $499 · four-page website</option></select></label>'+
       '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
     document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
       if(busy)return;busy=true;this.disabled=true;

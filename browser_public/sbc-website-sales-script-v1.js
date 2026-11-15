@@ -51,7 +51,7 @@
    "3. GENERATE INQUIRIES — Make your phone number, quote request and appointment options easier to find when those features are available.",
    "20-SECOND COMEBACK — A website helps customers find you, gives them confidence, and makes it easy to contact you. Which of those would help your business most?",
    "IF THEY ALREADY USE FACEBOOK — Keep Facebook. Your website complements it by giving customers a dedicated place for your services, contact details and next steps.",
-   "IF THEY ASK THE PRICE — Our currently listed one-page Business Starter is $199 and four-page Business Basic is $349. An optional $79/month care plan is being considered, not yet a published promise. The owner confirms hosting, domain, support, recurring billing and cancellation terms before any order.",
+   "IF THEY ASK THE PRICE — Our currently listed one-page Business Starter is $199 and four-page Business Basic is $499. An optional $79/month care plan is being considered, not yet a published promise. The owner confirms hosting, domain, support, recurring billing and cancellation terms before any order.",
    "IF THEY ASK ABOUT $79/MONTH — We are considering optional website management at $79/month for ongoing agreed care, not unlimited edits or guaranteed sales. The owner must confirm an approved offer and exact scope before anyone subscribes.",
    'IF THEY ARE BUSY — All good. Is there a better time for a quick 10-minute look? [PAUSE]',
    'IF THEY SAY NO / DO NOT CALL — No problem. Thanks for your time. Record their preference and stop outreach.',
