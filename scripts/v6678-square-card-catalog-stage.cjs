@@ -21,10 +21,11 @@ if(!code.includes(marker)){
  code=code.replace(identity,marker+'\n'+identity);
 }
 assert.ok(code.includes(marker),'stage marker required');
-assert.ok(code.includes(toUrl)&&code.includes(toName)&&code.includes(toPackage),'corrected owner offer missing');
+const modern=code.includes("SBC_PRICE.offer('essentials').name");
+assert.ok(code.includes(toUrl)&&code.includes(toName)&&(modern||code.includes(toPackage)),'corrected owner card link and package mapping missing');
 assert.ok(!code.includes(fromUrl)&&!code.includes(fromName)&&!code.includes(fromPackage),'stale 200-card terms must be absent');
 assert.equal(code.split(toName).length-1,1,'catalog label duplicate');
-assert.equal(code.split(toPackage).length-1,2,'package references duplicate');
+if(!modern)assert.equal(code.split(toPackage).length-1,2,'legacy package references duplicate');
 if(process.argv.includes('--apply')){
  if(code!==original)fs.writeFileSync(file,code);
  console.log('[SBC V66.78] owner-confirmed $50/250-card link, package text and catalog label staged (no Square charge)');
