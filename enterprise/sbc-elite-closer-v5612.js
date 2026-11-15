@@ -12,8 +12,9 @@ const STYLES = Object.freeze({
 const OFFERS = Object.freeze({
   SBC_99: {sku:'SBC-99-STARTER',price:99,name:'Business Starter / Local Presence'},
   SBC_199: {sku:'SBC-199-STARTER',price:199,name:'Business Starter'},
-  SBC_349: {sku:'SBC-349-ESSENTIALS',price:349,name:'Business Essentials'},
-  SBC_699: {sku:'SBC-699-COMPLETE',price:699,name:'SBC Complete Business Launch'}
+  SBC_499: {sku:'SBC-BASIC-499',price:499,name:'SBC Business Basic'},
+  SBC_799: {sku:'SBC-ESSENTIALS-799',price:799,name:'SBC Business Essentials'},
+  SBC_999: {sku:'SBC-COMPLETE-999',price:999,name:'SBC Complete Business Launch'}
 });
 
 function clean(v,n=3000){return String(v??'').trim().slice(0,n);}
@@ -55,8 +56,8 @@ function chooseStyle(profile={},history=[]){
 
 function offerFor(profile={}){
   const p=profile.detectedPainPoints||{}; const intent=Number(profile.intentScore||0); const budget=String(p.budget||'').toUpperCase();
-  if((intent>=88||String(p.urgency||'').toUpperCase()==='HIGH')&&budget!=='LOW'&&(p.needsWebsite||p.needsCards))return OFFERS.SBC_699;
-  if(p.securityGap||String(p.hostingControl||'').toUpperCase()==='POOR'||String(p.emailControl||'').toUpperCase()==='POOR')return OFFERS.SBC_349;
+  if((intent>=88||String(p.urgency||'').toUpperCase()==='HIGH')&&budget!=='LOW'&&(p.needsWebsite||p.needsCards))return OFFERS.SBC_999;
+  if(p.securityGap||String(p.hostingControl||'').toUpperCase()==='POOR'||String(p.emailControl||'').toUpperCase()==='POOR')return OFFERS.SBC_799;
   if(budget==='LOW'||p.noWebsite||p.weakPresence)return OFFERS.SBC_99;
   return OFFERS.SBC_199;
 }
