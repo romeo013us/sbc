@@ -38,7 +38,7 @@
    ';border-radius:12px;padding:13px;margin:0 0 9px;cursor:pointer;color:#132534">'+
    '<strong style="display:block;font-size:13px">'+esc(x.businessName)+'</strong>'+
    '<span style="display:block;font-size:11px;margin:6px 0;color:#586679">'+esc(labels[x.stage]||x.stage)+'</span>'+
-   '<small style="font-size:10px">'+esc(x.websiteTier==='starter'?'$199 one-page site':x.websiteTier==='essentials'?'$349 four-page site':'No website created yet')+'</small></button>'
+   '<small style="font-size:10px">'+esc(x.websiteTier==='starter'?'$199 one-page site':x.websiteTier==='essentials'?'$499 four-page site':'No website created yet')+'</small></button>'
   ).join('')||'<p>No visible assigned leads. Research, verification or assignment may still be needed.</p>';
  }
  function detail(){
