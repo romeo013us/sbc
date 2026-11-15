@@ -1194,7 +1194,7 @@ function onboardingView(){
   const steps=role==='caller'?[
     ['1','Welcome & SBC Mission','Learn what SBC sells, who we serve, and how your role creates revenue.'],
     ['2','Role & Workflow','OPEN → DISCOVER → QUALIFY → RECOMMEND → PRICE → CLOSE → PAYMENT.'],
-    ['3','SBC Services & Packages','Know the approved services, $199 Starter, $349 Business Essentials, and $699 Complete Business Launch.'],
+    ['3','SBC Services & Packages','Know the current website packages: $199 Starter, $499 Basic, $799 Essentials, and $999 Complete Business Launch. Website Care is optional at $79/month.'],
     ['4','Sales Training','Complete the required sales, objection, closing, order and payment lessons.'],
     ['5','Practice & Certification','Complete role-play and final certification before live production.'],
     ['6','Production Readiness','Kim coaches the 2–3 day path: foundation → sales practice → production simulation. Romeo gives final production approval before live calling.']
