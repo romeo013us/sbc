@@ -4,6 +4,7 @@
 // All output is private; approved/public websites are never changed here.
 const crypto=require('node:crypto');
 const Visual=require('./visual-editor.cjs');
+const Gemini=require('./gemini-provider.cjs');
 const MODEL='gpt-6-luna';
 const MONTHLY_MICROUSD=40_000_000; // $40.00, Studio only. No claim about other AI usage.
 const RESERVE_MICROUSD=10_000; // $0.01 held before each bounded text call.
@@ -49,8 +50,12 @@ async function provider(brief){
  let design;try{design=JSON.parse(raw.replace(/^```json\s*|\s*```$/g,''))}catch{throw Error('AI_OUTPUT_REJECTED')}
  return {design,usage:data.usage};
 }
-function createController({getStore,saveStore,writerReady,configured=Boolean(process.env.OPENAI_API_KEY)&&process.env.SBC_STUDIO_AI_ENABLED==='true',now=()=>new Date(),invokeModel=provider,reserveGlobal=null,requireGlobalCap=false}={}){
- if(![getStore,saveStore,writerReady,now,invokeModel].every(x=>typeof x==='function'))throw Error('STUDIO_AI_DEPENDENCIES_REQUIRED');
+function createController({getStore,saveStore,writerReady,
+ configured=Boolean(process.env.OPENAI_API_KEY)&&process.env.SBC_STUDIO_AI_ENABLED==='true',
+ geminiEnabled=Boolean(process.env.GEMINI_API_KEY||process.env.GOOGLE_API_KEY)&&process.env.SBC_STUDIO_AI_ENABLED==='true'&&process.env.SBC_STUDIO_GEMINI_ENABLED==='true'&&process.env.SBC_GEMINI_HARD_CAP_CONFIRMED==='YES',
+ defaultProvider=process.env.SBC_STUDIO_AI_PROVIDER==='gemini'?'gemini':'openai',
+ now=()=>new Date(),invokeModel=provider,invokeGemini=Gemini.invokeGemini,reserveGlobal=null,requireGlobalCap=false}={}){
+ if(![getStore,saveStore,writerReady,now,invokeModel,invokeGemini].every(x=>typeof x==='function'))throw Error('STUDIO_AI_DEPENDENCIES_REQUIRED');
  let queue=Promise.resolve();
  const exclusive=fn=>{const next=queue.catch(()=>undefined).then(fn);queue=next.then(()=>undefined,()=>undefined);return next};
  const currentMonth=()=>monthKey(now());
@@ -63,12 +68,14 @@ function createController({getStore,saveStore,writerReady,configured=Boolean(pro
  const save=async store=>{const result=await saveStore(store);if(result?.ok===false||result?.skipped===true||result?.durable===false)throw Error('AI_SAVE_NOT_DURABLE')};
  const status=()=>{
   const l=ledger(getStore()),reserved=(l.reservations||[]).reduce((sum,r)=>sum+Number(r.microUsd||0),0);
-  return {month:l.month,limitUsd:40,usedUsd:Number((l.spentMicroUsd/1e6).toFixed(6)),reservedUsd:Number((reserved/1e6).toFixed(6)),remainingUsd:Number(Math.max(0,(MONTHLY_MICROUSD-l.spentMicroUsd-reserved)/1e6).toFixed(6)),configured:Boolean(configured),model:MODEL,autoNewSites:true,manualExistingSites:true,appliesTo:'SBC Website Studio only',imageGenerationEnabled:false};
+  return {month:l.month,limitUsd:40,providers:{openai:{configured:Boolean(configured),model:MODEL},gemini:{configured:Boolean(geminiEnabled),model:process.env.SBC_STUDIO_GEMINI_MODEL||Gemini.DEFAULT_MODEL}},defaultProvider,usedUsd:Number((l.spentMicroUsd/1e6).toFixed(6)),reservedUsd:Number((reserved/1e6).toFixed(6)),remainingUsd:Number(Math.max(0,(MONTHLY_MICROUSD-l.spentMicroUsd-reserved)/1e6).toFixed(6)),configured:Boolean(configured||geminiEnabled),model:defaultProvider==='gemini'?(process.env.SBC_STUDIO_GEMINI_MODEL||Gemini.DEFAULT_MODEL):MODEL,autoNewSites:true,manualExistingSites:true,appliesTo:'SBC Website Studio only',imageGenerationEnabled:false};
  };
- async function enhance({siteId,tenantId,mode,createdNow=false}={}){
+ async function enhance({siteId,tenantId,mode,createdNow=false,provider:requestedProvider}={}){
+  const selectedProvider=requestedProvider===undefined?defaultProvider:requestedProvider;
+  if(!['openai','gemini'].includes(selectedProvider))return {status:'INVALID_AI_PROVIDER'};
   if(!['auto-new','manual-upgrade'].includes(mode))return {status:'INVALID_AI_MODE'};
   if(mode==='auto-new'&&createdNow!==true)return {status:'SKIPPED_NOT_NEW'};
-  if(!configured)return {status:'AI_NOT_CONFIGURED',...status()};
+  if(!(selectedProvider==='gemini'?geminiEnabled:configured))return {status:'AI_NOT_CONFIGURED',...status()};
   if(!Number.isSafeInteger(Number(tenantId))||Number(tenantId)<1)return {status:'TENANT_CONTEXT_REQUIRED'};
   if(!writerReady())return {status:'WRITER_UNAVAILABLE'};
   return exclusive(async()=>{
@@ -79,9 +86,9 @@ function createController({getStore,saveStore,writerReady,configured=Boolean(pro
    if(mode==='auto-new'&&site.websiteStudioAI?.autoAttemptedAt)return {status:'SKIPPED_ALREADY_ATTEMPTED'};
    const l=ledger(store),reserved=l.reservations.reduce((sum,r)=>sum+Number(r.microUsd||0),0);
    if(l.spentMicroUsd+reserved+RESERVE_MICROUSD>MONTHLY_MICROUSD)return {status:'AI_BUDGET_EXHAUSTED',...status()};
-   if(requireGlobalCap&&typeof reserveGlobal!=='function')return {status:'AI_GLOBAL_BUDGET_UNAVAILABLE'};
+   if(selectedProvider==='openai'&&requireGlobalCap&&typeof reserveGlobal!=='function')return {status:'AI_GLOBAL_BUDGET_UNAVAILABLE'};
    const id=crypto.randomUUID(),startedAt=now().toISOString();
-   if(typeof reserveGlobal==='function'){
+   if(selectedProvider==='openai'&&typeof reserveGlobal==='function'){
     try{await reserveGlobal({tenantId:Number(tenantId),id,amountUsd:RESERVE_MICROUSD/1e6})}
     catch{return {status:'AI_GLOBAL_BUDGET_BLOCKED',reviewRequired:true}}
    }
@@ -91,7 +98,7 @@ function createController({getStore,saveStore,writerReady,configured=Boolean(pro
    // services, reviews, location, source URLs, prior pages or personal data.
    const brief={businessName:scrub(site.customer?.businessName,100),industry:scrub(site.industry,90),package:site.offerTier==='starter'?'one-page':'four-page',goal:'Premium responsive private website concept. No new business facts.'};
    let answer,design,cost;
-   try{answer=await invokeModel(brief);design=checkDesign(answer.design);cost=tokensCost(answer.usage)}
+   try{answer=await (selectedProvider==='gemini'?invokeGemini(brief):invokeModel(brief));design=checkDesign(answer.design);cost=selectedProvider==='gemini'?Gemini.costMicroUsd(answer.usage,answer.model||Gemini.DEFAULT_MODEL):tokensCost(answer.usage)}
    catch(err){
     // An HTTP timeout/ambiguous provider completion might incur charges;
     // preserve the reserved amount as a conservative unresolved hold.
@@ -114,12 +121,12 @@ function createController({getStore,saveStore,writerReady,configured=Boolean(pro
     revised={...latest,websiteStudioVisual:visual,websiteStudioVisualVersion:version+1,
      websiteStudioVisualHistory:[...(Array.isArray(latest.websiteStudioVisualHistory)?latest.websiteStudioVisualHistory:[]),{version,visual:before}].slice(-20)};
    }
-   revised={...revised,websiteStudioAI:{...(latest.websiteStudioAI||{}),mode,model:MODEL,status:approved?'PROPOSAL_ONLY_APPROVED_SITE':'ENHANCED_PRIVATE_DRAFT',reviewRequired:true,
+   revised={...revised,websiteStudioAI:{...(latest.websiteStudioAI||{}),mode,provider:selectedProvider,model:selectedProvider==='gemini'?(answer.model||Gemini.DEFAULT_MODEL):MODEL,status:approved?'PROPOSAL_ONLY_APPROVED_SITE':'ENHANCED_PRIVATE_DRAFT',reviewRequired:true,
      design,estimatedUsageUsd:Number((cost/1e6).toFixed(6)),createdAt:now().toISOString(),
      notice:'Private AI proposal. Copy suggestions are NOT owner-approved facts. Publishing and customer records unchanged.'}};
    const nextBudget={...newLedger,spentMicroUsd:newLedger.spentMicroUsd+cost,
     reservations:newLedger.reservations.filter(r=>r.id!==id),
-    receipts:[...(Array.isArray(newLedger.receipts)?newLedger.receipts:[]),{id,siteId:String(siteId),tenantId:Number(tenantId),microUsd:cost,mode,model:MODEL,at:now().toISOString()}].slice(-500)};
+    receipts:[...(Array.isArray(newLedger.receipts)?newLedger.receipts:[]),{id,siteId:String(siteId),tenantId:Number(tenantId),microUsd:cost,mode,provider:selectedProvider,model:selectedProvider==='gemini'?(answer.model||Gemini.DEFAULT_MODEL):MODEL,at:now().toISOString()}].slice(-500)};
    await save({...live,websiteDemos:live.websiteDemos.map(s=>s===latest?revised:s),websiteStudioAIBudget:nextBudget});
    return {status:approved?'PROPOSAL_ONLY_APPROVED_SITE':'ENHANCED_PRIVATE_DRAFT',reviewRequired:true,costUsd:Number((cost/1e6).toFixed(6)),budget:status()};
   });
