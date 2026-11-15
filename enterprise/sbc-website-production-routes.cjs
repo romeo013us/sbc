@@ -73,9 +73,9 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  app.post('/api/website-production/sites/:id/studio/ai/upgrade',auth,ownerOnly,async(req,res)=>{
    res.setHeader('Cache-Control','no-store');
    let tid;try{tid=tenant(req)}catch(e){return respond(res,e)}
-   if(req.body&&Object.keys(req.body).length)return res.status(400).json({ok:false,code:'AI_UPGRADE_ACCEPTS_NO_UNVERIFIED_FIELDS'});
+   if(req.body&&(Object.keys(req.body).some(key=>key!=='provider')||(req.body.provider!==undefined&&!['openai','gemini'].includes(req.body.provider))))return res.status(400).json({ok:false,code:'AI_UPGRADE_ACCEPTS_ONLY_PROVIDER_CHOICE'});
    try{
-     const result=await hybridAI.enhance({siteId:String(req.params.id||''),tenantId:tid,mode:'manual-upgrade'});
+     const result=await hybridAI.enhance({siteId:String(req.params.id||''),tenantId:tid,mode:'manual-upgrade',provider:req.body?.provider});
      const code=result.status;
      const http=code==='WEBSITE_NOT_FOUND'?404:code==='WRITER_UNAVAILABLE'?423:code==='AI_BUDGET_EXHAUSTED'?429:code==='AI_NOT_CONFIGURED'?503:
        ['AI_PROVIDER_UNAVAILABLE','AI_USAGE_UNVERIFIED','AI_OUTPUT_REJECTED','AI_RESERVATION_LOST','AI_VISUAL_CONFLICT','AI_USAGE_OVER_RESERVATION'].includes(code)?502:200;
