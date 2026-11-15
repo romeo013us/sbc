@@ -1,0 +1,38 @@
+name: SBC Renewal Center Source Tests
+
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-package-renewals-v20261115.cjs'
+      - 'routes/sbc-renewal-center.cjs'
+      - 'routes/crm.js'
+      - 'public/renewals-center.html'
+      - 'browser_public/renewals-center.html'
+      - 'public/app.js'
+      - 'browser_public/app.js'
+      - 'test/sbc-renewal-center.test.cjs'
+      - '.github/workflows/sbc-renewal-center.yml'
+  pull_request:
+    branches: [a-sbc-master]
+
+permissions:
+  contents: read
+
+jobs:
+  renewal-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: '22' }
+      - name: Syntax checks
+        run: |
+          node --check enterprise/sbc-package-renewals-v20261115.cjs
+          node --check routes/sbc-renewal-center.cjs
+          node --check routes/crm.js
+          node --check public/app.js
+          node --check browser_public/app.js
+      - name: Owner-only durable renewals, security prices, payment evidence, and idempotency
+        run: node --test test/sbc-renewal-center.test.cjs
