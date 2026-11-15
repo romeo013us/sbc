@@ -40,9 +40,9 @@ function normalizeLead(lead={}){
 }
 function selectOffer(lead={}){
   const l=normalizeLead(lead);
-  const name=l.recommendedPackage || (l.dealValue>=699?'SBC Complete Business Launch':l.dealValue>=349?'Business Essentials':'Business Starter');
+  const name=l.recommendedPackage || (l.dealValue>=999?'SBC Complete Business Launch':l.dealValue>=799?'Business Essentials':'Business Starter');
   const catalog={
-    'Business Starter':199,'Business Essentials':349,'Professional Business':599,'SBC Complete Business Launch':699,'Business Growth':999
+    'Business Starter':199,'Business Essentials':799,'Professional Business':599,'SBC Complete Business Launch':999,'Business Growth':999
   };
   const price=catalog[name]||Math.max(0,l.dealValue||199);
   return {packageName:name,price,reason:l.recommendedPackage?'Lead intelligence recommendation':'Revenue-tier fallback'};
