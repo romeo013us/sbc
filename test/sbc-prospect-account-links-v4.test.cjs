@@ -108,3 +108,12 @@ test('v4 is routed through the existing published writer, staff path is deny-by-
  for(const name of ['sbc-prospect-intelligence.js','sbc-account-manager-v1.js'])
   assert.equal(fs.readFileSync('public/'+name,'utf8'),fs.readFileSync('browser_public/'+name,'utf8'));
 });
+
+test('role perimeter allows only bounded assigned-manager research GET, not write or path traversal',()=>{
+ const gate=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
+ assert.equal(gate.allowed('GET','/api/prospect-intelligence/v4/accounts/c7/research'),true);
+ assert.equal(gate.allowed('POST','/api/prospect-intelligence/v4/accounts/c7/research'),false);
+ assert.equal(gate.allowed('GET','/api/prospect-intelligence/v4/accounts/%2e%2e/research'),false);
+ assert.equal(gate.allowAccountManager(manager,'GET','/api/prospect-intelligence/v4/accounts/c7/research'),true);
+ assert.equal(gate.allowAccountManager({...manager,active:false},'GET','/api/prospect-intelligence/v4/accounts/c7/research'),false);
+});
