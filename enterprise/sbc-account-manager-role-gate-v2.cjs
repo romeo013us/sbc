@@ -5,7 +5,7 @@
  * The global employee gate must call allowAccountManager on every request.
  */
 const STATIC={
- GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue']),
+ GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine']),
  POST:new Set(['/api/logout','/api/v9/time/clock','/api/training/progress','/api/account-social/v1/posts'])
 };
 const VALID_ID='[A-Za-z0-9][A-Za-z0-9_-]{0,119}';
