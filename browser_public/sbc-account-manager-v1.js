@@ -34,7 +34,7 @@
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
-  if(state.role==='account_manager')void loadAccountResearchV4(id);
+  if(state.role==='account_manager'){void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
  }
 
  async function loadAccountResearchV4(id){
@@ -54,6 +54,53 @@
     '<p>'+escapeHtml(r.nextAction)+'</p><p class="muted">Audit: '+escapeHtml(r.opportunity?.evidenceDate||'Unverified')+
     ' · '+escapeHtml(r.opportunity?.outreach?.action||'VERIFY_PERMISSION')+'</p></article>').join('');
   }catch(e){if(state.selected===id)host.textContent='Research access not verified. Ask the owner to check assignment. '+String(e.message||e)}
+ }
+
+ async function loadAccountPlanV5(id){
+  let host=$('sbcAccountPlanV5');
+  if(!host){host=document.createElement('section');host.id='sbcAccountPlanV5';host.className='account-card';$('accountDetail').appendChild(host);}
+  host.textContent='Loading approved account opportunity plan…';
+  try{
+   const response=await fetch('/api/prospect-intelligence/v5/accounts/'+encodeURIComponent(id)+'/plan',
+    {credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const data=await response.json().catch(()=>({}));
+   if(state.selected!==id)return;
+   if(!response.ok||data.ok!==true||!data.plan)throw Error(data.code||'PLAN_NOT_VERIFIED');
+   const plan=data.plan,contactBlocked=plan.contactStatus==='SUPPRESSED';
+   host.innerHTML='<h3>Account Revenue Intelligence V5</h3>'+
+    '<p class="muted">Assigned Account Manager workspace · planning only. No automatic calls, messages, quotes, or charges.</p>'+
+    '<p><strong>Account:</strong> '+escapeHtml(plan.businessName)+' · '+escapeHtml(plan.customerStage)+
+    ' · Research: '+escapeHtml(plan.auditStatus)+'</p>'+
+    '<p><strong>Next CRM follow-up:</strong> '+escapeHtml(plan.nextFollowUp||'Not scheduled')+
+    ' · Contact status: '+escapeHtml(plan.contactStatus)+'</p>'+
+    '<h4>Recommended internal next steps</h4><ul>'+plan.actions.map(a=>'<li><strong>'+escapeHtml(a.title)+'</strong> — '+escapeHtml(a.details)+'</li>').join('')+'</ul>'+
+    '<p class="muted">'+escapeHtml(plan.caveat)+'</p>'+
+    (contactBlocked?'<p><strong>Contact suppressed. Do not schedule outreach.</strong></p>':
+     '<button type="button" class="button secondary" id="sbcV5ManualFollowUp">Record manual account follow-up</button>')+
+    '<p id="sbcV5PlanStatus" role="status" class="muted">Recommendations are not orders or verified revenue.</p>';
+   const action=$('sbcV5ManualFollowUp');
+   action?.addEventListener('click',async()=>{
+    if(state.selected!==id)return;
+    const date=window.prompt('Follow-up date (YYYY-MM-DD). This records a CRM reminder only. No customer message is sent:');
+    if(!date)return;
+    const purpose=window.prompt('Describe the customer-approved review or internal next step (12–500 characters):');
+    if(!purpose)return;
+    const note=$('sbcV5PlanStatus');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||purpose.trim().length<12||purpose.length>500){
+     note.textContent='Enter a valid YYYY-MM-DD date and a specific reason.';return;
+    }
+    action.disabled=true;note.textContent='Saving the CRM follow-up with assignment and suppression checks…';
+    try{
+     const answer=await fetch('/api/v6606/crm/account-portfolios/'+encodeURIComponent(id)+'/follow-up',
+      {method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json'},
+       body:JSON.stringify({dueDate:date,purpose:purpose.trim()})});
+     const saved=await answer.json().catch(()=>({}));
+     if(!answer.ok||saved.ok!==true||saved.durable!==true)throw Error(saved.code||'FOLLOW_UP_NOT_CONFIRMED');
+     note.textContent='Verified: internal CRM follow-up saved for '+saved.followUp+'. No call or message was sent.';
+    }catch(error){note.textContent='Not saved: '+String(error.message||error)+'. Confirm ownership and account status.'}
+    finally{action.disabled=false}
+   });
+  }catch(error){if(state.selected===id)host.textContent='V5 account plan unavailable or access denied: '+String(error.message||error)}
  }
  async function loadHandoffs(){state.handoffs=await api('/api/account-social/v1/research/queue');renderHandoffs();}
  function renderHandoffs(){const list=$('handoffList');list.innerHTML=state.handoffs.length?state.handoffs.map(h=>`<article class="handoff-row"><div><h3>${escapeHtml(h.customerId)}</h3><span class="tag">${escapeHtml(h.status)}</span><p class="muted">${escapeHtml(h.summary||'')}</p><p class="muted">Researcher: ${escapeHtml(h.researcherId)} · Manager: ${escapeHtml(h.managerId||'Awaiting assignment')}</p>${h.retryNotBefore?`<p class="muted">No phone retry before ${escapeHtml(h.retryNotBefore)}</p>`:''}</div><div class="controls">${h.status==='READY_FOR_REVIEW'&&state.role==='owner'?`<button class="button secondary" data-action="assign" data-id="${escapeHtml(h.id)}">Assign manager</button>`:''}${h.status==='ASSIGNED'?`<button class="button secondary" data-action="return" data-id="${escapeHtml(h.id)}">Return for research</button>`:''}</div></article>`).join(''):'<p class="empty">No handoff records for this account. Research remains in Lorna’s own workstation.</p>';}
