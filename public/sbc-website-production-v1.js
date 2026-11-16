@@ -990,253 +990,20 @@
       p.launchChecks.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></details>'+
       '<p style="font-size:12px;margin-bottom:0">This creates a private site concept, not a published customer website. Domain, hosting, SSL, live forms, approved content and payment are separate fulfillment steps.</p></section>';
   }
-  // Primary, low-cost AI handoff: ChatGPT creates the projects; SBC stores each
-  // reviewed deployment link against the authenticated customer's account.
-  // No attempt to access a private ChatGPT session from the browser.
   async function openAIProposalDesk(customer){
-    if(!customer?.id)return notify('A saved CRM account is required for the AI website proposal.');
-    const base='/api/website-production/customers/'+encodeURIComponent(customer.id)+'/ai-proposals';
-    if(typeof openModal!=='function')return notify('Website proposal window unavailable.');
-    openModal('SBC AI Website Production','<div style="padding:22px"><h3>AI Website Production</h3><p>Loading verified business details for this account…</p></div>');
-    let data;
-    try{
-      data=await serviceApi(base);
-      if(!data?.ok)throw Error(data?.code||'Proposal desk unavailable');
-    }catch(e){
-      openModal('SBC AI Website Production','<div style="padding:22px" role="alert"><h3>Proposal desk unavailable</h3><p>'+esc(e.message||'Please try again.')+'</p><p>No customer website or data was changed.</p></div>');
-      return;
+    if(!customer?.id)return notify('Save this lead as a CRM customer first.');
+    if(!window.SBC_AI_SITE_HANDOFF){
+      await new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='/sbc-ai-site-handoff-v1.js';
+        script.onload=resolve;
+        script.onerror=()=>reject(Error('AI website handoff UI failed to load. Refresh and retry.'));
+        document.head.appendChild(script);
+      });
     }
-    let revision=Number(data.revision)||0;
-    const tiers=[
-      {price:199,title:'Starter · One Page',detail:'Premium one-page presentation and contact path.'},
-      {price:499,title:'Custom · Multi Page',detail:'Multiple pages, richer customer inquiries and appropriate business features.'},
-      {price:799,title:'Advanced · Concept',detail:'Higher-function proposal; only claim features actually built and tested.'}
-    ];
-    const existing=data.variants||{};
-    const cards=tiers.map(item=>{
-      const v=existing[String(item.price)]||{};
-      const url=String(v.previewUrl||'');
-      return '<section style="padding:16px;border:1px solid #cbd5e1;border-radius:15px;background:#fff;min-width:0">'+
-        '<p style="font-size:12px;font-weight:900;letter-spacing:.09em;color:#175d91">SBC 
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('CRM customer record not found. Reload Command Center.');
-    if(typeof state!=='undefined'&&state.data&&(state.data.recovery?.required||state.data.recoveryRequired||state.data.readOnly||state.data.mysqlRecoveryRequired))
-      return notify('Website production is blocked during recovery/read-only mode.');
-    const tier=defaultTier==='starter'?'starter':'essentials';
-    if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
-    openModal('SBC Instant Sites · Website Production',
-      '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Build three package proposals with ChatGPT and save them to this account. No purchase or outreach is triggered.</p>'+instantSiteBrief(customer)+
-      '<div style="border:1px solid #a8c6dc;border-radius:12px;padding:16px;background:#ebf6ff;margin:15px 0"><h4 style="margin-top:0">NEW · AI Website Production</h4><p>Premium $199, $499, and $799 proposals for this customer, saved as separate previews.</p><button class="btn primary" id="sbcAIHandoffLaunch" type="button">Generate 3 with ChatGPT</button><p style="font-size:12px">Opens an AI build handoff. ChatGPT runs separately; finished ZIPs and preview links are returned here by the owner.</p></div><details style="margin:14px 0"><summary style="cursor:pointer;font-weight:700">Legacy Website Studio · fallback only</summary>'+
-      '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn" id="sbcFactoryBuildNow" type="button">Build with previous SBC engine</button><p id="sbcWebsiteFactoryStatus" role="status">Legacy builder preserved for rollback.</p></details></div>');
-    document.getElementById('sbcAIHandoffLaunch')?.addEventListener('click',()=>openAIProposalDesk(customer));
-    document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
-      if(busy)return;busy=true;this.disabled=true;
-      const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
-      updateStatus('Preparing real, navigable website pages…');
-      try{
-        const result=await serviceApi('/api/website-demos',{method:'POST',body:JSON.stringify({customerId:customer.id,fast:true,offerTier})});
-        if(!result?.demo)throw Error(result?.error||'Website construction failed.');
-        showSite(result.demo,customer,result.ai?.status==='ENHANCED_PRIVATE_DRAFT'?'Website built with budget-controlled AI art direction. Review private design and customer facts.':'Website pages generated using SBC engine. AI: '+String(result.ai?.status||'not requested')+'. Check every page before approval.');
-      }catch(error){updateStatus(error.message||'Build failed. No contact was sent.',true);this.disabled=false;}
-      finally{busy=false;}
-    });
+    if(!window.SBC_AI_SITE_HANDOFF?.open)throw Error('AI handoff component unavailable');
+    return window.SBC_AI_SITE_HANDOFF.open(customer,{serviceApi,openModal});
   }
-  async function openExisting(customerId,hint){
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('Customer record unavailable. Reload the CRM.');
-    if(typeof openModal==='function')openModal('SBC Website Production','<div class="v6526-studio"><h3>Opening existing website…</h3><p>Loading the latest saved site, not rebuilding or changing a client-approved website.</p></div>');
-    try{
-      const result=await serviceApi('/api/website-demos/'+encodeURIComponent(customer.id));
-      if(!result||!result.id)throw Error(result?.error||'Saved website was not found.');
-      showSite(result,customer,'Opened previously saved website. No rebuild, outreach, or payment was initiated.');
-    }catch(error){
-      if(typeof openModal==='function')openModal('SBC Website Production','<div role="alert" class="v6526-studio"><h3>Could not open the website</h3><p>'+esc(error.message||'Website unavailable')+'</p><p>Your previous website was not changed.</p></div>');
-    }
-  }
-
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting,ai:async customerId=>{const customer=salesCustomer(customerId);if(customer)return openAIProposalDesk(customer);notify('Saved customer record not found.');}});
-  window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
-})();+item.price+'</p>'+
-        '<h4 style="margin:5px 0">'+esc(item.title)+'</h4><p style="font-size:13px;color:#536578">'+esc(item.detail)+'</p>'+
-        '<label style="display:block;font-size:12px;font-weight:800">Website preview HTTPS URL<input id="sbcAIUrl'+item.price+'" type="url" placeholder="https://your-preview.example" value="'+esc(url)+'" style="display:block;width:100%;padding:10px;margin-top:5px;border:1px solid #cbd5e1;border-radius:8px"></label>'+
-        '<label style="display:block;font-size:12px;font-weight:800;margin-top:10px">Project notes<textarea id="sbcAINotes'+item.price+'" maxlength="500" rows="2" style="display:block;width:100%;padding:10px;margin-top:5px;border:1px solid #cbd5e1;border-radius:8px">'+esc(v.notes||'')+'</textarea></label>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px">'+
-        '<button class="btn primary" type="button" data-sbc-ai-save="'+item.price+'">Save to account</button>'+
-        '<button class="btn" type="button" data-sbc-ai-preview="'+item.price+'">Preview here</button>'+
-        '<a id="sbcAIExternal'+item.price+'" class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(url||'#')+'" '+(!url?'hidden':'')+'>Open website ↗</a></div>'+
-        '<small style="color:#64748b">Proposal only · Not published or client-approved by saving a link.</small></section>';
-    }).join('');
-    const html='<div style="padding:20px;max-width:1180px;margin:auto;color:#152d47">'+
-      '<p style="font-size:12px;color:#1d71aa;letter-spacing:.12em;font-weight:900">SBC AI WEBSITE PRODUCTION · OWNER WORKSPACE</p>'+
-      '<h3 style="margin:4px 0">Three websites for '+esc(customer.businessName||'this customer')+'</h3>'+
-      '<p style="line-height:1.6">Use ChatGPT to build three separate customer-ready ZIPs, then save each deployed preview in the matching account slot. These links stay private to SBC until you choose to present them.</p>'+
-      '<div style="border:1px solid #b4cce0;border-radius:15px;padding:15px;background:#eaf5ff;margin:15px 0">'+
-      '<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center"><button id="sbcAICopyPrompt" type="button" class="btn primary">Copy three-site build instructions</button>'+
-      '<a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="btn">Open ChatGPT ↗</a></div>'+
-      '<p style="font-size:12px;margin:10px 0">This is a handoff, not automatic ChatGPT access. Copy the brief, open ChatGPT, generate and deploy the files, then save preview URLs here. No API charge is triggered.</p>'+
-      '<details><summary style="cursor:pointer;font-weight:700">See or edit the build brief</summary><textarea id="sbcAIPrompt" rows="14" style="width:100%;padding:12px;margin-top:8px;border-radius:9px">'+esc(data.prompt||'')+'</textarea></details></div>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">'+cards+'</div>'+
-      '<p id="sbcAIHandoffStatus" role="status" aria-live="polite" style="margin:12px 0;font-weight:700">Linked to the correct account. No outbound action taken.</p>'+
-      '<section style="margin:16px 0;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#f8fafc"><h4 style="margin:0 0 8px">Saved-site preview</h4>'+
-      '<p style="font-size:12px;color:#475569">Some hosting platforms block embedded previews. Use “Open website” when that happens.</p>'+
-      '<iframe id="sbcAIHandoffFrame" title="Owner-only website preview" sandbox="allow-scripts" referrerpolicy="no-referrer" style="width:100%;height:580px;border:1px solid #cbd5e1;border-radius:9px;background:#fff" src="about:blank"></iframe></section></div>';
-    openModal('SBC AI Website Production',html);
-    const message=(msg,isError=false)=>{
-      const el=document.getElementById('sbcAIHandoffStatus');
-      if(el){el.textContent=msg;el.style.color=isError?'#b91c1c':'#176638';}
-    };
-    document.getElementById('sbcAICopyPrompt')?.addEventListener('click',async()=>{
-      const value=document.getElementById('sbcAIPrompt')?.value||'';
-      try{await navigator.clipboard.writeText(value);message('Brief copied. Open ChatGPT and paste it to begin creating the three builds.');}
-      catch{message('Clipboard blocked. Select and copy the brief from the expandable text box.',true);}
-    });
-    document.querySelectorAll('[data-sbc-ai-save]').forEach(button=>button.addEventListener('click',async()=>{
-      const tier=Number(button.dataset.sbcAiSave);
-      const previewUrl=document.getElementById('sbcAIUrl'+tier)?.value.trim()||'';
-      const notes=document.getElementById('sbcAINotes'+tier)?.value||'';
-      button.disabled=true;message('Saving 
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('CRM customer record not found. Reload Command Center.');
-    if(typeof state!=='undefined'&&state.data&&(state.data.recovery?.required||state.data.recoveryRequired||state.data.readOnly||state.data.mysqlRecoveryRequired))
-      return notify('Website production is blocked during recovery/read-only mode.');
-    const tier=defaultTier==='starter'?'starter':'essentials';
-    if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
-    openModal('SBC Instant Sites · Website Production',
-      '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
-      '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
-    document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
-      if(busy)return;busy=true;this.disabled=true;
-      const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
-      updateStatus('Preparing real, navigable website pages…');
-      try{
-        const result=await serviceApi('/api/website-demos',{method:'POST',body:JSON.stringify({customerId:customer.id,fast:true,offerTier})});
-        if(!result?.demo)throw Error(result?.error||'Website construction failed.');
-        showSite(result.demo,customer,result.ai?.status==='ENHANCED_PRIVATE_DRAFT'?'Website built with budget-controlled AI art direction. Review private design and customer facts.':'Website pages generated using SBC engine. AI: '+String(result.ai?.status||'not requested')+'. Check every page before approval.');
-      }catch(error){updateStatus(error.message||'Build failed. No contact was sent.',true);this.disabled=false;}
-      finally{busy=false;}
-    });
-  }
-  async function openExisting(customerId,hint){
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('Customer record unavailable. Reload the CRM.');
-    if(typeof openModal==='function')openModal('SBC Website Production','<div class="v6526-studio"><h3>Opening existing website…</h3><p>Loading the latest saved site, not rebuilding or changing a client-approved website.</p></div>');
-    try{
-      const result=await serviceApi('/api/website-demos/'+encodeURIComponent(customer.id));
-      if(!result||!result.id)throw Error(result?.error||'Saved website was not found.');
-      showSite(result,customer,'Opened previously saved website. No rebuild, outreach, or payment was initiated.');
-    }catch(error){
-      if(typeof openModal==='function')openModal('SBC Website Production','<div role="alert" class="v6526-studio"><h3>Could not open the website</h3><p>'+esc(error.message||'Website unavailable')+'</p><p>Your previous website was not changed.</p></div>');
-    }
-  }
-
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting});
-  window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
-})();+tier+' proposal to this CRM account…');
-      try{
-        const result=await serviceApi(base,{method:'PUT',body:JSON.stringify({tier,previewUrl,notes,expectedRevision:revision})});
-        if(!result?.ok)throw Error(result?.code||'Save failed');
-        revision=Number(result.revision);
-        const link=document.getElementById('sbcAIExternal'+tier);
-        if(link){link.href=previewUrl||'#';link.hidden=!previewUrl;}
-        message('
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('CRM customer record not found. Reload Command Center.');
-    if(typeof state!=='undefined'&&state.data&&(state.data.recovery?.required||state.data.recoveryRequired||state.data.readOnly||state.data.mysqlRecoveryRequired))
-      return notify('Website production is blocked during recovery/read-only mode.');
-    const tier=defaultTier==='starter'?'starter':'essentials';
-    if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
-    openModal('SBC Instant Sites · Website Production',
-      '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
-      '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
-    document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
-      if(busy)return;busy=true;this.disabled=true;
-      const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
-      updateStatus('Preparing real, navigable website pages…');
-      try{
-        const result=await serviceApi('/api/website-demos',{method:'POST',body:JSON.stringify({customerId:customer.id,fast:true,offerTier})});
-        if(!result?.demo)throw Error(result?.error||'Website construction failed.');
-        showSite(result.demo,customer,result.ai?.status==='ENHANCED_PRIVATE_DRAFT'?'Website built with budget-controlled AI art direction. Review private design and customer facts.':'Website pages generated using SBC engine. AI: '+String(result.ai?.status||'not requested')+'. Check every page before approval.');
-      }catch(error){updateStatus(error.message||'Build failed. No contact was sent.',true);this.disabled=false;}
-      finally{busy=false;}
-    });
-  }
-  async function openExisting(customerId,hint){
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('Customer record unavailable. Reload the CRM.');
-    if(typeof openModal==='function')openModal('SBC Website Production','<div class="v6526-studio"><h3>Opening existing website…</h3><p>Loading the latest saved site, not rebuilding or changing a client-approved website.</p></div>');
-    try{
-      const result=await serviceApi('/api/website-demos/'+encodeURIComponent(customer.id));
-      if(!result||!result.id)throw Error(result?.error||'Saved website was not found.');
-      showSite(result,customer,'Opened previously saved website. No rebuild, outreach, or payment was initiated.');
-    }catch(error){
-      if(typeof openModal==='function')openModal('SBC Website Production','<div role="alert" class="v6526-studio"><h3>Could not open the website</h3><p>'+esc(error.message||'Website unavailable')+'</p><p>Your previous website was not changed.</p></div>');
-    }
-  }
-
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting});
-  window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
-})();+tier+' proposal saved to this customer. Owner review required before sharing.');
-      }catch(e){message('Could not save: '+String(e?.message||e)+'; reload this account if another editor changed it.',true)}
-      finally{button.disabled=false}
-    }));
-    document.querySelectorAll('[data-sbc-ai-preview]').forEach(button=>button.addEventListener('click',()=>{
-      const tier=Number(button.dataset.sbcAiPreview),url=document.getElementById('sbcAIUrl'+tier)?.value.trim()||'';
-      const frame=document.getElementById('sbcAIHandoffFrame');
-      if(!frame)return;
-      try{
-        const parsed=new URL(url);
-        if(parsed.protocol!=='https:'||parsed.username||parsed.password)throw Error('Invalid HTTPS preview');
-        frame.src=parsed.href;
-        message('Opening 
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('CRM customer record not found. Reload Command Center.');
-    if(typeof state!=='undefined'&&state.data&&(state.data.recovery?.required||state.data.recoveryRequired||state.data.readOnly||state.data.mysqlRecoveryRequired))
-      return notify('Website production is blocked during recovery/read-only mode.');
-    const tier=defaultTier==='starter'?'starter':'essentials';
-    if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
-    openModal('SBC Instant Sites · Website Production',
-      '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
-      '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
-    document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
-      if(busy)return;busy=true;this.disabled=true;
-      const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
-      updateStatus('Preparing real, navigable website pages…');
-      try{
-        const result=await serviceApi('/api/website-demos',{method:'POST',body:JSON.stringify({customerId:customer.id,fast:true,offerTier})});
-        if(!result?.demo)throw Error(result?.error||'Website construction failed.');
-        showSite(result.demo,customer,result.ai?.status==='ENHANCED_PRIVATE_DRAFT'?'Website built with budget-controlled AI art direction. Review private design and customer facts.':'Website pages generated using SBC engine. AI: '+String(result.ai?.status||'not requested')+'. Check every page before approval.');
-      }catch(error){updateStatus(error.message||'Build failed. No contact was sent.',true);this.disabled=false;}
-      finally{busy=false;}
-    });
-  }
-  async function openExisting(customerId,hint){
-    const customer=salesCustomer(customerId,hint);
-    if(!customer)return notify('Customer record unavailable. Reload the CRM.');
-    if(typeof openModal==='function')openModal('SBC Website Production','<div class="v6526-studio"><h3>Opening existing website…</h3><p>Loading the latest saved site, not rebuilding or changing a client-approved website.</p></div>');
-    try{
-      const result=await serviceApi('/api/website-demos/'+encodeURIComponent(customer.id));
-      if(!result||!result.id)throw Error(result?.error||'Saved website was not found.');
-      showSite(result,customer,'Opened previously saved website. No rebuild, outreach, or payment was initiated.');
-    }catch(error){
-      if(typeof openModal==='function')openModal('SBC Website Production','<div role="alert" class="v6526-studio"><h3>Could not open the website</h3><p>'+esc(error.message||'Website unavailable')+'</p><p>Your previous website was not changed.</p></div>');
-    }
-  }
-
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting});
-  window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
-})();+tier+' preview. If the host blocks embedding, use Open website.');
-      }catch{message('Enter and save a valid HTTPS website preview link first.',true)}
-    }));
-  }
-
   async function buildWebsite(customerId,defaultTier='essentials',hint){
     const customer=salesCustomer(customerId,hint);
     if(!customer)return notify('CRM customer record not found. Reload Command Center.');
@@ -1246,9 +1013,12 @@
     if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
     openModal('SBC Instant Sites · Website Production',
       '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
+      '<p>Choose ChatGPT-assisted proposals first; the existing native builder remains available as a backup.</p>'+instantSiteBrief(customer)+
+      (currentRole()==='owner'?'<section style="margin:15px 0;padding:16px;border-radius:12px;border:1px solid #aacbe4;background:#eff7ff"><h4 style="margin-top:0">AI Website Production</h4><p>Prepare three customer-specific websites: $199, $499 and $799. Save each preview against this account.</p><button class="btn primary" id="sbcAIHandoffLaunch" type="button">Generate 3 with ChatGPT</button><p style="font-size:12px">This opens a guided ChatGPT handoff; automatic AI access and ZIP import are not yet connected.</p></section>':'')+
+      '<details style="margin:15px 0"><summary style="font-weight:800;cursor:pointer">Legacy Website Studio · backup</summary>'+
       '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
+      '<button class="btn" id="sbcFactoryBuildNow" type="button">Build with existing native engine</button><p id="sbcWebsiteFactoryStatus" role="status">Legacy builder available as backup.</p></details></div>');
+    document.getElementById('sbcAIHandoffLaunch')?.addEventListener('click',()=>openAIProposalDesk(customer).catch(e=>notify(String(e?.message||e))));
     document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
       if(busy)return;busy=true;this.disabled=true;
       const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
@@ -1274,6 +1044,6 @@
     }
   }
 
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting});
+  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting,ai:async customerId=>{const customer=salesCustomer(customerId);if(customer)return openAIProposalDesk(customer);notify('Customer not found in CRM.');}});
   window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
 })();
