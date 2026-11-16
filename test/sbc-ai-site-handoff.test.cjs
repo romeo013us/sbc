@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const H=require('../enterprise/sbc-ai-site-handoff.cjs');
 function fixture(){
  const routes={};
- const app={get:(path,...fns)=>routes['GET '+path]=fns,patch:(path,...fns)=>routes['PATCH '+path]=fns};
+ const app={get:(path,...fns)=>routes['GET '+path]=fns,patch:(path,...fns)=>routes['PATCH '+path]=fns,post:(path,...fns)=>routes['POST '+path]=fns};
  let data={aiWebsiteProposals:[]};
  const db={customers:[
   {id:11,tenantId:1,businessName:'C & T Auto Motors',industry:'Automotive',city:'Miramar',leadIntelligence:{researchBrief:{notes:'UNVERIFIED PRIVATE RESEARCH'}}},
