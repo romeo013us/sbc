@@ -233,10 +233,34 @@
       '<section class="spi-card"><h4>Existing-customer expansion suggestions</h4><ul>'+ideas.map(x=>'<li>'+safe(x)+'</li>').join('')+'</ul></section>'+
       '<section class="spi-card"><h4>Personalized draft outreach · manual approval only</h4><textarea id="spi-email" rows="12" readonly></textarea><button type="button" id="spi-copy-email">Copy email draft</button></section>'+
       '<section class="spi-card"><h4>Customer-ready digital opportunity report · owner review required</h4><textarea id="spi-report" rows="16" readonly></textarea><button type="button" id="spi-download-report">Download TXT report</button></section>'+
+      '<section class="spi-card"><h4>Offline opportunity plan · owner review only</h4><p>Uses only the audited evidence already on screen. No extra provider call, paid AI, CRM modification, or outreach.</p><textarea id="spi-opportunity" rows="12" readonly placeholder="Audit evidence will generate a scoped opportunity plan"></textarea><button type="button" id="spi-download-opportunity" disabled>Download Opportunity Plan</button><p id="spi-opportunity-status" role="status">Waiting for local plan calculation.</p></section>'+
       '<section class="spi-card" aria-label="Owner-approved workforce research handoff"><h4>Share this research with the workforce</h4><p>Check the business identity and each observation before distributing. Export includes public research only—no CRM contacts, orders or client identifiers.</p><label><input type="checkbox" id="spi-handoff-review"> I reviewed the evidence, business identity, and timestamps and approve creating a research handoff file.</label><button type="button" id="spi-export-handoff" disabled>Export owner-reviewed research handoff JSON</button> <button type="button" id="spi-save-research" disabled>Save to owner Research Library</button><p id="spi-handoff-status" role="status">Importing a file in a staff workspace does not verify owner identity or authorize contact; verify the source out of band.</p></section>';
     $('spi-email').value=email;$('spi-report').value=report;
     $('spi-copy-email').addEventListener('click',async()=>{$('spi-status').textContent=await clipboard(email)?'Email draft copied. Nothing was sent.':'Copy unavailable. Select the text manually.'});
     $('spi-download-report').addEventListener('click',()=>download('SBC-Digital-Opportunity-Review.txt',report));
+    // Local-only V3: recommendations are evidence-limited and require owner approval.
+    try{
+      if(!root.SBCProspectOpportunityV3){
+        if(!root.__SBC_PROSPECT_V3_LOADING__){
+          root.__SBC_PROSPECT_V3_LOADING__=new Promise((resolve,reject)=>{
+            const script=root.document.createElement('script');
+            script.src='/sbc-prospect-opportunity-v3.js?v=3-offline';
+            script.onload=resolve;script.onerror=()=>reject(Error('V3_SCRIPT_UNAVAILABLE'));
+            root.document.body.appendChild(script);
+          }).catch(e=>{root.__SBC_PROSPECT_V3_LOADING__=null;throw e});
+        }
+        await root.__SBC_PROSPECT_V3_LOADING__;
+      }
+      if(!root.SBCProspectOpportunityV3)throw Error('V3_MODULE_MISSING');
+      const plan=root.SBCProspectOpportunityV3.report(business,main,Date.now());
+      $('spi-opportunity').value=plan;
+      $('spi-download-opportunity').disabled=false;
+      $('spi-download-opportunity').addEventListener('click',()=>download('SBC-Opportunity-Plan-Owner-Review.txt',plan));
+      $('spi-opportunity-status').textContent='Prepared locally from existing evidence; review before customer presentation.';
+    }catch{
+      $('spi-opportunity-status').textContent='Local opportunity planner unavailable. No fabricated score or customer recommendation was generated.';
+    }
+
 
     $('spi-handoff-review').addEventListener('change',e=>{$('spi-export-handoff').disabled=!e.target.checked;$('spi-save-research').disabled=!e.target.checked});
     let savedResearchId='',pendingResearchPacket=null;
