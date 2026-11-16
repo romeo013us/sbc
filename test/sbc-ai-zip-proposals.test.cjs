@@ -126,14 +126,14 @@ test('rejects invalid inputs and a read-only writer without creating saved uploa
 });
 test('owner proposal UI and global contrast layers remain mirrored for deployment',()=>{
  const root=path.join(__dirname,'..');
- for(const asset of ['sbc-ai-site-handoff-v1.js','sbc-light-contrast-v6601.css']){
+ for(const asset of ['sbc-ai-site-handoff-v1.js','sbc-command-center-focus-v1.css']){
   assert.equal(fs.readFileSync(path.join(root,'public',asset),'utf8'),fs.readFileSync(path.join(root,'browser_public',asset),'utf8'));
  }
  const ui=fs.readFileSync(path.join(root,'public/sbc-ai-site-handoff-v1.js'),'utf8');
  assert.match(ui,/Upload &amp; save proposal/);
  assert.match(ui,/fetch\(base\+'\/uploads\/'\+tier/);
  assert.match(ui,/sandbox="allow-scripts"/);
- const css=fs.readFileSync(path.join(root,'public/sbc-light-contrast-v6601.css'),'utf8');
+ const css=fs.readFileSync(path.join(root,'public/sbc-command-center-focus-v1.css'),'utf8');
  assert.match(css,/#sbcAiDesk/);
  assert.match(css,/body\[data-theme="dark"\] #modal/);
  assert.match(css,/:focus-visible/);
