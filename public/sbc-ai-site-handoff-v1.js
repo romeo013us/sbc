@@ -47,7 +47,7 @@
      const notes=document.getElementById('sbcAINotes'+tier)?.value||'';
      button.disabled=true;say('Saving $'+tier+' preview to this customer…');
      try{
-       const res=await serviceApi(base,{method:'PUT',body:JSON.stringify({tier,previewUrl,notes,expectedRevision:revision})});
+       const res=await serviceApi(base,{method:'PATCH',body:JSON.stringify({tier,previewUrl,notes,expectedRevision:revision})});
        if(!res?.ok)throw Error(res?.code||'Save failed');
        revision=Number(res.revision);
        const link=document.getElementById('sbcAIOpen'+tier);
