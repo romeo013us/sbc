@@ -3,10 +3,12 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const {register,DEFAULT_PROFILE,validate}=require('../enterprise/sbc-business-memory.cjs');
 const ROOT=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(ROOT,'public/index.html'),'utf8');
+const focus=fs.readFileSync(path.join(ROOT,'public/sbc-command-center-focus-v1.js'),'utf8');
 const routes=fs.readFileSync(path.join(ROOT,'enterprise/sbc-website-production-routes.cjs'),'utf8');
 const ui=fs.readFileSync(path.join(ROOT,'public/sbc-chatgpt-os-v1.js'),'utf8');
 test('owner business-memory UI and route registered in primary Command Center',()=>{
- assert.match(html,/sbc-chatgpt-os-v1\.js/);assert.match(html,/sbc-chatgpt-os-v1\.css/);
+ assert.match(html,/sbc-command-center-focus-v1\.js/);
+ assert.match(focus,/sbc-chatgpt-os-v1\.js/);assert.match(focus,/sbc-chatgpt-os-v1\.css/);
  assert.match(routes,/SbcBusinessMemory\.register\(app,/);
  assert.match(ui,/api\/owner\/business-memory/);assert.match(ui,/sbc-chatgpt-os-include-memory/);
 });
