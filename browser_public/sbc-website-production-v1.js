@@ -990,6 +990,20 @@
       p.launchChecks.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></details>'+
       '<p style="font-size:12px;margin-bottom:0">This creates a private site concept, not a published customer website. Domain, hosting, SSL, live forms, approved content and payment are separate fulfillment steps.</p></section>';
   }
+  async function openAIProposalDesk(customer){
+    if(!customer?.id)return notify('Save this lead as a CRM customer first.');
+    if(!window.SBC_AI_SITE_HANDOFF){
+      await new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='/sbc-ai-site-handoff-v1.js';
+        script.onload=resolve;
+        script.onerror=()=>reject(Error('AI website handoff UI failed to load. Refresh and retry.'));
+        document.head.appendChild(script);
+      });
+    }
+    if(!window.SBC_AI_SITE_HANDOFF?.open)throw Error('AI handoff component unavailable');
+    return window.SBC_AI_SITE_HANDOFF.open(customer,{serviceApi,openModal});
+  }
   async function buildWebsite(customerId,defaultTier='essentials',hint){
     const customer=salesCustomer(customerId,hint);
     if(!customer)return notify('CRM customer record not found. Reload Command Center.');
@@ -999,9 +1013,12 @@
     if(typeof openModal!=='function')return notify('Website Production cannot open the editor.');
     openModal('SBC Instant Sites · Website Production',
       '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
-      '<p>Choose a full website package. No purchase, message, or outside contractor is triggered by building.</p>'+instantSiteBrief(customer)+
+      '<p>Choose ChatGPT-assisted proposals first; the existing native builder remains available as a backup.</p>'+instantSiteBrief(customer)+
+      (currentRole()==='owner'?'<section style="margin:15px 0;padding:16px;border-radius:12px;border:1px solid #aacbe4;background:#eff7ff"><h4 style="margin-top:0">AI Website Production</h4><p>Prepare three customer-specific websites: $199, $499 and $799. Save each preview against this account.</p><button class="btn primary" id="sbcAIHandoffLaunch" type="button">Generate 3 with ChatGPT</button><p style="font-size:12px">This opens a guided ChatGPT handoff; automatic AI access and ZIP import are not yet connected.</p></section>':'')+
+      '<details style="margin:15px 0"><summary style="font-weight:800;cursor:pointer">Legacy Website Studio · backup</summary>'+
       '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $349 · four-page website</option></select></label>'+
-      '<button class="btn primary" id="sbcFactoryBuildNow" type="button">Build Full Website · Instant Site</button><p id="sbcWebsiteFactoryStatus" role="status">Ready to assemble website pages from existing SBC components.</p></div>');
+      '<button class="btn" id="sbcFactoryBuildNow" type="button">Build with existing native engine</button><p id="sbcWebsiteFactoryStatus" role="status">Legacy builder available as backup.</p></details></div>');
+    document.getElementById('sbcAIHandoffLaunch')?.addEventListener('click',()=>openAIProposalDesk(customer).catch(e=>notify(String(e?.message||e))));
     document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
       if(busy)return;busy=true;this.disabled=true;
       const offerTier=document.getElementById('sbcFactoryTier')?.value||tier;
@@ -1027,6 +1044,6 @@
     }
   }
 
-  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting});
+  window.SBC_WEBSITE_PRODUCTION = Object.freeze({build:buildWebsite,open:buildWebsite,openExisting,ai:async customerId=>{const customer=salesCustomer(customerId);if(customer)return openAIProposalDesk(customer);notify('Customer not found in CRM.');}});
   window.generateWebsiteDemo = buildWebsite; // existing Customer 360 compatibility, no small-demo UI
 })();
