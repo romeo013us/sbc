@@ -239,13 +239,14 @@
     $('spi-download-report').addEventListener('click',()=>download('SBC-Digital-Opportunity-Review.txt',report));
 
     $('spi-handoff-review').addEventListener('change',e=>{$('spi-export-handoff').disabled=!e.target.checked;$('spi-save-research').disabled=!e.target.checked});
-    let savedResearchId='';
+    let savedResearchId='',pendingResearchPacket=null;
     $('spi-save-research').addEventListener('click',async()=>{
      const note=$('spi-handoff-status'),button=$('spi-save-research');
      if(!$('spi-handoff-review').checked){note.textContent='Owner review required before saving.';return}
      button.disabled=true;
      try{
-      const packet=(await ensureHandoff()).createPacket({ownerApproved:true,business,audit:main,competitors,preparedAt:Date.now()});
+      const packet=pendingResearchPacket||(await ensureHandoff()).createPacket({ownerApproved:true,business,audit:main,competitors,preparedAt:Date.now()});
+      pendingResearchPacket=packet;
       if(!savedResearchId){
        if(!root.crypto?.randomUUID)throw Error('Secure browser session is required');
        savedResearchId='sbc-handoff-'+root.crypto.randomUUID().replace(/-/g,'');
