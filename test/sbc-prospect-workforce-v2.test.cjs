@@ -58,7 +58,7 @@ test('schema validation rejects forged structure, unsafe values and stale / futu
   {...p,preparedAt:'2027-11-01T00:00:00Z'},
   {...p,business:{...p.business,website:'http://localhost:8080'}},
   {...p,audit:{...p.audit,scores:{...p.audit.scores,seo:999}}},
-  {...p,secret:'do_not_allow'},
+  {...p,extraUnapprovedField:'EXTRA_FIELD_REJECTED'},
   {...p,competitors:new Array(9).fill(measured)}
  ])assert.throws(()=>H.validatePacket(JSON.stringify(corrupted),at),/HANDOFF_/);
  assert.throws(()=>H.validatePacket('{"a":"'+ 'x'.repeat(50000)+'"}',at),/HANDOFF_TOO_LARGE/);
