@@ -100,7 +100,7 @@ test('v4 is routed through the existing published writer, staff path is deny-by-
  const routes=fs.readFileSync('enterprise/sbc-website-production-routes.cjs','utf8');
  assert.match(routes,/ProspectAccountLinksV4\.register\(app/);
  const gate=fs.readFileSync('enterprise/sbc-account-manager-role-gate-v2.cjs','utf8');
- assert.match(gate,/prospect-intelligence\\\/v4/);
+ assert.match(gate,/prospect-intelligence\/v4/);
  const ownerUi=fs.readFileSync('public/sbc-prospect-intelligence.js','utf8');
  const managerUi=fs.readFileSync('public/sbc-account-manager-v1.js','utf8');
  assert.match(ownerUi,/Link to assigned CRM account/);
