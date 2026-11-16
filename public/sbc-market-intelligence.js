@@ -141,7 +141,7 @@
         if(!window.SBCProspectIntelligence){
           if(!window.__SBC_PROSPECT_UI_LOAD__){
             window.__SBC_PROSPECT_UI_LOAD__=new Promise((resolve,reject)=>{
-              const script=document.createElement('script');script.src='/sbc-prospect-intelligence.js?v=2-workforce';
+              const script=document.createElement('script');script.src='/sbc-prospect-intelligence.js?v=3-offline';
               script.onload=resolve;script.onerror=()=>reject(Error('Prospect Intelligence UI asset unavailable'));
               document.body.appendChild(script);
             }).catch(e=>{window.__SBC_PROSPECT_UI_LOAD__=null;throw e});
