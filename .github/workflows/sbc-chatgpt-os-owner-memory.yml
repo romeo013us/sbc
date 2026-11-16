@@ -1,0 +1,49 @@
+name: SBC Owner ChatGPT OS and Business Memory Gates
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-chatgpt-os-handoff.cjs'
+      - 'enterprise/sbc-business-memory.cjs'
+      - 'enterprise/sbc-website-production-routes.cjs'
+      - 'public/sbc-chatgpt-os-v1.*'
+      - 'browser_public/sbc-chatgpt-os-v1.*'
+      - 'public/*.html'
+      - 'browser_public/*.html'
+      - 'test/sbc-chatgpt-os-handoff.test.cjs'
+      - 'test/sbc-business-memory.test.cjs'
+      - '.github/workflows/sbc-chatgpt-os-owner-memory.yml'
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-chatgpt-os-handoff.cjs'
+      - 'enterprise/sbc-business-memory.cjs'
+      - 'public/sbc-chatgpt-os-v1.*'
+      - 'browser_public/sbc-chatgpt-os-v1.*'
+      - 'test/sbc-chatgpt-os-handoff.test.cjs'
+      - 'test/sbc-business-memory.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-owner-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify source syntax
+        run: |
+          node --check enterprise/sbc-chatgpt-os-handoff.cjs
+          node --check enterprise/sbc-business-memory.cjs
+          node --check public/sbc-chatgpt-os-v1.js
+          node --check enterprise/sbc-website-production-routes.cjs
+      - name: Test owner approval, zero automated transfer, tenants and versions
+        run: node --test test/sbc-chatgpt-os-handoff.test.cjs test/sbc-business-memory.test.cjs
+      - name: Verify exact published/browser mirror matches
+        run: |
+          cmp public/sbc-chatgpt-os-v1.js browser_public/sbc-chatgpt-os-v1.js
+          cmp public/sbc-chatgpt-os-v1.css browser_public/sbc-chatgpt-os-v1.css
+          cmp public/index.html browser_public/index.html
