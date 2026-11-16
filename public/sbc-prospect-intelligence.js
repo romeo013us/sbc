@@ -177,6 +177,24 @@
   '<section class="spi-card"><h4>Owner Research Library</h4><p>Retrieve owner-approved public research previously saved through the published writer. No customer data or staff access is added.</p><button type="button" id="spi-library-refresh">Load saved research</button><p id="spi-library-status" role="status">The library is owner-only. A real restart-persistence test remains necessary after GoDaddy returns.</p><div id="spi-library-list"></div></section>'+ 
   '<div id="spi-results"></div>';
   host.appendChild(el);
+  async function loadLibrary(){
+   const area=$('spi-library-list'),status=$('spi-library-status');
+   area.replaceChildren();status.textContent='Reading owner-approved research records…';
+   try{
+    const response=await root.fetch('/api/owner/prospect-intelligence/packets',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    const json=await response.json();
+    if(!response.ok||json.ok!==true||!Array.isArray(json.records))throw Error(json.code||'LIBRARY_UNAVAILABLE');
+    if(!json.records.length){status.textContent='No saved packets in this owner account.';return}
+    status.textContent=json.records.length+' owner-reviewed public research packets retrieved. Each download requires review before sharing.';
+    for(const item of json.records){
+     const row=root.document.createElement('div');row.className='spi-library-row';
+     const label=root.document.createElement('strong');label.textContent=String(item.packet?.business?.businessName||'Unverified business')+' · '+String(item.createdAt||'');
+     const button=root.document.createElement('button');button.type='button';button.textContent='Download approved JSON';button.addEventListener('click',()=>jsonDownload(item.packet));
+     row.append(label,button);area.appendChild(row);
+    }
+   }catch(error){status.textContent='Owner Research Library not confirmed: '+String(error?.message||'Unavailable');}
+  }
+  $('spi-library-refresh').addEventListener('click',loadLibrary);
   const list=customers(),pick=$('spi-customer');
   for(const [index,c] of list.entries()){
    const option=root.document.createElement('option');option.value=String(index);
@@ -220,32 +238,37 @@
     $('spi-copy-email').addEventListener('click',async()=>{$('spi-status').textContent=await clipboard(email)?'Email draft copied. Nothing was sent.':'Copy unavailable. Select the text manually.'});
     $('spi-download-report').addEventListener('click',()=>download('SBC-Digital-Opportunity-Review.txt',report));
 
-    $('spi-handoff-review').addEventListener('change',e=>{$('spi-export-handoff').disabled=!e.target.checked});
+    $('spi-handoff-review').addEventListener('change',e=>{$('spi-export-handoff').disabled=!e.target.checked;$('spi-save-research').disabled=!e.target.checked});
+    let savedResearchId='';
+    $('spi-save-research').addEventListener('click',async()=>{
+     const note=$('spi-handoff-status'),button=$('spi-save-research');
+     if(!$('spi-handoff-review').checked){note.textContent='Owner review required before saving.';return}
+     button.disabled=true;
+     try{
+      const packet=(await ensureHandoff()).createPacket({ownerApproved:true,business,audit:main,competitors,preparedAt:Date.now()});
+      if(!savedResearchId){
+       if(!root.crypto?.randomUUID)throw Error('Secure browser session is required');
+       savedResearchId='sbc-handoff-'+root.crypto.randomUUID().replace(/-/g,'');
+      }
+      const response=await root.fetch('/api/owner/prospect-intelligence/packets',{
+       method:'POST',credentials:'same-origin',cache:'no-store',
+       headers:{Accept:'application/json','Content-Type':'application/json'},
+       body:JSON.stringify({requestId:savedResearchId,packet}),signal:AbortSignal.timeout(25000)
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok||result.ok!==true||(!result.durable&&!result.duplicate))throw Error(result.code||'RESEARCH_SAVE_UNVERIFIED');
+      note.textContent='Owner-reviewed public research saved. No CRM or employee assignment was modified.';
+      await loadLibrary();
+     }catch(error){note.textContent='Research save not confirmed: '+String(error?.message||'Unavailable')+'. Check Research Library before retrying.'}
+     finally{button.disabled=!$('spi-handoff-review').checked}
+    });
     $('spi-export-handoff').addEventListener('click',async()=>{
       const note=$('spi-handoff-status'),button=$('spi-export-handoff');
       if(!$('spi-handoff-review').checked){note.textContent='Owner review required before export.';return}
       button.disabled=true;
       try{
-        if(!root.SBCProspectHandoffV2){
-          if(!root.__SBC_HANDOFF_V2_LOAD__){
-            root.__SBC_HANDOFF_V2_LOAD__=new Promise((resolve,reject)=>{
-              const script=root.document.createElement('script');
-              script.src='/sbc-prospect-handoff-v2.js?v=2';
-              script.onload=resolve;script.onerror=()=>reject(Error('Research export module unavailable'));
-              root.document.body.appendChild(script);
-            }).catch(error=>{root.__SBC_HANDOFF_V2_LOAD__=null;throw error});
-          }
-          await root.__SBC_HANDOFF_V2_LOAD__;
-        }
-        const packet=root.SBCProspectHandoffV2.createPacket({
-          ownerApproved:true,business, audit:main,competitors,
-          preparedAt:Date.now()
-        });
-        const json=JSON.stringify(packet,null,2);
-        const blob=new Blob([json],{type:'application/json;charset=utf-8'});
-        const href=URL.createObjectURL(blob),element=root.document.createElement('a');
-        element.href=href;element.download='SBC-Prospect-Research-Handoff-V2.json';element.click();
-        root.setTimeout(()=>URL.revokeObjectURL(href),3000);
+        const packet=(await ensureHandoff()).createPacket({ownerApproved:true,business,audit:main,competitors,preparedAt:Date.now()});
+        jsonDownload(packet);
         note.textContent='Owner-marked public research exported. Share the file only through an approved internal channel.';
       }catch(error){note.textContent='Research handoff export failed: '+String(error?.message||'Unknown error')}
       finally{button.disabled=!$('spi-handoff-review').checked}
