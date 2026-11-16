@@ -4,10 +4,11 @@ const {runWithTenantContext}=require('../enterprise/tenant-context.cjs');
 const register=require('../routes/account-portfolios-v1.cjs');
 test('owner assigns batches, customer relationship persists, transfers are auditable, manager schedules follow-up',async()=>{
  const people=[
-  {id:'m1',name:'Account A',role:'caller',active:true,tenantId:5},
-  {id:'m2',name:'Account B',role:'caller',active:true,tenantId:5},
-  {id:'inactive',role:'caller',active:false,tenantId:5},
-  {id:'foreign',role:'caller',active:true,tenantId:9}
+  {id:'m1',name:'Account A',role:'account_manager',active:true,tenantId:5},
+  {id:'m2',name:'Account B',role:'account_manager',active:true,tenantId:5},
+  {id:'inactive',role:'account_manager',active:false,tenantId:5},
+  {id:'foreign',role:'account_manager',active:true,tenantId:9},
+  {id:'legacy',role:'caller',active:true,tenantId:5}
  ];
  const base=[
   {id:'a',tenant_id:5,assigned_to:'',status:'Lead',follow_up:null,created_at:'2026-10-01'},
@@ -15,7 +16,8 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   {id:'c',tenant_id:5,assigned_to:'m1',status:'Customer',follow_up:null,created_at:'2026-10-03'},
   {id:'d',tenant_id:9,assigned_to:'',status:'Lead',follow_up:null,created_at:'2026-10-04'},
   {id:'e',tenant_id:5,assigned_to:'',status:'Do Not Call',follow_up:null,created_at:'2026-10-05'},
-  {id:'f',tenant_id:5,assigned_to:'',status:'Lead',follow_up:null,created_at:'2026-10-06'}
+  {id:'f',tenant_id:5,assigned_to:'',status:'Lead',follow_up:null,created_at:'2026-10-06'},
+  {id:'legacy-account',tenant_id:5,assigned_to:'legacy',status:'Customer',follow_up:null,created_at:'2026-10-07'}
  ];
  let rows=structuredClone(base),events=[],writes=0,recovery=false,badAudit=false;
  const pool={async getConnection(){
@@ -31,6 +33,10 @@ test('owner assigns batches, customer relationship persists, transfers are audit
       const x=groups.get(key);x.account_count++;if(row.follow_up&&String(row.follow_up).slice(0,10)<'2026-11-13')x.overdue_count++;
      }
      return [[...groups.values()],[]];
+    }
+    if(sql.startsWith('SELECT id,business_name,phone,status,assigned_to,follow_up,tenant_id FROM sbc_customers')){
+      return [[...working.filter(c=>c.tenant_id===params[0]&&c.assigned_to===params[1]&&String(c.status).toLowerCase()!=='deleted')
+       .map(c=>({id:c.id,business_name:c.business_name||c.id,phone:c.phone||'',status:c.status,assigned_to:c.assigned_to,follow_up:c.follow_up,tenant_id:c.tenant_id}))],[]];
     }
     if(sql.startsWith('SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers')){
       if(sql.includes('id IN ('))return [[...working.filter(c=>c.tenant_id===params[0]&&params.slice(1).includes(c.id))],[]];
@@ -74,7 +80,7 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   const key=req.get('x-test')||'owner';
   req.user=key==='owner'?{id:'owner',role:'owner',tenantId:5,username:'owner'}:key==='m1'?{...people[0],username:'m1'}:
     key==='m2'?{...people[1],username:'m2'}:key==='other'?{id:'other',role:'owner',tenantId:9,username:'other'}:
-    key==='guest'?null:{id:'nobody',role:'viewer',tenantId:5};
+    key==='legacy'?{...people.find(p=>p.id==='legacy'),username:'legacy'}:key==='guest'?null:{id:'nobody',role:'viewer',tenantId:5};
   if(!req.user)return next();
   return runWithTenantContext({tenantId:req.user.tenantId,actorId:req.user.id},()=>next());
  });
@@ -89,9 +95,21 @@ test('owner assigns batches, customer relationship persists, transfers are audit
  try{
   assert.equal((await call('GET',pre+'/summary',null,'guest')).status,401);
   assert.equal((await call('GET',pre+'/summary',null,'m1')).status,403);
+  const myFirst=await call('GET',pre+'/mine',null,'m1');
+  assert.equal(myFirst.status,200);
+  assert.deepEqual(myFirst.data.data.accounts.map(a=>a.id),['c'],'CRM assigned account visible to authenticated manager');
+  assert.equal(myFirst.data.data.source,'AUTHORITATIVE_CRM_ASSIGNMENT');
+  assert.equal((await call('GET',pre+'/mine',null,'other')).status,403);
+  const legacyRead=await call('GET',pre+'/mine',null,'legacy');
+  assert.equal(legacyRead.status,200);
+  assert.equal(legacyRead.data.data.legacyCallerReadOnly,true);
+  assert.deepEqual(legacyRead.data.data.accounts.map(a=>a.id),['legacy-account']);
+
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'m1',amount:2},'m1')).status,403);
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'foreign',amount:2})).status,403);
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'inactive',amount:2})).status,400);
+  assert.equal((await call('POST',pre+'/assign-batch',{managerId:'legacy',amount:2})).status,400,'no new assignments to Sales Caller');
+  assert.equal((await call('GET',pre+'/legacy-account/history',null,'legacy')).status,200,'legacy caller relationship history remains readable');
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'m1',amount:999})).status,400);
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'m1',accountIds:['d']})).status,404);
   recovery=true;assert.equal((await call('POST',pre+'/assign-batch',{managerId:'m1',amount:2})).status,423);recovery=false;
@@ -100,6 +118,10 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   assert.equal(first.data.assigned,2);
   assert.equal(rows.find(x=>x.id==='a').assigned_to,'m1');
   assert.equal(rows.find(x=>x.id==='b').assigned_to,'m1','existing customers must retain assigned account manager');
+  const assignedMine=await call('GET',pre+'/mine',null,'m1');
+  assert.equal(assignedMine.status,200);
+  assert.deepEqual(new Set(assignedMine.data.data.accounts.map(a=>a.id)),new Set(['a','b','c']));
+
   assert.equal(rows.find(x=>x.id==='e').assigned_to,'','DNC must never be assigned by auto batch');
   assert.equal(rows.find(x=>x.id==='d').assigned_to,'','no foreign-tenant records touched');
   const second=await call('POST',pre+'/assign-batch',{managerId:'m2',amount:2});
@@ -119,6 +141,7 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   assert.equal(rows.find(x=>x.id==='c').follow_up,'2026-12-10');
   assert(events.some(x=>x.customerId==='c'&&String(x.purpose||'').includes('hosting')));
   assert.equal((await call('GET',pre+'/summary')).data.managers.some(x=>x.id==='m2'&&x.customers>=1),true);
+  assert.equal((await call('GET',pre+'/summary')).data.managers.some(x=>x.id==='legacy'&&/Legacy/.test(x.name)),true);
   assert.equal((await call('POST',pre+'/c/note',{note:'Notes by the previous account manager'},'m1')).status,403);
   assert.equal((await call('POST',pre+'/c/note',{note:'Short'},'m2')).status,400);
   assert.equal((await call('POST',pre+'/d/note',{note:'Cross tenant business notes must be blocked'})).status,404);

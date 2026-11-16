@@ -218,7 +218,29 @@
        }catch(error){note.textContent='Link not confirmed: '+String(error?.message||error)+'. Retry after reviewing the account.'}
        finally{link.disabled=false}
       });
-      tools.append(select,link,note);row.appendChild(tools);
+      const v5=root.document.createElement('button');v5.type='button';v5.textContent='View V5 Account Opportunity Plan';
+      const planPanel=root.document.createElement('div');planPanel.setAttribute('role','region');planPanel.setAttribute('aria-label','Owner-reviewed V5 account plan');
+      v5.addEventListener('click',async()=>{
+       const c=eligible.find(x=>String(x.id)===select.value);
+       if(!c){note.textContent='Select an assigned account to open its V5 plan.';return}
+       v5.disabled=true;planPanel.textContent='Reading tenant-scoped, evidence-based account recommendations…';
+       try{
+        const res=await root.fetch('/api/owner/prospect-intelligence/v5/accounts/'+encodeURIComponent(c.id)+'/plan',
+         {credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+        const json=await res.json().catch(()=>({}));
+        if(!res.ok||json.ok!==true||!json.plan)throw Error(json.code||'V5_PLAN_UNAVAILABLE');
+        const plan=json.plan;
+        planPanel.replaceChildren();
+        const heading=root.document.createElement('strong');heading.textContent=String(plan.businessName||'Account')+' · '+String(plan.auditStatus||'unverified');
+        const reminder=root.document.createElement('p');reminder.textContent='Stage: '+String(plan.customerStage)+' · Contact: '+String(plan.contactStatus)+' · Next review: '+String(plan.nextFollowUp||'Not set');
+        const items=root.document.createElement('ul');
+        for(const action of plan.actions||[]){const itemEl=root.document.createElement('li');itemEl.textContent=String(action.title||'Review')+' — '+String(action.details||'');items.appendChild(itemEl)}
+        const caveat=root.document.createElement('p');caveat.textContent='Owner review only: no verified revenue, automatic outreach, quote or charge.';
+        planPanel.append(heading,reminder,items,caveat);
+       }catch(error){planPanel.textContent='V5 plan could not be verified: '+String(error?.message||error)}
+       finally{v5.disabled=false}
+      });
+      tools.append(select,link,v5,note,planPanel);row.appendChild(tools);
      }
      area.appendChild(row);
     }

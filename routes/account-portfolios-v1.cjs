@@ -1,6 +1,6 @@
 'use strict';
 /* SBC Account Portfolios V1 — owner-controlled, persistent CRM account ownership.
- * Current employee role is still "caller"; no privilege elevation or bulk messaging.
+ * Future hires/assignments use account_manager; existing caller assignments are historical and retained.
  */
 const {randomUUID}=require('node:crypto');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
@@ -21,7 +21,7 @@ function safeId(value){
 }
 function manager(ctx,id,tenant){
  const m=(ctx.db?.users||[]).find(u=>String(u.id)===id);
- if(!m||m.active===false||m.role!=='caller')throw Error('MANAGER_NOT_ACTIVE');
+ if(!m||m.active===false||m.role!=='account_manager')throw Error('MANAGER_NOT_ACTIVE');
  if(positiveTenantId(m.tenantId??m.tenant_id)!==tenant)throw Error('MANAGER_TENANT_FORBIDDEN');
  return m;
 }
@@ -54,7 +54,7 @@ async function withTx(ctx,callback){
 function register(app,{auth,getContext}){
  const context=(req,res,write=false)=>{
   const ctx=getContext();
-  if(!req.user||!['owner','caller'].includes(req.user.role))return {denied:fail(res,403,'ACCOUNT_ACCESS_DENIED')};
+  if(!req.user||!['owner','caller','account_manager'].includes(req.user.role))return {denied:fail(res,403,'ACCOUNT_ACCESS_DENIED')};
   let tenant;
   try{tenant=safeTenant(req)}catch(_){return {denied:fail(res,403,'TENANT_CONTEXT_REQUIRED')}}
   if(write&&(typeof ctx.recoveryRequired!=='function'||ctx.recoveryRequired()))
@@ -63,6 +63,41 @@ function register(app,{auth,getContext}){
    return {denied:fail(res,503,'MYSQL_UNAVAILABLE')};
   return {ctx,tenant};
  };
+
+ // Authoritative CRM ownership view for Account Manager workstations.
+ // It deliberately does not grant Social Studio or telephony privileges.
+ app.get('/api/v6606/crm/account-portfolios/mine',auth,async(req,res)=>{
+  const x=context(req,res);if(x.denied)return;
+  if(!['account_manager','caller'].includes(req.user.role)||req.user.active===false)
+   return fail(res,403,'ACCOUNT_MANAGER_SESSION_REQUIRED');
+  const uid=String(req.user.id||'');
+  const u=(x.ctx.db?.users||[]).find(row=>String(row.id)===uid&&
+   Number(row.tenantId??row.tenant_id)===x.tenant&&row.role===req.user.role&&row.active!==false);
+  if(!u)return fail(res,403,'ACCOUNT_MANAGER_SESSION_REQUIRED');
+  let conn;
+  try{
+   conn=await x.ctx.mysqlPool.getConnection();
+   const [records]=await conn.query(
+    "SELECT id,business_name,phone,status,assigned_to,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND assigned_to=? AND COALESCE(status,'') <> 'Deleted' ORDER BY created_at DESC,id ASC LIMIT 500",
+    [x.tenant,uid]);
+   if(!Array.isArray(records)||records.some(row=>Number(row.tenant_id)!==x.tenant||
+    String(row.assigned_to||'')!==uid))throw Error('CRM_ACCOUNT_ASSIGNMENT_MISMATCH');
+   const accounts=records.map(row=>{
+    const cached=(x.ctx.db?.customers||[]).find(c=>String(c.id)===String(row.id)&&
+     Number(c.tenantId??c.tenant_id)===x.tenant);
+    const doNotContact=STATUS_BLOCKED.has(String(row.status||'').trim().toLowerCase())||
+     cached?.doNotContact===true||cached?.doNotCall===true||cached?.salesSuppressed===true;
+    return {id:String(row.id),businessName:String(row.business_name||'').slice(0,220),
+     phone:String(row.phone||'').slice(0,80),status:String(row.status||'').slice(0,60),
+     managerId:uid,followUp:row.follow_up||null,doNotContact,
+     timeline:[]};
+   });
+   res.setHeader('Cache-Control','no-store');
+   return res.json({ok:true,data:{tenantId:x.tenant,accounts,source:'AUTHORITATIVE_CRM_ASSIGNMENT',
+    socialPermissionsNotInferred:true,legacyCallerReadOnly:req.user.role==='caller'}});
+  }catch{return fail(res,503,'ACCOUNT_PORTFOLIO_MINE_UNAVAILABLE')}
+  finally{try{conn?.release()}catch(_){}}
+ });
  app.get('/api/v6606/crm/account-portfolios/summary',auth,async(req,res)=>{
   const x=context(req,res);
   if(x.denied)return;
@@ -72,9 +107,9 @@ function register(app,{auth,getContext}){
    conn=await x.ctx.mysqlPool.getConnection();
    const [records]=await conn.query("SELECT COALESCE(assigned_to,'') AS manager_id,status,COUNT(*) AS account_count,SUM(CASE WHEN follow_up < CURDATE() THEN 1 ELSE 0 END) AS overdue_count FROM sbc_customers WHERE tenant_id=? GROUP BY assigned_to,status",[x.tenant]);
    if(!Array.isArray(records))throw Error('PORTFOLIO_DB_READ_FAILED');
-   const summary=new Map(),users=(x.ctx.db?.users||[]).filter(u=>u.role==='caller'&&u.active!==false&&Number(u.tenantId??u.tenant_id)===x.tenant);
+   const summary=new Map(),users=(x.ctx.db?.users||[]).filter(u=>(u.role==='account_manager'||u.role==='caller')&&u.active!==false&&Number(u.tenantId??u.tenant_id)===x.tenant);
    
-   for(const u of users)summary.set(String(u.id),{id:String(u.id),name:String(u.name||u.username||u.id).slice(0,130),accounts:0,customers:0,prospects:0,overdue:0});
+   for(const u of users)summary.set(String(u.id),{id:String(u.id),name:(u.role==='caller'?'Legacy Sales Caller — ':'')+String(u.name||u.username||u.id).slice(0,130),accounts:0,customers:0,prospects:0,overdue:0});
    let unassigned=0;
    for(const c of records){
     const id=String(c.manager_id||'');
