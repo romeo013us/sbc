@@ -144,6 +144,26 @@
   return '<div class="spi-table-scroll"><table><thead><tr><th>Public website</th><th>Mobile performance</th><th>SEO</th><th>Accessibility</th></tr></thead><tbody>'+
    items.map(x=>'<tr><td>'+safe(x.website||'Not supplied')+'</td><td>'+safe(resultCell(x,'performance'))+'</td><td>'+safe(resultCell(x,'seo'))+'</td><td>'+safe(resultCell(x,'accessibility'))+'</td></tr>').join('')+'</tbody></table></div>';
  }
+ async function ensureHandoff(){
+  if(root.SBCProspectHandoffV2)return root.SBCProspectHandoffV2;
+  if(!root.__SBC_HANDOFF_V2_LOAD__){
+   root.__SBC_HANDOFF_V2_LOAD__=new Promise((resolve,reject)=>{
+    const script=root.document.createElement('script');
+    script.src='/sbc-prospect-handoff-v2.js?v=2';
+    script.onload=resolve;script.onerror=()=>reject(Error('Research handoff module unavailable'));
+    root.document.body.appendChild(script);
+   }).catch(error=>{root.__SBC_HANDOFF_V2_LOAD__=null;throw error});
+  }
+  await root.__SBC_HANDOFF_V2_LOAD__;
+  if(!root.SBCProspectHandoffV2)throw Error('Research handoff module failed to initialize');
+  return root.SBCProspectHandoffV2;
+ }
+ function jsonDownload(packet){
+  const blob=new Blob([JSON.stringify(packet,null,2)],{type:'application/json;charset=utf-8'});
+  const href=URL.createObjectURL(blob),element=root.document.createElement('a');
+  element.href=href;element.download='SBC-Prospect-Research-Handoff-V2.json';element.click();
+  root.setTimeout(()=>URL.revokeObjectURL(href),3000);
+ }
  function mount(host){
   if(mounting||!host||host.querySelector('[data-sbc-prospect-intelligence]'))return;
   mounting=true;css();
@@ -154,6 +174,7 @@
   '<label>Competitor website 1 (optional)<input id="spi-competitor-1" maxlength="450" placeholder="https://competitor.com/"></label><label>Competitor website 2 (optional)<input id="spi-competitor-2" maxlength="450" placeholder="https://competitor2.com/"></label></div>'+
   '<div class="spi-controls"><button type="button" id="spi-run">Run public website analysis</button><span id="spi-status" role="status" aria-live="polite">Enter a public website to begin. Maximum 12 PageSpeed checks per owner per hour.</span></div>'+
   '<p class="spi-note">Audits come from Google PageSpeed Insights (Lighthouse lab) when available. A score is not a Google ranking, customer conversion rate, or predicted sale. Competitors are supplied by you and not automatically identified. Missing data stays unverified.</p>'+
+  '<section class="spi-card"><h4>Owner Research Library</h4><p>Retrieve owner-approved public research previously saved through the published writer. No customer data or staff access is added.</p><button type="button" id="spi-library-refresh">Load saved research</button><p id="spi-library-status" role="status">The library is owner-only. A real restart-persistence test remains necessary after GoDaddy returns.</p><div id="spi-library-list"></div></section>'+ 
   '<div id="spi-results"></div>';
   host.appendChild(el);
   const list=customers(),pick=$('spi-customer');
@@ -194,7 +215,7 @@
       '<section class="spi-card"><h4>Existing-customer expansion suggestions</h4><ul>'+ideas.map(x=>'<li>'+safe(x)+'</li>').join('')+'</ul></section>'+
       '<section class="spi-card"><h4>Personalized draft outreach · manual approval only</h4><textarea id="spi-email" rows="12" readonly></textarea><button type="button" id="spi-copy-email">Copy email draft</button></section>'+
       '<section class="spi-card"><h4>Customer-ready digital opportunity report · owner review required</h4><textarea id="spi-report" rows="16" readonly></textarea><button type="button" id="spi-download-report">Download TXT report</button></section>'+
-      '<section class="spi-card" aria-label="Owner-approved workforce research handoff"><h4>Share this research with the workforce</h4><p>Check the business identity and each observation before distributing. Export includes public research only—no CRM contacts, orders or client identifiers.</p><label><input type="checkbox" id="spi-handoff-review"> I reviewed the evidence, business identity, and timestamps and approve creating a research handoff file.</label><button type="button" id="spi-export-handoff" disabled>Export owner-reviewed research handoff JSON</button><p id="spi-handoff-status" role="status">Importing a file in a staff workspace does not verify owner identity or authorize contact; verify the source out of band.</p></section>';
+      '<section class="spi-card" aria-label="Owner-approved workforce research handoff"><h4>Share this research with the workforce</h4><p>Check the business identity and each observation before distributing. Export includes public research only—no CRM contacts, orders or client identifiers.</p><label><input type="checkbox" id="spi-handoff-review"> I reviewed the evidence, business identity, and timestamps and approve creating a research handoff file.</label><button type="button" id="spi-export-handoff" disabled>Export owner-reviewed research handoff JSON</button> <button type="button" id="spi-save-research" disabled>Save to owner Research Library</button><p id="spi-handoff-status" role="status">Importing a file in a staff workspace does not verify owner identity or authorize contact; verify the source out of band.</p></section>';
     $('spi-email').value=email;$('spi-report').value=report;
     $('spi-copy-email').addEventListener('click',async()=>{$('spi-status').textContent=await clipboard(email)?'Email draft copied. Nothing was sent.':'Copy unavailable. Select the text manually.'});
     $('spi-download-report').addEventListener('click',()=>download('SBC-Digital-Opportunity-Review.txt',report));
