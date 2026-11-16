@@ -995,7 +995,7 @@
     if(!window.SBC_AI_SITE_HANDOFF){
       await new Promise((resolve,reject)=>{
         const script=document.createElement('script');
-        script.src='/sbc-ai-site-handoff-v1.js';
+        script.src='/sbc-ai-site-handoff-v1.js?v=20261116-zip-proposals';
         script.onload=resolve;
         script.onerror=()=>reject(Error('AI website handoff UI failed to load. Refresh and retry.'));
         document.head.appendChild(script);
