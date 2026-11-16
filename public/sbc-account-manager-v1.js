@@ -34,6 +34,26 @@
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
+  if(state.role==='account_manager')void loadAccountResearchV4(id);
+ }
+
+ async function loadAccountResearchV4(id){
+  let host=$('sbcAccountResearchV4');
+  if(!host){host=document.createElement('section');host.id='sbcAccountResearchV4';host.className='account-card';$('accountDetail').appendChild(host);}
+  host.textContent='Loading owner-approved account research…';
+  try{
+   const response=await fetch('/api/prospect-intelligence/v4/accounts/'+encodeURIComponent(id)+'/research',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const result=await response.json().catch(()=>({}));
+   if(state.selected!==id)return;
+   if(!response.ok||result.ok!==true)throw Error(result.code||'RESEARCH_ACCESS_NOT_VERIFIED');
+   const list=result.research||[];
+   if(!list.length){host.innerHTML='<h3>Approved Account Research</h3><p>No owner-reviewed V4 findings attached to this account yet.</p>';return}
+   host.innerHTML='<h3>Approved Account Research</h3><p class="muted">Evidence-based suggestions; no automatic contact, charge or ranking promise.</p>'+
+    list.map(r=>'<article class="timeline-row"><strong>'+escapeHtml(r.business?.businessName||'Business')+'</strong>'+
+    '<p>Evidence: '+escapeHtml(r.opportunity?.verification||'unverified')+' · Priority: '+escapeHtml(r.opportunity?.score??'Not verified')+'</p>'+
+    '<p>'+escapeHtml(r.nextAction)+'</p><p class="muted">Audit: '+escapeHtml(r.opportunity?.evidenceDate||'Unverified')+
+    ' · '+escapeHtml(r.opportunity?.outreach?.action||'VERIFY_PERMISSION')+'</p></article>').join('');
+  }catch(e){if(state.selected===id)host.textContent='Research access not verified. Ask the owner to check assignment. '+String(e.message||e)}
  }
  async function loadHandoffs(){state.handoffs=await api('/api/account-social/v1/research/queue');renderHandoffs();}
  function renderHandoffs(){const list=$('handoffList');list.innerHTML=state.handoffs.length?state.handoffs.map(h=>`<article class="handoff-row"><div><h3>${escapeHtml(h.customerId)}</h3><span class="tag">${escapeHtml(h.status)}</span><p class="muted">${escapeHtml(h.summary||'')}</p><p class="muted">Researcher: ${escapeHtml(h.researcherId)} · Manager: ${escapeHtml(h.managerId||'Awaiting assignment')}</p>${h.retryNotBefore?`<p class="muted">No phone retry before ${escapeHtml(h.retryNotBefore)}</p>`:''}</div><div class="controls">${h.status==='READY_FOR_REVIEW'&&state.role==='owner'?`<button class="button secondary" data-action="assign" data-id="${escapeHtml(h.id)}">Assign manager</button>`:''}${h.status==='ASSIGNED'?`<button class="button secondary" data-action="return" data-id="${escapeHtml(h.id)}">Return for research</button>`:''}</div></article>`).join(''):'<p class="empty">No handoff records for this account. Research remains in Lorna’s own workstation.</p>';}

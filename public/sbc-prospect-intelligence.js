@@ -174,7 +174,7 @@
   '<label>Competitor website 1 (optional)<input id="spi-competitor-1" maxlength="450" placeholder="https://competitor.com/"></label><label>Competitor website 2 (optional)<input id="spi-competitor-2" maxlength="450" placeholder="https://competitor2.com/"></label></div>'+
   '<div class="spi-controls"><button type="button" id="spi-run">Run public website analysis</button><span id="spi-status" role="status" aria-live="polite">Enter a public website to begin. Maximum 12 PageSpeed checks per owner per hour.</span></div>'+
   '<p class="spi-note">Audits come from Google PageSpeed Insights (Lighthouse lab) when available. A score is not a Google ranking, customer conversion rate, or predicted sale. Competitors are supplied by you and not automatically identified. Missing data stays unverified.</p>'+
-  '<section class="spi-card"><h4>Owner Research Library</h4><p>Retrieve owner-approved public research previously saved through the published writer. No customer data or staff access is added.</p><button type="button" id="spi-library-refresh">Load saved research</button><p id="spi-library-status" role="status">The library is owner-only. A real restart-persistence test remains necessary after GoDaddy returns.</p><div id="spi-library-list"></div></section>'+ 
+  '<section class="spi-card"><h4>Owner Research Library</h4><p>Retrieve owner-approved public research previously saved through the published writer. Link approved research to existing assigned CRM accounts only after owner confirmation. No outreach is authorized.</p><button type="button" id="spi-library-refresh">Load saved research</button><p id="spi-library-status" role="status">The library is owner-only. A real restart-persistence test remains necessary after GoDaddy returns.</p><div id="spi-library-list"></div></section>'+ 
   '<div id="spi-results"></div>';
   host.appendChild(el);
   async function loadLibrary(){
@@ -190,7 +190,37 @@
      const row=root.document.createElement('div');row.className='spi-library-row';
      const label=root.document.createElement('strong');label.textContent=String(item.packet?.business?.businessName||'Unverified business')+' · '+String(item.createdAt||'');
      const button=root.document.createElement('button');button.type='button';button.textContent='Download approved JSON';button.addEventListener('click',()=>jsonDownload(item.packet));
-     row.append(label,button);area.appendChild(row);
+     row.append(label,button);
+     const eligible=customers().filter(c=>c?.id&&(c.assignedTo||c.assigned_to));
+     if(eligible.length){
+      const tools=root.document.createElement('div');tools.className='spi-controls';
+      const select=root.document.createElement('select');select.setAttribute('aria-label','Assigned customer account');
+      const empty=root.document.createElement('option');empty.value='';empty.textContent='Select assigned CRM account';select.appendChild(empty);
+      for(const c of eligible){const opt=root.document.createElement('option');opt.value=String(c.id);
+       opt.textContent=String(c.businessName||c.id)+' · '+String(c.assignedTo||c.assigned_to);select.appendChild(opt)}
+      const link=root.document.createElement('button');link.type='button';link.textContent='Link to assigned CRM account';
+      const note=root.document.createElement('span');note.setAttribute('role','status');note.textContent='Only verified active account_manager assignments can be linked.';
+      let requestId='',requestCustomer='';
+      link.addEventListener('click',async()=>{
+       const c=eligible.find(x=>String(x.id)===select.value);
+       if(!c){note.textContent='Choose an assigned account.';return}
+       if(!root.confirm('Confirm this reviewed research belongs to '+String(c.businessName||c.id)+' and may be viewed by its assigned manager. No outreach is authorized.'))return;
+       if(!root.crypto?.randomUUID){note.textContent='Secure browser session required.';return}
+       if(requestCustomer!==String(c.id)){requestCustomer=String(c.id);requestId='sbc-link-'+root.crypto.randomUUID().replace(/-/g,'')}
+       link.disabled=true;note.textContent='Verifying and saving…';
+       try{const response=await root.fetch('/api/owner/prospect-intelligence/account-links',{
+        method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json'},
+        body:JSON.stringify({requestId,packetId:item.id,customerId:String(c.id),expectedManagerId:String(c.assignedTo||c.assigned_to),confirmBusinessMatch:true}),
+        signal:AbortSignal.timeout(25000)});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok||result.ok!==true||(!result.durable&&!result.duplicate))throw Error(result.code||'SAVE_NOT_CONFIRMED');
+        note.textContent='Verified: linked research to CRM account. No contact, quote or billing.';
+       }catch(error){note.textContent='Link not confirmed: '+String(error?.message||error)+'. Retry after reviewing the account.'}
+       finally{link.disabled=false}
+      });
+      tools.append(select,link,note);row.appendChild(tools);
+     }
+     area.appendChild(row);
     }
    }catch(error){status.textContent='Owner Research Library not confirmed: '+String(error?.message||'Unavailable');}
   }

@@ -12,6 +12,7 @@ const VALID_ID='[A-Za-z0-9][A-Za-z0-9_-]{0,119}';
 const RE={
  GET:[
   new RegExp('^/api/training/courses/'+VALID_ID+'$'),
+  new RegExp('^/api/prospect-intelligence/v4/accounts/'+VALID_ID+'/research$'),
   new RegExp('^/api/account-social/v1/accounts/'+VALID_ID+'/(?:channels|posts)$'),
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'$')
  ],
