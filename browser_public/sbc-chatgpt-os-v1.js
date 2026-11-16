@@ -111,7 +111,7 @@
   if(value.trim().length<60||value.length>10000){message('Business Memory must be 60–10,000 characters.',true);return}
   if(!root.confirm('Save an owner-approved version of your SBC Business Memory? No AI calls will be made.'))return;
   button.disabled=true;
-  try{const saved=await request('/api/owner/business-memory',{method:'PUT',
+  try{const saved=await request('/api/owner/business-memory',{method:'PATCH',
     body:JSON.stringify({expectedRevision:profile.revision,content:value,approved:true})});
    if(!saved?.ok||!saved?.durable)throw Error(saved?.code||'MEMORY_NOT_DURABLE');
    profile=saved.profile;$('sbc-chatgpt-os-memory-revision').textContent='Version '+profile.revision+' · owner approved';
