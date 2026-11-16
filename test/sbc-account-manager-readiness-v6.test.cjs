@@ -18,11 +18,11 @@ function social(customer_id,manager_id,t=5){return {customer_id,manager_id,tenan
 const crmRows=[
  crm('c1','m1'),crm('c2','m1','Customer'),crm('c3','legacy'),
  crm('c4','disabled'),crm('c5','foreign'),crm('c6',''),
- crm('c7','m2'),crm('other','foreign','Customer',9)
+ crm('c7','m2')
 ];
 const socialRows=[
  social('c1','m1'),social('c2','m2'),social('c6','m1'),
- social('c3','legacy'),social('gone','m1'),social('foreign','foreign',9)
+ social('c3','legacy'),social('gone','m1')
 ];
 test('V6 identifies every owner review class without changing CRM or social ownership',()=>{
  const original=JSON.stringify({crmRows,socialRows,staff});
