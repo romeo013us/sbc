@@ -19,6 +19,11 @@ function validName(value){
  if(!name||name.length>260||name.includes('\\')||name.startsWith('/')||name.includes('\0')||/^[a-z]:/i.test(name)||name.split('/').some(s=>s==='.'||s==='..')||name.split('/').length>12)throw Error('ZIP_UNSAFE_PATH');
  return name;
 }
+function crc32(data){
+ let c=~0;
+ for(const b of data){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0)}
+ return (~c)>>>0;
+}
 function parseZip(buf){
  if(!Buffer.isBuffer(buf)||buf.length<22||buf.length>ZIP_MAX)throw Error('ZIP_SIZE_INVALID');
  let end=-1;
@@ -31,6 +36,7 @@ function parseZip(buf){
  for(let i=0;i<count;i++){
   if(cursor+46>buf.length||buf.readUInt32LE(cursor)!==0x02014b50)throw Error('ZIP_DIRECTORY_INVALID');
   const flags=buf.readUInt16LE(cursor+8),method=buf.readUInt16LE(cursor+10);
+  const expectedCrc=buf.readUInt32LE(cursor+16);
   const compressed=buf.readUInt32LE(cursor+20),expanded=buf.readUInt32LE(cursor+24);
   const n=buf.readUInt16LE(cursor+28),extra=buf.readUInt16LE(cursor+30),comment=buf.readUInt16LE(cursor+32);
   const offset=buf.readUInt32LE(cursor+42),external=buf.readUInt32LE(cursor+38);
@@ -49,6 +55,7 @@ function parseZip(buf){
   const data=buf.subarray(at,at+compressed);
   const content=method===0?data:zlib.inflateRawSync(data,{maxOutputLength:FILE_MAX+1});
   if(content.length!==expanded||content.length>FILE_MAX)throw Error('ZIP_ENTRY_SIZE_MISMATCH');
+  if(crc32(content)!==expectedCrc)throw Error('ZIP_CRC_MISMATCH');
   records.push({name,content});
  }
  if(cursor!==start+cdSize)throw Error('ZIP_DIRECTORY_INVALID');
@@ -178,11 +185,18 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    if(!dest.startsWith(folder+path.sep))throw Error('INVALID_PREVIEW_PATH');
    const stat=fs.lstatSync(dest);
    if(!stat.isFile()||stat.isSymbolicLink())throw Error('INVALID_PREVIEW_PATH');
-   const ext=path.extname(dest).toLowerCase(),origin=(req.secure?'https':'http')+'://'+String(req.headers.host||'');
+   const ext=path.extname(dest).toLowerCase();
+   const forwarded=String(req.headers['x-forwarded-proto']||'').split(',')[0].trim().toLowerCase();
+   const proto=(req.secure||forwarded==='https')?'https':'http';
+   const host=String(req.headers.host||'');
+   if(!/^[a-z0-9.:-]+$/i.test(host))throw Error('INVALID_PREVIEW_HOST');
+   const origin=proto+'://'+host;
    res.setHeader('Cache-Control','private, no-store');
    res.setHeader('X-Content-Type-Options','nosniff');
    res.setHeader('Referrer-Policy','no-referrer');
-   res.setHeader('Cross-Origin-Resource-Policy','same-origin');
+   // The sandboxed document has an opaque origin. Permit only owner-authorized
+   // subresource rendering; the HTML CSP blocks outbound connections/forms.
+   res.setHeader('Cross-Origin-Resource-Policy','cross-origin');
    if(ext==='.html'||ext==='.htm'||ext==='.svg'){
     res.setHeader('Content-Security-Policy',
      "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' "+origin+
