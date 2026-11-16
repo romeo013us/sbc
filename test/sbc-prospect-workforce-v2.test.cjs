@@ -38,6 +38,17 @@ test('audit scores and provenance preserved, no claims about Google rankings or 
  const parsed=H.validatePacket(JSON.stringify(p),at);
  assert.equal(parsed.business.businessName,'Artisan Barber Shop');
 });
+test('audit measurements older than 30 days or unexpectedly future are not carried as verified evidence',()=>{
+ const stale={...measured,measuredAt:'2026-09-01T12:00:00.000Z'};
+ const future={...measured,measuredAt:'2026-12-01T12:00:00.000Z'};
+ const a=H.createPacket({ownerApproved:true,business:{businessName:'Valid Shop'},audit:stale,preparedAt:at});
+ const b=H.createPacket({ownerApproved:true,business:{businessName:'Valid Shop'},audit:future,preparedAt:at});
+ assert.equal(a.audit.status,'unavailable');assert.equal(b.audit.status,'unavailable');
+ assert.equal(a.audit.scores,null);assert.equal(b.audit.scores,null);
+ const packetNow=packet();
+ const changed={...packetNow,audit:{...packetNow.audit,measuredAt:'2026-09-01T12:00:00.000Z'}};
+ assert.throws(()=>H.validatePacket(JSON.stringify(changed),at),/HANDOFF_SCHEMA_INVALID|HANDOFF_EXPIRED/);
+});
 test('schema validation rejects forged structure, unsafe values and stale / future handoffs',()=>{
  const p=packet();
  for(const corrupted of [
