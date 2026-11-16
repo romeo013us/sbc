@@ -43,8 +43,10 @@
   if(!/^[a-z0-9-]{2,50}$/.test(id)||!label)failure('HANDOFF_BAD_FINDING');
   return {id,label,result:row.result,source:SOURCE};
  }
- function compactAudit(input,kind='main'){
-  if(!input||input.status!=='measured'){
+ function compactAudit(input,preparedAt){
+  const measured=Date.parse(input?.measuredAt);
+  const fresh=Number.isFinite(measured)&&Number.isFinite(preparedAt)&&measured<=preparedAt+300000&&preparedAt-measured<=MAX_AGE_MS;
+  if(!input||input.status!=='measured'||!fresh){
    return {status:'unavailable',website:'',source:SOURCE,measuredAt:null,scores:null,findings:[]};
   }
   const website=publicUrl(input.website);
@@ -63,7 +65,7 @@
   if(!Array.isArray(competitors)||competitors.length>2)failure('HANDOFF_TOO_MANY_COMPETITORS');
   return {
    schema:SCHEMA,reviewStatus:REVIEW,preparedAt:time,
-   business:details,audit:compactAudit(audit),competitors:competitors.map(x=>compactAudit(x,'competitor')),
+   business:details,audit:compactAudit(audit,Date.parse(time)),competitors:competitors.map(x=>compactAudit(x,Date.parse(time))),
    limitations:'Owner-marked document, not cryptographically signed. No CRM contacts, payments, consent or assignments included. Confirm source and identity before use.'
   };
  }
