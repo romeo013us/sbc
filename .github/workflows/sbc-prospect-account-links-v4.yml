@@ -32,6 +32,8 @@ jobs:
       - name: V4 syntax and secure mirror
         run: |
           node --check enterprise/sbc-prospect-account-links-v4.cjs
+          node --check enterprise/sbc-account-manager-role-gate-v2.cjs
+          node --check enterprise/sbc-website-production-routes.cjs
           node --check public/sbc-prospect-intelligence.js
           node --check public/sbc-account-manager-v1.js
           cmp public/sbc-prospect-intelligence.js browser_public/sbc-prospect-intelligence.js
