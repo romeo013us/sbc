@@ -1,0 +1,53 @@
+name: SBC Prospect Workforce V2 Offline Release Gates
+
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-prospect-handoff-v2.*'
+      - 'browser_public/sbc-prospect-handoff-v2.*'
+      - 'public/sbc-prospect-intelligence.js'
+      - 'browser_public/sbc-prospect-intelligence.js'
+      - 'public/lead-research.html'
+      - 'browser_public/lead-research.html'
+      - 'public/sales-caller.html'
+      - 'browser_public/sales-caller.html'
+      - 'public/sbc-account-manager-v1.html'
+      - 'browser_public/sbc-account-manager-v1.html'
+      - 'test/sbc-prospect-workforce-v2.test.cjs'
+      - 'scripts/sbc-prospect-handoff-v2-rehearsal.cjs'
+      - '.github/workflows/sbc-prospect-workforce-v2-offline.yml'
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-prospect-handoff-v2.*'
+      - 'browser_public/sbc-prospect-handoff-v2.*'
+      - 'test/sbc-prospect-workforce-v2.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-owner-to-workforce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check public/sbc-prospect-handoff-v2.js
+          node --check public/sbc-prospect-intelligence.js
+          node --check scripts/sbc-prospect-handoff-v2-rehearsal.cjs
+      - name: Core owner-only audit and workforce research tests
+        run: node --test test/sbc-prospect-intelligence.test.cjs test/sbc-prospect-workforce-v2.test.cjs
+      - name: Full no-network role workflow rehearsal
+        run: node scripts/sbc-prospect-handoff-v2-rehearsal.cjs
+      - name: Validate GoDaddy asset mirrors
+        run: |
+          cmp public/sbc-prospect-handoff-v2.js browser_public/sbc-prospect-handoff-v2.js
+          cmp public/sbc-prospect-handoff-v2.css browser_public/sbc-prospect-handoff-v2.css
+          cmp public/sbc-prospect-intelligence.js browser_public/sbc-prospect-intelligence.js
+          for f in lead-research.html sales-caller.html sbc-account-manager-v1.html; do cmp "public/$f" "browser_public/$f"; done
+          node scripts/v66-static-mirror-gate.cjs
