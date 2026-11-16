@@ -94,7 +94,7 @@
     const account = ownerKey();
     content.innerHTML = `<section data-sbc-market-intelligence aria-label="Market Intelligence">
       <header class="mi-header"><div><h2>Market Intelligence</h2><p>Track how customers find SBC, where checkout records convert, and which public offers are worth studying.</p></div>
-      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button></div></header>
+      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button></div></header>
       <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div></section>`;
     const root = content.firstElementChild;
     const refresh = root.querySelector('[data-mi-refresh]');
@@ -133,6 +133,27 @@
       }
     }
 
+    // On demand only: no third-party calls until the owner requests a public audit.
+    root.querySelector('[data-mi-prospect]').addEventListener('click',async()=>{
+      const button=root.querySelector('[data-mi-prospect]');
+      button.disabled=true;
+      try{
+        if(!window.SBCProspectIntelligence){
+          if(!window.__SBC_PROSPECT_UI_LOAD__){
+            window.__SBC_PROSPECT_UI_LOAD__=new Promise((resolve,reject)=>{
+              const script=document.createElement('script');script.src='/sbc-prospect-intelligence.js?v=1';
+              script.onload=resolve;script.onerror=()=>reject(Error('Prospect Intelligence UI asset unavailable'));
+              document.body.appendChild(script);
+            }).catch(e=>{window.__SBC_PROSPECT_UI_LOAD__=null;throw e});
+          }
+          await window.__SBC_PROSPECT_UI_LOAD__;
+        }
+        if(!active())return;
+        window.SBCProspectIntelligence.mount(root);
+        root.querySelector('[data-sbc-prospect-intelligence]')?.scrollIntoView({block:'start',behavior:'smooth'});
+      }catch{if(active())status.textContent='Prospect Intelligence could not be loaded. Please refresh and try again.'}
+      finally{if(button.isConnected)button.disabled=false}
+    });
     refresh.addEventListener('click', load);
     windowSelect.addEventListener('change', load);
     root.addEventListener('submit', async event => {

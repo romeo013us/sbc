@@ -2,6 +2,7 @@
 
 const watchlist = require('./catalogs/sbc-market-watch.json');
 const Search = require('./sbc-search-console.cjs');
+const ProspectIntelligence = require('./sbc-prospect-intelligence.cjs');
 const Revenue = require('./sbc-revenue-reporting-truth-v66142.cjs');
 const { proofFields } = require('./v6640-payment-evidence.cjs');
 const { requestIdValid } = require('./v6672-site-checkout-integrity.cjs');
@@ -122,6 +123,8 @@ function recommendedActions(site, search) {
 
 function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, clock = Date.now }) {
   const readSearch = Search.createReader(fetcher);
+  // Additive, owner-only, read-only public Lighthouse research endpoint.
+  ProspectIntelligence.register(app,{auth,ownerOnly,requireTenant,fetcher,clock});
   app.get('/api/owner/market-intelligence', auth, ownerOnly, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     let tenantId;
