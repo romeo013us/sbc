@@ -2,11 +2,11 @@
 /* SBC Account Portfolios V1 — owner-controlled, persistent CRM account ownership.
  * Future hires/assignments use account_manager; existing caller assignments are historical and retained.
  */
-const {randomUUID}=require('node:crypto');
+const {randomUUID,createHash}=require('node:crypto');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
 const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');
 const AccountManagerReadiness=require('../enterprise/sbc-account-manager-readiness-v6.cjs');
-const STATUS_BLOCKED=new Set(['do not call','do not contact','dnc','opt out','unsubscribe','lost']);
+const STATUS_BLOCKED=new Set(['do not call','do not contact','dnc','opt out','unsubscribe','lost','bad number','wrong number','deleted']);
 const fail=(res,status,code)=>res.status(status).json({ok:false,code});
 function safeTenant(req){
  const tenant=positiveTenantId(requireTenantContext().tenantId);
@@ -179,7 +179,7 @@ function register(app,{auth,getContext}){
      [selected]=await conn.query('SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND id IN ('+holders+') ORDER BY id ASC FOR UPDATE',[x.tenant,...ids]);
      if(!Array.isArray(selected)||selected.length!==ids.length)return {status:404,code:'ACCOUNT_NOT_FOUND'};
     }else{
-     [selected]=await conn.query("SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND (assigned_to IS NULL OR assigned_to='') AND LOWER(TRIM(status)) NOT IN ('lost','do not call','do not contact','dnc','opt out','unsubscribe') ORDER BY created_at ASC,id ASC LIMIT ? FOR UPDATE",[x.tenant,amount]);
+     [selected]=await conn.query("SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND (assigned_to IS NULL OR assigned_to='') AND LOWER(TRIM(status)) NOT IN ('lost','do not call','do not contact','dnc','opt out','unsubscribe','bad number','wrong number','deleted') ORDER BY created_at ASC,id ASC LIMIT ? FOR UPDATE",[x.tenant,amount]);
     }
     if(!Array.isArray(selected))throw Error('ACCOUNT_DB_READ_FAILED');
     if(selected.some(c=>String(c.assigned_to||'')!==''))return {status:409,code:'ACCOUNT_ALREADY_ASSIGNED'};
@@ -330,5 +330,100 @@ function register(app,{auth,getContext}){
    return res.json({ok:true,durable:true,id,note:result.record,contactSent:false});
   }catch(_){return fail(res,503,'ACCOUNT_NOTE_SAVE_FAILED')}
  });
+ // V7 one-step account outcome: owner or *currently assigned* Account Manager.
+ // This records a manually reported interaction. It does not dial, text, email,
+ // create a quote, change social permissions, or automatically contact customers.
+ app.post('/api/v6606/crm/account-portfolios/:id/interaction',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  const x=context(req,res,true);if(x.denied)return;
+  if(!['owner','account_manager'].includes(req.user.role)||req.user.active===false)
+   return fail(res,403,'ACCOUNT_MANAGER_ROLE_REQUIRED');
+  let id,requestId,outcome,note,dueDate=null,fingerprint;
+  try{
+   id=safeId(req.params.id);
+   requestId=String(req.body?.requestId||'');
+   if(!/^sbc-action-[a-f0-9]{32}$/.test(requestId))throw Error('ACCOUNT_INTERACTION_REQUEST_INVALID');
+   outcome=String(req.body?.outcome||'');
+   if(!['CONNECTED','NO_ANSWER','FOLLOW_UP_REQUESTED','BAD_NUMBER','DO_NOT_CONTACT'].includes(outcome))
+    throw Error('ACCOUNT_OUTCOME_INVALID');
+   if(typeof req.body?.note!=='string')throw Error('ACCOUNT_INTERACTION_NOTE_REQUIRED');
+   note=req.body.note.trim();
+   if(note.length<12||note.length>1000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(note))
+    throw Error('ACCOUNT_INTERACTION_NOTE_INVALID');
+   if(req.body?.dueDate!==undefined&&req.body?.dueDate!==null&&req.body?.dueDate!==''){
+    if(!['CONNECTED','FOLLOW_UP_REQUESTED'].includes(outcome))throw Error('ACCOUNT_OUTCOME_DATE_FORBIDDEN');
+    dueDate=validateDueDate(req.body.dueDate);
+   }
+   if(outcome==='FOLLOW_UP_REQUESTED'&&!dueDate)throw Error('ACCOUNT_FOLLOW_UP_DATE_REQUIRED');
+   fingerprint=createHash('sha256').update(JSON.stringify([outcome,note,dueDate])).digest('hex');
+  }catch(error){return fail(res,400,String(error.message||error))}
+  try{
+   const result=await withTx(x.ctx,async conn=>{
+    const [records]=await conn.query(
+     'SELECT id,assigned_to,status,follow_up,account_notes_json,tenant_id FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',
+     [x.tenant,id]);
+    if(!Array.isArray(records)||records.length!==1)return {status:404,code:'ACCOUNT_NOT_FOUND'};
+    const c=records[0],assigned=String(c.assigned_to||''),actor=String(req.user.id||'');
+    if(req.user.role!=='owner'){
+     const worker=(x.ctx.db?.users||[]).find(u=>String(u.id)===actor&&
+      Number(u.tenantId??u.tenant_id)===x.tenant&&u.role==='account_manager'&&u.active!==false);
+     if(!worker||assigned!==actor)return {status:403,code:'ACCOUNT_NOT_ASSIGNED'};
+    }
+    let previous;
+    try{previous=c.account_notes_json?JSON.parse(c.account_notes_json):[]}
+    catch{return {status:503,code:'ACCOUNT_NOTES_UNREADABLE'}}
+    if(!Array.isArray(previous)||previous.some(n=>!n||typeof n!=='object'))
+     return {status:503,code:'ACCOUNT_NOTES_UNREADABLE'};
+    const prior=previous.find(n=>n.requestId===requestId);
+    if(prior){
+     if(prior.fingerprint!==fingerprint)return {status:409,code:'ACCOUNT_INTERACTION_IDEMPOTENCY_CONFLICT'};
+     return {status:200,duplicate:true,outcome:prior.outcome,status:String(c.status||''),
+      followUp:c.follow_up||null,researchRequired:prior.outcome==='BAD_NUMBER'};
+    }
+    const cached=(x.ctx.db?.customers||[]).find(z=>String(z.id)===id&&
+     Number(z.tenantId??z.tenant_id)===x.tenant);
+    if(STATUS_BLOCKED.has(String(c.status||'').trim().toLowerCase())||
+     cached?.doNotContact===true||cached?.doNotCall===true||cached?.salesSuppressed===true)
+     return {status:409,code:'ACCOUNT_CONTACT_SUPPRESSED'};
+    const nextStatus=outcome==='DO_NOT_CONTACT'?'Do Not Call':
+     outcome==='BAD_NUMBER'?'Bad Number':String(c.status||'');
+    const nextDue=['DO_NOT_CONTACT','BAD_NUMBER'].includes(outcome)?null:(dueDate||c.follow_up||null);
+    const now=new Date(),createdAt=now.toISOString();
+    const retryNotBefore=outcome==='BAD_NUMBER'?new Date(now.getTime()+15*86400000).toISOString().slice(0,10):null;
+    const record={id:'anote_'+randomUUID().replace(/-/g,''),customerId:id,
+     requestId,fingerprint,outcome,createdAt,authorId:actor,
+     authorName:String(req.user.name||req.user.username||'SBC Account Manager').slice(0,160),
+     note,followUp:dueDate,retryNotBefore,source:'MANUAL_MANAGER_REPORTED'};
+    const notes=[record,...previous].slice(0,100),at=stamp();
+    const [saved]=await conn.query(
+     'UPDATE sbc_customers SET account_notes_json=?,status=?,follow_up=?,updated_at=? WHERE tenant_id=? AND id=? AND assigned_to=?',
+     [JSON.stringify(notes),nextStatus,nextDue,at,x.tenant,id,assigned]);
+    if(saved?.affectedRows!==1)throw Error('ACCOUNT_INTERACTION_NOT_PERSISTED');
+    const activity=eventData(id,'account_manual_interaction','Account Manager manually recorded interaction outcome',
+     {requestId,recordId:record.id,outcome,followUp:dueDate,assignedTo:assigned,
+      actorId:actor,createdAt,retryNotBefore,manualEntry:true,contactSent:false,phoneCallPlaced:false},
+     x.tenant);
+    await conn.query(activity.sql,activity.params);
+    return {status:200,duplicate:false,record,notes,outcome,status:nextStatus,
+     followUp:nextDue,researchRequired:outcome==='BAD_NUMBER',retryNotBefore};
+   });
+   if(result.status!==200)return fail(res,result.status,result.code);
+   if(!result.duplicate){
+    const cached=(x.ctx.db?.customers||[]).find(c=>String(c.id)===id&&
+     Number(c.tenantId??c.tenant_id)===x.tenant);
+    if(cached){
+     cached.status=result.status;cached.followUp=result.followUp;cached.followUpAt=result.followUp;
+     cached.accountNotes=result.notes;
+     if(result.outcome==='DO_NOT_CONTACT')cached.doNotContact=true;
+     if(result.outcome==='BAD_NUMBER')cached.salesSuppressed=true;
+    }
+   }
+   return res.json({ok:true,durable:true,duplicate:result.duplicate,id,
+    outcome:result.outcome,status:result.status,followUp:result.followUp,
+    researchRequired:result.researchRequired,retryNotBefore:result.retryNotBefore||null,
+    contactSent:false,phoneCallPlaced:false,autoRetryScheduled:false});
+  }catch{return fail(res,503,'ACCOUNT_INTERACTION_SAVE_FAILED')}
+ });
+
 }
 module.exports=register;
