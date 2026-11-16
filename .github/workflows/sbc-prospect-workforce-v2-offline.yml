@@ -15,6 +15,9 @@ on:
       - 'public/sbc-account-manager-v1.html'
       - 'browser_public/sbc-account-manager-v1.html'
       - 'test/sbc-prospect-workforce-v2.test.cjs'
+      - 'test/sbc-prospect-packet-library.test.cjs'
+      - 'enterprise/sbc-prospect-packet-library.cjs'
+      - 'enterprise/sbc-website-production-routes.cjs'
       - 'scripts/sbc-prospect-handoff-v2-rehearsal.cjs'
       - '.github/workflows/sbc-prospect-workforce-v2-offline.yml'
   push:
@@ -23,6 +26,9 @@ on:
       - 'public/sbc-prospect-handoff-v2.*'
       - 'browser_public/sbc-prospect-handoff-v2.*'
       - 'test/sbc-prospect-workforce-v2.test.cjs'
+      - 'test/sbc-prospect-packet-library.test.cjs'
+      - 'enterprise/sbc-prospect-packet-library.cjs'
+      - 'enterprise/sbc-website-production-routes.cjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,11 +43,13 @@ jobs:
           node-version: '22'
       - name: Syntax
         run: |
+          node --check enterprise/sbc-prospect-packet-library.cjs
+          node --check enterprise/sbc-website-production-routes.cjs
           node --check public/sbc-prospect-handoff-v2.js
           node --check public/sbc-prospect-intelligence.js
           node --check scripts/sbc-prospect-handoff-v2-rehearsal.cjs
       - name: Core owner-only audit and workforce research tests
-        run: node --test test/sbc-prospect-intelligence.test.cjs test/sbc-prospect-workforce-v2.test.cjs
+        run: node --test test/sbc-prospect-intelligence.test.cjs test/sbc-prospect-workforce-v2.test.cjs test/sbc-prospect-packet-library.test.cjs
       - name: Full no-network role workflow rehearsal
         run: node scripts/sbc-prospect-handoff-v2-rehearsal.cjs
       - name: Validate GoDaddy asset mirrors
@@ -49,5 +57,7 @@ jobs:
           cmp public/sbc-prospect-handoff-v2.js browser_public/sbc-prospect-handoff-v2.js
           cmp public/sbc-prospect-handoff-v2.css browser_public/sbc-prospect-handoff-v2.css
           cmp public/sbc-prospect-intelligence.js browser_public/sbc-prospect-intelligence.js
+          cmp public/sbc-market-intelligence.js browser_public/sbc-market-intelligence.js
+          cmp public/index.html browser_public/index.html
           for f in lead-research.html sales-caller.html sbc-account-manager-v1.html; do cmp "public/$f" "browser_public/$f"; done
           node scripts/v66-static-mirror-gate.cjs
