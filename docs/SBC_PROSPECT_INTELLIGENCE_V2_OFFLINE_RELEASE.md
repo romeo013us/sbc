@@ -8,7 +8,8 @@
 - **Lorna:** Lead Research Workspace → Research Intelligence → import JSON → type business name → review research checklist. Confirm CRM assignment separately.
 - **Sales Caller:** Sales Caller Workspace → Research Intelligence → import → match business name → review call-prep script and consent reminder. Nothing dials or texts.
 - **Account Manager:** Account Management OS → Research Intelligence → import → match business name → review expansion / scope checklist.
-- **No live validation:** Files import/export locally in signed-in browser sessions. No new CRM persistence or server-side staff permissions.
+- **Owner Research Library:** Save and reopen approved public research through the existing owner-only, tenant-scoped Command Center writer. This does not write CRM customer records or grant staff new server permissions. Actual restart persistence must be confirmed on Published GoDaddy.
+- **No live validation:** Staff files import/export locally in signed-in browser sessions. No new staff account permissions or CRM customer mutations.
 - **No recurring platform bill:** Workforce briefs and JSON handoff are deterministic native SBC code. PageSpeed Insights requests may be throttled once GoDaddy is restored.
 - **Evidence semantics:** Owner-marked is not cryptographically signed. Worker must confirm provenance and assignment with owner. Lighthouse is a synthetic site measurement, not conversion or ranking evidence.
 
@@ -34,9 +35,10 @@ Do not deploy until backups exist. Then:
 
 1. Preview full verified candidate with a non-customer fixture. Confirm owner access and rate limits.
 2. In Published owner workspace, measure one consent-free public website and confirm score values against the provider.
-3. Export the owner-marked research JSON and import it in each role workspace using authorized test accounts. Verify wrong roles, stale packets and mismatched business names fail closed.
-4. Verify tenant isolation, caching, logout clearing, mobile contrast, and no automatic calling, emailing, orders, payments or database writes.
-5. Confirm Published release identity, resolve any 503 errors and record a deployment receipt.
+3. Save one owner-reviewed packet into Research Library, refresh/restart the application and confirm the same record remains accessible. Check cross-tenant access is blocked.
+4. Export the owner-marked research JSON and import it in each role workspace using authorized test accounts. Verify wrong roles, stale packets and mismatched business names fail closed.
+5. Verify tenant isolation, caching, logout clearing, mobile contrast, and no automatic calling, emailing, orders, payments or CRM database writes.
+6. Confirm Published release identity, resolve any 503 errors and record a deployment receipt.
 
 ## Separately authorized follow-on upgrades
 
