@@ -1,0 +1,42 @@
+name: SBC V5 Account Manager First — Revenue Planning and CRM Ownership
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-account-revenue-v5.cjs'
+      - 'enterprise/sbc-website-production-routes.cjs'
+      - 'enterprise/sbc-account-manager-role-gate-v2.cjs'
+      - 'routes/account-portfolios-v1.cjs'
+      - 'public/sbc-account-portfolios-v1.js'
+      - 'browser_public/sbc-account-portfolios-v1.js'
+      - 'public/sbc-account-manager-v1.js'
+      - 'browser_public/sbc-account-manager-v1.js'
+      - 'test/sbc-account-revenue-v5.test.cjs'
+      - 'test/sbc-account-portfolios.test.cjs'
+      - '.github/workflows/sbc-v5-account-manager.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  account-manager-first:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Syntax, mirrored UIs, and scoped role perimeter
+        run: |
+          node --check enterprise/sbc-account-revenue-v5.cjs
+          node --check routes/account-portfolios-v1.cjs
+          node --check enterprise/sbc-account-manager-role-gate-v2.cjs
+          node --check enterprise/sbc-website-production-routes.cjs
+          node --check public/sbc-account-manager-v1.js
+          node --check public/sbc-account-portfolios-v1.js
+          cmp public/sbc-account-manager-v1.js browser_public/sbc-account-manager-v1.js
+          cmp public/sbc-account-portfolios-v1.js browser_public/sbc-account-portfolios-v1.js
+      - name: Install existing Node dependencies without scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: V5 and V1-V4 regression tests
+        run: node --test test/sbc-account-revenue-v5.test.cjs test/sbc-account-portfolios.test.cjs test/sbc-prospect-account-links-v4.test.cjs test/sbc-prospect-opportunity-v3.test.cjs test/sbc-prospect-packet-library.test.cjs test/sbc-prospect-workforce-v2.test.cjs
