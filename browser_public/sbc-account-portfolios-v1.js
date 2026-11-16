@@ -38,6 +38,15 @@ function open(accountId){
   '<h2>SBC Account Manager Portfolios</h2>'+
   '<p>Account Manager first: all new assignments go to active Account Managers. Historical caller assignments remain intact until an owner-authorized transfer. No prior CRM history is removed.</p>'+
   '<div id="sbcPortfolioSummary" role="status">Loading authoritative portfolio counts…</div>'+
+
+  '<section aria-label="Account Manager launch audit" style="border:1px solid #aebdcc;border-radius:12px;padding:16px;margin:16px 0;background:transparent;color:inherit">'+
+   '<h3>Account Manager Launch Readiness · V6</h3>'+
+   '<p>Compare assigned CRM accounts with independent Account/Social ownership. This read-only check never creates, transfers, or exposes a customer account.</p>'+
+   '<button id="sbcManagerReadinessRun" type="button" class="btn">Run Account Manager Readiness Audit</button>'+
+   '<p id="sbcManagerReadinessStatus" role="status" aria-live="polite">Not yet checked. Social permissions remain separately controlled.</p>'+
+   '<div id="sbcManagerReadinessResults"></div>'+
+  '</section>'+
+
   '<form id="sbcPortfolioBatch" style="padding:15px;border:1px solid #d7e1ea;border-radius:12px;margin:18px 0">'+
    '<h3>Assign a batch of business accounts</h3>'+
    '<label>Account manager<select name="managerId" required>'+options+'</select></label>'+
@@ -104,6 +113,46 @@ function open(accountId){
    await refreshSummary();
   }catch(e){status('Follow-up not saved: '+String(e.message||e))}
   finally{b.disabled=false}
+ });
+
+ const auditButton=document.getElementById('sbcManagerReadinessRun');
+ auditButton?.addEventListener('click',async()=>{
+  if(!owner())return;
+  const message=document.getElementById('sbcManagerReadinessStatus');
+  const target=document.getElementById('sbcManagerReadinessResults');
+  auditButton.disabled=true;message.textContent='Reading CRM and Account/Social ownership without changing anything…';
+  target.replaceChildren();
+  try{
+   const result=await request('/launch-readiness');
+   if(!result.audit||result.readOnly!==true||result.writes!==0)throw Error('READINESS_RECEIPT_NOT_VERIFIED');
+   const data=result.audit;
+   message.textContent='Ownership audit: '+String(data.status)+' · '+String(data.observedAt)+
+    '. Does not authorize social access or certify production readiness.';
+   const h=document.createElement('p');h.textContent=
+    'CRM accounts: '+Number(data.crm.total||0)+' · Active manager-owned: '+Number(data.crm.activeAccountManagerAssigned||0)+
+    ' · Unassigned: '+Number(data.crm.unassigned||0)+' · Legacy caller-owned: '+Number(data.crm.legacyCallerAssigned||0)+
+    ' · Invalid assignees: '+Number(data.crm.invalidAssignee||0)+
+    ' · Social ownership records: '+Number(data.social.total||0);
+   target.appendChild(h);
+   const items=document.createElement('ul');
+   for(const issue of data.issues||[]){
+    const row=document.createElement('li');
+    row.textContent=String(issue.code||'REVIEW')+' · '+Number(issue.count||0)+': '+
+     String(issue.description||'Requires owner review');
+    items.appendChild(row);
+   }
+   if(!items.children.length){
+    const item=document.createElement('li');
+    item.textContent='No mismatches found in the returned data. This does not verify live employee authorization.';
+    items.appendChild(item);
+   }
+   target.appendChild(items);
+   const footer=document.createElement('p');footer.textContent=String(data.recommendation||'Review workforce permissions manually.');
+   target.appendChild(footer);
+  }catch(error){
+   message.textContent='Audit unavailable or incomplete: '+String(error.message||error)+
+    '. No readiness approval issued; check the database and staff roles.';
+  }finally{auditButton.disabled=false}
  });
  refreshSummary();
 }
