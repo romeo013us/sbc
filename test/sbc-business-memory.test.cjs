@@ -26,7 +26,7 @@ test('credentials, oversized updates and unapproved memory saves are rejected',(
 });
 function harness({writer=true,saveOk=true}={}){
  let store={},saves=0,queue=Promise.resolve();const handlers={};
- const app={get:(p,...h)=>handlers['GET '+p]=h,put:(p,...h)=>handlers['PUT '+p]=h};
+ const app={get:(p,...h)=>handlers['GET '+p]=h,patch:(p,...h)=>handlers['PATCH '+p]=h};
  const auth=(req,res,next)=>req.user?next():res.status(401).json({ok:false});
  const ownerOnly=(req,res,next)=>req.user?.role==='owner'?next():res.status(403).json({ok:false});
  const serial=job=>{const p=queue.then(job);queue=p.catch(()=>{});return p};
@@ -41,20 +41,20 @@ function harness({writer=true,saveOk=true}={}){
 }
 test('approved owner memory supports revision locking, durable writes and history',async()=>{
  const h=harness(),start=await h.request('GET');assert.equal(start.body.profile.revision,0);assert.equal(h.saves(),0);
- const wrote=await h.request('PUT',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE+'\nOwner note.'});
+ const wrote=await h.request('PATCH',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE+'\nOwner note.'});
  assert.equal(wrote.statusCode,200);assert.equal(wrote.body.profile.revision,1);assert.equal(h.saves(),1);
- assert.equal((await h.request('PUT',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,409);
- const updated=await h.request('PUT',{expectedRevision:1,approved:true,content:DEFAULT_PROFILE+'\nNew owner note.'});
+ assert.equal((await h.request('PATCH',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,409);
+ const updated=await h.request('PATCH',{expectedRevision:1,approved:true,content:DEFAULT_PROFILE+'\nNew owner note.'});
  assert.equal(updated.statusCode,200);assert.equal(updated.body.profile.revision,2);
  const read=await h.request('GET');assert.equal(read.body.revisions[0].revision,1);
 });
 test('owner and tenant boundaries, writer lock and save failures are fail-closed',async()=>{
- const h=harness();assert.equal((await h.request('PUT',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,200);
+ const h=harness();assert.equal((await h.request('PATCH',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,200);
  assert.equal((await h.request('GET',{}, {role:'owner',id:'other',tenantId:1})).body.profile.revision,0);
  assert.equal((await h.request('GET',{}, {role:'owner',id:'ownerA',tenantId:2})).body.profile.revision,0);
  assert.equal((await h.request('GET',{}, {role:'sales',id:'staff',tenantId:1})).statusCode,403);
  assert.equal((await h.request('GET',{},null)).statusCode,401);
- const locked=harness({writer:false});assert.equal((await locked.request('PUT',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,423);
- const failed=harness({saveOk:false});assert.equal((await failed.request('PUT',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,503);
+ const locked=harness({writer:false});assert.equal((await locked.request('PATCH',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,423);
+ const failed=harness({saveOk:false});assert.equal((await failed.request('PATCH',{expectedRevision:0,approved:true,content:DEFAULT_PROFILE})).statusCode,503);
  assert.equal(failed.store().sbcBusinessKnowledgeProfiles,undefined);
 });
