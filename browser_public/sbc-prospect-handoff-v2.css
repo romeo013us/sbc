@@ -1,0 +1,23 @@
+/* SBC Workforce Prospect Research Handoff V2. Independent fixed dialog, high-contrast theme. */
+#sbc-prospect-handoff-launch[hidden]{display:none!important}
+#sbc-prospect-handoff-launch{position:fixed;left:18px;bottom:20px;z-index:3700;background:#126b4a!important;color:#fff!important;border:1px solid #11613d!important;border-radius:10px;font:inherit;font-weight:800;padding:11px 14px;box-shadow:0 8px 22px #001b2255;min-height:44px;cursor:pointer}
+#sbc-prospect-handoff-panel{color-scheme:light!important;background:#f7fafc!important;color:#112d41!important;border:1px solid #91aabd;border-radius:13px;padding:0;width:min(750px,calc(100vw - 22px));max-height:92vh;overflow:auto;box-shadow:0 20px 70px #001c40a1}
+#sbc-prospect-handoff-panel::backdrop{background:#061622b8}
+#sbc-prospect-handoff-panel *{box-sizing:border-box}
+#sbc-prospect-handoff-panel .sbc-handoff-head{padding:16px 20px;background:#10344b!important;color:#fff!important;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#sbc-prospect-handoff-panel .sbc-handoff-head h2{margin:0;color:#fff!important;font-size:1.25rem}
+#sbc-prospect-handoff-panel .sbc-handoff-head button{border:1px solid #b5c9d6;background:#163e55!important;color:#fff!important;font-size:26px;cursor:pointer;border-radius:7px;min-width:38px;min-height:38px}
+#sbc-prospect-handoff-panel .sbc-handoff-body{padding:18px 20px;display:grid;gap:12px;background:#f7fafc!important;color:#12344b!important}
+#sbc-prospect-handoff-panel .sbc-handoff-body :is(p,label,span,strong){color:#12344b!important;line-height:1.5}
+#sbc-prospect-handoff-panel .sbc-handoff-warning{background:#fff4d7!important;border-left:4px solid #a7630a;padding:12px;border-radius:8px;margin:0}
+#sbc-prospect-handoff-panel .sbc-handoff-body label{display:grid;gap:7px;font-weight:750}
+#sbc-prospect-handoff-panel .sbc-handoff-body :is(input,textarea,select){background:#fff!important;color:#102d45!important;-webkit-text-fill-color:#102d45;border:1px solid #8ea9bc!important;border-radius:7px;padding:10px;font:inherit;min-height:40px;width:100%;max-width:100%}
+#sbc-prospect-handoff-panel .sbc-handoff-body textarea{resize:vertical;line-height:1.5}
+#sbc-prospect-handoff-panel .sbc-handoff-body :is(input,textarea,select):focus-visible,#sbc-prospect-handoff-panel button:focus-visible,#sbc-prospect-handoff-launch:focus-visible{outline:3px solid #f2a32f!important;outline-offset:2px}
+#sbc-prospect-handoff-panel .sbc-handoff-actions{display:flex;flex-wrap:wrap;gap:9px}
+#sbc-prospect-handoff-panel .sbc-handoff-actions button{background:#126b4a!important;color:#fff!important;-webkit-text-fill-color:#fff;border:1px solid #176143;border-radius:8px;padding:10px 12px;font:inherit;font-weight:750;cursor:pointer}
+#sbc-prospect-handoff-panel #sbc-handoff-result{border-top:1px solid #b7c6d5;padding-top:12px;display:grid;gap:10px}
+#sbc-prospect-handoff-panel #sbc-handoff-result[hidden]{display:none!important}
+#sbc-prospect-handoff-panel #sbc-handoff-msg{font-weight:750;margin:0;min-height:22px;color:#115b40!important}
+#sbc-prospect-handoff-panel #sbc-handoff-msg[data-error=true]{color:#9c2830!important}
+@media(max-width:620px){#sbc-prospect-handoff-launch{left:9px;bottom:9px;padding:8px 10px;font-size:12px}#sbc-prospect-handoff-panel{width:calc(100vw - 12px);max-height:96vh}#sbc-prospect-handoff-panel .sbc-handoff-body{padding:12px}#sbc-prospect-handoff-panel .sbc-handoff-actions{display:grid}#sbc-prospect-handoff-panel .sbc-handoff-actions button{width:100%}}
