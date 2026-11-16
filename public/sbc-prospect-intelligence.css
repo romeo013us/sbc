@@ -1,0 +1,27 @@
+/* SBC Prospect Intelligence · existing Marketing Hub extension, high contrast */
+.spi{background:#f6f9fc!important;color:#122b3c!important;border:1px solid #b5c9d9;border-radius:14px;padding:22px;margin-top:20px;box-shadow:0 8px 24px #031b3114}
+.spi *{box-sizing:border-box}
+.spi-heading{padding-bottom:14px;border-bottom:1px solid #c6d5df;margin-bottom:14px}
+.spi .spi-kicker{font-size:12px;letter-spacing:.09em;font-weight:800;text-transform:uppercase;color:#176143!important;margin:0}
+.spi h3{font-size:1.3rem;margin:6px 0 8px;color:#102b43!important}
+.spi h4{font-size:1.05rem;margin:0 0 10px;color:#132e43!important}
+.spi p,.spi li,.spi label,.spi span,.spi strong{color:#162f44!important;line-height:1.55}
+.spi label{display:block;font-weight:750;margin:10px 0 5px}
+.spi input,.spi select,.spi textarea{display:block;max-width:100%;width:100%;color:#163044!important;-webkit-text-fill-color:#163044;background:#fff!important;border:1px solid #93adbf!important;border-radius:8px;padding:10px;font:inherit;min-height:40px}
+.spi textarea{line-height:1.55;resize:vertical;min-height:160px}
+.spi input::placeholder,.spi textarea::placeholder{color:#637789!important;opacity:1}
+.spi .spi-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:15px}
+.spi .spi-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:18px 0}
+.spi button{background:#126b4a!important;color:#fff!important;-webkit-text-fill-color:#fff;border:1px solid #136243!important;border-radius:9px;min-height:40px;padding:9px 14px;font:inherit;font-weight:750;cursor:pointer}
+.spi button:disabled{opacity:.6;cursor:wait}
+.spi button:focus-visible,.spi select:focus-visible,.spi input:focus-visible,.spi textarea:focus-visible{outline:3px solid #ec9e33!important;outline-offset:2px}
+.spi .spi-note{background:#eaf3f9!important;border-left:4px solid #266c98;padding:11px 14px;border-radius:6px;font-size:13px;color:#17324a!important}
+.spi-card{background:#fff!important;border:1px solid #bed0dd;border-radius:12px;padding:16px;margin-top:14px}
+.spi-card ul{padding-left:18px;margin:9px 0}
+.spi-table-scroll{overflow-x:auto;max-width:100%}
+.spi table{border-collapse:collapse;width:100%;min-width:440px;background:#fff!important;color:#102b40!important}
+.spi th,.spi td{border-bottom:1px solid #d5e1e8;text-align:left;padding:9px;color:#17354c!important}
+.spi th{font-weight:850;background:#e9f1f6!important}
+.spi-card button{margin-top:10px}
+#spi-status{font-weight:700;max-width:560px}
+@media(max-width:680px){.spi{padding:14px}.spi .spi-fields{grid-template-columns:1fr}.spi .spi-controls{display:grid}.spi .spi-controls button{width:100%}}
