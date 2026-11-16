@@ -6,6 +6,7 @@ on:
       - 'enterprise/sbc-ai-site-handoff.cjs'
       - 'enterprise/sbc-website-production-routes.cjs'
       - 'public/sbc-website-production-v1.js'
+      - 'public/sbc-ai-site-handoff-v1.js'
       - 'test/sbc-ai-site-handoff.test.cjs'
       - '.github/workflows/sbc-ai-site-handoff.yml'
   workflow_dispatch:
@@ -25,5 +26,6 @@ jobs:
           node --check enterprise/sbc-ai-site-handoff.cjs
           node --check enterprise/sbc-website-production-routes.cjs
           node --check public/sbc-website-production-v1.js
+          node --check public/sbc-ai-site-handoff-v1.js
       - name: Validate tenant-safe customer proposal handoff
         run: node --test test/sbc-ai-site-handoff.test.cjs
