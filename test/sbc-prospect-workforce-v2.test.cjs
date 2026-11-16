@@ -97,8 +97,8 @@ test('outreach suppressed when consent status is unknown or opt-out; never initi
  assert.match(allowed,/draft only/i);
 });
 test('owner dashboard loads newly versioned workforce export module rather than stale cached V1',()=>{
- assert.match(file('public/index.html'),/sbc-market-intelligence\.js\?v=20261116-prospect-workforce-v2/);
- assert.match(file('public/sbc-market-intelligence.js'),/sbc-prospect-intelligence\.js\?v=2-workforce/);
+ assert.match(file('public/index.html'),/sbc-market-intelligence\.js\?v=20261116-prospect-offline-v3/);
+ assert.match(file('public/sbc-market-intelligence.js'),/sbc-prospect-intelligence\.js\?v=3-offline/);
  assert.equal(file('public/index.html'),file('browser_public/index.html'));
  assert.equal(file('public/sbc-market-intelligence.js'),file('browser_public/sbc-market-intelligence.js'));
 });
