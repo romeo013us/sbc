@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
 const {Readable}=require('node:stream');
+const {deflateRawSync}=require('node:zlib');
 const vault=require('../enterprise/sbc-ai-zip-proposals.cjs');
 const {register,parseZip}=vault;
 function crc32(buf){
@@ -12,20 +13,20 @@ function crc32(buf){
  for(const b of buf){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0)}
  return (~c)>>>0;
 }
-function zip(files){
+function zip(files,method=0){
  let entries=[],directory=[],offset=0;
  for(const [name,value] of Object.entries(files)){
-  const data=Buffer.from(value),label=Buffer.from(name),crc=crc32(data),head=Buffer.alloc(30);
+  const data=Buffer.from(value),payload=method===8?deflateRawSync(data):data,label=Buffer.from(name),crc=crc32(data),head=Buffer.alloc(30);
   head.writeUInt32LE(0x04034b50,0);head.writeUInt16LE(20,4);head.writeUInt16LE(0,6);
-  head.writeUInt16LE(0,8);head.writeUInt32LE(crc,14);
-  head.writeUInt32LE(data.length,18);head.writeUInt32LE(data.length,22);head.writeUInt16LE(label.length,26);
-  entries.push(head,label,data);
+  head.writeUInt16LE(method,8);head.writeUInt32LE(crc,14);
+  head.writeUInt32LE(payload.length,18);head.writeUInt32LE(data.length,22);head.writeUInt16LE(label.length,26);
+  entries.push(head,label,payload);
   const cd=Buffer.alloc(46);
   cd.writeUInt32LE(0x02014b50,0);cd.writeUInt16LE(20,4);cd.writeUInt16LE(20,6);
-  cd.writeUInt32LE(crc,16);cd.writeUInt32LE(data.length,20);cd.writeUInt32LE(data.length,24);
+  cd.writeUInt16LE(method,10);cd.writeUInt32LE(crc,16);cd.writeUInt32LE(payload.length,20);cd.writeUInt32LE(data.length,24);
   cd.writeUInt16LE(label.length,28);cd.writeUInt32LE(offset,42);
   directory.push(cd,label);
-  offset+=head.length+label.length+data.length;
+  offset+=head.length+label.length+payload.length;
  }
  const cdir=Buffer.concat(directory),end=Buffer.alloc(22);
  end.writeUInt32LE(0x06054b50,0);
@@ -66,6 +67,8 @@ function fixture(){
 test('ZIP parser accepts site assets but does not expose ZIP-bundled test executables',()=>{
  const archive=zip({'README.md':'documentation','index.html':'<html>Hi</html>','assets/style.css':'body{}','tests/test_site.py':'print(1)'});
  const parsed=parseZip(archive);
+ const compressed=parseZip(zip({'index.html':'<html>Compressed proposal</html>','assets/style.css':'body {font:inherit}'},8));
+ assert.equal(compressed.files[0].content.toString(),'<html>Compressed proposal</html>');
  assert.deepEqual(parsed.files.map(x=>x.name),['index.html','assets/style.css']);
  assert.equal(parsed.files[0].content.toString(),'<html>Hi</html>');
 });
@@ -74,6 +77,9 @@ test('ZIP parser blocks traversal, missing index, duplicate entries and malforme
  assert.throws(()=>parseZip(zip({'README.md':'no homepage'})),/ZIP_INDEX_HTML_REQUIRED/);
  assert.throws(()=>parseZip(zip({'index.html':'ok','evil/../../oops.css':'bad'})),/ZIP_UNSAFE_PATH/);
  assert.throws(()=>parseZip(Buffer.from('not a zip')),/ZIP_SIZE_INVALID/);
+ const damaged=zip({'index.html':'valid contents'});
+ damaged[40]^=0x01; // corrupt stored content, retaining the original central-directory CRC
+ assert.throws(()=>parseZip(damaged),/ZIP_CRC_MISMATCH/);
 });
 test('upload once, preview and download from the correct owner-only customer account',async()=>{
  const f=fixture();
