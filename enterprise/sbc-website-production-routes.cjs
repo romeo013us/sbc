@@ -5,6 +5,7 @@ const StudioOwner=require('./website-studio/studio-owner-routes.cjs');
 const AISiteHandoff=require('./sbc-ai-site-handoff.cjs');
 const ChatGPTOs=require('./sbc-chatgpt-os-handoff.cjs');
 const SbcBusinessMemory=require('./sbc-business-memory.cjs');
+const ProspectPacketLibrary=require('./sbc-prospect-packet-library.cjs');
 const {createController}=require('./website-studio/hybrid-ai.cjs');
 function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,paidGuard,hybridAIController,recordGlobalSpend}){
  const respond=(res,e)=>{const code=String(e?.message||e);const status=/TENANT_CONTEXT|NOT_ASSIGNED|OWNER_REQUIRED|ASSIGNEE_INVALID/.test(code)?403:/PAYMENT_EVIDENCE|PREREQUISITES|WEBSITE_NOT_APPROVED|CUSTOMER_MISMATCH|ALREADY_COMPLETED/.test(code)?409:/UNKNOWN_TASK|INVALID|REQUIRED/.test(code)?400:503;return res.status(status).json({ok:false,code})};
@@ -65,6 +66,8 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  // Read-only external ChatGPT handoff: owner-reviewed advice and editable company context only.
  ChatGPTOs.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation});
  SbcBusinessMemory.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation});
+ // Owner-approved public research packet vault: no staff access or CRM data mutations.
+ ProspectPacketLibrary.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation});
  // Hybrid AI is separate from legacy paid-demo generation. Read-only private
  // status and owner-authorized manual upgrade are tenant-scoped and fail closed.
  const hybridAI=hybridAIController||createController({getStore,saveStore,writerReady,requireGlobalCap:true,reserveGlobal:recordGlobalSpend});
