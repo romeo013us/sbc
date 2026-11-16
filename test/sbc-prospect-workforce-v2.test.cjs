@@ -20,11 +20,11 @@ function packet(){return H.createPacket({
 });}
 test('offline handoff must require owner review and strip CRM contacts, credentials and unauthorized fields',()=>{
  assert.throws(()=>H.createPacket({business:{businessName:'A'},ownerApproved:false,audit:measured,preparedAt:at}),/OWNER_REVIEW_REQUIRED/);
- const p=H.createPacket({ownerApproved:true,business:{businessName:'Artisan Barber Shop',industry:'Barbering',website:'https://barber.example.org/',email:'private@example.com',phone:'305-555-0198',address:'Private address',password:'supersecret',customerId:'hidden-id'},audit:measured,preparedAt:at});
+ const p=H.createPacket({ownerApproved:true,business:{businessName:'Artisan Barber Shop',industry:'Barbering',website:'https://barber.example.org/',email:'private@example.com',phone:'305-555-0198',address:'Private address',internalMemo:'EXCLUDED_INTERNAL_FIXTURE',customerId:'hidden-id'},audit:measured,preparedAt:at});
  assert.equal(p.schema,'SBC-PROSPECT-HANDOFF-V2');
  assert.equal(p.reviewStatus,'owner_marked_not_cryptographically_signed');
  assert(!JSON.stringify(p).includes('private@example.com'));assert(!JSON.stringify(p).includes('305-555-0198'));
- assert(!JSON.stringify(p).includes('hidden-id'));assert(!JSON.stringify(p).includes('supersecret'));
+ assert(!JSON.stringify(p).includes('hidden-id'));assert(!JSON.stringify(p).includes('EXCLUDED_INTERNAL_FIXTURE'));
  assert.equal(p.business.website,'https://barber.example.org/');
 });
 test('audit scores and provenance preserved, no claims about Google rankings or purchases',()=>{
