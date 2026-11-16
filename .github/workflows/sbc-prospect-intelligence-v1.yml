@@ -1,0 +1,46 @@
+name: SBC Prospect Intelligence Evidence-Only Gates
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-prospect-intelligence.cjs'
+      - 'enterprise/sbc-market-intelligence.cjs'
+      - 'public/sbc-prospect-intelligence.*'
+      - 'browser_public/sbc-prospect-intelligence.*'
+      - 'public/sbc-market-intelligence.js'
+      - 'browser_public/sbc-market-intelligence.js'
+      - 'test/sbc-prospect-intelligence.test.cjs'
+      - '.github/workflows/sbc-prospect-intelligence-v1.yml'
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-prospect-intelligence.cjs'
+      - 'enterprise/sbc-market-intelligence.cjs'
+      - 'public/sbc-prospect-intelligence.*'
+      - 'browser_public/sbc-prospect-intelligence.*'
+      - 'test/sbc-prospect-intelligence.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-privacy-and-website-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify source syntax
+        run: |
+          node --check enterprise/sbc-prospect-intelligence.cjs
+          node --check enterprise/sbc-market-intelligence.cjs
+          node --check public/sbc-prospect-intelligence.js
+          node --check public/sbc-market-intelligence.js
+      - name: Verify truthful website audits, owner isolation and six workflow outputs
+        run: node --test test/sbc-prospect-intelligence.test.cjs
+      - name: Confirm browser and public mirrors remain identical
+        run: |
+          cmp public/sbc-prospect-intelligence.js browser_public/sbc-prospect-intelligence.js
+          cmp public/sbc-prospect-intelligence.css browser_public/sbc-prospect-intelligence.css
+          cmp public/sbc-market-intelligence.js browser_public/sbc-market-intelligence.js
