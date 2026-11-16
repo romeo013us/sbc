@@ -12,6 +12,7 @@ on:
       - 'browser_public/*.html'
       - 'test/sbc-chatgpt-os-handoff.test.cjs'
       - 'test/sbc-business-memory.test.cjs'
+      - 'test/sbc-chatgpt-os-contrast.test.cjs'
       - '.github/workflows/sbc-chatgpt-os-owner-memory.yml'
   push:
     branches: [a-sbc-master]
@@ -22,6 +23,7 @@ on:
       - 'browser_public/sbc-chatgpt-os-v1.*'
       - 'test/sbc-chatgpt-os-handoff.test.cjs'
       - 'test/sbc-business-memory.test.cjs'
+      - 'test/sbc-chatgpt-os-contrast.test.cjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,7 +43,7 @@ jobs:
           node --check public/sbc-chatgpt-os-v1.js
           node --check enterprise/sbc-website-production-routes.cjs
       - name: Test owner approval, zero automated transfer, tenants and versions
-        run: node --test test/sbc-chatgpt-os-handoff.test.cjs test/sbc-business-memory.test.cjs
+        run: node --test test/sbc-chatgpt-os-handoff.test.cjs test/sbc-business-memory.test.cjs test/sbc-chatgpt-os-contrast.test.cjs
       - name: Verify exact published/browser mirror matches
         run: |
           cmp public/sbc-chatgpt-os-v1.js browser_public/sbc-chatgpt-os-v1.js
