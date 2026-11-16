@@ -4,11 +4,13 @@ const {register}=require('../enterprise/sbc-chatgpt-os-handoff.cjs');
 const {sectionFor,buildPrompt,redact}=require('../public/sbc-chatgpt-os-v1.js');
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+const focus=fs.readFileSync(path.join(root,'public/sbc-command-center-focus-v1.js'),'utf8');
 const routes=fs.readFileSync(path.join(root,'enterprise/sbc-website-production-routes.cjs'),'utf8');
 test('global assistant is installed outside Website Studio and guarded by existing owner route auth',()=>{
  assert.match(html,/id="sbc-chatgpt-os-launch"[^>]*hidden/);
- assert.match(html,/src="\/sbc-chatgpt-os-v1\.js\?/);
- assert.match(html,/href="\/sbc-chatgpt-os-v1\.css\?/);
+ assert.match(html,/sbc-command-center-focus-v1\.js/);
+ assert.match(focus,/sbc-chatgpt-os-v1\.js/);
+ assert.match(focus,/sbc-chatgpt-os-v1\.css/);
  assert.match(routes,/require\('\.\/sbc-chatgpt-os-handoff\.cjs'\)/);
  assert.match(routes,/ChatGPTOs\.register\(app,/);
 });
