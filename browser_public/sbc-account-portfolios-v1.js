@@ -30,13 +30,13 @@ async function refreshSummary(){
 }
 function open(accountId){
  if(!owner())return;
- const db=window.state?.data||{},people=(db.users||[]).filter(u=>u.active!==false&&u.role==='caller');
+ const db=window.state?.data||{},people=(db.users||[]).filter(u=>u.active!==false&&u.role==='account_manager');
  const account=(db.customers||[]).find(c=>String(c.id)===String(accountId))||null;
  const id=account?String(account.id):'',prior=String(account?.assignedTo||account?.assigned_to||'');
  const options=people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name||p.username||p.id)+'</option>').join('');
  const html='<section id="sbcPortfolioDialog" style="max-width:950px;padding:12px 4px">'+
   '<h2>SBC Account Manager Portfolios</h2>'+
-  '<p>These are enduring customer relationships, not temporary call lists. New batches assign only unowned accounts; transfers preserve the original account record, history, and follow-ups.</p>'+
+  '<p>Account Manager first: all new assignments go to active Account Managers. Historical caller assignments remain intact until an owner-authorized transfer. No prior CRM history is removed.</p>'+
   '<div id="sbcPortfolioSummary" role="status">Loading authoritative portfolio counts…</div>'+
   '<form id="sbcPortfolioBatch" style="padding:15px;border:1px solid #d7e1ea;border-radius:12px;margin:18px 0">'+
    '<h3>Assign a batch of business accounts</h3>'+
