@@ -45,6 +45,7 @@ async function withTx(ctx,callback){
   await conn.beginTransaction();inTx=true;
   const value=await callback(conn);
   if(value?.status&&value.status!==200){await conn.rollback();inTx=false;return value;}
+  if(value?.readOnly===true){await conn.rollback();inTx=false;return value;}
   await conn.commit();inTx=false;
   return value;
  }catch(error){
@@ -377,7 +378,7 @@ function register(app,{auth,getContext}){
     const prior=previous.find(n=>n.requestId===requestId);
     if(prior){
      if(prior.fingerprint!==fingerprint)return {status:409,code:'ACCOUNT_INTERACTION_IDEMPOTENCY_CONFLICT'};
-     return {status:200,duplicate:true,outcome:prior.outcome,status:String(c.status||''),
+     return {status:200,readOnly:true,duplicate:true,outcome:prior.outcome,accountStatus:String(c.status||''),
       followUp:c.follow_up||null,researchRequired:prior.outcome==='BAD_NUMBER'};
     }
     const cached=(x.ctx.db?.customers||[]).find(z=>String(z.id)===id&&
@@ -404,7 +405,7 @@ function register(app,{auth,getContext}){
       actorId:actor,createdAt,retryNotBefore,manualEntry:true,contactSent:false,phoneCallPlaced:false},
      x.tenant);
     await conn.query(activity.sql,activity.params);
-    return {status:200,duplicate:false,record,notes,outcome,status:nextStatus,
+    return {status:200,duplicate:false,record,notes,outcome,accountStatus:nextStatus,
      followUp:nextDue,researchRequired:outcome==='BAD_NUMBER',retryNotBefore};
    });
    if(result.status!==200)return fail(res,result.status,result.code);
@@ -412,14 +413,14 @@ function register(app,{auth,getContext}){
     const cached=(x.ctx.db?.customers||[]).find(c=>String(c.id)===id&&
      Number(c.tenantId??c.tenant_id)===x.tenant);
     if(cached){
-     cached.status=result.status;cached.followUp=result.followUp;cached.followUpAt=result.followUp;
+     cached.status=result.accountStatus;cached.followUp=result.followUp;cached.followUpAt=result.followUp;
      cached.accountNotes=result.notes;
      if(result.outcome==='DO_NOT_CONTACT')cached.doNotContact=true;
      if(result.outcome==='BAD_NUMBER')cached.salesSuppressed=true;
     }
    }
    return res.json({ok:true,durable:true,duplicate:result.duplicate,id,
-    outcome:result.outcome,status:result.status,followUp:result.followUp,
+    outcome:result.outcome,status:result.accountStatus,followUp:result.followUp,
     researchRequired:result.researchRequired,retryNotBefore:result.retryNotBefore||null,
     contactSent:false,phoneCallPlaced:false,autoRetryScheduled:false});
   }catch{return fail(res,503,'ACCOUNT_INTERACTION_SAVE_FAILED')}
