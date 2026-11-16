@@ -34,6 +34,10 @@ test('owner assigns batches, customer relationship persists, transfers are audit
      }
      return [[...groups.values()],[]];
     }
+    if(sql.startsWith('SELECT id,business_name,phone,status,assigned_to,follow_up,tenant_id FROM sbc_customers')){
+      return [[...working.filter(c=>c.tenant_id===params[0]&&c.assigned_to===params[1]&&String(c.status).toLowerCase()!=='deleted')
+       .map(c=>({id:c.id,business_name:c.business_name||c.id,phone:c.phone||'',status:c.status,assigned_to:c.assigned_to,follow_up:c.follow_up,tenant_id:c.tenant_id}))],[]];
+    }
     if(sql.startsWith('SELECT id,assigned_to,status,follow_up,tenant_id FROM sbc_customers')){
       if(sql.includes('id IN ('))return [[...working.filter(c=>c.tenant_id===params[0]&&params.slice(1).includes(c.id))],[]];
       if(sql.includes('AND id=?'))return [[...working.filter(c=>c.tenant_id===params[0]&&c.id===params[1])],[]];
@@ -91,6 +95,16 @@ test('owner assigns batches, customer relationship persists, transfers are audit
  try{
   assert.equal((await call('GET',pre+'/summary',null,'guest')).status,401);
   assert.equal((await call('GET',pre+'/summary',null,'m1')).status,403);
+  const myFirst=await call('GET',pre+'/mine',null,'m1');
+  assert.equal(myFirst.status,200);
+  assert.deepEqual(myFirst.data.data.accounts.map(a=>a.id),['c'],'CRM assigned account visible to authenticated manager');
+  assert.equal(myFirst.data.data.source,'AUTHORITATIVE_CRM_ASSIGNMENT');
+  assert.equal((await call('GET',pre+'/mine',null,'other')).status,403);
+  const legacyRead=await call('GET',pre+'/mine',null,'legacy');
+  assert.equal(legacyRead.status,200);
+  assert.equal(legacyRead.data.data.legacyCallerReadOnly,true);
+  assert.deepEqual(legacyRead.data.data.accounts.map(a=>a.id),['legacy-account']);
+
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'m1',amount:2},'m1')).status,403);
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'foreign',amount:2})).status,403);
   assert.equal((await call('POST',pre+'/assign-batch',{managerId:'inactive',amount:2})).status,400);
@@ -104,6 +118,10 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   assert.equal(first.data.assigned,2);
   assert.equal(rows.find(x=>x.id==='a').assigned_to,'m1');
   assert.equal(rows.find(x=>x.id==='b').assigned_to,'m1','existing customers must retain assigned account manager');
+  const assignedMine=await call('GET',pre+'/mine',null,'m1');
+  assert.equal(assignedMine.status,200);
+  assert.deepEqual(new Set(assignedMine.data.data.accounts.map(a=>a.id)),new Set(['a','b','c']));
+
   assert.equal(rows.find(x=>x.id==='e').assigned_to,'','DNC must never be assigned by auto batch');
   assert.equal(rows.find(x=>x.id==='d').assigned_to,'','no foreign-tenant records touched');
   const second=await call('POST',pre+'/assign-batch',{managerId:'m2',amount:2});
