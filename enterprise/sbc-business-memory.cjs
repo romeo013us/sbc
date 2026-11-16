@@ -67,7 +67,7 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   return res.json({ok:true,profile:view(record),revisions:(record?.history||[]).slice(0,10).map(h=>({revision:h.revision,updatedAt:h.updatedAt,content:h.content})),
    autoSync:false,externalAIConnected:false});
  });
- app.put(PATH,auth,ownerOnly,async(req,res)=>{
+ app.patch(PATH,auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');const id=identity(req);
   if(!id)return res.status(403).json({ok:false,code:'BUSINESS_MEMORY_OWNER_TENANT_REQUIRED'});
   const input=validate(req.body);
