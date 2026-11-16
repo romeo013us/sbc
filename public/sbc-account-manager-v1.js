@@ -33,6 +33,7 @@
   const section=$('sbcManagerQuickActions');
   if(!section)return;
   section.hidden=state.role!=='account_manager';
+  $('noteForm').hidden=state.role==='account_manager';
   if(section.hidden)return;
   const form=$('sbcManagerOutcomeForm'),blocked=blockedAccount(account);
   form.reset();pendingQuick=null;
