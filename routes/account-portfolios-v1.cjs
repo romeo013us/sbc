@@ -5,6 +5,7 @@
 const {randomUUID}=require('node:crypto');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
 const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');
+const AccountManagerReadiness=require('../enterprise/sbc-account-manager-readiness-v6.cjs');
 const STATUS_BLOCKED=new Set(['do not call','do not contact','dnc','opt out','unsubscribe','lost']);
 const fail=(res,status,code)=>res.status(status).json({ok:false,code});
 function safeTenant(req){
@@ -97,6 +98,31 @@ function register(app,{auth,getContext}){
     socialPermissionsNotInferred:true,legacyCallerReadOnly:req.user.role==='caller'}});
   }catch{return fail(res,503,'ACCOUNT_PORTFOLIO_MINE_UNAVAILABLE')}
   finally{try{conn?.release()}catch(_){}}
+ });
+
+ // V6 owner-only evidence: compares independent CRM vs Social ownership.
+ // Never mutates staff, customers, social permissions, products or orders.
+ app.get('/api/v6606/crm/account-portfolios/launch-readiness',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  const x=context(req,res);if(x.denied)return;
+  if(req.user.role!=='owner'||req.user.active===false)
+   return fail(res,403,'OWNER_REQUIRED');
+  let conn;
+  try{
+   conn=await x.ctx.mysqlPool.getConnection();
+   const [crmRows]=await conn.query(
+    'SELECT id,assigned_to,status,tenant_id FROM sbc_customers WHERE tenant_id=? ORDER BY id ASC LIMIT ?',
+    [x.tenant,5001]);
+   const [socialRows]=await conn.query(
+    'SELECT customer_id,manager_id,tenant_id FROM sbc_account_ownership_v1 WHERE tenant_id=? ORDER BY customer_id ASC LIMIT ?',
+    [x.tenant,5001]);
+   const audit=AccountManagerReadiness({
+    crmRows,socialRows,users:x.ctx.db?.users||[],tenantId:x.tenant,observedAt:Date.now()
+   });
+   return res.json({ok:true,audit,readOnly:true,source:'LIVE_CRM_AND_SOCIAL_DB_SNAPSHOT',
+    permission:'OWNER_ONLY',writes:0});
+  }catch{return fail(res,503,'ACCOUNT_MANAGER_READINESS_UNAVAILABLE')}
+  finally{try{conn?.release()}catch(_){ }}
  });
  app.get('/api/v6606/crm/account-portfolios/summary',auth,async(req,res)=>{
   const x=context(req,res);
