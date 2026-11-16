@@ -32,7 +32,8 @@ footer{font-size:12px;color:#839ab1;text-align:center;margin-top:24px}
 @media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sections{grid-template-columns:1fr}.full{grid-column:auto}}
 @media(max-width:480px){.grid,.formgrid{grid-template-columns:1fr}header{padding:18px}main{padding:0 14px 40px}.panel{padding:17px}}
 [hidden]{display:none!important}
-</style></head><body>
+</style><link rel="stylesheet" href="/sbc-chatgpt-os-v1.css?v=66.0.130">
+</head><body>
 <header><div class="brand"><div class="logo">SBC</div><div><strong>SUCCESSFUL BY CHOICE</strong><div class="sub">HR DEPARTMENT · People Operations</div></div></div>
 <div class="actions"><span class="tag">OWNER-GOVERNED</span><button id="signout" hidden>Sign Out</button></div></header>
 <main><div id="message" role="status" aria-live="polite"></div>
@@ -142,4 +143,5 @@ $('drafts').onclick=e=>{const b=e.target.closest('button[data-draft]');if(!b)ret
  await reload();}catch(e){showLogin();notice('Sign in to access the HR Department.');}})();
 })();
 </script>
+<script defer src="/sbc-chatgpt-os-v1.js?v=66.0.130"></script>
 </body></html>

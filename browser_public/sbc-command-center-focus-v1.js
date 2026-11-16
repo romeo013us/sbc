@@ -97,6 +97,16 @@ function install(){
  }
  setCompact(compact());
  watchPage();
+ // Additive owner assistant bootstrap: reuse the existing JS/CSS bundle count of
+ // index.html. The assistant has its own server-side owner and tenant guards.
+ if(!document.getElementById('sbc-chatgpt-os-script-loader')){
+  var style=document.createElement('link');style.id='sbc-chatgpt-os-css-loader';
+  style.rel='stylesheet';style.href='/sbc-chatgpt-os-v1.css?v=66.0.130';
+  document.head.appendChild(style);
+  var script=document.createElement('script');script.id='sbc-chatgpt-os-script-loader';
+  script.src='/sbc-chatgpt-os-v1.js?v=66.0.130';script.async=true;
+  document.body.appendChild(script);
+ }
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 window.SBC_COMMAND_FOCUS=Object.freeze({enable:function(){setCompact(true);},showAll:function(){setCompact(false);}});
