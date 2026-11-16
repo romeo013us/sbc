@@ -7,6 +7,7 @@ const ChatGPTOs=require('./sbc-chatgpt-os-handoff.cjs');
 const SbcBusinessMemory=require('./sbc-business-memory.cjs');
 const ProspectPacketLibrary=require('./sbc-prospect-packet-library.cjs');
 const ProspectAccountLinksV4=require('./sbc-prospect-account-links-v4.cjs');
+const AccountRevenueV5=require('./sbc-account-revenue-v5.cjs');
 const {createController}=require('./website-studio/hybrid-ai.cjs');
 function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,paidGuard,hybridAIController,recordGlobalSpend}){
  const respond=(res,e)=>{const code=String(e?.message||e);const status=/TENANT_CONTEXT|NOT_ASSIGNED|OWNER_REQUIRED|ASSIGNEE_INVALID/.test(code)?403:/PAYMENT_EVIDENCE|PREREQUISITES|WEBSITE_NOT_APPROVED|CUSTOMER_MISMATCH|ALREADY_COMPLETED/.test(code)?409:/UNKNOWN_TASK|INVALID|REQUIRED/.test(code)?400:503;return res.status(status).json({ok:false,code})};
@@ -71,6 +72,8 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  ProspectPacketLibrary.register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation});
  // V4: owner-approved research linked to an existing tenant-scoped CRM account.
  ProspectAccountLinksV4.register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,serializeSiteMutation});
+ // V5: read-only CRM account revenue plan; no billing, quoting, contacts or data mutation.
+ AccountRevenueV5.register(app,{auth,ownerOnly,requireTenant,db,getStore,writerReady});
  // Hybrid AI is separate from legacy paid-demo generation. Read-only private
  // status and owner-authorized manual upgrade are tenant-scoped and fail closed.
  const hybridAI=hybridAIController||createController({getStore,saveStore,writerReady,requireGlobalCap:true,reserveGlobal:recordGlobalSpend});
