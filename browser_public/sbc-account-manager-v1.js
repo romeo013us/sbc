@@ -22,8 +22,13 @@
   const identity=await me.json().catch(()=>({}));
   if(!me.ok||identity.ok!==true||!['owner','account_manager'].includes(identity.user?.role)||identity.user.active===false)throw Error('ACCOUNT_MANAGER_AUTHORIZATION_REQUIRED');
   state.role=identity.user.role;
-  const p=await api('/api/account-social/v1/portfolio');state.accounts=p.accounts||[];
-  const q=await api('/api/account-social/v1/research/queue');state.handoffs=q||[];
+  const p=state.role==='account_manager'?
+   await api('/api/v6606/crm/account-portfolios/mine'):
+   await api('/api/account-social/v1/portfolio');
+  state.accounts=p.accounts||[];
+  // Social Studio maintains separate permissions; its queue cannot hide valid CRM accounts.
+  const q=await api('/api/account-social/v1/research/queue').catch(()=>[]);
+  state.handoffs=q||[];
   $('rolePill').textContent=(state.role==='owner'?'OWNER':'ACCOUNT MANAGER')+' · TENANT '+p.tenantId;
   $('metrics').innerHTML=[['Managed accounts',state.accounts.length],['Research handoffs',state.handoffs.length],['DNC / suppressions',state.accounts.filter(x=>x.doNotContact).length],['Connected channels','Verify in Social Studio']].map(([label,v])=>`<div class="metric"><strong>${escapeHtml(v)}</strong><small>${escapeHtml(label)}</small></div>`).join('');
   $('accountGrid').innerHTML=state.accounts.length?state.accounts.map(a=>`<article class="account-card"><span class="status">${escapeHtml(a.status||'Account')}</span><h3>${escapeHtml(a.businessName)}</h3><div class="meta">Account: ${escapeHtml(a.id)}</div><div class="meta">${escapeHtml(a.phone||'No verified phone')}</div><button class="button secondary" data-action="open-account" data-id="${escapeHtml(a.id)}">Open account</button></article>`).join(''):'<p class="empty">No accounts have been assigned to your authenticated session. No sample customer data is displayed.</p>';
@@ -34,9 +39,22 @@
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
-  if(state.role==='account_manager'){void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
+  if(state.role==='account_manager'){void loadAccountHistoryV5(id);void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
  }
 
+
+ async function loadAccountHistoryV5(id){
+  try{
+   const response=await fetch('/api/v6606/crm/account-portfolios/'+encodeURIComponent(id)+'/history',
+    {credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const data=await response.json().catch(()=>({}));
+   if(state.selected!==id)return;
+   if(!response.ok||data.ok!==true)throw Error(data.code||'CRM_HISTORY_UNAVAILABLE');
+   $('timeline').innerHTML=(data.notes||[]).length?data.notes.map(n=>'<div class="timeline-row"><span class="tag">CRM note</span> '+
+    escapeHtml(n.note)+'<div class="muted">'+escapeHtml(n.createdAt)+' · '+escapeHtml(n.authorName)+'</div></div>').join(''):
+    '<p class="empty">No CRM account notes yet. All notes are attached to this existing business record.</p>';
+  }catch(error){if(state.selected===id)$('timeline').textContent='CRM history not confirmed: '+String(error.message||error)}
+ }
  async function loadAccountResearchV4(id){
   let host=$('sbcAccountResearchV4');
   if(!host){host=document.createElement('section');host.id='sbcAccountResearchV4';host.className='account-card';$('accountDetail').appendChild(host);}
@@ -122,7 +140,22 @@
  document.querySelectorAll('[data-t]').forEach(x=>x.dataset.en=x.textContent);
  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>page(b.dataset.view)));
  $('refresh').addEventListener('click',load);$('closeDetail').addEventListener('click',()=>{$('accountDetail').hidden=true});
- $('noteForm').addEventListener('submit',async e=>{e.preventDefault();if(!state.selected)return;try{const form=e.target,summary=form.elements.summary.value.trim();await api(`/api/account-social/v1/accounts/${encodeURIComponent(state.selected)}/interactions`,{method:'POST',body:{kind:'note',summary}});form.reset();await load();message('Account timeline updated.')}catch(error){message(error.message,true)}});
+ $('noteForm').addEventListener('submit',async e=>{e.preventDefault();if(!state.selected)return;
+  try{const form=e.target,summary=form.elements.summary.value.trim(),id=state.selected;
+   if(state.role==='account_manager'){
+    if(summary.length<12)throw Error('Write a specific account note of at least 12 characters.');
+    const response=await fetch('/api/v6606/crm/account-portfolios/'+encodeURIComponent(id)+'/note',
+     {method:'POST',credentials:'same-origin',cache:'no-store',
+      headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({note:summary})});
+    const saved=await response.json().catch(()=>({}));
+    if(!response.ok||saved.ok!==true||saved.durable!==true)throw Error(saved.code||'NOTE_NOT_PERSISTED');
+    form.reset();await loadAccountHistoryV5(id);message('CRM account note saved. No customer message sent.');
+   }else{
+    await api('/api/account-social/v1/accounts/'+encodeURIComponent(id)+'/interactions',{method:'POST',body:{kind:'note',summary}});
+    form.reset();await load();message('Account timeline updated.');
+   }
+  }catch(error){message(error.message,true)}
+ });
  $('socialCustomer').addEventListener('change',()=>socialLoad().catch(e=>message(e.message,true)));
  $('socialForm').addEventListener('submit',async e=>{e.preventDefault();try{const f=e.target;
   await api('/api/account-social/v1/posts',{method:'POST',body:{channelId:f.elements.channelId.value,body:f.elements.body.value,mediaUrl:f.elements.mediaUrl.value,ctaUrl:f.elements.ctaUrl.value}});
