@@ -74,7 +74,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.json({ok:true,customerId:id,revision:saved?.revision||0,variants:saved?.variants||{},prompt:buildPrompt(customer),mode:'CHATGPT_MANUAL_HANDOFF',automated:false});
   }catch(e){return fail(res,e)}
  });
- app.put(ROOT,auth,ownerOnly,async(req,res)=>{
+ app.patch(ROOT,auth,ownerOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!writerReady())return fail(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
   try{
