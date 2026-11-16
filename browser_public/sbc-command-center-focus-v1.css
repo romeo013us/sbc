@@ -99,7 +99,7 @@ body :is(#content,#modalBody) :is(button,input,select,textarea):disabled {cursor
 body #modal .modal-head :is(h1,h2,h3) {color:inherit!important;line-height:1.32;}
 body #modal .modal-head .icon-btn {min-width:42px;min-height:42px;}
 @media(max-width:640px){
- body #modal:not(.hidden) .modal-card {width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important;max-height:96dvh;}
+ body #modal:not(.hidden) .modal-card {width:min(100%, calc(100vw - 14px))!important;max-width:100%!important;max-height:96dvh;}
 }
 /* The ZIP proposal desk intentionally uses a predictable light reading surface,
    including when the owner has selected a dark OS shell. */
