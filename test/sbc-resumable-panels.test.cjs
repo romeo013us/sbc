@@ -23,6 +23,11 @@ test('safe common modal recovery is registered without modifying the transaction
  assert.match(ui,/MutationObserver\(sync\)/);
  assert.match(ui,/ownerKey/);
 });
+test('resume control remains hidden until safe to restore, including in dark mode',()=>{
+ const css=read('public/sbc-chatgpt-os-v1.css');
+ assert.match(css,/#sbc-last-panel-resume\[hidden\]\{display:none!important\}/);
+ assert.equal(css,read('browser_public/sbc-chatgpt-os-v1.css'));
+});
 test('restore policy denies cross-session, payment and credential modals',()=>{
  assert.equal(canResumeModal({sameSession:true,authorized:true,hasContent:true,title:'View contact details'}),true);
  for(const changes of [
