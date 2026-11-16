@@ -67,3 +67,7 @@
 #sbc-chatgpt-os-panel .sbc-chatgpt-os-history-row small{color:#53687b!important}
 #sbc-chatgpt-os-panel :is(button,input,textarea,select,a,summary):focus-visible{outline:3px solid #f9ac47!important;outline-offset:2px}
 @media(max-width:650px){#sbc-chatgpt-os-panel{width:calc(100vw - 16px);max-width:calc(100vw - 16px)}}
+
+/* Owner panel resume stays hidden until a safely recoverable modal was closed. */
+#sbc-last-panel-resume[hidden]{display:none!important}
+#sbc-last-panel-resume:focus-visible{outline:3px solid #f9ac47!important;outline-offset:2px}

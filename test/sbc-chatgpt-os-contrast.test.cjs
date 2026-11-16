@@ -15,8 +15,8 @@ test('high-contrast owner desk CSS is byte-identical in both deployment frontend
  assert.equal(css,asset('browser_public/sbc-chatgpt-os-v1.css'));
 });
 test('dashboard bootstrap cache-busts the updated contrast stylesheet',()=>{
- assert.match(asset('public/sbc-command-center-focus-v1.js'),/sbc-chatgpt-os-v1\.css\?v=66\.0\.131-contrast/);
- assert.match(asset('public/index.html'),/sbc-command-center-focus-v1\.js\?v=20261116-chatgpt-contrast/);
+ assert.match(asset('public/sbc-command-center-focus-v1.js'),/sbc-chatgpt-os-v1\.css\?v=66\.0\.132-resume/);
+ assert.match(asset('public/index.html'),/sbc-command-center-focus-v1\.js\?v=20261116-panel-resume/);
  assert.equal(asset('public/sbc-command-center-focus-v1.js'),asset('browser_public/sbc-command-center-focus-v1.js'));
  assert.equal(asset('public/index.html'),asset('browser_public/index.html'));
 });

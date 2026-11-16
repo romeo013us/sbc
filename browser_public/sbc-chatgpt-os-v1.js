@@ -55,10 +55,17 @@
    'Do not claim to make changes or contact customers; the owner must explicitly review and apply suggestions.'
   ].join('\n');
  }
- if(typeof module==='object'&&module.exports)module.exports={sectionFor,buildPrompt,redact,TASKS};
+
+ // Never recreate a payment authorization or restore a credential form via stale DOM.
+ function canResumeModal({sameSession=false,authorized=false,hasContent=false,title='',hasCredentials=false}={}){
+  if(!sameSession||!authorized||!hasContent||hasCredentials)return false;
+  return !/(?:check[\s-]?out|square|payment|refund|invoice|charge|subscription|billing|card|password|secret|api[\s-]?key|token|credential|sign[\s-]?in|login|authenticate)/i.test(String(title||''));
+ }
+ if(typeof module==='object'&&module.exports)module.exports={sectionFor,buildPrompt,redact,TASKS,canResumeModal};
  if(!root||!root.document||root.SBC_CHATGPT_OS)return;
  const doc=root.document,$=id=>doc.getElementById(id);
- let dialog=null,launcher=null,active='dashboard',validOwner=false,profile=null,requestId='';
+ let dialog=null,launcher=null,active='dashboard',validOwner=false,profile=null,requestId='',draftStarted=false,ownerKey='';
+ let clearLastPanelRecovery=()=>{};
  function message(text,error=false){const e=$('sbc-chatgpt-os-message');if(e){e.textContent=text;e.dataset.error=error?'true':'false'}}
  function viewNow(){
   try{if(typeof state==='object'&&state?.view)return String(state.view)}catch{}
@@ -159,7 +166,7 @@
    '<label class="sbc-chatgpt-os-check"><input type="checkbox" id="sbc-chatgpt-os-include-memory" disabled> Include my owner-approved SBC Business Memory in this prompt</label>'+
    '<details id="sbc-chatgpt-os-memory-details"><summary>✦ SBC Business Memory &amp; Owner Profile <small id="sbc-chatgpt-os-memory-revision">Loading…</small></summary><p>Edit the curated company reference below. This does not synchronize with ChatGPT account Memory. Keep secrets and sensitive personal information out.</p><label>Owner-editable business profile<textarea id="sbc-chatgpt-os-memory-edit" rows="12" maxlength="10000"></textarea></label><button type="button" id="sbc-chatgpt-os-memory-save">Save approved business memory</button></details>'+
    '<label>Exact ChatGPT prompt — review before copying<textarea id="sbc-chatgpt-os-prompt" rows="9" readonly></textarea></label>'+
-   '<div class="sbc-chatgpt-os-actions"><button type="button" id="sbc-chatgpt-os-copy">Copy prompt</button><a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Open ChatGPT ↗</a></div>'+
+   '<div class="sbc-chatgpt-os-actions"><button type="button" id="sbc-chatgpt-os-new-brief">Start new brief</button><button type="button" id="sbc-chatgpt-os-copy">Copy prompt</button><a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Open ChatGPT ↗</a></div>'+
    '<div class="sbc-chatgpt-os-divider"></div><h3>Bring the answer back to Command Center</h3><p>Paste, review, and save the ChatGPT reply as advice. Nothing is executed.</p>'+
    '<label>ChatGPT response<textarea id="sbc-chatgpt-os-response" rows="5" maxlength="12000"></textarea></label>'+
    '<label class="sbc-chatgpt-os-check"><input type="checkbox" id="sbc-chatgpt-os-reviewed"> I reviewed this response and approve saving it as advice only.</label>'+
@@ -168,6 +175,8 @@
    '<details><summary>Owner Review History</summary><div id="sbc-chatgpt-os-history">Loading…</div></details></div>';
   doc.body.appendChild(dialog);
   $('sbc-chatgpt-os-close').addEventListener('click',()=>dialog.close());
+  $('sbc-chatgpt-os-new-brief').addEventListener('click',startNewBrief);
+  dialog.addEventListener('close',()=>{if(validOwner&&launcher)launcher.textContent='↶ Resume ChatGPT';});
   $('sbc-chatgpt-os-task').addEventListener('change',()=>{requestId='';draft()});
   $('sbc-chatgpt-os-notes').addEventListener('input',()=>{requestId='';draft()});
   $('sbc-chatgpt-os-response').addEventListener('input',()=>{requestId=''});
@@ -175,18 +184,75 @@
   $('sbc-chatgpt-os-memory-save').addEventListener('click',saveMemory);
   $('sbc-chatgpt-os-copy').addEventListener('click',copy);
   $('sbc-chatgpt-os-save').addEventListener('click',saveReview);
-  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+  // Clicking beside the dialog is not an instruction to discard the draft.
+  // Escape or the explicit close button minimizes; Ask ChatGPT resumes it.
  }
- function open(){if(!validOwner)return;
-  setup();active=viewNow();const section=sectionFor(active);
-  $('sbc-chatgpt-os-section').value=section;tasks(section);requestId='';profile=null;
-  $('sbc-chatgpt-os-include-memory').checked=false;$('sbc-chatgpt-os-include-memory').disabled=true;
-  $('sbc-chatgpt-os-notes').value='';$('sbc-chatgpt-os-response').value='';$('sbc-chatgpt-os-reviewed').checked=false;
-  draft();message('Copy your prompt and work in ChatGPT. You may paste and save the reviewed response here.');
-  if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
-  readMemory();history();
+ function startNewBrief(){
+  if(!validOwner||!dialog)return;
+  const hasUnsaved=!!($('sbc-chatgpt-os-notes')?.value.trim()||$('sbc-chatgpt-os-response')?.value.trim()||$('sbc-chatgpt-os-reviewed')?.checked);
+  if(hasUnsaved&&!root.confirm('Start a new ChatGPT brief? This discards the current unsaved prompt and response, but not your saved Business Memory or Review History.'))return;
+  active=viewNow();$('sbc-chatgpt-os-section').value=sectionFor(active);tasks(sectionFor(active));
+  $('sbc-chatgpt-os-notes').value='';$('sbc-chatgpt-os-response').value='';
+  $('sbc-chatgpt-os-reviewed').checked=false;$('sbc-chatgpt-os-include-memory').checked=false;
+  requestId='';draft();message('New brief ready. Previous saved Business Memory and Owner Review History were not changed.');
+ }
+ function open(){
+  if(!validOwner)return;
+  setup();
+  if(!draftStarted){
+   draftStarted=true;active=viewNow();const section=sectionFor(active);
+   $('sbc-chatgpt-os-section').value=section;tasks(section);requestId='';
+   $('sbc-chatgpt-os-include-memory').checked=false;$('sbc-chatgpt-os-include-memory').disabled=true;
+   $('sbc-chatgpt-os-notes').value='';$('sbc-chatgpt-os-response').value='';$('sbc-chatgpt-os-reviewed').checked=false;
+   draft();message('No private customer records leave SBC automatically. Copy the reviewed prompt to ChatGPT yourself.');
+   readMemory();history();
+  }else{
+   // Deliberately preserve task, typed context, generated prompt, response and
+   // unsaved Business Memory edits on every close/reopen within this owner session.
+   message('Draft restored. Continue where you left off or choose Start new brief.');
+  }
+  if(typeof dialog.showModal==='function'&&!dialog.open)dialog.showModal();
+  else if(!dialog.open)dialog.setAttribute('open','');
+  if(launcher)launcher.textContent='✦ Ask ChatGPT';
+ }
+ function clearDraft(){
+  draftStarted=false;profile=null;requestId='';
+  if(dialog){if(dialog.open)dialog.close();dialog.remove();dialog=null}
+  if(launcher)launcher.textContent='✦ Ask ChatGPT';
  }
  function hide(){validOwner=false;if(launcher)launcher.hidden=true;if(dialog?.open)dialog.close()}
+ function installModalRecovery(){
+  const modal=$('modal'),body=$('modalBody'),title=$('modalTitle'),app=$('app');
+  const actions=doc.querySelector('#app .topbar .top-actions');
+  if(!modal||!body||!title||!app||!actions||$('sbc-last-panel-resume'))return;
+  const button=doc.createElement('button');button.type='button';button.id='sbc-last-panel-resume';
+  button.className='btn';button.textContent='↶ Reopen last panel';button.title='Restore the last safely closed panel in this owner session';
+  button.hidden=true;button.style.cssText='background:#126b4a;color:#fff;border:1px solid #176143;min-height:36px;padding:7px 10px;border-radius:9px;font-size:12px;font-weight:700';
+  actions.insertBefore(button,$('sbc-chatgpt-os-launch')||actions.firstChild);
+  let seenOpen=false,savedKey='',savedView='';
+  function credentialFields(){
+   return !!body.querySelector('input[type="password"],input[autocomplete^="cc-"],input[name*="token" i],input[name*="secret" i]');
+  }
+  function currentView(){try{return String(state?.view||'')}catch{return ''}}
+  function available(){
+   return canResumeModal({sameSession:!!ownerKey&&savedKey===ownerKey,authorized:validOwner&&!app.classList.contains('hidden'),
+    hasContent:seenOpen&&body.childNodes.length>0,title:title.textContent,hasCredentials:credentialFields()})&&(!savedView||savedView===currentView());
+  }
+  function sync(){
+   if(!validOwner||app.classList.contains('hidden')){button.hidden=true;return}
+   if(!modal.classList.contains('hidden')){
+    seenOpen=true;savedKey=ownerKey;savedView=currentView();button.hidden=true;
+   }else button.hidden=!available();
+  }
+  button.addEventListener('click',()=>{
+   if(!available()){button.hidden=true;return}
+   // Existing DOM, handlers and unsaved text remain intact; no form action runs.
+   modal.classList.remove('hidden');button.hidden=true;
+  });
+  new root.MutationObserver(sync).observe(modal,{attributes:true,attributeFilter:['class']});
+  clearLastPanelRecovery=()=>{seenOpen=false;savedKey='';savedView='';button.hidden=true};
+  sync();
+ }
  async function verifyOwner(){
   const app=$('app'),desk=$('desk');
   if(app?.classList.contains('hidden')||desk?.hidden){hide();return}
@@ -194,7 +260,11 @@
    const res=await root.fetch('/api/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
    if(!res.ok){hide();return}
    const user=await res.json();if(user?.authenticated!==true||String(user?.user?.role||'').toLowerCase()!=='owner'){hide();return}
-   validOwner=true;if(launcher)launcher.hidden=false;
+   const userId=String(user?.user?.id||user?.user?.username||user?.user?.email||'');
+   const nextKey=userId+'|'+String(user?.user?.tenantId??user?.user?.businessId??'');
+   if(!userId){hide();return}
+   if(ownerKey&&ownerKey!==nextKey){clearDraft();clearLastPanelRecovery()}
+   ownerKey=nextKey;validOwner=true;if(launcher)launcher.hidden=false;
   }catch{hide()}
  }
  function init(){
@@ -206,7 +276,8 @@
    if($('app'))new root.MutationObserver(verifyOwner).observe($('app'),{attributes:true,attributeFilter:['class']});
    if($('desk'))new root.MutationObserver(verifyOwner).observe($('desk'),{attributes:true,attributeFilter:['hidden']});
   }
-  $('logoutBtn')?.addEventListener('click',hide);
+  installModalRecovery();
+  $('logoutBtn')?.addEventListener('click',()=>{clearDraft();clearLastPanelRecovery();ownerKey='';hide()});
   doc.addEventListener('visibilitychange',()=>{if(doc.visibilityState==='visible')verifyOwner()});
   verifyOwner();
  }
