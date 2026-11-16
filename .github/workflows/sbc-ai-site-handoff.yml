@@ -1,0 +1,31 @@
+name: SBC AI Website Handoff
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-ai-site-handoff.cjs'
+      - 'enterprise/sbc-website-production-routes.cjs'
+      - 'public/sbc-website-production-v1.js'
+      - 'public/sbc-ai-site-handoff-v1.js'
+      - 'test/sbc-ai-site-handoff.test.cjs'
+      - '.github/workflows/sbc-ai-site-handoff.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-handoff-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify JavaScript parses
+        run: |
+          node --check enterprise/sbc-ai-site-handoff.cjs
+          node --check enterprise/sbc-website-production-routes.cjs
+          node --check public/sbc-website-production-v1.js
+          node --check public/sbc-ai-site-handoff-v1.js
+      - name: Validate tenant-safe customer proposal handoff
+        run: node --test test/sbc-ai-site-handoff.test.cjs
