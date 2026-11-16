@@ -26,7 +26,7 @@ function buildPrompt(customer){
  'Use clearly labeled example content when photos/prices are pending; do not represent examples as real inventory.',
  'Never collect sensitive identity, financial, or health information through an unsecured form.',
  'Keep all three builds separate with a comparison of included features, tests performed, remaining setup, and deployment instructions.',
- 'The user will download each result, deploy and review it, then paste its preview link into the appropriate SBC Command Center proposal slot.',
+ 'The user will download each website ZIP and upload it directly into the matching SBC customer proposal slot for private review; no manual hosting or URL entry is needed.',
  'These are owner-reviewed PROPOSALS; do not publish, contact the prospect, make purchases, or modify the live site without approval.'
  ].join('\n');
 }
@@ -98,5 +98,8 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.status(result.status).json(result.body);
   }catch(e){return fail(res,e)}
  });
+ // Extend the existing authenticated proposal workspace; use the same tenant,
+ // owner and writer safeguards instead of adding an unaudited parallel account API.
+ require('./sbc-ai-zip-proposals.cjs').register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,serializeSiteMutation});
 }
 module.exports={register,buildPrompt,normalizeVariant};

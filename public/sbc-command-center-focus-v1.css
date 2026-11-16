@@ -30,3 +30,157 @@ html[data-sbc-focus-mode="focus"] .sbc-dynamic-queue .queue-lead .meta{margin-to
 .sbc-page-extra-buttons>.btn{flex:1 1 auto}
 .sbc-page-more-actions>summary:focus-visible{outline:3px solid #f5a94f;outline-offset:2px}
 @media(max-width:760px){.sbc-page-more-actions{width:100%}.sbc-page-more-actions>summary{width:100%}}
+
+/* SBC 2026-11-16 legibility and account-proposal experience.
+   Explicit foreground/background PAIRS; preserves semantic color badges and
+   custom hero/brand illustrations; no global button text recoloring. */
+:root {
+ --sbc-legible-paper:#ffffff;
+ --sbc-legible-ink:#14283e;
+ --sbc-legible-muted:#456078;
+ --sbc-legible-border:#b6c8db;
+ --sbc-legible-focus:#f3a632;
+ --sbc-legible-night:#14263a;
+ --sbc-legible-night-raised:#1b3047;
+ --sbc-legible-night-ink:#f2f7fd;
+ --sbc-legible-night-muted:#c4d3e1;
+}
+body #modal:not(.hidden) .modal-backdrop {
+ background:rgba(5,13,27,.76)!important;
+ backdrop-filter:blur(2px);
+}
+body #modal:not(.hidden) .modal-card {
+ box-shadow:0 24px 80px rgba(2,12,31,.43)!important;
+ max-height:min(94dvh,1100px);
+ overflow-y:auto;
+ overscroll-behavior:contain;
+}
+body[data-theme="light"] #modal .modal-card,
+body[data-theme="light"] #modal #modalBody {
+ background:var(--sbc-legible-paper)!important;
+ color:var(--sbc-legible-ink)!important;
+}
+body[data-theme="dark"] #modal .modal-card,
+body[data-theme="dark"] #modal #modalBody {
+ background:var(--sbc-legible-night)!important;
+ color:var(--sbc-legible-night-ink)!important;
+}
+body[data-theme="light"] :is(#content,#modalBody) :is(.card:not(.hero),.detail-box,.table-wrap,.list-card,.form-grid,.filter-panel,.modal-section) {
+ border-color:var(--sbc-legible-border)!important;
+}
+body[data-theme="dark"] :is(#content,#modalBody) :is(.detail-box,.filter-panel,.modal-section) {
+ background:var(--sbc-legible-night-raised)!important;
+ color:var(--sbc-legible-night-ink)!important;
+ border-color:#52708c!important;
+}
+body[data-theme="light"] :is(#content,#modalBody) :is(table,.table) :is(td,th) {
+ color:var(--sbc-legible-ink)!important;
+ border-color:#c6d5e3!important;
+}
+body[data-theme="dark"] :is(#content,#modalBody) :is(table,.table) :is(td,th) {
+ color:var(--sbc-legible-night-ink)!important;
+ border-color:#4f6b84!important;
+}
+body[data-theme="light"] :is(#content,#modalBody) :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]) {
+ background:#fff!important;color:#14283e!important;border:1px solid #9caec1!important;
+ color-scheme:light;opacity:1!important;
+}
+body[data-theme="dark"] :is(#content,#modalBody) :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]) {
+ background:#0c1c2e!important;color:#f2f7fd!important;border:1px solid #8aa4bc!important;
+ color-scheme:dark;opacity:1!important;
+}
+body[data-theme="light"] :is(#content,#modalBody) :is(input,textarea)::placeholder {color:#536d83!important;opacity:1;}
+body[data-theme="dark"] :is(#content,#modalBody) :is(input,textarea)::placeholder {color:#b3c8da!important;opacity:1;}
+body :is(#content,#modalBody) :is(a,button,input,select,textarea,summary,[role="button"]):focus-visible {
+ outline:3px solid var(--sbc-legible-focus)!important;
+ outline-offset:2px!important;
+}
+body :is(#content,#modalBody) :is(button,input,select,textarea):disabled {cursor:not-allowed;opacity:.73;}
+body #modal .modal-head :is(h1,h2,h3) {color:inherit!important;line-height:1.32;}
+body #modal .modal-head .icon-btn {min-width:42px;min-height:42px;}
+@media(max-width:640px){
+ body #modal:not(.hidden) .modal-card {width:min(100%, calc(100vw - 14px))!important;max-width:100%!important;max-height:96dvh;}
+}
+/* The ZIP proposal desk intentionally uses a predictable light reading surface,
+   including when the owner has selected a dark OS shell. */
+body #modal #sbcAiDesk {
+ background:#f4f8fc!important;
+ color:#14283e!important;
+ padding:clamp(14px,2.6vw,30px);
+ max-width:1280px;
+ margin:auto;
+ font:inherit;
+}
+body #modal #sbcAiDesk *,body #modal #sbcAiDesk *::before,body #modal #sbcAiDesk *::after {box-sizing:border-box;}
+body #modal #sbcAiDesk :is(h3,h4,p,label,small,summary,strong) {color:#14283e!important;-webkit-text-fill-color:#14283e!important;text-shadow:none!important;opacity:1!important;}
+body #modal #sbcAiDesk .sbc-ai-heading {
+ background:#102f50!important;
+ padding:clamp(18px,3vw,30px);
+ border-radius:18px;
+ margin-bottom:16px;
+ border:1px solid #285478;
+}
+body #modal #sbcAiDesk .sbc-ai-heading :is(h3,p,strong),body #modal #sbcAiDesk .sbc-ai-heading .sbc-ai-eyebrow {
+ color:#f6faff!important;-webkit-text-fill-color:#f6faff!important;
+}
+body #modal #sbcAiDesk .sbc-ai-eyebrow {font-size:12px;font-weight:850;letter-spacing:.12em;}
+body #modal #sbcAiDesk .sbc-ai-heading h3 {font-size:clamp(19px,2.5vw,28px);margin:6px 0 12px;}
+body #modal #sbcAiDesk .sbc-ai-heading p {line-height:1.65;}
+body #modal #sbcAiDesk .sbc-ai-instructions {
+ padding:16px;background:#e7f3ff!important;border:1px solid #97c4ea;border-radius:14px;margin-bottom:18px;
+}
+body #modal #sbcAiDesk .sbc-ai-instructions details {margin-top:10px;}
+body #modal #sbcAiDesk .sbc-ai-instructions summary {cursor:pointer;font-weight:800;}
+body #modal #sbcAiDesk .sbc-ai-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+body #modal #sbcAiDesk .sbc-ai-tier {
+ min-width:0;padding:18px;background:#fff!important;border:1px solid #b5c9dd;border-radius:16px;
+ box-shadow:0 8px 25px rgba(9,38,77,.06);
+}
+body #modal #sbcAiDesk .sbc-ai-tier-kicker {color:#145f9b!important;-webkit-text-fill-color:#145f9b!important;font-weight:900;font-size:13px;}
+body #modal #sbcAiDesk .sbc-ai-tier h4 {font-size:19px;margin:0 0 8px;}
+body #modal #sbcAiDesk .sbc-ai-tier-desc {font-size:13px;line-height:1.6;min-height:40px;}
+body #modal #sbcAiDesk .sbc-ai-upload-label {display:block;font-weight:850;margin:12px 0 5px;}
+body #modal #sbcAiDesk :is(input[type="file"],input[type="url"],textarea) {
+ display:block;width:100%;max-width:100%;background:#fff!important;color:#14283e!important;
+ border:1px solid #849fb7!important;border-radius:9px!important;padding:10px;min-height:43px;
+ color-scheme:light!important;-webkit-text-fill-color:#14283e!important;
+}
+body #modal #sbcAiDesk input[type="file"] {font-size:13px;}
+body #modal #sbcAiDesk input[type="file"]::file-selector-button {
+ padding:8px;border:1px solid #1b659d;border-radius:7px;background:#e6f3ff;color:#164b75;font-weight:800;
+}
+body #modal #sbcAiDesk :is(textarea,summary,input) {margin-top:5px;margin-bottom:8px;}
+body #modal #sbcAiDesk small {display:block;font-size:12px;line-height:1.55;color:#456078!important;-webkit-text-fill-color:#456078!important;}
+body #modal #sbcAiDesk .sbc-ai-upload {width:100%;min-height:46px;margin:12px 0!important;}
+body #modal #sbcAiDesk .sbc-ai-current {
+ background:#f2f8fd!important;border:1px solid #c0d5e8;border-radius:10px;padding:10px;min-height:50px;
+}
+body #modal #sbcAiDesk .sbc-ai-current .sbc-ai-saved {
+ color:#155b43!important;-webkit-text-fill-color:#155b43!important;font-weight:850;margin:2px 0 7px;
+}
+body #modal #sbcAiDesk .sbc-ai-meta,body #modal #sbcAiDesk .sbc-ai-draft {font-size:12px;line-height:1.6;}
+body #modal #sbcAiDesk .sbc-ai-actions {display:flex;flex-wrap:wrap;gap:8px;}
+body #modal #sbcAiDesk .sbc-ai-actions .btn {white-space:normal;min-height:40px;}
+body #modal #sbcAiDesk .sbc-ai-other {margin-top:15px;border-top:1px solid #d9e3ec;padding-top:12px;}
+body #modal #sbcAiDesk .sbc-ai-other summary {font-size:12px;line-height:1.5;}
+body #modal #sbcAiDesk :is(.btn,button.btn) {text-decoration:none;cursor:pointer;}
+body #modal #sbcAiDesk .btn.primary {background:#11699e!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#085781!important;font-weight:850;}
+body #modal #sbcAiDesk .btn:not(.primary) {background:#fff!important;color:#135382!important;-webkit-text-fill-color:#135382!important;border:1px solid #87acc7!important;font-weight:750;}
+body #modal #sbcAiDesk .btn:disabled {background:#d6e2ec!important;color:#405a71!important;-webkit-text-fill-color:#405a71!important;}
+body #modal #sbcAiDesk .sbc-ai-state {
+ border-radius:10px;background:#e7f6ee!important;border-left:5px solid #15845e;padding:12px 15px;
+ font-size:14px;font-weight:700;color:#145537!important;-webkit-text-fill-color:#145537!important;
+}
+body #modal #sbcAiDesk .sbc-ai-state.sbc-ai-error {
+ background:#fff0ed!important;border-left-color:#ad3025;color:#89281f!important;-webkit-text-fill-color:#89281f!important;
+}
+body #modal #sbcAiDesk .sbc-ai-preview {
+ padding:14px;background:#fff!important;border:1px solid #b5c9dd;border-radius:14px;
+}
+body #modal #sbcAiDesk .sbc-ai-preview-head h4 {margin:0 0 6px;font-size:19px;}
+body #modal #sbcAiDesk .sbc-ai-preview-head p {font-size:13px;}
+body #modal #sbcAiDesk #sbcAIFrame {
+ width:100%;height:min(70vh,700px);min-height:420px;background:#fff;border:1px solid #a9bdd0;border-radius:10px;
+}
+@media(max-width:950px){body #modal #sbcAiDesk .sbc-ai-grid{grid-template-columns:1fr;}}
+@media(prefers-reduced-motion:reduce){body #modal #sbcAiDesk *,body #modal #sbcAiDesk *::before{animation:none!important;transition:none!important;}}

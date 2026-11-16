@@ -4,6 +4,9 @@ on:
     branches: [a-sbc-master]
     paths:
       - 'enterprise/sbc-ai-site-handoff.cjs'
+      - 'enterprise/sbc-ai-zip-proposals.cjs'
+      - 'test/sbc-ai-zip-proposals.test.cjs'
+      - 'public/sbc-light-contrast-v6601.css'
       - 'enterprise/sbc-website-production-routes.cjs'
       - 'public/sbc-website-production-v1.js'
       - 'public/sbc-ai-site-handoff-v1.js'
@@ -24,8 +27,9 @@ jobs:
       - name: Verify JavaScript parses
         run: |
           node --check enterprise/sbc-ai-site-handoff.cjs
+          node --check enterprise/sbc-ai-zip-proposals.cjs
           node --check enterprise/sbc-website-production-routes.cjs
           node --check public/sbc-website-production-v1.js
           node --check public/sbc-ai-site-handoff-v1.js
       - name: Validate tenant-safe customer proposal handoff
-        run: node --test test/sbc-ai-site-handoff.test.cjs
+        run: node --test test/sbc-ai-site-handoff.test.cjs test/sbc-ai-zip-proposals.test.cjs
