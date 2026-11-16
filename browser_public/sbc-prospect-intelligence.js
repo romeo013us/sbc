@@ -193,10 +193,43 @@
       '<section class="spi-card"><h4>Public mobile site audit</h4>'+comparisonTable(reports)+'<p>Items to review: '+safe(reportedOpportunities(main).join(', ')||'No verified opportunities identified.')+'</p></section>'+
       '<section class="spi-card"><h4>Existing-customer expansion suggestions</h4><ul>'+ideas.map(x=>'<li>'+safe(x)+'</li>').join('')+'</ul></section>'+
       '<section class="spi-card"><h4>Personalized draft outreach · manual approval only</h4><textarea id="spi-email" rows="12" readonly></textarea><button type="button" id="spi-copy-email">Copy email draft</button></section>'+
-      '<section class="spi-card"><h4>Customer-ready digital opportunity report · owner review required</h4><textarea id="spi-report" rows="16" readonly></textarea><button type="button" id="spi-download-report">Download TXT report</button></section>';
+      '<section class="spi-card"><h4>Customer-ready digital opportunity report · owner review required</h4><textarea id="spi-report" rows="16" readonly></textarea><button type="button" id="spi-download-report">Download TXT report</button></section>'+
+      '<section class="spi-card" aria-label="Owner-approved workforce research handoff"><h4>Share this research with the workforce</h4><p>Check the business identity and each observation before distributing. Export includes public research only—no CRM contacts, orders or client identifiers.</p><label><input type="checkbox" id="spi-handoff-review"> I reviewed the evidence, business identity, and timestamps and approve creating a research handoff file.</label><button type="button" id="spi-export-handoff" disabled>Export owner-reviewed research handoff JSON</button><p id="spi-handoff-status" role="status">Importing a file in a staff workspace does not verify owner identity or authorize contact; verify the source out of band.</p></section>';
     $('spi-email').value=email;$('spi-report').value=report;
     $('spi-copy-email').addEventListener('click',async()=>{$('spi-status').textContent=await clipboard(email)?'Email draft copied. Nothing was sent.':'Copy unavailable. Select the text manually.'});
     $('spi-download-report').addEventListener('click',()=>download('SBC-Digital-Opportunity-Review.txt',report));
+
+    $('spi-handoff-review').addEventListener('change',e=>{$('spi-export-handoff').disabled=!e.target.checked});
+    $('spi-export-handoff').addEventListener('click',async()=>{
+      const note=$('spi-handoff-status'),button=$('spi-export-handoff');
+      if(!$('spi-handoff-review').checked){note.textContent='Owner review required before export.';return}
+      button.disabled=true;
+      try{
+        if(!root.SBCProspectHandoffV2){
+          if(!root.__SBC_HANDOFF_V2_LOAD__){
+            root.__SBC_HANDOFF_V2_LOAD__=new Promise((resolve,reject)=>{
+              const script=root.document.createElement('script');
+              script.src='/sbc-prospect-handoff-v2.js?v=2';
+              script.onload=resolve;script.onerror=()=>reject(Error('Research export module unavailable'));
+              root.document.body.appendChild(script);
+            }).catch(error=>{root.__SBC_HANDOFF_V2_LOAD__=null;throw error});
+          }
+          await root.__SBC_HANDOFF_V2_LOAD__;
+        }
+        const packet=root.SBCProspectHandoffV2.createPacket({
+          ownerApproved:true,business, audit:main,competitors,
+          preparedAt:Date.now()
+        });
+        const json=JSON.stringify(packet,null,2);
+        const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+        const href=URL.createObjectURL(blob),element=root.document.createElement('a');
+        element.href=href;element.download='SBC-Prospect-Research-Handoff-V2.json';element.click();
+        root.setTimeout(()=>URL.revokeObjectURL(href),3000);
+        note.textContent='Owner-marked public research exported. Share the file only through an approved internal channel.';
+      }catch(error){note.textContent='Research handoff export failed: '+String(error?.message||'Unknown error')}
+      finally{button.disabled=!$('spi-handoff-review').checked}
+    });
+
    }catch{$('spi-status').textContent='Research results could not be assembled. No false score was issued.'}
    finally{$('spi-run').disabled=false}
   });
