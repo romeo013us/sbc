@@ -130,6 +130,15 @@ function secondaryPhoneLabel(lead){
  return extra.phone?'Secondary: '+extra.phone+(extra.source?' ('+extra.source+')':''):'';
 }
 
+// This shortcut is display-only. The authenticated research handoff endpoint
+// remains authoritative for tenant, researcher ownership, auto-verification and DNC.
+function canQuickHandoff(c,own,inQueue){
+ if(!own||inQueue||!c||String(c.leadAssistStatus||'')!=='AUTO_VERIFIED'||isException(c))return false;
+ if(c.doNotCall===true||c.do_not_call===true||c.doNotContact===true||
+    c.salesSuppressed===true||c.isSuppressed===true)return false;
+ if(/^(?:dnc|do not call|do not contact|opt.?out|unsubscribed|bad number|wrong number|invalid number|suppressed|closed|lost|duplicate)$/i.test(String(c.status||'').trim()))return false;
+ return typeof window.SBCLornaHandoff?.openForLead==='function';
+}
 function displayLead(c,inQueue){
  var item=element('div','lead-row'+(isException(c)?' needs-correction':'')),left=element('div'),right=element('div');
  var own=Boolean(submittedIds&&submittedIds.has(String(c.id)));
@@ -143,6 +152,15 @@ function displayLead(c,inQueue){
  var button=element('button','outline',actionable?'Correct information':'View details');
  button.type='button';button.addEventListener('click',function(){openReview(item,c,actionable);});
  right.append(button);
+ if(canQuickHandoff(c,own,inQueue)){
+  var send=element('button','outline sbc-handoff-quick','Send for owner review');
+  send.type='button';
+  send.setAttribute('aria-label','Send '+String(c.businessName||'selected business')+' for owner review');
+  send.addEventListener('click',function(){
+   window.SBCLornaHandoff.openForLead({id:String(c.id),businessName:String(c.businessName||'Business name not recorded')});
+  });
+  right.append(send);
+ }
  if(inQueue&&actionable){
   var clear=element('button','outline','Dismiss resolved notice');clear.type='button';
   clear.setAttribute('aria-label','Dismiss corrected notification for '+String(c.businessName||'lead'));
