@@ -10,7 +10,12 @@ function fail(code){throw Object.assign(new Error(code),{code});}
 function actor(v){const tenantId=Number(v?.tenantId),id=str(v?.id,120),role=str(v?.role,60);
  if(!Number.isSafeInteger(tenantId)||tenantId<1||!id||!role)fail('AUTHENTICATED_CONTEXT_REQUIRED');
  return {tenantId,id,role};}
-const isSuppressed=c=>c.doNotContact===true||c.salesSuppressed===true||c.isSuppressed===true||['dnc','do not call','do not contact','opt out','unsubscribed','duplicate','lost','closed'].includes(str(c.status).toLowerCase());
+// Match the suppression vocabulary already used by Account Manager V7 and CRM.
+// Never hand off an account marked DNC or known to have an invalid telephone number.
+const isSuppressed=c=>c?.doNotContact===true||c?.doNotCall===true||c?.do_not_call===true||
+ c?.salesSuppressed===true||c?.isSuppressed===true||
+ ['dnc','do not call','do not contact','opt out','unsubscribed','duplicate','lost','closed',
+  'bad number','wrong number','invalid number','suppressed','blocked'].includes(str(c?.status).toLowerCase());
 const isReady=c=>c.leadAssistStatus==='AUTO_VERIFIED'||['verified','sales ready','research complete','research-complete'].includes(str(c.verificationStatus).toLowerCase());
 function createHandoffService({repository,clock=()=>new Date()}={}){
  if(!repository||typeof repository.customer!=='function'||typeof repository.createHandoff!=='function'||typeof repository.returnFeedback!=='function'||typeof repository.assignment!=='function')throw new TypeError('HANDOFF_DURABLE_REPOSITORY_REQUIRED');
@@ -43,10 +48,23 @@ function createHandoffService({repository,clock=()=>new Date()}={}){
    const retry=Date.parse(h.retryNotBefore||'');
    if(Number.isFinite(retry)&&retry>asOf)continue;
    const current=await repository.assignment(a.tenantId,h.customerId);
-   if(current&&String(current.managerId)===a.id)active.push({...h,managerId:a.id});}
+   if(!current||String(current.managerId)!==a.id)continue;
+   // Current CRM contact restrictions take precedence over stale handoff rows.
+   const customer=await repository.customer(a.tenantId,h.customerId);
+   if(!customer||isSuppressed(customer))continue;
+   active.push({...h,managerId:a.id});}
   return clone(active);}
  async function researchQueue(input){const {a}=await researcher(input);
-  return clone((await repository.feedbackForResearcher(a.tenantId,a.id)).filter(x=>x.status==='OPEN'));}
+  const rows=(await repository.feedbackForResearcher(a.tenantId,a.id)).filter(x=>x.status==='OPEN');
+  const tasks=[];
+  for(const row of rows){
+   // Resolve display names through the current tenant's CRM; keep the stable ID
+   // visible so research notes never depend on a guessed business identity.
+   const customer=await repository.customer(a.tenantId,row.customerId);
+   const businessName=customer?str(customer.businessName??customer.business_name??customer.name,160):'';
+   tasks.push({...row,businessName:businessName||null});
+  }
+  return clone(tasks);}
  async function assign(input,{handoffId,managerId}={}){
   const a=owner(input),id=str(handoffId,120),mid=str(managerId,120);
   const h=await repository.handoff(a.tenantId,id);if(!h)fail('HANDOFF_NOT_FOUND');
