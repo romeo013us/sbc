@@ -58,9 +58,24 @@
     const host=document.getElementById('sbcAICurrent'+t.id);if(!host)continue;
     const list=items.filter(x=>Number(x.tier)===t.id),latest=list[0],external=document.getElementById('sbcAIUrl'+t.id)?.value.trim();
     if(!latest&&!external){host.innerHTML='<p class="sbc-ai-empty">No ZIP saved for this package yet.</p>';continue}
+    const qa=latest?.previewAudit;
+    const problemCount=Number(qa?.issueCount||0);
+    const qaText=!qa?'Older ZIP: automatic preview-link checks not recorded.':problemCount?
+     'Preview needs attention: '+problemCount+' broken or blocked reference'+(problemCount===1?'':'s')+'.':
+     'Preview HTML links checked: no missing linked files detected. Manual review still required.';
+    const friendly={MISSING_ASSET:'Missing image, stylesheet or script',MISSING_PAGE:'Missing linked page',
+     ROOT_ABSOLUTE_PATH:'Root-relative path may not work in private preview',
+     EXTERNAL_RESOURCE_BLOCKED:'Off-site resource blocked by private preview',
+     BASE_HREF_BLOCKED:'HTML base path not supported in private preview',
+     PATH_OUTSIDE_SITE:'Link escapes uploaded website',INVALID_REFERENCE:'Invalid file reference',MISSING_PAGE_HTML:'No HTML pages found'};
+    const details=Array.isArray(qa?.issues)&&qa.issues.length?
+     '<details class="sbc-ai-preview-audit"><summary>See preview problems ('+problemCount+')</summary><ul>'+
+     qa.issues.map(i=>'<li><strong>'+esc(friendly[i.code]||i.code)+'</strong> · '+esc(i.page)+': '+esc(i.reference)+'</li>').join('')+
+     '</ul><small>These are static link checks, not a published website test. Review before presenting.</small></details>':'';
     host.innerHTML=(latest?
       '<p class="sbc-ai-saved">✓ ZIP saved to this customer</p>'+
       '<p class="sbc-ai-meta">'+Number(latest.fileCount||0)+' web files · '+new Date(latest.createdAt).toLocaleString()+' · Owner review</p>'+
+      '<p class="sbc-ai-meta" role="status">'+esc(qaText)+'</p>'+details+
       '<div class="sbc-ai-actions"><button type="button" class="btn" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+t.id+'">Preview saved ZIP</button>'+
       '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download copy</a>'+
       '<a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(latest.previewPath)+'">Open preview ↗</a></div>'+
@@ -107,7 +122,7 @@
    }catch(e){say('Could not save: '+String(e.message||e)+'. Refresh if the account revision changed.',true)}
    finally{button.disabled=false}
   }));
-  try{await refresh();say('Ready. Select a website ZIP in any package card to upload and save it.')}
+  try{await refresh();say('Ready. Upload a ZIP and review the automatic link checks before approving the proposal.')}
   catch(e){say('ZIP library unavailable: '+String(e.message||e)+'. External URL slots remain available.',true)}
  }
  window.SBC_AI_SITE_HANDOFF=Object.freeze({open});

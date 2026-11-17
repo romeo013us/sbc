@@ -78,6 +78,70 @@ function parseZip(buf){
  if(!files.some(x=>x.name.toLowerCase()==='index.html'))throw Error('ZIP_INDEX_HTML_REQUIRED');
  return {files,totalBytes:files.reduce((n,f)=>n+f.content.length,0)};
 }
+
+/**
+ * Advisory check for links in a private ZIP proposal preview.
+ * It does not publish a site, fetch resources, or claim a production browser pass.
+ * The preview CSP blocks off-site CSS, JS and images, so report those explicitly.
+ */
+function auditPreviewFiles(files){
+ const entries=Array.isArray(files)?files:[];
+ const names=new Set(entries.map(f=>String(f?.name||'').toLowerCase()));
+ const issues=[],seen=new Set();
+ let issueCount=0,checkedPages=0;
+ function issue(code,page,reference){
+  const ref=String(reference||'').slice(0,180),key=[code,page,ref].join('|');
+  if(seen.has(key))return;
+  seen.add(key);issueCount++;
+  if(issues.length<12)issues.push({code,page:String(page).slice(0,180),reference:ref});
+ }
+ function attribute(tag,name){
+  const pattern=new RegExp('(?:^|\\s)'+name+'\\s*=\\s*(?:"([^"]*)"|\\x27([^\\x27]*)\\x27|([^\\s>]+))','i');
+  const match=pattern.exec(tag);
+  return match?(match[1]??match[2]??match[3]):'';
+ }
+ function link(page,raw,kind){
+  const ref=String(raw||'').trim().replace(/&amp;/gi,'&');
+  if(!ref||ref.startsWith('#')||/^(?:mailto:|tel:|data:|blob:)/i.test(ref))return;
+  if(/^https?:\/\//i.test(ref)||ref.startsWith('//')||/^[a-z][a-z\d+.-]*:/i.test(ref)){
+   if(kind==='asset')issue('EXTERNAL_RESOURCE_BLOCKED',page,'External subresource');
+   return;
+  }
+  if(ref.startsWith('/')){issue('ROOT_ABSOLUTE_PATH',page,ref);return}
+  const clean=ref.split(/[?#]/)[0];if(!clean)return;
+  let decoded;
+  try{decoded=decodeURIComponent(clean)}catch{issue('INVALID_REFERENCE',page,'Malformed percent escape');return}
+  if(decoded.includes('\\')){issue('INVALID_REFERENCE',page,'Backslash in reference');return}
+  const target=path.posix.normalize(path.posix.join(path.posix.dirname(page),decoded));
+  if(target==='..'||target.startsWith('../')){issue('PATH_OUTSIDE_SITE',page,clean);return}
+  if(kind==='page'&&!/\.html?$/i.test(target))return; // SPA routes are not verifiable from a static ZIP.
+  if(!names.has(target.toLowerCase()))issue(kind==='page'?'MISSING_PAGE':'MISSING_ASSET',page,target);
+ }
+ for(const file of entries){
+  const page=String(file?.name||'');
+  if(!/\.html?$/i.test(page))continue;
+  checkedPages++;
+  const html=Buffer.isBuffer(file.content)?file.content.toString('utf8'):String(file.content??'');
+  for(const match of html.matchAll(/<(script|img|link|a|source)\b[^>]*>/gi)){
+   const tag=match[0],type=match[1].toLowerCase();
+   if(type==='script'||type==='img'||type==='source'){
+    link(page,attribute(tag,'src'),'asset');
+   }else if(type==='link'){
+    const rel=attribute(tag,'rel').toLowerCase();
+    if(/\b(stylesheet|icon|manifest|preload|modulepreload)\b/.test(rel))
+     link(page,attribute(tag,'href'),'asset');
+   }else if(type==='a')link(page,attribute(tag,'href'),'page');
+  }
+  if(/<base\b[^>]*\bhref\s*=/i.test(html))issue('BASE_HREF_BLOCKED',page,'HTML base href is blocked in private preview');
+ }
+ if(checkedPages===0)issue('MISSING_PAGE','index.html','No HTML page available');
+ return {
+  status:issueCount===0?'PREVIEW_LINKS_OK':'PREVIEW_LINKS_NEED_REVIEW',
+  checkedPages,issueCount,issues,
+  scope:'Static HTML link check only. Interactive behavior, CSS imports and live forms require separate review.'
+ };
+}
+
 function safeCustomer(req,db,requireTenant){
  const tenantId=Number(requireTenant(req)),id=String(req.params.id||'');
  if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('TENANT_CONTEXT_REQUIRED');
@@ -111,7 +175,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   try{
    const {c,items}=own(req,uploads());
    return res.json({ok:true,customerId:c.id,uploads:items.map(r=>({
-    id:r.id,tier:r.tier,filename:r.filename,fileCount:r.fileCount,bytes:r.bytes,createdAt:r.createdAt,
+    id:r.id,tier:r.tier,filename:r.filename,fileCount:r.fileCount,bytes:r.bytes,createdAt:r.createdAt,previewAudit:r.previewAudit||null,
     previewPath:preview(c,r),downloadPath:ROOT.replace(':id',encodeURIComponent(c.id))+'/uploads/'+r.id+'/download',
     status:'OWNER_REVIEW_REQUIRED'
    })).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,50)});
@@ -133,7 +197,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
     size+=chunk.length;if(size>ZIP_MAX)throw Error('UPLOAD_TOO_LARGE');
     chunks.push(chunk);
    }
-   const buf=Buffer.concat(chunks),parsed=parseZip(buf),c=base(req),id='up_'+crypto.randomUUID().replace(/-/g,'');
+   const buf=Buffer.concat(chunks),parsed=parseZip(buf),previewAudit=auditPreviewFiles(parsed.files),c=base(req),id='up_'+crypto.randomUUID().replace(/-/g,'');
    const staged=path.join(c.dir,'.'+id+'.staging'),folder=path.join(c.dir,id);
    fs.mkdirSync(c.dir,{recursive:true,mode:0o700});
    fs.mkdirSync(staged,{mode:0o700});
@@ -148,7 +212,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
     fs.renameSync(staged,folder);promoted=true;
     const record={tenantId:c.tenantId,customerId:c.id,tier,id,
      filename:'website-proposal-'+tier+'.zip',fileCount:parsed.files.length,
-     bytes:buf.length,createdAt:new Date().toISOString(),status:'OWNER_REVIEW_REQUIRED'};
+     bytes:buf.length,createdAt:new Date().toISOString(),status:'OWNER_REVIEW_REQUIRED',previewAudit};
     await serializeSiteMutation(async()=>{
      // Re-check the identity and writer state immediately before the durable metadata write.
      safeCustomer(req,db,requireTenant);
@@ -209,4 +273,4 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   }catch(e){return failError(res,e)}
  });
 }
-module.exports={register,parseZip,safeEntry};
+module.exports={register,parseZip,safeEntry,auditPreviewFiles};
