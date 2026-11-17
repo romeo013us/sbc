@@ -70,7 +70,7 @@ test('Website Production replaces small-demo UI and preserves CRM action compati
  assert.equal(source,read('browser_public/sbc-website-production-v1.js'));
  assert.match(source,/SBC Website Production/);
  assert.match(source,/Business Starter · \$199/);
- assert.match(source,/Business Basic · \$349/);
+ assert.match(source,/Business Basic · \$499/); // Align public SBC price, no legacy $349 copy
  assert.match(source,/Build Full Website/);
  assert.match(source,/sbcFactoryCheckDetails/);
  assert.match(source,/sbcFactoryCheckVisuals/);
