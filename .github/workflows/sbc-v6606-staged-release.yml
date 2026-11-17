@@ -364,6 +364,16 @@ jobs:
           SBC_ISOLATED_WEBSITE_DB_STAGE=YES node scripts/v66-stage-website-live-db.cjs --apply
           SBC_LIVE_DB_EXPECT_STAGED=YES node --test test/sbc-website-live-db-hydration.test.cjs
           node --test test/sbc-executive-ui-v1.test.cjs
+      - name: Stage and verify real Account Manager role authorization before sealing ZIP
+        run: |
+          # Source-only staging patch is activated only in this disposable checkout.
+          # A green isolated policy test must not be mistaken for a mounted runtime.
+          node scripts/stage-account-manager-role-v2.cjs
+          node --check server.js
+          node --check routes/crm.js
+          SBC_EXPECT_ACCOUNT_MANAGER_STAGED=1 node --test test/sbc-account-manager-runtime-mount.test.cjs
+          node --test test/sbc-account-portfolios.test.cjs test/sbc-account-revenue-v5.test.cjs test/sbc-account-manager-readiness-v6.test.cjs
+          node --test scripts/account-manager-role-gate.test.cjs
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
           node - <<'NODE'
