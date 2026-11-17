@@ -144,3 +144,23 @@ test('owner proposal UI and global contrast layers remain mirrored for deploymen
  assert.match(css,/body\[data-theme="dark"\] #modal/);
  assert.match(css,/:focus-visible/);
 });
+
+test('new ZIP versions save a persistent preview QA summary without affecting earlier proposals',async()=>{
+ const f=fixture();
+ try{
+  const first=await f.call('POST','/uploads/:tier',{tier:'199',
+   buf:zip({'index.html':'<link rel="stylesheet" href="missing.css"><h1>Client draft</h1>'})});
+  assert.equal(first.statusCode,201,JSON.stringify(first.body));
+  assert.equal(first.body.upload.previewAudit.status,'PREVIEW_LINKS_NEED_REVIEW');
+  assert.equal(first.body.upload.previewAudit.issueCount,1);
+  const second=await f.call('POST','/uploads/:tier',{tier:'199',
+   buf:zip({'index.html':'<h1>Fixed draft</h1>'})});
+  assert.equal(second.statusCode,201);
+  assert.equal(second.body.upload.previewAudit.status,'PREVIEW_LINKS_OK');
+  const list=await f.call('GET','/uploads');
+  assert.equal(list.body.uploads.length,2);
+  assert.equal(list.body.uploads[0].previewAudit.status,'PREVIEW_LINKS_OK');
+  assert.equal(list.body.uploads[1].previewAudit.status,'PREVIEW_LINKS_NEED_REVIEW');
+  assert.equal(f.state().aiSiteUploads.length,2);
+ }finally{f.cleanup()}
+});
