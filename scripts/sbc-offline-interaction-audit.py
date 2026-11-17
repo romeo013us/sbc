@@ -145,6 +145,13 @@ def manager_case(context,origin,port,label):
           "no formerly authorized accounts visible after 401",label)
     check("authentication failure closes account details",page.locator("#accountDetail").is_hidden(),
           "private detail pane closed after refresh denial",label)
+    check("authentication failure clears social customer selector",
+          page.locator("#socialCustomer option").count()==0,
+          "previous customer names must not remain in hidden tabs after 401",label)
+    check("authentication failure clears metrics and handoff history",
+          page.locator("#metrics").inner_text().strip()=="" and
+          page.locator("#handoffList").inner_text().strip()=="",
+          "stale CRM metrics and research handoffs removed after 401",label)
     check("no JavaScript runtime exceptions",not errors,"; ".join(errors[:4]) or "none",label)
     page.screenshot(path=str(OUT/(f"account-manager-denied-{label}.png")),full_page=True,animations="disabled")
     page.close()
