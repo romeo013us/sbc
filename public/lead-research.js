@@ -33,13 +33,11 @@ function setTab(tab){
 function setupAssignmentDismiss(){
  var card=$('sbc-full-research-urgent'),hide=$('sbc-dismiss-assignment'),restore=$('sbc-restore-assignment');
  if(!card||!hide||!restore)return;
- // UI preference only. No CRM read/write or approval triggered by dismissal.
- var key='sbc.research.assignment.dismissed.v1.'+String(user&&user.id||'current');
- function read(){try{return window.localStorage.getItem(key)==='yes';}catch(_){return false;}}
+ // Display-only dismissal for this page visit: no client storage or CRM writes.
  function draw(dismissed){card.hidden=dismissed;restore.hidden=!dismissed;}
- draw(read());
- hide.addEventListener('click',function(){try{window.localStorage.setItem(key,'yes');}catch(_){}draw(true);});
- restore.addEventListener('click',function(){try{window.localStorage.removeItem(key);}catch(_){}draw(false);});
+ draw(false);
+ hide.addEventListener('click',function(){draw(true);});
+ restore.addEventListener('click',function(){draw(false);});
 }
 
 document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===tab);});
