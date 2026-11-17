@@ -46,6 +46,13 @@ test('owner assigns batches, customer relationship persists, transfers are audit
     if(sql.startsWith('SELECT id,assigned_to,status,follow_up,account_notes_json,tenant_id FROM sbc_customers')){
       return [[...working.filter(c=>c.tenant_id===params[0]&&c.id===params[1])],[]];
      }
+     if(sql.startsWith('UPDATE sbc_customers SET account_notes_json=?,status=?,follow_up=?')){
+      const [json,status,due,at,tenant,id,assignee]=params;
+      const row=working.find(c=>c.tenant_id===tenant&&c.id===id);
+      if(!row||row.assigned_to!==assignee)return [{affectedRows:0},[]];
+      row.account_notes_json=json;row.status=status;row.follow_up=due;row.updated_at=at;
+      return [{affectedRows:1},[]];
+     }
      if(sql.startsWith('UPDATE sbc_customers SET account_notes_json=')){
       const [json,stamp,tenant,id,assignee]=params;
       const row=working.find(x=>x.tenant_id===tenant&&x.id===id);
@@ -173,5 +180,52 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   badAudit=false;
   assert.equal(JSON.stringify(rows),before,'transaction rolls back when history cannot be written');
   assert.equal(writes,priorWrites);
+
+  // V7: One form records a manager-reported manual interaction and optional CRM
+  // reminder in a single database transaction; it never makes a call.
+  const interaction='/c/interaction';
+  const body={requestId:'sbc-action-'+'a'.repeat(32),outcome:'FOLLOW_UP_REQUESTED',
+   note:'Owner asked us to check their website launch and hosting renewal.',
+   dueDate:'2026-12-14'};
+  assert.equal((await call('POST',pre+interaction,body,'guest')).status,401);
+  assert.equal((await call('POST',pre+interaction,body,'legacy')).status,403);
+  assert.equal((await call('POST',pre+interaction,body,'m1')).status,403,'prior manager has no access after transfer');
+  assert.equal((await call('POST',pre+'/d/interaction',body,'m2')).status,404,'foreign tenant is not accessible');
+  assert.equal((await call('POST',pre+interaction,{...body,outcome:'BOGUS'},'m2')).status,400);
+  assert.equal((await call('POST',pre+interaction,{...body,note:'short'},'m2')).status,400);
+  assert.equal((await call('POST',pre+interaction,{...body,dueDate:'yesterday'},'m2')).status,400);
+  assert.equal((await call('POST',pre+interaction,{...body,dueDate:'2026-12-14',outcome:'NO_ANSWER'},'m2')).status,400);
+  const done=await call('POST',pre+interaction,body,'m2');
+  assert.equal(done.status,200);assert.equal(done.data.durable,true);
+  assert.equal(done.data.outcome,'FOLLOW_UP_REQUESTED');assert.equal(done.data.contactSent,false);
+  assert.equal(done.data.phoneCallPlaced,false);
+  assert.equal(rows.find(c=>c.id==='c').follow_up,'2026-12-14');
+  assert.equal(JSON.parse(rows.find(c=>c.id==='c').account_notes_json)[0].outcome,'FOLLOW_UP_REQUESTED');
+  const savedWrites=writes;
+  const repeated=await call('POST',pre+interaction,body,'m2');
+  assert.equal(repeated.status,200);assert.equal(repeated.data.duplicate,true);
+  assert.equal(writes,savedWrites);
+  assert.equal((await call('POST',pre+interaction,{...body,note:'A different instruction for the same request id.'},'m2')).status,409);
+  const beforeOutcome=JSON.stringify(rows);badAudit=true;
+  assert.equal((await call('POST',pre+interaction,
+   {requestId:'sbc-action-'+'b'.repeat(32),outcome:'NO_ANSWER',note:'Tried verified permitted number and no answer.'},'m2')).status,503);
+  badAudit=false;assert.equal(JSON.stringify(rows),beforeOutcome,'audit failure rolls back entire interaction');
+  const wrong=await call('POST',pre+'/f/interaction',
+   {requestId:'sbc-action-'+'c'.repeat(32),outcome:'BAD_NUMBER',
+    note:'The dialed number was disconnected; needs Lorna to verify another number.'},'m2');
+  assert.equal(wrong.status,200);assert.equal(wrong.data.status,'Bad Number');
+  assert.equal(wrong.data.researchRequired,true);
+  assert.equal(rows.find(c=>c.id==='f').status,'Bad Number');
+  assert.equal(rows.find(c=>c.id==='f').follow_up,null);
+  assert.equal((await call('POST',pre+'/f/interaction',
+   {requestId:'sbc-action-'+'d'.repeat(32),outcome:'NO_ANSWER',note:'Should never call a bad number again without verification.'},'m2')).status,409);
+  const optout={requestId:'sbc-action-'+'e'.repeat(32),outcome:'DO_NOT_CONTACT',
+   note:'Customer expressly requested no further phone contact.'};
+  const dnc=await call('POST',pre+interaction,optout,'m2');
+  assert.equal(dnc.status,200);assert.equal(dnc.data.status,'Do Not Call');
+  assert.equal(rows.find(c=>c.id==='c').follow_up,null);
+  assert.equal((await call('POST',pre+interaction,optout,'m2')).data.duplicate,true,'retry cannot duplicate DNC');
+  assert.equal((await call('POST',pre+interaction,
+   {requestId:'sbc-action-'+'f'.repeat(32),outcome:'CONNECTED',note:'Should never call a suppressed customer again.'},'m2')).status,409);
  }finally{await new Promise(resolve=>server.close(resolve));}
 });

@@ -21,6 +21,7 @@ const RE={
  POST:[
   new RegExp('^/api/account-social/v1/accounts/'+VALID_ID+'/interactions$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/(?:note|follow-up)$'),
+  new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/interaction$'),
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'/submit$'),
   new RegExp('^/api/account-social/v1/research/handoffs/'+VALID_ID+'/return$')
  ]

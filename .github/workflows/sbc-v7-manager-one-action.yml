@@ -1,0 +1,40 @@
+name: SBC V7 Account Manager — One-Action Workstation
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'routes/account-portfolios-v1.cjs'
+      - 'enterprise/sbc-account-manager-role-gate-v2.cjs'
+      - 'public/sbc-account-manager-v1.js'
+      - 'browser_public/sbc-account-manager-v1.js'
+      - 'public/sbc-account-manager-v1.html'
+      - 'browser_public/sbc-account-manager-v1.html'
+      - 'public/sbc-account-manager-v1.css'
+      - 'browser_public/sbc-account-manager-v1.css'
+      - 'test/sbc-account-portfolios.test.cjs'
+      - '.github/workflows/sbc-v7-manager-one-action.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  manual-outcome-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Check syntax and canonical/browser mirrors
+        run: |
+          node --check routes/account-portfolios-v1.cjs
+          node --check enterprise/sbc-account-manager-role-gate-v2.cjs
+          node --check public/sbc-account-manager-v1.js
+          cmp public/sbc-account-manager-v1.js browser_public/sbc-account-manager-v1.js
+          cmp public/sbc-account-manager-v1.html browser_public/sbc-account-manager-v1.html
+          cmp public/sbc-account-manager-v1.css browser_public/sbc-account-manager-v1.css
+      - name: Install pinned app dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify manager one-action, DNC, idempotency, and V4–V6 regressions
+        run: |
+          node --test test/sbc-account-portfolios.test.cjs test/sbc-account-revenue-v5.test.cjs test/sbc-account-manager-readiness-v6.test.cjs test/sbc-prospect-account-links-v4.test.cjs

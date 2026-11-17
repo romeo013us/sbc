@@ -3,9 +3,109 @@
  */
 (()=>{'use strict';
  const $=id=>document.getElementById(id),state={view:'accounts',accounts:[],handoffs:[],channels:[],posts:[],selected:null,lang:'en',role:'',busy:false};
- const dict={es:{siteValue:"¿Por qué una página web?",siteValueTitle:"3 razones para tener una página web",siteValueHelp:"Respuestas breves y precisas; sin prometer ventas ni posiciones en Google.",findTitle:"1 · Que le encuentren",findText:"Una página ofrece un lugar claro donde conocer su negocio cuando buscan o escuchan de usted.",trustTitle:"2 · Inspirar confianza",trustText:"Una página profesional ayuda a evaluar servicios y datos comerciales comprobados.",contactTitle:"3 · Facilitar el contacto",contactText:"Un lugar para teléfono, cotizaciones y citas cuando esas funciones estén activadas.",siteNeed:"“¿Por qué necesito una página web?”",siteNeedAnswer:"Ayuda a que le encuentren, genera confianza y facilita el contacto. ¿Cuál de esas ventajas le serviría más?",socialQuestion:"“Pero ya tengo Facebook.”",socialAnswer:"¡Excelente! Mantenga Facebook. Su página lo complementa con servicios y datos de contacto en un solo lugar.",careTitle:"Configuración y gestión mensual",careText:"El paquete inicial figura a $199. Una gestión opcional de $79 al mes está en revisión del propietario; no se debe presentar como disponible. Confirme alcance y facturación antes de ofrecerla.",accounts:'Mis cuentas',handoffs:'Transferencias de investigación',social:'Estudio de redes',controls:'Seguridad y controles',connected:'Conectado al CRM de SBC',back:'Centro de mando',refresh:'Actualizar',portfolio:'Cartera de clientes asignados',portfolioHelp:'Cada contacto pertenece a una empresa con un administrador responsable.',researchQueue:'Investigación → Gestión de cuentas',researchHelp:'Los clientes potenciales verificados se revisan antes de asignarse.',contentStudio:'Estudio de redes sociales',contentHelp:'Prepare publicaciones para Facebook e Instagram. El dueño autoriza cada publicación.',safety:'Controles operativos',customer:'Cliente',channel:'Cuenta social autorizada',caption:'Texto de la publicación',media:'URL pública HTTPS de la imagen (requerida para Instagram)',link:'URL de destino',createDraft:'Crear borrador',contentQueue:'Publicaciones y aprobaciones',note:'Nota de cuenta',saveNote:'Guardar nota',timeline:'Historial de relaciones'}};
+ const dict={es:{siteValue:"¿Por qué una página web?",siteValueTitle:"3 razones para tener una página web",siteValueHelp:"Respuestas breves y precisas; sin prometer ventas ni posiciones en Google.",findTitle:"1 · Que le encuentren",findText:"Una página ofrece un lugar claro donde conocer su negocio cuando buscan o escuchan de usted.",trustTitle:"2 · Inspirar confianza",trustText:"Una página profesional ayuda a evaluar servicios y datos comerciales comprobados.",contactTitle:"3 · Facilitar el contacto",contactText:"Un lugar para teléfono, cotizaciones y citas cuando esas funciones estén activadas.",siteNeed:"“¿Por qué necesito una página web?”",siteNeedAnswer:"Ayuda a que le encuentren, genera confianza y facilita el contacto. ¿Cuál de esas ventajas le serviría más?",socialQuestion:"“Pero ya tengo Facebook.”",socialAnswer:"¡Excelente! Mantenga Facebook. Su página lo complementa con servicios y datos de contacto en un solo lugar.",careTitle:"Configuración y gestión mensual",careText:"El paquete inicial figura a $199. Una gestión opcional de $79 al mes está en revisión del propietario; no se debe presentar como disponible. Confirme alcance y facturación antes de ofrecerla.",accounts:'Mis cuentas',handoffs:'Transferencias de investigación',social:'Estudio de redes',controls:'Seguridad y controles',connected:'Conectado al CRM de SBC',back:'Centro de mando',refresh:'Actualizar',portfolio:'Cartera de clientes asignados',portfolioHelp:'Cada contacto pertenece a una empresa con un administrador responsable.',researchQueue:'Investigación → Gestión de cuentas',researchHelp:'Los clientes potenciales verificados se revisan antes de asignarse.',contentStudio:'Estudio de redes sociales',contentHelp:'Prepare publicaciones para Facebook e Instagram. El dueño autoriza cada publicación.',safety:'Controles operativos',customer:'Cliente',channel:'Cuenta social autorizada',caption:'Texto de la publicación',media:'URL pública HTTPS de la imagen (requerida para Instagram)',link:'URL de destino',createDraft:'Crear borrador',contentQueue:'Publicaciones y aprobaciones',note:'Nota de cuenta',saveNote:'Guardar nota',timeline:'Historial de relaciones',quickTitle:'Una acción · Guardar resultado',quickHelp:'Registre lo ocurrido, conserve el historial y programe el siguiente paso. Esto no realiza llamadas ni envía mensajes.',quickOutcome:'¿Qué sucedió?',quickPick:'Seleccione resultado…',quickConnected:'Hablé con el negocio',quickNoAnswer:'Sin respuesta',quickFollowUp:'Solicitó seguimiento',quickBadNumber:'Número incorrecto · requiere investigación',quickDnc:'No contactar · bloquear ahora',quickDate:'Fecha del próximo seguimiento',quickNote:'¿Qué se aprendió o solicitó?',quickGuard:'Verifique la identidad, el número, el consentimiento y las restricciones antes de llamar. Aquí no se inicia ninguna llamada.',quickSave:'Guardar resultado y siguiente paso'}};
  const t=k=>dict[state.lang]?.[k]||document.querySelector(`[data-t="${k}"]`)?.dataset.en||k;
  const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+ const blockedAccount=a=>a?.doNotContact===true||a?.doNotCall===true||a?.salesSuppressed===true||
+  /^(?:do not call|do not contact|dnc|opt.?out|unsubscribe|lost|deleted|bad number|wrong number)$/i.test(String(a?.status||'').trim());
+ const localToday=()=>{
+  const d=new Date();
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+ };
+ let pendingQuick=null;
+ function updateQuickForm(){
+  const form=$('sbcManagerOutcomeForm');
+  if(!form)return;
+  const outcome=form.elements.outcome.value,
+   dateField=$('sbcQuickDateField'),
+   date=form.elements.dueDate;
+  dateField.hidden=!['CONNECTED','FOLLOW_UP_REQUESTED'].includes(outcome);
+  date.required=outcome==='FOLLOW_UP_REQUESTED';
+  date.min=localToday();
+  if(dateField.hidden)date.value='';
+  const status=$('sbcQuickStatus');
+  if(status&&status.dataset.saved!=='yes')status.textContent=outcome==='DO_NOT_CONTACT'?
+   'This immediately suppresses future outreach when saved.':
+   outcome==='BAD_NUMBER'?'This removes the number from normal outreach pending new research.':
+   'Save this internal CRM record; no call or message will be sent.';
+ }
+ function configureQuickForm(account){
+  const section=$('sbcManagerQuickActions');
+  if(!section)return;
+  section.hidden=state.role!=='account_manager';
+  $('noteForm').hidden=state.role==='account_manager';
+  if(section.hidden)return;
+  const form=$('sbcManagerOutcomeForm'),blocked=blockedAccount(account);
+  form.reset();pendingQuick=null;
+  $('sbcQuickPhone').textContent='Account phone: '+String(account.phone||'Not verified')+
+   ' · Review your documented permission and calling requirements before dialing.';
+  $('sbcQuickStatus').dataset.saved='';
+  $('sbcQuickStatus').textContent=blocked?
+   'Contact suppressed or number invalid. This account is for internal review only.':
+   'Ready to record a verified manual outcome. No call or message is initiated.';
+  form.querySelectorAll('input,select,textarea,button').forEach(field=>field.disabled=blocked);
+  $('sbcQuickSave').disabled=blocked;
+  updateQuickForm();
+ }
+ async function submitQuickOutcome(event){
+  event.preventDefault();
+  const form=event.currentTarget,status=$('sbcQuickStatus');
+  const account=state.accounts.find(x=>String(x.id)===String(state.selected));
+  if(state.role!=='account_manager'||!account||blockedAccount(account)){
+   status.textContent='This account is no longer authorized for contact. Refresh the account.';
+   return;
+  }
+  const body={outcome:String(form.elements.outcome.value),
+   note:String(form.elements.note.value||'').trim()};
+  const due=String(form.elements.dueDate.value||'');
+  if(due&&['CONNECTED','FOLLOW_UP_REQUESTED'].includes(body.outcome))body.dueDate=due;
+  if(!['CONNECTED','NO_ANSWER','FOLLOW_UP_REQUESTED','BAD_NUMBER','DO_NOT_CONTACT'].includes(body.outcome)||
+   body.note.length<12||body.note.length>1000||(body.outcome==='FOLLOW_UP_REQUESTED'&&!body.dueDate)){
+   status.textContent='Choose an outcome, write a clear account note, and supply the required date.';
+   return;
+  }
+  if(!window.crypto?.randomUUID){
+   status.textContent='A secure browser session is required to save this outcome.';return;
+  }
+  if(body.outcome==='DO_NOT_CONTACT'&&!window.confirm('Suppress this account from future outreach? This is an immediate CRM safety change.'))return;
+  const signature=JSON.stringify(body),id=String(account.id);
+  if(!pendingQuick||pendingQuick.id!==id||pendingQuick.signature!==signature){
+   pendingQuick={id,signature,requestId:'sbc-action-'+window.crypto.randomUUID().replace(/-/g,'')};
+  }
+  body.requestId=pendingQuick.requestId;
+  $('sbcQuickSave').disabled=true;
+  status.textContent='Saving the outcome and any next step together…';
+  try{
+   const res=await fetch('/api/v6606/crm/account-portfolios/'+encodeURIComponent(id)+'/interaction',
+    {method:'POST',credentials:'same-origin',cache:'no-store',
+     headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify(body)});
+   const data=await res.json().catch(()=>({}));
+   if(!res.ok||data.ok!==true||data.durable!==true)
+    throw Error(data.code||'ACCOUNT_INTERACTION_NOT_CONFIRMED');
+   if(state.selected!==id)return;
+   pendingQuick=null;
+   account.status=data.status;account.followUp=data.followUp;
+   account.doNotContact=data.outcome==='DO_NOT_CONTACT'||account.doNotContact===true;
+   account.salesSuppressed=data.outcome==='BAD_NUMBER'||account.salesSuppressed===true;
+   status.dataset.saved='yes';
+   status.textContent=data.outcome==='BAD_NUMBER'?
+    'Saved. Number removed from normal outreach; return the account for research. No automatic retry.':
+    data.outcome==='DO_NOT_CONTACT'?
+    'Saved. Contact is suppressed and follow-up cleared. Do not contact this business.':
+    'Saved in the existing CRM. '+(data.followUp?'Next review: '+data.followUp+'. ':'')+
+     'No phone call or customer message was sent.';
+   await loadAccountHistoryV5(id);
+   if(data.outcome==='DO_NOT_CONTACT'||data.outcome==='BAD_NUMBER'){
+    form.querySelectorAll('input,select,textarea,button').forEach(x=>x.disabled=true);
+   }else{form.reset();updateQuickForm();}
+  }catch(error){
+   status.dataset.saved='';
+   status.textContent='Not confirmed: '+String(error.message||error)+
+    '. The same Save action safely retries the identical request.';
+  }finally{
+   if(!blockedAccount(account)&&state.selected===id)$('sbcQuickSave').disabled=false;
+  }
+ }
  const message=(s,bad=false)=>{$('alert').textContent=s||'';$('alert').style.borderColor=bad?'#ba696d':''};
  async function api(route,{method='GET',body}={}){
   const r=await fetch(route,{credentials:'same-origin',method,headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
@@ -38,6 +138,7 @@
   $('accountDetail').hidden=false;$('detailTitle').textContent=a.businessName;
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
+  configureQuickForm(a);
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
   if(state.role==='account_manager'){void loadAccountHistoryV5(id);void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
  }
@@ -156,6 +257,8 @@
    }
   }catch(error){message(error.message,true)}
  });
+ $('sbcManagerOutcomeForm').addEventListener('submit',submitQuickOutcome);
+ $('sbcManagerOutcomeForm').elements.outcome.addEventListener('change',()=>{ $('sbcQuickStatus').dataset.saved='';updateQuickForm();});
  $('socialCustomer').addEventListener('change',()=>socialLoad().catch(e=>message(e.message,true)));
  $('socialForm').addEventListener('submit',async e=>{e.preventDefault();try{const f=e.target;
   await api('/api/account-social/v1/posts',{method:'POST',body:{channelId:f.elements.channelId.value,body:f.elements.body.value,mediaUrl:f.elements.mediaUrl.value,ctaUrl:f.elements.ctaUrl.value}});
