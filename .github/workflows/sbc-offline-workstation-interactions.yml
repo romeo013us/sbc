@@ -12,6 +12,7 @@ on:
       - 'scripts/sbc-offline-interaction-audit.py'
       - 'test/sbc-workstation-browser-wiring.test.cjs'
       - 'test/sbc-lorna-urgent-contrast.test.cjs'
+      - 'test/sbc-account-manager-fast-search.test.cjs'
       - 'public/sbc-lorna-checklist.css'
       - 'browser_public/sbc-lorna-checklist.css'
       - '.github/workflows/sbc-offline-workstation-interactions.yml'
