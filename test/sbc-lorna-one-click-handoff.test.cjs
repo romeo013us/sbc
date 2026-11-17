@@ -66,9 +66,9 @@ test('handoff workspace preselects verified lead by business name and keeps subm
    setAttribute(name,value){this.attributes[name]=value},
    appendChild(){},focus(){this.focused=true}};
  }
- const form={elements:{
-  customerId:{value:'',readOnly:false},summary:{value:'',focus(){this.focused=true}}
- }};
+ const form={listeners:{},addEventListener(type,fn){this.listeners[type]=fn},
+  elements:{customerId:{value:'',readOnly:false},summary:{value:'',focus(){this.focused=true}}}
+ };
  const status={textContent:''},business={textContent:''};
  const root={hidden:true,innerHTML:'',listeners:{},setAttribute(){},
   addEventListener(type,fn){this.listeners[type]=fn}};
