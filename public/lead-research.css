@@ -113,3 +113,14 @@
 .shift-home strong{color:#e4f6ff}
 .shift-home p{margin:5px 0 0;color:#b2d1e8;font-size:13px}
 @media(max-width:700px){.shift-task{grid-template-columns:26px minmax(0,1fr)}.shift-task button{grid-column:2;justify-self:start}.shift-summary{text-align:left}}
+
+/* Compact owner assignment on Lorna Dashboard; no CRM changes. */
+.sbc-compact-assignment{display:block;padding:13px 17px;margin:0 0 14px;border-left-width:5px;max-width:100%}
+.sbc-assignment-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.sbc-compact-assignment h2{font-size:17px;margin:3px 0 4px}
+.sbc-compact-assignment p{font-size:13px;line-height:1.5;max-width:none;margin:6px 0}
+.sbc-compact-assignment details{margin:8px 0;border-top:1px solid #88662b;padding:8px 0}
+.sbc-compact-assignment summary{cursor:pointer;font-weight:750;padding:7px 0;min-height:36px}
+.sbc-compact-assignment .attention-open{margin-top:8px}
+.sbc-assignment-restore{margin-bottom:14px}
+@media(max-width:640px){.sbc-assignment-header{flex-direction:column}.sbc-compact-assignment .attention-open{width:auto;max-width:100%}}
