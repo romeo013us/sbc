@@ -90,3 +90,33 @@ test('missing business name is labeled unknown instead of inventing a customer n
   assert.equal(task.businessName, null);
   assert.equal(task.customerId, 'c1');
 });
+
+test('returned bad-number work stays with Lorna even after 15 days until research is resolved', async () => {
+  const { repository, service } = fixture();
+  const handoff = await service.submit(lorna, { customerId: 'c1', summary: 'Verified original listing.' });
+  await service.assign(owner, { handoffId: handoff.id, managerId: 'manager' });
+  await service.returnForResearch(manager, {
+    handoffId: handoff.id, issue: 'BAD_NUMBER', reason: 'Disconnected number requires replacement research.'
+  });
+  const afterHold = createHandoffService({
+    repository, clock: () => new Date('2026-12-05T15:00:00Z')
+  });
+  assert.equal((await afterHold.researchQueue(lorna)).length, 1);
+  assert.deepEqual(await afterHold.queue(manager), [], 'a time delay is not proof research was completed');
+  assert.equal((await afterHold.queue(owner))[0].status, 'RESEARCH_RETURNED');
+});
+
+test('escalated source conflicts remain owner-only rather than returning to manager daily work', async () => {
+  const { service } = fixture();
+  const handoff = await service.submit(lorna, { customerId: 'c1', summary: 'Verified original listing.' });
+  await service.assign(owner, { handoffId: handoff.id, managerId: 'manager' });
+  const feedback = await service.returnForResearch(manager, {
+    handoffId: handoff.id, issue: 'SOURCE_CONFLICT', reason: 'Conflicting public contact listings need owner review.'
+  });
+  await service.resolve(lorna, {
+    feedbackId: feedback.id, action: 'ESCALATED',
+    note: 'Unable to resolve conflicting source details with verified evidence.'
+  });
+  assert.deepEqual(await service.queue(manager), [], 'owner review must not be treated as active account care');
+  assert.equal((await service.queue(owner))[0].status, 'NEEDS_OWNER_REVIEW');
+});
