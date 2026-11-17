@@ -29,7 +29,20 @@ function setTab(tab){
  if(importRunning&&tab!=='import'){note('Bulk import is running. Finish the current batch before changing workspaces.',true);return;}
  active=tab;
  document.querySelectorAll('[data-pane]').forEach(function(el){el.hidden=el.getAttribute('data-pane')!==tab;});
- document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===tab);});
+ 
+function setupAssignmentDismiss(){
+ var card=$('sbc-full-research-urgent'),hide=$('sbc-dismiss-assignment'),restore=$('sbc-restore-assignment');
+ if(!card||!hide||!restore)return;
+ // UI preference only. No CRM read/write or approval triggered by dismissal.
+ var key='sbc.research.assignment.dismissed.v1.'+String(user&&user.id||'current');
+ function read(){try{return window.localStorage.getItem(key)==='yes';}catch(_){return false;}}
+ function draw(dismissed){card.hidden=dismissed;restore.hidden=!dismissed;}
+ draw(read());
+ hide.addEventListener('click',function(){try{window.localStorage.setItem(key,'yes');}catch(_){}draw(true);});
+ restore.addEventListener('click',function(){try{window.localStorage.removeItem(key);}catch(_){}draw(false);});
+}
+
+document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===tab);});
  var titles={home:'My Dashboard',today:'Today’s Tasks',queue:'Needs Attention',add:'Add Business Lead',import:'CSV & List Import',mine:'My Submitted Leads',training:'My Training',clock:'Time Clock'};
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
@@ -803,7 +816,7 @@ $('sign-out').addEventListener('click',async function(){try{await api('/api/logo
  try{
   var me=await api('/api/me');
   if(!me.authenticated||!me.user||!hasRole(me.user.role)){location.replace('/');return;}
-  user=me.user;if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(user.role,user.id);txt('user-name',user.name||user.username||'Lead Researcher');
+  user=me.user;setupAssignmentDismiss();if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(user.role,user.id);txt('user-name',user.name||user.username||'Lead Researcher');
   await refresh();
   prioritizeAttention(true);
   renderShiftPlan();
