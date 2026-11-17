@@ -1,0 +1,36 @@
+name: SBC Lorna One-Click Research Handoff
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/lead-research.js'
+      - 'browser_public/lead-research.js'
+      - 'public/sbc-lorna-handoff-v1.js'
+      - 'browser_public/sbc-lorna-handoff-v1.js'
+      - 'public/sbc-lorna-handoff-v1.css'
+      - 'browser_public/sbc-lorna-handoff-v1.css'
+      - 'test/sbc-lorna-one-click-handoff.test.cjs'
+      - '.github/workflows/sbc-lorna-one-click-handoff.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-handoff-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify scripts and GoDaddy browser mirrors
+        run: |
+          node --check public/lead-research.js
+          node --check public/sbc-lorna-handoff-v1.js
+          cmp public/lead-research.js browser_public/lead-research.js
+          cmp public/sbc-lorna-handoff-v1.js browser_public/sbc-lorna-handoff-v1.js
+          cmp public/sbc-lorna-handoff-v1.css browser_public/sbc-lorna-handoff-v1.css
+      - name: Verify one-click handoff and existing employee safeguards
+        run: |
+          node --test test/sbc-lorna-one-click-handoff.test.cjs
+          node --test scripts/account-manager-ui.test.cjs scripts/lorna-account-routes.test.cjs scripts/lorna-account-handoff.test.cjs
