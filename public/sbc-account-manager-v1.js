@@ -161,7 +161,19 @@
   $('metrics').innerHTML=[['Managed accounts',state.accounts.length],['Research handoffs',state.handoffs.length],['DNC / suppressions',state.accounts.filter(x=>x.doNotContact).length],['Connected channels','Verify in Social Studio']].map(([label,v])=>`<div class="metric"><strong>${escapeHtml(v)}</strong><small>${escapeHtml(label)}</small></div>`).join('');
   renderAccountGrid();
   $('socialCustomer').innerHTML=accountOptions();renderHandoffs();if(state.selected)openAccount(state.selected);if(state.view==='social')await socialLoad();
- }catch(e){state.accounts=[];state.selected=null;$('accountDetail').hidden=true;
+ }catch(e){
+  // Access may have expired while this page was open. Clear *every* previously
+  // authorized customer view (not just the primary account cards).
+  state.accounts=[];state.handoffs=[];state.channels=[];state.posts=[];
+  state.selected=null;state.role='';pendingQuick=null;
+  $('accountDetail').hidden=true;
+  for(const id of ['metrics','handoffList','socialCustomer','socialChannel','socialList',
+    'accountFacts','timeline','detailTitle']){
+    const node=$(id);if(node)node.replaceChildren();
+  }
+  for(const id of ['sbcAccountResearchV4','sbcAccountPlanV5']){
+    const node=$(id);if(node)node.replaceChildren();
+  }
   $('sbcAccountCount').textContent='Account list unavailable. Sign in or ask the owner for access.';
   $('accountGrid').innerHTML='<p class="empty">Account data could not be verified. Check your login or ask the owner to enable the workstation.</p>';
   message('Workspace unavailable: '+e.message,true);$('rolePill').textContent='NOT AUTHORIZED';}}
