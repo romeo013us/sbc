@@ -63,7 +63,10 @@ test('search rendering escapes CRM strings and uses current authenticated accoun
  const js=read('public/sbc-account-manager-v1.js');
  assert.equal(js,read('browser_public/sbc-account-manager-v1.js'));
  assert(!/localStorage|sessionStorage/.test(js),'never persist CRM account details in browser storage');
- assert.match(js,/state\.accounts=\[\];state\.selected=null/,'clear formerly displayed accounts on authentication/data failure');
+ assert.match(js,/state\.accounts=\[\]/,'clear formerly displayed accounts after authentication failure');
+ assert.match(js,/state\.selected=null/,'clear selected CRM customer after authentication failure');
+ assert.match(js,/state\.handoffs=\[\]/,'clear stale research handoffs after authentication failure');
+ assert.match(js,/['"]socialCustomer['"]/,'account page has a targeted customer-select cleanup');
 });
 
 test('find-account field is keyboard accessible and bilingual',()=>{
