@@ -1,0 +1,35 @@
+name: SBC Account Manager Fast Portfolio Search
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-account-manager-v1.html'
+      - 'browser_public/sbc-account-manager-v1.html'
+      - 'public/sbc-account-manager-v1.js'
+      - 'browser_public/sbc-account-manager-v1.js'
+      - 'public/sbc-account-manager-v1.css'
+      - 'browser_public/sbc-account-manager-v1.css'
+      - 'test/sbc-account-manager-fast-search.test.cjs'
+      - '.github/workflows/sbc-account-manager-fast-search.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  search-and-workforce-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify script and GoDaddy assets
+        run: |
+          node --check public/sbc-account-manager-v1.js
+          cmp public/sbc-account-manager-v1.js browser_public/sbc-account-manager-v1.js
+          cmp public/sbc-account-manager-v1.html browser_public/sbc-account-manager-v1.html
+          cmp public/sbc-account-manager-v1.css browser_public/sbc-account-manager-v1.css
+      - name: Fast account search and existing manager safety tests
+        run: |
+          node --test test/sbc-account-manager-fast-search.test.cjs scripts/account-manager-ui.test.cjs
+          node --test test/sbc-account-manager-runtime-mount.test.cjs
