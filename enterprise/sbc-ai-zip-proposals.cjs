@@ -245,7 +245,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   res.setHeader('Cache-Control','no-store');
   try{
    const {c,items}=own(req,uploads());
-   return res.json({ok:true,customerId:c.id,uploads:items.map(r=>({
+   return res.json({ok:true,customerId:c.id,uploads:items.slice().reverse().map(r=>({
     id:r.id,tier:r.tier,filename:r.filename,fileCount:r.fileCount,bytes:r.bytes,createdAt:r.createdAt,previewAudit:r.previewAudit||null,
     previewPath:preview(c,r),downloadPath:ROOT.replace(':id',encodeURIComponent(c.id))+'/uploads/'+r.id+'/download',
     status:'OWNER_REVIEW_REQUIRED'
