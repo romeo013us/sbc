@@ -1,6 +1,6 @@
 {
-  "sourceCommit": "866347a04afeb736ecadd243f5b3cdacbf9a6227",
-  "sourceFingerprint": "776bf220aa4af4c60e33231d2394018a5b516e7e98d58e4a49fa0998d221a3d5",
+  "sourceCommit": "b1be6a0d26afee7d5a71a9a3d1c24ae7248e58e7",
+  "sourceFingerprint": "b0d16b433ed888f0a1fd05e0521f2cacdef24790839b4a1da458be523c9313d4",
   "artifactType": "server.js",
   "artifactSha256": "2db5823060d0ec16b67e382849ec6c2f67eb8f2226361525b0a2b23d31a9755d",
   "buildBranch": "a-sbc-master",
