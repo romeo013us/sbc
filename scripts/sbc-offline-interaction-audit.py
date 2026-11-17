@@ -180,7 +180,7 @@ def lorna_case(context,origin,port,label):
       const panel=document.querySelector('#sbc-full-research-urgent');
       if(!el||!panel)return 0;
       function lum(s){
-        const m=s.match(/rgba?\\(([^)]*)\\)/);if(!m)return null;
+        const m=s.match(/rgba?\(([^)]*)\)/);if(!m)return null;
         const v=m[1].split(/[ ,/]+/).filter(Boolean).slice(0,3).map(Number)
           .map(c=>c/255).map(c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4));
         return .2126*v[0]+.7152*v[1]+.0722*v[2];
