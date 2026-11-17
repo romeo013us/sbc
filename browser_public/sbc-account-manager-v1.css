@@ -14,3 +14,12 @@
 .sbc-one-action-grid select,.sbc-one-action-grid textarea,.sbc-one-action-grid input{background:#091a23;border:2px solid #477077;color:#f5ffff;font-size:15px;min-height:46px}
 .sbc-one-action-grid select:focus-visible,.sbc-one-action-grid textarea:focus-visible,.sbc-one-action-grid input:focus-visible,.sbc-one-action-grid button:focus-visible{outline:3px solid #a8ffe6;outline-offset:2px}
 @media(max-width:750px){.sbc-one-action-grid{grid-template-columns:1fr}.sbc-quick-actions{align-items:stretch;flex-direction:column}.sbc-quick-actions button{width:100%}}
+
+/* Fast portfolio finder: a visible, readable search before the account cards. */
+.sbc-account-search{display:grid;gap:8px;max-width:640px;margin:14px 0 20px;padding:16px 18px;background:#112b32;border:1px solid #43776f;border-radius:14px}
+.sbc-account-search label{color:#eafff8;font-size:15px;font-weight:800}
+#sbcAccountSearch{width:100%;max-width:100%;min-height:48px;background:#091a23;border:2px solid #6b9896;color:#f5ffff;font-size:16px;border-radius:10px;padding:12px}
+#sbcAccountSearch::placeholder{color:#aecdc8;opacity:1}
+#sbcAccountSearch:focus-visible{outline:3px solid #a8ffe6;outline-offset:3px}
+#sbcAccountCount{margin:0;color:#cbe2df;font-size:13px;line-height:1.5}
+@media(max-width:650px){.sbc-account-search{max-width:100%;padding:13px 14px}}
