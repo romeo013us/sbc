@@ -18,5 +18,6 @@
 .sbc-urgent-research{border:2px solid #a92c35!important;border-left:7px solid #a92c35!important;background:#fff5ee!important;color:#4a2024!important;box-shadow:0 4px 18px rgba(87,31,32,.09)}
 .sbc-urgent-research h2{color:#76232b!important}
 .sbc-urgent-research .eyebrow{color:#9b1823!important;font-weight:850;letter-spacing:.08em}
-.sbc-urgent-research p{line-height:1.65}
+.sbc-urgent-research p{line-height:1.65;color:#4a2024!important}
+.sbc-urgent-research strong{color:#4a2024!important}
 .sbc-urgent-research .attention-open{white-space:normal;min-height:44px}
