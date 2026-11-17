@@ -31,6 +31,14 @@ textarea{min-height:76px}.formgrid{display:grid;grid-template-columns:repeat(2,m
 footer{font-size:12px;color:#839ab1;text-align:center;margin-top:24px}
 @media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sections{grid-template-columns:1fr}.full{grid-column:auto}}
 @media(max-width:480px){.grid,.formgrid{grid-template-columns:1fr}header{padding:18px}main{padding:0 14px 40px}.panel{padding:17px}}
+
+/* One department at a time. Preserve server-controlled permissions. */
+.sbc-hr-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.sbc-hr-tabs button[aria-selected="true"]{background:#0b74d1;border-color:#66a8f5;color:#fff}
+.sections.sbc-tabbed{display:block;max-width:980px;margin-top:10px}
+.sections.sbc-tabbed .panel{margin-bottom:14px}
+.sbc-hr-holiday{border-left:4px solid #f28b25;background:#142a41;padding:14px;border-radius:10px;line-height:1.6}
+@media(max-width:480px){.sbc-hr-tabs button{flex:1 1 42%;padding:11px 8px}}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/sbc-chatgpt-os-v1.css?v=66.0.132-resume">
 </head><body>
@@ -48,16 +56,22 @@ footer{font-size:12px;color:#839ab1;text-align:center;margin-top:24px}
 <p class="muted">Workforce records, time reviews, contractor payout plans and owner approval—all in one secure workstation.</p></div>
 <div class="actions"><span id="who" class="muted"></span><button id="reload">↻ Refresh</button><a href="/" id="ownerHome" hidden style="color:#99e6dc">Owner Command Center</a></div></div>
 <div class="grid" id="stats"></div>
-<div class="sections">
-<section class="panel"><h2>👥 Team Directory</h2><p class="muted tiny">Only staff in your authorized tenant. Sensitive documents, account numbers and login secrets are not exposed.</p><div id="workers" class="list"></div></section>
-<section class="panel"><h2>🌍 Payout Provider Review</h2>
+<nav class="sbc-hr-tabs" aria-label="HR workspace sections" role="tablist">
+<button type="button" role="tab" data-hr-tab="team" aria-selected="true">Team</button>
+<button type="button" role="tab" data-hr-tab="time" aria-selected="false">Time &amp; Pay</button>
+<button type="button" role="tab" data-hr-tab="approvals" aria-selected="false">Approvals</button>
+<button type="button" role="tab" data-hr-tab="providers" aria-selected="false">Payout Providers</button>
+<button type="button" role="tab" data-hr-tab="holidays" aria-selected="false">Holidays &amp; Policies</button>
+</nav><p class="muted tiny" id="sbc-hr-section-status" role="status">Showing Team. Choose a section above.</p><div class="sections sbc-tabbed">
+<section class="panel" data-hr-panel="team"><h2>👥 Team Directory</h2><p class="muted tiny">Only staff in your authorized tenant. Sensitive documents, account numbers and login secrets are not exposed.</p><div id="workers" class="list"></div></section>
+<section class="panel" data-hr-panel="providers" hidden><h2>🌍 Payout Provider Review</h2>
 <p class="muted tiny">Wise is not required. Propose a payment provider, then obtain owner approval. No transfer or bank account collection occurs here.</p>
 <form id="providerForm"><div class="formgrid" style="grid-template-columns:1fr">
 <label>Staff member<select id="providerWorker" required></select></label>
 <label>Proposed provider<select id="providerChoice" required></select></label></div>
 <button type="submit" class="primary">Submit Provider for Approval</button></form>
 <div class="notice warning">Before making a real payment, verify business-account eligibility, fees and the recipient's supported payout method directly with the provider.</div></section>
-<section class="panel"><h2>🧾 Prepare Payroll / Contractor Draft</h2>
+<section class="panel" data-hr-panel="time" hidden><h2>🧾 Prepare Payroll / Contractor Draft</h2>
 <p class="muted tiny">This is an administrative draft. Recorded hours are not necessarily approved. No calculation here is legal payroll, tax withholding or proof of payment.</p>
 <form id="draftForm"><div class="formgrid">
 <label>Staff member<select id="draftWorker" required></select></label>
@@ -68,8 +82,8 @@ footer{font-size:12px;color:#839ab1;text-align:center;margin-top:24px}
 <label>Proposed amount (USD)<input type="number" id="proposedUsd" min="0" max="10000" step=".01" required></label>
 <label class="full">Review notes<textarea id="draftNote" maxlength="500" placeholder="Invoice, agreed rate, verified time corrections, exceptions…"></textarea></label></div>
 <button type="submit" class="primary">Submit Draft to Owner</button></form></section>
-<section class="panel"><h2>✅ Owner Approval Queue</h2><p class="muted tiny">HR staff can submit. Only the owner can approve or reject; approval still does not send money.</p><div id="drafts" class="list"></div></section>
-<section class="panel full"><h2>🔒 Controls & Compliance</h2>
+<section class="panel" data-hr-panel="approvals" hidden><h2>✅ Owner Approval Queue</h2><p class="muted tiny">HR staff can submit. Only the owner can approve or reject; approval still does not send money.</p><div id="drafts" class="list"></div></section>
+<section class="panel full" data-hr-panel="holidays" hidden><h2>🔒 Holidays &amp; Compliance</h2><div class="sbc-hr-holiday"><strong>November 2026 closure</strong><p>November 20, 2026: last scheduled day. November 21–29: <strong>Unpaid closure</strong>. November 30: scheduled return. Confirm applicable holiday pay rules and individual agreements.</p><p><strong>Biweekly payroll:</strong> preview only; no employee payment settings or transfer has changed.</p></div>
 <div class="notice"><strong>HR manager:</strong> View authorized personnel, review closed time entries, propose payout providers and submit pay drafts. No access to lead/customer CRM, financial accounts, secrets, employee-account permissions or external transfer actions.</div>
 <div class="notice warning"><strong>Owner:</strong> Control compensation settings, hiring permissions, classification review, pay approvals and external payouts. Philippine contractor classification and applicable tax/worker protections are separate compliance matters requiring review.</div></section>
 </div>
@@ -138,6 +152,14 @@ $('workers').onclick=e=>{const b=e.target.closest('button[data-pref]');if(!b)ret
  action(()=>api('/api/hr/payout-preferences/'+encodeURIComponent(b.dataset.pref)+'/decision','POST',{decision:b.dataset.decision}));};
 $('drafts').onclick=e=>{const b=e.target.closest('button[data-draft]');if(!b)return;
  action(()=>api('/api/hr/drafts/'+encodeURIComponent(b.dataset.draft)+'/decision','POST',{decision:b.dataset.decision}));};
+
+const hrTabs=[...document.querySelectorAll('[data-hr-tab]')];
+for(const tab of hrTabs)tab.addEventListener('click',()=>{
+ const selected=tab.dataset.hrTab;
+ for(const item of hrTabs)item.setAttribute('aria-selected',String(item===tab));
+ for(const panel of document.querySelectorAll('[data-hr-panel]'))panel.hidden=panel.dataset.hrPanel!==selected;
+ const label=$('sbc-hr-section-status');if(label)label.textContent='Showing '+tab.textContent.trim()+'.';
+});
 (async()=>{try{const m=await api('/api/me');current=m.user;
  if(!['owner','hr_manager'].includes(m.user?.role)){showLogin();return notice('This account has no HR Department permissions.',true)}
  await reload();}catch(e){showLogin();notice('Sign in to access the HR Department.');}})();
