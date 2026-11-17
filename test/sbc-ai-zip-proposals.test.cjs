@@ -164,3 +164,16 @@ test('new ZIP versions save a persistent preview QA summary without affecting ea
   assert.equal(f.state().aiSiteUploads.length,2);
  }finally{f.cleanup()}
 });
+
+test('latest saved website version remains first even when two uploads share the same timestamp',async()=>{
+ const f=fixture();
+ try{
+  const one=await f.call('POST','/uploads/:tier',{tier:'199',buf:zip({'index.html':'<h1>First draft</h1>'})});
+  const two=await f.call('POST','/uploads/:tier',{tier:'199',buf:zip({'index.html':'<h1>Later draft</h1>'})});
+  assert.equal(one.statusCode,201);assert.equal(two.statusCode,201);
+  f.state().aiSiteUploads.forEach(x=>x.createdAt='2026-11-17T10:00:00.000Z');
+  const list=await f.call('GET','/uploads');
+  assert.equal(list.body.uploads[0].id,two.body.upload.id,'last persisted proposal must be latest on ties');
+  assert.equal(list.body.uploads[1].id,one.body.upload.id);
+ }finally{f.cleanup()}
+});

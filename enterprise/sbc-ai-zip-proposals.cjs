@@ -142,6 +142,74 @@ function auditPreviewFiles(files){
  };
 }
 
+
+const BACKUP_MAX=96*1024*1024;
+// Portable ZIP-of-ZIPs built without new SaaS dependencies. Files remain intact,
+// and every archived ZIP can be independently restored or inspected offline.
+function packStoredEntries(entries){
+ if(!Array.isArray(entries)||!entries.length||entries.length>500)throw Error('BACKUP_INVALID_ENTRIES');
+ const local=[],central=[];let offset=0,total=0;const names=new Set();
+ for(const entry of entries){
+  const name=String(entry?.name||''),content=entry?.content;
+  if(!Buffer.isBuffer(content)||!name||name.length>240||name.includes('\\')||name.startsWith('/')||
+   name.split('/').some(p=>!p||p==='..'||p==='.')||/[\0-\x1f]/.test(name)||
+   !/^[a-z0-9_./-]+$/i.test(name)||names.has(name.toLowerCase()))throw Error('BACKUP_INVALID_ENTRIES');
+  names.add(name.toLowerCase());
+  total+=content.length;
+  if(total>BACKUP_MAX*2)throw Error('BACKUP_TOO_LARGE');
+  const label=Buffer.from(name,'utf8'),size=content.length,crc=crc32(content);
+  const lh=Buffer.alloc(30);
+  lh.writeUInt32LE(0x04034b50,0);lh.writeUInt16LE(20,4);
+  lh.writeUInt16LE(0x0800,6);lh.writeUInt32LE(crc,14);
+  lh.writeUInt32LE(size,18);lh.writeUInt32LE(size,22);lh.writeUInt16LE(label.length,26);
+  local.push(lh,label,content);
+  const cd=Buffer.alloc(46);cd.writeUInt32LE(0x02014b50,0);
+  cd.writeUInt16LE(20,4);cd.writeUInt16LE(20,6);cd.writeUInt16LE(0x0800,8);
+  cd.writeUInt32LE(crc,16);cd.writeUInt32LE(size,20);cd.writeUInt32LE(size,24);
+  cd.writeUInt16LE(label.length,28);cd.writeUInt32LE(offset,42);
+  central.push(cd,label);
+  offset+=lh.length+label.length+size;
+ }
+ const directory=Buffer.concat(central),end=Buffer.alloc(22);
+ end.writeUInt32LE(0x06054b50,0);end.writeUInt16LE(entries.length,8);end.writeUInt16LE(entries.length,10);
+ end.writeUInt32LE(directory.length,12);end.writeUInt32LE(offset,16);
+ return Buffer.concat([...local,directory,end]);
+}
+function buildRecoveryArchive({tenantId,customerId,records,readOriginal,maxBytes=BACKUP_MAX}={}){
+ const rows=Array.isArray(records)?records:[];
+ if(!rows.length)throw Error('BACKUP_NO_VERSIONS');
+ if(rows.length>498||typeof readOriginal!=='function')throw Error('BACKUP_INVALID_ENTRIES');
+ if(!Number.isSafeInteger(tenantId)||tenantId<1||typeof customerId!=='string'||!customerId)throw Error('BACKUP_INVALID_VERSION');
+ const limit=Math.min(BACKUP_MAX,Number(maxBytes)||BACKUP_MAX);
+ const files=[],versions=[],seen=new Set();let bytes=0;
+ for(const row of rows){
+  const id=String(row?.id||''),tier=Number(row?.tier);
+  if(row?.tenantId!==tenantId||row?.customerId!==customerId||
+   !/^up_[a-f0-9]{32}$/.test(id)||!TIERS.has(tier))throw Error('BACKUP_INVALID_VERSION');
+  if(seen.has(id))throw Error('BACKUP_DUPLICATE_VERSION');
+  seen.add(id);
+  let original;
+  try{original=readOriginal(row)}catch{throw Error('BACKUP_MISSING_FILE')}
+  if(!Buffer.isBuffer(original)||original.length<22||
+    original.length!==Number(row.bytes))throw Error('BACKUP_INTEGRITY_FAILED');
+  const digest=crypto.createHash('sha256').update(original).digest('hex');
+  if(row.sha256&&row.sha256!==digest)throw Error('BACKUP_INTEGRITY_FAILED');
+  try{parseZip(original)}catch{throw Error('BACKUP_INTEGRITY_FAILED')}
+  bytes+=original.length;
+  if(bytes+8192>limit)throw Error('BACKUP_TOO_LARGE');
+  const name='versions/'+id+'.zip';
+  versions.push({id,tier,createdAt:String(row.createdAt||''),bytes:original.length,sha256:digest,path:name});
+  files.push({name,content:original});
+ }
+ const manifest=Buffer.from(JSON.stringify({
+  schema:'sbc-customer-website-backup-v1',tenantId,customerId,
+  exportedAt:new Date().toISOString(),versions
+ },null,2)+'\n');
+ if(bytes+manifest.length+8192>limit)throw Error('BACKUP_TOO_LARGE');
+ files.unshift({name:'manifest.json',content:manifest});
+ return packStoredEntries(files);
+}
+
 function safeCustomer(req,db,requireTenant){
  const tenantId=Number(requireTenant(req)),id=String(req.params.id||'');
  if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('TENANT_CONTEXT_REQUIRED');
@@ -167,18 +235,39 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   return fail(res,code==='CUSTOMER_NOT_FOUND'||code==='UPLOAD_NOT_FOUND'?404:
    code==='TENANT_CONTEXT_REQUIRED'?403:code==='UPLOAD_REVISION_CONFLICT'?409:
    code==='WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'?423:
+   code==='BACKUP_NO_VERSIONS'?404:
+   code==='BACKUP_TOO_LARGE'?413:
+   code.startsWith('BACKUP_')?409:
    /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED)/.test(code)?400:503,
-   /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
+   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
  };
  app.get(ROOT+'/uploads',auth,ownerOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
    const {c,items}=own(req,uploads());
-   return res.json({ok:true,customerId:c.id,uploads:items.map(r=>({
+   return res.json({ok:true,customerId:c.id,uploads:items.slice().reverse().map(r=>({
     id:r.id,tier:r.tier,filename:r.filename,fileCount:r.fileCount,bytes:r.bytes,createdAt:r.createdAt,previewAudit:r.previewAudit||null,
     previewPath:preview(c,r),downloadPath:ROOT.replace(':id',encodeURIComponent(c.id))+'/uploads/'+r.id+'/download',
     status:'OWNER_REVIEW_REQUIRED'
    })).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,50)});
+  }catch(e){return failError(res,e)}
+ });
+ app.get(ROOT+'/uploads/recovery/export',auth,ownerOnly,(req,res)=>{
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+   const {c,items}=own(req,uploads());
+   const bundle=buildRecoveryArchive({tenantId:c.tenantId,customerId:c.id,records:items,
+    readOriginal:r=>{
+     const location=path.join(c.dir,r.id,'original.zip');
+     const st=fs.lstatSync(location);
+     if(!st.isFile()||st.isSymbolicLink())throw Error('BACKUP_MISSING_FILE');
+     return fs.readFileSync(location);
+    }});
+   res.setHeader('X-Content-Type-Options','nosniff');
+   res.setHeader('Content-Type','application/zip');
+   res.setHeader('Content-Disposition','attachment; filename="sbc-customer-website-backup.zip"');
+   res.setHeader('Content-Length',String(bundle.length));
+   return res.end(bundle);
   }catch(e){return failError(res,e)}
  });
  app.post(ROOT+'/uploads/:tier',auth,ownerOnly,async(req,res)=>{
@@ -212,7 +301,8 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
     fs.renameSync(staged,folder);promoted=true;
     const record={tenantId:c.tenantId,customerId:c.id,tier,id,
      filename:'website-proposal-'+tier+'.zip',fileCount:parsed.files.length,
-     bytes:buf.length,createdAt:new Date().toISOString(),status:'OWNER_REVIEW_REQUIRED',previewAudit};
+     bytes:buf.length,sha256:crypto.createHash('sha256').update(buf).digest('hex'),
+     createdAt:new Date().toISOString(),status:'OWNER_REVIEW_REQUIRED',previewAudit};
     await serializeSiteMutation(async()=>{
      // Re-check the identity and writer state immediately before the durable metadata write.
      safeCustomer(req,db,requireTenant);
@@ -273,4 +363,4 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   }catch(e){return failError(res,e)}
  });
 }
-module.exports={register,parseZip,safeEntry,auditPreviewFiles};
+module.exports={register,parseZip,safeEntry,auditPreviewFiles,packStoredEntries,buildRecoveryArchive};

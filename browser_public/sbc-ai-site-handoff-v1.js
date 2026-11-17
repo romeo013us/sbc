@@ -47,6 +47,7 @@
    '<small id="sbcAIQuickHelp">Maximum 20 MB. Earlier saved versions stay with this customer account.</small>'+
    '<button type="button" id="sbcAIQuickUpload" class="btn primary sbc-ai-upload">Upload ZIP and preview</button>'+
    '<div id="sbcAIQuickCurrent" class="sbc-ai-current" aria-live="polite">Checking saved websites…</div>'+
+   '<div id="sbcAIBackup" class="sbc-ai-current" aria-live="polite">Checking available customer backups…</div>'+
    '<small>No direct access to ChatGPT sessions, automatic customer messages, or publishing. You control approval.</small></section>'+
    '<details id="sbcAIAdvanced" class="sbc-ai-other"><summary>Advanced options · all packages, saved versions and hosted links</summary>'+
    '<details><summary>Original three-site brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
@@ -114,6 +115,15 @@
       '<div class="sbc-ai-actions"><button class="btn" type="button" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+selected+'">Preview saved website</button>'+
       '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download saved ZIP</a></div>';
     }
+   }
+   const backup=document.getElementById('sbcAIBackup');
+   if(backup){
+    backup.innerHTML=items.length?
+     '<p class="sbc-ai-saved">Protect your customer website files</p>'+
+     '<p class="sbc-ai-meta">Original ZIP versions, all saved packages, and a checksum manifest in one portable file. Store this downloaded backup somewhere independent of GoDaddy.</p>'+
+     '<a class="btn" href="'+esc(base+'/uploads/recovery/export')+'" download="sbc-customer-website-backup.zip">Download customer website backup</a>'+
+     '<small>If the backup is too large or any original ZIP is missing, the export stops instead of silently omitting a version. Individual ZIP downloads remain available above.</small>':
+     '<p class="sbc-ai-meta">Upload a website first; the customer recovery backup will appear here.</p>';
    }
    document.querySelectorAll('[data-sbc-ai-preview]').forEach(b=>b.addEventListener('click',()=>preview(b.dataset.sbcAiPreview,Number(b.dataset.tier))));
    document.querySelectorAll('[data-sbc-ai-external]').forEach(b=>b.addEventListener('click',()=>preview(document.getElementById('sbcAIUrl'+b.dataset.sbcAiExternal)?.value,Number(b.dataset.sbcAiExternal))));
