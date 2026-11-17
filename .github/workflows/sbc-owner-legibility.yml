@@ -1,0 +1,25 @@
+name: SBC Owner Legibility and Accessible Controls
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-command-center-focus-v1.css'
+      - 'browser_public/sbc-command-center-focus-v1.css'
+      - 'test/sbc-owner-legibility-controls.test.cjs'
+      - '.github/workflows/sbc-owner-legibility.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contrast-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Accessible contrast and bundled CSS integrity
+        run: |
+          cmp public/sbc-command-center-focus-v1.css browser_public/sbc-command-center-focus-v1.css
+          node --test test/sbc-owner-legibility-controls.test.cjs test/v66-owner-ui-css-bundle.test.cjs
