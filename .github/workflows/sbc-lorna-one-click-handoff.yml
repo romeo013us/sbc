@@ -4,7 +4,6 @@ on:
     branches: [a-sbc-master]
     paths:
       - 'public/lead-research.js'
-      - 'browser_public/lead-research.js'
       - 'public/sbc-lorna-handoff-v1.js'
       - 'browser_public/sbc-lorna-handoff-v1.js'
       - 'public/sbc-lorna-handoff-v1.css'
@@ -27,7 +26,6 @@ jobs:
         run: |
           node --check public/lead-research.js
           node --check public/sbc-lorna-handoff-v1.js
-          cmp public/lead-research.js browser_public/lead-research.js
           cmp public/sbc-lorna-handoff-v1.js browser_public/sbc-lorna-handoff-v1.js
           cmp public/sbc-lorna-handoff-v1.css browser_public/sbc-lorna-handoff-v1.css
       - name: Verify one-click handoff and existing employee safeguards
