@@ -6,6 +6,8 @@ on:
       - 'public/lead-research.html'
       - 'browser_public/lead-research.html'
       - 'public/lead-research.js'
+      - 'public/sbc-account-manager-v1.js'
+      - 'browser_public/sbc-account-manager-v1.js'
       - 'browser_public/sbc-lorna-handoff-v1.js'
       - 'scripts/sbc-offline-interaction-audit.py'
       - 'test/sbc-workstation-browser-wiring.test.cjs'
