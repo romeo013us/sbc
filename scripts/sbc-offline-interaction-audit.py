@@ -164,7 +164,7 @@ def lorna_case(context,origin,port,label):
     if card.count():
         check("submitted lead identity", "Synthetic Verified Barbers" in card.first.inner_text(),
               "other researcher's lead filtered out",label)
-    btn=page.locator("#mine-list").get_by_role("button",name="Send for owner review")
+    btn=page.locator("#mine-list button.sbc-handoff-quick")
     check("one-click handoff is exposed",btn.count()==1,
           "button visible and clickable for synthetic auto-verified lead",label)
     if btn.count():
@@ -175,6 +175,22 @@ def lorna_case(context,origin,port,label):
         check("handoff does not automatically submit",not any(
             x["worker"]=="lorna" and x["method"]!="GET" for x in REQUESTS),
             "no POST or customer contact from opening the modal",label)
+    ratio=page.evaluate("""() => {
+      const el=document.querySelector('#sbc-full-research-urgent p');
+      const panel=document.querySelector('#sbc-full-research-urgent');
+      if(!el||!panel)return 0;
+      function lum(s){
+        const m=s.match(/rgba?\\(([^)]*)\\)/);if(!m)return null;
+        const v=m[1].split(/[ ,/]+/).filter(Boolean).slice(0,3).map(Number)
+          .map(c=>c/255).map(c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4));
+        return .2126*v[0]+.7152*v[1]+.0722*v[2];
+      }
+      const fg=lum(getComputedStyle(el).color),
+            bg=lum(getComputedStyle(panel).backgroundColor);
+      return fg===null||bg===null?0:(Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05);
+    }""")
+    check("urgent instruction contrast",ratio>=4.5,
+          f"real visible paragraph contrast {ratio:.2f}:1",label)
     check("no horizontal overflow",evaluate_overflow(page)<=12,
           "overflow="+str(evaluate_overflow(page))+"px",label)
     check("no JavaScript runtime exceptions",not errors,"; ".join(errors[:4]) or "none",label)
