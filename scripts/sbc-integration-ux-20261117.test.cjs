@@ -6,6 +6,7 @@ test('Lorna owner assignment stays compact, on dashboard only, with dismiss/rest
  assert(h.indexOf('data-pane="home"')<h.indexOf('id="sbc-full-research-urgent"'));
  for(const id of ['sbc-assignment-details','sbc-dismiss-assignment','sbc-restore-assignment','sbc-urgent-lead-details'])assert(h.includes('id="'+id+'"'));
  assert.match(j,/function setupAssignmentDismiss/);
+ assert(j.indexOf('function setupAssignmentDismiss()')<j.indexOf('function setTab(tab)'), 'dismiss helper must be top-level so authenticated Lorna startup works');
  assert.doesNotMatch(j,/localStorage\\./); // Do not store research-workspace state in local browser storage.
  assert.equal(h,read('browser_public/lead-research.html'));
 });
