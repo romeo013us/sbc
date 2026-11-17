@@ -8,7 +8,17 @@ assert.equal(S.patchServer(staged),staged);
 assert(staged.includes(S.MARK));
 assert(staged.includes('const SBC_V66149_HR_POLICY=require('));
 assert(staged.includes("SBC_V66149_HR_POLICY.allowed(req.method,req.path)"));
-assert(staged.includes("['caller','lead_researcher','fulfillment','manager','sales_manager','hr_manager']"));
+// Account Manager V7 added a distinct role to the live user-creation and
+// user-edit checks. Inspect actual allowlists rather than pinning the old order.
+const userCreateRoles=staged.match(/const role=\[([^\]]+)\]\.includes\(String\(b\.role\|\|''\)\)/);
+const userEditRoles=staged.match(/if\(!\[([^\]]+)\]\.includes\(nr\)\)/);
+assert(userCreateRoles,'owner user-create role allowlist must exist');
+assert(userEditRoles,'owner user-edit role allowlist must exist');
+for(const allowed of [userCreateRoles[1],userEditRoles[1]]){
+ for(const role of ['caller','account_manager','lead_researcher','fulfillment','hr_manager']){
+  assert(allowed.includes("'"+role+"'"),'preserve workforce role '+role);
+ }
+}
 assert(staged.includes("u?.role==='hr_manager')return res.redirect(302,'/hr-workstation.html')"));
 assert(staged.includes("app.post('/api/hr/drafts/:id/decision',auth,ownerOnly"));
 assert(staged.includes("app.post('/api/hr/payout-preferences/:userId/decision',auth,ownerOnly"));
