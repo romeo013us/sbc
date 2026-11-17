@@ -43,6 +43,10 @@ function createHandoffService({repository,clock=()=>new Date()}={}){
   const rows=await repository.handoffs(a.tenantId);
   if(a.role==='owner')return clone(rows);
   const active=[];const asOf=Date.parse(timestamp());for(const h of rows){
+   // Only assigned, action-ready work belongs in a manager's daily queue.
+   // RESEARCH_RETURNED stays with the researcher, and NEEDS_OWNER_REVIEW stays
+   // with the owner even when a retry date has passed.
+   if(h.status!=='ASSIGNED')continue;
    // A bad-number retry is not an actionable manager task until its hold ends.
    // The owner retains unfiltered visibility into returned/escalated work.
    const retry=Date.parse(h.retryNotBefore||'');
