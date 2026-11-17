@@ -23,3 +23,12 @@
 #sbcAccountSearch:focus-visible{outline:3px solid #a8ffe6;outline-offset:3px}
 #sbcAccountCount{margin:0;color:#cbe2df;font-size:13px;line-height:1.5}
 @media(max-width:650px){.sbc-account-search{max-width:100%;padding:13px 14px}}
+
+/* Offline Chromium audit 2026-11-17: constrain the account nav's intrinsic
+   width on phones. Only the nav strip scrolls, never the full workstation. */
+@media(max-width:850px){
+ .workspace{grid-template-columns:minmax(0,1fr);width:100%;min-width:0;max-width:100%}
+ .sidebar{min-width:0;max-width:100%;width:100%}
+ .sidebar nav{min-width:0;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+ main{min-width:0;max-width:100%;width:100%}
+}

@@ -197,3 +197,7 @@ body[data-theme="dark"] :is(#content,#modalBody) select option{background:#0c1c2
 body #modal #sbcAiDesk small{font-size:14px!important;line-height:1.6!important}
 body #modal #sbcAiDesk .sbc-ai-meta,body #modal #sbcAiDesk .sbc-ai-draft{font-size:14px!important;line-height:1.6!important}
 @media(max-width:640px){body #modal #sbcAiDesk .sbc-ai-actions .btn{min-height:44px;white-space:normal;}}
+
+/* Offline Chromium audit 2026-11-17: white login card requires dark heading,
+   even when the global dark theme chooses pale application headings. */
+body #login .login-card h1{color:#14283e!important;-webkit-text-fill-color:#14283e!important}
