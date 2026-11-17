@@ -48,14 +48,19 @@
 <main>
 <header class="top"><div><div class="eyebrow">SUCCESSFUL BY CHOICE · WORKFORCE</div><h1 id="page-title">My Dashboard</h1><p id="page-subtitle">Research businesses. Verify details. Send quality prospects to SBC.</p></div><div class="actions"><button type="button" class="sbc-theme-toggle" data-sbc-theme-toggle aria-pressed="false" aria-label="Switch to light mode">☀ Light Mode</button><span class="sync" id="sync-label">Connecting to CRM…</span><button type="button" class="outline" id="refresh">Refresh data</button></div></header>
 <div id="notice" class="notice" hidden role="status"></div>
-<section id="sbc-full-research-urgent" class="attention-priority sbc-urgent-research" role="alert" aria-labelledby="sbc-urgent-research-title">
+<section class="pane" data-pane="home">
+<section id="sbc-full-research-urgent" class="attention-priority sbc-compact-assignment" role="region" aria-label="Priority research assignment">
+<div class="sbc-assignment-header"><div><span class="eyebrow">OWNER RESEARCH ASSIGNMENT</span><h2>Miranda Maintenance &amp; Repair Corp.</h2><p>Check the existing record; verify street/business and Google-listed addresses separately.</p></div><button type="button" class="outline" id="sbc-dismiss-assignment">Dismiss</button></div>
+<details id="sbc-assignment-details"><summary>Show full checklist and authorized CRM evidence</summary><section id="sbc-full-research-content" class="attention-priority sbc-urgent-research" role="note" aria-labelledby="sbc-urgent-research-title">
  <div><div class="eyebrow">URGENT · OWNER ASSIGNMENT · LORNA LEAD RESEARCH</div>
  <h2 id="sbc-urgent-research-title">Complete ALL research fields — verify street address + Google address separately</h2>
  <p><strong>Priority account: Miranda Maintenance &amp; Repair Corp.</strong> Find the existing CRM record; do not create a duplicate. Review business identity, decision maker, primary phone, email, industry, website, Google Business Profile URL, exact Google-listed address, street / city / state / ZIP, real source URLs, lead status and next follow-up. Missing facts must say <strong>not verified</strong>, never be guessed.</p>
  <p><strong>Two separate checks are mandatory:</strong> (1) street/business address with reliable public evidence, and (2) the address actually displayed on the Google listing. Compare both; flag mismatches, service-area businesses, and residential/apartment addresses for review. A Maps short link is not proof of address verification.</p>
  <p>The checklist must be completed with evidence before marking a lead research-ready. The CRM and employee roles remain protected; this alert does not send an outbound message or automatically approve facts.</p><div id="sbc-urgent-lead-details" role="status" aria-live="polite"><p>Checking your authorized research queue for this account…</p></div></div>
- <button type="button" class="attention-open" data-go="mine">Open My Submitted Leads</button>
+ 
 </section>
+</details>
+<button type="button" class="attention-open" data-go="mine">Open My Submitted Leads</button></section><button type="button" class="outline sbc-assignment-restore" id="sbc-restore-assignment" hidden>Show priority assignment</button>
 <section id="sbc-address-research-notice" class="attention-priority" role="note" aria-labelledby="sbc-address-research-title">
  <div><div class="eyebrow">NEW OWNER ASSIGNMENT · LORNA / LEAD RESEARCH</div>
  <h2 id="sbc-address-research-title">Add the business address to each researched lead</h2>
@@ -67,7 +72,7 @@
  <div><div class="eyebrow">PRIORITY 1 · CORRECTIONS FIRST</div><h2 id="attention-priority-title">Lead corrections need your attention</h2><p id="attention-priority-detail">Review returned leads and correct the details from a reliable source.</p></div>
  <button type="button" class="attention-open" data-go="queue">Open Needs Attention</button>
 </section>
-<section class="pane" data-pane="home">
+
 <section class="shift-home" id="shift-home" aria-live="polite" hidden><div><strong id="shift-home-title">My current shift task</strong><p id="shift-home-detail">Clock in to start your four-hour plan.</p></div><button type="button" class="outline" data-go="today">Open Shift Checklist</button></section>
 <div class="welcome"><div class="eyebrow">YOUR DAILY MISSION</div><h2>Find the right businesses. Make every lead count.</h2><p>Find real businesses, document useful contact details and research sources, and submit them to SBC. Our existing automation handles the next verification step.</p><button class="primary" type="button" data-go="add">+ Submit a New Lead</button></div>
 <div class="daily-preview"><div><div class="eyebrow">TODAY’S ASSIGNMENTS</div><h3 id="daily-focus-title">Research, verification and training</h3><p id="daily-overview">A focused work plan will load for your business day.</p></div><button type="button" class="outline" data-go="today">Open My Tasks</button></div>
