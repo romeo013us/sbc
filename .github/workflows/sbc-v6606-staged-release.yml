@@ -364,6 +364,16 @@ jobs:
           SBC_ISOLATED_WEBSITE_DB_STAGE=YES node scripts/v66-stage-website-live-db.cjs --apply
           SBC_LIVE_DB_EXPECT_STAGED=YES node --test test/sbc-website-live-db-hydration.test.cjs
           node --test test/sbc-executive-ui-v1.test.cjs
+      - name: Stage and verify real Account Manager role authorization before sealing ZIP
+        run: |
+          # Source-only staging patch is activated only in this disposable checkout.
+          # A green isolated policy test must not be mistaken for a mounted runtime.
+          node scripts/stage-account-manager-role-v2.cjs
+          node --check server.js
+          node --check routes/crm.js
+          SBC_EXPECT_ACCOUNT_MANAGER_STAGED=1 node --test test/sbc-account-manager-runtime-mount.test.cjs
+          node --test test/sbc-account-portfolios.test.cjs test/sbc-account-revenue-v5.test.cjs test/sbc-account-manager-readiness-v6.test.cjs
+          node --test scripts/account-manager-role-gate.test.cjs
       - name: Generate honest staged release identity (do not reuse prior receipt)
         run: |
           node - <<'NODE'
@@ -475,7 +485,30 @@ jobs:
           for(const [name,hash] of Object.entries(inventory.files)){
             assert.equal(crypto.createHash('sha256').update(read(name)).digest('hex'),hash,name);
           }
+
+          // Physical-package proof, not a source-only unit test: all employee
+          // entrypoints, role boundary, and the CRM router must ship together.
+          for(const name of [
+            'routes/crm.js','routes/account-portfolios-v1.cjs',
+            'enterprise/sbc-account-manager-role-gate-v2.cjs',
+            'enterprise/sbc-account-manager-readiness-v6.cjs',
+            'public/sbc-account-manager-v1.html','public/sbc-account-manager-v1.js',
+            'public/sbc-account-manager-v1.css',
+            'browser_public/sbc-account-manager-v1.html',
+            'browser_public/sbc-account-manager-v1.js'
+          ]){
+            assert.ok(inventory.files[name],'Account Manager runtime file missing from ZIP: '+name);
+            assert.ok(read(name).length>100,'Empty or truncated Account Manager runtime file: '+name);
+          }
+          assert.ok(read('routes/crm.js').toString().includes("require('./account-portfolios-v1.cjs')(app,{auth,getContext})"),
+            'Account Portfolios not actually registered in the packaged CRM');
           const code=read('server.js').toString();
+
+          assert.ok(code.includes('SBC_ACCOUNT_MANAGER_ROLE_V2'),'Account Manager role not applied to compiled GoDaddy server');
+          assert.ok(code.includes('SBC_ACCOUNT_MANAGER_ROLE_GATE.allowAccountManager(u,req.method,req.path)'),
+            'Account Manager deny-by-default auth missing from packaged server');
+          assert.ok(code.includes("if(u?.role==='account_manager')return res.redirect(302,'/sbc-account-manager-v1.html')"),
+            'Employee login redirect missing from packaged server');
           assert.ok(code.includes('SBC_V6606_QUOTE_WRITER_HARDENING'));
           assert.ok(code.includes('PAYMENT_PROOF_REQUIRED'));
           assert.ok(code.includes('sbcV6606QuoteCreateGate'));

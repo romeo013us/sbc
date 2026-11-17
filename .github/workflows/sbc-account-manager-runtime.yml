@@ -1,0 +1,30 @@
+name: SBC 9.5 — Account Manager Runtime Mount and GoDaddy Role Release Gate
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'routes/crm.js'
+      - 'routes/account-portfolios-v1.cjs'
+      - 'scripts/stage-account-manager-role-v2.cjs'
+      - '.github/workflows/sbc-v6606-staged-release.yml'
+      - '.github/workflows/sbc-account-manager-runtime.yml'
+      - 'test/sbc-account-manager-runtime-mount.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runtime-wiring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reproduce actual runtime mounting contract and stage source requirements
+        run: node --test test/sbc-account-manager-runtime-mount.test.cjs
+      - name: CRM and role regression
+        run: |
+          node --test test/sbc-account-portfolios.test.cjs test/sbc-account-manager-readiness-v6.test.cjs test/sbc-account-revenue-v5.test.cjs
+          node --test scripts/account-manager-role-gate.test.cjs
