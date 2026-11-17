@@ -30,6 +30,39 @@ function buildPrompt(customer){
  'These are owner-reviewed PROPOSALS; do not publish, contact the prospect, make purchases, or modify the live site without approval.'
  ].join('\n');
 }
+// One customer + one selected package. Existing three-tier legacy request remains available.
+function buildTierPrompt(customer,tier){
+ const amount=Number(tier);
+ if(!TIERS.includes(amount))throw Error('INVALID_TIER');
+ const profile=customer?.websiteVerifiedDetails?.verified===true?customer.websiteVerifiedDetails:null;
+ const business=clean(customer?.businessName||customer?.contactName||'Business name not recorded',120);
+ const industry=clean(customer?.industry||'Not verified',80);
+ const city=clean(customer?.city||'',80);
+ const services=Array.isArray(profile?.services)?profile.services.map(x=>clean(typeof x==='string'?x:x?.name,70)).filter(Boolean).slice(0,12):[];
+ const packages={
+  199:'STARTER: a polished responsive single-page website with essential sections and clear contact calls to action.',
+  499:'CUSTOM: a premium responsive multi-page site with editable source and genuinely working components.',
+  799:'ADVANCED: a premium multi-page proposal with polished interactions, accessible controls, and only features that truly work.'
+ };
+ return [
+  'Build ONE complete website project for Successful By Choice. Package: $'+amount+'.',
+  'Business name from SBC account: '+business,
+  'CRM industry (verify before publishing): '+industry,
+  'CRM location: '+(city||'Not supplied'),
+  'Owner-confirmed services: '+(services.length?services.join(', '):'NOT YET VERIFIED. Request confirmed services; never invent them.'),
+  'Project scope: '+packages[amount],
+  'You are the website developer. Write the full responsive website code and provide ONE complete downloadable ZIP of all required HTML, CSS, JavaScript, and assets.',
+  'Include index.html at the ZIP root. Use relative local asset paths so the project opens in the SBC private ZIP preview.',
+  'Ensure navigation links, responsive layouts, and interactive components you claim to provide have working implementations.',
+  'Label placeholders for unverified phone numbers, email, addresses, photos, prices and business claims. Never invent reviews, awards, licenses or testimonials.',
+  'Make this website distinctive, fast, readable, accessible, and appropriate to the business. No third-party builder subscription or paid API is required to run it.',
+  'Use local assets where licensing permits, and clearly identify any external dependencies or features requiring a backend.',
+  'Test what is possible, honestly list any untested behavior, and provide preview instructions and exact deployment requirements.',
+  'Do not publish, contact customers, register domains, place orders or incur charges.',
+  'I will upload the ZIP to the selected SBC customer account for owner review and saved revisions.'
+ ].join('\n');
+}
+
 function normalizeVariant(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('INVALID_PROPOSAL');
  const tier=Number(raw.tier);
@@ -71,7 +104,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    const {tid,id,customer}=target(req);
    if(!customer)return res.status(404).json({ok:false,code:'CUSTOMER_NOT_FOUND'});
    const saved=current(tid,id);
-   return res.json({ok:true,customerId:id,revision:saved?.revision||0,variants:saved?.variants||{},prompt:buildPrompt(customer),mode:'CHATGPT_MANUAL_HANDOFF',automated:false});
+   return res.json({ok:true,customerId:id,revision:saved?.revision||0,variants:saved?.variants||{},prompt:buildPrompt(customer),prompts:Object.fromEntries(TIERS.map(t=>[String(t),buildTierPrompt(customer,t)])),mode:'CHATGPT_MANUAL_HANDOFF',automated:false});
   }catch(e){return fail(res,e)}
  });
  app.patch(ROOT,auth,ownerOnly,async(req,res)=>{
@@ -102,4 +135,4 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  // owner and writer safeguards instead of adding an unaudited parallel account API.
  require('./sbc-ai-zip-proposals.cjs').register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,serializeSiteMutation});
 }
-module.exports={register,buildPrompt,normalizeVariant};
+module.exports={register,buildPrompt,buildTierPrompt,normalizeVariant};

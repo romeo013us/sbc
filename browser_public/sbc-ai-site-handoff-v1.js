@@ -30,13 +30,27 @@
     '<p class="sbc-ai-draft">Private draft · owner review required before sharing with the customer.</p></section>';
   }).join('');
   const html='<div class="sbc-ai-desk" id="sbcAiDesk">'+
-   '<div class="sbc-ai-heading"><p class="sbc-ai-eyebrow">SBC WEBSITE PRODUCTION</p><h3>Three website proposals for '+esc(customer.businessName||'this customer')+'</h3>'+
-   '<p><strong>New, simpler workflow:</strong> Build in ChatGPT → download a website ZIP → upload it directly to its package card → review the saved preview. No external hosting or manual URL entry required.</p></div>'+
-   '<section class="sbc-ai-instructions"><button type="button" id="sbcAICopy" class="btn primary">Copy 3-site build instructions</button> '+
+   '<div class="sbc-ai-heading"><p class="sbc-ai-eyebrow">SBC WEBSITE PRODUCTION</p><h3>Website for '+esc(customer.businessName||'this customer')+'</h3>'+
+   '<p><strong>ChatGPT builds the website.</strong> You choose a package and review the result. No code writing, outside hosting, or URL entry required.</p></div>'+
+   '<section class="sbc-ai-instructions" aria-label="Build a customer website">'+
+   '<h4>1 · Choose the website package</h4>'+
+   '<label for="sbcAIQuickTier">Website package</label>'+
+   '<select id="sbcAIQuickTier" style="display:block;width:100%;max-width:420px;min-height:46px;padding:10px;border:1px solid #849fb7;border-radius:9px;background:#fff;color:#14283e;margin:8px 0 16px">'+
+   TIERS.map(t=>'<option value="'+t.id+'">$'+t.id+' · '+esc(t.title)+'</option>').join('')+'</select>'+
+   '<h4>2 · Let ChatGPT build the website</h4>'+
+   '<p>I build the complete site and give you its downloadable ZIP here in ChatGPT. Just copy the request for your package and paste it into ChatGPT.</p>'+
+   '<button type="button" id="sbcAICopy" class="btn primary">Copy website build request</button> '+
    '<a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Open ChatGPT ↗</a>'+
-   '<details><summary>See / edit customer-approved website brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
-   '<small>No ChatGPT account access, customer outreach, website publication, or purchase occurs automatically.</small></section>'+
-   '<div class="sbc-ai-grid">'+cards+'</div>'+
+   '<h4>3 · Upload and preview the finished ZIP</h4>'+
+   '<label for="sbcAIQuickFile">Finished website ZIP</label>'+
+   '<input id="sbcAIQuickFile" type="file" accept=".zip,application/zip" aria-describedby="sbcAIQuickHelp">'+
+   '<small id="sbcAIQuickHelp">Maximum 20 MB. Earlier saved versions stay with this customer account.</small>'+
+   '<button type="button" id="sbcAIQuickUpload" class="btn primary sbc-ai-upload">Upload ZIP and preview</button>'+
+   '<div id="sbcAIQuickCurrent" class="sbc-ai-current" aria-live="polite">Checking saved websites…</div>'+
+   '<small>No direct access to ChatGPT sessions, automatic customer messages, or publishing. You control approval.</small></section>'+
+   '<details id="sbcAIAdvanced" class="sbc-ai-other"><summary>Advanced options · all packages, saved versions and hosted links</summary>'+
+   '<details><summary>Original three-site brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
+   '<div class="sbc-ai-grid">'+cards+'</div></details>'+
    '<p id="sbcAIState" class="sbc-ai-state" role="status" aria-live="polite">Loading saved proposal files…</p>'+
    '<section class="sbc-ai-preview"><div class="sbc-ai-preview-head"><h4>Owner review preview</h4><p>The website runs in a restricted preview frame. Forms cannot send submissions from this preview.</p></div>'+
    '<iframe id="sbcAIFrame" title="Owner-only website proposal preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="about:blank"></iframe></section></div>';
@@ -84,6 +98,23 @@
      :'<p class="sbc-ai-meta">External preview saved · no ZIP uploaded</p>'+
       '<button class="btn" data-sbc-ai-external="'+t.id+'" type="button">Preview external URL</button>');
    }
+   const quick=document.getElementById('sbcAIQuickCurrent');
+   if(quick){
+    const selected=Number(document.getElementById('sbcAIQuickTier')?.value||199);
+    const latest=items.find(x=>Number(x.tier)===selected);
+    if(!latest)quick.textContent='No website saved for this package yet. Start with the ChatGPT request above.';
+    else{
+     const audit=latest.previewAudit;
+     const count=Number(audit?.issueCount||0);
+     const label=!audit?'Older ZIP · please review the files manually.':count?
+      count+' potential preview link issue'+(count===1?'':'s')+' to review.':
+      'Static website links checked; manual visual review still required.';
+     quick.innerHTML='<p class="sbc-ai-saved">Saved website · $'+selected+'</p>'+
+      '<p class="sbc-ai-meta">'+esc(label)+'</p>'+
+      '<div class="sbc-ai-actions"><button class="btn" type="button" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+selected+'">Preview saved website</button>'+
+      '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download saved ZIP</a></div>';
+    }
+   }
    document.querySelectorAll('[data-sbc-ai-preview]').forEach(b=>b.addEventListener('click',()=>preview(b.dataset.sbcAiPreview,Number(b.dataset.tier))));
    document.querySelectorAll('[data-sbc-ai-external]').forEach(b=>b.addEventListener('click',()=>preview(document.getElementById('sbcAIUrl'+b.dataset.sbcAiExternal)?.value,Number(b.dataset.sbcAiExternal))));
   }
@@ -92,25 +123,40 @@
    if(!res?.ok||!Array.isArray(res.uploads))throw Error(res?.code||'UPLOAD_LIBRARY_UNAVAILABLE');
    items=res.uploads;render();
   }
+  document.getElementById('sbcAIQuickTier')?.addEventListener('change',render);
   document.getElementById('sbcAICopy')?.addEventListener('click',async()=>{
-   try{await navigator.clipboard.writeText(document.getElementById('sbcAIBrief').value);say('Instructions copied. Paste them into ChatGPT.')}
-   catch{say('Clipboard unavailable. Select and copy the expanded brief manually.',true)}
+   const tier=String(document.getElementById('sbcAIQuickTier')?.value||199);
+   const prompt=result.prompts?.[tier]||result.prompt||'';
+   if(!prompt)return say('Build request unavailable. Refresh this customer account.',true);
+   try{await navigator.clipboard.writeText(prompt);say('$'+tier+' website request copied. Paste it into ChatGPT and I will build the ZIP.')}
+   catch{say('Clipboard unavailable. Select and copy the website request manually.',true)}
   });
-  document.querySelectorAll('[data-sbc-ai-upload]').forEach(button=>button.addEventListener('click',async()=>{
-   const tier=Number(button.dataset.sbcAiUpload),file=document.getElementById('sbcAIFile'+tier)?.files?.[0];
-   if(!file)return say('Choose the website ZIP for $'+tier+' first.',true);
-   if(!/\.zip$/i.test(file.name)||file.size<22||file.size>LIMIT)return say('Choose a valid ZIP no larger than 20 MB.',true);
-   button.disabled=true;say('Uploading and validating the $'+tier+' website ZIP…');
+  async function uploadZip(tier,file,button){
+   if(!TIERS.some(t=>t.id===tier))return say('Choose a website package first.',true);
+   if(!file)return say('Choose the completed website ZIP file first.',true);
+   if(!/\.zip$/i.test(file.name)||file.size<22||file.size>LIMIT)return say('Choose a ZIP no larger than 20 MB.',true);
+   if(button.disabled)return;
+   button.disabled=true;say('Saving your $'+tier+' website ZIP…');
    try{
     const response=await fetch(base+'/uploads/'+tier,{method:'POST',credentials:'same-origin',cache:'no-store',
      headers:{'Content-Type':'application/zip','X-SBC-Proposal-Upload':'1','Accept':'application/json'},body:file});
-    const result=await response.json().catch(()=>({}));
-    if(!response.ok||result.ok!==true||result.durable!==true)throw Error(result.code||'Upload was not saved');
+    const saved=await response.json().catch(()=>({}));
+    if(!response.ok||saved.ok!==true||saved.durable!==true)throw Error(saved.code||'Upload was not saved');
     await refresh();
-    preview(result.upload.previewPath,tier);
-    say('$'+tier+' ZIP saved to '+String(customer.businessName||'this customer')+'. Review the preview before sharing.');
-   }catch(e){say('Upload unsuccessful: '+String(e.message||e)+'. Your other proposals were not changed.',true)}
+    preview(saved.upload.previewPath,tier);
+    say('Website saved to '+String(customer.businessName||'this customer')+' · $'+tier+'. Review the preview and any link warnings before sharing.');
+   }catch(e){say('Upload unsuccessful: '+String(e.message||e)+'. Existing proposals were not changed.',true)}
    finally{button.disabled=false}
+  }
+  document.getElementById('sbcAIQuickUpload')?.addEventListener('click',async()=>{
+   const button=document.getElementById('sbcAIQuickUpload');
+   const tier=Number(document.getElementById('sbcAIQuickTier')?.value);
+   const file=document.getElementById('sbcAIQuickFile')?.files?.[0];
+   await uploadZip(tier,file,button);
+  });
+  document.querySelectorAll('[data-sbc-ai-upload]').forEach(button=>button.addEventListener('click',async()=>{
+   const tier=Number(button.dataset.sbcAiUpload),file=document.getElementById('sbcAIFile'+tier)?.files?.[0];
+   await uploadZip(tier,file,button);
   }));
   document.querySelectorAll('[data-sbc-ai-save]').forEach(button=>button.addEventListener('click',async()=>{
    const tier=Number(button.dataset.sbcAiSave),previewUrl=document.getElementById('sbcAIUrl'+tier)?.value.trim()||'',notes=document.getElementById('sbcAINotes'+tier)?.value||'';
@@ -122,7 +168,7 @@
    }catch(e){say('Could not save: '+String(e.message||e)+'. Refresh if the account revision changed.',true)}
    finally{button.disabled=false}
   }));
-  try{await refresh();say('Ready. Upload a ZIP and review the automatic link checks before approving the proposal.')}
+  try{await refresh();say('Ready. Select a package, copy the ChatGPT request, and upload the finished ZIP.')}
   catch(e){say('ZIP library unavailable: '+String(e.message||e)+'. External URL slots remain available.',true)}
  }
  window.SBC_AI_SITE_HANDOFF=Object.freeze({open});
