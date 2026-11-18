@@ -1,6 +1,7 @@
 /* SBC V66.21 — owner-only, read-only operational acceptance.
  * Evidence only: never auto-certify production, mutate records, initiate a charge
- * or call external website/Office Box handoffs. All requests use SBC auth.
+ * or trigger paid Office Box handoffs. The optional signed federation probe
+ * is read-only and owner-initiated. All requests use SBC auth.
  */
 (function(){
  'use strict';
@@ -8,6 +9,25 @@
  window.__SBC_V6621_LAUNCH_READINESS__=true;
  const $=id=>document.getElementById(id);
  const owner=()=>String(window.state?.me?.role||'').toLowerCase()==='owner';
+ // Four customer-journey gates are deliberately separate from public health checks.
+ // Read-only GETs can verify the shared Office Box signing channel but cannot
+ // certify a customer payment, tenant isolation or database provisioning.
+ const sbcFourGateVerdicts=Object.freeze({
+  initial:()=>({inquiry:{certified:false},portal:{certified:false},
+    square:{certified:false},activation:{certified:false}}),
+  federation:r=>({
+   transportVerified:Boolean(r?.ok===true&&r?.authenticated===true&&r?.readOnly===true&&
+    r?.chargeAmount===0&&r?.providerRequests===0&&r?.activationCreated===false&&
+    r?.tenantCreated===false&&r?.entitlementChanged===false&&r?.ack==='ACTIVATION_NOT_FOUND'),
+   activationCertified:false
+  }),
+  portal:r=>({accountCount:Array.isArray(r?.accounts)?r.accounts.length:null,
+   loginCertified:false,tenantIsolationCertified:false}),
+  square:r=>({preflightReady:r?.ok===true&&r?.preflightReady===true,
+   providerPaymentCertified:false,duplicatePaymentCertified:false})
+ });
+ // No credentials or customer records are exported by this testable proof classifier.
+ window.sbcFourGateVerdicts=sbcFourGateVerdicts;
  const endpoints=[
   ['core','/api/owner/launch-gates'],
   ['staff','/api/users'],
@@ -89,8 +109,49 @@
    rows.map(([key,title])=>'<div class="detail-box" style="margin:10px 0"><strong>'+
     title+'</strong><p id="sbc-launch-'+key+'" class="mini" role="status">Not checked</p>'+
     '<p id="sbc-launch-'+key+'-detail" class="mini"></p></div>').join('')+
+   '<section aria-label="Four live customer-journey acceptance gates" style="border-top:1px solid var(--border,#64748b);padding-top:16px;margin-top:16px">'+
+   '<h3>Final 4 · Customer journey verification</h3>'+
+   '<p class="mini">Actual paid transactions and private customer records are never created by this checker. Each gate stays unverified until independent live evidence exists.</p>'+
+   '<div class="detail-box" style="margin:10px 0"><strong>1 · Inquiry persistence</strong><p id="sbc-four-inquiry" role="status">NOT CERTIFIED · Submit a clearly labeled owner QA inquiry from <a target="_blank" rel="noopener noreferrer" href="https://sbcmia.com/contact.php">SBCMIA Contact</a> and verify its exact ID in the correct CRM tenant. This checker does not create fake leads.</p></div>'+
+   '<div class="detail-box" style="margin:10px 0"><strong>2 · Customer tenant isolation</strong><p id="sbc-four-portal" role="status">NOT CERTIFIED · Sign into two independent test customer accounts and confirm each sees only its own orders and messages.</p></div>'+
+   '<div class="detail-box" style="margin:10px 0"><strong>3 · Square real payment</strong><p id="sbc-four-square" role="status">NOT CERTIFIED · A $0 internal QA order is not provider payment proof. Verify signed webhook, Square readback, MySQL order and replay behavior on an authorized real or sandbox transaction.</p></div>'+
+   '<div class="detail-box" style="margin:10px 0"><strong>4 · Office Box activation</strong><p id="sbc-four-activation" role="status">NOT CERTIFIED · Verify the shared signing channel, then independently test activation of an eligible paid customer workspace.</p></div>'+
+   '<button id="sbc-four-readonly-check" type="button" class="btn primary">Verify connection &amp; read-only evidence</button>'+
+   '<p id="sbc-four-status" role="status" class="mini">No network checks for these four gates have run yet.</p></section>'+
    '<p id="sbc-launch-footer" class="mini" role="status">Starting owner-only read checks…</p>'+
    '<p class="mini"><strong>Acceptance evidence:</strong> Published release identity, CRM record readback, independent researcher and demo logins, existing Square payment and webhook records, Fantastic 4 handoff, backup restoration, and customer delivery.</p></div>');
+  const fourButton=$('sbc-four-readonly-check');
+  fourButton?.addEventListener?.('click',async()=>{
+   if(!owner()){
+    text('sbc-four-status','Owner authentication required. No checks were performed.');return;
+   }
+   fourButton.disabled=true;
+   text('sbc-four-status','Checking owner-only evidence without payments or customer writes…');
+   // Inquiry proof requires a real QA submission and exact persisted customer/activity readback.
+   text('sbc-four-inquiry','NOT CERTIFIED · Verify an owner-labeled website inquiry ID against the exact CRM tenant and activity ledger. No public form was submitted.');
+   try{
+    if(!owner())throw Error('Owner session changed');
+    const p=await window.api('/api/portal/admin-summary',{method:'GET',timeoutMs:10000});
+    const v=sbcFourGateVerdicts.portal(p);
+    text('sbc-four-portal','NOT CERTIFIED · '+(v.accountCount==null?'Portal account summary unavailable':v.accountCount+' active portal account(s) exist in this tenant')+'. Two independent logins and cross-account access denial are still required.');
+   }catch(_){text('sbc-four-portal','NOT CERTIFIED · Portal account evidence unavailable or owner session denied.');}
+   try{
+    if(!owner())throw Error('Owner session changed');
+    const p=await window.api('/api/payments/square/readiness',{method:'GET',timeoutMs:10000});
+    const v=sbcFourGateVerdicts.square(p);
+    text('sbc-four-square','NOT CERTIFIED · Square preflight '+(v.preflightReady?'configured':'not verified')+'. No live provider charge, duplicate-payment readback or order fulfillment was tested.');
+   }catch(_){text('sbc-four-square','NOT CERTIFIED · Square preflight unavailable or owner session denied.');}
+   try{
+    if(!owner())throw Error('Owner session changed');
+    const p=await window.api('/api/owner/officebox/federation-preflight',{method:'GET',timeoutMs:15000});
+    const v=sbcFourGateVerdicts.federation(p);
+    text('sbc-four-activation',v.transportVerified?
+     'SIGNED TRANSPORT VERIFIED · Office Box authenticated the read-only probe; paid subscription activation and tenant provisioning remain NOT CERTIFIED.':
+     'NOT CERTIFIED · Office Box signed connection not verified; check the configured URL and shared webhook secret.');
+   }catch(_){text('sbc-four-activation','NOT CERTIFIED · Office Box signed preflight unavailable, unauthorized or rejected.');}
+   text('sbc-four-status','Read-only checks finished. All four paid/customer acceptance gates remain unverified until the separate customer and provider tests pass.');
+   fourButton.disabled=false;
+  });
   if(!owner()){text('sbc-launch-footer','Owner session no longer verified. No checks were run.');return}
   for(const [name,url] of endpoints){
    if(!owner()){text('sbc-launch-footer','Owner session changed. Checks stopped.');return}
