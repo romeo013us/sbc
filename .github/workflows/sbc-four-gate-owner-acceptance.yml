@@ -1,0 +1,46 @@
+name: SBC Four-Gate Owner Acceptance (safe)
+on:
+  pull_request:
+    branches: [a-sbc-master]
+  push:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owner-readonly-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout SBC source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify four-gate UI syntax and browser source parity
+        run: |
+          node --check public/sbc-launch-readiness-v6621.js
+          node --check browser_public/sbc-launch-readiness-v6621.js
+          node --test scripts/sbc-four-gate-ui.test.cjs
+      - name: Verify Big 3 public services on GitHub runner (GET only, no reseller)
+        continue-on-error: true # public WAF can block CI runners; keep 403 visible in evidence without certifying it
+        run: |
+          python3 scripts/sbc-big3-published-smoke.py --self-test
+          python3 scripts/sbc-big3-published-smoke.py
+      - name: Attach evidence, even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbc-big3-public-smoke
+          path: sbc-big3-public-smoke-results.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Preserve existing owner safeguards
+        run: |
+          node scripts/v6621-launch-acceptance.test.cjs
+          node scripts/v66127-signed-federation-probe.test.cjs
+          node scripts/v66129-owner-checkout-lab.test.cjs
+          node scripts/v6630-customer-journey.test.cjs
