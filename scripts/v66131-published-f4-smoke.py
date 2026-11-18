@@ -38,19 +38,20 @@ ENDPOINTS = {
     "office_locale_ui": "https://31qflm5uk6.c24.airoapp.ai/officebox-languages-v1556.js?v=15.5.7",
     "public_sbc": "https://sbcmia.com/",
     "public_reseller": "https://sbcwebsites.com/",
-    "reseller_domains": "https://www.secureserver.net/products/domain-registration?plid=591874",
-    "reseller_cart": "https://cart.secureserver.net/?pl_id=591874",
+    "active_reseller": "https://www.secureserver.net/?pl_id=601973",
+    "reseller_domains": "https://www.secureserver.net/products/domain-registration?plid=601973",
+    "reseller_cart": "https://cart.secureserver.net/?pl_id=601973",
 }
 REQUIRED = {
     "cc_health", "cc_ready", "cc_api", "cc_checkout_ui", "cc_workforce_ui",
     "office_health", "office_api", "office_i18n",
-    "public_sbc", "public_reseller",
+    "public_sbc", "public_reseller", "active_reseller",
 }
 # Report new UI separately so a source build can run before its GoDaddy deployment.
 LATEST_UI = {"cc_lorna_ui", "office_locale_ui"}
 RESELLER_PATHS = {
     "reseller_domains": ("www.secureserver.net", {"/products/domain-registration"}, "plid"),
-    # The cart entry point redirects to the provider's checkout route while
+    # Active Basic Reseller plan ID 601973; legacy 591874 is preserved for GoDaddy recovery.\n    # The cart entry point redirects to the provider's checkout route while
     # preserving the reseller plan. Verify that route and the rendered brand.
     "reseller_cart": ("cart.secureserver.net", {"/", "/go/checkout"}, "pl_id"),
 }
@@ -200,14 +201,14 @@ def evaluate(name, status, body, headers, url):
             result["checkoutMode"] = "signed"
         elif b'<meta name="sbc-checkout-mode" content="hosted-links">' in body:
             result["checkoutMode"] = "hosted-links"
-    elif name == "public_reseller":
+    elif name in {"public_reseller", "active_reseller"}:
         dest = urlsplit(url)
         if dest.scheme != "https" or dest.hostname not in {
             "sbcwebsites.com", "www.sbcwebsites.com", "secureserver.net", "www.secureserver.net"
         }:
             result["reason"] = "UNRECOGNIZED_RESELLER_DESTINATION"
             return result
-        if dest.hostname in {"secureserver.net", "www.secureserver.net"} and parse_qs(dest.query).get("pl_id") != ["591874"]:
+        if dest.hostname in {"secureserver.net", "www.secureserver.net"} and parse_qs(dest.query).get("pl_id") != ["601973"]:
             result["reason"] = "SBC_RESELLER_ID_NOT_PRESENT"
             return result
         if b"Successful By Choice" not in body:
@@ -221,7 +222,7 @@ def evaluate(name, status, body, headers, url):
         dest = urlsplit(url)
         host, paths, attribution = RESELLER_PATHS[name]
         plan_ids = parse_qs(dest.query, keep_blank_values=True).get(attribution)
-        if dest.scheme != "https" or dest.hostname != host or dest.path not in paths or plan_ids != ["591874"]:
+        if dest.scheme != "https" or dest.hostname != host or dest.path not in paths or plan_ids != ["601973"]:
             result["reason"] = "RESELLER_PATH_OR_PLAN_ID_MISMATCH"
             return result
         if name == "reseller_domains" and b"Domain Registration" not in body:
@@ -260,14 +261,16 @@ def selftest():
     assert evaluate("office_health", 503, b"", {}, "")["status"] == "UNVERIFIED"
     assert evaluate("cc_lorna_ui", 200, b"<html>SBC Lorna</html>", {"Content-Type": "text/html"}, "")["status"] == "UNVERIFIED"
     assert evaluate("cc_lorna_ui", 200, b"// SBC Lorna", {"Content-Type": "application/javascript"}, "")["status"] == "VERIFIED"
-    assert evaluate("public_reseller", 200, b"Successful By Choice", {}, "https://www.secureserver.net/?pl_id=591874")["status"] == "VERIFIED"
+    assert evaluate("public_reseller", 200, b"Successful By Choice", {}, "https://www.secureserver.net/?pl_id=601973")["status"] == "VERIFIED"
+    assert evaluate("active_reseller", 200, b"Successful By Choice", {}, "https://www.secureserver.net/?pl_id=601973")["status"] == "VERIFIED"
+    assert evaluate("active_reseller", 200, b"Successful By Choice", {}, "https://www.secureserver.net/?pl_id=591874")["status"] == "UNVERIFIED"
     assert evaluate("public_reseller", 200, b"Successful By Choice", {}, "https://example.com/?dest=secureserver.net")["status"] == "UNVERIFIED"
     branded_cart = b"<main>Successful By Choice</main>"
-    assert evaluate("reseller_cart", 200, branded_cart, {}, "https://cart.secureserver.net/go/checkout?pl_id=591874")["status"] == "VERIFIED"
+    assert evaluate("reseller_cart", 200, branded_cart, {}, "https://cart.secureserver.net/go/checkout?pl_id=601973")["status"] == "VERIFIED"
     assert evaluate("reseller_cart", 200, branded_cart, {}, "https://cart.secureserver.net/go/checkout")["status"] == "UNVERIFIED"
-    assert evaluate("reseller_cart", 200, branded_cart, {}, "https://cart.secureserver.net/go/checkout?pl_id=591874&pl_id=")["status"] == "UNVERIFIED"
-    assert evaluate("reseller_cart", 200, b"<main>Generic checkout</main>", {}, "https://cart.secureserver.net/go/checkout?pl_id=591874")["status"] == "UNVERIFIED"
-    assert evaluate("reseller_cart", 200, branded_cart, {}, "https://example.com/go/checkout?pl_id=591874")["status"] == "UNVERIFIED"
+    assert evaluate("reseller_cart", 200, branded_cart, {}, "https://cart.secureserver.net/go/checkout?pl_id=601973&pl_id=")["status"] == "UNVERIFIED"
+    assert evaluate("reseller_cart", 200, b"<main>Generic checkout</main>", {}, "https://cart.secureserver.net/go/checkout?pl_id=601973")["status"] == "UNVERIFIED"
+    assert evaluate("reseller_cart", 200, branded_cart, {}, "https://example.com/go/checkout?pl_id=601973")["status"] == "UNVERIFIED"
     assert evaluate("reseller_cart", 200, b"", {}, "https://cart.secureserver.net/?pl_id=9999")["status"] == "UNVERIFIED"
     proof = evaluate("cc_health", 200, b'{"ok":true,"database":{"reachable":true}}', {"X-SBC-Source-Commit": "a"*40}, "")
     assert matches(proof, "sourceCommit", "a"*40) is True and matches(proof, "sourceCommit", "b"*40) is False
