@@ -19,6 +19,9 @@ OUTPUT='sbc-big3-public-smoke-results.json'
 def report(fetcher=None):
     fetcher=fetcher or F4['fetch']
     checks=[fetcher(n,F4['ENDPOINTS'][n]) for n in NAMES]
+    for check in checks:
+        if check.get('name')=='public_sbc' and check.get('http')==403:
+            check['reason']='CI_RUNNER_HTTP_403_ACCESS_RESTRICTED_NOT_OUTAGE_PROOF'
     good=all(c.get('status')=='VERIFIED' for c in checks)
     return {
      'schema':'sbc.big3.public-smoke.v1',
@@ -47,6 +50,11 @@ def selftest():
     def no(n,url):
         return {'name':n,'status':'UNVERIFIED' if n=='office_api' else 'VERIFIED','http':503 if n=='office_api' else 200}
     assert report(no)['publicReadOnlyPrerequisitesPassed'] is False
+    def blocked_site(n,url):
+        return {'name':n,'status':'UNVERIFIED' if n=='public_sbc' else 'VERIFIED','http':403 if n=='public_sbc' else 200}
+    x=report(blocked_site)
+    assert x['publicReadOnlyPrerequisitesPassed'] is False
+    assert x['checks'][-1]['reason']=='CI_RUNNER_HTTP_403_ACCESS_RESTRICTED_NOT_OUTAGE_PROOF'
     print('Big 3 PUBLIC GET-only self-test PASS; reseller excluded, no false paid certification')
 
 if __name__=='__main__':
