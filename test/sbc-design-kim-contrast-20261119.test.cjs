@@ -5,9 +5,9 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 for(const dir of ['public','browser_public']){
  const css=fs.readFileSync(path.join(root,dir,'sbc-global-contrast-rescue-20261106.css'),'utf8');
- assert.match(css,/body #sbcDesignRequestCall\\.sbc-design-call/);
+ assert.ok(css.includes('body #sbcDesignRequestCall.sbc-design-call'));
  assert.match(css,/body #sbcV56240GrowthHardening/);
- assert.match(css,/#sbcV56240GrowthHardening \\.kpi/);
+ assert.ok(css.includes('body #sbcV56240GrowthHardening .kpi'));
  assert.doesNotMatch(css,/body #sbcCallAppointments/);
 }
 const {verify}=require('../scripts/v66-owner-ui-css-bundle.cjs');
