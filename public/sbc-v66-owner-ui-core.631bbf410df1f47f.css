@@ -111,6 +111,28 @@ body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(.form
   color:#4e6073!important;
 }
 
+/* SBC 2026-11-19: two screenshot-confirmed light-surface repairs ONLY.
+   Keep appointment workflow, Website Studio, dark cards, badges and CTAs untouched. */
+body #sbcDesignRequestCall.sbc-design-call {
+  background:#ffffff!important;color:#17283a!important;border-color:#a7b8ca!important;
+}
+body #sbcDesignRequestCall.sbc-design-call :is(h1,h2,h3,h4,p,.mini,.sbc-design-label, label, strong) {
+  color:#17283a!important;
+}
+body #sbcDesignRequestCall.sbc-design-call .mini {color:#42586c!important;opacity:1!important;}
+body #sbcDesignRequestCall.sbc-design-call :is(input,select,textarea) {
+  background:#ffffff!important;color:#17283a!important;color-scheme:light!important;
+  border-color:#8498b4!important;
+}
+body #sbcV56240GrowthHardening {
+  background:#ffffff!important;color:#17283a!important;border-color:#a7b8ca!important;
+}
+body #sbcV56240GrowthHardening :is(h1,h2,h3,h4,p,.head,.kpi,.kpi span,.kpi strong) {
+  color:#17283a!important;
+}
+body #sbcV56240GrowthHardening :is(.sub,.kpi span) {color:#42586c!important;opacity:1!important;}
+body #sbcV56240GrowthHardening .kpi {background:#f5f8fc!important;border-color:#c6d3e1!important;}
+
 /* sbc-manual-dialer-v6696.css */
 /* SBC V66.96 — accessible open dial pad in Sales / Calling */
 #sbcManualDialer{border:1px solid #5c80a0;border-radius:16px;background:#162c46;color:#f6fbff;padding:18px;margin:0 0 20px}
