@@ -53,6 +53,16 @@
    '<details><summary>Original four-site brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
    '<div class="sbc-ai-grid">'+cards+'</div></details>'+
    '<p id="sbcAIState" class="sbc-ai-state" role="status" aria-live="polite">Loading saved proposal files…</p>'+
+   '<section class="sbc-ai-live-text-editor" aria-label="Edit website text without coding">'+
+   '<h4>✏️ Quick Text Editor · edit your saved website</h4>'+
+   '<p>Choose a visible heading or sentence, type its replacement and save. You get a new previewable ZIP version; the original never changes.</p>'+
+   '<button type="button" id="sbcAILoadText" class="btn">Load editable website text</button>'+
+   '<label for="sbcAITextField">Text to change</label>'+
+   '<select id="sbcAITextField" disabled><option value="">Load a saved website first</option></select>'+
+   '<label for="sbcAINewText">New wording</label>'+
+   '<textarea id="sbcAINewText" rows="2" maxlength="240" disabled placeholder="Select a heading or sentence above."></textarea>'+
+   '<div class="sbc-ai-actions"><button id="sbcAISaveText" class="btn primary" type="button" disabled>Save text as new website version</button></div>'+
+   '<small id="sbcAITextHelp">Only plain visible text is editable here—no HTML, colors, scripts or contact functionality. Use the ChatGPT revision request below for design changes.</small></section>'+
    '<section class="sbc-ai-edit-panel" aria-label="Request website edits without coding">'+
    '<h4>✏️ Request changes without editing code</h4>'+
    '<label for="sbcAIRevisionNotes">What would you like to change?</label>'+
@@ -84,6 +94,77 @@
   const currentTier=()=>Number(document.getElementById('sbcAIQuickTier')?.value||199);
   const currentVersion=()=>items.find(x=>Number(x.tier)===currentTier()&&x.active===true)||
     items.find(x=>Number(x.tier)===currentTier())||null;
+  let textEditingVersion=null,textEditingFields=[];
+  const resetTextEditor=()=>{
+   textEditingVersion=null;textEditingFields=[];
+   const field=document.getElementById('sbcAITextField'),newText=document.getElementById('sbcAINewText');
+   if(field){field.innerHTML='<option value="">Load editable website text first</option>';field.disabled=true;field.value=''}
+   if(newText){newText.value='';newText.disabled=true}
+   const save=document.getElementById('sbcAISaveText');if(save)save.disabled=true;
+  };
+  function textFieldSelected(){
+   const id=String(document.getElementById('sbcAITextField')?.value||'');
+   return textEditingFields.find(f=>f.id===id)||null;
+  }
+  function textEditCanSave(){
+   const row=textFieldSelected(),text=String(document.getElementById('sbcAINewText')?.value||'').trim();
+   return Boolean(row&&currentVersion()?.id===textEditingVersion&&text.length>0&&text.length<=240&&
+    text!==String(row.text||'').trim()&&!/[\x00-\x1f\x7f]/.test(text));
+  }
+  document.getElementById('sbcAILoadText')?.addEventListener('click',async()=>{
+   const active=currentVersion();
+   if(!active)return say('Save a customer website ZIP first.',true);
+   const button=document.getElementById('sbcAILoadText');
+   if(button.disabled)return;
+   button.disabled=true;
+   try{
+    const response=await serviceApi(base+'/uploads/'+active.id+'/text-fields');
+    if(response?.ok!==true||response.readOnly!==true||response.current!==true||
+       response.versionId!==active.id||!Array.isArray(response.fields))
+     throw Error(response?.code||'Text editor unavailable');
+    resetTextEditor();
+    textEditingVersion=active.id;
+    textEditingFields=response.fields.filter(f=>/^[a-f0-9]{32}$/.test(String(f.id))&&
+      typeof f.text==='string'&&typeof f.page==='string').slice(0,100);
+    const select=document.getElementById('sbcAITextField');
+    if(select){
+     select.innerHTML='<option value="">Choose the text you want to edit</option>'+
+      textEditingFields.map(f=>'<option value="'+esc(f.id)+'">'+esc(f.page+' · '+f.tag.toUpperCase()+' · '+f.text.slice(0,90))+'</option>').join('');
+     select.disabled=textEditingFields.length===0;
+    }
+    say(textEditingFields.length+' editable text pieces found. Choose one and enter your replacement.');
+   }catch(e){resetTextEditor();say('Cannot load editable text: '+String(e.message||e),true)}
+   finally{button.disabled=false}
+  });
+  document.getElementById('sbcAITextField')?.addEventListener('change',()=>{
+   const row=textFieldSelected(),area=document.getElementById('sbcAINewText');
+   if(area){area.disabled=!row;area.value=row?row.text:''}
+   const save=document.getElementById('sbcAISaveText');if(save)save.disabled=true;
+  });
+  document.getElementById('sbcAINewText')?.addEventListener('input',()=>{
+   const save=document.getElementById('sbcAISaveText');if(save)save.disabled=!textEditCanSave();
+  });
+  document.getElementById('sbcAISaveText')?.addEventListener('click',async()=>{
+   const row=textFieldSelected(),button=document.getElementById('sbcAISaveText');
+   if(!row||!textEditCanSave()||button.disabled)return say('Select an active text field and enter different wording.',true);
+   const version=currentVersion();
+   button.disabled=true;
+   try{
+    const response=await fetch(base+'/uploads/'+version.id+'/text-edit',{
+     method:'POST',credentials:'same-origin',cache:'no-store',
+     headers:{'Content-Type':'application/json','X-SBC-Website-Text-Edit':'1','Accept':'application/json'},
+     body:JSON.stringify({expectedActiveId:version.id,page:row.page,nodeId:row.id,
+      text:String(document.getElementById('sbcAINewText')?.value||'').trim()})
+    });
+    const saved=await response.json().catch(()=>({}));
+    if(!response.ok||saved.ok!==true||saved.durable!==true||saved.published!==false||!saved.upload?.previewPath)
+     throw Error(saved.code||'Website edit was not saved');
+    await refresh();
+    await preview(saved.upload.previewPath,currentTier());
+    say('Text updated! A new website ZIP version is saved to this customer. Original ZIP remains in version history.');
+   }catch(e){say('Text update failed: '+String(e.message||e)+'. Original ZIP was not changed.',true)}
+   finally{button.disabled=false}
+  });
   const checks=()=>Array.from(document.querySelectorAll('[data-sbc-ai-release-check]'));
   function clearApprovals(){checks().forEach(x=>{x.checked=false});}
   function releaseAllowed(){
@@ -267,9 +348,9 @@
   async function refresh(){
    const res=await serviceApi(base+'/uploads');
    if(!res?.ok||!Array.isArray(res.uploads))throw Error(res?.code||'UPLOAD_LIBRARY_UNAVAILABLE');
-   items=res.uploads;clearApprovals();render();
+   items=res.uploads;clearApprovals();resetTextEditor();render();
   }
-  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();render();const saved=currentVersion();if(saved)preview(saved.previewPath,currentTier())});
+  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();resetTextEditor();render();const saved=currentVersion();if(saved)preview(saved.previewPath,currentTier())});
   document.getElementById('sbcAICopy')?.addEventListener('click',async()=>{
    const tier=String(document.getElementById('sbcAIQuickTier')?.value||199);
    const prompt=result.prompts?.[tier]||result.prompt||'';

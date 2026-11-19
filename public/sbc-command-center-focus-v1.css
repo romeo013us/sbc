@@ -217,3 +217,16 @@ body #modal #sbcAiDesk .sbc-ai-release-review input[type="checkbox"]{appearance:
 body #modal #sbcAiDesk #sbcAIRevisionNotes{display:block;width:100%;min-height:90px;background:#fff!important;color:#14283e!important;-webkit-text-fill-color:#14283e!important;border:1px solid #849fb7;border-radius:8px;padding:11px;resize:vertical}
 body #modal #sbcAiDesk #sbcAIQAStatus{font-size:14px;line-height:1.6;background:#e9f4ff;border-radius:9px;padding:10px;margin:8px 0}
 @media(prefers-reduced-motion:reduce){body #modal #sbcAiDesk .sbc-ai-device-stage{transition:none}}
+
+
+/* Owner-only quick website copy editor: simple readable fields, no arbitrary code. */
+body #modal #sbcAiDesk .sbc-ai-live-text-editor{margin:18px 0;padding:18px;background:#eef7ff!important;color:#14283e!important;border:1px solid #9ac6e6;border-radius:15px}
+body #modal #sbcAiDesk .sbc-ai-live-text-editor h4{font-size:19px;font-weight:850;margin:0 0 8px;color:#14283e!important}
+body #modal #sbcAiDesk .sbc-ai-live-text-editor p{font-size:14px;line-height:1.55;color:#14283e!important}
+body #modal #sbcAiDesk .sbc-ai-live-text-editor label{display:block;font-weight:800;color:#14283e!important;margin:12px 0 5px}
+body #modal #sbcAiDesk #sbcAITextField,body #modal #sbcAiDesk #sbcAINewText{
+ display:block;width:100%;max-width:100%;min-height:43px;padding:10px;background:#fff!important;color:#14283e!important;
+ -webkit-text-fill-color:#14283e!important;border:1px solid #849fb7!important;border-radius:9px;color-scheme:light!important}
+body #modal #sbcAiDesk #sbcAINewText{min-height:70px;resize:vertical}
+body #modal #sbcAiDesk .sbc-ai-live-text-editor :is(button,select,textarea):disabled{opacity:.6;cursor:not-allowed}
+body #modal #sbcAiDesk #sbcAITextHelp{margin-top:9px;line-height:1.6}
