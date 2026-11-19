@@ -72,8 +72,16 @@
   }
   if(name==='leads'){
    const delta=result?.tenantHydrationDelta;
-   const status=delta==null?'MySQL count comparison unavailable':
-    Number(delta)===0?'Research queue review':'Visible CRM count discrepancy — compare record IDs';
+   const temperatureObserved=Number.isFinite(Number(result?.temperaturePresent))&&
+     Number.isFinite(Number(result?.temperatureMissing))&&typeof result?.temperatureCoverageState==='string';
+   const missingAll=temperatureObserved&&result.temperatureCoverageState==='NONE_IN_SNAPSHOT'&&number(result.totalTenantRecords)>0;
+   const discrepancy=delta!=null&&Number(delta)!==0;
+   const status=discrepancy?'Visible CRM count discrepancy — compare record IDs':
+     missingAll?'Lead temperature fields absent from snapshot':
+     delta==null?'MySQL count comparison unavailable':'Research queue review';
+   const tempEvidence=temperatureObserved?
+     ' · Temperature assigned '+number(result.temperaturePresent)+'/'+number(result.totalTenantRecords)+
+     (missingAll?' (no temperatures in this snapshot; not evidence of deleted leads)':''):'';
    const counts=result?.sqlVisibleTenantRecords==null?'':
     ' · Visible MySQL records '+number(result.sqlVisibleTenantRecords)+
     ' · Deleted records retained '+number(result.sqlDeletedRecordTombstones);
@@ -81,7 +89,7 @@
     'Loaded CRM records '+number(result?.totalTenantRecords)+counts+
     ' · Human-verified call candidates '+number(result?.verifiedHumanCallReady)+
     ' · Records needing verification '+number(result?.needsRecordVerification)+
-    ' · Suppressed/terminal '+number(result?.suppressedOrTerminal)+
+    ' · Suppressed/terminal '+number(result?.suppressedOrTerminal)+tempEvidence+
     '. Verification alone is not calling/SMS consent; no outreach was sent.'];
   }
   if(name==='square'){

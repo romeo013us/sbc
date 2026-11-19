@@ -170,6 +170,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Kim advisory lead-temperature input coverage and tenant safety
         run: node --test scripts/v6624-advisory-diagnostics.test.cjs scripts/v6624-temperature-coverage.test.cjs
+      - name: Owner Launch Readiness lead-temperature coverage
+        run: node --test scripts/v6625-owner-lead-coverage.test.cjs
       - name: Writer lease heartbeat
         run: node scripts/v6617-writer-lease-heartbeat-test.cjs
       - name: Compiled runtime lease lifecycle regression

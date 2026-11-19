@@ -27,12 +27,14 @@ function inspect(customers,tenantId,opts={}){
  const n=Number(tenantId);
  if(!Number.isSafeInteger(n)||n<1)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED'});
  const list=Array.isArray(customers)?customers:[];
- const out={source:'canonical-in-memory-crm',readOnly:true,tenantId:n,metricMeaning:'Counts are categories, not migrations or completed sales.',totalTenantRecords:0,activeWarmHot:0,suppressedOrTerminal:0,synthetic:0,needsRecordVerification:0,invalidOrMissingContact:0,verifiedHumanCallReady:0,verifiedEmailReviewReady:0,verifiedNoPhone:0,manualResearchQueue:0,manualCallLeadIds:[],researchLeadIds:[],noAutomaticCalls:true,noAutomaticSMS:true,paidSalesNotInferred:true};
+ const out={source:'canonical-in-memory-crm',readOnly:true,tenantId:n,metricMeaning:'Counts are categories, not migrations or completed sales.',totalTenantRecords:0,temperaturePresent:0,temperatureMissing:0,temperatureCoverageState:'NO_RECORDS',activeWarmHot:0,suppressedOrTerminal:0,synthetic:0,needsRecordVerification:0,invalidOrMissingContact:0,verifiedHumanCallReady:0,verifiedEmailReviewReady:0,verifiedNoPhone:0,manualResearchQueue:0,manualCallLeadIds:[],researchLeadIds:[],noAutomaticCalls:true,noAutomaticSMS:true,paidSalesNotInferred:true};
  const requestedLimit=opts.limit==null?20:Number(opts.limit);
  const sample=Number.isFinite(requestedLimit)?Math.max(0,Math.min(50,Math.trunc(requestedLimit))):20;
  for(const c of list){
    if(!c||Number(c.tenantId)!==n)continue;
    out.totalTenantRecords++;
+   if(String(c.leadTemperature??'').trim())out.temperaturePresent++;
+   else out.temperatureMissing++;
    if(synthetic(c)){out.synthetic++;continue;}
    if(suppressed(c)){out.suppressedOrTerminal++;continue;}
    if(!liveLead(c))continue;
@@ -49,6 +51,7 @@ function inspect(customers,tenantId,opts={}){
    else out.verifiedNoPhone++;
    if(email)out.verifiedEmailReviewReady++;
  }
+ out.temperatureCoverageState=out.totalTenantRecords===0?'NO_RECORDS':out.temperaturePresent===0?'NONE_IN_SNAPSHOT':out.temperatureMissing>0?'PARTIAL_IN_SNAPSHOT':'ALL_IN_SNAPSHOT';
  out.readiness='REVIEW_ONLY';
  return out;
 }
