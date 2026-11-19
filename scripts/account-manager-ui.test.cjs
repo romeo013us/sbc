@@ -19,6 +19,18 @@ test('Lorna extension is optional and never replaces her original workspace',()=
  for(const asset of ['sbc-account-manager-v1.html','sbc-account-manager-v1.css','sbc-account-manager-v1.js','sbc-lorna-handoff-v1.js','sbc-lorna-handoff-v1.css'])
   assert.equal(read('public/'+asset),read('browser_public/'+asset),'asset trees must be mirrored: '+asset);
 });
+test('Account Manager follow-up uses an inline accessible date-and-reason form, not browser prompts',()=>{
+ const js=fs.readFileSync(path.join(__dirname,'../public/sbc-account-manager-v1.js'),'utf8');
+ const mirrored=fs.readFileSync(path.join(__dirname,'../browser_public/sbc-account-manager-v1.js'),'utf8');
+ assert.equal(js,mirrored,'GoDaddy release mirror must be byte-identical');
+ assert.match(js,/id="sbcV5FollowUpForm"/);
+ assert.match(js,/name="dueDate" type="date"/);
+ assert.match(js,/name="purpose" rows="2" minlength="12" maxlength="500"/);
+ assert.match(js,/form\?\.addEventListener\('submit',async event/);
+ assert.doesNotMatch(js,/window\.prompt\('Follow-up date/);
+ assert.match(js,/saved\.durable!==true/,'only persisted CRM follow-ups may report success');
+});
+
 test('Account Manager UI derives role from authenticated server and never offers owner-only approval to manager',()=>{
  const js=read('public/sbc-account-manager-v1.js');
  assert(js.includes("fetch('/api/me',{credentials:'same-origin'"),'must resolve actual authenticated role');

@@ -238,18 +238,20 @@
     '<h4>Recommended internal next steps</h4><ul>'+plan.actions.map(a=>'<li><strong>'+escapeHtml(a.title)+'</strong> — '+escapeHtml(a.details)+'</li>').join('')+'</ul>'+
     '<p class="muted">'+escapeHtml(plan.caveat)+'</p>'+
     (contactBlocked?'<p><strong>Contact suppressed. Do not schedule outreach.</strong></p>':
-     '<button type="button" class="button secondary" id="sbcV5ManualFollowUp">Record manual account follow-up</button>')+
+     '<form id="sbcV5FollowUpForm" class="form-grid" aria-label="Record internal CRM follow-up">'+
+      '<label>Next follow-up date<input name="dueDate" type="date" min="'+escapeHtml(localToday())+'" required></label>'+ 
+      '<label class="wide">Specific account follow-up reason<textarea name="purpose" rows="2" minlength="12" maxlength="500" required placeholder="Document the confirmed next step; no customer message will be sent."></textarea></label>'+ 
+      '<button type="submit" class="button secondary" id="sbcV5ManualFollowUp">Save internal follow-up</button></form>')+
     '<p id="sbcV5PlanStatus" role="status" class="muted">Recommendations are not orders or verified revenue.</p>';
-   const action=$('sbcV5ManualFollowUp');
-   action?.addEventListener('click',async()=>{
+   const action=$('sbcV5ManualFollowUp'),form=$('sbcV5FollowUpForm');
+   form?.addEventListener('submit',async event=>{
+    event.preventDefault();
     if(state.selected!==id)return;
-    const date=window.prompt('Follow-up date (YYYY-MM-DD). This records a CRM reminder only. No customer message is sent:');
-    if(!date)return;
-    const purpose=window.prompt('Describe the customer-approved review or internal next step (12–500 characters):');
-    if(!purpose)return;
+    const date=String(form.elements.dueDate.value||'');
+    const purpose=String(form.elements.purpose.value||'').trim();
     const note=$('sbcV5PlanStatus');
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||purpose.trim().length<12||purpose.length>500){
-     note.textContent='Enter a valid YYYY-MM-DD date and a specific reason.';return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<localToday()||purpose.length<12||purpose.length>500){
+     note.textContent='Choose a current or future date and enter a specific reason (12–500 characters).';return;
     }
     action.disabled=true;note.textContent='Saving the CRM follow-up with assignment and suppression checks…';
     try{

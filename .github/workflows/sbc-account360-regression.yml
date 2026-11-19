@@ -18,3 +18,4 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run test:lead-accounts
+      - run: node --test scripts/account-manager-ui.test.cjs test/sbc-account-revenue-v5.test.cjs
