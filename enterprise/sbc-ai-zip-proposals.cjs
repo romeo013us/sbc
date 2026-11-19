@@ -9,6 +9,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const zlib=require('node:zlib');
 const SBC_TEXT_EDITOR=require('./sbc-ai-site-text-editor.cjs');
+const SBC_IMAGE_EDITOR=require('./sbc-ai-site-image-editor.cjs');
 const ROOT='/api/website-production/customers/:id/ai-proposals';
 const TIERS=new Set([199,499,799,999]);
 const ZIP_MAX=20*1024*1024, FILE_MAX=12*1024*1024, TOTAL_MAX=72*1024*1024, ENTRY_MAX=300;
@@ -280,9 +281,16 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    code==='BACKUP_TOO_LARGE'||code==='TEXT_EDIT_TOO_LARGE'?413:
    code==='TEXT_EDIT_STALE_SELECTION'||code==='TEXT_EDIT_NOT_CURRENT'||code==='TEXT_EDIT_NO_CHANGE'?409:
    code==='TEXT_EDIT_PAGE_UNSUPPORTED'||code==='TEXT_EDIT_MARKUP_UNSUPPORTED'?422:
+   code==='IMAGE_NOT_FOUND'?404:
+   code==='IMAGE_NOT_CURRENT'||code==='IMAGE_NO_CHANGE'?409:
+   code==='IMAGE_FORMAT_INVALID'||code==='IMAGE_CONTENT_TYPE_INVALID'?415:
+   code==='IMAGE_SIZE_INVALID'||code==='IMAGE_PACKAGE_TOO_LARGE'?413:
+   code==='IMAGE_DIMENSIONS_UNSAFE'?422:
+   code==='IMAGE_UPLOAD_ORIGIN_DENIED'?403:
+   code==='IMAGE_ASSET_INVALID'?400:
    code.startsWith('BACKUP_')?409:
    /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|TEXT_EDIT_INVALID_INPUT)/.test(code)?400:503,
-   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE|PREVIEW_SESSION_EXPIRED|TEXT_EDIT_)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
+   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE|PREVIEW_SESSION_EXPIRED|TEXT_EDIT_|IMAGE_)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
  };
  app.get(ROOT+'/uploads',auth,ownerOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
@@ -466,6 +474,92 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
     return res.status(201).json({ok:true,durable:true,published:false,
      upload:{...newRecord,previewPath:preview(c,newRecord)}});
    }catch(e){if(promoted)fs.rmSync(destination,{recursive:true,force:true});throw e}
+   finally{fs.rmSync(staged,{recursive:true,force:true})}
+  }catch(e){return failError(res,e)}
+ });
+ // Site image picker: does not expose stored bytes, only validated raster paths.
+ app.get(ROOT+'/uploads/:uploadId/images',auth,ownerOnly,(req,res)=>{
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+   const {c,record,folder}=find(req);
+   const images=SBC_IMAGE_EDITOR.listReplaceableImages(verifiedSource(record,folder).files);
+   const current=activeFor(getStore(),c,own(req,uploads()).items,record.tier)===record.id;
+   return res.json({ok:true,readOnly:true,current,versionId:record.id,tier:record.tier,images});
+  }catch(e){return failError(res,e)}
+ });
+ // Replaces one existing raster asset by identical path; saves an immutable ZIP version.
+ // Uses bounded binary request streaming, not an arbitrary file upload or URL fetch.
+ app.post(ROOT+'/uploads/:uploadId/image-replace',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!writerReady())return failError(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
+  if(req.headers['x-sbc-website-image-replace']!=='1')
+   return failError(res,Error('IMAGE_UPLOAD_ORIGIN_DENIED'));
+  const origin=req.headers.origin;
+  if(origin){try{if(new URL(origin).host!==req.headers.host)throw Error('IMAGE_UPLOAD_ORIGIN_DENIED')}
+   catch{return failError(res,Error('IMAGE_UPLOAD_ORIGIN_DENIED'))}}
+  try{
+   const {c,record,folder}=find(req);
+   if(String(req.headers['x-sbc-expected-version']||'')!==record.id||
+      activeFor(getStore(),c,own(req,uploads()).items,record.tier)!==record.id)
+    throw Error('IMAGE_NOT_CURRENT');
+   const encoded=req.headers['x-sbc-image-asset'];
+   if(typeof encoded!=='string'||!encoded||encoded.length>800)throw Error('IMAGE_ASSET_INVALID');
+   let asset;
+   try{asset=decodeURIComponent(encoded)}catch{throw Error('IMAGE_ASSET_INVALID')}
+   if(!asset||asset.length>260||encodeURIComponent(asset)!==encoded)throw Error('IMAGE_ASSET_INVALID');
+   const original=verifiedSource(record,folder);
+   const old=original.files.find(f=>f.name===asset);
+   if(!old)throw Error('IMAGE_NOT_FOUND');
+   const existing=SBC_IMAGE_EDITOR.verifyImageAsset(asset,old.content);
+   const type=String(req.headers['content-type']||'').split(';')[0].trim().toLowerCase();
+   if(type!==existing.mime)throw Error('IMAGE_CONTENT_TYPE_INVALID');
+   if(Number(req.headers['content-length']||0)>SBC_IMAGE_EDITOR.MAX_IMAGE_BYTES)
+    throw Error('IMAGE_SIZE_INVALID');
+   let size=0;const chunks=[];
+   for await(const chunk of req){
+    size+=chunk.length;
+    if(size>SBC_IMAGE_EDITOR.MAX_IMAGE_BYTES)throw Error('IMAGE_SIZE_INVALID');
+    chunks.push(chunk);
+   }
+   const replacement=Buffer.concat(chunks);
+   SBC_IMAGE_EDITOR.verifyImageAsset(asset,replacement);
+   if(replacement.equals(old.content))throw Error('IMAGE_NO_CHANGE');
+   const output=packStoredEntries(original.files.map(f=>({name:f.name,content:f===old?replacement:f.content})));
+   if(output.length>ZIP_MAX)throw Error('IMAGE_PACKAGE_TOO_LARGE');
+   const checked=parseZip(output),previewAudit=auditPreviewFiles(checked.files);
+   const id='up_'+crypto.randomUUID().replace(/-/g,'');
+   const staged=path.join(c.dir,'.'+id+'.staging'),folderNew=path.join(c.dir,id);
+   fs.mkdirSync(c.dir,{recursive:true,mode:0o700});
+   fs.mkdirSync(staged,{mode:0o700});
+   let promoted=false;
+   try{
+    for(const file of checked.files){
+     const dest=path.join(staged,file.name);
+     fs.mkdirSync(path.dirname(dest),{recursive:true,mode:0o700});
+     fs.writeFileSync(dest,file.content,{flag:'wx',mode:0o600});
+    }
+    fs.writeFileSync(path.join(staged,'original.zip'),output,{flag:'wx',mode:0o600});
+    fs.renameSync(staged,folderNew);promoted=true;
+    const next={tenantId:c.tenantId,customerId:c.id,tier:record.tier,id,
+     filename:'website-proposal-'+record.tier+'.zip',fileCount:checked.files.length,
+     bytes:output.length,sha256:crypto.createHash('sha256').update(output).digest('hex'),
+     createdAt:new Date().toISOString(),status:'OWNER_REVIEW_REQUIRED',
+     editedFromId:record.id,editType:'IMAGE_REPLACE',previewAudit};
+    await serializeSiteMutation(async()=>{
+     const {c:verified,items}=own(req,uploads());
+     if(!writerReady())throw Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE');
+     if(!items.some(r=>r.id===record.id&&r.tier===record.tier)||
+        activeFor(getStore(),verified,items,record.tier)!==record.id)
+      throw Error('IMAGE_NOT_CURRENT');
+     const state=getStore(),rows=Array.isArray(state?.aiSiteUploads)?state.aiSiteUploads:[];
+     const pins={...(state.aiSiteActiveVersions||{})};
+     delete pins[versionKey(verified,record.tier)];
+     const saved=await saveStore({...state,aiSiteUploads:[...rows,next],aiSiteActiveVersions:pins});
+     if(saved?.skipped===true||saved?.ok===false)throw Error('PROPOSAL_UPLOAD_FAILED');
+    });
+    return res.status(201).json({ok:true,durable:true,published:false,
+     upload:{...next,previewPath:preview(c,next)}});
+   }catch(e){if(promoted)fs.rmSync(folderNew,{recursive:true,force:true});throw e}
    finally{fs.rmSync(staged,{recursive:true,force:true})}
   }catch(e){return failError(res,e)}
  });
