@@ -78,6 +78,34 @@ function sbcCrmLeadAccepted($httpCode, $json, $transportError = '') {
         && ($json['accepted'] ?? null) !== false
         && is_string($leadId) && trim($leadId) !== '' && strlen($leadId) <= 80;
 }
+/* Super SBC: bounded organic campaign provenance. Only public campaign labels;
+ * never carry names, email, phone, raw referrers or arbitrary URLs to analytics.
+ * The signed /api/web-lead bridge remains the only website -> CRM handoff.
+ */
+function sbcSuperSbcAttribution($query) {
+    if (!is_array($query)) return [];
+    foreach (['utm_source', 'utm_medium', 'utm_campaign'] as $key) {
+        if (!isset($query[$key]) || !is_string($query[$key])) return [];
+    }
+    $source = strtolower(trim($query['utm_source']));
+    $medium = strtolower(trim($query['utm_medium']));
+    $campaign = trim($query['utm_campaign']);
+    $expected = [
+        'facebook' => 'organic_social',
+        'linkedin' => 'organic_social',
+        'google' => 'organic_gbp'
+    ];
+    if ($campaign !== 'super_sbc_growth' || !isset($expected[$source]) || $medium !== $expected[$source]) return [];
+    $content = isset($query['utm_content']) && is_string($query['utm_content'])
+        ? trim($query['utm_content']) : '';
+    if (!preg_match('/\\A[a-z0-9][a-z0-9_-]{0,63}\\z/', $content)) $content = 'general';
+    return [
+        'source' => $source,
+        'medium' => $medium,
+        'campaign' => 'super_sbc_growth',
+        'content' => $content
+    ];
+}
 /* SBC lightweight form handler: keeps customer questionnaires on-site instead of relying on mailto:. */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -106,10 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $json = json_decode((string)$raw, true);
         return ['ok'=>sbcCrmLeadAccepted($code, $json, $err), 'code'=>$code, 'data'=>$json, 'error'=>$err ?: (($json['error'] ?? '') ?: '')];
     };
-    $emailTo = 'j@sbcmia.com';
+    $emailTo = 'info@sbcmia.com';
     $subject = '';
     $body = '';
-    $headers = "From: SBC Website <j@sbcmia.com>\r\nReply-To: j@sbcmia.com\r\n";
+    $headers = "From: SBC Website <info@sbcmia.com>\r\nReply-To: info@sbcmia.com\r\n";
 
     if ($form === 'card') {
         $business = $clean($_POST['business'] ?? '');
@@ -126,7 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $crm = $sbc_crm_lead([
             'businessName'=>$business,'contactName'=>$name,'phone'=>$phone,'serviceInterest'=>'Business Cards',
             'quoteType'=>'Business Card Design Brief','quantity'=>$qty,'message'=>"Colors: $colors\nStyle: $style\nCard details: $details\nNotes: $notes",
-            'sourcePage'=>'https://sbcmia.com/#card-questionnaire'
+            'sourcePage'=>'https://sbcmia.com/#card-questionnaire',
+            'marketingAttribution'=>sbcSuperSbcAttribution($_GET)
         ]);
         $subject = 'Business Card Design Brief - ' . $business;
         $body = "SBC BUSINESS CARD DESIGN BRIEF\n\nBusiness: $business\nName: $name\nPhone: $phone\nQuantity: $qty\nColors: $colors\nStyle: $style\nCard details: $details\nNotes: $notes\nCRM: " . ($crm['ok']?'Created/updated lead':'Bridge unavailable — email notification only') . "\n";
@@ -142,7 +171,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $crm = $sbc_crm_lead([
             'businessName'=>$business,'contactName'=>$name,'serviceInterest'=>'LED & Neon Signs',
             'quoteType'=>'Sign Request','message'=>"Sign type: $signType\nApprox. size: $size\nDetails: $details",
-            'sourcePage'=>'https://sbcmia.com/#led-neon'
+            'sourcePage'=>'https://sbcmia.com/#led-neon',
+            'marketingAttribution'=>sbcSuperSbcAttribution($_GET)
         ]);
         $subject = 'New LED / Neon Sign Request' . ($business ? ' - ' . $business : '');
         $body = "SBC LED / NEON SIGN REQUEST\n\nName: $name\nBusiness: $business\nWhat they are looking for: $signType\nApprox. size: $size\nDetails: $details\nCRM: " . ($crm['ok']?'Created/updated lead':'Bridge unavailable — email notification only') . "\n";
@@ -169,13 +199,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         } else {
             $sent = function_exists('mail') ? @mail($emailTo, $subject, $body, $headers) : false;
         }
-        echo json_encode(['ok' => $sent || !empty($crm['ok']), 'crmLead' => !empty($crm['ok']), 'message' => ($sent || !empty($crm['ok'])) ? 'Your sign request was sent to SBC. We will follow up with you.' : 'We could not send the request from the website right now. Please call 305-496-1065 or email j@sbcmia.com.']); exit;
+        echo json_encode(['ok' => $sent || !empty($crm['ok']), 'crmLead' => !empty($crm['ok']), 'message' => ($sent || !empty($crm['ok'])) ? 'Your sign request was sent to SBC. We will follow up with you.' : 'We could not send the request from the website right now. Please call 305-496-1065 or email info@sbcmia.com.']); exit;
     } else {
         echo json_encode(['ok' => false, 'message' => 'Invalid form request.']); exit;
     }
 
     $sent = function_exists('mail') ? @mail($emailTo, $subject, $body, $headers) : false;
-    echo json_encode(['ok' => $sent || !empty($crm['ok']), 'crmLead' => !empty($crm['ok']), 'message' => ($sent || !empty($crm['ok'])) ? 'Your design brief was sent to SBC.' : 'We could not send the brief from the website right now. Please call 305-496-1065 or email j@sbcmia.com.']);
+    echo json_encode(['ok' => $sent || !empty($crm['ok']), 'crmLead' => !empty($crm['ok']), 'message' => ($sent || !empty($crm['ok'])) ? 'Your design brief was sent to SBC.' : 'We could not send the brief from the website right now. Please call 305-496-1065 or email info@sbcmia.com.']);
     exit;
 }
 ?>
@@ -1138,7 +1168,7 @@ Successful By Choice makes it easier to build a professional business presence w
  <details><summary>Can you print my existing design?</summary><p>Yes. Send the print-ready file and SBC can quote the production. Design cleanup or recreation can be added when necessary.</p></details>
  <details><summary>Are the package prices the final price?</summary><p>They are customer-facing starting examples. Premium domains, special printing, additional website scope, taxes and shipping can change a final quote.</p></details>
  <details><summary>Do packages include future website changes?</summary><p>Basic setup support is included according to package scope. Larger future changes can be handled as additional work or a maintenance arrangement.</p></details>
- <details><summary>How do I get started?</summary><p>Call Successful By Choice at 305-496-1065, email j@sbcmia.com, or visit SBC Websites for web, hosting and domain services.</p></details>
+ <details><summary>How do I get started?</summary><p>Call Successful By Choice at 305-496-1065, email info@sbcmia.com, or visit SBC Websites for web, hosting and domain services.</p></details>
  <details><summary>Can SBC help if I already have a logo or website?</summary><p>Absolutely. SBC can work with your existing branding, domain, website or print artwork and help improve, update or connect the pieces instead of starting over.</p></details>
  <details><summary>Can I order business cards without buying a website?</summary><p>Yes. Business cards and other print services can be purchased separately. You do not need to purchase a website, hosting or a package to order printing.</p></details>
  <details><summary>What happens after I order my business cards?</summary><p>SBC will use your card design questionnaire and any artwork you provide to establish the design direction, confirm the details and prepare the cards for production.</p></details>
@@ -1217,7 +1247,7 @@ Successful By Choice makes it easier to build a professional business presence w
      .catch(() => {
        notice.style.display = 'block';
        notice.style.color = '#b91c1c';
-       notice.textContent = 'We could not send the brief from the website right now. Please call 305-496-1065 or email j@sbcmia.com.';
+       notice.textContent = 'We could not send the brief from the website right now. Please call 305-496-1065 or email info@sbcmia.com.';
      });
  };
 
@@ -1238,7 +1268,7 @@ Successful By Choice makes it easier to build a professional business presence w
      .catch(() => {
        notice.style.display = 'block';
        notice.style.color = '#b91c1c';
-       notice.textContent = 'We could not send the request from the website right now. Please call 305-496-1065 or email j@sbcmia.com.';
+       notice.textContent = 'We could not send the request from the website right now. Please call 305-496-1065 or email info@sbcmia.com.';
      })
      .finally(() => { if (button) { button.disabled = false; button.style.opacity = '1'; } });
    return false;
