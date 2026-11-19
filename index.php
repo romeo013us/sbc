@@ -106,6 +106,23 @@ function sbcSuperSbcAttribution($query) {
         'content' => $content
     ];
 }
+/* Canonical campaign URL is already stored as sourcePage by the authoritative
+ * Command Center /api/web-lead route. This keeps provenance readable in the
+ * existing CRM without bypassing tenant checks or changing the server schema. */
+function sbcSuperSbcSourcePage($fragment, $query) {
+    $allowed = ['card-questionnaire', 'led-neon'];
+    if (!is_string($fragment) || !in_array($fragment, $allowed, true)) return 'https://sbcmia.com/';
+    $base = 'https://sbcmia.com/';
+    $attribution = sbcSuperSbcAttribution($query);
+    if (!$attribution) return $base . '#' . $fragment;
+    $tags = [
+        'utm_source' => $attribution['source'],
+        'utm_medium' => $attribution['medium'],
+        'utm_campaign' => $attribution['campaign'],
+        'utm_content' => $attribution['content']
+    ];
+    return $base . '?' . http_build_query($tags, '', '&', PHP_QUERY_RFC3986) . '#' . $fragment;
+}
 /* SBC lightweight form handler: keeps customer questionnaires on-site instead of relying on mailto:. */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -158,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $crm = $sbc_crm_lead([
             'businessName'=>$business,'contactName'=>$name,'phone'=>$phone,'email'=>$email,'serviceInterest'=>'Business Cards',
             'quoteType'=>'Business Card Design Brief','quantity'=>$qty,'message'=>"Colors: $colors\nStyle: $style\nCard details: $details\nNotes: $notes",
-            'sourcePage'=>'https://sbcmia.com/#card-questionnaire',
+            'sourcePage'=>sbcSuperSbcSourcePage('card-questionnaire', $_GET),
             'marketingAttribution'=>sbcSuperSbcAttribution($_GET)
         ]);
         $subject = 'Business Card Design Brief - ' . $business;
@@ -180,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $crm = $sbc_crm_lead([
             'businessName'=>$business,'contactName'=>$name,'phone'=>$phone,'email'=>$email,'serviceInterest'=>'LED & Neon Signs',
             'quoteType'=>'Sign Request','message'=>"Sign type: $signType\nApprox. size: $size\nDetails: $details",
-            'sourcePage'=>'https://sbcmia.com/#led-neon',
+            'sourcePage'=>sbcSuperSbcSourcePage('led-neon', $_GET),
             'marketingAttribution'=>sbcSuperSbcAttribution($_GET)
         ]);
         $subject = 'New LED / Neon Sign Request' . ($business ? ' - ' . $business : '');
