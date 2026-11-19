@@ -1247,22 +1247,44 @@ Successful By Choice makes it easier to build a professional business presence w
  btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
  btn.innerHTML = open ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-bars"></i>';
  });
+ // Successful CRM-backed lead acknowledgment only; no names, emails, phone numbers, or messages are sent to analytics.
+ window.sbcTrackConfirmedWebsiteInquiry = function (formType, result) {
+   if (!(result && result.ok === true && result.crmLead === true)) return false;
+   if (formType !== 'card' && formType !== 'sign') return false;
+   window.dataLayer = window.dataLayer || [];
+   window.dataLayer.push({event:'sbc_lead_accepted',form_type:formType});
+   return true;
+ };
+
  window.emailCardBrief = function () {
    const form = document.getElementById('cardQuestionnaire');
    const data = new FormData(form);
    const notice = document.getElementById('briefNotice');
+   const button = document.getElementById('sendCardBriefBtn');
+   if (button && button.disabled) return;
+   const phone = String(data.get('phone')||'').trim(), email = String(data.get('email')||'').trim();
+   if (!phone && !email) {
+     notice.style.display = 'block';
+     notice.style.color = '#b91c1c';
+     notice.textContent = 'Enter a phone number or email address so SBC can reply.';
+     document.getElementById('qEmail')?.focus();
+     return;
+   }
+   if (button) { button.disabled = true; button.style.opacity = '.7'; }
    fetch(window.location.href, { method:'POST', body:data, headers:{'X-Requested-With':'XMLHttpRequest'} })
      .then(r => r.json())
      .then(result => {
        notice.style.display = 'block';
        notice.style.color = result.ok ? '#047857' : '#b91c1c';
        notice.textContent = result.message;
+       window.sbcTrackConfirmedWebsiteInquiry('card', result);
      })
      .catch(() => {
        notice.style.display = 'block';
        notice.style.color = '#b91c1c';
        notice.textContent = 'We could not send the brief from the website right now. Please call 305-496-1065 or email info@sbcmia.com.';
-     });
+     })
+     .finally(() => { if (button) { button.disabled = false; button.style.opacity = '1'; } });
  };
 
  window.submitSbcForm = function (event, form) {
@@ -1270,14 +1292,24 @@ Successful By Choice makes it easier to build a professional business presence w
    const noticeId = form.id === 'signForm' ? 'signNotice' : 'briefNotice';
    const notice = document.getElementById(noticeId);
    const button = form.querySelector('button[type="submit"]');
+   const data = new FormData(form);
+   if (!String(data.get('phone')||'').trim() && !String(data.get('email')||'').trim()) {
+     notice.style.display = 'block';
+     notice.style.color = '#b91c1c';
+     notice.textContent = 'Enter a phone number or email address so SBC can reply.';
+     form.querySelector('[name="email"]')?.focus();
+     return false;
+   }
+   if (button && button.disabled) return false;
    if (button) { button.disabled = true; button.style.opacity = '.7'; }
-   fetch(window.location.href, { method:'POST', body:new FormData(form), headers:{'X-Requested-With':'XMLHttpRequest'} })
+   fetch(window.location.href, { method:'POST', body:data, headers:{'X-Requested-With':'XMLHttpRequest'} })
      .then(r => r.json())
      .then(result => {
        notice.style.display = 'block';
        notice.style.color = result.ok ? '#047857' : '#b91c1c';
        notice.textContent = result.message;
-       if (result.ok && form.id === 'signForm') form.reset();
+       window.sbcTrackConfirmedWebsiteInquiry('sign', result);
+       if (result.ok === true && form.id === 'signForm') form.reset();
      })
      .catch(() => {
        notice.style.display = 'block';
@@ -1296,6 +1328,7 @@ Successful By Choice makes it easier to build a professional business presence w
      'Business: ' + get('qBusiness'),
      'Name: ' + get('qName'),
      'Phone: ' + get('qPhone'),
+     'Email: ' + get('qEmail'),
      'Quantity: ' + get('qQty'),
      'Colors: ' + get('qColors'),
      'Style: ' + get('qStyle'),
