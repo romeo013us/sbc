@@ -31,6 +31,8 @@ function positiveTenantIdOrZero(input) {
 module.exports = function registerCRM(app, { auth, getContext }) {
   // SBC_RENEWAL_CENTER_V1: authenticated tenant-scoped owner desk on existing sbc_renewals table.
   require('./sbc-renewal-center.cjs').register(app,{auth,getContext,tenantForRead});
+  // SBC_CUSTOMER_DESIGN_REQUESTS_V1: tenant-scoped owner/manager requests, secure one-use customer forms.
+  require('./sbc-customer-design-briefs.cjs').register(app,{auth,getContext,tenantForRead});
   // SBC_ACCOUNT_MANAGER_CRM_RUNTIME_MOUNT_V1: canonical CRM ownership, notes,
   // manual outcomes and owner-only readiness diagnostics. Handler enforces
   // tenant and role checks on every request; Social Studio stays separate.
