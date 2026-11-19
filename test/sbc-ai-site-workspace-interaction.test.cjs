@@ -39,8 +39,11 @@ function appFixture(review={issueCount:0,deliveryReview:{status:'STATIC_CHECKS_P
    previewPath:'/api/website-production/customers/c1/ai-proposals/uploads/up_'+'b'.repeat(32)+'/render/'+'U'.repeat(43)+'/index.html',
    downloadPath:'/api/website-production/customers/c1/ai-proposals/uploads/up_'+'b'.repeat(32)+'/download'}
  ];
+ const editable=[{id:'a'.repeat(32),page:'index.html',tag:'h1',text:'Original headline'}];
  const serviceApi=async url=>{
   if(url.endsWith('/uploads'))return {ok:true,uploads};
+  if(url.endsWith('/text-fields'))return {ok:true,readOnly:true,current:true,
+   versionId:uploads.find(x=>x.active).id,tier:199,fields:editable};
   return {ok:true,revision:0,variants:{},prompts:{'199':'BUILD STARTER'},prompt:'BUILD'};
  };
  const ctx={window:{location:{href:'https://command.example/'}},document:doc,console,URL,
@@ -49,6 +52,13 @@ function appFixture(review={issueCount:0,deliveryReview:{status:'STATIC_CHECKS_P
    requests.push({url,options});
    const body=JSON.parse(options.body);
    assert.equal(body.expectedActiveId,uploads[0].id);
+   if(url.endsWith('/text-edit')){
+    const saved={...uploads[0],id:'up_'+'c'.repeat(32),active:true,
+     createdAt:'2026-11-19T10:00:00Z',
+     previewPath:'/api/website-production/customers/c1/ai-proposals/uploads/up_'+'c'.repeat(32)+'/render/'+'V'.repeat(43)+'/index.html'};
+    uploads=[...uploads.map(x=>({...x,active:false})),saved];
+    return {ok:true,json:async()=>({ok:true,durable:true,published:false,upload:saved})};
+   }
    uploads=uploads.map(x=>({...x,active:x.id===uploads[1].id}));
    return {ok:true,json:async()=>({ok:true,durable:true,activeId:uploads.find(x=>x.active).id,published:false})};
   }
@@ -114,4 +124,46 @@ test('existing saved ZIPs can run read-only delivery QA and manual form test is 
  assert.equal(f.elem('sbcAIPreparePublish').disabled,true);
  assert.equal(typeof originalService,'function');
  assert.match(savedId,/^up_[a-f0-9]{32}$/);
+});
+
+test('owner edits plain text, creates immutable ZIP version and sees new preview without ChatGPT',async()=>{
+ const f=appFixture();await f.open();
+ const save=f.elem('sbcAISaveText');
+ assert.equal(save.disabled,true,'no text edit without selecting a field');
+ await f.elem('sbcAILoadText').click();
+ const field=f.elem('sbcAITextField');
+ assert.equal(field.disabled,false);
+ assert.match(field.innerHTML,/Original headline/);
+ field.value='a'.repeat(32);field.listeners.change?.();
+ const area=f.elem('sbcAINewText');
+ assert.equal(area.value,'Original headline');
+ assert.equal(save.disabled,true,'cannot save an unchanged text node');
+ area.value='A new & better headline';area.listeners.input?.();
+ assert.equal(save.disabled,false);
+ await save.click();
+ assert.equal(f.requests.length,1);
+ assert.match(f.requests[0].url,/\/text-edit$/);
+ assert.equal(f.requests[0].options.headers['X-SBC-Website-Text-Edit'],'1');
+ const sent=JSON.parse(f.requests[0].options.body);
+ assert.equal(sent.text,'A new & better headline');
+ assert.equal(sent.page,'index.html');
+ assert.equal(sent.nodeId,'a'.repeat(32));
+ assert.equal(f.elem('sbcAITextField').disabled,true,'selection reset after creating new version');
+ assert.match(f.elem('sbcAIFrame').src,/\/up_cccccccccccccccccccccccccccccccc\/render\//);
+ assert.equal(f.downloads.length,0,'nothing sent to hosting');
+});
+test('text editor cannot save without an active customer ZIP and never trusts arbitrary HTML strings',async()=>{
+ const f=appFixture();await f.open();
+ const result=f.elem('sbcAISaveText');
+ await result.click();
+ assert.equal(f.requests.length,0);
+ await f.elem('sbcAILoadText').click();
+ const field=f.elem('sbcAITextField');field.value='a'.repeat(32);field.listeners.change?.();
+ f.elem('sbcAINewText').value='One';
+ f.elem('sbcAINewText').listeners.input?.();
+ assert.equal(result.disabled,false);
+ const value=f.elem('sbcAINewText');
+ value.value='Unsafe\nline';value.listeners.input?.();
+ assert.equal(result.disabled,true,'control characters rejected before server check');
+ assert.equal(f.requests.length,0);
 });
