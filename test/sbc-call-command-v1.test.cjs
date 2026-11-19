@@ -44,9 +44,9 @@ test('mirrors and actual Account Manager integration are installed',()=>{
  const html=read('public/sbc-account-manager-v1.html'),js=read('public/sbc-account-manager-v1.js');
  assert(html.includes('/sbc-call-command-v1.js?v=1'));
  assert(html.includes('/sbc-call-command-v1.css?v=1'));
- assert(js.includes('SBCCallCommand.open'));
- assert(js.includes('SBCCallCommand.saved'));
- assert(js.includes('SBCCallCommand.failed'));
- assert(js.includes('SBCCallCommand.clear'));
+ assert(js.includes('SBCCallCommand?.open'));
+ assert(js.includes('SBCCallCommand?.saved'));
+ assert(js.includes('SBCCallCommand?.failed'));
+ assert(js.includes('SBCCallCommand?.clear'));
  assert(js.includes("['owner','account_manager'].includes(state.role)"));
 });
