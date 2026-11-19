@@ -11,7 +11,7 @@ const root=path.resolve(__dirname,'..');
 const js=fs.readFileSync(path.join(root,'public/sbc-v6567-marketing-hub.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'public/sbc-v6567-marketing-hub.css'),'utf8');
 function load(fetch){
-  const source=js.replace(/\}\)\(\);\s*$/,'window.__SUPER_SBC_TEST__={serverAction};})();');
+  const source=js.replace(/\}\)\(\);\s*$/,'window.__SUPER_SBC_TEST__={serverAction,render,state,setRoot(value){root=value}};})();');
   assert.notEqual(source,js,'browser functions must be instrumentable for safety tests');
   const window={};
   const sandbox={
@@ -25,7 +25,7 @@ function load(fetch){
     FormData:class FormData{}
   };
   vm.runInNewContext(source,sandbox,{timeout:4000,filename:'sbc-marketing-hub.js'});
-  return window.__SUPER_SBC_TEST__;
+  return {...window.__SUPER_SBC_TEST__,window};
 }
 function reply(body,status=200){return {ok:status>=200&&status<300,status,json:async()=>body};}
 test('marketing publisher rejects HTTP success without an explicit ok:true',async()=>{
@@ -73,6 +73,25 @@ test('all owner mutation actions require explicit success rather than empty resp
   const hubOk=load(async()=>reply({ok:true}));
   assert.equal(await hubOk.serverAction({id:'draft2',durable:true},'approve'),true);
 });
+test('verified, configured and missing integrations show the truthful badges',()=>{
+  const hub=load(async()=>reply({}));
+  hub.window.__SBC_V6567_INTEGRATIONS__={
+    facebook:{status:'connected'},
+    google:{status:'configured'},
+    instagram:{status:'not_configured'}
+  };
+  const content={innerHTML:'',querySelectorAll(){return []}};
+  const tabs={innerHTML:''},notice={textContent:''};
+  hub.setRoot({hidden:false,querySelector(selector){
+    return {'.mh-content':content,'.mh-tabs':tabs,'.mh-notice':notice}[selector];
+  }});
+  hub.state.activeTab='integrations';
+  hub.render();
+  assert.match(content.innerHTML,/<span class="mh-badge good">Verified<\/span>/);
+  assert.match(content.innerHTML,/<span class="mh-badge warn">Unverified<\/span>/);
+  assert.match(content.innerHTML,/<span class="mh-badge warn">Not connected<\/span>/);
+});
+
 test('accessibility and mirrored asset parity are preserved',()=>{
   assert.equal(fs.readFileSync(path.join(root,'browser_public/sbc-v6567-marketing-hub.js'),'utf8'),js);
   assert.equal(fs.readFileSync(path.join(root,'browser_public/sbc-v6567-marketing-hub.css'),'utf8'),css);
