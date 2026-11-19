@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "d223c7da4c39ae4aa84b8df862e93b3bbd0fe62a",
+  "sourceCommit": "fece24e76bc933f4695ee5560676120fe030e83f",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -28,7 +28,7 @@
     "RELEASE-MANIFEST-V64.2.17.json": "68c5b19d2cb220fbe63347940b90eadc75a65ad268b4748ae3944bfefbd498df",
     "RELEASE-MANIFEST-V65.0.3.json": "7ed523b2926a50f1affa35346795c1665edcc4ad92ce5e4966470d2835b33ab6",
     "RELEASE-MANIFEST-V65.0.4.json": "610532c912a2c7aa7b4c38550f479a619d18d5720b01b049ffd18b5f79dc415d",
-    "SBC-DEPLOY-RECEIPT.json": "1862005263310158017bfa84f8f0910966dde621b19a8d6c7b969bbec9740e7a",
+    "SBC-DEPLOY-RECEIPT.json": "6f8fb3125a6536ade565c97e46a5ded9a4c1b3303210198bd374bac6892cb1f1",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "V56.1.0-BUILD-MANIFEST.json": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
     "V56.25.0-FILE-SHA256.txt": "3a6d2fa626a1604f7d5cd340cf0f8cf161539549c643e3e821ca0db0c2659ed1",
@@ -512,6 +512,7 @@
     "enterprise/sbc-ai-preview-edge-allowlist.cjs": "94360d8997227b07eb9c119af642cd215878ae5cc615766f2d1238cdddcd3824",
     "enterprise/sbc-ai-sales-voice-v5611.js": "b16e77c7716d57ca2b72e6535bd7e82d5f33c4a5c259ad0546d4dabb5caab0b4",
     "enterprise/sbc-ai-site-handoff.cjs": "4aed4d81a500712bf98b7243efc5118919461998a1ede8d580383d8d9d53d823",
+    "enterprise/sbc-ai-site-image-editor.cjs": "8700e9716501e71d37c0260108ad8400e708f666af3987579429b3315150d8e4",
     "enterprise/sbc-ai-site-text-editor.cjs": "44bd683159fc8e39b9336dbc06c643c9c029055925d8012b2b6e8e31292dc462",
     "enterprise/sbc-ai-zip-proposals.cjs": "cef72500e56223d0fa7ba874389880364e05fe6e5f29d23afa37ed0549596a18",
     "enterprise/sbc-autonomy-control-v6430.js": "7ccca7b664f23e0a4414bb9573009821670634e22bda108dde34a5e733474ad1",
@@ -1553,6 +1554,7 @@
     "test/sbc-ai-preview-edge-allowlist.test.cjs": "55a97b941d9c7fed9b462624c1fa8bb7c76408dbafd1a9ccfec5e92066f7e563",
     "test/sbc-ai-simple-chatgpt-flow.test.cjs": "4eca0f15f0876d6f9555d8f8ad63be57b32bd0f315e4dbd1090a2fb33ce29bb2",
     "test/sbc-ai-site-handoff.test.cjs": "3f0571bb5b75eedaacf43d76ee9d8bc7f549a5dbd75bbe752917bd7ddce1bf64",
+    "test/sbc-ai-site-image-editor.test.cjs": "615d10f8418ff20de550e9cb20354b1993ef4943ca343deb22ce95ce7c1388fe",
     "test/sbc-ai-site-recovery-export.test.cjs": "303ab8909d1b1df4e1998f9ebfc7308e49297039a4f111bb229c56ffb1b263e5",
     "test/sbc-ai-site-text-editor.test.cjs": "bc332f72390a9d28d4724344ea2d631d67a13c920d625b1c298453add0627ee7",
     "test/sbc-ai-site-workspace-interaction.test.cjs": "4d49bf264e2ed82664b3410fc48b389094a52c422f1d65b8d2705fc4c36c3c14",
