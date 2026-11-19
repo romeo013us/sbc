@@ -8,6 +8,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const zlib=require('node:zlib');
+const SBC_TEXT_EDITOR=require('./sbc-ai-site-text-editor.cjs');
 const ROOT='/api/website-production/customers/:id/ai-proposals';
 const TIERS=new Set([199,499,799,999]);
 const ZIP_MAX=20*1024*1024, FILE_MAX=12*1024*1024, TOTAL_MAX=72*1024*1024, ENTRY_MAX=300;
@@ -276,10 +277,12 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    code==='WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'?423:
    code==='PREVIEW_SESSION_EXPIRED'?403:
    code==='BACKUP_NO_VERSIONS'?404:
-   code==='BACKUP_TOO_LARGE'?413:
+   code==='BACKUP_TOO_LARGE'||code==='TEXT_EDIT_TOO_LARGE'?413:
+   code==='TEXT_EDIT_STALE_SELECTION'||code==='TEXT_EDIT_NOT_CURRENT'||code==='TEXT_EDIT_NO_CHANGE'?409:
+   code==='TEXT_EDIT_PAGE_UNSUPPORTED'||code==='TEXT_EDIT_MARKUP_UNSUPPORTED'?422:
    code.startsWith('BACKUP_')?409:
-   /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED)/.test(code)?400:503,
-   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE|PREVIEW_SESSION_EXPIRED)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
+   /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|TEXT_EDIT_INVALID_INPUT)/.test(code)?400:503,
+   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE|PREVIEW_SESSION_EXPIRED|TEXT_EDIT_)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
  };
  app.get(ROOT+'/uploads',auth,ownerOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
@@ -370,6 +373,102 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   if(!/^up_[a-f0-9]{32}$/.test(record.id))throw Error('UPLOAD_NOT_FOUND');
   return {c,record,folder:path.join(c.dir,record.id)};
  }
+ // Read-only source-text picker for one saved static site.
+ // It deliberately excludes script/style/HTML attributes and returns at most
+ // 120 bounded plain-text tokens. The owner must select an exact token ID.
+ function verifiedSource(record,folder){
+  const file=path.join(folder,'original.zip');
+  const st=fs.lstatSync(file);
+  if(!st.isFile()||st.isSymbolicLink()||st.size!==Number(record.bytes)||st.size>ZIP_MAX)
+   throw Error('BACKUP_INTEGRITY_FAILED');
+  const bytes=fs.readFileSync(file);
+  if(record.sha256&&crypto.createHash('sha256').update(bytes).digest('hex')!==record.sha256)
+   throw Error('BACKUP_INTEGRITY_FAILED');
+  return parseZip(bytes);
+ }
+ function textFields(files){
+  const result=[];
+  for(const file of files.filter(f=>/\.html?$/i.test(f.name)).slice(0,12)){
+   try{
+    const rows=SBC_TEXT_EDITOR.listEditableNodes(file.name,file.content);
+    result.push(...rows.slice(0,Math.max(0,100-result.length)));
+   }catch(e){if(e.message!=='TEXT_EDIT_PAGE_UNSUPPORTED')throw e}
+   if(result.length>=100)break;
+  }
+  return result;
+ }
+ app.get(ROOT+'/uploads/:uploadId/text-fields',auth,ownerOnly,(req,res)=>{
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+   const {c,record,folder}=find(req),fields=textFields(verifiedSource(record,folder).files);
+   const current=activeFor(getStore(),c,own(req,uploads()).items,record.tier)===record.id;
+   return res.json({ok:true,readOnly:true,current,versionId:record.id,tier:record.tier,fields});
+  }catch(e){return failError(res,e)}
+ });
+ // No-code edit: create a NEW immutable ZIP version, never overwrite the saved
+ // source. A writer lease and exact current-version check are mandatory.
+ app.post(ROOT+'/uploads/:uploadId/text-edit',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!writerReady())return failError(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
+  if(req.headers['x-sbc-website-text-edit']!=='1')return fail(res,403,'UPLOAD_ORIGIN_DENIED');
+  const origin=req.headers.origin;
+  if(origin){try{if(new URL(origin).host!==req.headers.host)throw Error('UPLOAD_ORIGIN_DENIED')}catch{return fail(res,403,'UPLOAD_ORIGIN_DENIED')}}
+  try{
+   const {c,record,folder}=find(req);
+   const body=req.body;
+   if(!body||typeof body!=='object'||Array.isArray(body)||
+      String(body.expectedActiveId||'')!==record.id||
+      typeof body.page!=='string'||body.page.length>260||
+      typeof body.nodeId!=='string'||typeof body.text!=='string'||body.text.length>300)
+    throw Error('TEXT_EDIT_INVALID_INPUT');
+   if(activeFor(getStore(),c,own(req,uploads()).items,record.tier)!==record.id)
+    throw Error('TEXT_EDIT_NOT_CURRENT');
+   const original=verifiedSource(record,folder);
+   const source=original.files.find(f=>f.name===body.page&&/\.html?$/i.test(f.name));
+   if(!source)throw Error('TEXT_EDIT_PAGE_UNSUPPORTED');
+   const changed=SBC_TEXT_EDITOR.replaceEditableNode(body.page,source.content,body.nodeId,body.text);
+   const newFiles=original.files.map(f=>({name:f.name,content:f===source?changed:f.content}));
+   // Only portable, preview-safe web files are included in the new release;
+   // the untouched source ZIP is still available in customer version history.
+   const output=packStoredEntries(newFiles);
+   if(output.length>ZIP_MAX)throw Error('TEXT_EDIT_TOO_LARGE');
+   const checked=parseZip(output),previewAudit=auditPreviewFiles(checked.files);
+   const id='up_'+crypto.randomUUID().replace(/-/g,'');
+   const staged=path.join(c.dir,'.'+id+'.staging'),destination=path.join(c.dir,id);
+   fs.mkdirSync(c.dir,{recursive:true,mode:0o700});
+   fs.mkdirSync(staged,{mode:0o700});
+   let promoted=false;
+   try{
+    for(const file of checked.files){
+     const dest=path.join(staged,file.name);
+     fs.mkdirSync(path.dirname(dest),{recursive:true,mode:0o700});
+     fs.writeFileSync(dest,file.content,{flag:'wx',mode:0o600});
+    }
+    fs.writeFileSync(path.join(staged,'original.zip'),output,{flag:'wx',mode:0o600});
+    fs.renameSync(staged,destination);promoted=true;
+    const newRecord={tenantId:c.tenantId,customerId:c.id,tier:record.tier,id,
+     filename:'website-proposal-'+record.tier+'.zip',fileCount:checked.files.length,
+     bytes:output.length,sha256:crypto.createHash('sha256').update(output).digest('hex'),
+     createdAt:new Date().toISOString(),status:'OWNER_REVIEW_REQUIRED',
+     editedFromId:record.id,editType:'TEXT_ONLY',previewAudit};
+    await serializeSiteMutation(async()=>{
+     const {c:authoritative,items}=own(req,uploads());
+     if(!writerReady())throw Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE');
+     if(!items.some(r=>r.id===record.id&&r.tier===record.tier)||
+       activeFor(getStore(),authoritative,items,record.tier)!==record.id)
+      throw Error('TEXT_EDIT_NOT_CURRENT');
+     const state=getStore(),rows=Array.isArray(state?.aiSiteUploads)?state.aiSiteUploads:[];
+     const pins={...(state.aiSiteActiveVersions||{})};
+     delete pins[versionKey(authoritative,record.tier)];
+     const saved=await saveStore({...state,aiSiteUploads:[...rows,newRecord],aiSiteActiveVersions:pins});
+     if(saved?.skipped===true||saved?.ok===false)throw Error('PROPOSAL_UPLOAD_FAILED');
+    });
+    return res.status(201).json({ok:true,durable:true,published:false,
+     upload:{...newRecord,previewPath:preview(c,newRecord)}});
+   }catch(e){if(promoted)fs.rmSync(destination,{recursive:true,force:true});throw e}
+   finally{fs.rmSync(staged,{recursive:true,force:true})}
+  }catch(e){return failError(res,e)}
+ });
  // Promote any preserved version back to "current" without moving, deleting,
  // rewriting or publishing a website. Only the logged-in owner may do this.
  app.post(ROOT+'/uploads/:uploadId/select',auth,ownerOnly,async(req,res)=>{

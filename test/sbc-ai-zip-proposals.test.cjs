@@ -46,11 +46,11 @@ function fixture(){
   getStore:()=>state,saveStore:async next=>{state=next;return {ok:true}},
   writerReady:()=>writer,serializeSiteMutation:fn=>fn(),storageRoot});
  const url='/api/website-production/customers/:id/ai-proposals';
- async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,body,origin='https://command.example',selectHeader=true}={}){
+ async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,body,origin='https://command.example',selectHeader=true,editHeader=true}={}){
   const key=method+' '+url+suffix,handlers=routes[key];
   assert(handlers,'route missing: '+key);
   const req=Readable.from(buf?[buf]:[]),headers={'content-type':'application/zip','x-sbc-proposal-upload':'1',host:'command.example',origin};
-  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers:{...headers,...(selectHeader?{'x-sbc-website-version-select':'1'}:{})},body,user:role?{role,id:'test-owner'}:null,secure:true});
+  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers:{...headers,...(selectHeader?{'x-sbc-website-version-select':'1'}:{}),...(editHeader?{'x-sbc-website-text-edit':'1'}:{})},body,user:role?{role,id:'test-owner'}:null,secure:true});
   const res={statusCode:200,headers:{},status(code){this.statusCode=code;return this},
    setHeader(k,v){this.headers[k]=v},json(body){this.body=body;return this},
    sendFile(filename){this.file=fs.readFileSync(filename);return this}};
@@ -276,5 +276,66 @@ test('historical ZIP quality check is read-only, tenant-scoped and works while C
   assert.equal((await f.call('GET','/uploads/:uploadId/qa',{uploadId:id,tenantId:2,customerId:'b1'})).statusCode,404);
   fs.writeFileSync(path.join(f.root,'1','a1',id,'original.zip'),Buffer.from('badzip'));
   assert.equal((await f.call('GET','/uploads/:uploadId/qa',{uploadId:id})).statusCode,409);
+ }finally{f.cleanup()}
+});
+
+test('owner-only no-code text editor writes a NEW ZIP version and keeps the previous intact',async()=>{
+ const f=fixture();
+ try{
+  const input=zip({'index.html':'<!doctype html><html><head><title>Shop</title></head><body><h1>Phil&#39;s Auto</h1><p>Details pending</p><script>window.sample=true;</script></body></html>','assets/site.css':'h1{color:red}'});
+  const saved=await f.call('POST','/uploads/:tier',{tier:'199',buf:input});
+  assert.equal(saved.statusCode,201);
+  const id=saved.body.upload.id;
+  const prior=fs.readFileSync(path.join(f.root,'1','a1',id,'original.zip'));
+  const list=await f.call('GET','/uploads/:uploadId/text-fields',{uploadId:id});
+  assert.equal(list.statusCode,200);
+  assert.equal(list.body.current,true);
+  assert.equal(list.body.readOnly,true);
+  assert(list.body.fields.some(x=>x.text==="Phil's Auto"));
+  assert(!JSON.stringify(list.body).includes('window.sample'));
+  const line=list.body.fields.find(x=>x.text==='Details pending');
+  const edit=await f.call('POST','/uploads/:uploadId/text-edit',{
+   uploadId:id,body:{expectedActiveId:id,page:'index.html',nodeId:line.id,text:'Trusted & <professional>'}
+  });
+  assert.equal(edit.statusCode,201,JSON.stringify(edit.body));
+  assert.equal(edit.body.published,false);
+  assert.equal(edit.body.durable,true);
+  const newId=edit.body.upload.id;
+  assert.notEqual(newId,id);
+  assert.equal(f.state().aiSiteUploads.length,2);
+  const after=await f.call('GET','/uploads');
+  assert.equal(after.body.uploads.find(x=>x.active).id,newId);
+  assert.deepEqual(fs.readFileSync(path.join(f.root,'1','a1',id,'original.zip')),prior);
+  const newer=await f.call('GET','/uploads/:uploadId/download',{uploadId:newId});
+  const parsed=parseZip(newer.file);
+  assert.match(parsed.files.find(x=>x.name==='index.html').content.toString(),/Trusted &amp; &lt;professional&gt;/);
+  assert.match(parsed.files.find(x=>x.name==='index.html').content.toString(),/window.sample=true/);
+  assert.equal(parsed.files.find(x=>x.name==='assets/site.css').content.toString(),'h1{color:red}');
+  const stale=await f.call('POST','/uploads/:uploadId/text-edit',{
+   uploadId:id,body:{expectedActiveId:id,page:'index.html',nodeId:line.id,text:'Another change'}
+  });
+  assert.equal(stale.statusCode,409);
+ }finally{f.cleanup()}
+});
+test('text editing stays owner-only, same-origin, tenant-scoped and blocks stale or invalid submissions',async()=>{
+ const f=fixture();
+ try{
+  const input=zip({'index.html':'<html><body><h1>Original headline</h1></body></html>'});
+  const saved=await f.call('POST','/uploads/:tier',{tier:'499',buf:input});
+  const id=saved.body.upload.id;
+  const field=(await f.call('GET','/uploads/:uploadId/text-fields',{uploadId:id})).body.fields[0];
+  const inputBody={expectedActiveId:id,page:'index.html',nodeId:field.id,text:'Updated headline'};
+  assert.equal((await f.call('GET','/uploads/:uploadId/text-fields',{uploadId:id,role:null})).statusCode,401);
+  assert.equal((await f.call('GET','/uploads/:uploadId/text-fields',{uploadId:id,role:'caller'})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,role:'caller',body:inputBody})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,editHeader:false,body:inputBody})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,origin:'https://evil.example',body:inputBody})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,tenantId:2,customerId:'b1',body:inputBody})).statusCode,404);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,body:{...inputBody,nodeId:'0'.repeat(32)}})).statusCode,409);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,body:{...inputBody,text:'x\n<script>'}})).statusCode,400);
+  f.setWriter(false);
+  assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,body:inputBody})).statusCode,423);
+  assert.equal((await f.call('GET','/uploads/:uploadId/text-fields',{uploadId:id})).statusCode,200);
+  assert.equal(f.state().aiSiteUploads.length,1);
  }finally{f.cleanup()}
 });
