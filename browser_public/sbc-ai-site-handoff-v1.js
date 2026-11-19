@@ -53,12 +53,91 @@
    '<details><summary>Original four-site brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
    '<div class="sbc-ai-grid">'+cards+'</div></details>'+
    '<p id="sbcAIState" class="sbc-ai-state" role="status" aria-live="polite">Loading saved proposal files…</p>'+
-   '<section class="sbc-ai-preview"><div class="sbc-ai-preview-head"><h4>Owner review preview</h4><p>The website runs in a restricted preview frame. Forms cannot send submissions from this preview.</p></div>'+
-   '<iframe id="sbcAIFrame" title="Owner-only website proposal preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="about:blank"></iframe></section></div>';
+   '<section class="sbc-ai-edit-panel" aria-label="Request website edits without coding">'+
+   '<h4>✏️ Request changes without editing code</h4>'+
+   '<label for="sbcAIRevisionNotes">What would you like to change?</label>'+
+   '<textarea id="sbcAIRevisionNotes" rows="3" maxlength="1800" placeholder="Example: Make the headline bolder, move the phone button higher, and update only verified services."></textarea>'+
+   '<button id="sbcAIRevisionCopy" type="button" class="btn">Copy revision request for ChatGPT</button>'+
+   '<small>Attach the saved ZIP to ChatGPT with this request; upload the improved ZIP as a new version. The original stays saved.</small></section>'+
+   '<section class="sbc-ai-preview"><div class="sbc-ai-preview-head"><h4>Website preview</h4><p>Choose a device to inspect the actual website. This is a sandbox: forms and outbound requests are disabled.</p></div>'+
+   '<div class="sbc-ai-device-toolbar" role="group" aria-label="Preview screen size">'+
+   '<button type="button" class="btn" data-sbc-ai-device="desktop" aria-pressed="true">Desktop · full width</button>'+
+   '<button type="button" class="btn" data-sbc-ai-device="tablet" aria-pressed="false">Tablet · 768px</button>'+
+   '<button type="button" class="btn" data-sbc-ai-device="mobile" aria-pressed="false">Mobile · 390px</button></div>'+
+   '<div id="sbcAIFrameStage" class="sbc-ai-device-stage" data-device="desktop">'+
+   '<iframe id="sbcAIFrame" title="Owner-only website proposal preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="about:blank"></iframe></div>'+
+   '<section class="sbc-ai-release-review" aria-label="Customer site delivery quality check">'+
+   '<h4>Final quality and publishing handoff</h4>'+
+   '<p id="sbcAIQAStatus" class="sbc-ai-meta" role="status">Select a saved website for review.</p>'+
+   '<label><input type="checkbox" data-sbc-ai-release-check>Business details, services and claims verified with the owner</label>'+
+   '<label><input type="checkbox" data-sbc-ai-release-check>Desktop, tablet and mobile preview checked</label>'+
+   '<label><input type="checkbox" data-sbc-ai-release-check>All navigation, links and interactive features manually tested</label>'+
+   '<label><input type="checkbox" data-sbc-ai-release-check>Owner approved this version and arranged a separate backup</label>'+
+   '<button id="sbcAIPreparePublish" type="button" class="btn primary" disabled>Prepare publishing ZIP</button>'+
+   '<small>This safely downloads the selected ZIP for a separate hosting deployment. It does NOT publish to GoDaddy, approve payment or contact the customer.</small>'+
+   '</section></section></div>';
   openModal('SBC AI Website Production',html);
   let items=[];
   const say=(message,error=false)=>{const e=document.getElementById('sbcAIState');if(e){e.textContent=message;e.classList.toggle('sbc-ai-error',error)}};
   const frame=document.getElementById('sbcAIFrame');
+  const currentTier=()=>Number(document.getElementById('sbcAIQuickTier')?.value||199);
+  const currentVersion=()=>items.find(x=>Number(x.tier)===currentTier()&&x.active===true)||
+    items.find(x=>Number(x.tier)===currentTier())||null;
+  const checks=()=>Array.from(document.querySelectorAll('[data-sbc-ai-release-check]'));
+  function clearApprovals(){checks().forEach(x=>{x.checked=false});}
+  function releaseAllowed(){
+   const v=currentVersion(),qa=v?.previewAudit;
+   return Boolean(v&&qa?.issueCount===0&&qa.deliveryReview?.status==='STATIC_CHECKS_PASSED'&&checks().length===4&&checks().every(x=>x.checked===true));
+  }
+  function updateReleaseReview(){
+   const v=currentVersion(),qa=v?.previewAudit,flags=qa?.deliveryReview?.flags||[];
+   const summary=document.getElementById('sbcAIQAStatus');
+   const descriptions={BUSINESS_FACTS_UNVERIFIED:'Verify business details before delivery',
+    PAGE_TITLE_REVIEW:'Page title missing',MOBILE_VIEWPORT_REVIEW:'Mobile viewport not configured',
+    FORM_BACKEND_MUST_BE_TESTED:'Live form endpoint must be tested',
+    IMAGE_ALT_TEXT_REVIEW:'Image accessibility text needs review'};
+   if(summary){
+    summary.textContent=!v?'Upload a ZIP to begin quality review.':
+      !qa||!qa.deliveryReview?'Older ZIP needs re-upload for full delivery checks.':
+      qa.issueCount||flags.length?
+       'Not ready for handoff: '+qa.issueCount+' missing or blocked file links; '+flags.map(x=>descriptions[x]||x).join('; ')+'.':
+       'Static file checks passed. Complete the four manual confirmations before downloading for publishing.';
+   }
+   const btn=document.getElementById('sbcAIPreparePublish');
+   if(btn)btn.disabled=!releaseAllowed();
+  }
+  document.querySelectorAll('[data-sbc-ai-release-check]').forEach(x=>x.addEventListener('change',updateReleaseReview));
+  document.querySelectorAll('[data-sbc-ai-device]').forEach(button=>button.addEventListener('click',()=>{
+   const device=button.dataset.sbcAiDevice;
+   if(!['desktop','tablet','mobile'].includes(device))return;
+   const stage=document.getElementById('sbcAIFrameStage');
+   if(stage)stage.dataset.device=device;
+   document.querySelectorAll('[data-sbc-ai-device]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
+  }));
+  document.getElementById('sbcAIPreparePublish')?.addEventListener('click',()=>{
+   if(!releaseAllowed())return say('Complete the quality checklist and resolve all ZIP review flags before preparing this site.',true);
+   const item=currentVersion();
+   const a=document.createElement('a');a.href=item.downloadPath;
+   a.download='sbc-approved-for-manual-hosting-'+currentTier()+'.zip';
+   document.body.appendChild(a);a.click();a.remove();
+   say('Approved ZIP prepared for manual deployment. Not published; verify hosting and payment separately.');
+  });
+  document.getElementById('sbcAIRevisionCopy')?.addEventListener('click',async()=>{
+   const tier=currentTier(),version=currentVersion(),notes=String(document.getElementById('sbcAIRevisionNotes')?.value||'').trim();
+   if(!version)return say('Upload or select a saved website before requesting edits.',true);
+   if(notes.length<5)return say('Describe the changes you want before copying a revision request.',true);
+   const prompt=['Update ONE existing Successful By Choice customer website.',
+    'Business: '+String(customer.businessName||'Business'),
+    'Package: $'+tier+'. Keep this same package tier.',
+    'Use the original website ZIP that I attach to ChatGPT as the baseline.',
+    'Changes requested by owner:',notes,
+    'Do not invent services, reviews, prices, hours, contact details or achievements.',
+    'Preserve local assets, accessibility, responsive layout and working navigation.',
+    'Return ONE complete revised website ZIP with index.html at its root.',
+    'Test local HTML/CSS/JS references. List changes and anything requiring backend work.'].join('\n');
+   try{await navigator.clipboard.writeText(prompt);say('Revision request copied. Attach the current saved ZIP in ChatGPT, then upload the newly built ZIP here.')}
+   catch{say('Clipboard unavailable. Please copy your requested changes manually.',true)}
+  });
   async function preview(url,tier,renew=false){
    if(!url)return say('Upload a ZIP or save a hosted HTTPS URL to preview this package.',true);
    try{
@@ -81,10 +160,12 @@
   function render(){
    for(const t of TIERS){
     const host=document.getElementById('sbcAICurrent'+t.id);if(!host)continue;
-    const list=items.filter(x=>Number(x.tier)===t.id),latest=list[0],external=document.getElementById('sbcAIUrl'+t.id)?.value.trim();
+    const list=items.filter(x=>Number(x.tier)===t.id),latest=list.find(x=>x.active===true)||list[0],history=list.filter(x=>x.id!==latest?.id),external=document.getElementById('sbcAIUrl'+t.id)?.value.trim();
     if(!latest&&!external){host.innerHTML='<p class="sbc-ai-empty">No ZIP saved for this package yet.</p>';continue}
     const qa=latest?.previewAudit;
     const problemCount=Number(qa?.issueCount||0);
+    const deliverFlags=qa?.deliveryReview?.flags||[];
+    const qaExtra=deliverFlags.length?' · '+deliverFlags.length+' delivery item'+(deliverFlags.length===1?'':'s')+' need attention.':'';
     const qaText=!qa?'Older ZIP: automatic preview-link checks not recorded.':problemCount?
      'Preview needs attention: '+problemCount+' broken or blocked reference'+(problemCount===1?'':'s')+'.':
      'Preview HTML links checked: no missing linked files detected. Manual review still required.';
@@ -98,21 +179,22 @@
      qa.issues.map(i=>'<li><strong>'+esc(friendly[i.code]||i.code)+'</strong> · '+esc(i.page)+': '+esc(i.reference)+'</li>').join('')+
      '</ul><small>These are static link checks, not a published website test. Review before presenting.</small></details>':'';
     host.innerHTML=(latest?
-      '<p class="sbc-ai-saved">✓ ZIP saved to this customer</p>'+
+      '<p class="sbc-ai-saved">✓ Current saved website for this customer</p>'+
       '<p class="sbc-ai-meta">'+Number(latest.fileCount||0)+' web files · '+new Date(latest.createdAt).toLocaleString()+' · Owner review</p>'+
-      '<p class="sbc-ai-meta" role="status">'+esc(qaText)+'</p>'+details+
+      '<p class="sbc-ai-meta" role="status">'+esc(qaText+qaExtra)+'</p>'+details+
       '<div class="sbc-ai-actions"><button type="button" class="btn" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+t.id+'">Preview saved ZIP</button>'+
       '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download copy</a>'+
       '<a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(latest.previewPath)+'">Open preview ↗</a></div>'+
-      (list.length>1?'<details><summary>Earlier versions ('+(list.length-1)+')</summary>'+
-        list.slice(1).map((x,i)=>'<p><button class="btn" type="button" data-sbc-ai-preview="'+esc(x.previewPath)+'" data-tier="'+t.id+'">Preview version '+(list.length-1-i)+'</button></p>').join('')+'</details>':'')
+      (history.length?'<details><summary>Saved version history ('+history.length+' earlier version'+(history.length===1?'':'s')+')</summary>'+
+        history.map((x,i)=>'<p><button class="btn" type="button" data-sbc-ai-preview="'+esc(x.previewPath)+'" data-tier="'+t.id+'">Preview earlier version '+(i+1)+'</button> '+
+        '<button class="btn" type="button" data-sbc-ai-restore="'+esc(x.id)+'" data-tier="'+t.id+'" data-active-id="'+esc(latest.id)+'">Make current</button></p>').join('')+'</details>':'')
      :'<p class="sbc-ai-meta">External preview saved · no ZIP uploaded</p>'+
       '<button class="btn" data-sbc-ai-external="'+t.id+'" type="button">Preview external URL</button>');
    }
    const quick=document.getElementById('sbcAIQuickCurrent');
    if(quick){
     const selected=Number(document.getElementById('sbcAIQuickTier')?.value||199);
-    const latest=items.find(x=>Number(x.tier)===selected);
+    const latest=items.find(x=>Number(x.tier)===selected&&x.active===true)||items.find(x=>Number(x.tier)===selected);
     if(!latest)quick.textContent='No website saved for this package yet. Start with the ChatGPT request above.';
     else{
      const audit=latest.previewAudit;
@@ -135,15 +217,33 @@
      '<small>If the backup is too large or any original ZIP is missing, the export stops instead of silently omitting a version. Individual ZIP downloads remain available above.</small>':
      '<p class="sbc-ai-meta">Upload a website first; the customer recovery backup will appear here.</p>';
    }
+   document.querySelectorAll('[data-sbc-ai-restore]').forEach(b=>b.addEventListener('click',async()=>{
+    const versionId=String(b.dataset.sbcAiRestore||''),expectedActiveId=String(b.dataset.activeId||'');
+    if(!/^up_[a-f0-9]{32}$/.test(versionId)||!/^up_[a-f0-9]{32}$/.test(expectedActiveId))return say('Invalid saved version.',true);
+    b.disabled=true;
+    try{
+     const res=await fetch(base+'/uploads/'+versionId+'/select',{method:'POST',credentials:'same-origin',cache:'no-store',
+      headers:{'Content-Type':'application/json','X-SBC-Website-Version-Select':'1','Accept':'application/json'},
+      body:JSON.stringify({expectedActiveId})});
+     const answer=await res.json().catch(()=>({}));
+     if(!res.ok||answer.ok!==true||answer.durable!==true)throw Error(answer.code||'Could not restore version');
+     await refresh();
+     const updated=items.find(x=>x.id===answer.activeId);
+     if(updated)await preview(updated.previewPath,Number(updated.tier));
+     say('Earlier ZIP restored as current. Nothing was deleted or published.');
+    }catch(e){say('Restore failed: '+String(e.message||e)+'. Existing versions remain saved.',true)}
+    finally{b.disabled=false}
+   }));
    document.querySelectorAll('[data-sbc-ai-preview]').forEach(b=>b.addEventListener('click',()=>preview(b.dataset.sbcAiPreview,Number(b.dataset.tier),true)));
    document.querySelectorAll('[data-sbc-ai-external]').forEach(b=>b.addEventListener('click',()=>preview(document.getElementById('sbcAIUrl'+b.dataset.sbcAiExternal)?.value,Number(b.dataset.sbcAiExternal))));
+   updateReleaseReview();
   }
   async function refresh(){
    const res=await serviceApi(base+'/uploads');
    if(!res?.ok||!Array.isArray(res.uploads))throw Error(res?.code||'UPLOAD_LIBRARY_UNAVAILABLE');
-   items=res.uploads;render();
+   items=res.uploads;clearApprovals();render();
   }
-  document.getElementById('sbcAIQuickTier')?.addEventListener('change',render);
+  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();render()});
   document.getElementById('sbcAICopy')?.addEventListener('click',async()=>{
    const tier=String(document.getElementById('sbcAIQuickTier')?.value||199);
    const prompt=result.prompts?.[tier]||result.prompt||'';

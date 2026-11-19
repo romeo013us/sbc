@@ -201,3 +201,19 @@ body #modal #sbcAiDesk .sbc-ai-meta,body #modal #sbcAiDesk .sbc-ai-draft{font-si
 /* Offline Chromium audit 2026-11-17: white login card requires dark heading,
    even when the global dark theme chooses pale application headings. */
 body #login .login-card h1{color:#14283e!important;-webkit-text-fill-color:#14283e!important}
+
+
+/* SBC Website Studio: responsive device simulator and gated manual release flow. */
+body #modal #sbcAiDesk .sbc-ai-device-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+body #modal #sbcAiDesk .sbc-ai-device-toolbar button[aria-pressed="true"]{border:2px solid #0e659f!important;background:#e6f3ff!important;color:#113c5e!important;box-shadow:0 0 0 2px #bbddf8}
+body #modal #sbcAiDesk .sbc-ai-device-stage{width:100%;max-width:100%;margin:0 auto;transition:width .2s ease;overflow:hidden}
+body #modal #sbcAiDesk .sbc-ai-device-stage[data-device="tablet"]{width:min(100%,768px)}
+body #modal #sbcAiDesk .sbc-ai-device-stage[data-device="mobile"]{width:min(100%,390px)}
+body #modal #sbcAiDesk .sbc-ai-edit-panel,body #modal #sbcAiDesk .sbc-ai-release-review{background:#f5faff!important;border:1px solid #bbd2e5;border-radius:14px;padding:16px;margin:18px 0}
+body #modal #sbcAiDesk .sbc-ai-edit-panel h4,body #modal #sbcAiDesk .sbc-ai-release-review h4{font-size:18px;margin:0 0 10px}
+body #modal #sbcAiDesk .sbc-ai-edit-panel label,body #modal #sbcAiDesk .sbc-ai-release-review label{display:block;font-weight:680;line-height:1.5;margin:8px 0}
+body #modal #sbcAiDesk .sbc-ai-release-review label{display:flex;gap:9px;align-items:flex-start}
+body #modal #sbcAiDesk .sbc-ai-release-review input[type="checkbox"]{appearance:auto!important;min-width:18px;width:18px;height:18px;margin:3px 0 0;accent-color:#11699e}
+body #modal #sbcAiDesk #sbcAIRevisionNotes{display:block;width:100%;min-height:90px;background:#fff!important;color:#14283e!important;-webkit-text-fill-color:#14283e!important;border:1px solid #849fb7;border-radius:8px;padding:11px;resize:vertical}
+body #modal #sbcAiDesk #sbcAIQAStatus{font-size:14px;line-height:1.6;background:#e9f4ff;border-radius:9px;padding:10px;margin:8px 0}
+@media(prefers-reduced-motion:reduce){body #modal #sbcAiDesk .sbc-ai-device-stage{transition:none}}
