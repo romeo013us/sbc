@@ -47,3 +47,11 @@ test('call-screen appointment panel uses explicit readable foreground and backgr
  assert.match(source,/\.sbc-appt-call \.mini\{[^}]*color:#475569/);
  assert.match(source,/\.sbc-appt-call select\{[^}]*background:#fff;[^}]*color:#172033/);
 });
+
+test('call-screen appointment card stays dark and readable even when legacy theme styles override generic panels',()=>{
+ const fs=require('node:fs');
+ const source=fs.readFileSync(require.resolve('../public/sbc-appointment-workflow-v1.js'),'utf8');
+ assert.match(source,/#sbcCallAppointments\{[^}]*background:#162c46!important;[^}]*color:#f6fbff!important/);
+ assert.match(source,/#sbcCallAppointments :is\(h3,h4,p,label,strong,\.mini\)\{[^}]*color:#f6fbff!important/);
+ assert.match(source,/#sbcCallAppointments select\{[^}]*background:#0b1d32!important;[^}]*color:#fff!important/);
+});
