@@ -63,6 +63,17 @@
    '<textarea id="sbcAINewText" rows="2" maxlength="240" disabled placeholder="Select a heading or sentence above."></textarea>'+
    '<div class="sbc-ai-actions"><button id="sbcAISaveText" class="btn primary" type="button" disabled>Save text as new website version</button></div>'+
    '<small id="sbcAITextHelp">Only plain visible text is editable here—no HTML, colors, scripts or contact functionality. Use the ChatGPT revision request below for design changes.</small></section>'+
+   '<section class="sbc-ai-image-editor" aria-label="Replace customer website images without code">'+
+   '<h4>🖼️ Quick Image Replace · no coding needed</h4>'+
+   '<p>Choose an existing site image, upload a photo or logo in the same format, then save. Your original website stays in version history.</p>'+
+   '<button type="button" id="sbcAILoadImages" class="btn">Load website images</button>'+
+   '<label for="sbcAIImageField">Image to replace</label>'+
+   '<select id="sbcAIImageField" disabled><option value="">Load website images first</option></select>'+
+   '<img id="sbcAIImageCurrent" hidden alt="Existing website image selected for replacement" loading="lazy">'+
+   '<label for="sbcAIReplacementImage">Choose replacement image</label>'+
+   '<input type="file" id="sbcAIReplacementImage" accept="image/png,image/jpeg,image/webp" disabled>'+
+   '<button id="sbcAISaveImage" type="button" class="btn primary" disabled>Save replacement as new website version</button>'+
+   '<small>PNG, JPG/JPEG and WebP only; maximum 4 MB. Your file must match the original image format. SVG and executable uploads are not allowed.</small></section>'+
    '<section class="sbc-ai-edit-panel" aria-label="Request website edits without coding">'+
    '<h4>✏️ Request changes without editing code</h4>'+
    '<label for="sbcAIRevisionNotes">What would you like to change?</label>'+
@@ -163,6 +174,95 @@
     await preview(saved.upload.previewPath,currentTier());
     say('Text updated! A new website ZIP version is saved to this customer. Original ZIP remains in version history.');
    }catch(e){say('Text update failed: '+String(e.message||e)+'. Original ZIP was not changed.',true)}
+   finally{button.disabled=false}
+  });
+  let imageEditingVersion=null,imageEditingFields=[];
+  function resetImageEditor(){
+   imageEditingVersion=null;imageEditingFields=[];
+   const select=document.getElementById('sbcAIImageField'),file=document.getElementById('sbcAIReplacementImage');
+   if(select){select.innerHTML='<option value="">Load saved website images first</option>';select.value='';select.disabled=true}
+   if(file){file.value='';file.disabled=true}
+   const image=document.getElementById('sbcAIImageCurrent');
+   if(image){image.hidden=true;image.removeAttribute?.('src')}
+   const button=document.getElementById('sbcAISaveImage');if(button)button.disabled=true;
+  }
+  function selectedImage(){
+   const key=String(document.getElementById('sbcAIImageField')?.value||'');
+   return imageEditingFields.find(x=>x.path===key)||null;
+  }
+  function imageFileType(file){
+   if(!file)return '';
+   const ext=String(file.name||'').split('.').pop().toLowerCase();
+   const known={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'}[ext]||'';
+   return known&&(!file.type||file.type===known)?known:'';
+  }
+  function imageReadyToSave(){
+   const row=selectedImage(),file=document.getElementById('sbcAIReplacementImage')?.files?.[0];
+   return Boolean(row&&file&&file.size>0&&file.size<=4*1024*1024&&imageFileType(file)===row.mime&&
+    imageEditingVersion===currentVersion()?.id);
+  }
+  document.getElementById('sbcAILoadImages')?.addEventListener('click',async()=>{
+   const active=currentVersion(),button=document.getElementById('sbcAILoadImages');
+   if(!active)return say('Save a customer website ZIP before replacing pictures.',true);
+   if(button.disabled)return;
+   button.disabled=true;
+   try{
+    const response=await serviceApi(base+'/uploads/'+active.id+'/images');
+    if(response?.ok!==true||response.readOnly!==true||response.current!==true||
+       response.versionId!==active.id||!Array.isArray(response.images))
+     throw Error(response?.code||'Image library unavailable');
+    resetImageEditor();imageEditingVersion=active.id;
+    imageEditingFields=response.images.filter(x=>x&&typeof x.path==='string'&&
+     ['image/png','image/jpeg','image/webp'].includes(x.mime)).slice(0,80);
+    const select=document.getElementById('sbcAIImageField');
+    if(select){
+     select.innerHTML='<option value="">Choose an image from your website</option>'+
+      imageEditingFields.map(x=>'<option value="'+esc(x.path)+'">'+
+       esc(x.path+' · '+x.width+'×'+x.height+' · '+Math.round(x.bytes/1024)+' KB')+'</option>').join('');
+     select.disabled=!imageEditingFields.length;
+    }
+    say(imageEditingFields.length+' replaceable images found. Choose an image and upload a replacement in the same format.');
+   }catch(e){resetImageEditor();say('Image list unavailable: '+String(e.message||e),true)}
+   finally{button.disabled=false}
+  });
+  document.getElementById('sbcAIImageField')?.addEventListener('change',()=>{
+   const row=selectedImage(),file=document.getElementById('sbcAIReplacementImage');
+   if(file){file.value='';file.disabled=!row}
+   const image=document.getElementById('sbcAIImageCurrent');if(image){image.hidden=true;image.removeAttribute?.('src')}
+   if(row&&image&&currentVersion()?.previewPath){
+    try{
+     const root=new URL('./',new URL(currentVersion().previewPath,window.location.href));
+     const asset=row.path.split('/').map(encodeURIComponent).join('/');
+     image.src=new URL(asset,root).href;image.hidden=false;
+    }catch{/* failed thumbnail does not block replacing an archived asset */}
+   }
+   const save=document.getElementById('sbcAISaveImage');if(save)save.disabled=true;
+  });
+  document.getElementById('sbcAIReplacementImage')?.addEventListener('change',()=>{
+   const save=document.getElementById('sbcAISaveImage');if(save)save.disabled=!imageReadyToSave();
+   const row=selectedImage(),file=document.getElementById('sbcAIReplacementImage')?.files?.[0];
+   if(file&&row&&imageFileType(file)!==row.mime)
+    say('Choose a '+row.mime.replace('image/','').toUpperCase()+' file to match the existing image. Different formats need a revised website ZIP.',true);
+  });
+  document.getElementById('sbcAISaveImage')?.addEventListener('click',async()=>{
+   const button=document.getElementById('sbcAISaveImage'),row=selectedImage(),
+    file=document.getElementById('sbcAIReplacementImage')?.files?.[0],version=currentVersion();
+   if(!imageReadyToSave()||button.disabled)return say('Select an image and a matching replacement file (4 MB or less).',true);
+   button.disabled=true;say('Saving a new website version with the replacement image…');
+   try{
+    const res=await fetch(base+'/uploads/'+version.id+'/image-replace',{
+     method:'POST',credentials:'same-origin',cache:'no-store',
+     headers:{'Content-Type':row.mime,'X-SBC-Website-Image-Replace':'1',
+      'X-SBC-Expected-Version':version.id,'X-SBC-Image-Asset':encodeURIComponent(row.path),'Accept':'application/json'},
+     body:file
+    });
+    const saved=await res.json().catch(()=>({}));
+    if(!res.ok||saved.ok!==true||saved.durable!==true||saved.published!==false||!saved.upload?.previewPath)
+     throw Error(saved.code||'Image update failed');
+    await refresh();
+    await preview(saved.upload.previewPath,currentTier());
+    say('Image replaced! Your updated website ZIP is saved and previewed. The old version is still available.');
+   }catch(e){say('Image replacement failed: '+String(e.message||e)+'. Original website was not changed.',true)}
    finally{button.disabled=false}
   });
   const checks=()=>Array.from(document.querySelectorAll('[data-sbc-ai-release-check]'));
@@ -348,9 +448,9 @@
   async function refresh(){
    const res=await serviceApi(base+'/uploads');
    if(!res?.ok||!Array.isArray(res.uploads))throw Error(res?.code||'UPLOAD_LIBRARY_UNAVAILABLE');
-   items=res.uploads;clearApprovals();resetTextEditor();render();
+   items=res.uploads;clearApprovals();resetTextEditor();resetImageEditor();render();
   }
-  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();resetTextEditor();render();const saved=currentVersion();if(saved)preview(saved.previewPath,currentTier())});
+  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();resetTextEditor();resetImageEditor();render();const saved=currentVersion();if(saved)preview(saved.previewPath,currentTier())});
   document.getElementById('sbcAICopy')?.addEventListener('click',async()=>{
    const tier=String(document.getElementById('sbcAIQuickTier')?.value||199);
    const prompt=result.prompts?.[tier]||result.prompt||'';
