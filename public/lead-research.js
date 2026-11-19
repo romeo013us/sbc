@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 var roles=['lead_researcher','researcher','lead_generator','prospector'];
-var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,autoVerifiedToday=null,needsReviewToday=null,pendingAutoToday=null,leadsLoadFailed=false,progressLoadFailed=false;
+var user=null,leads=null,train=null,clock=null,loadedAt=null,busy=false,active='home',importBatch=null,importRunning=false,submittedIds=null,dailyAccepted=null,autoVerifiedToday=null,needsReviewToday=null,pendingAutoToday=null,leadsLoadFailed=false,progressLoadFailed=false,mineVisibleCount=12;
 var $=function(id){return document.getElementById(id);};
 var txt=function(id,value){var el=$(id);if(el)el.textContent=String(value);};
 function note(message,bad){var el=$('notice');el.hidden=false;el.classList.toggle('danger',!!bad);el.textContent=String(message);}
@@ -303,11 +303,15 @@ function drawLeads(){
  var missingAddress=own.filter(function(c){return !String(c.address||'').trim();}).length;
  txt('sbc-address-missing-count',missingAddress+' of your '+own.length+' visible submitted leads have no recorded address. Research when available; do not invent one.');
  var chosen=attention.filter(function(c){return [c.businessName,c.phone,secondaryPhoneLabel(c),c.email,c.city,c.address,c.industry].join(' ').toLowerCase().includes(filter);});
+ var mineFilter=String($('mine-search').value||'').trim().toLowerCase();
+ var matching=own.filter(function(c){return [c.businessName,c.contactName,c.phone,secondaryPhoneLabel(c),c.email,c.city,c.address,c.industry,leadAutomationStatus(c)].join(' ').toLowerCase().includes(mineFilter);});
  q.replaceChildren();m.replaceChildren();
  if(!chosen.length)empty(q,filter?'No matching exceptions from your submissions.':'No records currently need your corrections. SBC automatically checks submitted leads.');
  else chosen.forEach(function(c){q.append(displayLead(c,true));});
- if(!own.length)empty(m,'No submitted leads currently visible in your active research CRM. Historical totals appear on your dashboard.');
- else own.forEach(function(c){m.append(displayLead(c,false));});
+ if(!matching.length)empty(m,mineFilter?'No submitted leads match this search.':'No submitted leads currently visible in your active research CRM. Historical totals appear on your dashboard.');
+ else matching.slice(0,mineVisibleCount).forEach(function(c){m.append(displayLead(c,false));});
+ txt('mine-visible-count','Showing '+Math.min(matching.length,mineVisibleCount)+' of '+matching.length+' matching submitted leads ('+own.length+' total visible)');
+ $('mine-more').hidden=matching.length<=mineVisibleCount;
  txt('metric-queue',attention.length);
  txt('metric-unverified',own.filter(function(c){return ['QUEUED','PROCESSING','NOT_CHECKED'].includes(String(c.leadAssistStatus||'NOT_CHECKED'))&&!isException(c);}).length);
  txt('metric-mine',own.length);
@@ -800,6 +804,8 @@ async function confirmImport(){
 document.querySelectorAll('[data-tab]').forEach(function(button){button.addEventListener('click',function(){setTab(button.getAttribute('data-tab'));});});
 document.querySelectorAll('[data-go]').forEach(function(button){button.addEventListener('click',function(){setTab(button.getAttribute('data-go'));});});
 $('search').addEventListener('input',drawLeads);
+$('mine-search').addEventListener('input',function(){mineVisibleCount=12;drawLeads();});
+$('mine-more').addEventListener('click',function(){mineVisibleCount+=12;drawLeads();});
 $('refresh').addEventListener('click',refresh);
 $('lead-form').addEventListener('submit',submitLead);
 $('import-preview').addEventListener('click',previewImport);

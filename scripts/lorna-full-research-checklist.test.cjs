@@ -20,6 +20,12 @@ assert.match(ui,/renderUrgentCase\(own\)/,'urgent account must respect the resea
 assert.match(ui,/googleBusinessUrl|researchBrief/,'Google profile URL must come from authorized CRM data');
 
 assert.match(ui,/streetAddressVerification/,'CSV import must not erase street evidence status');
+assert.match(html,/id="mine-search"/,'submitted leads are searchable');
+assert.match(html,/id="mine-more"/,'more submitted leads available without one huge list');
+assert.match(html,/id="mine-visible-count"[^>]*aria-live="polite"/,'list count is accessible');
+assert.match(ui,/mineVisibleCount=12/,'only twelve submissions are shown initially');
+assert.match(ui,/matching\.slice\(0,mineVisibleCount\)/,'submitted list is bounded');
+assert.match(ui,/mineVisibleCount\+=12/,'show-more expands without altering CRM data');
 assert.match(ui,/researchBrief:importBrief/,'full structured research in CRM brief');
 for(const key of ['googleBusinessUrl','googleListingAddress','streetAddressEvidenceUrl','googleAddressEvidenceUrl','streetAddressVerification','googleAddressVerification','nextFollowupNote']){
  assert(core.ORDER.includes(key),'CSV schema must include '+key);
