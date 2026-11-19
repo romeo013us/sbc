@@ -406,6 +406,23 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.json({ok:true,activeId,durable:true,published:false});
   }catch(e){return failError(res,e)}
  });
+ // Re-run QA for historical saved ZIPs without a re-upload, a writer lease
+ // or any customer-state mutation. Reports only bounded issue types and file
+ // counts; website content and customer PII never appear in the JSON result.
+ app.get(ROOT+'/uploads/:uploadId/qa',auth,ownerOnly,(req,res)=>{
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+   const {record,folder}=find(req),archive=path.join(folder,'original.zip');
+   const st=fs.lstatSync(archive);
+   if(!st.isFile()||st.isSymbolicLink()||st.size>ZIP_MAX||st.size!==Number(record.bytes))
+    throw Error('BACKUP_INTEGRITY_FAILED');
+   const buf=fs.readFileSync(archive);
+   if(record.sha256&&crypto.createHash('sha256').update(buf).digest('hex')!==record.sha256)
+    throw Error('BACKUP_INTEGRITY_FAILED');
+   const parsed=parseZip(buf),audit=auditPreviewFiles(parsed.files);
+   return res.json({ok:true,readOnly:true,published:false,fileCount:parsed.files.length,previewAudit:audit});
+  }catch(e){return failError(res,e)}
+ });
  app.get(ROOT+'/uploads/:uploadId/download',auth,ownerOnly,(req,res)=>{
   try{
    const {folder,record}=find(req),file=path.join(folder,'original.zip');

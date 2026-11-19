@@ -255,3 +255,26 @@ test('restore refuses a tampered archived website without selecting it or losing
   assert.equal((await f.call('GET','/uploads')).body.uploads.find(x=>x.active).id,second.body.upload.id);
  }finally{f.cleanup()}
 });
+
+test('historical ZIP quality check is read-only, tenant-scoped and works while CRM writes are blocked',async()=>{
+ const f=fixture();
+ try{
+  const input=zip({'index.html':'<html><h1>Details pending verification</h1><link rel="stylesheet" href="assets/site.css"></html>','assets/site.css':'body{}'});
+  const saved=await f.call('POST','/uploads/:tier',{tier:'199',buf:input});
+  assert.equal(saved.statusCode,201);
+  const id=saved.body.upload.id;
+  const stateBefore=JSON.stringify(f.state());
+  f.setWriter(false);
+  const result=await f.call('GET','/uploads/:uploadId/qa',{uploadId:id});
+  assert.equal(result.statusCode,200,JSON.stringify(result.body));
+  assert.equal(result.body.readOnly,true);
+  assert.equal(result.body.published,false);
+  assert.equal(result.body.previewAudit.issueCount,0);
+  assert(result.body.previewAudit.deliveryReview.flags.includes('BUSINESS_FACTS_UNVERIFIED'));
+  assert.equal(JSON.stringify(f.state()),stateBefore);
+  assert.equal((await f.call('GET','/uploads/:uploadId/qa',{uploadId:id,role:'caller'})).statusCode,403);
+  assert.equal((await f.call('GET','/uploads/:uploadId/qa',{uploadId:id,tenantId:2,customerId:'b1'})).statusCode,404);
+  fs.writeFileSync(path.join(f.root,'1','a1',id,'original.zip'),Buffer.from('badzip'));
+  assert.equal((await f.call('GET','/uploads/:uploadId/qa',{uploadId:id})).statusCode,409);
+ }finally{f.cleanup()}
+});
