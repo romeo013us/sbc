@@ -24,4 +24,6 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node --test test/sbc-call-command-live-v3.test.cjs
+      - run: node --test test/sbc-call-command-live-v3-routes.test.cjs
+      - run: node --check public/sbc-call-command-live-v3.js && cmp public/sbc-call-command-live-v3.js browser_public/sbc-call-command-live-v3.js
       - run: node --test test/sbc-call-command-voice-preflight-v2.test.cjs test/sbc-call-command-v1.test.cjs test/sbc-account-portfolios.test.cjs scripts/account-manager-role-gate.test.cjs
