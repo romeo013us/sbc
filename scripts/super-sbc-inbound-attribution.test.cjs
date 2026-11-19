@@ -31,7 +31,7 @@ test('untrusted, paid or forged campaigns do not enter CRM attribution',()=>{
     {utm_source:['facebook'],utm_medium:'organic_social',utm_campaign:'super_sbc_growth'},
     {utm_source:'facebook',utm_medium:'organic_social',utm_campaign:['super_sbc_growth']},
     {}
-  ])assert.deepEqual(phpAttribution(query),{});
+  ])assert.deepEqual(phpAttribution(query),[],'rejected attribution returns an empty PHP array serialized as []');
 });
 test('attribution content rejects personal details, URLs, control characters and excessive length',()=>{
   for(const value of ['person@example.com','https://evil.example','a'.repeat(80),'bad\nheader','<script>alert(1)</script>']){
