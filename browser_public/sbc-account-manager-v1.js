@@ -179,7 +179,7 @@
   $('sbcAccountCount').textContent='Account list unavailable. Sign in or ask the owner for access.';
   $('accountGrid').innerHTML='<p class="empty">Account data could not be verified. Check your login or ask the owner to enable the workstation.</p>';
   message('Workspace unavailable: '+e.message,true);$('rolePill').textContent='NOT AUTHORIZED';}}
- function openAccount(id){const a=state.accounts.find(x=>x.id===id);if(!a)return;state.selected=id;
+ function openAccount(id){if(state.selected&&state.selected!==id&&window.SBCCallCommandLiveV3?.isBusy()){message('End the active call before opening another account.',true);return;}const a=state.accounts.find(x=>x.id===id);if(!a)return;state.selected=id;
   $('accountDetail').hidden=false;$('detailTitle').textContent=a.businessName;
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
@@ -289,7 +289,7 @@
  }catch(e){message('Action not completed: '+e.message,true)}finally{state.busy=false;}}
  document.querySelectorAll('[data-t]').forEach(x=>x.dataset.en=x.textContent);
  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>page(b.dataset.view)));
- $('refresh').addEventListener('click',load);$('sbcAccountSearch').addEventListener('input',renderAccountGrid);$('closeDetail').addEventListener('click',()=>{$('accountDetail').hidden=true;window.SBCCallCommand?.clear();});
+ $('refresh').addEventListener('click',load);$('sbcAccountSearch').addEventListener('input',renderAccountGrid);$('closeDetail').addEventListener('click',()=>{if(window.SBCCallCommandLiveV3?.isBusy()){message('End the active call first.',true);return;}$('accountDetail').hidden=true;window.SBCCallCommandLiveV3?.close();window.SBCCallCommand?.clear();});
  $('noteForm').addEventListener('submit',async e=>{e.preventDefault();if(!state.selected)return;
   try{const form=e.target,summary=form.elements.summary.value.trim(),id=state.selected;
    if(state.role==='account_manager'){
