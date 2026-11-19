@@ -1,0 +1,40 @@
+name: Super SBC Marketing Hub Safety
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-v6567-marketing-hub.js'
+      - 'browser_public/sbc-v6567-marketing-hub.js'
+      - 'public/sbc-v6567-marketing-hub.css'
+      - 'browser_public/sbc-v6567-marketing-hub.css'
+      - 'scripts/super-sbc-marketing-hub-safety.test.cjs'
+      - '.github/workflows/super-sbc-marketing-hub-safety.yml'
+  pull_request:
+    paths:
+      - 'public/sbc-v6567-marketing-hub.js'
+      - 'browser_public/sbc-v6567-marketing-hub.js'
+      - 'public/sbc-v6567-marketing-hub.css'
+      - 'browser_public/sbc-v6567-marketing-hub.css'
+      - 'scripts/super-sbc-marketing-hub-safety.test.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: super-sbc-marketing-safety-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safety-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # pinned v4
+        with:
+          node-version: '22'
+      - name: Verify browser syntax and publish-state regression
+        run: node --test scripts/super-sbc-marketing-hub-safety.test.cjs
