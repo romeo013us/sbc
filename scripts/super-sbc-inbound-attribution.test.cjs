@@ -49,3 +49,29 @@ test('public website uses the current customer-facing SBC email, not the legacy 
   assert.equal(site.includes('j@sbcmia.com'),false);
   assert.match(site,/info@sbcmia\.com/);
 });
+
+function phpSourcePage(fragment,query){
+  const php=[
+    "$_SERVER['REQUEST_METHOD']='GET'; $_GET=[]; ob_start(); require 'index.php'; ob_end_clean();",
+    "echo json_encode(sbcSuperSbcSourcePage($argv[1],json_decode($argv[2],true)));"
+  ].join('\n');
+  return JSON.parse(cp.execFileSync('php',['-r',php,'--',fragment,JSON.stringify(query)],{
+    cwd:root,encoding:'utf8',timeout:12000,env:{...process.env,SBC_WEBSITE_BRIDGE_KEY:''}
+  }));
+}
+test('signed CRM sourcePage carries validated campaign fields and nothing personal',()=>{
+  const q={utm_source:'facebook',utm_medium:'organic_social',utm_campaign:'super_sbc_growth',utm_content:'morning',email:'client@example.com',phone:'3059991234'};
+  const url=phpSourcePage('card-questionnaire',q);
+  assert.equal(url,'https://sbcmia.com/?utm_source=facebook&utm_medium=organic_social&utm_campaign=super_sbc_growth&utm_content=morning#card-questionnaire');
+  assert(!url.includes('client@example.com'));
+  assert(!url.includes('3059991234'));
+  const forged=phpSourcePage('led-neon',{...q,utm_medium:'paid_social'});
+  assert.equal(forged,'https://sbcmia.com/#led-neon');
+  const badContent=phpSourcePage('led-neon',{...q,utm_content:'client@example.com'});
+  assert.match(badContent,/utm_content=general#led-neon$/);
+});
+test('both existing signed CRM inquiry payloads use canonical attributed sourcePage, not static links',()=>{
+  assert.equal(site.split("'sourcePage'=>sbcSuperSbcSourcePage(").length-1,2);
+  assert.match(site,/'sourcePage'=>sbcSuperSbcSourcePage\('card-questionnaire',\s*\$_GET\)/);
+  assert.match(site,/'sourcePage'=>sbcSuperSbcSourcePage\('led-neon',\s*\$_GET\)/);
+});
