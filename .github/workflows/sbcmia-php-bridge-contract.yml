@@ -7,6 +7,7 @@ on:
       - enterprise/v6660-website-bridge.cjs
       - scripts/sbcmia-php-bridge-contract.test.js
       - scripts/sbcmia-crm-lead-acceptance.test.cjs
+      - scripts/super-sbc-inbound-attribution.test.cjs
       - scripts/sbcmia-public-portal.test.cjs
       - .github/workflows/sbcmia-php-bridge-contract.yml
   pull_request:
@@ -16,6 +17,7 @@ on:
       - enterprise/v6660-website-bridge.cjs
       - scripts/sbcmia-php-bridge-contract.test.js
       - scripts/sbcmia-crm-lead-acceptance.test.cjs
+      - scripts/super-sbc-inbound-attribution.test.cjs
       - scripts/sbcmia-public-portal.test.cjs
       - .github/workflows/sbcmia-php-bridge-contract.yml
   workflow_dispatch:
@@ -41,5 +43,7 @@ jobs:
         run: node scripts/sbcmia-php-bridge-contract.test.js
       - name: Prove CRM 2xx responses cannot mask rejected writes
         run: node scripts/sbcmia-crm-lead-acceptance.test.cjs
+      - name: Verify safe Super SBC inbound attribution and current public contact routing
+        run: node --test scripts/super-sbc-inbound-attribution.test.cjs
       - name: Verify customer portal keyboard controls and Square offer copy
         run: node scripts/sbcmia-public-portal.test.cjs
