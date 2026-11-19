@@ -43,6 +43,7 @@
    '<div class="sbc-design-actions">'+
     (b.status==='OPEN'?'<button type="button" class="btn small" data-sbc-design-revoke="'+escapeHtml(b.id)+'"'+(!canAct?' disabled':'')+'>Revoke link</button>':'')+
     (b.status==='SUBMITTED'?'<button type="button" class="btn small primary" data-sbc-design-review="'+escapeHtml(b.id)+'"'+(!canAct?' disabled':'')+'>Mark reviewed</button>':'')+
+    (b.answers?'<button type="button" class="btn small" data-sbc-design-copy="'+escapeHtml(b.id)+'">Copy production brief</button>':'')+
    '</div>'+
    (answers&&Object.keys(answers).length?'<details class="sbc-design-answers"><summary>View customer’s design answers</summary><div class="sbc-design-answergrid">'+details+'</div><p class="mini">Customer-provided preferences only. Confirm accuracy, prices and final proofs before publishing or printing.</p></details>':'')+
   '</article>';
@@ -151,11 +152,34 @@
   try{await api('/api/sbc/design-briefs/'+encodeURIComponent(id)+'/'+mode,{method:'POST',body:'{}'});await fetchList(customerId);}
   catch(e){win.toast?.('Could not update request: '+String(e.message||e));}
  }
+ async function copyProductionBrief(id,button){
+  const listEl=button.closest('[data-sbc-design-list]'),customerId=listEl?.dataset.sbcDesignList;
+  const found=(cache.get(customerId)||[]).find(b=>String(b.id)===String(id));
+  if(!found?.answers)return win.toast?.('No submitted customer design answers are available.');
+  const a=found.answers,c=customer(customerId);
+  const lines=[
+   'SBC CUSTOMER-SUPPLIED CREATIVE BRIEF · UNVERIFIED',
+   'Business: '+name(c),
+   'Request: '+(kindText[found.kind]||found.kind),
+   'Customer response submitted: '+(found.submittedAt||'Unknown'),
+   'Important: confirm every business service, contact detail and product claim before publishing or printing. No fictional reviews, guarantees, certifications or prices.',
+   'Confirm purchased package, customer-owned assets, final artwork, and customer approval separately.',
+   '',
+   ...Object.entries(labelText).filter(([key])=>a[key]!==undefined&&a[key]!==null&&a[key]!==''&&a[key]!==false)
+    .map(([key,label])=>label+': '+(Array.isArray(a[key])?a[key].join(', '):String(a[key]))),
+   '',
+   'This is a design brief, not payment evidence or authorization to publish, print or buy services.'
+  ];
+  try{await navigator.clipboard.writeText(lines.join('\n'));win.toast?.('Customer creative brief copied for an owner-reviewed website or print project.');}
+  catch{win.toast?.('Clipboard unavailable. Open the customer answers and copy the needed fields manually.');}
+ }
+
  function click(event){
-  const btn=event.target.closest?.('[data-sbc-design-create],[data-sbc-design-refresh],[data-sbc-design-revoke],[data-sbc-design-review]');
+  const btn=event.target.closest?.('[data-sbc-design-create],[data-sbc-design-refresh],[data-sbc-design-revoke],[data-sbc-design-review],[data-sbc-design-copy]');
   if(!btn)return;event.preventDefault();
   if(btn.dataset.sbcDesignCreate){create(btn.dataset.sbcDesignCreate,btn.dataset.customer);return;}
   if(btn.dataset.sbcDesignRefresh){fetchList(btn.dataset.sbcDesignRefresh);return;}
+  if(btn.dataset.sbcDesignCopy){copyProductionBrief(btn.dataset.sbcDesignCopy,btn);return;}
   if(btn.dataset.sbcDesignRevoke){review(btn.dataset.sbcDesignRevoke,'revoke',btn);return;}
   if(btn.dataset.sbcDesignReview){review(btn.dataset.sbcDesignReview,'review',btn);}
  }
