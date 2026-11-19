@@ -19,9 +19,11 @@ test('account manager role policy denies all privileged or unrecognized endpoint
   ['POST','/api/account-social/v1/posts'],
   ['POST','/api/account-social/v1/posts/post-123/submit'],
   ['POST','/api/account-social/v1/research/handoffs/abc-123/return'],
+  ['POST','/api/sbc/design-briefs'],['GET','/api/sbc/design-briefs/customer/cust_1'],['POST','/api/sbc/design-briefs/brief_abc/review'],['POST','/api/sbc/design-briefs/brief_abc/revoke'],
   ['POST','/api/logout']
  ])assert(allowed(method,route),'needed manager endpoint denied: '+method+' '+route);
  for(const [method,route] of [
+  ['GET','/api/sbc/design-briefs/customer/%2e%2e'],['POST','/api/sbc/design-briefs/brief_abc/delete'],['GET','/api/sbc/design-briefs/customer/cust_1/private'],
   ['GET','/api/users'],['POST','/api/users'],['GET','/api/customers'],
   ['GET','/api/v566/crm/customer-360/abc-123'],
   ['POST','/api/account-social/v1/research/handoffs'],
