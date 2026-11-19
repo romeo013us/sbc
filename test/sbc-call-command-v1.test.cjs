@@ -27,6 +27,7 @@ test('follow-ups first, suppressed and invalid accounts excluded',()=>{
  const a=[{id:'z',phone:'3055550123',businessName:'Zebra'},{id:'d',phone:'3055550144',status:'DNC'},{id:'b',phone:'3055550155',followUp:'2026-11-14'},{id:'f',phone:'bad'},{id:'a',phone:'3055550166',followUp:'2026-11-17'}];
  assert.deepEqual(command.reviewQueue(a,now).map(x=>x.id),['b','a','z']);
  assert.equal(command.nextAccountId(a,'b',now),'a');
+ assert.equal(command.nextAccountId(a,'a',now,new Set(['b','z'])),'','session must not circle back to handled accounts');
 });
 test('unverified CRM data is escaped in account cockpit',()=>{
  const html=command.render({id:'x',businessName:'<img src=x>',phone:'3055550198'},[{id:'x',phone:'3055550198'}],'en',now);

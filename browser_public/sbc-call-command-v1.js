@@ -47,11 +47,14 @@
    return String(a.businessName||'').localeCompare(String(b.businessName||''))||String(a.id).localeCompare(String(b.id));
   });
  }
- function nextAccountId(accounts,currentId,now=new Date()){
-  const rows=reviewQueue(accounts,now);
-  if(rows.length<2)return '';
+ function nextAccountId(accounts,currentId,now=new Date(),handled=[]){
+  const rows=reviewQueue(accounts,now),done=new Set(Array.from(handled,x=>String(x)));
   const idx=rows.findIndex(x=>String(x.id)===String(currentId));
-  return String(rows[(idx+1)%rows.length].id);
+  for(let step=1;step<=rows.length;step++){
+   const row=rows[(idx+step+rows.length)%rows.length];
+   if(row&&String(row.id)!==String(currentId)&&!done.has(String(row.id)))return String(row.id);
+  }
+  return '';
  }
  function createSaveCoordinator(){
   let armed='';
@@ -76,8 +79,8 @@
    device:'La llamada requiere autorización del servidor',queue:'Cuentas para revisar',nextUp:'Siguiente cuenta',none:'No hay otra cuenta para revisar',manual:'La llamada manual no se registra automáticamente. Guarde el resultado real abajo.',
    pending:'Guarde el resultado real abajo. Este panel no realiza llamadas.'}
  };
- function render(a,accounts,lang='en',now=new Date()){
-  const w=words[lang==='es'?'es':'en'],elig=callEligibility(a,now),queue=reviewQueue(accounts,now),next=nextAccountId(accounts,a?.id,now);
+ function render(a,accounts,lang='en',now=new Date(),handled=[]){
+  const w=words[lang==='es'?'es':'en'],elig=callEligibility(a,now),queue=reviewQueue(accounts,now),next=nextAccountId(accounts,a?.id,now,handled);
   const nextName=next?queue.find(x=>String(x.id)===next)?.businessName||next:w.none;
   const name=String(a?.businessName||'the business').slice(0,220);
   const opener=w.script+' '+name+w.scriptEnd;
@@ -96,6 +99,7 @@
    </aside></div><p id="sbcCallCommandStatus" role="status" aria-live="polite" class="sbc-cc-status"></p>`;
  }
  let current=null;
+ const handled=new Set();
  const coordinator=createSaveCoordinator();
  function mount(){
   const doc=window.document,detail=doc.getElementById('accountDetail');if(!detail)return null;
@@ -114,13 +118,13 @@
  }
  function next(){
   if(!current)return;
-  const nextId=nextAccountId(current.accounts,current.account.id);
+  const nextId=nextAccountId(current.accounts,current.account.id,new Date(),handled);
   if(!nextId){notice('No other account available in the review queue.');return}
   const form=window.document.getElementById('sbcManagerOutcomeForm');
   if(form&&!form.closest('[hidden]')&&(String(form.elements.note.value||'').trim()||form.elements.outcome.value)){
    notice('Unsaved outcome detected. Save or clear it before switching accounts.');return;
   }
-  coordinator.clear();current.onNext(nextId);
+  coordinator.clear();handled.add(String(current.account.id));current.onNext(nextId);
  }
  function onClick(e){
   if(!current)return;
@@ -138,7 +142,7 @@
    if(!form||form.closest('[hidden]'))return void notice('Outcome form is unavailable. Nothing was saved.');
    if(!form.reportValidity())return void notice('Complete the required outcome and notes before saving.');
    const id=String(a.id);
-   if(!nextAccountId(current.accounts,id))return void notice('No next account available. Use Save Outcome below.');
+   if(!nextAccountId(current.accounts,id,new Date(),handled))return void notice('No next account available. Use Save Outcome below.');
    coordinator.arm(id);notice('Saving in authoritative CRM. Next account opens only after confirmed persistence.');
    form.requestSubmit();
   }
@@ -147,15 +151,16 @@
   if(!account||!['owner','account_manager'].includes(role)||typeof onNext!=='function')return clear();
   const id=String(account.id||'');if(!id||!Array.isArray(accounts))return clear();
   coordinator.clear();current={account,accounts,lang,onNext};
-  const host=mount();if(host){host.hidden=false;host.innerHTML=render(account,accounts,lang)}
+  const host=mount();if(host){host.hidden=false;host.innerHTML=render(account,accounts,lang,new Date(),handled)}
  }
  function saved(id){
   if(!current||String(current.account.id)!==String(id))return;
   if(!coordinator.confirm(id)){notice('Outcome saved in CRM.');return}
-  const target=nextAccountId(current.accounts,id);
+  handled.add(String(id));
+  const target=nextAccountId(current.accounts,id,new Date(),handled);
   if(target){current.onNext(target)}else notice('Outcome saved. No next account is ready for review.');
  }
  function failed(id){if(current&&String(current.account.id)===String(id)){coordinator.clear();notice('Save was not confirmed. Stay on this account and retry; no automatic navigation.')}}
- function clear(){current=null;coordinator.clear();if(typeof window!=='undefined'){const host=window.document.getElementById('sbcCallCommandV1');if(host){host.hidden=true;host.replaceChildren()}}}
+ function clear(){current=null;coordinator.clear();handled.clear();if(typeof window!=='undefined'){const host=window.document.getElementById('sbcCallCommandV1');if(host){host.hidden=true;host.replaceChildren()}}}
  return Object.freeze({cleanPhone,isSuppressed,callEligibility,reviewQueue,nextAccountId,createSaveCoordinator,render,open,saved,failed,clear});
 });
