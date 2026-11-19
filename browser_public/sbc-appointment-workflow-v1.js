@@ -30,12 +30,17 @@
   if(!isNew){if(!['Scheduled','Completed','Cancelled'].includes(String(fields.status||'')))throw Error('Choose a valid appointment status.');result.status=fields.status;}
   return result;
  }
+ function canWriteAppointment(me,data){
+  const role=String(me?.role||'');
+  return ['owner','manager','caller','account_manager'].includes(role)&&me?.active!==false&&
+   !data?.readOnly&&!data?.recoveryRequired&&!data?.mysqlRecoveryRequired&&!data?.recovery?.required;
+ }
  function install(win){
   const doc=win.document;if(!doc||!win.MutationObserver)return;
   const getData=()=>{try{return win.state?.data||{};}catch{return {};}};
   const records=()=>Array.isArray(getData().appointments)?getData().appointments:[];
   const customers=()=>Array.isArray(getData().customers)?getData().customers:[];
-  const canWrite=()=>['owner','manager','caller'].includes(String(win.state?.me?.role||''))&&!getData().readOnly&&!getData().recoveryRequired&&!getData().mysqlRecoveryRequired&&!getData().recovery?.required;
+  const canWrite=()=>canWriteAppointment(win.state?.me,getData());
   const callHost=()=>doc.getElementById('sbcManualDialer');
   const accountHost=()=>doc.getElementById('sbcLeadAccount360');
   let callCustomer='',lastContext='',submitting=false,queued=false;
@@ -138,5 +143,5 @@
   new win.MutationObserver(schedule).observe(doc.documentElement,{childList:true,subtree:true});
   refresh();
  }
- return Object.freeze({forCustomer,payload,localInput,displayTime,install});
+ return Object.freeze({forCustomer,payload,localInput,displayTime,canWriteAppointment,install});
 });
