@@ -11,9 +11,9 @@ const site=fs.readFileSync(path.join(root,'index.php'),'utf8');
 function phpAttribution(query){
   const php=[
     "$_SERVER['REQUEST_METHOD']='GET'; $_GET=[]; ob_start(); require 'index.php'; ob_end_clean();",
-    "echo json_encode(sbcSuperSbcAttribution("+JSON.stringify(query).replace(/\\u/g,'\\u')+"));"
+    "echo json_encode(sbcSuperSbcAttribution(json_decode($argv[1],true)));"
   ].join('\n');
-  return JSON.parse(cp.execFileSync('php',['-r',php],{
+  return JSON.parse(cp.execFileSync('php',['-r',php,'--',JSON.stringify(query)],{
     cwd:root,encoding:'utf8',timeout:12000,env:{...process.env,SBC_WEBSITE_BRIDGE_KEY:''}
   }));
 }
