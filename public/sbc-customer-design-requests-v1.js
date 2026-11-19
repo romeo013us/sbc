@@ -160,7 +160,7 @@
   if(btn.dataset.sbcDesignReview){review(btn.dataset.sbcDesignReview,'review',btn);}
  }
  function install(){
-  if(!permitted()||!win.MutationObserver)return;
+  if(!win.MutationObserver)return;
   document.addEventListener('click',click);
   document.addEventListener('change',ev=>{if(ev.target.id==='sbcDesignCallCustomer'){selectedCall=ev.target.value;mountCall();}});
   const css=document.createElement('style');css.id='sbcDesignRequestStyles';css.textContent=
