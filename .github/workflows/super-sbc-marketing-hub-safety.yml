@@ -8,6 +8,8 @@ on:
       - 'public/sbc-v6567-marketing-hub.css'
       - 'browser_public/sbc-v6567-marketing-hub.css'
       - 'scripts/super-sbc-marketing-hub-safety.test.cjs'
+      - 'enterprise/sbc-super-growth-contract.cjs'
+      - 'scripts/super-sbc-inbound-provenance.test.cjs'
       - '.github/workflows/super-sbc-marketing-hub-safety.yml'
   pull_request:
     paths:
@@ -16,6 +18,8 @@ on:
       - 'public/sbc-v6567-marketing-hub.css'
       - 'browser_public/sbc-v6567-marketing-hub.css'
       - 'scripts/super-sbc-marketing-hub-safety.test.cjs'
+      - 'enterprise/sbc-super-growth-contract.cjs'
+      - 'scripts/super-sbc-inbound-provenance.test.cjs'
   workflow_dispatch:
 
 permissions:
@@ -37,4 +41,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify browser syntax and publish-state regression
-        run: node --test scripts/super-sbc-marketing-hub-safety.test.cjs
+        run: node --test scripts/super-sbc-marketing-hub-safety.test.cjs scripts/super-sbc-growth-contract.test.cjs scripts/super-sbc-inbound-provenance.test.cjs
