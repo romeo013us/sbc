@@ -46,11 +46,11 @@ function fixture(){
   getStore:()=>state,saveStore:async next=>{state=next;return {ok:true}},
   writerReady:()=>writer,serializeSiteMutation:fn=>fn(),storageRoot});
  const url='/api/website-production/customers/:id/ai-proposals';
- async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,rest,buf,origin='https://command.example'}={}){
+ async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,origin='https://command.example'}={}){
   const key=method+' '+url+suffix,handlers=routes[key];
   assert(handlers,'route missing: '+key);
   const req=Readable.from(buf?[buf]:[]),headers={'content-type':'application/zip','x-sbc-proposal-upload':'1',host:'command.example',origin};
-  Object.assign(req,{params:{id:customerId,tier,uploadId,0:rest},tenantId,headers,user:role?{role,id:'test-owner'}:null,secure:true});
+  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers,user:role?{role,id:'test-owner'}:null,secure:true});
   const res={statusCode:200,headers:{},status(code){this.statusCode=code;return this},
    setHeader(k,v){this.headers[k]=v},json(body){this.body=body;return this},
    sendFile(filename){this.file=fs.readFileSync(filename);return this}};
@@ -90,7 +90,31 @@ test('upload once, preview and download from the correct owner-only customer acc
   const id=put.body.upload.id;
   const list=await f.call('GET','/uploads');
   assert.equal(list.body.uploads.length,1);assert.equal(list.body.uploads[0].tier,199);
-  assert.match(list.body.uploads[0].previewPath,/\/preview\/index.html$/);
+  assert.match(list.body.uploads[0].previewPath,/\/render\/[A-Za-z0-9_-]{43}\/index.html$/);
+  const ticket=list.body.uploads[0].previewPath.match(/\/render\/([^/]+)\/index.html$/)[1];
+  // Root cause regression: isolated iframe requests do not carry owner cookies.
+  // The old route requires auth, but a minted grant can serve the real site,
+  // CSS, JS and navigation without weakening any other account endpoint.
+  assert.equal((await f.call('GET','/uploads/:uploadId/preview/*',{uploadId:id,rest:'assets/style.css',role:null})).statusCode,401);
+  const sandboxPage=await f.call('GET','/uploads/:uploadId/render/:ticket/*',{uploadId:id,ticket,rest:'index.html',role:null});
+  assert.equal(sandboxPage.statusCode,200);
+  assert.equal(sandboxPage.headers['Content-Type'],'text/html; charset=utf-8');
+  assert.match(sandboxPage.headers['Content-Security-Policy'],/sandbox allow-scripts/);
+  assert.match(sandboxPage.headers['Content-Security-Policy'],/form-action 'none'/);
+  assert.equal(sandboxPage.headers['Cache-Control'],'private, no-store');
+  const sandboxCss=await f.call('GET','/uploads/:uploadId/render/:ticket/*',{uploadId:id,ticket,rest:'assets/style.css',role:null});
+  assert.equal(sandboxCss.statusCode,200);
+  assert.equal(sandboxCss.headers['Content-Type'],'text/css; charset=utf-8');
+  assert.equal(sandboxCss.headers['Access-Control-Allow-Origin'],'*');
+  assert.equal(sandboxCss.file.toString(),'body {color:#123}');
+  const wrongToken=await f.call('GET','/uploads/:uploadId/render/:ticket/*',{uploadId:id,ticket:'A'.repeat(43),rest:'index.html',role:null});
+  assert.equal(wrongToken.statusCode,403);
+  const otherCustomer=await f.call('GET','/uploads/:uploadId/render/:ticket/*',{customerId:'b1',uploadId:id,ticket,rest:'index.html',role:null});
+  assert.equal(otherCustomer.statusCode,403);
+  const otherUpload=await f.call('GET','/uploads/:uploadId/render/:ticket/*',{uploadId:'up_'+'0'.repeat(32),ticket,rest:'index.html',role:null});
+  assert.equal(otherUpload.statusCode,403);
+  const traversal=await f.call('GET','/uploads/:uploadId/render/:ticket/*',{uploadId:id,ticket,rest:'../original.zip',role:null});
+  assert.equal(traversal.statusCode,400);
   const preview=await f.call('GET','/uploads/:uploadId/preview/*',{uploadId:id,rest:'index.html'});
   assert.equal(preview.file.toString().includes('Proposal'),true);
   assert.match(preview.headers['Content-Security-Policy'],/sandbox allow-scripts/);
@@ -177,4 +201,13 @@ test('latest saved website version remains first even when two uploads share the
   assert.equal(list.body.uploads[0].id,two.body.upload.id,'last persisted proposal must be latest on ties');
   assert.equal(list.body.uploads[1].id,one.body.upload.id);
  }finally{f.cleanup()}
+});
+
+test('owner browser preview refreshes a short-lived ZIP token rather than reusing an expired iframe URL',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../public/sbc-ai-site-handoff-v1.js'),'utf8');
+ assert.match(src,/async function preview\(url,tier,renew=false\)/);
+ assert.match(src,/serviceApi\(base\+'\/uploads'\)/);
+ assert.match(src,/preview\(b\.dataset\.sbcAiPreview,Number\(b\.dataset\.tier\),true\)/);
+ assert.match(src,/sandbox="allow-scripts"/);
+ assert.doesNotMatch(src,/allow-same-origin/);
 });

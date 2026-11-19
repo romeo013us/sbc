@@ -59,13 +59,138 @@
   let items=[];
   const say=(message,error=false)=>{const e=document.getElementById('sbcAIState');if(e){e.textContent=message;e.classList.toggle('sbc-ai-error',error)}};
   const frame=document.getElementById('sbcAIFrame');
-  function preview(url,tier){
+  async function preview(url,tier,renew=false){
    if(!url)return say('Upload a ZIP or save a hosted HTTPS URL to preview this package.',true);
    try{
+    // An owner-clicked preview refreshes its short-lived asset grant. A grant
+    // is never inferred from the business name, from another account or ZIP.
+    if(renew&&/\/render\//.test(url)){
+     const id=/\/uploads\/(up_[a-f0-9]{32})\/render\//.exec(new URL(url,window.location.href).pathname)?.[1];
+     if(!id)throw Error('Invalid saved preview reference');
+     const refreshed=await serviceApi(base+'/uploads');
+     const item=refreshed?.ok===true&&Array.isArray(refreshed.uploads)?refreshed.uploads.find(x=>x.id===id):null;
+     if(!item?.previewPath)throw Error('Saved website unavailable. Reopen the customer account and retry.');
+     url=item.previewPath;
+    }
     const u=new URL(url,window.location.href);
     if(u.origin!==window.location.origin&&u.protocol!=='https:')throw Error('Invalid preview link');
     frame.src=u.href;
-    say('Showing the $'+tier+' proposal. Preview content is isolated from your account session.');
+    say('Showing the 
+  function render(){
+   for(const t of TIERS){
+    const host=document.getElementById('sbcAICurrent'+t.id);if(!host)continue;
+    const list=items.filter(x=>Number(x.tier)===t.id),latest=list[0],external=document.getElementById('sbcAIUrl'+t.id)?.value.trim();
+    if(!latest&&!external){host.innerHTML='<p class="sbc-ai-empty">No ZIP saved for this package yet.</p>';continue}
+    const qa=latest?.previewAudit;
+    const problemCount=Number(qa?.issueCount||0);
+    const qaText=!qa?'Older ZIP: automatic preview-link checks not recorded.':problemCount?
+     'Preview needs attention: '+problemCount+' broken or blocked reference'+(problemCount===1?'':'s')+'.':
+     'Preview HTML links checked: no missing linked files detected. Manual review still required.';
+    const friendly={MISSING_ASSET:'Missing image, stylesheet or script',MISSING_PAGE:'Missing linked page',
+     ROOT_ABSOLUTE_PATH:'Root-relative path may not work in private preview',
+     EXTERNAL_RESOURCE_BLOCKED:'Off-site resource blocked by private preview',
+     BASE_HREF_BLOCKED:'HTML base path not supported in private preview',
+     PATH_OUTSIDE_SITE:'Link escapes uploaded website',INVALID_REFERENCE:'Invalid file reference',MISSING_PAGE_HTML:'No HTML pages found'};
+    const details=Array.isArray(qa?.issues)&&qa.issues.length?
+     '<details class="sbc-ai-preview-audit"><summary>See preview problems ('+problemCount+')</summary><ul>'+
+     qa.issues.map(i=>'<li><strong>'+esc(friendly[i.code]||i.code)+'</strong> · '+esc(i.page)+': '+esc(i.reference)+'</li>').join('')+
+     '</ul><small>These are static link checks, not a published website test. Review before presenting.</small></details>':'';
+    host.innerHTML=(latest?
+      '<p class="sbc-ai-saved">✓ ZIP saved to this customer</p>'+
+      '<p class="sbc-ai-meta">'+Number(latest.fileCount||0)+' web files · '+new Date(latest.createdAt).toLocaleString()+' · Owner review</p>'+
+      '<p class="sbc-ai-meta" role="status">'+esc(qaText)+'</p>'+details+
+      '<div class="sbc-ai-actions"><button type="button" class="btn" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+t.id+'">Preview saved ZIP</button>'+
+      '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download copy</a>'+
+      '<a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(latest.previewPath)+'">Open preview ↗</a></div>'+
+      (list.length>1?'<details><summary>Earlier versions ('+(list.length-1)+')</summary>'+
+        list.slice(1).map((x,i)=>'<p><button class="btn" type="button" data-sbc-ai-preview="'+esc(x.previewPath)+'" data-tier="'+t.id+'">Preview version '+(list.length-1-i)+'</button></p>').join('')+'</details>':'')
+     :'<p class="sbc-ai-meta">External preview saved · no ZIP uploaded</p>'+
+      '<button class="btn" data-sbc-ai-external="'+t.id+'" type="button">Preview external URL</button>');
+   }
+   const quick=document.getElementById('sbcAIQuickCurrent');
+   if(quick){
+    const selected=Number(document.getElementById('sbcAIQuickTier')?.value||199);
+    const latest=items.find(x=>Number(x.tier)===selected);
+    if(!latest)quick.textContent='No website saved for this package yet. Start with the ChatGPT request above.';
+    else{
+     const audit=latest.previewAudit;
+     const count=Number(audit?.issueCount||0);
+     const label=!audit?'Older ZIP · please review the files manually.':count?
+      count+' potential preview link issue'+(count===1?'':'s')+' to review.':
+      'Static website links checked; manual visual review still required.';
+     quick.innerHTML='<p class="sbc-ai-saved">Saved website · $'+selected+'</p>'+
+      '<p class="sbc-ai-meta">'+esc(label)+'</p>'+
+      '<div class="sbc-ai-actions"><button class="btn" type="button" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+selected+'">Preview saved website</button>'+
+      '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download saved ZIP</a></div>';
+    }
+   }
+   const backup=document.getElementById('sbcAIBackup');
+   if(backup){
+    backup.innerHTML=items.length?
+     '<p class="sbc-ai-saved">Protect your customer website files</p>'+
+     '<p class="sbc-ai-meta">Original ZIP versions, all saved packages, and a checksum manifest in one portable file. Store this downloaded backup somewhere independent of GoDaddy.</p>'+
+     '<a class="btn" href="'+esc(base+'/uploads/recovery/export')+'" download="sbc-customer-website-backup.zip">Download customer website backup</a>'+
+     '<small>If the backup is too large or any original ZIP is missing, the export stops instead of silently omitting a version. Individual ZIP downloads remain available above.</small>':
+     '<p class="sbc-ai-meta">Upload a website first; the customer recovery backup will appear here.</p>';
+   }
+   document.querySelectorAll('[data-sbc-ai-preview]').forEach(b=>b.addEventListener('click',()=>preview(b.dataset.sbcAiPreview,Number(b.dataset.tier),true)));
+   document.querySelectorAll('[data-sbc-ai-external]').forEach(b=>b.addEventListener('click',()=>preview(document.getElementById('sbcAIUrl'+b.dataset.sbcAiExternal)?.value,Number(b.dataset.sbcAiExternal))));
+  }
+  async function refresh(){
+   const res=await serviceApi(base+'/uploads');
+   if(!res?.ok||!Array.isArray(res.uploads))throw Error(res?.code||'UPLOAD_LIBRARY_UNAVAILABLE');
+   items=res.uploads;render();
+  }
+  document.getElementById('sbcAIQuickTier')?.addEventListener('change',render);
+  document.getElementById('sbcAICopy')?.addEventListener('click',async()=>{
+   const tier=String(document.getElementById('sbcAIQuickTier')?.value||199);
+   const prompt=result.prompts?.[tier]||result.prompt||'';
+   if(!prompt)return say('Build request unavailable. Refresh this customer account.',true);
+   try{await navigator.clipboard.writeText(prompt);say('$'+tier+' website request copied. Paste it into ChatGPT and I will build the ZIP.')}
+   catch{say('Clipboard unavailable. Select and copy the website request manually.',true)}
+  });
+  async function uploadZip(tier,file,button){
+   if(!TIERS.some(t=>t.id===tier))return say('Choose a website package first.',true);
+   if(!file)return say('Choose the completed website ZIP file first.',true);
+   if(!/\.zip$/i.test(file.name)||file.size<22||file.size>LIMIT)return say('Choose a ZIP no larger than 20 MB.',true);
+   if(button.disabled)return;
+   button.disabled=true;say('Saving your $'+tier+' website ZIP…');
+   try{
+    const response=await fetch(base+'/uploads/'+tier,{method:'POST',credentials:'same-origin',cache:'no-store',
+     headers:{'Content-Type':'application/zip','X-SBC-Proposal-Upload':'1','Accept':'application/json'},body:file});
+    const saved=await response.json().catch(()=>({}));
+    if(!response.ok||saved.ok!==true||saved.durable!==true)throw Error(saved.code||'Upload was not saved');
+    await refresh();
+    preview(saved.upload.previewPath,tier);
+    say('Website saved to '+String(customer.businessName||'this customer')+' · $'+tier+'. Review the preview and any link warnings before sharing.');
+   }catch(e){say('Upload unsuccessful: '+String(e.message||e)+'. Existing proposals were not changed.',true)}
+   finally{button.disabled=false}
+  }
+  document.getElementById('sbcAIQuickUpload')?.addEventListener('click',async()=>{
+   const button=document.getElementById('sbcAIQuickUpload');
+   const tier=Number(document.getElementById('sbcAIQuickTier')?.value);
+   const file=document.getElementById('sbcAIQuickFile')?.files?.[0];
+   await uploadZip(tier,file,button);
+  });
+  document.querySelectorAll('[data-sbc-ai-upload]').forEach(button=>button.addEventListener('click',async()=>{
+   const tier=Number(button.dataset.sbcAiUpload),file=document.getElementById('sbcAIFile'+tier)?.files?.[0];
+   await uploadZip(tier,file,button);
+  }));
+  document.querySelectorAll('[data-sbc-ai-save]').forEach(button=>button.addEventListener('click',async()=>{
+   const tier=Number(button.dataset.sbcAiSave),previewUrl=document.getElementById('sbcAIUrl'+tier)?.value.trim()||'',notes=document.getElementById('sbcAINotes'+tier)?.value||'';
+   button.disabled=true;
+   try{
+    const res=await serviceApi(base,{method:'PATCH',body:JSON.stringify({tier,previewUrl,notes,expectedRevision:revision})});
+    if(!res?.ok)throw Error(res?.code||'Save failed');
+    revision=Number(res.revision);render();say('$'+tier+' notes / external preview saved to customer account.');
+   }catch(e){say('Could not save: '+String(e.message||e)+'. Refresh if the account revision changed.',true)}
+   finally{button.disabled=false}
+  }));
+  try{await refresh();say('Ready. Select a package, copy the ChatGPT request, and upload the finished ZIP.')}
+  catch(e){say('ZIP library unavailable: '+String(e.message||e)+'. External URL slots remain available.',true)}
+ }
+ window.SBC_AI_SITE_HANDOFF=Object.freeze({open});
+})();+tier+' website with its local CSS, scripts and images. Sandbox blocks forms and outbound calls.');
    }catch(e){say(String(e.message||e),true)}
   }
   function render(){

@@ -229,17 +229,49 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  const base=(req)=>{const t=safeCustomer(req,db,requireTenant);return {...t,dir:path.join(root,String(t.tenantId),encodeURIComponent(t.id))};};
  const uploads=()=>Array.isArray(getStore()?.aiSiteUploads)?getStore().aiSiteUploads:[];
  const own=(req,records)=>{const c=base(req);return {c,items:records.filter(r=>r.customerId===c.id&&r.tenantId===c.tenantId)};};
- const preview=(c,record,name='index.html')=>ROOT.replace(':id',encodeURIComponent(c.id))+'/uploads/'+record.id+'/preview/'+name;
+ // Scoped, time-limited preview grants are deliberately separate from login
+ // cookies: iframe sandboxing gives the site an opaque origin, and browsers may
+ // withhold SameSite session cookies from CSS, script and image requests.
+ // Grants live only in this process and cannot create or modify CRM records.
+ const PREVIEW_TTL_MS=60*60*1000,PREVIEW_GRANT_LIMIT=2048;
+ const previewGrants=new Map();
+ function preview(c,record,name='index.html'){
+  const current=Date.now();
+  for(const [key,grant] of previewGrants)if(grant.expiresAt<=current)previewGrants.delete(key);
+  while(previewGrants.size>=PREVIEW_GRANT_LIMIT)previewGrants.delete(previewGrants.keys().next().value);
+  const ticket=crypto.randomBytes(32).toString('base64url');
+  const key=crypto.createHash('sha256').update(ticket).digest('hex');
+  previewGrants.set(key,{tenantId:c.tenantId,customerId:c.id,uploadId:record.id,expiresAt:current+PREVIEW_TTL_MS});
+  return ROOT.replace(':id',encodeURIComponent(c.id))+'/uploads/'+record.id+'/render/'+ticket+'/'+name;
+ }
+ function previewFolder(req){
+  const ticket=String(req.params.ticket||'');
+  if(!/^[a-zA-Z0-9_-]{43}$/.test(ticket))throw Error('PREVIEW_SESSION_EXPIRED');
+  const digest=crypto.createHash('sha256').update(ticket).digest('hex');
+  const grant=previewGrants.get(digest);
+  if(!grant||grant.expiresAt<=Date.now()){
+   previewGrants.delete(digest);
+   throw Error('PREVIEW_SESSION_EXPIRED');
+  }
+  if(grant.customerId!==String(req.params.id)||grant.uploadId!==String(req.params.uploadId))
+   throw Error('PREVIEW_SESSION_EXPIRED');
+  const record=uploads().find(row=>row.id===grant.uploadId&&row.tenantId===grant.tenantId&&row.customerId===grant.customerId);
+  if(!record||!(Array.isArray(db?.customers)&&db.customers.some(c=>String(c.id)===grant.customerId&&Number(c.tenantId)===grant.tenantId)))
+   throw Error('PREVIEW_SESSION_EXPIRED');
+  return path.resolve(root,String(grant.tenantId),encodeURIComponent(grant.customerId),grant.uploadId);
+ }
+
  const failError=(res,e)=>{
   const code=String(e?.message||'UPLOAD_ERROR');
   return fail(res,code==='CUSTOMER_NOT_FOUND'||code==='UPLOAD_NOT_FOUND'?404:
    code==='TENANT_CONTEXT_REQUIRED'?403:code==='UPLOAD_REVISION_CONFLICT'?409:
    code==='WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'?423:
+   code==='PREVIEW_SESSION_EXPIRED'?403:
    code==='BACKUP_NO_VERSIONS'?404:
    code==='BACKUP_TOO_LARGE'?413:
    code.startsWith('BACKUP_')?409:
    /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED)/.test(code)?400:503,
-   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
+   /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE|PREVIEW_SESSION_EXPIRED)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
  };
  app.get(ROOT+'/uploads',auth,ownerOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
@@ -333,9 +365,25 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.sendFile(file);
   }catch(e){return failError(res,e)}
  });
+ // Legacy authenticated link remains available for previous copies.
  app.get(ROOT+'/uploads/:uploadId/preview/*',auth,ownerOnly,(req,res)=>{
   try{
-   const {folder}=find(req),rel=safeEntry(req.params[0]),dest=path.resolve(folder,rel);
+   const {folder}=find(req);
+   return servePreview(folder,req,res,false);
+  }catch(e){return failError(res,e)}
+ });
+ // Only an authenticated owner can mint this capability in the uploads list
+ // or upload response. A sandboxed iframe then loads linked local CSS/JS/media
+ // without requiring a login cookie on each isolated-origin subrequest.
+ app.get(ROOT+'/uploads/:uploadId/render/:ticket/*',(req,res)=>{
+  try{
+   const folder=previewFolder(req);
+   return servePreview(folder,req,res,true);
+  }catch(e){return failError(res,e)}
+ });
+ function servePreview(folder,req,res,grantBased){
+  try{
+   const rel=safeEntry(req.params[0]),dest=path.resolve(folder,rel);
    if(!dest.startsWith(folder+path.sep))throw Error('INVALID_PREVIEW_PATH');
    const stat=fs.lstatSync(dest);
    if(!stat.isFile()||stat.isSymbolicLink())throw Error('INVALID_PREVIEW_PATH');
@@ -351,6 +399,12 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    // The sandboxed document has an opaque origin. Permit only owner-authorized
    // subresource rendering; the HTML CSP blocks outbound connections/forms.
    res.setHeader('Cross-Origin-Resource-Policy','cross-origin');
+   // Fonts and ESM from the opaque sandbox need CORS. Only a signed,
+   // expiring, read-only preview grant can reach this branch.
+   if(grantBased){
+    res.setHeader('Access-Control-Allow-Origin','*');
+    res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');
+   }
    if(ext==='.html'||ext==='.htm'||ext==='.svg'){
     res.setHeader('Content-Security-Policy',
      "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' "+origin+
@@ -361,6 +415,6 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    res.setHeader('Content-Type',TYPES[ext]||'application/octet-stream');
    return res.sendFile(dest);
   }catch(e){return failError(res,e)}
- });
+ }
 }
 module.exports={register,parseZip,safeEntry,auditPreviewFiles,packStoredEntries,buildRecoveryArchive};
