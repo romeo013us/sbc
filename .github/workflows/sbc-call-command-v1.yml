@@ -1,0 +1,38 @@
+name: SBC Call Command V1 — Account 360 Safety Gate
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-call-command-v1.js'
+      - 'public/sbc-call-command-v1.css'
+      - 'browser_public/sbc-call-command-v1.js'
+      - 'browser_public/sbc-call-command-v1.css'
+      - 'public/sbc-account-manager-v1.js'
+      - 'browser_public/sbc-account-manager-v1.js'
+      - 'public/sbc-account-manager-v1.html'
+      - 'browser_public/sbc-account-manager-v1.html'
+      - 'test/sbc-call-command-v1.test.cjs'
+      - '.github/workflows/sbc-call-command-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  call-command-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify source syntax
+        run: |
+          node --check public/sbc-call-command-v1.js
+          node --check public/sbc-account-manager-v1.js
+          node --check test/sbc-call-command-v1.test.cjs
+      - name: Dedicated fail-closed calling cockpit tests
+        run: node --test test/sbc-call-command-v1.test.cjs
+      - name: Existing manager workflow regressions
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node --test test/sbc-account-portfolios.test.cjs scripts/account-manager-ui.test.cjs scripts/account-manager-role-gate.test.cjs
