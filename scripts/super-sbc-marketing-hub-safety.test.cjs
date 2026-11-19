@@ -10,8 +10,8 @@ const cp=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 const js=fs.readFileSync(path.join(root,'public/sbc-v6567-marketing-hub.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'public/sbc-v6567-marketing-hub.css'),'utf8');
-function load(fetch){
-  const source=js.replace(/\}\)\(\);\s*$/,'window.__SUPER_SBC_TEST__={serverAction,render,state,setRoot(value){root=value}};})();');
+function load(fetch,FormDataType=class FormData{}){
+  const source=js.replace(/\}\)\(\);\s*$/,'window.__SUPER_SBC_TEST__={serverAction,render,handleSubmit,state,setRoot(value){root=value}};})();');
   assert.notEqual(source,js,'browser functions must be instrumentable for safety tests');
   const window={};
   const sandbox={
@@ -22,7 +22,7 @@ function load(fetch){
     confirm(){return true},
     prompt(){return null},
     setInterval(){return 0},
-    FormData:class FormData{}
+    FormData:FormDataType
   };
   vm.runInNewContext(source,sandbox,{timeout:4000,filename:'sbc-marketing-hub.js'});
   return {...window.__SUPER_SBC_TEST__,window};
@@ -73,6 +73,35 @@ test('all owner mutation actions require explicit success rather than empty resp
   const hubOk=load(async()=>reply({ok:true}));
   assert.equal(await hubOk.serverAction({id:'draft2',durable:true},'approve'),true);
 });
+test('draft creation and edit preserve CTA destination and artwork URL',()=>{
+  class TestFormData{
+    constructor(form){this.values=form.values}
+    get(name){return this.values[name]||null}
+  }
+  // Pending response cannot publish or change local state during this inspection.
+  const hub=load(()=>new Promise(()=>{}),TestFormData);
+  const form={
+    id:'mh-draft-form',
+    values:{
+      title:'SBC services',platform:'facebook',offer:'SBC Business Packages',
+      cta:'Learn more',body:'Helpful local business tip',
+      ctaUrl:'https://sbcmia.com/?utm_source=facebook',
+      mediaUrl:'https://sbcmia.com/assets/sbc-original-logo.png'
+    }
+  };
+  hub.handleSubmit({target:form,preventDefault(){}});
+  assert.equal(hub.state.items[0].ctaUrl,form.values.ctaUrl);
+  assert.equal(hub.state.items[0].mediaUrl,form.values.mediaUrl);
+  const draft=hub.state.items[0];
+  hub.state.draft={...draft};
+  form.values.ctaUrl='https://sbcwebsites.com/?utm_source=facebook';
+  form.values.mediaUrl='https://sbcmia.com/assets/sbc-original-logo.png?updated=1';
+  hub.handleSubmit({target:form,preventDefault(){}});
+  assert.equal(hub.state.items.length,1,'editing must not create a duplicate content record');
+  assert.equal(hub.state.items[0].ctaUrl,form.values.ctaUrl);
+  assert.equal(hub.state.items[0].mediaUrl,form.values.mediaUrl);
+});
+
 test('verified, configured and missing integrations show the truthful badges',()=>{
   const hub=load(async()=>reply({}));
   hub.window.__SBC_V6567_INTEGRATIONS__={
