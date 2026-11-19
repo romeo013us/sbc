@@ -53,7 +53,7 @@ function normalize(kind,raw){
    contentReadiness:['ready','some','need_help'].includes(String(raw.contentReadiness))?String(raw.contentReadiness):'need_help'};
  }
  const qty=Number(raw.quantity);
- if(!Number.isSafeInteger(qty)||qty<1||qty>100000)invalid('INVALID_PRINT_QUANTITY');
+ if(!Number.isSafeInteger(qty)||qty<0||qty>100000)invalid('INVALID_PRINT_QUANTITY');
  const sides=String(raw.sides||'not_sure'),orientation=String(raw.orientation||'not_sure'),finish=String(raw.finish||'not_sure');
  if(!SIDES.has(sides)||!ORIENT.has(orientation)||!FINISH.has(finish))invalid('INVALID_PRINT_OPTIONS');
  const printedName=clean(raw.printedName,160);
