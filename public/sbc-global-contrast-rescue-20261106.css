@@ -1,3 +1,4 @@
+/* Website Production .v6526-studio modal is excluded from broad rescue rules; its dedicated contrast stylesheet owns its light surfaces. */
 /* SBC 2026-11-06 global contrast rescue.
    Presentation-only. No changes to checkout, CRM data, telephony, permissions or fulfillment.
    Legacy component classes sometimes retain white backgrounds after switching themes. */
@@ -5,46 +6,46 @@
 /* White document previews are deliberately white in both themes (including print). */
 body #content .quote-preview,
 body #modal .quote-preview { background:#fff!important; color:#17283a!important; }
-body :is(#content,#modal) .quote-preview :is(h1,h2,h3,h4,h5,h6,p,span,div,strong,b,small,td,th,.title,.label,.value) {
+body :is(#content,#modal:not(:has(.v6526-studio))) .quote-preview :is(h1,h2,h3,h4,h5,h6,p,span,div,strong,b,small,td,th,.title,.label,.value) {
   color:#17283a!important;
 }
 /* All legacy white card types now get a matching foreground in LIGHT mode. */
-body[data-theme="light"] :is(#content,#modal) :is(
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(
  .card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.modal-card,
  .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
  .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
  .notes,.price-card,.sbc-ai-msg.assistant .sbc-ai-bubble
 ) { background:#fff!important; color:#17283a!important; border-color:#cbd7e3!important; }
-body[data-theme="light"] :is(#content,#modal) :is(
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(
  .card:not(.hero),.stat,.list-card,.detail-box,.table-wrap,.modal-card,
  .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
  .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
  .notes,.price-card
 ) :is(h1,h2,h3,h4,h5,h6,p,strong,b,.title,.label,.value,.price,.payment-price,.process-step-title)
 :not(.hero *):not(.btn *):not(.badge *) { color:#17283a!important; }
-body[data-theme="light"] :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
 :is(small,.mini,.meta,.sub,.muted,.description) { color:#42586c!important; }
 /* DARK mode: remove the unthemed legacy white surfaces rather than using white-on-white. */
-body[data-theme="dark"] :is(#content,#modal) :is(
+body[data-theme="dark"] :is(#content,#modal:not(:has(.v6526-studio))) :is(
  .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
  .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
  .notes,.price-card,.sbc-ai-msg.assistant .sbc-ai-bubble
 ) { background:#132234!important; color:#edf5ff!important; border-color:#38516c!important; }
-body[data-theme="dark"] :is(#content,#modal) :is(
+body[data-theme="dark"] :is(#content,#modal:not(:has(.v6526-studio))) :is(
  .payment-card,.presentation-card,.crm-lead,.process-step,.sales-service-row,
  .sales-cart-row,.queue-rule,.sbc-checkout-box,.sales-checklist>div,.quote-line,
  .notes,.price-card
 ) :is(h1,h2,h3,h4,h5,h6,p,strong,b,.title,.label,.value,.price,.payment-price,.process-step-title)
 :not(.btn *):not(.badge *) { color:#edf5ff!important; }
-body[data-theme="dark"] :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
+body[data-theme="dark"] :is(#content,#modal:not(:has(.v6526-studio))) :is(.payment-card,.presentation-card,.crm-lead,.price-card,.sales-service-row,.sales-cart-row)
 :is(small,.mini,.meta,.sub,.muted,.description) { color:#b7c9dc!important; }
 /* Colored instructional inset panels retain light surfaces, so use dark text inside them. */
-body :is(#content,#modal) :is(.process-if,.process-say,.process-then) { color:#17283a!important; }
-body :is(#content,#modal) :is(.process-if,.process-say,.process-then) :is(span,p,strong,b,small) { color:#17283a!important; }
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(.process-if,.process-say,.process-then) { color:#17283a!important; }
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(.process-if,.process-say,.process-then) :is(span,p,strong,b,small) { color:#17283a!important; }
 /* Form text stays visible; interactive action colors and state badges are not restyled. */
-body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea) { background:#fff!important; color:#17283a!important; }
-body[data-theme="dark"] :is(#content,#modal) :is(input,select,textarea) { background:#0e1c2d!important; color:#edf5ff!important; }
-body :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead) :is(a,button):focus-visible {
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(input,select,textarea) { background:#fff!important; color:#17283a!important; }
+body[data-theme="dark"] :is(#content,#modal:not(:has(.v6526-studio))) :is(input,select,textarea) { background:#0e1c2d!important; color:#edf5ff!important; }
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(.payment-card,.presentation-card,.crm-lead) :is(a,button):focus-visible {
  outline:2px solid #f47721!important; outline-offset:3px;
 }
 @media print {
@@ -53,19 +54,19 @@ body :is(#content,#modal) :is(.payment-card,.presentation-card,.crm-lead) :is(a,
 
 /* SBC V66.92: final targeted legibility safeguard (theme-aware, no layout changes).
  * Historic commerce cards and inline white "paper" surfaces used inherited white text. */
-body[data-theme="light"] :is(#content,#modal) :is(
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(
  .payment-card,.price-card,.presentation-card,.sales-service-row,.sales-cart-row,
  .sbc-product,.sbc-checkout-box,.catalog-grid>.card,.quote-line,.quote-total,.total-row
 ) :is(.price,.payment-price,.value,.amount,.sales-total,.feature-list,.feature-list li,.product-name,.service-name,.service-price,.item-price,.cart-total) {
   color:#17283a!important;
 }
-body[data-theme="light"] :is(#content,#modal) :is(
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(
  .payment-card,.price-card,.presentation-card,.sales-service-row,.sales-cart-row,
  .sbc-product,.sbc-checkout-box,.catalog-grid>.card,.quote-line,.quote-total,.total-row
 ) :is(.mini,.meta,.sub,.description,small,.feature-list li) {color:#44576c!important;}
 /* Explicit white inline panels stay white in either theme, including previews and print.
  * Exclude controls and branded status surfaces so their meaning remains visible. */
-body :is(#content,#modal) :is(
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(
  [style*="background:#fff"],[style*="background: #fff"],
  [style*="background-color:#fff"],[style*="background-color: #fff"],
  [style*="background:white"],[style*="background: white"],
@@ -74,7 +75,7 @@ body :is(#content,#modal) :is(
 ):not(.btn):not(.badge):not(.pill):not(.hero):not(.onboard-hero) {
   color:#17283a!important;
 }
-body :is(#content,#modal) :is(
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(
  [style*="background:#fff"],[style*="background: #fff"],
  [style*="background-color:#fff"],[style*="background-color: #fff"],
  [style*="background:white"],[style*="background: white"],
@@ -85,25 +86,25 @@ body :is(#content,#modal) :is(
   color:#17283a!important;
 }
 /* Native options use the matching system palette and placeholders remain legible. */
-body[data-theme="light"] :is(#content,#modal) :is(input,select,textarea,option) {
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(input,select,textarea,option) {
   color-scheme:light;color:#17283a!important;
 }
-body[data-theme="dark"] :is(#content,#modal) :is(input,select,textarea,option) {
+body[data-theme="dark"] :is(#content,#modal:not(:has(.v6526-studio))) :is(input,select,textarea,option) {
   color-scheme:dark;color:#edf5ff!important;
 }
-body[data-theme="light"] :is(#content,#modal) :is(input,textarea)::placeholder {color:#667b8c!important;opacity:1;}
-body[data-theme="dark"] :is(#content,#modal) :is(input,textarea)::placeholder {color:#a5bacd!important;opacity:1;}
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(input,textarea)::placeholder {color:#667b8c!important;opacity:1;}
+body[data-theme="dark"] :is(#content,#modal:not(:has(.v6526-studio))) :is(input,textarea)::placeholder {color:#a5bacd!important;opacity:1;}
 /* Improve the previously 10px fine print in sales/product cards; no global font scaling. */
-body :is(#content,#modal) :is(.payment-card p,.feature-list,.feature-list li,
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(.payment-card p,.feature-list,.feature-list li,
  .sales-service-row span,.sales-cart-row span,.sbc-product span,.sales-group-title,
  .payment-card small,.price-card small,.catalog-grid small) {
   font-size:max(12px,.8rem)!important;line-height:1.5!important;
 }
-body :is(#content,#modal) :is(.payment-price,.price) {
+body :is(#content,#modal:not(:has(.v6526-studio))) :is(.payment-price,.price) {
   font-size:max(22px,1.35rem)!important;line-height:1.25!important;
 }
 
 /* Form helper labels on white surfaces must clear WCAG AA 4.5:1. */
-body[data-theme="light"] :is(#content,#modal) :is(.form-grid,.fields) small {
+body[data-theme="light"] :is(#content,#modal:not(:has(.v6526-studio))) :is(.form-grid,.fields) small {
   color:#4e6073!important;
 }
