@@ -182,6 +182,7 @@
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
   configureQuickForm(a);
+  if(window.SBC_MANAGER_DESIGN_BRIEFS?.open)window.SBC_MANAGER_DESIGN_BRIEFS.open(a.id,a.businessName);
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
   if(state.role==='account_manager'){void loadAccountHistoryV5(id);void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
  }
