@@ -44,12 +44,22 @@ function appFixture(review={issueCount:0,deliveryReview:{status:'STATIC_CHECKS_P
   if(url.endsWith('/uploads'))return {ok:true,uploads};
   if(url.endsWith('/text-fields'))return {ok:true,readOnly:true,current:true,
    versionId:uploads.find(x=>x.active).id,tier:199,fields:editable};
+  if(url.endsWith('/images'))return {ok:true,readOnly:true,current:true,
+   versionId:uploads.find(x=>x.active).id,tier:199,
+   images:[{path:'assets/car.png',mime:'image/png',width:300,height:180,bytes:1024}]};
   return {ok:true,revision:0,variants:{},prompts:{'199':'BUILD STARTER'},prompt:'BUILD'};
  };
  const ctx={window:{location:{href:'https://command.example/'}},document:doc,console,URL,
   navigator:{clipboard:{writeText:async txt=>copied.push(txt)}},
   fetch:async(url,options)=>{
    requests.push({url,options});
+   if(url.endsWith('/image-replace')){
+    const saved={...uploads[0],id:'up_'+'d'.repeat(32),active:true,
+     createdAt:'2026-11-19T11:00:00Z',
+     previewPath:'/api/website-production/customers/c1/ai-proposals/uploads/up_'+'d'.repeat(32)+'/render/'+'W'.repeat(43)+'/index.html'};
+    uploads=[...uploads.map(x=>({...x,active:false})),saved];
+    return {ok:true,json:async()=>({ok:true,durable:true,published:false,upload:saved})};
+   }
    const body=JSON.parse(options.body);
    assert.equal(body.expectedActiveId,uploads[0].id);
    if(url.endsWith('/text-edit')){
@@ -165,5 +175,47 @@ test('text editor cannot save without an active customer ZIP and never trusts ar
  const value=f.elem('sbcAINewText');
  value.value='Unsafe\nline';value.listeners.input?.();
  assert.equal(result.disabled,true,'control characters rejected before server check');
+ assert.equal(f.requests.length,0);
+});
+
+test('image owner picker selects existing asset and saves replacement ZIP as a new private version',async()=>{
+ const f=appFixture();await f.open();
+ const save=f.elem('sbcAISaveImage');
+ assert.equal(save.disabled,true);
+ await f.elem('sbcAILoadImages').click();
+ const select=f.elem('sbcAIImageField');
+ assert.equal(select.disabled,false);
+ assert.match(select.innerHTML,/assets\/car\.png/);
+ select.value='assets/car.png';select.listeners.change?.();
+ const original=f.elem('sbcAIImageCurrent');
+ assert.equal(original.hidden,false);
+ assert.match(original.src,/assets\/car\.png$/);
+ const file={name:'replacement.png',type:'image/png',size:280};
+ f.elem('sbcAIReplacementImage').files=[file];
+ f.elem('sbcAIReplacementImage').listeners.change?.();
+ assert.equal(save.disabled,false);
+ await save.click();
+ assert.equal(f.requests.length,1);
+ assert.match(f.requests[0].url,/\/image-replace$/);
+ assert.equal(f.requests[0].options.headers['X-SBC-Website-Image-Replace'],'1');
+ assert.equal(f.requests[0].options.headers['X-SBC-Image-Asset'],'assets%2Fcar.png');
+ assert.equal(f.requests[0].options.body,file);
+ assert.match(f.elem('sbcAIFrame').src,/\/up_dddddddddddddddddddddddddddddddd\/render\//);
+ assert.equal(f.downloads.length,0);
+ assert.equal(f.elem('sbcAIImageField').disabled,true);
+});
+test('image picker refuses wrong MIME, oversized files and unavailable changes',async()=>{
+ const f=appFixture();await f.open();
+ await f.elem('sbcAILoadImages').click();
+ const select=f.elem('sbcAIImageField');select.value='assets/car.png';select.listeners.change?.();
+ const file=f.elem('sbcAIReplacementImage'),save=f.elem('sbcAISaveImage');
+ file.files=[{name:'photo.jpg',type:'image/jpeg',size:300}];file.listeners.change?.();
+ assert.equal(save.disabled,true);
+ file.files=[{name:'photo.png',type:'image/png',size:4*1024*1024+1}];file.listeners.change?.();
+ assert.equal(save.disabled,true);
+ file.files=[{name:'photo.png',type:'image/png',size:300}];file.listeners.change?.();
+ assert.equal(save.disabled,false);
+ select.value='';select.listeners.change?.();
+ assert.equal(save.disabled,true);
  assert.equal(f.requests.length,0);
 });
