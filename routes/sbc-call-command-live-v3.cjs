@@ -6,7 +6,9 @@ const {randomUUID}=require('node:crypto');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
 const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');
 const V3=require('../enterprise/sbc-call-command-live-v3.cjs');
-const TWILIO=require('twilio');
+// Load the Twilio provider only inside signed callbacks: offline CRM tests
+// and read-only account routes must never depend on a telephony SDK install.
+const getTwilio=()=>{try{return require('twilio')}catch{return null}};
 const TYPE='sbc_call_command_v3';
 const ROOT='/api/v6606/crm/account-portfolios';
 const WEB='/api/v6606/crm/call-command';
@@ -72,7 +74,7 @@ function parseAttempt(row){
 function validAttemptId(x){return /^ccv3_[a-f0-9]{32}$/.test(String(x||''));}
 function signed(req,cfg){
  return V3.verifyTwilioForm(req,{authToken:cfg.authToken,
-  origins:[cfg.origin],validateRequest:TWILIO.validateRequest});
+  origins:[cfg.origin],validateRequest:getTwilio()?.validateRequest});
 }
 function appendActivitySql(){return 'INSERT INTO sbc_activities (id,activity_type,message,meta_json,created_at,tenant_id) VALUES (?,?,?,?,?,?)'}
 function register(app,{auth,getContext}){
