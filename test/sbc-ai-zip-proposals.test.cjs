@@ -46,11 +46,11 @@ function fixture(){
   getStore:()=>state,saveStore:async next=>{state=next;return {ok:true}},
   writerReady:()=>writer,serializeSiteMutation:fn=>fn(),storageRoot});
  const url='/api/website-production/customers/:id/ai-proposals';
- async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,origin='https://command.example'}={}){
+ async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,body,origin='https://command.example',selectHeader=true}={}){
   const key=method+' '+url+suffix,handlers=routes[key];
   assert(handlers,'route missing: '+key);
   const req=Readable.from(buf?[buf]:[]),headers={'content-type':'application/zip','x-sbc-proposal-upload':'1',host:'command.example',origin};
-  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers,user:role?{role,id:'test-owner'}:null,secure:true});
+  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers:{...headers,...(selectHeader?{'x-sbc-website-version-select':'1'}:{})},body,user:role?{role,id:'test-owner'}:null,secure:true});
   const res={statusCode:200,headers:{},status(code){this.statusCode=code;return this},
    setHeader(k,v){this.headers[k]=v},json(body){this.body=body;return this},
    sendFile(filename){this.file=fs.readFileSync(filename);return this}};
@@ -210,4 +210,48 @@ test('owner browser preview refreshes a short-lived ZIP token rather than reusin
  assert.match(src,/preview\(b\.dataset\.sbcAiPreview,Number\(b\.dataset\.tier\),true\)/);
  assert.match(src,/sandbox="allow-scripts"/);
  assert.doesNotMatch(src,/allow-same-origin/);
+});
+
+test('owner can restore an earlier ZIP as current without changing the ZIP bytes, publishing, or cross-tenant access',async()=>{
+ const f=fixture();
+ try{
+  const first=await f.call('POST','/uploads/:tier',{tier:'199',buf:zip({'index.html':'<h1>First</h1>'})});
+  const second=await f.call('POST','/uploads/:tier',{tier:'199',buf:zip({'index.html':'<h1>Second</h1>'})});
+  const oldId=first.body.upload.id,latestId=second.body.upload.id;
+  let list=await f.call('GET','/uploads');
+  assert.equal(list.body.uploads.find(x=>x.active).id,latestId);
+  const original=fs.readFileSync(path.join(f.root,'1','a1',oldId,'original.zip'));
+  const denied=await f.call('POST','/uploads/:uploadId/select',{uploadId:oldId,body:{expectedActiveId:latestId},role:'caller'});
+  assert.equal(denied.statusCode,403);
+  const csrf=await f.call('POST','/uploads/:uploadId/select',{uploadId:oldId,body:{expectedActiveId:latestId},selectHeader:false});
+  assert.equal(csrf.statusCode,403);
+  const stale=await f.call('POST','/uploads/:uploadId/select',{uploadId:oldId,body:{expectedActiveId:oldId}});
+  assert.equal(stale.statusCode,409);
+  const restored=await f.call('POST','/uploads/:uploadId/select',{uploadId:oldId,body:{expectedActiveId:latestId}});
+  assert.equal(restored.statusCode,200,JSON.stringify(restored.body));
+  assert.equal(restored.body.published,false);
+  assert.equal(restored.body.durable,true);
+  assert.equal(restored.body.activeId,oldId);
+  list=await f.call('GET','/uploads');
+  assert.equal(list.body.uploads.find(x=>x.active).id,oldId);
+  assert.deepEqual(fs.readFileSync(path.join(f.root,'1','a1',oldId,'original.zip')),original);
+  assert.equal(f.state().aiSiteUploads.length,2);
+  const other=await f.call('POST','/uploads/:uploadId/select',{customerId:'b1',tenantId:2,uploadId:oldId,body:{expectedActiveId:oldId}});
+  assert.equal(other.statusCode,404);
+  const newUpload=await f.call('POST','/uploads/:tier',{tier:'199',buf:zip({'index.html':'<h1>Third</h1>'})});
+  assert.equal(newUpload.statusCode,201);
+  list=await f.call('GET','/uploads');
+  assert.equal(list.body.uploads.find(x=>x.active).id,newUpload.body.upload.id);
+ }finally{f.cleanup()}
+});
+test('restore refuses a tampered archived website without selecting it or losing other versions',async()=>{
+ const f=fixture();
+ try{
+  const first=await f.call('POST','/uploads/:tier',{tier:'499',buf:zip({'index.html':'<h1>Old</h1>'})});
+  const second=await f.call('POST','/uploads/:tier',{tier:'499',buf:zip({'index.html':'<h1>New</h1>'})});
+  fs.writeFileSync(path.join(f.root,'1','a1',first.body.upload.id,'original.zip'),Buffer.from('tampered'));
+  const result=await f.call('POST','/uploads/:uploadId/select',{uploadId:first.body.upload.id,body:{expectedActiveId:second.body.upload.id}});
+  assert.equal(result.statusCode,409);
+  assert.equal((await f.call('GET','/uploads')).body.uploads.find(x=>x.active).id,second.body.upload.id);
+ }finally{f.cleanup()}
 });

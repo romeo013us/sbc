@@ -64,3 +64,16 @@ test('empty and malformed file collections never claim preview readiness', () =>
  assert.equal(auditPreviewFiles([]).status, 'PREVIEW_LINKS_NEED_REVIEW');
  assert.equal(auditPreviewFiles([file('assets/app.js','123')]).status, 'PREVIEW_LINKS_NEED_REVIEW');
 });
+
+test('delivery flags are separate from missing-asset issues and do not certify a placeholder customer site',()=>{
+ const report=auditPreviewFiles([file('index.html',
+ '<html><head><title>Phil Shop</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>'+
+ '<h1>Details pending verification</h1><p>[PHONE — NOT PROVIDED]</p><img src="assets/car.svg"></body></html>'),
+ file('assets/car.svg','<svg></svg>')]);
+ assert.equal(report.status,'PREVIEW_LINKS_OK');
+ assert.equal(report.issueCount,0);
+ assert.equal(report.deliveryReview.status,'OWNER_REVIEW_REQUIRED');
+ assert(report.deliveryReview.flags.includes('BUSINESS_FACTS_UNVERIFIED'));
+ assert(report.deliveryReview.flags.includes('IMAGE_ALT_TEXT_REVIEW'));
+ assert(!JSON.stringify(report).includes('Phil Shop'));
+});

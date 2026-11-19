@@ -87,7 +87,7 @@ function parseZip(buf){
 function auditPreviewFiles(files){
  const entries=Array.isArray(files)?files:[];
  const names=new Set(entries.map(f=>String(f?.name||'').toLowerCase()));
- const issues=[],seen=new Set();
+ const issues=[],seen=new Set(),deliveryFlags=new Set();
  let issueCount=0,checkedPages=0;
  function issue(code,page,reference){
   const ref=String(reference||'').slice(0,180),key=[code,page,ref].join('|');
@@ -122,6 +122,11 @@ function auditPreviewFiles(files){
   if(!/\.html?$/i.test(page))continue;
   checkedPages++;
   const html=Buffer.isBuffer(file.content)?file.content.toString('utf8'):String(file.content??'');
+  if(!/<title\b[^>]*>\s*[^<\s][^<]*<\/title>/i.test(html))deliveryFlags.add('PAGE_TITLE_REVIEW');
+  if(!/<meta\s+[^>]*name\s*=\s*["\x27]?viewport["\x27]?/i.test(html))deliveryFlags.add('MOBILE_VIEWPORT_REVIEW');
+  if(/(?:\[(?:PHONE|EMAIL|ADDRESS|HOURS)[^\]]*(?:NOT PROVIDED|TO BE CONFIRMED)\]|pending verification|owner confirmation required|details pending|awaiting verification|not yet verified)/i.test(html))deliveryFlags.add('BUSINESS_FACTS_UNVERIFIED');
+  if(/<form\b/i.test(html))deliveryFlags.add('FORM_BACKEND_MUST_BE_TESTED');
+  if([...html.matchAll(/<img\b[^>]*>/gi)].some(m=>!/(?:^|\s)alt\s*=/.test(m[0])))deliveryFlags.add('IMAGE_ALT_TEXT_REVIEW');
   for(const match of html.matchAll(/<(script|img|link|a|source)\b[^>]*>/gi)){
    const tag=match[0],type=match[1].toLowerCase();
    if(type==='script'||type==='img'||type==='source'){
@@ -137,8 +142,8 @@ function auditPreviewFiles(files){
  if(checkedPages===0)issue('MISSING_PAGE','index.html','No HTML page available');
  return {
   status:issueCount===0?'PREVIEW_LINKS_OK':'PREVIEW_LINKS_NEED_REVIEW',
-  checkedPages,issueCount,issues,
-  scope:'Static HTML link check only. Interactive behavior, CSS imports and live forms require separate review.'
+  checkedPages,issueCount,issues,deliveryReview:{status:deliveryFlags.size?'OWNER_REVIEW_REQUIRED':'STATIC_CHECKS_PASSED',flags:[...deliveryFlags].sort()},
+  scope:'Static file and HTML checks only; responsive appearance, JS interactions, CSS imports, forms, consent and live deployment require manual testing.'
  };
 }
 
@@ -228,6 +233,9 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  const root=path.resolve(storageRoot||path.join(__dirname,'..','data','sbc-ai-proposal-uploads'));
  const base=(req)=>{const t=safeCustomer(req,db,requireTenant);return {...t,dir:path.join(root,String(t.tenantId),encodeURIComponent(t.id))};};
  const uploads=()=>Array.isArray(getStore()?.aiSiteUploads)?getStore().aiSiteUploads:[];
+ const versionKey=(c,tier)=>String(c.tenantId)+':'+c.id+':'+tier;
+ const newestFor=(rows,tier)=>rows.slice().reverse().find(r=>Number(r.tier)===Number(tier))?.id||null;
+ const activeFor=(state,c,rows,tier)=>state?.aiSiteActiveVersions?.[versionKey(c,tier)]||newestFor(rows,tier);
  const own=(req,records)=>{const c=base(req);return {c,items:records.filter(r=>r.customerId===c.id&&r.tenantId===c.tenantId)};};
  // Scoped, time-limited preview grants are deliberately separate from login
  // cookies: iframe sandboxing gives the site an opaque origin, and browsers may
@@ -276,12 +284,14 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  app.get(ROOT+'/uploads',auth,ownerOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
-   const {c,items}=own(req,uploads());
-   return res.json({ok:true,customerId:c.id,uploads:items.slice().reverse().map(r=>({
+   const {c,items}=own(req,uploads()),state=getStore();
+   const ordered=items.slice().reverse().map(r=>({
     id:r.id,tier:r.tier,filename:r.filename,fileCount:r.fileCount,bytes:r.bytes,createdAt:r.createdAt,previewAudit:r.previewAudit||null,
+    active:r.id===activeFor(state,c,items,r.tier),
     previewPath:preview(c,r),downloadPath:ROOT.replace(':id',encodeURIComponent(c.id))+'/uploads/'+r.id+'/download',
     status:'OWNER_REVIEW_REQUIRED'
-   })).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,50)});
+   })).sort((a,b)=>(Number(b.active)-Number(a.active))||b.createdAt.localeCompare(a.createdAt)).slice(0,50);
+   return res.json({ok:true,customerId:c.id,uploads:ordered});
   }catch(e){return failError(res,e)}
  });
  app.get(ROOT+'/uploads/recovery/export',auth,ownerOnly,(req,res)=>{
@@ -340,7 +350,13 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
      safeCustomer(req,db,requireTenant);
      if(!writerReady())throw Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE');
      const state=getStore(),rows=Array.isArray(state?.aiSiteUploads)?state.aiSiteUploads:[];
-     const saved=await saveStore({...state,aiSiteUploads:[...rows,record]});
+     // A fresh upload becomes current; prior ZIPs remain intact and recoverable.
+     const next={...state,aiSiteUploads:[...rows,record]};
+     if(state.aiSiteActiveVersions){
+      const pins={...state.aiSiteActiveVersions};delete pins[versionKey(c,tier)];
+      next.aiSiteActiveVersions=pins;
+     }
+     const saved=await saveStore(next);
      if(saved?.skipped===true||saved?.ok===false)throw Error('PROPOSAL_UPLOAD_FAILED');
     });
     return res.status(201).json({ok:true,upload:{...record,previewPath:preview(c,record),status:'OWNER_REVIEW_REQUIRED'},durable:true});
@@ -354,6 +370,42 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   if(!/^up_[a-f0-9]{32}$/.test(record.id))throw Error('UPLOAD_NOT_FOUND');
   return {c,record,folder:path.join(c.dir,record.id)};
  }
+ // Promote any preserved version back to "current" without moving, deleting,
+ // rewriting or publishing a website. Only the logged-in owner may do this.
+ app.post(ROOT+'/uploads/:uploadId/select',auth,ownerOnly,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!writerReady())return failError(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
+  if(req.headers['x-sbc-website-version-select']!=='1')return fail(res,403,'UPLOAD_ORIGIN_DENIED');
+  const origin=req.headers.origin;
+  if(origin){try{if(new URL(origin).host!==req.headers.host)throw Error('UPLOAD_ORIGIN_DENIED')}catch{return fail(res,403,'UPLOAD_ORIGIN_DENIED')}}
+  try{
+   const selected=find(req);
+   const expected=String(req.body?.expectedActiveId||'');
+   if(!/^up_[a-f0-9]{32}$/.test(expected))return fail(res,400,'INVALID_PREVIEW_PATH');
+   const original=path.join(selected.folder,'original.zip');
+   const stat=fs.lstatSync(original);
+   if(!stat.isFile()||stat.isSymbolicLink())throw Error('BACKUP_INTEGRITY_FAILED');
+   const content=fs.readFileSync(original);
+   if(content.length!==Number(selected.record.bytes)||selected.record.sha256&&
+       crypto.createHash('sha256').update(content).digest('hex')!==selected.record.sha256)throw Error('BACKUP_INTEGRITY_FAILED');
+   parseZip(content);
+   let activeId=null;
+   await serializeSiteMutation(async()=>{
+    const {c,items}=own(req,uploads());
+    if(!writerReady())throw Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE');
+    const found=items.find(row=>row.id===selected.record.id&&Number(row.tier)===Number(selected.record.tier));
+    if(!found)throw Error('UPLOAD_NOT_FOUND');
+    const state=getStore(),current=activeFor(state,c,items,found.tier);
+    if(current!==expected)throw Error('UPLOAD_REVISION_CONFLICT');
+    const key=versionKey(c,found.tier);
+    const pins={...(state.aiSiteActiveVersions||{}),[key]:found.id};
+    const saved=await saveStore({...state,aiSiteActiveVersions:pins});
+    if(saved?.skipped===true||saved?.ok===false)throw Error('PROPOSAL_UPLOAD_FAILED');
+    activeId=found.id;
+   });
+   return res.json({ok:true,activeId,durable:true,published:false});
+  }catch(e){return failError(res,e)}
+ });
  app.get(ROOT+'/uploads/:uploadId/download',auth,ownerOnly,(req,res)=>{
   try{
    const {folder,record}=find(req),file=path.join(folder,'original.zip');
