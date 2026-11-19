@@ -33,6 +33,23 @@ function verifyAccount({channel,accountId,name}={}){
   if(String(name??'')!==c.name)return {ok:false,reason:'ACCOUNT_NAME_MISMATCH'};
   return {ok:true,reason:'VERIFIED'};
 }
+/* Signed website -> CRM campaign provenance. Validates only canonical organic
+ * sources already approved for Super SBC. This pure helper makes no DB writes
+ * and never accepts personal data, arbitrary URLs, account IDs, or paid ads. */
+function inboundAttribution(input){
+  if(!input||typeof input!=='object'||Array.isArray(input))return null;
+  if(typeof input.source!=='string'||typeof input.medium!=='string'||input.campaign!==CAMPAIGN)return null;
+  const channel=CHANNELS[input.source];
+  if(!channel||input.medium!==channel.medium)return null;
+  const content=typeof input.content==='string'&&/^[a-z0-9][a-z0-9_-]{0,63}$/.test(input.content)?input.content:'general';
+  return {source:channel.source,medium:channel.medium,campaign:CAMPAIGN,content};
+}
+function mergeInboundAttribution(existing,incoming){
+  const first=inboundAttribution(existing?.first);
+  const last=inboundAttribution(existing?.last);
+  const received=inboundAttribution(incoming);
+  return {first:first||last||received||null,last:received||last||first||null};
+}
 function metric(value){
   if(value===null||value===undefined||value==='')return null;
   if(typeof value!=='number' && typeof value!=='string')return null;
@@ -48,4 +65,4 @@ function measuredSnapshot({ga4={},search={},crm={},payments={}}={}){
     integrity:'Missing data is unknown, not zero. GA4 key events are not CRM leads or paid orders. No revenue without verified payment evidence.'
   };
 }
-module.exports={CAMPAIGN,CHANNELS,DESTINATIONS,campaignUrl,verifyAccount,measuredSnapshot};
+module.exports={CAMPAIGN,CHANNELS,DESTINATIONS,campaignUrl,verifyAccount,inboundAttribution,mergeInboundAttribution,measuredSnapshot};
