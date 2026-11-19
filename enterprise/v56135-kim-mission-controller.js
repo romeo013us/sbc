@@ -58,6 +58,16 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
   const unresolvedTenantRecords=raw.filter(c=>c&&(c.tenantId===null||c.tenantId===undefined||String(c.tenantId).trim()==='')).length;
   const all=raw.filter(c=>Number(c?.tenantId)===scopedId);
   const warmHot=all.filter(c=>['warm','hot'].includes(String(c?.leadTemperature||'').trim().toLowerCase()));
+  // Lead-temperature fields may arrive after base CRM records during startup.
+  // Report field coverage separately: zero warm/hot alone cannot distinguish
+  // a fully classified dataset from an unclassified startup snapshot.
+  // These are aggregate observations only; no customer data is written.
+  const withTemperature=all.reduce((n,c)=>n+(String(c?.leadTemperature??'').trim()?1:0),0);
+  const temperatureCoverage={
+    withTemperature,
+    withoutTemperature:all.length-withTemperature,
+    state:all.length===0?'NO_RECORDS':withTemperature===0?'NONE_IN_SNAPSHOT':withTemperature<all.length?'PARTIAL_IN_SNAPSHOT':'ALL_IN_SNAPSHOT'
+  };
   const verified=all.filter(eligible);
   const ready=verified.filter(c=>!recentMission(c));
   // Mutually exclusive, tenant-scoped reason codes. A warm/hot temperature
@@ -74,7 +84,7 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
     else qualificationReasons.warmHotOther++;
   }
   return {ok:true,advisoryOnly:true,tenantId:scopedId,tenantCustomers:all.length,tenantWarmHot:warmHot.length,unresolvedTenantRecords,
-    qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,qualificationReasons,
+    qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,qualificationReasons,temperatureCoverage,
     prospects:Math.min(cap,ready.length),missions:0,externalActions:0,writeAttempts:0};
 }
 function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain,closer,consultative,revenueSupervisor,globalBIOS,superbrain,dispatchCall,godKim,createConsultativeCheckout,createFulfillmentJobsForOrder,processReadyFulfillmentJobs,vendorCapabilities,catalog,sendCustomerStatus,ownerThreshold=10000,logger=console}={}){
@@ -173,7 +183,7 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
       const screened=sbcAdvisoryScreen(db,tenantId,limit,eligible,recentMission);
       // Plain production logs should explain zero qualified prospects without
       // weakening outreach rules or exposing any customer-identifying data.
-      try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons}));}catch(_){/* diagnostics never block runtime */}
+      try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage}));}catch(_){/* diagnostics never block runtime */}
       return screened;
     }
     state.running=true;const started=Date.now();

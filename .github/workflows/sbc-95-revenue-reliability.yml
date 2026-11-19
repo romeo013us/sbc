@@ -168,6 +168,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: '22' }
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Kim advisory lead-temperature input coverage and tenant safety
+        run: node --test scripts/v6624-advisory-diagnostics.test.cjs scripts/v6624-temperature-coverage.test.cjs
       - name: Writer lease heartbeat
         run: node scripts/v6617-writer-lease-heartbeat-test.cjs
       - name: Compiled runtime lease lifecycle regression
