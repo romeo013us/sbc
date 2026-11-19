@@ -122,7 +122,7 @@ function register(app,{auth,getContext}){
     const [saved]=await conn.query('UPDATE sbc_customers SET account_notes_json=?,updated_at=? WHERE tenant_id=? AND id=?',
       [JSON.stringify(updated),stamp(),x.tenant,id]);
     if(saved?.affectedRows!==1)throw Error('CALL_AUTHORIZATION_NOT_DURABLE');
-    await conn.query(appendActivitySql(),['act_'+randomUUID().replace(/-/g''),'sbc_call_permission_review',
+    await conn.query(appendActivitySql(),['act_'+randomUUID().replace(/-/g,''),'sbc_call_permission_review',
      'Owner documented an account calling authorization review',
      JSON.stringify({customerId:id,actorId:String(req.user.id),recordId:record.id,at:approvedAt}),
      stamp(),x.tenant]);
@@ -140,12 +140,12 @@ function register(app,{auth,getContext}){
    await transaction(x.ctx.mysqlPool,async conn=>{
     const row=await account(conn,x.tenant,id,true);if(!row)throw Error('ACCOUNT_NOT_FOUND');
     const notes=V3.parseNotes(row);if(!notes)throw Error('ACCOUNT_NOTES_UNREADABLE');
-    const now=new Date().toISOString(),record={id:'crevoke_'+randomUUID().replace(/-/g''),
+    const now=new Date().toISOString(),record={id:'crevoke_'+randomUUID().replace(/-/g,''),
      kind:V3.revokedKind,authorizedAt:now,verifiedBy:String(req.user.id)};
     const [saved]=await conn.query('UPDATE sbc_customers SET account_notes_json=?,updated_at=? WHERE tenant_id=? AND id=?',
       [JSON.stringify([record,...notes].slice(0,100)),stamp(),x.tenant,id]);
     if(saved?.affectedRows!==1)throw Error('REVOCATION_NOT_DURABLE');
-    await conn.query(appendActivitySql(),['act_'+randomUUID().replace(/-/g''),'sbc_call_permission_revoked',
+    await conn.query(appendActivitySql(),['act_'+randomUUID().replace(/-/g,''),'sbc_call_permission_revoked',
      'Owner revoked account calling authorization',
      JSON.stringify({customerId:id,actorId:String(req.user.id),at:now}),stamp(),x.tenant]);
    });

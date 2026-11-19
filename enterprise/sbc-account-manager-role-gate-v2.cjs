@@ -16,6 +16,7 @@ const RE={
   new RegExp('^/api/prospect-intelligence/v5/accounts/'+VALID_ID+'/plan$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/history$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/call-preflight$'),
+  new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/(?:call-readiness|call-history)$'),
   new RegExp('^/api/account-social/v1/accounts/'+VALID_ID+'/(?:channels|posts)$'),
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'$'),
   new RegExp('^/api/sbc/design-briefs/customer/'+VALID_ID+'$')
@@ -24,6 +25,7 @@ const RE={
   new RegExp('^/api/account-social/v1/accounts/'+VALID_ID+'/interactions$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/(?:note|follow-up)$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/interaction$'),
+  new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/call-start$'),
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'/submit$'),
   new RegExp('^/api/account-social/v1/research/handoffs/'+VALID_ID+'/return$'),
   new RegExp('^/api/sbc/design-briefs/'+VALID_ID+'/(?:revoke|review)$')
