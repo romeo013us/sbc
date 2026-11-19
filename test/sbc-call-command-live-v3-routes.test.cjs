@@ -118,6 +118,12 @@ test('V3 account permission, one-use Twilio webhook, no client-number overrides 
   assert(connection.text.includes('+13055550147'),'Dial must use authoritative CRM phone');
   assert(!connection.text.includes('+19998887777'),'browser-supplied To must be ignored');
   assert.equal((await twilioPost(web,params)).status,403,'attempt can only be spent once');
+  const currentSession=state.events.find(e=>e.id===prepared.data.attemptId);
+  const currentMeta=JSON.parse(currentSession.meta_json);
+  currentMeta.expiresAt=new Date(Date.now()-5000).toISOString();
+  currentSession.meta_json=JSON.stringify(currentMeta);
+  assert.equal((await request('POST',url+'/call-start',{requestId:'c'.repeat(32)})).status,409,
+   'an already-dialing live call must stay locked even when its preparation TTL expires');
   const cb='/api/v6606/crm/call-command/status?attempt='+prepared.data.attemptId;
   const completed=await twilioPost(cb,{AccountSid:sid,CallSid:'CA'+'5'.repeat(32),CallStatus:'completed'});
   assert.equal(completed.status,200,completed.text);
@@ -125,9 +131,16 @@ test('V3 account permission, one-use Twilio webhook, no client-number overrides 
   assert.equal(history.status,200);
   assert.equal(history.data.history[0].status,'COMPLETED');
   assert.equal(history.data.history[0].callSid,'CA'+'5'.repeat(32));
+  env.SBC_CALL_COMMAND_V3_ENABLED='0';
+  assert.equal((await twilioPost(cb,{AccountSid:sid,CallSid:'CA'+'5'.repeat(32),CallStatus:'completed'})).status,200,
+   'signed provider completion remains recordable after an emergency disable');
+  env.SBC_CALL_COMMAND_V3_ENABLED='1';
   assert.equal((await request('POST',url+'/call-revoke',{},'owner')).status,200);
   ready=await request('GET',url+'/call-readiness');
   assert.equal(ready.data.liveCallAvailable,false,'owner revocation blocks further calling');
+  state.customers.push({id:'dnc-copy',tenant_id:7,phone:'(305) 555-0147',status:'DNC'});
+  assert.equal((await request('POST',url+'/call-authorization',approval,'owner')).status,409,
+   'another account with the same suppressed phone must block owner approval');
  }finally{
   if(server)await new Promise(resolve=>server.close(resolve));
   for(const [k,v] of Object.entries(snapshot)){if(v===undefined)delete env[k];else env[k]=v}
