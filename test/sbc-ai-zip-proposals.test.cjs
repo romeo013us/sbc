@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
 const {Readable}=require('node:stream');
-const {deflateRawSync}=require('node:zlib');
+const {deflateRawSync,deflateSync}=require('node:zlib');
 const vault=require('../enterprise/sbc-ai-zip-proposals.cjs');
 const {register,parseZip}=vault;
 function crc32(buf){
@@ -46,11 +46,11 @@ function fixture(){
   getStore:()=>state,saveStore:async next=>{state=next;return {ok:true}},
   writerReady:()=>writer,serializeSiteMutation:fn=>fn(),storageRoot});
  const url='/api/website-production/customers/:id/ai-proposals';
- async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,body,origin='https://command.example',selectHeader=true,editHeader=true}={}){
+ async function call(method,suffix,{customerId='a1',tenantId=1,role='owner',tier,uploadId,ticket,rest,buf,body,origin='https://command.example',selectHeader=true,editHeader=true,imageHeader=true,imagePath=null,imageMime='image/png',expectedVersion=null}={}){
   const key=method+' '+url+suffix,handlers=routes[key];
   assert(handlers,'route missing: '+key);
   const req=Readable.from(buf?[buf]:[]),headers={'content-type':'application/zip','x-sbc-proposal-upload':'1',host:'command.example',origin};
-  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers:{...headers,...(selectHeader?{'x-sbc-website-version-select':'1'}:{}),...(editHeader?{'x-sbc-website-text-edit':'1'}:{})},body,user:role?{role,id:'test-owner'}:null,secure:true});
+  Object.assign(req,{params:{id:customerId,tier,uploadId,ticket,0:rest},tenantId,headers:{...headers,...(selectHeader?{'x-sbc-website-version-select':'1'}:{}),...(editHeader?{'x-sbc-website-text-edit':'1'}:{}),...(imageHeader?{'x-sbc-website-image-replace':'1'}:{}),...(imagePath?{'x-sbc-image-asset':encodeURIComponent(imagePath),'x-sbc-expected-version':expectedVersion||uploadId,'content-type':imageMime}:{})},body,user:role?{role,id:'test-owner'}:null,secure:true});
   const res={statusCode:200,headers:{},status(code){this.statusCode=code;return this},
    setHeader(k,v){this.headers[k]=v},json(body){this.body=body;return this},
    sendFile(filename){this.file=fs.readFileSync(filename);return this}};
@@ -336,6 +336,85 @@ test('text editing stays owner-only, same-origin, tenant-scoped and blocks stale
   f.setWriter(false);
   assert.equal((await f.call('POST','/uploads/:uploadId/text-edit',{uploadId:id,body:inputBody})).statusCode,423);
   assert.equal((await f.call('GET','/uploads/:uploadId/text-fields',{uploadId:id})).statusCode,200);
+  assert.equal(f.state().aiSiteUploads.length,1);
+ }finally{f.cleanup()}
+});
+
+function testPng(rgb=[0,32,225]){
+ const signature=Buffer.from('89504e470d0a1a0a','hex');
+ function chunk(type,data){
+  const label=Buffer.from(type),head=Buffer.alloc(4),crc=Buffer.alloc(4);
+  head.writeUInt32BE(data.length);crc.writeUInt32BE(crc32(Buffer.concat([label,data])));
+  return Buffer.concat([head,label,data,crc]);
+ }
+ const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(1,0);ihdr.writeUInt32BE(1,4);ihdr[8]=8;ihdr[9]=2;
+ return Buffer.concat([signature,chunk('IHDR',ihdr),chunk('IDAT',deflateSync(Buffer.from([0,...rgb]))),chunk('IEND',Buffer.alloc(0))]);
+}
+test('image picker shows only verified raster assets from one owner customer',async()=>{
+ const f=fixture();
+ try{
+  const saved=await f.call('POST','/uploads/:tier',{tier:199,buf:zip({
+   'index.html':'<html><img src="assets/car.png"></html>',
+   'assets/car.png':testPng(),'assets/unsafe.svg':'<svg></svg>',
+   'assets/broken.jpg':'fake image'
+  })});
+  assert.equal(saved.statusCode,201);
+  const id=saved.body.upload.id;
+  const r=await f.call('GET','/uploads/:uploadId/images',{uploadId:id});
+  assert.equal(r.statusCode,200);assert.equal(r.body.readOnly,true);assert.equal(r.body.current,true);
+  assert.deepEqual(r.body.images.map(x=>x.path),['assets/car.png']);
+  assert.equal((await f.call('GET','/uploads/:uploadId/images',{uploadId:id,role:'caller'})).statusCode,403);
+  assert.equal((await f.call('GET','/uploads/:uploadId/images',{uploadId:id,customerId:'b1',tenantId:2})).statusCode,404);
+ }finally{f.cleanup()}
+});
+test('replacing an existing image saves new immutable ZIP and preserves original and unrelated files',async()=>{
+ const f=fixture();
+ try{
+  const initial=testPng([200,0,0]),replacement=testPng([20,200,30]);
+  const saved=await f.call('POST','/uploads/:tier',{tier:199,buf:zip({
+   'index.html':'<html><head><title>Shop</title></head><body><img src="assets/car.png"></body></html>',
+   'assets/car.png':initial,'assets/app.js':'window.hello=true'
+  })});
+  assert.equal(saved.statusCode,201);
+  const id=saved.body.upload.id,before=fs.readFileSync(path.join(f.root,'1','a1',id,'original.zip'));
+  const changed=await f.call('POST','/uploads/:uploadId/image-replace',{
+   uploadId:id,imagePath:'assets/car.png',expectedVersion:id,buf:replacement
+  });
+  assert.equal(changed.statusCode,201,JSON.stringify(changed.body));
+  assert.equal(changed.body.published,false);
+  assert.equal(changed.body.upload.editType,'IMAGE_REPLACE');
+  const newId=changed.body.upload.id;assert.notEqual(newId,id);
+  assert.equal(f.state().aiSiteUploads.length,2);
+  const list=await f.call('GET','/uploads');
+  assert.equal(list.body.uploads.find(x=>x.active).id,newId);
+  assert.deepEqual(fs.readFileSync(path.join(f.root,'1','a1',id,'original.zip')),before);
+  const newer=await f.call('GET','/uploads/:uploadId/download',{uploadId:newId});
+  const files=parseZip(newer.file).files;
+  assert.deepEqual(files.find(x=>x.name==='assets/car.png').content,replacement);
+  assert.match(files.find(x=>x.name==='assets/app.js').content.toString(),/hello=true/);
+  const stale=await f.call('POST','/uploads/:uploadId/image-replace',{uploadId:id,imagePath:'assets/car.png',buf:replacement});
+  assert.equal(stale.statusCode,409);
+ }finally{f.cleanup()}
+});
+test('image replacement blocks wrong tenants, roles, unsafe formats, invalid origin and read-only writer',async()=>{
+ const f=fixture();
+ try{
+  const initial=testPng(),replacement=testPng([10,10,10]);
+  const saved=await f.call('POST','/uploads/:tier',{tier:499,buf:zip({
+   'index.html':'<html><body><img src="logo.png"></body></html>','logo.png':initial
+  })});
+  const id=saved.body.upload.id;
+  const request={uploadId:id,imagePath:'logo.png',buf:replacement};
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,role:'caller'})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,imageHeader:false})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,origin:'https://other.example'})).statusCode,403);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,customerId:'b1',tenantId:2})).statusCode,404);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,imageMime:'image/svg+xml'})).statusCode,415);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,buf:Buffer.from('<script>alert(1)</script>')})).statusCode,415);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,buf:initial})).statusCode,409);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',{...request,imagePath:'../logo.png'})).statusCode,404);
+  f.setWriter(false);
+  assert.equal((await f.call('POST','/uploads/:uploadId/image-replace',request)).statusCode,423);
   assert.equal(f.state().aiSiteUploads.length,1);
  }finally{f.cleanup()}
 });
