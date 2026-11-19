@@ -68,7 +68,7 @@ test('owner recovery route exports only current customer and does not require ne
  const zip=makeWebsite('tenant one'),id='up_'+'d'.repeat(32),r=record(id,199,zip);
  const dir=path.join(root,'1','c1',id);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'original.zip'),zip);
  const store={aiSiteUploads:[r]},routes={},db={customers:[{id:'c1',tenantId:1},{id:'c1',tenantId:2}]};
- const app={get(p,...handlers){this.routes[p]=handlers},post(){}};
+ const app={routes,get(p,...handlers){this.routes[p]=handlers},post(){}};
  vault.register(app,{auth:(req,res,next)=>req.user?next():res.status(401).json({ok:false}),
   ownerOnly:(req,res,next)=>req.user.role==='owner'?next():res.status(403).json({ok:false}),
   requireTenant:req=>req.tenantId,db,getStore:()=>store,saveStore:async()=>{throw Error('must not write')},

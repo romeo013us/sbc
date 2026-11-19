@@ -10,7 +10,7 @@ const root=path.join(__dirname,'..');
 test('each website package gets ONE customer-verified request for ChatGPT, not three mandatory builds',()=>{
  const c={businessName:'Dario Auto Paint',industry:'Auto Body Shop',city:'Miami',
    websiteVerifiedDetails:{verified:false,services:['Unverified services']}};
- for(const tier of [199,499,799]){
+ for(const tier of [199,499,799,999]){
   const p=H.buildTierPrompt(c,tier);
   assert.match(p,/ONE complete website project/i);
   assert.match(p,/Dario Auto Paint/);
@@ -19,7 +19,7 @@ test('each website package gets ONE customer-verified request for ChatGPT, not t
   assert.doesNotMatch(p,/Unverified services/);
   assert.doesNotMatch(p,/create THREE|all three/i);
  }
- assert.throws(()=>H.buildTierPrompt(c,999),/INVALID_TIER/);
+ assert.throws(()=>H.buildTierPrompt(c,1000),/INVALID_TIER/);
 });
 
 test('customer-scoped owner endpoint provides selected-tier briefs without changing saved proposals',async()=>{
@@ -33,7 +33,7 @@ test('customer-scoped owner endpoint provides selected-tier briefs without chang
  await routes['/api/website-production/customers/:id/ai-proposals'].at(-1)(req,res);
  assert.equal(body.ok,true);
  assert.equal(body.mode,'CHATGPT_MANUAL_HANDOFF');
- for(const tier of [199,499,799]){
+ for(const tier of [199,499,799,999]){
   assert.match(body.prompts[String(tier)],new RegExp('\\$'+tier+'\\b'));
  }
  assert.deepEqual(original.aiWebsiteProposals,[]);
