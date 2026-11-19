@@ -112,8 +112,8 @@
     '<p class="mini">Your secure, one-use design questionnaire is ready. Expires '+escapeHtml(expiration)+'.</p>'+
     '<label class="sbc-design-label">Customer link<input id="sbcDesignShareLink" readonly value="'+escapeHtml(currentLink)+'"></label>'+
     '<div class="sbc-design-buttons"><button type="button" class="btn primary" id="sbcDesignCopy">Copy link</button>'+
-    (c.email&&!suppress(c)?'<button type="button" class="btn" id="sbcDesignEmail">Send SBC email</button>':'')+
-    (c.phone&&!suppress(c)?'<button type="button" class="btn" id="sbcDesignSms">Send SBC text</button>':'')+
+    (role()==='owner'&&c.email&&!suppress(c)?'<button type="button" class="btn" id="sbcDesignEmail">Send SBC email</button>':'')+
+    (role()==='owner'&&c.phone&&!suppress(c)?'<button type="button" class="btn" id="sbcDesignSms">Send SBC text</button>':'')+
     '<a class="btn" href="'+escapeHtml(currentLink)+'" target="_blank" rel="noreferrer noopener">Preview form</a></div>'+
     '<p class="mini">No message has been sent. Email/text buttons require your explicit action and a working SBC communications connection.</p>'+
     '<p id="sbcDesignShareStatus" role="status"></p></div>');
