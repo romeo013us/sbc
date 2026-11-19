@@ -31,3 +31,11 @@ test('both web asset directories expose identical appointment behavior',()=>{
  assert.equal(fs.readFileSync(require.resolve('../public/sbc-appointment-workflow-v1.js'),'utf8'),
  fs.readFileSync(require.resolve('../browser_public/sbc-appointment-workflow-v1.js'),'utf8'));
 });
+
+test('account-manager appointments are writable only when their session is active and recovery is off',()=>{
+ assert.equal(mod.canWriteAppointment({role:'account_manager',active:true},{}),true);
+ assert.equal(mod.canWriteAppointment({role:'account_manager',active:false},{}),false);
+ assert.equal(mod.canWriteAppointment({role:'owner',active:true},{readOnly:true}),false);
+ assert.equal(mod.canWriteAppointment({role:'owner',active:true},{recoveryRequired:true}),false);
+ assert.equal(mod.canWriteAppointment({role:'lead_researcher',active:true},{}),false);
+});
