@@ -108,13 +108,13 @@ test('upload once, preview and download from the correct owner-only customer acc
 test('tiers and historical uploads stay distinct without changing CRM records',async()=>{
  const f=fixture();
  try{
-  for(const tier of [199,499,799,199]){
+  for(const tier of [199,499,799,999,199]){
    const r=await f.call('POST','/uploads/:tier',{tier:String(tier),buf:zip({'index.html':'<h1>'+tier+'</h1>'})});
    assert.equal(r.statusCode,201,JSON.stringify(r.body));
   }
   const list=await f.call('GET','/uploads');
-  assert.deepEqual(list.body.uploads.map(x=>x.tier).sort(),[199,199,499,799]);
-  assert.equal(f.state().aiSiteUploads.length,4);
+  assert.deepEqual(list.body.uploads.map(x=>x.tier).sort(),[199,199,499,799,999]);
+  assert.equal(f.state().aiSiteUploads.length,5);
   assert.equal(Object.keys(f.state()).length,1);
  }finally{f.cleanup()}
 });
@@ -122,7 +122,7 @@ test('rejects invalid inputs and a read-only writer without creating saved uploa
  const f=fixture();
  try{
   const valid=zip({'index.html':'<html>hi</html>'});
-  assert.equal((await f.call('POST','/uploads/:tier',{tier:'999',buf:valid})).statusCode,400);
+  assert.equal((await f.call('POST','/uploads/:tier',{tier:'1000',buf:valid})).statusCode,400);
   assert.equal((await f.call('POST','/uploads/:tier',{tier:'199',buf:valid,origin:'https://attacker.example'})).statusCode,403);
   assert.equal((await f.call('POST','/uploads/:tier',{tier:'199',buf:zip({'../index.html':'bad'})})).statusCode,400);
   f.setWriter(false);
@@ -137,6 +137,7 @@ test('owner proposal UI and global contrast layers remain mirrored for deploymen
  }
  const ui=fs.readFileSync(path.join(root,'public/sbc-ai-site-handoff-v1.js'),'utf8');
  assert.match(ui,/Upload &amp; save proposal/);
+ assert.match(ui,/id:999,title:'Growth/,'Growth package must be selectable in owner UI');
  assert.match(ui,/fetch\(base\+'\/uploads\/'\+tier/);
  assert.match(ui,/sandbox="allow-scripts"/);
  const css=fs.readFileSync(path.join(root,'public/sbc-command-center-focus-v1.css'),'utf8');

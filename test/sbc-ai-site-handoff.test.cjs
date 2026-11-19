@@ -20,7 +20,7 @@ function fixture(){
  };
  return {call,getData:()=>data};
 }
-test('creates a three-tier brief without unverified lead research',async()=>{
+test('creates a four-tier brief without unverified lead research',async()=>{
  const {call}=fixture();
  const r=await call('GET',11);
  assert.equal(r.statusCode,200);
@@ -28,13 +28,16 @@ test('creates a three-tier brief without unverified lead research',async()=>{
  assert.match(r.body.prompt,/\$199/);
  assert.match(r.body.prompt,/\$499/);
  assert.match(r.body.prompt,/\$799/);
+ assert.match(r.body.prompt,/\$999/);
+ assert.match(r.body.prompts['999'],/Package: \$999/);
+ assert.match(r.body.prompts['999'],/GROWTH/);
  assert.doesNotMatch(r.body.prompt,/UNVERIFIED PRIVATE RESEARCH/);
 });
 test('tenant boundary prevents reading another business',async()=>{
  const {call}=fixture();
  assert.equal((await call('GET',22)).statusCode,404);
 });
-test('saves three separate tiers and rejects stale writes',async()=>{
+test('saves four separate tiers and rejects stale writes',async()=>{
  const {call,getData}=fixture();
  let r=await call('PATCH',11,1,{tier:199,previewUrl:'https://example.com/starter',notes:'one page',expectedRevision:0});
  assert.equal(r.statusCode,200);assert.equal(r.body.revision,1);
@@ -42,12 +45,14 @@ test('saves three separate tiers and rejects stale writes',async()=>{
  assert.equal(r.body.revision,2);
  r=await call('PATCH',11,1,{tier:799,previewUrl:'https://example.com/advanced',notes:'advanced concept only',expectedRevision:2});
  assert.equal(r.body.revision,3);
- assert.equal(Object.keys(getData().aiWebsiteProposals[0].variants).length,3);
+ r=await call('PATCH',11,1,{tier:999,previewUrl:'https://example.com/growth',notes:'owner review only',expectedRevision:3});
+ assert.equal(r.statusCode,200);assert.equal(r.body.revision,4);
+ assert.equal(Object.keys(getData().aiWebsiteProposals[0].variants).length,4);
  assert.equal((await call('PATCH',11,1,{tier:499,previewUrl:'https://other.example.com',expectedRevision:1})).statusCode,409);
 });
 test('rejects dangerous URLs and unsupported prices',async()=>{
  const {call}=fixture();
- assert.equal((await call('PATCH',11,1,{tier:999,previewUrl:'https://example.com',expectedRevision:0})).statusCode,400);
+ assert.equal((await call('PATCH',11,1,{tier:1000,previewUrl:'https://example.com',expectedRevision:0})).statusCode,400);
  assert.equal((await call('PATCH',11,1,{tier:199,previewUrl:'javascript:alert(1)',expectedRevision:0})).statusCode,400);
  assert.equal((await call('PATCH',11,1,{tier:199,previewUrl:'http://localhost/x',expectedRevision:0})).statusCode,400);
 });

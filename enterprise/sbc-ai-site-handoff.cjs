@@ -1,8 +1,8 @@
 'use strict';
-// Owner-only, tenant-scoped ChatGPT handoff for three independent website proposals.
+// Owner-only, tenant-scoped ChatGPT handoff for four independent website proposals.
 // No automatic ChatGPT session access, external AI charge, publishing, or outreach.
 const ROOT='/api/website-production/customers/:id/ai-proposals';
-const TIERS=Object.freeze([199,499,799]);
+const TIERS=Object.freeze([199,499,799,999]);
 const clean=(v,max)=>String(v??'').trim().slice(0,max);
 function buildPrompt(customer){
  const profile=customer?.websiteVerifiedDetails?.verified===true?customer.websiteVerifiedDetails:null;
@@ -11,7 +11,7 @@ function buildPrompt(customer){
  const city=clean(customer?.city||'',80);
  const services=Array.isArray(profile?.services)?profile.services.map(x=>clean(typeof x==='string'?x:x?.name,70)).filter(Boolean).slice(0,12):[];
  return [
- 'You are creating THREE separate high-quality customer-ready WEBSITE PROJECTS for Successful By Choice.',
+ 'You are creating FOUR separate high-quality customer-ready WEBSITE PROJECTS for Successful By Choice.',
  'Business: '+business,
  'Industry: '+industry,
  'Location: '+(city||'not supplied'),
@@ -21,16 +21,17 @@ function buildPrompt(customer){
  '1. $199 STARTER — a polished single-page website with hero, services, contact and clear calls to action.',
  '2. $499 CUSTOM — a premium multi-page website with richer functionality appropriate to the business, and editable content.',
  '3. $799 ADVANCED PROPOSAL — an advanced working design concept; include only operational features actually implemented and tested, otherwise mark them planned.',
+ '4. $999 GROWTH — a premium multi-page website with accessible navigation, technical SEO fundamentals, fast loading, and working lead capture only where a real endpoint exists.',
  'Quality benchmark: C & T Auto Motors Signature V2. No generic or broken layouts; test navigation, desktop, mobile, styling, accessible inputs and deployment.',
  'Do not fabricate reviews, prices, vehicles, credentials, legal promises, booking availability, or customer claims.',
  'Use clearly labeled example content when photos/prices are pending; do not represent examples as real inventory.',
  'Never collect sensitive identity, financial, or health information through an unsecured form.',
- 'Keep all three builds separate with a comparison of included features, tests performed, remaining setup, and deployment instructions.',
+ 'Keep all four builds separate with a comparison of included features, tests performed, remaining setup, and deployment instructions.',
  'The user will download each website ZIP and upload it directly into the matching SBC customer proposal slot for private review; no manual hosting or URL entry is needed.',
  'These are owner-reviewed PROPOSALS; do not publish, contact the prospect, make purchases, or modify the live site without approval.'
  ].join('\n');
 }
-// One customer + one selected package. Existing three-tier legacy request remains available.
+// One customer + one selected package. The original multi-site request now covers four approved packages.
 function buildTierPrompt(customer,tier){
  const amount=Number(tier);
  if(!TIERS.includes(amount))throw Error('INVALID_TIER');
@@ -42,7 +43,8 @@ function buildTierPrompt(customer,tier){
  const packages={
   199:'STARTER: a polished responsive single-page website with essential sections and clear contact calls to action.',
   499:'CUSTOM: a premium responsive multi-page site with editable source and genuinely working components.',
-  799:'ADVANCED: a premium multi-page proposal with polished interactions, accessible controls, and only features that truly work.'
+  799:'ADVANCED: a premium multi-page proposal with polished interactions, accessible controls, and only features that truly work.',
+  999:'GROWTH: a premium responsive multi-page site with strong technical SEO foundations, accessible navigation and fast loading. Include working lead capture only with a real endpoint; otherwise clearly label backend setup requirements. Do not claim hosting, SSL issuance or results without verification.'
  };
  return [
   'Build ONE complete website project for Successful By Choice. Package: $'+amount+'.',

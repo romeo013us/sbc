@@ -2,7 +2,7 @@
 (function(){
  'use strict';
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const TIERS=[{id:199,title:'Starter · One Page',description:'A polished single-page experience'},{id:499,title:'Custom · Multi-page',description:'Richer pages and content'},{id:799,title:'Advanced · Proposal',description:'Working interactive concept only'}];
+ const TIERS=[{id:199,title:'Starter · One Page',description:'A polished single-page experience'},{id:499,title:'Custom · Multi-page',description:'Richer pages and content'},{id:799,title:'Advanced · Proposal',description:'Working interactive concept only'},{id:999,title:'Growth · Multi-page',description:'Premium growth-oriented site · verified functionality only'}];
  const LIMIT=20*1024*1024;
  async function open(customer,{serviceApi,openModal}){
   if(!customer?.id||typeof serviceApi!=='function'||typeof openModal!=='function')throw Error('AI website handoff unavailable');
@@ -50,7 +50,7 @@
    '<div id="sbcAIBackup" class="sbc-ai-current" aria-live="polite">Checking available customer backups…</div>'+
    '<small>No direct access to ChatGPT sessions, automatic customer messages, or publishing. You control approval.</small></section>'+
    '<details id="sbcAIAdvanced" class="sbc-ai-other"><summary>Advanced options · all packages, saved versions and hosted links</summary>'+
-   '<details><summary>Original three-site brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
+   '<details><summary>Original four-site brief</summary><textarea id="sbcAIBrief" rows="13">'+esc(result.prompt||'')+'</textarea></details>'+
    '<div class="sbc-ai-grid">'+cards+'</div></details>'+
    '<p id="sbcAIState" class="sbc-ai-state" role="status" aria-live="polite">Loading saved proposal files…</p>'+
    '<section class="sbc-ai-preview"><div class="sbc-ai-preview-head"><h4>Owner review preview</h4><p>The website runs in a restricted preview frame. Forms cannot send submissions from this preview.</p></div>'+

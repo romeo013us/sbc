@@ -9,7 +9,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const zlib=require('node:zlib');
 const ROOT='/api/website-production/customers/:id/ai-proposals';
-const TIERS=new Set([199,499,799]);
+const TIERS=new Set([199,499,799,999]);
 const ZIP_MAX=20*1024*1024, FILE_MAX=12*1024*1024, TOTAL_MAX=72*1024*1024, ENTRY_MAX=300;
 const SERVE_EXT=new Set(['.html','.htm','.css','.js','.mjs','.json','.webmanifest','.svg','.png','.jpg','.jpeg','.webp','.gif','.ico','.woff','.woff2','.ttf','.txt','.xml','.avif']);
 const TYPES={'.html':'text/html; charset=utf-8','.htm':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2','.ttf':'font/ttf','.txt':'text/plain; charset=utf-8','.xml':'application/xml','.avif':'image/avif'};
