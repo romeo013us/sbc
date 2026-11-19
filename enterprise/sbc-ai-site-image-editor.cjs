@@ -38,7 +38,7 @@ function jpegDimensions(buf){
   if(length<2||i+length>buf.length)throw Error('IMAGE_FORMAT_INVALID');
   if([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker)){
    if(length<7)throw Error('IMAGE_FORMAT_INVALID');
-   return dimensions(buf.readUInt16BE(i+3),buf.readUInt16BE(i+5));
+   return dimensions(buf.readUInt16BE(i+5),buf.readUInt16BE(i+3));
   }
   i+=length;
  }
