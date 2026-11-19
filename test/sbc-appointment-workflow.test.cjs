@@ -39,3 +39,11 @@ test('account-manager appointments are writable only when their session is activ
  assert.equal(mod.canWriteAppointment({role:'owner',active:true},{recoveryRequired:true}),false);
  assert.equal(mod.canWriteAppointment({role:'lead_researcher',active:true},{}),false);
 });
+
+test('call-screen appointment panel uses explicit readable foreground and background, not inherited white text',()=>{
+ const fs=require('node:fs');
+ const source=fs.readFileSync(require.resolve('../public/sbc-appointment-workflow-v1.js'),'utf8');
+ assert.match(source,/\.sbc-appt-call\{[^}]*background:#f8fafc;[^}]*color:#172033/);
+ assert.match(source,/\.sbc-appt-call \.mini\{[^}]*color:#475569/);
+ assert.match(source,/\.sbc-appt-call select\{[^}]*background:#fff;[^}]*color:#172033/);
+});
