@@ -143,6 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         $business = $clean($_POST['business'] ?? '');
         $name = $clean($_POST['name'] ?? '');
         $phone = $clean($_POST['phone'] ?? '');
+        $email = $clean($_POST['email'] ?? '');
         $qty = $clean($_POST['qty'] ?? '');
         $colors = $clean($_POST['colors'] ?? '');
         $style = $clean($_POST['style'] ?? '');
@@ -151,31 +152,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sbc_form'])) {
         if ($business === '' || $name === '') {
             echo json_encode(['ok' => false, 'message' => 'Please enter the business name and your name.']); exit;
         }
+        if ($phone === '' && $email === '') {
+            echo json_encode(['ok' => false, 'message' => 'Please enter a phone number or email address so SBC can follow up.']); exit;
+        }
         $crm = $sbc_crm_lead([
-            'businessName'=>$business,'contactName'=>$name,'phone'=>$phone,'serviceInterest'=>'Business Cards',
+            'businessName'=>$business,'contactName'=>$name,'phone'=>$phone,'email'=>$email,'serviceInterest'=>'Business Cards',
             'quoteType'=>'Business Card Design Brief','quantity'=>$qty,'message'=>"Colors: $colors\nStyle: $style\nCard details: $details\nNotes: $notes",
             'sourcePage'=>'https://sbcmia.com/#card-questionnaire',
             'marketingAttribution'=>sbcSuperSbcAttribution($_GET)
         ]);
         $subject = 'Business Card Design Brief - ' . $business;
-        $body = "SBC BUSINESS CARD DESIGN BRIEF\n\nBusiness: $business\nName: $name\nPhone: $phone\nQuantity: $qty\nColors: $colors\nStyle: $style\nCard details: $details\nNotes: $notes\nCRM: " . ($crm['ok']?'Created/updated lead':'Bridge unavailable — email notification only') . "\n";
+        $body = "SBC BUSINESS CARD DESIGN BRIEF\n\nBusiness: $business\nName: $name\nPhone: $phone\nEmail: $email\nQuantity: $qty\nColors: $colors\nStyle: $style\nCard details: $details\nNotes: $notes\nCRM: " . ($crm['ok']?'Created/updated lead':'Bridge unavailable — email notification only') . "\n";
     } elseif ($form === 'sign') {
         $name = $clean($_POST['name'] ?? '');
         $business = $clean($_POST['business'] ?? '');
+        $phone = $clean($_POST['phone'] ?? '');
+        $email = $clean($_POST['email'] ?? '');
         $signType = $clean($_POST['sign_type'] ?? '');
         $size = $clean($_POST['size'] ?? '');
         $details = $clean($_POST['details'] ?? '');
         if ($name === '' || $signType === '' || $details === '') {
             echo json_encode(['ok' => false, 'message' => 'Please complete the required sign details.']); exit;
         }
+        if ($phone === '' && $email === '') {
+            echo json_encode(['ok' => false, 'message' => 'Please enter a phone number or email address so SBC can follow up.']); exit;
+        }
         $crm = $sbc_crm_lead([
-            'businessName'=>$business,'contactName'=>$name,'serviceInterest'=>'LED & Neon Signs',
+            'businessName'=>$business,'contactName'=>$name,'phone'=>$phone,'email'=>$email,'serviceInterest'=>'LED & Neon Signs',
             'quoteType'=>'Sign Request','message'=>"Sign type: $signType\nApprox. size: $size\nDetails: $details",
             'sourcePage'=>'https://sbcmia.com/#led-neon',
             'marketingAttribution'=>sbcSuperSbcAttribution($_GET)
         ]);
         $subject = 'New LED / Neon Sign Request' . ($business ? ' - ' . $business : '');
-        $body = "SBC LED / NEON SIGN REQUEST\n\nName: $name\nBusiness: $business\nWhat they are looking for: $signType\nApprox. size: $size\nDetails: $details\nCRM: " . ($crm['ok']?'Created/updated lead':'Bridge unavailable — email notification only') . "\n";
+        $body = "SBC LED / NEON SIGN REQUEST\n\nName: $name\nBusiness: $business\nPhone: $phone\nEmail: $email\nWhat they are looking for: $signType\nApprox. size: $size\nDetails: $details\nCRM: " . ($crm['ok']?'Created/updated lead':'Bridge unavailable — email notification only') . "\n";
 
         $file = $_FILES['design'] ?? null;
         if ($file && isset($file['error']) && $file['error'] !== UPLOAD_ERR_NO_FILE) {
@@ -980,6 +989,8 @@ Successful By Choice makes it easier to build a professional business presence w
        <div class="neon-form-grid">
         <input type="text" name="name" placeholder="Your name" aria-label="Your name" required>
         <input type="text" name="business" placeholder="Business name" aria-label="Business name">
+        <input type="tel" name="phone" placeholder="Phone number" aria-label="Phone number" autocomplete="tel">
+        <input type="email" name="email" placeholder="Email address" aria-label="Email address" autocomplete="email">
         <input type="text" name="sign_type" placeholder="What are you looking for?" aria-label="What are you looking for?" required>
         <input type="text" name="size" placeholder="Approx. size, if known" aria-label="Approximate size">
         <textarea name="details" placeholder="Describe your idea — words, colors, logo, where it will go, and anything else you know." aria-label="Describe your sign idea" required></textarea>
@@ -988,7 +999,7 @@ Successful By Choice makes it easier to build a professional business presence w
        <input type="file" name="design" accept="image/*,.pdf" aria-label="Upload logo, sketch or inspiration image">
        <p class="neon-file-note">Browser email forms do not reliably send attachments. If you select a file, SBC may ask you to send it separately after we receive your request.</p>
        <button class="btn btn-orange" type="submit"><i class="fa-solid fa-paper-plane"></i> Send My Sign Idea</button>
-       <p id="signNotice" style="display:none;margin-top:12px;font-size:12px;font-weight:800;"></p>
+       <p id="signNotice" aria-live="polite" style="display:none;margin-top:12px;font-size:12px;font-weight:800;"></p>
       </form>
      </div>
     </div>
@@ -1075,36 +1086,39 @@ Successful By Choice makes it easier to build a professional business presence w
    <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
    <div class="question-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
      <label>Business name
-       <input id="qBusiness" required placeholder="Your business name">
+       <input id="qBusiness" name="business" required placeholder="Your business name">
      </label>
      <label>Your name
-       <input id="qName" required placeholder="Your name">
+       <input id="qName" name="name" required placeholder="Your name">
      </label>
      <label>Phone number
-       <input id="qPhone" type="tel" placeholder="Best contact number">
+       <input id="qPhone" name="phone" type="tel" autocomplete="tel" placeholder="Best contact number">
+     </label>
+     <label>Email address
+       <input id="qEmail" name="email" type="email" autocomplete="email" placeholder="Your email address">
      </label>
      <label>Card quantity
-       <select id="qQty"><option>100</option><option>200</option><option>500</option><option>1,000</option><option>Other / Quote</option></select>
+       <select id="qQty" name="qty"><option>100</option><option>200</option><option>500</option><option>1,000</option><option>Other / Quote</option></select>
      </label>
      <label>Preferred colors
-       <input id="qColors" placeholder="Example: blue and orange">
+       <input id="qColors" name="colors" placeholder="Example: blue and orange">
      </label>
      <label>Style
-       <select id="qStyle"><option>Clean & professional</option><option>Bold & modern</option><option>Luxury / premium</option><option>Simple & minimal</option><option>Let SBC recommend</option></select>
+       <select id="qStyle" name="style"><option>Clean & professional</option><option>Bold & modern</option><option>Luxury / premium</option><option>Simple & minimal</option><option>Let SBC recommend</option></select>
      </label>
    </div>
    <label class="full-question">What should be on the card?
-     <textarea id="qDetails" rows="4" placeholder="Logo, phone, website, email, address, services, social media, slogan, etc."></textarea>
+     <textarea id="qDetails" name="details" rows="4" placeholder="Logo, phone, website, email, address, services, social media, slogan, etc."></textarea>
    </label>
    <label class="full-question">Anything else SBC should know?
-     <textarea id="qNotes" rows="3" placeholder="Examples: double-sided, include a QR code, match my website, use a specific image, etc."></textarea>
+     <textarea id="qNotes" name="notes" rows="3" placeholder="Examples: double-sided, include a QR code, match my website, use a specific image, etc."></textarea>
    </label>
    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;">
      <button class="btn btn-orange" type="submit"><i class="fa-solid fa-comment-sms"></i> Prepare Text to SBC</button>
-     <button class="btn" type="button" onclick="emailCardBrief()" style="background:var(--blue);color:#fff;"><i class="fa-solid fa-envelope"></i> Send Brief to SBC</button>
+     <button class="btn" type="button" id="sendCardBriefBtn" onclick="emailCardBrief()" style="background:var(--blue);color:#fff;"><i class="fa-solid fa-envelope"></i> Send Brief to SBC</button>
      <button class="btn" type="button" onclick="window.print()" style="background:var(--navy);color:#fff;">Print / Save Brief</button>
    </div>
-   <p id="briefNotice" style="display:none;margin-top:14px;color:#047857;font-size:12px;font-weight:700;"></p>
+   <p id="briefNotice" aria-live="polite" style="display:none;margin-top:14px;color:#047857;font-size:12px;font-weight:700;"></p>
  </form>
  </div>
  </div>
