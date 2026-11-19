@@ -35,7 +35,7 @@
   const getData=()=>{try{return win.state?.data||{};}catch{return {};}};
   const records=()=>Array.isArray(getData().appointments)?getData().appointments:[];
   const customers=()=>Array.isArray(getData().customers)?getData().customers:[];
-  const canWrite=()=>['owner','manager','caller'].includes(String(win.state?.me?.role||''))&&!getData().readOnly&&!getData().recoveryRequired;
+  const canWrite=()=>['owner','manager','caller'].includes(String(win.state?.me?.role||''))&&!getData().readOnly&&!getData().recoveryRequired&&!getData().mysqlRecoveryRequired&&!getData().recovery?.required;
   const callHost=()=>doc.getElementById('sbcManualDialer');
   const accountHost=()=>doc.getElementById('sbcLeadAccount360');
   let callCustomer='',lastContext='',submitting=false,queued=false;
@@ -84,6 +84,7 @@
    if(!canWrite())return win.toast?.('Appointment changes are not available in read-only mode.');
    const a=appointmentId?records().find(x=>String(x.id)===String(appointmentId)):null;
    if(appointmentId&&!a)return win.toast?.('Appointment not in the current CRM view. Refresh.');
+   if(a&&customerId&&String(a.customerId)!==String(customerId))return win.toast?.('Appointment does not belong to this account.');
    customerId=String(a?.customerId||customerId||'');if(!selected(customerId))return win.toast?.('Choose a valid customer account first.');
    if(typeof win.openModal!=='function')return win.toast?.('Appointment editor is unavailable.');
    lastContext=source==='account'?customerId:'';
