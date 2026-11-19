@@ -243,7 +243,8 @@ def public_release_gate(required_ok, requested_pass, diagnostics_closed):
 
 def selftest():
     assert set(ENDPOINTS) == REQUIRED | LATEST_UI | RESELLER_PATHS.keys() | DIAGNOSTIC_ROUTES.keys()
-    assert public_release_gate(True, True, True) is True
+    assert public_release_gate(True, True, True, True) is True
+    assert public_release_gate(True, True, True, False) is False
     assert public_release_gate(True, True, False) is False
     assert public_release_gate(False, True, True) is False
     assert public_release_gate(True, False, True) is False
