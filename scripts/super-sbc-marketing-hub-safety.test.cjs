@@ -79,7 +79,7 @@ test('accessibility and mirrored asset parity are preserved',()=>{
   assert.match(js,/setAttribute\('role','dialog'\)/);
   assert.match(js,/setAttribute\('aria-modal','true'\)/);
   assert.match(js,/e\.key==='Escape'/);
-  assert.match(js,/e\.key==='Tab'/);
+  assert.match(js,/e\.key!=='Tab'/);
   assert.match(js,/previousFocus/);
   assert.match(css,/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.match(css,/:focus-visible/);
