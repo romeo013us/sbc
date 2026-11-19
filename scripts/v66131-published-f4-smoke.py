@@ -236,18 +236,18 @@ def evaluate(name, status, body, headers, url):
     return result
 
 
-def public_release_gate(required_ok, requested_pass, diagnostics_closed):
+def public_release_gate(required_ok, requested_pass, diagnostics_closed, latest_ui):
     # Green requires the deprecated diagnostic routes to be closed too.
-    return bool(required_ok and requested_pass and diagnostics_closed)
+    return bool(required_ok and requested_pass and diagnostics_closed and latest_ui)
 
 
 def selftest():
     assert set(ENDPOINTS) == REQUIRED | LATEST_UI | RESELLER_PATHS.keys() | DIAGNOSTIC_ROUTES.keys()
     assert public_release_gate(True, True, True, True) is True
     assert public_release_gate(True, True, True, False) is False
-    assert public_release_gate(True, True, False) is False
-    assert public_release_gate(False, True, True) is False
-    assert public_release_gate(True, False, True) is False
+    assert public_release_gate(True, True, False, True) is False
+    assert public_release_gate(False, True, True, True) is False
+    assert public_release_gate(True, False, True, True) is False
     for url in ENDPOINTS.values():
         assert url.startswith("https://")
         assert set(parse_qs(urlsplit(url).query)) <= {"v", "pl_id", "plid"}
@@ -358,7 +358,7 @@ def run(args):
     summary += [
         "",
         f"**Required public checks across all four products:** {'PASS' if ok else 'NOT VERIFIED'}.",
-        f"**Latest workstation and Office Box UI assets:** {'SERVED' if latest_ui else 'NOT VERIFIED'}.",
+        f"**Latest workstation and Office Box UI assets (required):** {'SERVED' if latest_ui else 'NOT VERIFIED — RELEASE GATE BLOCKED'}.",
         f"**Command Center diagnostic route on both public hosts:** {'CLOSED' if diagnostics_closed else 'CLOSURE UNVERIFIED'}.",
         "",
     ]
@@ -371,7 +371,7 @@ def run(args):
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf8") as f:
             f.write(text + "\n")
-    return 0 if public_release_gate(ok, requested_pass, diagnostics_closed) else 1
+    return 0 if public_release_gate(ok, requested_pass, diagnostics_closed, latest_ui) else 1
 
 
 if __name__ == "__main__":
