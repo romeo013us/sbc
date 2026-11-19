@@ -49,5 +49,11 @@ test('mirrors and actual Account Manager integration are installed',()=>{
  assert(js.includes('SBCCallCommand?.saved'));
  assert(js.includes('SBCCallCommand?.failed'));
  assert(js.includes('SBCCallCommand?.clear'));
+ assert.equal(read('public/sbc-call-command-v1.js'),read('browser_public/sbc-call-command-v1.js'));
+ assert(read('public/sbc-call-command-v1.js').includes('SBCCallCommandLiveV3?.open'));
+ assert(read('public/sbc-call-command-v1.js').includes('SBCCallCommandLiveV3?.close'));
+ assert.equal(read('public/sbc-call-command-live-v3.js'),read('browser_public/sbc-call-command-live-v3.js'));
+ assert.equal(read('public/sbc-call-command-live-v3.css'),read('browser_public/sbc-call-command-live-v3.css'));
+
  assert(js.includes("['owner','account_manager'].includes(state.role)"));
 });

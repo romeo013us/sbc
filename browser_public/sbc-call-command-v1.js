@@ -151,7 +151,7 @@
   if(!account||!['owner','account_manager'].includes(role)||typeof onNext!=='function')return clear();
   const id=String(account.id||'');if(!id||!Array.isArray(accounts))return clear();
   coordinator.clear();current={account,accounts,lang,onNext};
-  const host=mount();if(host){host.hidden=false;host.innerHTML=render(account,accounts,lang,new Date(),handled)}
+  const host=mount();if(host){host.hidden=false;host.innerHTML=render(account,accounts,lang,new Date(),handled);window.SBCCallCommandLiveV3?.open({account,role,lang});}
  }
  function saved(id){
   if(!current||String(current.account.id)!==String(id))return;
@@ -161,6 +161,6 @@
   if(target){current.onNext(target)}else notice('Outcome saved. No next account is ready for review.');
  }
  function failed(id){if(current&&String(current.account.id)===String(id)){coordinator.clear();notice('Save was not confirmed. Stay on this account and retry; no automatic navigation.')}}
- function clear(){current=null;coordinator.clear();handled.clear();if(typeof window!=='undefined'){const host=window.document.getElementById('sbcCallCommandV1');if(host){host.hidden=true;host.replaceChildren()}}}
+ function clear(){window.SBCCallCommandLiveV3?.close();current=null;coordinator.clear();handled.clear();if(typeof window!=='undefined'){const host=window.document.getElementById('sbcCallCommandV1');if(host){host.hidden=true;host.replaceChildren()}}}
  return Object.freeze({cleanPhone,isSuppressed,callEligibility,reviewQueue,nextAccountId,createSaveCoordinator,render,open,saved,failed,clear});
 });
