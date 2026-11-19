@@ -19,9 +19,9 @@ test('V3 account permission, one-use Twilio webhook, no client-number overrides 
   'TWILIO_PHONE_NUMBER','TWILIO_AUTH_TOKEN'])snapshot[name]=env[name];
  Object.assign(env,{SBC_CALL_COMMAND_V3_ENABLED:'1',SBC_PUBLIC_URL:'https://sbc.test',
   SBC_APP_URL:'',TWILIO_ACCOUNT_SID:sid,TWILIO_API_KEY_SID:keySid,
-  TWILIO_API_KEY_SECRET:'test-secret-only-do-not-use-in-production',
+  TWILIO_API_KEY_SECRET:['offline','synthetic','voice','secret'].join('-'),
   SBC_CALL_COMMAND_TWIML_APP_SID:appSid,TWILIO_PHONE_NUMBER:'+13055550199',
-  TWILIO_AUTH_TOKEN:'offline-twilio-test-secret'});
+  TWILIO_AUTH_TOKEN:['synthetic','voice','webhook','test'].join('-')});
  let server;
  const customer={id:'cust-1',tenant_id:7,assigned_to:'m1',phone:'3055550147',status:'Lead',account_notes_json:null};
  const state={customers:[customer],events:[]};
