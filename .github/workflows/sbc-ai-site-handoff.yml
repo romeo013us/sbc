@@ -16,6 +16,7 @@ on:
       - 'test/sbc-ai-site-handoff.test.cjs'
       - 'test/sbc-ai-simple-chatgpt-flow.test.cjs'
       - 'test/sbc-ai-site-workspace-upgrades.test.cjs'
+      - 'test/sbc-ai-site-workspace-interaction.test.cjs'
       - 'public/sbc-command-center-focus-v1.css'
       - 'browser_public/sbc-command-center-focus-v1.css'
       - '.github/workflows/sbc-ai-site-handoff.yml'
@@ -38,6 +39,7 @@ on:
       - 'test/sbc-ai-site-handoff.test.cjs'
       - 'test/sbc-ai-simple-chatgpt-flow.test.cjs'
       - 'test/sbc-ai-site-workspace-upgrades.test.cjs'
+      - 'test/sbc-ai-site-workspace-interaction.test.cjs'
       - 'public/sbc-command-center-focus-v1.css'
       - 'browser_public/sbc-command-center-focus-v1.css'
       - '.github/workflows/sbc-ai-site-handoff.yml'
@@ -63,4 +65,4 @@ jobs:
           node --check public/sbc-ai-site-handoff-v1.js
           cmp public/sbc-ai-site-handoff-v1.js browser_public/sbc-ai-site-handoff-v1.js
       - name: Validate tenant-safe customer proposal handoff
-        run: node --test test/sbc-ai-site-handoff.test.cjs test/sbc-ai-zip-proposals.test.cjs test/sbc-ai-zip-preview-audit.test.cjs test/sbc-ai-simple-chatgpt-flow.test.cjs test/sbc-ai-site-recovery-export.test.cjs test/sbc-ai-preview-edge-allowlist.test.cjs test/sbc-ai-site-workspace-upgrades.test.cjs
+        run: node --test test/sbc-ai-site-handoff.test.cjs test/sbc-ai-zip-proposals.test.cjs test/sbc-ai-zip-preview-audit.test.cjs test/sbc-ai-simple-chatgpt-flow.test.cjs test/sbc-ai-site-recovery-export.test.cjs test/sbc-ai-preview-edge-allowlist.test.cjs test/sbc-ai-site-workspace-upgrades.test.cjs test/sbc-ai-site-workspace-interaction.test.cjs
