@@ -68,6 +68,7 @@
    '<iframe id="sbcAIFrame" title="Owner-only website proposal preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="about:blank"></iframe></div>'+
    '<section class="sbc-ai-release-review" aria-label="Customer site delivery quality check">'+
    '<h4>Final quality and publishing handoff</h4>'+
+   '<button type="button" id="sbcAIRunQA" class="btn">Run quality check on saved ZIP</button>'+ 
    '<p id="sbcAIQAStatus" class="sbc-ai-meta" role="status">Select a saved website for review.</p>'+
    '<label><input type="checkbox" data-sbc-ai-release-check>Business details, services and claims verified with the owner</label>'+
    '<label><input type="checkbox" data-sbc-ai-release-check>Desktop, tablet and mobile preview checked</label>'+
@@ -87,7 +88,9 @@
   function clearApprovals(){checks().forEach(x=>{x.checked=false});}
   function releaseAllowed(){
    const v=currentVersion(),qa=v?.previewAudit;
-   return Boolean(v&&qa?.issueCount===0&&qa.deliveryReview?.status==='STATIC_CHECKS_PASSED'&&checks().length===4&&checks().every(x=>x.checked===true));
+   const flags=qa?.deliveryReview?.flags;
+   const blocking=Array.isArray(flags)?flags.filter(x=>x!=='FORM_BACKEND_MUST_BE_TESTED'):['AUDIT_MISSING'];
+   return Boolean(v&&qa?.issueCount===0&&qa?.deliveryReview&&blocking.length===0&&checks().length===4&&checks().every(x=>x.checked===true));
   }
   function updateReleaseReview(){
    const v=currentVersion(),qa=v?.previewAudit,flags=qa?.deliveryReview?.flags||[];
@@ -97,11 +100,14 @@
     FORM_BACKEND_MUST_BE_TESTED:'Live form endpoint must be tested',
     IMAGE_ALT_TEXT_REVIEW:'Image accessibility text needs review'};
    if(summary){
+    const blockers=flags.filter(x=>x!=='FORM_BACKEND_MUST_BE_TESTED');
     summary.textContent=!v?'Upload a ZIP to begin quality review.':
-      !qa||!qa.deliveryReview?'Older ZIP needs re-upload for full delivery checks.':
-      qa.issueCount||flags.length?
-       'Not ready for handoff: '+qa.issueCount+' missing or blocked file links; '+flags.map(x=>descriptions[x]||x).join('; ')+'.':
-       'Static file checks passed. Complete the four manual confirmations before downloading for publishing.';
+      !qa||!qa.deliveryReview?'Older ZIP: click Run quality check to inspect it without re-uploading.':
+      qa.issueCount||blockers.length?
+       'Not ready for handoff: '+qa.issueCount+' missing or blocked file links; '+blockers.map(x=>descriptions[x]||x).join('; ')+'.':
+       flags.includes('FORM_BACKEND_MUST_BE_TESTED')?
+        'Static files passed. The live form backend must be tested outside this sandbox before owner approval.':
+        'Static file checks passed. Complete the four manual confirmations before downloading for publishing.';
    }
    const btn=document.getElementById('sbcAIPreparePublish');
    if(btn)btn.disabled=!releaseAllowed();
@@ -121,6 +127,21 @@
    a.download='sbc-approved-for-manual-hosting-'+currentTier()+'.zip';
    document.body.appendChild(a);a.click();a.remove();
    say('Approved ZIP prepared for manual deployment. Not published; verify hosting and payment separately.');
+  });
+  document.getElementById('sbcAIRunQA')?.addEventListener('click',async()=>{
+   const item=currentVersion(),button=document.getElementById('sbcAIRunQA');
+   if(!item)return say('Upload a customer website ZIP before running quality checks.',true);
+   if(button.disabled)return;
+   button.disabled=true;say('Checking saved ZIP files and delivery details…');
+   try{
+    const response=await serviceApi(base+'/uploads/'+item.id+'/qa');
+    if(response?.ok!==true||response.readOnly!==true||!response.previewAudit)throw Error(response?.code||'Quality check unavailable');
+    item.previewAudit=response.previewAudit;
+    clearApprovals();render();
+    const issues=Number(response.previewAudit.issueCount||0),flags=response.previewAudit.deliveryReview?.flags||[];
+    say('Quality check complete: '+issues+' asset/link problems, '+flags.length+' delivery review items. No website files changed.');
+   }catch(e){say('Quality check unsuccessful: '+String(e.message||e),true)}
+   finally{button.disabled=false}
   });
   document.getElementById('sbcAIRevisionCopy')?.addEventListener('click',async()=>{
    const tier=currentTier(),version=currentVersion(),notes=String(document.getElementById('sbcAIRevisionNotes')?.value||'').trim();
@@ -205,7 +226,12 @@
      quick.innerHTML='<p class="sbc-ai-saved">Saved website · $'+selected+'</p>'+
       '<p class="sbc-ai-meta">'+esc(label)+'</p>'+
       '<div class="sbc-ai-actions"><button class="btn" type="button" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+selected+'">Preview saved website</button>'+
-      '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download saved ZIP</a></div>';
+      '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download saved ZIP</a></div>'+
+      (items.some(x=>Number(x.tier)===selected&&x.id!==latest.id)?
+       '<details class="sbc-ai-other"><summary>Restore earlier version</summary>'+
+       items.filter(x=>Number(x.tier)===selected&&x.id!==latest.id).slice(0,12).map((x,i)=>
+        '<p><button class="btn" type="button" data-sbc-ai-restore="'+esc(x.id)+'" data-active-id="'+esc(latest.id)+'" data-tier="'+selected+'">Make version '+(i+1)+' current</button></p>').join('')+
+       '</details>':'');
     }
    }
    const backup=document.getElementById('sbcAIBackup');
@@ -243,7 +269,7 @@
    if(!res?.ok||!Array.isArray(res.uploads))throw Error(res?.code||'UPLOAD_LIBRARY_UNAVAILABLE');
    items=res.uploads;clearApprovals();render();
   }
-  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();render()});
+  document.getElementById('sbcAIQuickTier')?.addEventListener('change',()=>{clearApprovals();render();const saved=currentVersion();if(saved)preview(saved.previewPath,currentTier())});
   document.getElementById('sbcAICopy')?.addEventListener('click',async()=>{
    const tier=String(document.getElementById('sbcAIQuickTier')?.value||199);
    const prompt=result.prompts?.[tier]||result.prompt||'';
@@ -288,7 +314,7 @@
    }catch(e){say('Could not save: '+String(e.message||e)+'. Refresh if the account revision changed.',true)}
    finally{button.disabled=false}
   }));
-  try{await refresh();say('Ready. Select a package, copy the ChatGPT request, and upload the finished ZIP.')}
+  try{await refresh();const saved=currentVersion();if(saved)await preview(saved.previewPath,currentTier());else say('Ready. Select a package, copy the ChatGPT request, and upload the finished ZIP.')}
   catch(e){say('ZIP library unavailable: '+String(e.message||e)+'. External URL slots remain available.',true)}
  }
  window.SBC_AI_SITE_HANDOFF=Object.freeze({open});

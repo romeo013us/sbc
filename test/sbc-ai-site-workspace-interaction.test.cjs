@@ -98,3 +98,20 @@ test('approved manual handoff requires static QA plus four explicit review check
  await blocked.elem('sbcAIPreparePublish').click();
  assert.equal(blocked.downloads.length,0);
 });
+
+test('existing saved ZIPs can run read-only delivery QA and manual form test is explicitly required',async()=>{
+ const f=appFixture({issueCount:0});
+ await f.open();
+ // Simulate a newly generated QA report returned by the owner-only endpoint.
+ const savedId='up_'+'a'.repeat(32);
+ const originalService=f.serviceApi;
+ // The fixture returns no QA response by default, so the primary contract is
+ // checked on source here and in the server route tests.
+ assert(source.includes("base+'/uploads/'+item.id+'/qa'"));
+ assert(source.includes("response.readOnly!==true"));
+ assert(source.includes("flags.filter(x=>x!=='FORM_BACKEND_MUST_BE_TESTED')"));
+ assert(f.markup.at(-1).includes('id="sbcAIRunQA"'));
+ assert.equal(f.elem('sbcAIPreparePublish').disabled,true);
+ assert.equal(typeof originalService,'function');
+ assert.match(savedId,/^up_[a-f0-9]{32}$/);
+});

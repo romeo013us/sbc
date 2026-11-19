@@ -20,7 +20,9 @@ test('SBC studio has desktop/tablet/mobile iframe preview, isolated origin, owne
  assert(code.includes('expectedActiveId'));
  assert(code.includes('sbcAIPreparePublish'));
  assert(code.includes("qa?.issueCount===0"));
- assert(code.includes("qa.deliveryReview?.status==='STATIC_CHECKS_PASSED'"));
+ assert(code.includes("FORM_BACKEND_MUST_BE_TESTED"));
+ assert(code.includes('sbcAIRunQA'));
+ assert(code.includes("+'/qa'"));
  assert(code.includes("published")||code.includes("does NOT publish"));
 });
 test('device simulator and quality-review controls have constrained widths and readable labels',()=>{
