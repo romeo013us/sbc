@@ -5,6 +5,7 @@
  * or customer records. Production publishing remains in approved connectors.
  */
 const CAMPAIGN='super_sbc_growth';
+const APPROVED_CAMPAIGNS=Object.freeze([CAMPAIGN,'miami_next_level_2026']);
 const CHANNELS=Object.freeze({
   facebook:Object.freeze({source:'facebook',medium:'organic_social',accountId:'1473280249199334',name:'Successful By Choice'}),
   linkedin:Object.freeze({source:'linkedin',medium:'organic_social',accountId:'146995513',name:'Successful By Choice LLC'}),
@@ -14,15 +15,16 @@ const DESTINATIONS=Object.freeze({
   websites:'https://sbcmia.com/',
   hosting:'https://sbcwebsites.com/'
 });
-function campaignUrl({channel,destination='websites',content='general'}={}){
+function campaignUrl({channel,destination='websites',content='general',campaign=CAMPAIGN}={}){
   const c=CHANNELS[channel];
   if(!c)throw new TypeError('Unsupported channel');
   if(!Object.prototype.hasOwnProperty.call(DESTINATIONS,destination))throw new TypeError('Unsupported destination');
   if(typeof content!=='string'||!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(content))throw new TypeError('Invalid content label');
+  if(!APPROVED_CAMPAIGNS.includes(campaign))throw new TypeError('Unsupported campaign');
   const url=new URL(DESTINATIONS[destination]);
   url.searchParams.set('utm_source',c.source);
   url.searchParams.set('utm_medium',c.medium);
-  url.searchParams.set('utm_campaign',CAMPAIGN);
+  url.searchParams.set('utm_campaign',campaign);
   url.searchParams.set('utm_content',content);
   return url.toString();
 }
@@ -38,11 +40,11 @@ function verifyAccount({channel,accountId,name}={}){
  * and never accepts personal data, arbitrary URLs, account IDs, or paid ads. */
 function inboundAttribution(input){
   if(!input||typeof input!=='object'||Array.isArray(input))return null;
-  if(typeof input.source!=='string'||typeof input.medium!=='string'||input.campaign!==CAMPAIGN)return null;
+  if(typeof input.source!=='string'||typeof input.medium!=='string'||!APPROVED_CAMPAIGNS.includes(input.campaign))return null;
   const channel=CHANNELS[input.source];
-  if(!channel||input.medium!==channel.medium)return null;
+  if(!channel||!(input.medium===channel.medium||(input.campaign==='miami_next_level_2026'&&input.source==='facebook'&&input.medium==='organic')))return null;
   const content=typeof input.content==='string'&&/^[a-z0-9][a-z0-9_-]{0,63}$/.test(input.content)?input.content:'general';
-  return {source:channel.source,medium:channel.medium,campaign:CAMPAIGN,content};
+  return {source:channel.source,medium:channel.medium,campaign:input.campaign,content};
 }
 function mergeInboundAttribution(existing,incoming){
   const first=inboundAttribution(existing?.first);
@@ -65,4 +67,4 @@ function measuredSnapshot({ga4={},search={},crm={},payments={}}={}){
     integrity:'Missing data is unknown, not zero. GA4 key events are not CRM leads or paid orders. No revenue without verified payment evidence.'
   };
 }
-module.exports={CAMPAIGN,CHANNELS,DESTINATIONS,campaignUrl,verifyAccount,inboundAttribution,mergeInboundAttribution,measuredSnapshot};
+module.exports={CAMPAIGN,APPROVED_CAMPAIGNS,CHANNELS,DESTINATIONS,campaignUrl,verifyAccount,inboundAttribution,mergeInboundAttribution,measuredSnapshot};
