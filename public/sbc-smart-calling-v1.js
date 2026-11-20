@@ -20,7 +20,6 @@
   const c=customer||{},r=row&&String(row.customerId)===String(c.id)?row:null;
   const role=String(settings.role||'owner'),locked=!!(settings.readOnly||settings.recoveryRequired);
   const verified=r?.verifiedResearch===true;
-  const accepted=['READY_TO_CALL','INTERESTED','APPOINTMENT_BOOKED','DECLINED','SUPPRESSED'];
   const hasVerifiedDemo=!!(r?.websiteId&&/^\/demo\/[a-zA-Z0-9%._~-]+$/.test(String(r.websiteUrl||''))&&
    !['REVIEW_WEBSITE','BUILD_WEBSITE','RESEARCH_REQUIRED'].includes(r.stage));
   const canOpenCall=!!(!locked&&!suppressed(c)&&['owner','manager','caller','account_manager'].includes(role)&&
@@ -89,7 +88,7 @@
   const active=()=>panel.isConnected&&String(host.dataset.sbcLeadId||'')===String(customer.id);
   const status=(message,error=false)=>{const el=panel.querySelector('.sbc-sc-status');if(el){el.textContent=message;el.dataset.error=String(error);}};
   try{
-   const response=await win.fetch('/api/website-production/call-desk?limit=200',
+   const response=await win.fetch('/api/website-production/call-desk?customerId='+encodeURIComponent(customer.id)+'&limit=1',
     {credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
    const body=await response.json().catch(()=>({}));
    if(!response.ok||body.ok!==true||!Array.isArray(body.rows))throw Error('Verified call desk unavailable.');
@@ -114,7 +113,7 @@
    (!ctx.canOpenCall?(hasNumber?' Calling requires verified readiness and authorization.':' Verify a working phone before calling.'):' Calling still requires server-side Twilio clearance.')+'</p>' +
    '<pre class="sbc-sc-script" id="sbcSmartCallScript">'+esc(script)+'</pre>' +
    (ctx.canLog?'<form class="sbc-sc-form" id="sbcSmartCallOutcome"><label>What happened?' +
-    '<select name="outcome" required><option value="CONNECTED">Spoke to the owner / Interested</option>' +
+    '<select name="outcome" required><option value="CONNECTED">Spoke to owner (connected)</option>' +
     '<option value="NO_ANSWER">No answer</option><option value="FOLLOW_UP_REQUESTED">Requested callback</option>' +
     '<option value="BAD_NUMBER">Bad number</option><option value="DO_NOT_CONTACT">Do not contact</option></select></label>' +
     '<label>Agreed follow-up date (required for callback)<input type="date" name="dueDate"></label>' +
