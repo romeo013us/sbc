@@ -4,6 +4,7 @@
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const TIERS=[{id:199,title:'Starter · One Page',description:'A polished single-page experience'},{id:499,title:'Custom · Multi-page',description:'Richer pages and content'},{id:799,title:'Advanced · Proposal',description:'Working interactive concept only'},{id:999,title:'Growth · Multi-page',description:'Premium growth-oriented site · verified functionality only'}];
  const LIMIT=20*1024*1024;
+ const isOwner=()=>typeof state!=='undefined'&&state.me?.role==='owner';
  async function open(customer,{serviceApi,openModal}){
   if(!customer?.id||typeof serviceApi!=='function'||typeof openModal!=='function')throw Error('AI website handoff unavailable');
   const base='/api/website-production/customers/'+encodeURIComponent(customer.id)+'/ai-proposals';
@@ -86,7 +87,7 @@
    '<button type="button" class="btn" data-sbc-ai-device="tablet" aria-pressed="false">Tablet · 768px</button>'+
    '<button type="button" class="btn" data-sbc-ai-device="mobile" aria-pressed="false">Mobile · 390px</button></div>'+
    '<div id="sbcAIFrameStage" class="sbc-ai-device-stage" data-device="desktop">'+
-   '<iframe id="sbcAIFrame" title="Owner-only website proposal preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="about:blank"></iframe></div>'+
+   '<iframe id="sbcAIFrame" title="Private website proposal preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="about:blank"></iframe></div>'+
    '<section class="sbc-ai-release-review" aria-label="Customer site delivery quality check">'+
    '<h4>Final quality and publishing handoff</h4>'+
    '<button type="button" id="sbcAIRunQA" class="btn">Run quality check on saved ZIP</button>'+ 
@@ -99,6 +100,11 @@
    '<small>This safely downloads the selected ZIP for a separate hosting deployment. It does NOT publish to GoDaddy, approve payment or contact the customer.</small>'+
    '</section></section></div>';
   openModal('SBC AI Website Production',html);
+  if(!isOwner()){
+   const release=document.querySelector('#sbcAiDesk .sbc-ai-release-review');
+   if(release){release.querySelector('#sbcAIPreparePublish')?.remove();release.querySelectorAll('[data-sbc-ai-release-check]').forEach(x=>x.closest('label')?.remove());}
+   const backup=document.getElementById('sbcAIBackup');if(backup)backup.textContent='Private proposal versions are retained in SBC. Final release and recovery exports require the owner.';
+  }
   let items=[];
   const say=(message,error=false)=>{const e=document.getElementById('sbcAIState');if(e){e.textContent=message;e.classList.toggle('sbc-ai-error',error)}};
   const frame=document.getElementById('sbcAIFrame');
