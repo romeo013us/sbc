@@ -232,6 +232,7 @@ function safeEntry(name){
 }
 function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,serializeSiteMutation,storageRoot}){
  if(![auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation].every(f=>typeof f==='function'))throw Error('ZIP_UPLOAD_DEPENDENCY_REQUIRED');
+ const conceptOnly=require('./sbc-ai-concept-access.cjs').middleware({db,requireTenant});
  const root=path.resolve(storageRoot||path.join(__dirname,'..','data','sbc-ai-proposal-uploads'));
  const base=(req)=>{const t=safeCustomer(req,db,requireTenant);return {...t,dir:path.join(root,String(t.tenantId),encodeURIComponent(t.id))};};
  const uploads=()=>Array.isArray(getStore()?.aiSiteUploads)?getStore().aiSiteUploads:[];
@@ -292,7 +293,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    /^(ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|TEXT_EDIT_INVALID_INPUT)/.test(code)?400:503,
    /^(BACKUP_|ZIP_|INVALID_|UPLOAD_TOO_LARGE|UPLOAD_CONTENT_TYPE_REQUIRED|UPLOAD_ORIGIN_DENIED|CUSTOMER_NOT_FOUND|TENANT_CONTEXT_REQUIRED|UPLOAD_REVISION_CONFLICT|UPLOAD_NOT_FOUND|WEBSITE_PRODUCTION_WRITER_UNAVAILABLE|PREVIEW_SESSION_EXPIRED|TEXT_EDIT_|IMAGE_)/.test(code)?code:'PROPOSAL_UPLOAD_FAILED');
  };
- app.get(ROOT+'/uploads',auth,ownerOnly,(req,res)=>{
+ app.get(ROOT+'/uploads',auth,conceptOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
    const {c,items}=own(req,uploads()),state=getStore();
@@ -323,7 +324,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.end(bundle);
   }catch(e){return failError(res,e)}
  });
- app.post(ROOT+'/uploads/:tier',auth,ownerOnly,async(req,res)=>{
+ app.post(ROOT+'/uploads/:tier',auth,conceptOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!writerReady())return failError(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
   const tier=Number(req.params.tier);
@@ -405,7 +406,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   }
   return result;
  }
- app.get(ROOT+'/uploads/:uploadId/text-fields',auth,ownerOnly,(req,res)=>{
+ app.get(ROOT+'/uploads/:uploadId/text-fields',auth,conceptOnly,(req,res)=>{
   res.setHeader('Cache-Control','private, no-store');
   try{
    const {c,record,folder}=find(req),fields=textFields(verifiedSource(record,folder).files);
@@ -415,7 +416,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  });
  // No-code edit: create a NEW immutable ZIP version, never overwrite the saved
  // source. A writer lease and exact current-version check are mandatory.
- app.post(ROOT+'/uploads/:uploadId/text-edit',auth,ownerOnly,async(req,res)=>{
+ app.post(ROOT+'/uploads/:uploadId/text-edit',auth,conceptOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!writerReady())return failError(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
   if(req.headers['x-sbc-website-text-edit']!=='1')return fail(res,403,'UPLOAD_ORIGIN_DENIED');
@@ -478,7 +479,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   }catch(e){return failError(res,e)}
  });
  // Site image picker: does not expose stored bytes, only validated raster paths.
- app.get(ROOT+'/uploads/:uploadId/images',auth,ownerOnly,(req,res)=>{
+ app.get(ROOT+'/uploads/:uploadId/images',auth,conceptOnly,(req,res)=>{
   res.setHeader('Cache-Control','private, no-store');
   try{
    const {c,record,folder}=find(req);
@@ -489,7 +490,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  });
  // Replaces one existing raster asset by identical path; saves an immutable ZIP version.
  // Uses bounded binary request streaming, not an arbitrary file upload or URL fetch.
- app.post(ROOT+'/uploads/:uploadId/image-replace',auth,ownerOnly,async(req,res)=>{
+ app.post(ROOT+'/uploads/:uploadId/image-replace',auth,conceptOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!writerReady())return failError(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
   if(req.headers['x-sbc-website-image-replace']!=='1')
@@ -602,7 +603,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
  // Re-run QA for historical saved ZIPs without a re-upload, a writer lease
  // or any customer-state mutation. Reports only bounded issue types and file
  // counts; website content and customer PII never appear in the JSON result.
- app.get(ROOT+'/uploads/:uploadId/qa',auth,ownerOnly,(req,res)=>{
+ app.get(ROOT+'/uploads/:uploadId/qa',auth,conceptOnly,(req,res)=>{
   res.setHeader('Cache-Control','private, no-store');
   try{
    const {record,folder}=find(req),archive=path.join(folder,'original.zip');
@@ -616,7 +617,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.json({ok:true,readOnly:true,published:false,fileCount:parsed.files.length,previewAudit:audit});
   }catch(e){return failError(res,e)}
  });
- app.get(ROOT+'/uploads/:uploadId/download',auth,ownerOnly,(req,res)=>{
+ app.get(ROOT+'/uploads/:uploadId/download',auth,conceptOnly,(req,res)=>{
   try{
    const {folder,record}=find(req),file=path.join(folder,'original.zip');
    if(!fs.statSync(file).isFile())throw Error('UPLOAD_NOT_FOUND');
@@ -628,7 +629,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
   }catch(e){return failError(res,e)}
  });
  // Legacy authenticated link remains available for previous copies.
- app.get(ROOT+'/uploads/:uploadId/preview/*',auth,ownerOnly,(req,res)=>{
+ app.get(ROOT+'/uploads/:uploadId/preview/*',auth,conceptOnly,(req,res)=>{
   try{
    const {folder}=find(req);
    return servePreview(folder,req,res,false);
