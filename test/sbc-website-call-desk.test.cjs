@@ -33,7 +33,7 @@ test('real readiness: Lorna verified, owner-approved 85%-built site, phone, tena
  assert.equal(byId.get('ready').websiteUrl,'/demo/test-site-readyweb');
  assert.equal(byId.get('review').websiteUrl,'');
  assert.equal(byId.get('ready').aiVoiceOutboundEnabled,false);
- assert.match(byId.get('ready').script,/Do you already have a website\?/i);
+ assert.match(byId.get('ready').script,/do you have one\?/i);
  assert.match(byId.get('ready').script,/WELL, THE THING IS, I BUILT YOU ONE!/);
  assert.match(byId.get('ready').script,/today or tomorrow/i);
  assert.match(byId.get('ready').script,/\$199/);
