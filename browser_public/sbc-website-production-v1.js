@@ -29,10 +29,12 @@
       customer?.researchRejected!==true;
     const input={
       businessName:customer?.businessName||customer?.contactName||'your business',
+      contactName:customer?.contactName||'',ownerVerified:researched && brief.ownerContactVerified===true,
+      callerName:'John',
       googleVerified:researched && brief.googleBusinessPresence==='found',
       websitePresence:researched && ['found','not_found'].includes(brief.websitePresence)
         ? brief.websitePresence:'not_checked',
-      approved:isApproved(demo)
+      approved:isApproved(demo)&&Boolean(demo?.slug)
     };
     const builder=window.SBC_WEBSITE_SALES_SCRIPT?.build;
     return typeof builder==='function'?builder(input):
