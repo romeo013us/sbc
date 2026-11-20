@@ -177,8 +177,10 @@ function register(app,{auth,getContext}){
      const m=parseAttempt(item);if(!m||m.actorId!==String(req.user.id))continue;
      if(m.requestId===requestId&&m.customerId===id&&m.status==='PREPARED'&&
       Date.parse(m.expiresAt)>now)return {attemptId:item.id,identity,duplicate:true};
-     if(['PREPARED','DIALING'].includes(m.status)&&
-      Date.parse(m.expiresAt)>now)throw Error('ANOTHER_CALL_SESSION_ACTIVE');
+     // A started call remains active until a signed provider completion.
+     // The short PREPARED token TTL must never unlock a DIALING session.
+     if(m.status==='DIALING'||(m.status==='PREPARED'&&
+      Date.parse(m.expiresAt)>now))throw Error('ANOTHER_CALL_SESSION_ACTIVE');
     }
     const attemptId='ccv3_'+randomUUID().replace(/-/g,'');
     const createdAt=new Date().toISOString();
