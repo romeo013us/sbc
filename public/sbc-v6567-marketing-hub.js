@@ -38,7 +38,7 @@ function renderTrendLab(){
  const t=state.trend||{topic:'Miami Next Level',source:'https://www.rockstargames.com/newswire/article/39akk424a9oo53/grand-theft-auto-vi-now-available',expiry:'2026-12-06',sector:'Miami-area small businesses'};
  return '<section class="mh-panel"><h2>Trend Lab · Turn attention into customers</h2>'+
   '<p>Build an original creative campaign around a relevant, verified cultural moment. The event is research context, not permission to copy anyone else’s artwork, logo, music, characters, or endorsement.</p>'+
-  '<p><strong>Miami Next Level:</strong> Original SBC campaign for business websites, branding and visibility. <a href="/miami-next-level.html" target="_blank" rel="noopener noreferrer">Preview SBC campaign landing</a>.</p>'+
+  '<p><strong>SBC Miami Next Level:</strong> Original SBC campaign for business websites, branding and visibility. <a href="/miami-next-level.html" target="_blank" rel="noopener noreferrer">Preview SBC campaign landing</a>.</p>'+
   '<form id="mh-trend-form"><div class="mh-form-grid">'+
   '<label>Trend or campaign topic<input name="topic" maxlength="90" required value="'+esc(t.topic||'')+'"></label>'+
   '<label>Audience<input name="sector" maxlength="100" value="'+esc(t.sector||'Miami-area small businesses')+'" required></label>'+
