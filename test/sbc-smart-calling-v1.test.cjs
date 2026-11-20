@@ -59,3 +59,24 @@ test('Account 360 and server-backed call scripts are wired on both web roots',()
    fs.readFileSync(path.join(__dirname,'../public/sbc-smart-calling-v1.js'),'utf8'));
  }
 });
+
+test('website demo appointment defaults are ten minutes and user-confirmed',()=>{
+ const mod=require('../public/sbc-appointment-workflow-v1.js');
+ const defaults=mod.websiteDemoDefaults();
+ assert.equal(defaults.title,'10-minute SBC website preview');
+ assert.equal(defaults.durationMinutes,10);
+ assert.match(defaults.location,/Phone/);
+ for(const p of ['public','browser_public']){
+  const app=fs.readFileSync(path.join(__dirname,'..',p,'sbc-appointment-workflow-v1.js'),'utf8');
+  assert.match(app,/sbcBookWebsiteDemo/);
+ }
+});
+test('assigned account managers can see and record only their accounts in call desk',()=>{
+ const {accessible,project}=require('../enterprise/sbc-website-call-desk.cjs');
+ const actor={id:'am1',role:'account_manager',tenantId:1,active:true};
+ const same={id:'c1',tenantId:1,assignedTo:'am1',businessName:'My Account'};
+ assert.equal(accessible(same,actor,1),true);
+ assert.equal(accessible({...same,assignedTo:'am2'},actor,1),false);
+ assert.equal(accessible({...same,tenantId:2},actor,1),false);
+ assert.equal(project({customers:[same],actor,tenantId:1}).rows.length,1);
+});
