@@ -3,6 +3,7 @@
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const currentRole = () => (typeof state !== 'undefined' && state.me && state.me.role) || '';
+  const canPrepareConcept = () => ['owner','account_manager'].includes(currentRole());
   const getCustomer = id => (typeof state !== 'undefined' && Array.isArray(state.data?.customers) ? state.data.customers : []).find(c => String(c.id) === String(id));
   // The Call Desk may show verified assigned leads beyond legacy CRM row limits.
   // This fallback is display-only. Server endpoints still enforce tenant and assignment.
@@ -1016,10 +1017,10 @@
     openModal('SBC Instant Sites · Website Production',
       '<div class="v6526-studio"><h3>Build a working website for '+esc(customer.businessName||customer.contactName||'this business')+'</h3>'+
       '<p>Start with ChatGPT for the complete customer website ZIP and revisions; the native builder remains available as a backup.</p>'+instantSiteBrief(customer)+
-      (currentRole()==='owner'?'<section style="margin:15px 0;padding:16px;border-radius:12px;border:1px solid #aacbe4;background:#eff7ff"><h4 style="margin-top:0">AI Website Production</h4><p>Prepare three customer-specific websites: $199, $499 and $799. Save each preview against this account.</p><button class="btn primary" id="sbcAIHandoffLaunch" type="button">Build & revise with ChatGPT</button><p style="font-size:12px">This opens a guided ChatGPT handoff; Direct ChatGPT session control is not connected; the customer-linked ZIP handoff stores finished builds and revisions.</p></section>':'')+
-      '<details style="margin:15px 0"><summary style="font-weight:800;cursor:pointer">Legacy Website Studio · backup</summary>'+
+      (canPrepareConcept()?'<section style="margin:15px 0;padding:16px;border-radius:12px;border:1px solid #aacbe4;background:#eff7ff"><h4 style="margin-top:0">AI Website Production</h4><p>Prepare three customer-specific websites: $199, $499 and $799. Save each preview against this account.</p><button class="btn primary" id="sbcAIHandoffLaunch" type="button">Build & revise with ChatGPT</button><p style="font-size:12px">This opens a guided ChatGPT handoff; Direct ChatGPT session control is not connected; the customer-linked ZIP handoff stores finished builds and revisions.</p></section>':'')+
+      (currentRole()==='owner'?'<details style="margin:15px 0"><summary style="font-weight:800;cursor:pointer">Legacy Website Studio · backup</summary>'+
       '<label style="display:block;margin:18px 0">Website package <select id="sbcFactoryTier" style="padding:12px;width:100%"><option value="starter"'+(tier==='starter'?' selected':'')+'>Business Starter · $199 · complete one-page website</option><option value="essentials"'+(tier==='essentials'?' selected':'')+'>Business Basic · $499 · four-page website</option></select></label>'+
-      '<button class="btn" id="sbcFactoryBuildNow" type="button">Build Full Website · Native Backup</button><p id="sbcWebsiteFactoryStatus" role="status">Legacy builder available as backup.</p></details></div>');
+      '<button class="btn" id="sbcFactoryBuildNow" type="button">Build Full Website · Native Backup</button><p id="sbcWebsiteFactoryStatus" role="status">Legacy builder available as backup.</p></details>':'')+'</div>');
     document.getElementById('sbcAIHandoffLaunch')?.addEventListener('click',()=>openAIProposalDesk(customer).catch(e=>notify(String(e?.message||e))));
     document.getElementById('sbcFactoryBuildNow')?.addEventListener('click',async function(){
       if(busy)return;busy=true;this.disabled=true;
