@@ -31,14 +31,14 @@
   const hook=approved===true
    ? "Well, here's the thing—I built one! I put together a private website concept for "+business+
      ". It's a working example, not your live website. Any sample photos or services need your confirmation before publishing."
-   : "That's actually why I called. I can prepare a website concept for "+business+
-     " once our research and owner review are complete. I don't want to tell you it's built when it isn't.";
+   : "That's actually why I called. I've got an idea for a website for "+business+
+     "—and I can have a concept ready to show you on Zoom. I think you'll like what we can put together.";
   const already=approved===true
    ? "Oh, that's good! I also built a separate website concept for your business. If you're happy with your current site, no pressure. Would a quick comparison be useful?"
    : "That's good to hear! Is there anything you wish your current website did better? If it's useful, I can prepare an alternative concept.";
   const close=approved===true
    ? "Look, I'm not trying to take up your whole day. Do you have about 10 minutes today or tomorrow? I can schedule a call and show you what I built. Which works better? [PAUSE]"
-   : "No pressure. If a website is something you're considering, we can set up a 10-minute conversation about what would work for your business. [PAUSE]";
+   : "If you have about 10 minutes today or tomorrow, we can jump on Zoom and I can show you a concept. Which works better? [PAUSE]";
   return [
    'SBC SMART CALLING · FRIENDLY, HONEST WEBSITE-FIRST PITCH',
    '',
