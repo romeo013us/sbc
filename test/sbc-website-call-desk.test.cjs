@@ -116,7 +116,7 @@ test('full Website Call Desk is available to owner and assigned sales staff, no 
  assert.match(ui,/\/api\/website-production\/call-desk/);
  assert.match(ui,/SBC_WEBSITE_PRODUCTION\.openExisting/);
  assert.match(ui,/SBC_WEBSITE_PRODUCTION\.openExisting\(id,current\(\)\)/);
- assert.match(ui,/SBC_WEBSITE_PRODUCTION\.build\(id,'essentials',current\(\)\)/);
+ assert.match(ui,/SBC_WEBSITE_PRODUCTION\.build\(id,'starter',current\(\)\)/); // Offer the approved $199 starter workflow first.
  const production=read('public/sbc-website-production-v1.js');
  assert.equal(production,read('browser_public/sbc-website-production-v1.js'));
  assert.match(production,/const salesCustomer =/);

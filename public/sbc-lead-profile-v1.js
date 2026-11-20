@@ -65,12 +65,23 @@ function accountRelationship(c){
   '<p class="mini">Before publishing to a customer domain:</p><ul>'+p.launchChecks.map(function(item){return '<li>'+E(item)+'</li>';}).join('')+'</ul>'+
   '<p class="mini">Use More account actions → Build Website to create an internal draft. Payment, hosting, ownership, and launch approvals remain separate.</p></details></section>';
 }
+function loadSmartCalling(){
+ if(window.SBC_SMART_CALLING)return Promise.resolve(window.SBC_SMART_CALLING);
+ if(!window.__SBC_SMART_CALL_LOADING__){
+  window.__SBC_SMART_CALL_LOADING__=new Promise(function(resolve,reject){
+   var script=document.createElement('script');script.src='/sbc-smart-calling-v1.js?v=20261120';script.async=true;
+   script.onload=function(){window.SBC_SMART_CALLING?resolve(window.SBC_SMART_CALLING):reject(Error('Smart Calling library unavailable'));};
+   script.onerror=function(){reject(Error('Smart Calling script unavailable'));};document.head.appendChild(script);
+  });
+ }
+ return window.__SBC_SMART_CALL_LOADING__;
+}
 function render(message){
  var c=current||local(currentId);if(!c)return;
  var d=detailed(c),canEdit=ownerOnly()&&!blocked(c),canContact=!blocked(c)&&!suppressed(c);
  var html='<section id="sbcLeadAccount360" data-sbc-lead-id="'+E(currentId)+'" class="sbc-lead-account"><div class="sbc-profile-head"><div><p class="mini">SBC · ACCOUNT 360 · CRM RECORD '+E(currentId)+'</p><h2>'+E(c.businessName||c.business_name||'Unnamed business')+'</h2><p>'+E(c.industry||c.category||'Industry not recorded')+' · '+E(c.status||'Lead')+' · '+E(c.source||'Source not recorded')+'</p></div><span class="badge '+(suppressed(c)?'red':'blue')+'">'+E(suppressed(c)?'Contact suppressed':blocked(c)?'Recovery read-only':'CRM account')+'</span></div>'+
  '<div role="status" aria-live="polite" class="mini" id="sbcProfileStatus">'+E(message||(!revision?'Display mode — authoritative edit record not verified.':'Account loaded from the authenticated CRM.'))+'</div>'+
- '<div class="sbc-profile-actions">'+btn('call','☎ Call from SBC',!canContact||!c.phone,'Requires a callable phone and no suppression')+btn('edit','✎ Edit Profile',!canEdit||!revision,'Requires owner access and verified CRM revision')+btn('note','＋ Save Note',!canEdit,'Append an account note')+btn('portfolios','👥 Account Portfolios',!canEdit,'Owner-only portfolio batches and account transfers')+'<details class="sbc-profile-more"><summary>More account actions</summary><div class="sbc-profile-more-buttons">'+btn('email','✉ Email',!canContact||!c.email,'Opens existing SBC email composer')+btn('text','▣ Text',!canContact||!c.phone,'Only send with documented consent')+btn('website','🌐 Build Website · SBC Instant Sites',!canEdit,'Generate an internal site concept from the existing CRM record')+btn('openwebsite','↗ Open Saved Website',blocked(c),'Read existing SBC website without rebuilding')+btn('callreport','✓ Log Call',blocked(c),'Submit the call result to the existing sales pipeline')+btn('refresh','↻ Refresh',false)+btn('delete','Delete Lead',!canEdit,'Owner only; requires explicit confirmation')+'</div></details></div>'+
+ '<div class="sbc-profile-actions">'+btn('smartcall','★ Smart Calling',false)+btn('call','☎ Call from SBC',!canContact||!c.phone,'Requires a callable phone and no suppression')+btn('edit','✎ Edit Profile',!canEdit||!revision,'Requires owner access and verified CRM revision')+btn('note','＋ Save Note',!canEdit,'Append an account note')+btn('portfolios','👥 Account Portfolios',!canEdit,'Owner-only portfolio batches and account transfers')+'<details class="sbc-profile-more"><summary>More account actions</summary><div class="sbc-profile-more-buttons">'+btn('email','✉ Email',!canContact||!c.email,'Opens existing SBC email composer')+btn('text','▣ Text',!canContact||!c.phone,'Only send with documented consent')+btn('website','🌐 Build Website · SBC Instant Sites',!canEdit,'Generate an internal site concept from the existing CRM record')+btn('openwebsite','↗ Open Saved Website',blocked(c),'Read existing SBC website without rebuilding')+btn('callreport','✓ Log Call',blocked(c),'Submit the call result to the existing sales pipeline')+btn('refresh','↻ Refresh',false)+btn('delete','Delete Lead',!canEdit,'Owner only; requires explicit confirmation')+'</div></details></div>'+
  '<div id="sbcProfileActionSlot"></div>'+accountRelationship(c)+
  '<div class="sbc-profile-columns"><section class="sbc-profile-panel"><h3>Business & decision maker</h3><div class="sbc-profile-fields">'+
  cardField('Business name',c.businessName||c.business_name)+cardField('Decision maker',c.contactName||c.contact_name)+cardField('Primary phone',c.phone)+cardField('Email',c.email)+cardField('Street / city / state / ZIP',c.address)+addressResearchLink(c)+cardField('Industry / business type',c.industry)+cardField('Website',c.website,true)+cardField('Google Business Profile',d.googleBusinessUrl,true)+cardField('Research source',d.researchSource,true)+cardField('Status',c.status)+cardField('Next follow-up',c.followUp||c.follow_up)+cardField('Assigned to',c.assignedTo||c.assigned_to)+'</div></section>'+
@@ -78,7 +89,7 @@ function render(message){
  relatedHistory(currentId)+'<section class="sbc-profile-panel"><h3>Account notes</h3>'+noteList(c)+'</section>'+
  '<section class="sbc-profile-panel"><h3>Activity history</h3>'+eventList(currentId)+'</section></div></section>';
  if(typeof window.openModal==='function')window.openModal('Lead Account 360',html);
- var node=q('#sbcLeadAccount360');if(node)node.addEventListener('click',handleClick);
+ var node=q('#sbcLeadAccount360');if(node){node.addEventListener('click',handleClick);loadSmartCalling().then(function(mod){if(mod?.mount&&node.isConnected)mod.mount(node,c,{role:role(),readOnly:blocked(c)}).catch(function(){status('Smart Calling unavailable; other Account 360 features still work.');});}).catch(function(){status('Smart Calling asset unavailable; other account features still work.');});}
 }
 function status(v){var x=q('#sbcProfileStatus');if(x)x.textContent=String(v);}
 function actionHtml(markup){var slot=q('#sbcProfileActionSlot');if(slot){slot.innerHTML=markup;slot.scrollIntoView({behavior:'smooth',block:'nearest'});}}
@@ -174,6 +185,7 @@ function deleteLead(){
 function handleClick(event){
  var el=event.target.closest('[data-sbc-profile-action]');if(!el)return;event.preventDefault();
  var a=el.dataset.sbcProfileAction,c=current||local(currentId);
+ if(a==='smartcall'){var smart=q('.sbc-smart-call');if(smart)smart.scrollIntoView({behavior:'smooth',block:'nearest'});else status('Smart Calling readiness is loading.');return;}
  if(a==='refresh')return open(currentId);
  if(a==='cancel'){var x=q('#sbcProfileActionSlot');if(x)x.innerHTML='';return;}
  if(a==='edit')return edit();

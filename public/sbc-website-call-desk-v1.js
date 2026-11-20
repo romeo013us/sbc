@@ -4,7 +4,7 @@
  'use strict';
  const esc=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  const role=()=>String((typeof state!=='undefined'&&state?.me?.role)||'');
- const allowed=()=>['owner','manager','caller'].includes(role());
+ const allowed=()=>['owner','manager','caller','account_manager'].includes(role());
  const fmt=x=>x?new Date(x).toLocaleString():'—';
  let desk=null,selectedId='',loading=false;
  const labels={READY_TO_CALL:'Ready to call',INTERESTED:'Interested',APPOINTMENT_BOOKED:'Meeting booked',
@@ -38,7 +38,7 @@
    ';border-radius:12px;padding:13px;margin:0 0 9px;cursor:pointer;color:#132534">'+
    '<strong style="display:block;font-size:13px">'+esc(x.businessName)+'</strong>'+
    '<span style="display:block;font-size:11px;margin:6px 0;color:#586679">'+esc(labels[x.stage]||x.stage)+'</span>'+
-   '<small style="font-size:10px">'+esc(x.websiteTier==='starter'?'$199 one-page site':x.websiteTier==='essentials'?'$349 four-page site':'No website created yet')+'</small></button>'
+   '<small style="font-size:10px">'+esc(x.websiteTier==='starter'?'$199 one-page site':x.websiteTier==='essentials'?'Multi-page concept':'No website created yet')+'</small></button>'
   ).join('')||'<p>No visible assigned leads. Research, verification or assignment may still be needed.</p>';
  }
  function detail(){
@@ -101,7 +101,7 @@
    const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.openExisting==='function')window.SBC_WEBSITE_PRODUCTION.openExisting(id,current());
   });
   document.getElementById('sbcWebcallBuildSite')?.addEventListener('click',()=>{
-   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(id,'essentials',current());
+   const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(id,'starter',current());
   });
   document.getElementById('sbcWebcallSaveOutcome')?.addEventListener('click',saveOutcome);
  }

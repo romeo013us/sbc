@@ -30,6 +30,7 @@
   if(!isNew){if(!['Scheduled','Completed','Cancelled'].includes(String(fields.status||'')))throw Error('Choose a valid appointment status.');result.status=fields.status;}
   return result;
  }
+ function websiteDemoDefaults(){return {title:'10-minute SBC website preview',durationMinutes:10,location:'Phone or video',notes:'Show private approved website concept; confirm scope and next steps.'};}
  function canWriteAppointment(me,data){
   const role=String(me?.role||'');
   return ['owner','manager','caller','account_manager'].includes(role)&&me?.active!==false&&
@@ -92,18 +93,19 @@
    if(a&&customerId&&String(a.customerId)!==String(customerId))return win.toast?.('Appointment does not belong to this account.');
    customerId=String(a?.customerId||customerId||'');if(!selected(customerId))return win.toast?.('Choose a valid customer account first.');
    if(typeof win.openModal!=='function')return win.toast?.('Appointment editor is unavailable.');
-   lastContext=source==='account'?customerId:'';
+   lastContext=(source==='account'||source==='website-demo')?customerId:'';
    const start=asDate(a?.startAt)||new Date(Math.ceil((Date.now()+3600000)/1800000)*1800000);
-   const end=asDate(a?.endAt)||new Date(start.getTime()+30*60000);
+   const demo=source==='website-demo'&&!a,defaults=websiteDemoDefaults();
+   const end=asDate(a?.endAt)||new Date(start.getTime()+(demo?defaults.durationMinutes:30)*60000);
    const status=a?.status||'Scheduled';
    win.openModal(a?'Edit appointment':'Schedule appointment','<form id="sbcAppointmentForm" class="sbc-appt-editor"><p><strong>Customer:</strong> '+escapeHtml(selected(customerId).businessName||selected(customerId).contactName||'Account')+'</p>'+
     '<input type="hidden" name="customerId" value="'+escapeHtml(customerId)+'"><div class="form-grid">'+
-    '<label>Purpose / title<input name="title" maxlength="160" required value="'+escapeHtml(a?.title||'Customer appointment')+'"></label>'+
+    '<label>Purpose / title<input name="title" maxlength="160" required value="'+escapeHtml(a?.title||(demo?defaults.title:'Customer appointment'))+'"></label>'+
     '<label>Start date and time<input type="datetime-local" name="startAt" required value="'+escapeHtml(localInput(start))+'"></label>'+
     '<label>End date and time<input type="datetime-local" name="endAt" required value="'+escapeHtml(localInput(end))+'"></label>'+
-    '<label>Location / method<input name="location" maxlength="255" value="'+escapeHtml(a?.location||'')+'" placeholder="Phone, office, video meeting"></label>'+
+    '<label>Location / method<input name="location" maxlength="255" value="'+escapeHtml(a?.location||(demo?defaults.location:''))+'" placeholder="Phone, office, video meeting"></label>'+
     (a?'<label>Status<select name="status">'+['Scheduled','Completed','Cancelled'].map(v=>'<option'+(v===status?' selected':'')+'>'+v+'</option>').join('')+'</select></label>':'')+
-    '<label style="grid-column:1/-1">Notes<textarea name="notes" maxlength="3000" rows="3" placeholder="Agreed agenda, next step, or meeting details">'+escapeHtml(a?.notes||'')+'</textarea></label></div>'+
+    '<label style="grid-column:1/-1">Notes<textarea name="notes" maxlength="3000" rows="3" placeholder="Agreed agenda, next step, or meeting details">'+escapeHtml(a?.notes||(demo?defaults.notes:''))+'</textarea></label></div>'+
     '<p class="mini">Local time on this device. Saving updates SBC Calendar and the linked customer record. No automatic notifications are sent.</p>'+
     '<p role="alert" id="sbcApptFormError"></p><div class="actions"><button type="button" class="btn" id="sbcApptCancelEditor">Back</button><button type="submit" class="btn primary">'+(a?'Save changes':'Save appointment')+'</button></div></form>');
    const form=doc.getElementById('sbcAppointmentForm');if(!form)return;
@@ -126,6 +128,7 @@
     finally{submitting=false;if(button&&button.isConnected)button.disabled=false;}
    };
   }
+  win.sbcBookWebsiteDemo=function(customerId){return openEditor(customerId,'','website-demo');};
   function click(event){
    const btn=event.target.closest?.('[data-sbc-appt-new],[data-sbc-appt-edit]');if(!btn)return;
    if(!btn.closest('#sbcCallAppointments,#sbcAccountAppointments'))return;
@@ -143,5 +146,5 @@
   new win.MutationObserver(schedule).observe(doc.documentElement,{childList:true,subtree:true});
   refresh();
  }
- return Object.freeze({forCustomer,payload,localInput,displayTime,canWriteAppointment,install});
+ return Object.freeze({forCustomer,payload,localInput,displayTime,canWriteAppointment,websiteDemoDefaults,install});
 });

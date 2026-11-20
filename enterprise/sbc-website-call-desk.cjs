@@ -15,7 +15,8 @@ function sameTenant(record,tid){
 function accessible(customer,actor,tid){
  if(!sameTenant(actor,tid)||!sameTenant(customer,tid)||actor.active===false)return false;
  const role=String(actor.role||'');
- return role==='owner'||role==='manager'||(role==='caller'&&!!customer.assignedTo&&String(customer.assignedTo)===String(actor.id));
+ const assigned=String(customer.assignedTo||customer.assigned_to||'');
+ return role==='owner'||role==='manager'||(['caller','account_manager'].includes(role)&&!!assigned&&assigned===String(actor.id));
 }
 function suppressed(c){
  return c?.doNotCall===true||c?.doNotContact===true||c?.salesSuppressed===true||c?.isSuppressed===true||
@@ -39,7 +40,7 @@ function research(c){
 function createCallScript(customer,site){
  const r=research(customer);
  const approved=site?.status==='Approved'&&site.archived!==true&&
-  String(site.customerId||'')===String(customer?.id||'');
+  String(site.customerId||'')===String(customer?.id||'')&&!!String(site.slug||'');
  return WEBSITE_PITCH.build({
   businessName:customer?.businessName||customer?.contactName||'your business',
   googleVerified:r.verified&&r.googleVerified,
@@ -51,7 +52,7 @@ function coach(){
  return {
   busy:"Absolutely. I don't want to interrupt your work. Would tomorrow at a specific time be better for a quick 10-minute look? If not, no problem.",
   website:"That's good to hear. I don't want to assume you don't have one. Would you be open to comparing a different design, or is your current site meeting your needs?",
-  price:"Our basic one-page website starts at $199, and the more complete four-page option starts at $349. I can show you the exact site before you decide.",
+  price:"Our one-page website starts at $199. Larger packages are quoted based on the owner's confirmed scope. Let me show you the approved preview first.",
   send:"Of course. May I send the approved website link to the email address you prefer? We'll only send it with your permission.",
   notInterested:"Understood, thanks for your time. I won't keep pitching you."
  };
@@ -67,12 +68,12 @@ function latestSites(sites,tid){
  }
  return by;
 }
-function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:tid,now=new Date().toISOString(),limit=100}={}){
- const id=int(tid);if(!sameTenant(actor,id)||!['owner','manager','caller'].includes(String(actor.role)))throw Error('NOT_AUTHORIZED');
+function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:tid,now=new Date().toISOString(),limit=100,customerId=''}={}){
+ const id=int(tid);if(!sameTenant(actor,id)||!['owner','manager','caller','account_manager'].includes(String(actor.role)))throw Error('NOT_AUTHORIZED');
  const chosen=latestSites(sites,id);
  const nowMs=Date.parse(now)||Date.now();
  const rows=(customers||[]).filter(c=>accessible(c,actor,id)&&
-  !['deleted','duplicate','archived'].includes(String(c.status||'').trim().toLowerCase())&&c.isTestRecord!==true&&c.test!==true).map(c=>{
+  !['deleted','duplicate','archived'].includes(String(c.status||'').trim().toLowerCase())&&c.isTestRecord!==true&&c.test!==true&&(!customerId||String(c.id)===String(customerId))).map(c=>{
   const cId=String(c.id),s=chosen.get(cId)||null,r=research(c),phone=cleanPhone(c.phone||c.primaryPhone);
   const held=Date.parse(c.websiteSalesBadNumberUntil||'')>nowMs;
   const meeting=(appointments||[]).find(a=>sameTenant(a,id)&&String(a.customerId)===cId&&String(a.websiteId||'')===String(s?.id||'')&&String(a.status)==='Scheduled');
@@ -132,7 +133,7 @@ function recordOutcome({customer,site,actor,tenantId:tid,kind,now=new Date().toI
 function register(app,{auth,requireTenant,db,getStore,saveStore,writerReady,now=()=>new Date().toISOString()}){
  const scope=(req,res)=>{
   let tid;try{tid=int(requireTenant(req))}catch{}
-  if(!tid||!sameTenant(req.user,tid)||!['owner','manager','caller'].includes(String(req.user?.role||''))){
+  if(!tid||!sameTenant(req.user,tid)||!['owner','manager','caller','account_manager'].includes(String(req.user?.role||''))){
    res.status(403).json({ok:false,code:'NOT_AUTHORIZED'});return 0;
   }return tid;
  };
@@ -141,7 +142,7 @@ function register(app,{auth,requireTenant,db,getStore,saveStore,writerReady,now=
   const m=getStore();
   res.setHeader('Cache-Control','private, no-store');
   try{return res.json(project({actor:req.user,tenantId:tid,customers:db.customers||[],sites:m.websiteDemos||[],
-    appointments:db.appointments||[],calls:m.websiteSalesCalls||[],now:now(),limit:req.query.limit||100}));}
+    appointments:db.appointments||[],calls:m.websiteSalesCalls||[],now:now(),limit:req.query.limit||100,customerId:String(req.query.customerId||'').slice(0,120)}));}
   catch{return res.status(503).json({ok:false,code:'CALL_DESK_UNAVAILABLE'})}
  });
  app.post('/api/website-production/call-desk/:customerId/outcome',auth,async(req,res)=>{
