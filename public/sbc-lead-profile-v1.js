@@ -65,6 +65,17 @@ function accountRelationship(c){
   '<p class="mini">Before publishing to a customer domain:</p><ul>'+p.launchChecks.map(function(item){return '<li>'+E(item)+'</li>';}).join('')+'</ul>'+
   '<p class="mini">Use More account actions → Build Website to create an internal draft. Payment, hosting, ownership, and launch approvals remain separate.</p></details></section>';
 }
+function loadSmartCalling(){
+ if(window.SBC_SMART_CALLING)return Promise.resolve(window.SBC_SMART_CALLING);
+ if(!window.__SBC_SMART_CALL_LOADING__){
+  window.__SBC_SMART_CALL_LOADING__=new Promise(function(resolve,reject){
+   var script=document.createElement('script');script.src='/sbc-smart-calling-v1.js?v=20261120';script.async=true;
+   script.onload=function(){window.SBC_SMART_CALLING?resolve(window.SBC_SMART_CALLING):reject(Error('Smart Calling library unavailable'));};
+   script.onerror=function(){reject(Error('Smart Calling script unavailable'));};document.head.appendChild(script);
+  });
+ }
+ return window.__SBC_SMART_CALL_LOADING__;
+}
 function render(message){
  var c=current||local(currentId);if(!c)return;
  var d=detailed(c),canEdit=ownerOnly()&&!blocked(c),canContact=!blocked(c)&&!suppressed(c);
@@ -78,7 +89,7 @@ function render(message){
  relatedHistory(currentId)+'<section class="sbc-profile-panel"><h3>Account notes</h3>'+noteList(c)+'</section>'+
  '<section class="sbc-profile-panel"><h3>Activity history</h3>'+eventList(currentId)+'</section></div></section>';
  if(typeof window.openModal==='function')window.openModal('Lead Account 360',html);
- var node=q('#sbcLeadAccount360');if(node){node.addEventListener('click',handleClick);if(window.SBC_SMART_CALLING?.mount)window.SBC_SMART_CALLING.mount(node,c,{role:role(),readOnly:blocked(c)}).catch(function(){status('Smart Calling is unavailable; other Account 360 features still work.');});}
+ var node=q('#sbcLeadAccount360');if(node){node.addEventListener('click',handleClick);loadSmartCalling().then(function(mod){if(mod?.mount&&node.isConnected)mod.mount(node,c,{role:role(),readOnly:blocked(c)}).catch(function(){status('Smart Calling unavailable; other Account 360 features still work.');});}).catch(function(){status('Smart Calling asset unavailable; other account features still work.');});}
 }
 function status(v){var x=q('#sbcProfileStatus');if(x)x.textContent=String(v);}
 function actionHtml(markup){var slot=q('#sbcProfileActionSlot');if(slot){slot.innerHTML=markup;slot.scrollIntoView({behavior:'smooth',block:'nearest'});}}
