@@ -239,7 +239,9 @@ function register(app,{auth,getContext}){
  // Signed provider events make account history authoritative even if browser exits.
  app.post(WEB+'/status',async(req,res)=>{
   const cfg=V3.settings();
-  if(!cfg.enabled||!cfg.configured||!signed(req,cfg))return fail(res,403,'VOICE_STATUS_NOT_AUTHORIZED');
+  // Emergency stop disables new calls, not signed status callbacks from calls
+  // already in progress; otherwise active sessions can remain locked forever.
+  if(!cfg.configured||!signed(req,cfg))return fail(res,403,'VOICE_STATUS_NOT_AUTHORIZED');
   const attemptId=String(req.query?.attempt||''),providerStatus=String(req.body?.CallStatus||'').toLowerCase();
   const callSid=String(req.body?.CallSid||'');
   if(!validAttemptId(attemptId)||!['initiated','ringing','in-progress','completed','busy','failed','no-answer','canceled'].includes(providerStatus)||
