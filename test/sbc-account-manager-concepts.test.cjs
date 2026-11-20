@@ -47,3 +47,12 @@ test('Smart Calling offers assigned AM concept creation and demo scheduling befo
  assert.equal(smart.project(customer,row,{role:'lead_researcher'}).canBuild,false);
  assert.equal(smart.project(customer,row,{role:'account_manager',readOnly:true}).canBuild,false);
 });
+
+test('verified prospects can be called before a website is generated',()=>{
+ const desk=require('../enterprise/sbc-website-call-desk.cjs');
+ const actor={id:'owner',role:'owner',tenantId:7};
+ const customer={id:'c1',tenantId:7,businessName:'Test Shop',phone:'3055550101',verificationStatus:'Verified'};
+ const row=desk.project({customers:[customer],sites:[],actor,tenantId:7}).rows[0];
+ assert.equal(row.stage,'BUILD_WEBSITE');
+ assert.equal(row.callAllowed,true);
+});
