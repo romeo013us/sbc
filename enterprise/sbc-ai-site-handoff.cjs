@@ -81,6 +81,7 @@ function normalizeVariant(raw){
 }
 function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writerReady,serializeSiteMutation}){
  if(![auth,ownerOnly,requireTenant,getStore,saveStore,writerReady,serializeSiteMutation].every(x=>typeof x==='function'))throw Error('AI_HANDOFF_DEPENDENCY_REQUIRED');
+ const conceptOnly=require('./sbc-ai-concept-access.cjs').middleware({db,requireTenant});
  function target(req){
   const tid=Number(requireTenant(req));
   if(!Number.isSafeInteger(tid)||tid<1)throw Error('TENANT_CONTEXT_REQUIRED');
@@ -100,7 +101,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    code==='WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'?423:code.startsWith('INVALID_')?400:503;
   return res.status(status).json({ok:false,code:status===503?'AI_HANDOFF_NOT_SAVED':code});
  };
- app.get(ROOT,auth,ownerOnly,(req,res)=>{
+ app.get(ROOT,auth,conceptOnly,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
    const {tid,id,customer}=target(req);
@@ -109,7 +110,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    return res.json({ok:true,customerId:id,revision:saved?.revision||0,variants:saved?.variants||{},prompt:buildPrompt(customer),prompts:Object.fromEntries(TIERS.map(t=>[String(t),buildTierPrompt(customer,t)])),mode:'CHATGPT_MANUAL_HANDOFF',automated:false});
   }catch(e){return fail(res,e)}
  });
- app.patch(ROOT,auth,ownerOnly,async(req,res)=>{
+ app.patch(ROOT,auth,conceptOnly,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!writerReady())return fail(res,Error('WEBSITE_PRODUCTION_WRITER_UNAVAILABLE'));
   try{
