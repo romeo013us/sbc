@@ -4,6 +4,9 @@ on:
     branches: [a-sbc-master]
     paths:
       - 'public/sbc-v6567-marketing-hub.js'
+      - 'public/miami-next-level.html'
+      - 'browser_public/miami-next-level.html'
+      - 'test/sbc-miami-next-level-campaign.test.cjs'
       - 'browser_public/sbc-v6567-marketing-hub.js'
       - 'public/sbc-v6567-marketing-hub.css'
       - 'browser_public/sbc-v6567-marketing-hub.css'
@@ -14,6 +17,9 @@ on:
   pull_request:
     paths:
       - 'public/sbc-v6567-marketing-hub.js'
+      - 'public/miami-next-level.html'
+      - 'browser_public/miami-next-level.html'
+      - 'test/sbc-miami-next-level-campaign.test.cjs'
       - 'browser_public/sbc-v6567-marketing-hub.js'
       - 'public/sbc-v6567-marketing-hub.css'
       - 'browser_public/sbc-v6567-marketing-hub.css'
@@ -41,4 +47,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify browser syntax and publish-state regression
-        run: node --test scripts/super-sbc-marketing-hub-safety.test.cjs scripts/super-sbc-growth-contract.test.cjs scripts/super-sbc-inbound-provenance.test.cjs
+        run: node --test scripts/super-sbc-marketing-hub-safety.test.cjs scripts/super-sbc-growth-contract.test.cjs scripts/super-sbc-inbound-provenance.test.cjs test/sbc-miami-next-level-campaign.test.cjs
