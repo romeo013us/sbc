@@ -33,6 +33,11 @@ test('V3 account permission, one-use Twilio webhook, no client-number overrides 
    async commit(){snapshot=null},release(){},
    async query(sql,p){
     if(sql.startsWith('SELECT id,phone,status,assigned_to,account_notes_json,tenant_id FROM sbc_customers')){
+     if(sql.includes('AND id<>?')){
+      const digits=value=>String(value||'').replace(/\\D/g,'');
+      return [[...state.customers.filter(x=>x.tenant_id===p[0]&&x.id!==p[1]&&
+       [p[2],p[3]].includes(digits(x.phone)))],[]];
+     }
      return [[...state.customers.filter(x=>x.tenant_id===p[0]&&x.id===p[1])],[]];
     }
     if(sql.startsWith('UPDATE sbc_customers SET account_notes_json=')){
