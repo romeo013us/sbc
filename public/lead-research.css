@@ -124,3 +124,10 @@
 .sbc-compact-assignment .attention-open{margin-top:8px}
 .sbc-assignment-restore{margin-bottom:14px}
 @media(max-width:640px){.sbc-assignment-header{flex-direction:column}.sbc-compact-assignment .attention-open{width:auto;max-width:100%}}
+
+/* Employee-first V66: submitted leads no longer consume the whole desktop page. */
+.pane[data-pane="mine"]>.card{max-width:1160px;margin-inline:auto}
+.pane[data-pane="mine"] #mine-list.sbc-compact-submission-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:12px;max-height:min(66vh,700px);overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:4px 7px 6px 2px}
+.pane[data-pane="mine"] #mine-list .lead-row{align-items:flex-start;min-width:0;padding:13px;box-shadow:none}
+.pane[data-pane="mine"] #mine-list:focus-visible{outline:3px solid #e5a54c;outline-offset:3px;border-radius:10px}
+@media(max-width:650px){.pane[data-pane="mine"] #mine-list.sbc-compact-submission-list{max-height:none;overflow:visible;grid-template-columns:minmax(0,1fr);padding:0}}
