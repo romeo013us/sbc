@@ -96,13 +96,13 @@ function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:
    verifiedResearch:r.verified,googleBusinessVerified:r.googleVerified,googleBusinessUrl:r.googleBusinessUrl,
    websitePresence:r.websitePresence,ownerContactVerified:r.ownerContactVerified,
    script:createCallScript(c,s),coach:coach(),lastOutcome:last?.kind||'',lastContactAt:last?.createdAt||'',
-   appointmentAt:meeting?.startAt||'',callAllowed:stage==='READY_TO_CALL'||stage==='INTERESTED',
+   appointmentAt:meeting?.startAt||'',callAllowed:['READY_TO_CALL','INTERESTED','BUILD_WEBSITE','REVIEW_WEBSITE'].includes(stage),
    aiVoiceOutboundEnabled:false,aiVoiceStatus:'DISABLED_UNTIL_SEPARATE_CONSENT_AND_LEGAL_REVIEW',
    cooldownUntil:held?String(c.websiteSalesBadNumberUntil):'',nextAction:{
     SUPPRESSED:'No further outreach',NUMBER_COOLDOWN:'Return number to research; do not retry before cooldown',
     RESEARCH_REQUIRED:'Return to Lorna to verify business details and website presence',
-    CONTACT_UNVERIFIED:'Ask Lorna to verify a working number',BUILD_WEBSITE:'Build a complete SBC website',
-    REVIEW_WEBSITE:'Owner reviews every page before sharing',APPOINTMENT_BOOKED:'Prepare confirmed 10-minute walkthrough',
+    CONTACT_UNVERIFIED:'Ask Lorna to verify a working number',BUILD_WEBSITE:'Call to qualify interest first; generate a private concept if requested',
+    REVIEW_WEBSITE:'Call to qualify interest; owner reviews the private draft before external sharing',APPOINTMENT_BOOKED:'Prepare confirmed 10-minute walkthrough',
     DECLINED:'Respect refusal and stop outreach',INTERESTED:'Agree on a meeting time',READY_TO_CALL:'Human salesperson can consider a compliant manual call'
    }[stage]};
  });
