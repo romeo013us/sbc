@@ -49,3 +49,16 @@ test('missing campaign remains unknown rather than being invented as a direct co
   assert.deepEqual(S.mergeInboundAttribution(null,{}),{first:null,last:null});
   assert.equal(S.inboundAttribution({source:'facebook',medium:'organic_social',campaign:'super_sbc_growth'}).content,'general');
 });
+
+test('Miami Next Level inbound attribution preserves Facebook launch and accepted cross-channel source without paid spoofing',()=>{
+ for(const [source,medium] of [['facebook','organic_social'],['linkedin','organic_social'],['google','organic_gbp']]){
+  const x=S.inboundAttribution({source,medium,campaign:'miami_next_level_2026',content:'hero'});
+  assert.deepEqual(x,{source,medium,campaign:'miami_next_level_2026',content:'hero'});
+ }
+ assert.deepEqual(S.inboundAttribution({source:'facebook',medium:'organic',campaign:'miami_next_level_2026',content:'general'}),
+  {source:'facebook',medium:'organic_social',campaign:'miami_next_level_2026',content:'general'});
+ assert.equal(S.inboundAttribution({source:'facebook',medium:'paid_social',campaign:'miami_next_level_2026'}),null);
+ assert.equal(S.inboundAttribution({source:'facebook',medium:'organic',campaign:'rockstar_partner'}),null);
+ assert.match(S.campaignUrl({channel:'facebook',campaign:'miami_next_level_2026',content:'starter'}),/utm_campaign=miami_next_level_2026/);
+ assert.throws(()=>S.campaignUrl({channel:'facebook',campaign:'gta_official'}),/Unsupported campaign/);
+});
