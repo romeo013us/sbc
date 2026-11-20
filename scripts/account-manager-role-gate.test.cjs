@@ -87,6 +87,7 @@ test('repo module-inventory auditor accepts the source-only installer without fa
 test('assigned account managers may reach private website concept handoff endpoints',()=>{
  const {allowed}=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
  for(const methodPath of [
+  ['GET','/api/website-production/call-desk?customerId=cust_123&limit=1'],
   ['GET','/api/website-production/customers/cust_123/ai-proposals'],
   ['PATCH','/api/website-production/customers/cust_123/ai-proposals'],
   ['GET','/api/website-production/customers/cust_123/ai-proposals/uploads'],
