@@ -1,6 +1,7 @@
-/* Shared SBC website prospect conversation. One pure, zero-API script for
-   the owner Website Production modal and the authenticated sales call desk.
-   Read the lines conversationally; pauses are cues, not literal speech. */
+/* SBC Website-First Owner Sales Script — no API calls or outreach.
+ * A verified Google observation and a genuinely approved demo are required
+ * before the matching statements are included. Works in production/call desk.
+ */
 (function(factory){
  'use strict';
  const api=factory();
@@ -8,55 +9,54 @@
  else if(typeof window==='object')window.SBC_WEBSITE_SALES_SCRIPT=api;
 })(function(){
  'use strict';
- function clean(value,fallback){
-  const text=String(value??'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120);
-  return text||fallback;
+ function clean(v,fallback=''){
+  return String(v??'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120)||fallback;
  }
- function build({businessName='your business',googleVerified=false,websitePresence='not_checked',approved=false}={}){
+ function build({businessName='your business',contactName='',callerName='John',
+  ownerVerified=false,googleVerified=false,websitePresence='not_checked',approved=false}={}){
   const business=clean(businessName,'your business');
-  const observed=(googleVerified===true&&websitePresence==='not_found')
-   ? 'I was looking at your Google Business Profile, and I didn\'t see a website linked there. Do you already have a website?'
+  const caller=clean(callerName,'John');
+  const contact=clean(contactName);
+  const opening='Hi, my name is '+caller+' calling from SBC. '+(contact?'Is this '+contact+'?':'Am I speaking with the owner?')+' [PAUSE]';
+  const ownerQuestion=ownerVerified
+   ? 'Hey, I was wondering if I could get a little help. You still own '+business+', right? [PAUSE]'
+   : 'Hey, I was wondering if you could help me out real quick. Are you the person who owns '+business+'? [PAUSE]';
+  const observed=googleVerified===true&&websitePresence==='not_found'
+   ? "Well, I was looking at your Google Business Profile, and I didn't see a website linked there. Do you already have a website? [PAUSE]"
    : googleVerified===true
-    ? 'I was checking out your Google Business Profile, and I wanted to ask—do you already have a website?'
+    ? 'Well, I was looking up '+business+' on Google, and I wanted to ask—do you already have a website? [PAUSE]'
     : websitePresence==='not_found'
-     ? 'I came across your business online and couldn\'t find a website in the information I checked. Do you already have one?'
-     : 'I was looking up your business online and wanted to ask—do you already have a website?';
-  const no=approved
-   ? 'No worries. I went ahead and built a working example of a website for '+business+'. It has real pages you can click through, with example photos and a professional layout. It isn\'t live yet, and the final business details are personalized if you decide to move forward.'
-   : 'No worries. I can prepare a website example for '+business+' for you to review once the owner has approved it. Nothing has been published or sent yet.';
-  const yes=approved
-   ? 'Oh, got it—that\'s good! I also put together an alternative website concept for '+business+'. If you\'re happy with your current site, no pressure at all. Would a quick comparison be useful?'
-   : 'That\'s good to hear. Is there anything you wish your current website did better? I can put together a comparison if it would be useful.';
+     ? "I was looking up your business online and couldn't find a website in the information I checked. Do you already have a website? [PAUSE]"
+     : 'I was looking up your business online and wanted to ask—do you already have a website? [PAUSE]';
+  const hook=approved===true
+   ? "Well, here's the thing—I built one! I put together a private website concept for "+business+
+     ". It's a working example, not your live website. Any sample photos or services need your confirmation before publishing."
+   : "That's actually why I called. I can prepare a website concept for "+business+
+     " once our research and owner review are complete. I don't want to tell you it's built when it isn't.";
+  const already=approved===true
+   ? "Oh, that's good! I also built a separate website concept for your business. If you're happy with your current site, no pressure. Would a quick comparison be useful?"
+   : "That's good to hear! Is there anything you wish your current website did better? If it's useful, I can prepare an alternative concept.";
+  const close=approved===true
+   ? "Look, I'm not trying to take up your whole day. Do you have about 10 minutes today or tomorrow? I can schedule a call and show you what I built. Which works better? [PAUSE]"
+   : "No pressure. If a website is something you're considering, we can set up a 10-minute conversation about what would work for your business. [PAUSE]";
   return [
-   'OPEN — keep it friendly and natural',
-   'Hey, is this the owner of '+business+'? [PAUSE — let them answer]',
-   'Hey, this is [your first name] with Successful By Choice. Have I caught you at a bad time? [PAUSE]',
+   'SBC SMART CALLING · FRIENDLY, HONEST WEBSITE-FIRST PITCH',
    '',
-   'WHAT I NOTICED — only use the Google line when the research actually verified that profile',
-   observed+' [PAUSE — let them answer]',
+   '01 · OPEN — ask for the owner',
+   opening,ownerQuestion,'',
+   '02 · ASK — only mention what research actually verified',observed,'',
+   '03 · IF NO WEBSITE — THE HOOK',hook,'',
+   'IF THEY ALREADY HAVE A WEBSITE',already,'',
+   '04 · ASK FOR 10 MINUTES',close,'',
+   'IF INTERESTED — Great! What works better, later today or tomorrow? Confirm the appointment before logging it.',
+   'IF THEY ASK PRICE — Our one-page Starter starts at $199. Other packages depend on your needs; we confirm exactly what is included before any purchase.',
+   "IF THEY ARE BUSY — No worries, I know you're working. Would another time work better for a quick look? [PAUSE]",
+   "IF THEY ASK TO SEE THE LINK — Happy to show the private, owner-approved preview. Confirm where you want it sent before sending anything.",
+   'IF THEY HAVE FACEBOOK — That is great. A website can complement Facebook with a clear place for your services, contact details and inquiries.',
+   'IF THEY SAY NO — Understood, thanks for your time. Log the refusal accurately. Honor any do-not-contact request.',
    '',
-   '[IF NO]',
-   no,
-   '',
-   '[IF YES]',
-   yes,
-   '',
-   approved
-    ? 'CLOSE — Would you have about 10 minutes for a quick Zoom call later today or tomorrow? I can show you the actual website I made. Which works better for you? [PAUSE — let them choose]'
-    : 'NEXT STEP — If you\'re interested, can we arrange a 10-minute Zoom once a website example has been reviewed and approved? [PAUSE]',
-   '',
-   "WHY DOES A BUSINESS NEED A WEBSITE? — THREE QUICK REASONS",
-   "1. GET FOUND — Give customers a clear place to learn what you offer when they search online or hear about your company.",
-   "2. BUILD TRUST — Show accurate services, business details and a professional presentation customers can evaluate.",
-   "3. GENERATE INQUIRIES — Make your phone number, quote request and appointment options easier to find when those features are available.",
-   "20-SECOND COMEBACK — A website helps customers find you, gives them confidence, and makes it easy to contact you. Which of those would help your business most?",
-   "IF THEY ALREADY USE FACEBOOK — Keep Facebook. Your website complements it by giving customers a dedicated place for your services, contact details and next steps.",
-   "IF THEY ASK THE PRICE — Our currently listed one-page Business Starter is $199 and four-page Business Basic is $349. An optional $79/month care plan is being considered, not yet a published promise. The owner confirms hosting, domain, support, recurring billing and cancellation terms before any order.",
-   "IF THEY ASK ABOUT $79/MONTH — We are considering optional website management at $79/month for ongoing agreed care, not unlimited edits or guaranteed sales. The owner must confirm an approved offer and exact scope before anyone subscribes.",
-   'IF THEY ARE BUSY — All good. Is there a better time for a quick 10-minute look? [PAUSE]',
-   'IF THEY SAY NO / DO NOT CALL — No problem. Thanks for your time. Record their preference and stop outreach.',
-   '',
-   'CALLER REMINDER — Use only verified research observations. Never imply stock photos show the real business, that a website is already live, or that the prospect agreed to be contacted. Only book a meeting after they confirm.'
+   'AFTER THE CALL — Log the actual outcome and notes. If they agree, book the 10-minute appointment or record the requested follow-up date.',
+   'SAFETY — Do not claim a website is built unless an approved live preview exists in SBC. Do not assume a missing website or known owner. Do not dial a restricted or suppressed number.'
   ].join('\n');
  }
  return Object.freeze({build});
