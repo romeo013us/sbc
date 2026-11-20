@@ -6,9 +6,10 @@ const customerOther={id:'cust_2',tenant_id:1,business_name:'Different Co',assign
 const owner={id:'owner_1',role:'owner',tenantId:1,active:true};
 const manager={id:'manager_1',role:'account_manager',tenantId:1,active:true};
 const foreign={id:'owner_2',role:'owner',tenantId:2,active:true};
-function database(){
+function database(opts={}){
  const rows=[];let wrote=0;
  const query=async(sql,args)=>{
+  if(opts.designSchemaMissing&&sql.includes('sbc_customer_design_briefs_v1'))throw Object.assign(new Error('Synthetic missing design table'),{code:'ER_NO_SUCH_TABLE'});
   if(sql.includes('FROM sbc_customers WHERE tenant_id=? AND id=?')){
    return [[customer,customerOther].filter(c=>c.tenant_id===args[0]&&c.id===args[1])];
   }
@@ -42,9 +43,9 @@ function database(){
  };
  return {rows,query,get writes(){return wrote}};
 }
-async function server(){
+async function server(opts={}){
  const app=express();app.use(express.json({limit:'80kb'}));
- const db=database(),ctx={mysqlPool:db,recoveryRequired:()=>false};
+ const db=database(opts),ctx={mysqlPool:db,recoveryRequired:()=>false};
  app.use((req,res,next)=>{
   req.user=req.header('x-test-user')==='owner'?owner:req.header('x-test-user')==='manager'?manager:req.header('x-test-user')==='foreign'?foreign:null;
   next();
@@ -96,5 +97,19 @@ test('recovery write lock prevents design request issue and unauthenticated cust
   s.ctx.recoveryRequired=()=>true;
   assert.equal((await s.ask('POST','/api/sbc/design-briefs',{customerId:'cust_1',kind:'WEBSITE'},'owner')).status,423);
   assert.equal(s.db.rows.length,0);
+ }finally{await s.close()}
+});
+
+test('design request schema absence returns safe owner-actionable 503 instead of opaque MySQL details',async()=>{
+ const s=await server({designSchemaMissing:true});
+ try{
+  const list=await s.ask('GET','/api/sbc/design-briefs/customer/cust_1',null,'owner');
+  assert.equal(list.status,503);
+  assert.equal(list.body.code,'DESIGN_REQUEST_SCHEMA_NOT_READY');
+  assert.equal(JSON.stringify(list.body).includes('Synthetic'),false);
+  const created=await s.ask('POST','/api/sbc/design-briefs',{customerId:'cust_1',kind:'WEBSITE'},'owner');
+  assert.equal(created.status,503);
+  assert.equal(created.body.code,'DESIGN_REQUEST_SCHEMA_NOT_READY');
+  assert.equal(s.db.writes,0,'do not create phantom requests without approved schema setup');
  }finally{await s.close()}
 });
