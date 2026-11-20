@@ -181,7 +181,8 @@
   message('Workspace unavailable: '+e.message,true);$('rolePill').textContent='NOT AUTHORIZED';}}
  function openAccount(id){if(state.selected&&state.selected!==id&&window.SBCCallCommandLiveV3?.isBusy()){message('End the active call before opening another account.',true);return;}const a=state.accounts.find(x=>x.id===id);if(!a)return;state.selected=id;
   $('accountDetail').hidden=false;$('detailTitle').textContent=a.businessName;
-  $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
+  $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`+
+   '<button type="button" class="button secondary" data-action="generate-website" data-id="'+escapeHtml(a.id)+'">✨ Generate website · ChatGPT + Website ZIP</button>';
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
   configureQuickForm(a);
   window.SBCCallCommand?.open({account:a,accounts:state.accounts,role:state.role,lang:state.lang,onNext:openAccount});
@@ -191,6 +192,43 @@
  }
 
 
+ async function openAccountWebsite(id){
+  if(!['owner','account_manager'].includes(state.role))throw Error('WEBSITE_PERMISSION_REQUIRED');
+  const account=state.accounts.find(x=>String(x.id)===String(id)&&String(state.selected)===String(id));
+  if(!account)throw Error('SELECT_ASSIGNED_ACCOUNT_FIRST');
+  let dialog=document.getElementById('sbcAMWebsiteDialog');
+  if(!dialog){
+   dialog=document.createElement('dialog');dialog.id='sbcAMWebsiteDialog';
+   dialog.setAttribute('aria-label','SBC private website production');
+   document.body.append(dialog);
+   dialog.addEventListener('click',event=>{
+    if(event.target.closest('[data-close-am-website]'))dialog.close();
+   });
+  }
+  const openModal=(title,content)=>{
+   dialog.innerHTML='<header class="sbc-am-site-header"><strong>'+escapeHtml(title)+'</strong>'+
+    '<button type="button" class="button secondary" data-close-am-website>Close</button></header>'+
+    '<div class="sbc-am-site-content">'+content+'</div>';
+   if(!dialog.open)dialog.showModal();
+  };
+  if(!window.SBC_AI_SITE_HANDOFF){
+   await new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='/sbc-ai-site-handoff-v1.js?v=20261120-am';
+    script.onload=resolve;script.onerror=()=>reject(Error('WEBSITE_HANDOFF_SCRIPT_UNAVAILABLE'));
+    document.head.appendChild(script);
+   });
+  }
+  if(typeof window.SBC_AI_SITE_HANDOFF?.open!=='function')throw Error('WEBSITE_HANDOFF_UNAVAILABLE');
+  const serviceApi=async(route,options={})=>{
+   const response=await fetch(route,{...options,credentials:'same-origin',cache:'no-store',
+    headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||data.ok!==true)throw Error(String(data.code||'WEBSITE_ACCESS_DENIED'));
+   return data;
+  };
+  return window.SBC_AI_SITE_HANDOFF.open(account,{serviceApi,openModal});
+ }
  async function loadAccountHistoryV5(id){
   try{
    const response=await fetch('/api/v6606/crm/account-portfolios/'+encodeURIComponent(id)+'/history',
@@ -280,7 +318,7 @@
   $('socialList').innerHTML=state.posts.length?state.posts.map(p=>`<article class="post-row"><div><span class="tag">${escapeHtml(p.platform)} · ${escapeHtml(p.status)}</span><p>${escapeHtml(p.body)}</p><p class="muted">Created ${escapeHtml(p.createdAt||'')} · Approval ${escapeHtml(p.approvedBy||'Required')}</p></div><div class="controls">${p.status==='DRAFT'?`<button class="button secondary" data-action="submit" data-id="${escapeHtml(p.id)}">Submit for approval</button>`:''}${p.status==='PENDING_APPROVAL'&&state.role==='owner'?`<button class="button secondary" data-action="approve" data-id="${escapeHtml(p.id)}">Owner approve</button>`:''}${p.status==='APPROVED'&&state.role==='owner'?`<button class="button" data-action="schedule" data-id="${escapeHtml(p.id)}">Schedule</button>`:''}</div></article>`).join(''):'<p class="empty">No posts for this customer. Create a draft only after you have verified the business details.</p>';
  }
  async function action(name,id){try{state.busy=true;message('');
-  if(['approve','schedule','assign'].includes(name)&&state.role!=='owner')throw Error('OWNER_APPROVAL_REQUIRED');if(name==='open-account'){openAccount(id);return;}
+  if(['approve','schedule','assign'].includes(name)&&state.role!=='owner')throw Error('OWNER_APPROVAL_REQUIRED');if(name==='open-account'){openAccount(id);return;}if(name==='generate-website'){await openAccountWebsite(id);return;}
   if(name==='submit'){await api(`/api/account-social/v1/posts/${encodeURIComponent(id)}/submit`,{method:'POST'});message('Post submitted to owner approval.');await socialLoad();return;}
   if(name==='approve'){await api(`/api/account-social/v1/posts/${encodeURIComponent(id)}/approve`,{method:'POST'});message('Post approved; not yet published.');await socialLoad();return;}
   if(name==='schedule'){const val=window.prompt('Schedule ISO-8601 time with timezone (example: 2026-12-01T14:00:00-05:00):');if(!val)return;await api(`/api/account-social/v1/posts/${encodeURIComponent(id)}/schedule`,{method:'POST',body:{scheduledAt:val}});message('Scheduled. Publishing remains guarded by verified server permissions.');await socialLoad();return;}
