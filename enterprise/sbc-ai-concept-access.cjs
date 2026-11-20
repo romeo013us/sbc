@@ -15,6 +15,7 @@ function middleware({db,requireTenant}){
  return function conceptOnly(req,res,next){
   const tenant=Number(requireTenant(req)),id=String(req.params?.id||'');
   const customer=(Array.isArray(db?.customers)?db.customers:[]).find(c=>String(c.id)===id&&Number(c.tenantId)===tenant);
+  if(!customer)return res.status(404).json({ok:false,code:'CUSTOMER_NOT_FOUND'});
   if(!canCreate(req.user,customer,tenant))return res.status(403).json({ok:false,code:'WEBSITE_CONCEPT_NOT_ASSIGNED'});
   next();
  };
