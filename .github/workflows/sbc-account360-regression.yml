@@ -19,3 +19,9 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run test:lead-accounts
       - run: node --test scripts/account-manager-ui.test.cjs test/sbc-account-revenue-v5.test.cjs
+      - name: Verify Smart Calling and website demo safety
+        run: |
+          node --check public/sbc-smart-calling-v1.js
+          node --check public/sbc-website-sales-script-v1.js
+          node --check public/sbc-lead-profile-v1.js
+          node --test test/sbc-smart-calling-v1.test.cjs test/sbc-website-call-desk.test.cjs test/sbc-appointment-workflow.test.cjs
