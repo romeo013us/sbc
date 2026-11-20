@@ -9,17 +9,17 @@ const sample={id:'lead-synthetic-17',businessName:'D K Auto Repair',
  verificationStatus:'Verified',leadIntelligence:{researchBrief:{googleBusinessPresence:'found',websitePresence:'not_found'}}};
 const approved={customerId:sample.id,id:'demo-synthetic-17',slug:'demo-synthetic-17',status:'Approved',archived:false};
 
-test('website script follows verified Google profile observation, pause, sample site and 10-minute Zoom close',()=>{
+test('website script follows owner-approved John introduction, Google question, direct hook and Zoom close',()=>{
  const {createCallScript}=require('../enterprise/sbc-website-call-desk.cjs');
  const txt=createCallScript(sample,approved);
- assert.match(txt,/Google Business Profile/);
- assert.match(txt,/didn.t see a website linked/i);
+ assert.match(txt,/looking up your business on Google/i);
+ assert.match(txt,/couldn.t find your website/i);
  assert.match(txt,/\[PAUSE[^\]]*\]/);
- assert.match(txt,/here.s the thing/i);
- assert.match(txt,/I built one/i);
- assert.match(txt,/working example/i);
+ assert.match(txt,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.match(txt,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.match(txt,/jump on a quick Zoom/i);
  assert.match(txt,/10 minutes/i);
- assert.match(txt,/schedule a call/i);
+ assert.match(txt,/Which works better for you, today or tomorrow/i);
  assert.match(txt,/today or tomorrow/i);
  assert.doesNotMatch(txt,/your real first and last name/i);
  assert.doesNotMatch(txt,/guaranteed customers|free website forever/i);
@@ -30,11 +30,11 @@ test('website script does not claim Google profile discovery when absent or site
  const unknown={...sample,leadIntelligence:{researchBrief:{googleBusinessPresence:'not_checked',websitePresence:'not_checked'}}};
  const txt=createCallScript(unknown,approved);
  assert.doesNotMatch(txt,/I (?:was looking at|checked out) your Google Business Profile/i);
- assert.doesNotMatch(txt,/didn.t see a website linked/i);
- assert.match(txt,/Do you (?:already )?have a website/i);
+ assert.doesNotMatch(txt,/couldn.t find your website/i);
+ assert.match(txt,/do you have a website/i);
  const notBuilt=createCallScript(sample,{...approved,status:'Draft'});
- assert.doesNotMatch(notBuilt,/I built one/i);
- assert.match(notBuilt,/not (?:approved|ready)|can (?:build|prepare)|first need/i);
+ assert.match(notBuilt,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.match(notBuilt,/prepare the actual private concept before the presentation/i);
 });
 
 test('website script preserves a respectful existing-site branch, no pressure and refusal',()=>{
@@ -42,10 +42,10 @@ test('website script preserves a respectful existing-site branch, no pressure an
  const txt=createCallScript({...sample,leadIntelligence:{researchBrief:{googleBusinessPresence:'found',websitePresence:'found'}}},approved);
  assert.doesNotMatch(txt,/didn.t see a website linked/i);
  assert.match(txt,/IF THEY ALREADY HAVE A WEBSITE/i);
- assert.match(txt,/IF NO WEBSITE/i);
+ assert.match(txt,/IF THEY DO NOT HAVE A WEBSITE/i);
  assert.match(txt,/do.not.contact request/i);
  assert.match(txt,/\$199/);
- assert.match(txt,/confirm exactly what is included/i);
+ assert.match(txt,/one-page Starter starts at \$199/i);
 });
 
 test('Website Production preview and copy use the refreshed script even for saved older sites',()=>{
@@ -89,6 +89,6 @@ test('shared script logic is identical between server and browser static mirror'
  const shared=require('../public/sbc-website-sales-script-v1.js');
  assert.equal(typeof shared.build,'function');
  const text=shared.build({businessName:'D K Auto Repair',googleVerified:true,websitePresence:'not_found',approved:true});
- assert.match(text,/schedule a call/i);
+ assert.match(text,/jump on a quick Zoom/i);
  assert.match(text,/\[PAUSE/);
 });
