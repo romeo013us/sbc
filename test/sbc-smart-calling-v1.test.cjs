@@ -53,8 +53,9 @@ test('Account 360 and server-backed call scripts are wired on both web roots',()
   const root=path.join(__dirname,'..',p);
   const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
   const profile=fs.readFileSync(path.join(root,'sbc-lead-profile-v1.js'),'utf8');
-  assert.match(index,/sbc-smart-calling-v1\.js/);
-  assert.match(profile,/SBC_SMART_CALLING\.mount/);
+  assert.match(index,/sbc-lead-profile-v1\.js/);
+  assert.match(profile,/sbc-smart-calling-v1\.js/);
+  assert.match(profile,/loadSmartCalling\(\)/);
   assert.equal(fs.readFileSync(path.join(root,'sbc-smart-calling-v1.js'),'utf8'),
    fs.readFileSync(path.join(__dirname,'../public/sbc-smart-calling-v1.js'),'utf8'));
  }
