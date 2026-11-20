@@ -101,12 +101,12 @@ async function handleClick(e){const b=e.target.closest('[data-action]');if(!b)re
  }
  state.trend={topic,sector,source,expiry};
  const isMiami=/^miami next level$/i.test(topic);
- const slug=isMiami?'miami_next_level_2026':
-  'trend_'+topic.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,55).replace(/_+$/,'');
+ const topicLabel='trend_'+topic.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,55).replace(/_+$/,'');
+ const campaign=isMiami?'miami_next_level_2026':'super_sbc_growth';
  state.draft={...stateDefault.draft,
   title:'SBC | '+topic,platform:'facebook',offer:isMiami?'Miami Next Level':'SBC Business Packages',
   cta:'Send a message',
-  ctaUrl:'https://sbcmia.com/contact.php?utm_source=facebook&utm_medium=organic&utm_campaign='+encodeURIComponent(slug),
+  ctaUrl:'https://sbcmia.com/contact.php?utm_source=facebook&utm_medium=organic_social&utm_campaign='+encodeURIComponent(campaign)+'&utm_content='+encodeURIComponent(isMiami?'general':topicLabel),
   body:isMiami
    ?'🌴 MIAMI IS IN THE SPOTLIGHT. YOUR BUSINESS SHOULD BE NEXT.\n\nDoes your business have a website that makes it easy for customers to find your services and contact you?\n\nSuccessful By Choice helps Miami businesses with websites from $199, business visibility, printing and branding.\n\nWant a quick website consultation? Message SBC with LEVEL UP or visit sbcmia.com.\n\nBecause Why Not?'
    :'The world keeps moving. Your business can keep growing.\n\nSuccessful By Choice helps local owners build a clearer online presence with websites, business visibility and professional branding.\n\nAsk us about a website consultation at sbcmia.com. Because Why Not?'
