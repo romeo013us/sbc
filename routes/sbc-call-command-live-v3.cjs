@@ -113,6 +113,18 @@ function register(app,{auth,getContext}){
     if(V3.isSuppressed(row,cachedAccount(x.ctx,row)))throw Error('CONTACT_SUPPRESSED');
     const phone=V3.phone(row.phone);
     if(!phone)throw Error('PHONE_INVALID');
+    // Cross-account suppression must be checked against durable tenant CRM,
+    // not just the current customer or an optionally hydrated memory cache.
+    // Normalize common telephone punctuation inside MySQL for matching.
+    const canonical='REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,\' \' ,\'\'),\'-\',\'\'),\'(\',\'\'),\')\',\'\'),\'+\',\'\'),\'.\',\'\')';
+    const digits=phone.replace(/\\D/g,'');
+    const candidates=[digits,digits.slice(-10)];
+    const sql='SELECT id,phone,status,assigned_to,account_notes_json,tenant_id FROM sbc_customers '+
+     'WHERE tenant_id=? AND id<>? AND '+canonical+' IN (?,?) LIMIT 501';
+    const [matches]=await conn.query(sql,[x.tenant,id,...candidates]);
+    if(!Array.isArray(matches)||matches.length>500)throw Error('DNC_PHONE_CHECK_INCOMPLETE');
+    if(matches.some(other=>V3.phone(other.phone)===phone&&V3.isSuppressed(other,cachedAccount(x.ctx,other))))
+      throw Error('DNC_PHONE_SUPPRESSED');
     const notes=V3.parseNotes(row);if(!notes)throw Error('ACCOUNT_NOTES_UNREADABLE');
     const now=new Date(),approvedAt=now.toISOString();
     const record={id:'cauth_'+randomUUID().replace(/-/g,''),kind:V3.authKind,
@@ -132,7 +144,8 @@ function register(app,{auth,getContext}){
    });
    return res.json({ok:true,durable:true,accountId:id,expiresAt:cert.expiresAt,phone:cert.phone,
     notice:'Owner-attested evidence recorded; legal/DNC screening must remain current.'});
-  }catch(e){return fail(res,503,String(e.message||'CALL_AUTHORIZATION_SAVE_FAILED'))}
+  }catch(e){const code=String(e.message||'CALL_AUTHORIZATION_SAVE_FAILED');
+   return fail(res,['CONTACT_SUPPRESSED','DNC_PHONE_SUPPRESSED'].includes(code)?409:503,code)}
  });
  app.post(ROOT+'/:id/call-revoke',auth,async(req,res)=>{
   const x=selectedContext(req,res,getContext,true);if(!x)return;
