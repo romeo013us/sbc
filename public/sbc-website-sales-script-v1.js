@@ -31,14 +31,14 @@
   const hook=approved===true
    ? "Well, here's the thing—I built one! I put together a private website concept for "+business+
      ". It's a working example, not your live website. Any sample photos or services need your confirmation before publishing."
-   : "That's actually why I called. I can prepare a website concept for "+business+
-     " once our research and owner review are complete. I don't want to tell you it's built when it isn't.";
+   : "That's actually why I called. I've got a website idea for "+business+
+     "! Give me a few minutes and I can put together a private example for you to see. We'd confirm your business details before anything goes live.";
   const already=approved===true
    ? "Oh, that's good! I also built a separate website concept for your business. If you're happy with your current site, no pressure. Would a quick comparison be useful?"
    : "That's good to hear! Is there anything you wish your current website did better? If it's useful, I can prepare an alternative concept.";
   const close=approved===true
    ? "Look, I'm not trying to take up your whole day. Do you have about 10 minutes today or tomorrow? I can schedule a call and show you what I built. Which works better? [PAUSE]"
-   : "No pressure. If a website is something you're considering, we can set up a 10-minute conversation about what would work for your business. [PAUSE]";
+   : "If you have about 10 minutes, I can put together a first look and show you what I'm thinking. Would today or tomorrow work better? [PAUSE]";
   return [
    'SBC SMART CALLING · FRIENDLY, HONEST WEBSITE-FIRST PITCH',
    '',
@@ -51,7 +51,7 @@
    'IF INTERESTED — Great! What works better, later today or tomorrow? Confirm the appointment before logging it.',
    'IF THEY ASK PRICE — Our one-page Starter starts at $199. Other packages depend on your needs; we confirm exactly what is included before any purchase.',
    "IF THEY ARE BUSY — No worries, I know you're working. Would another time work better for a quick look? [PAUSE]",
-   "IF THEY ASK TO SEE THE LINK — Happy to show the private, owner-approved preview. Confirm where you want it sent before sending anything.",
+   "IF THEY ASK TO SEE THE LINK — If the preview is ready, I can show you the private example. If not, give me a few minutes to put one together. I'll confirm where you'd like it sent before sending anything.",
    'IF THEY HAVE FACEBOOK — That is great. A website can complement Facebook with a clear place for your services, contact details and inquiries.',
    'IF THEY ASK WHY THEY NEED A WEBSITE — GET FOUND: Have a clear place for customers to discover your verified services and location.',
    'BUILD TRUST: Show accurate business information and a professional design. No rankings or sales are guaranteed.',
