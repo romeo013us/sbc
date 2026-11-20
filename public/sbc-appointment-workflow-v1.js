@@ -93,7 +93,7 @@
    if(a&&customerId&&String(a.customerId)!==String(customerId))return win.toast?.('Appointment does not belong to this account.');
    customerId=String(a?.customerId||customerId||'');if(!selected(customerId))return win.toast?.('Choose a valid customer account first.');
    if(typeof win.openModal!=='function')return win.toast?.('Appointment editor is unavailable.');
-   lastContext=source==='account'?customerId:'';
+   lastContext=(source==='account'||source==='website-demo')?customerId:'';
    const start=asDate(a?.startAt)||new Date(Math.ceil((Date.now()+3600000)/1800000)*1800000);
    const demo=source==='website-demo'&&!a,defaults=websiteDemoDefaults();
    const end=asDate(a?.endAt)||new Date(start.getTime()+(demo?defaults.durationMinutes:30)*60000);
