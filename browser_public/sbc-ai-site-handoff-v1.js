@@ -101,7 +101,7 @@
    '</section></section></div>';
   openModal('SBC AI Website Production',html);
   if(!isOwner()){
-   const release=document.querySelector('#sbcAiDesk .sbc-ai-release-review');
+   const release=document.getElementById('sbcAiDesk')?.querySelector?.('.sbc-ai-release-review');
    if(release){release.querySelector('#sbcAIPreparePublish')?.remove();release.querySelectorAll('[data-sbc-ai-release-check]').forEach(x=>x.closest('label')?.remove());}
    const backup=document.getElementById('sbcAIBackup');if(backup)backup.textContent='Private proposal versions are retained in SBC. Final release and recovery exports require the owner.';
   }
