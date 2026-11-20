@@ -32,3 +32,26 @@
  .sidebar nav{min-width:0;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
  main{min-width:0;max-width:100%;width:100%}
 }
+
+/* Private staff website-production dialog; readable without the owner dashboard CSS. */
+#sbcAMWebsiteDialog{box-sizing:border-box;width:min(1180px,96vw);max-width:96vw;max-height:93dvh;padding:0;margin:auto;background:#f4f8fd;color:#142d45;border:1px solid #9fb9d2;border-radius:14px;box-shadow:0 24px 85px #07121fc7;overflow:auto}
+#sbcAMWebsiteDialog::backdrop{background:#071626df}
+#sbcAMWebsiteDialog .sbc-am-site-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 22px;background:#143354;color:#fff;border-bottom:2px solid #86b1db}
+#sbcAMWebsiteDialog .sbc-am-site-header strong{color:#fff}
+#sbcAMWebsiteDialog .sbc-am-site-content{padding:14px 22px 25px}
+#sbcAMWebsiteDialog .sbc-ai-desk{display:grid;gap:18px;color:#142d45;line-height:1.55}
+#sbcAMWebsiteDialog .sbc-ai-desk>section,#sbcAMWebsiteDialog .sbc-ai-desk>details{background:#fff;border:1px solid #b9ccdf;border-radius:12px;padding:16px}
+#sbcAMWebsiteDialog .sbc-ai-desk h3,#sbcAMWebsiteDialog .sbc-ai-desk h4,#sbcAMWebsiteDialog .sbc-ai-desk p,#sbcAMWebsiteDialog .sbc-ai-desk small,#sbcAMWebsiteDialog .sbc-ai-desk label{color:#142d45}
+#sbcAMWebsiteDialog input,#sbcAMWebsiteDialog select,#sbcAMWebsiteDialog textarea{box-sizing:border-box;max-width:100%;background:#fff;color:#162d45;border:1px solid #7695b2;border-radius:8px;padding:9px}
+#sbcAMWebsiteDialog input[type=file]{display:block;width:100%;margin:10px 0}
+#sbcAMWebsiteDialog .btn,#sbcAMWebsiteDialog .button{display:inline-block;max-width:100%;margin:4px;padding:10px 13px;border:1px solid #749aba;border-radius:8px;background:#eaf2fb;color:#123451;text-decoration:none;cursor:pointer;font:600 14px/1.25 system-ui}
+#sbcAMWebsiteDialog .btn.primary{background:#134e7c;color:#fff}
+#sbcAMWebsiteDialog .sbc-ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:15px}
+#sbcAMWebsiteDialog .sbc-ai-tier{padding:14px;border:1px solid #cad8e4;border-radius:10px}
+#sbcAMWebsiteDialog .sbc-ai-device-stage{display:flex;justify-content:center;overflow:auto;padding:12px;background:#dce7f1}
+#sbcAMWebsiteDialog .sbc-ai-device-stage iframe{width:100%;height:520px;background:#fff;border:1px solid #9aaebe}
+#sbcAMWebsiteDialog .sbc-ai-device-stage[data-device=tablet] iframe{max-width:768px}
+#sbcAMWebsiteDialog .sbc-ai-device-stage[data-device=mobile] iframe{max-width:390px}
+#sbcAMWebsiteDialog .sbc-ai-actions{display:flex;gap:8px;flex-wrap:wrap}
+#sbcAMWebsiteDialog .sbc-ai-error{color:#ad202c!important;font-weight:700}
+@media(max-width:640px){#sbcAMWebsiteDialog .sbc-am-site-content{padding:10px}#sbcAMWebsiteDialog .sbc-am-site-header{padding:12px}}
