@@ -40,3 +40,13 @@ test('Account Manager UI derives role from authenticated server and never offers
  assert(js.includes("p.status==='PENDING_APPROVAL'&&state.role==='owner'"),'manager cannot approve social post');
  assert(js.includes("p.status==='APPROVED'&&state.role==='owner'"),'manager cannot schedule social post');
 });
+
+test('account manager workstation opens assigned-account website ZIP handoff without owner release',()=>{
+ const js=read('public/sbc-account-manager-v1.js');
+ assert.match(js,/data-action="generate-website"/);
+ assert.match(js,/async function openAccountWebsite\(id\)/);
+ assert.match(js,/SBC_AI_SITE_HANDOFF\.open/);
+ assert.match(js,/state\.accounts\.find/);
+ assert.match(js,/Website ZIP/);
+ assert.equal(js,read('browser_public/sbc-account-manager-v1.js'),'AM workstation assets must remain mirrored');
+});

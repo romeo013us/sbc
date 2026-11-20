@@ -12,6 +12,7 @@
   let result;
   try{result=await serviceApi(base);if(!result?.ok)throw Error(result?.code||'Not available')}
   catch(e){openModal('AI Website Production','<p role="alert">Proposal desk unavailable: '+esc(e?.message||'Unknown error')+'</p>');return}
+  const ownerAuthorized=result.canRelease===true||(result.canRelease==null&&isOwner());
   let revision=Number(result.revision)||0;
   const cards=TIERS.map(t=>{
    const saved=result.variants?.[String(t.id)]||{};
@@ -100,7 +101,7 @@
    '<small>This safely downloads the selected ZIP for a separate hosting deployment. It does NOT publish to GoDaddy, approve payment or contact the customer.</small>'+
    '</section></section></div>';
   openModal('SBC AI Website Production',html);
-  if(!isOwner()){
+  if(!ownerAuthorized){
    const release=document.getElementById('sbcAiDesk')?.querySelector?.('.sbc-ai-release-review');
    if(release){release.querySelector('#sbcAIPreparePublish')?.remove();release.querySelectorAll('[data-sbc-ai-release-check]').forEach(x=>x.closest('label')?.remove());}
    const backup=document.getElementById('sbcAIBackup');if(backup)backup.textContent='Private proposal versions are retained in SBC. Final release and recovery exports require the owner.';
@@ -395,7 +396,7 @@
       '<a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(latest.previewPath)+'">Open preview ↗</a></div>'+
       (history.length?'<details><summary>Saved version history ('+history.length+' earlier version'+(history.length===1?'':'s')+')</summary>'+
         history.map((x,i)=>'<p><button class="btn" type="button" data-sbc-ai-preview="'+esc(x.previewPath)+'" data-tier="'+t.id+'">Preview earlier version '+(i+1)+'</button> '+
-        '<button class="btn" type="button" data-sbc-ai-restore="'+esc(x.id)+'" data-tier="'+t.id+'" data-active-id="'+esc(latest.id)+'">Make current</button></p>').join('')+'</details>':'')
+        (ownerAuthorized?'<button class="btn" type="button" data-sbc-ai-restore="'+esc(x.id)+'" data-tier="'+t.id+'" data-active-id="'+esc(latest.id)+'">Make current</button>' :'')+'</p>').join('')+'</details>':'')
      :'<p class="sbc-ai-meta">External preview saved · no ZIP uploaded</p>'+
       '<button class="btn" data-sbc-ai-external="'+t.id+'" type="button">Preview external URL</button>');
    }
@@ -414,7 +415,7 @@
       '<p class="sbc-ai-meta">'+esc(label)+'</p>'+
       '<div class="sbc-ai-actions"><button class="btn" type="button" data-sbc-ai-preview="'+esc(latest.previewPath)+'" data-tier="'+selected+'">Preview saved website</button>'+
       '<a class="btn" href="'+esc(latest.downloadPath)+'" download>Download saved ZIP</a></div>'+
-      (items.some(x=>Number(x.tier)===selected&&x.id!==latest.id)?
+      (ownerAuthorized&&items.some(x=>Number(x.tier)===selected&&x.id!==latest.id)?
        '<details class="sbc-ai-other"><summary>Restore earlier version</summary>'+
        items.filter(x=>Number(x.tier)===selected&&x.id!==latest.id).slice(0,12).map((x,i)=>
         '<p><button class="btn" type="button" data-sbc-ai-restore="'+esc(x.id)+'" data-active-id="'+esc(latest.id)+'" data-tier="'+selected+'">Make version '+(i+1)+' current</button></p>').join('')+
@@ -423,7 +424,8 @@
    }
    const backup=document.getElementById('sbcAIBackup');
    if(backup){
-    backup.innerHTML=items.length?
+    if(!ownerAuthorized)backup.textContent='Private revisions are saved to this assigned account. Owner controls full recovery exports.';
+    else backup.innerHTML=items.length?
      '<p class="sbc-ai-saved">Protect your customer website files</p>'+
      '<p class="sbc-ai-meta">Original ZIP versions, all saved packages, and a checksum manifest in one portable file. Store this downloaded backup somewhere independent of GoDaddy.</p>'+
      '<a class="btn" href="'+esc(base+'/uploads/recovery/export')+'" download="sbc-customer-website-backup.zip">Download customer website backup</a>'+

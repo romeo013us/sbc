@@ -5,10 +5,20 @@
  * The global employee gate must call allowAccountManager on every request.
  */
 const STATIC={
- GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine']),
+ GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk']),
  POST:new Set(['/api/logout','/api/v9/time/clock','/api/training/progress','/api/account-social/v1/posts','/api/sbc/design-briefs'])
 };
 const VALID_ID='[A-Za-z0-9][A-Za-z0-9_-]{0,119}';
+const CONCEPT_BASE='^/api/website-production/customers/'+VALID_ID+'/ai-proposals';
+const CONCEPT_UPLOAD='up_[a-f0-9]{32}';
+const CONCEPT={
+ GET:[new RegExp(CONCEPT_BASE+'$'),new RegExp(CONCEPT_BASE+'/uploads$'),
+  new RegExp(CONCEPT_BASE+'/uploads/'+CONCEPT_UPLOAD+'/(?:text-fields|images|qa|download)$'),
+  new RegExp(CONCEPT_BASE+'/uploads/'+CONCEPT_UPLOAD+'/preview/[A-Za-z0-9_./-]+$')],
+ POST:[new RegExp(CONCEPT_BASE+'/uploads/(?:199|499|799|999)$'),
+  new RegExp(CONCEPT_BASE+'/uploads/'+CONCEPT_UPLOAD+'/(?:text-edit|image-replace)$')],
+ PATCH:[new RegExp(CONCEPT_BASE+'$')]
+};
 const RE={
  GET:[
   new RegExp('^/api/training/courses/'+VALID_ID+'$'),
@@ -33,10 +43,10 @@ const RE={
 };
 function allowed(method,url){
  const verb=String(method||'').toUpperCase();
- if(!Object.hasOwn(STATIC,verb))return false;
+ if(!Object.hasOwn(STATIC,verb)&&!Object.hasOwn(CONCEPT,verb))return false;
  const path=String(url||'').split('?')[0];
  if(path.includes('%')||path.includes('\\')||path.includes('//')||path.includes('..'))return false;
- return STATIC[verb].has(path)||RE[verb].some(rule=>rule.test(path));
+ return (STATIC[verb]?.has(path)||false)||(RE[verb]?.some(rule=>rule.test(path))||false)||(CONCEPT[verb]?.some(rule=>rule.test(path))||false);
 }
 function allowAccountManager(user,method,url,now=new Date()){
  if(user?.role!=='account_manager'||user.active===false)return false;

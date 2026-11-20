@@ -113,6 +113,18 @@ function register(app,{auth,getContext}){
     if(V3.isSuppressed(row,cachedAccount(x.ctx,row)))throw Error('CONTACT_SUPPRESSED');
     const phone=V3.phone(row.phone);
     if(!phone)throw Error('PHONE_INVALID');
+    // Cross-account suppression must be checked against durable tenant CRM,
+    // not just the current customer or an optionally hydrated memory cache.
+    // Normalize common telephone punctuation inside MySQL for matching.
+    const canonical='REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,\' \' ,\'\'),\'-\',\'\'),\'(\',\'\'),\')\',\'\'),\'+\',\'\'),\'.\',\'\')';
+    const digits=phone.replace(/\D/g,'');
+    const candidates=[digits,digits.slice(-10)];
+    const sql='SELECT id,phone,status,assigned_to,account_notes_json,tenant_id FROM sbc_customers '+
+     'WHERE tenant_id=? AND id<>? AND '+canonical+' IN (?,?) LIMIT 501';
+    const [matches]=await conn.query(sql,[x.tenant,id,...candidates]);
+    if(!Array.isArray(matches)||matches.length>500)throw Error('DNC_PHONE_CHECK_INCOMPLETE');
+    if(matches.some(other=>V3.phone(other.phone)===phone&&V3.isSuppressed(other,cachedAccount(x.ctx,other))))
+      throw Error('DNC_PHONE_SUPPRESSED');
     const notes=V3.parseNotes(row);if(!notes)throw Error('ACCOUNT_NOTES_UNREADABLE');
     const now=new Date(),approvedAt=now.toISOString();
     const record={id:'cauth_'+randomUUID().replace(/-/g,''),kind:V3.authKind,
@@ -132,7 +144,8 @@ function register(app,{auth,getContext}){
    });
    return res.json({ok:true,durable:true,accountId:id,expiresAt:cert.expiresAt,phone:cert.phone,
     notice:'Owner-attested evidence recorded; legal/DNC screening must remain current.'});
-  }catch(e){return fail(res,503,String(e.message||'CALL_AUTHORIZATION_SAVE_FAILED'))}
+  }catch(e){const code=String(e.message||'CALL_AUTHORIZATION_SAVE_FAILED');
+   return fail(res,['CONTACT_SUPPRESSED','DNC_PHONE_SUPPRESSED'].includes(code)?409:503,code)}
  });
  app.post(ROOT+'/:id/call-revoke',auth,async(req,res)=>{
   const x=selectedContext(req,res,getContext,true);if(!x)return;
@@ -177,8 +190,10 @@ function register(app,{auth,getContext}){
      const m=parseAttempt(item);if(!m||m.actorId!==String(req.user.id))continue;
      if(m.requestId===requestId&&m.customerId===id&&m.status==='PREPARED'&&
       Date.parse(m.expiresAt)>now)return {attemptId:item.id,identity,duplicate:true};
-     if(['PREPARED','DIALING'].includes(m.status)&&
-      Date.parse(m.expiresAt)>now)throw Error('ANOTHER_CALL_SESSION_ACTIVE');
+     // A started call remains active until a signed provider completion.
+     // The short PREPARED token TTL must never unlock a DIALING session.
+     if(m.status==='DIALING'||(m.status==='PREPARED'&&
+      Date.parse(m.expiresAt)>now))throw Error('ANOTHER_CALL_SESSION_ACTIVE');
     }
     const attemptId='ccv3_'+randomUUID().replace(/-/g,'');
     const createdAt=new Date().toISOString();
@@ -237,7 +252,9 @@ function register(app,{auth,getContext}){
  // Signed provider events make account history authoritative even if browser exits.
  app.post(WEB+'/status',async(req,res)=>{
   const cfg=V3.settings();
-  if(!cfg.enabled||!cfg.configured||!signed(req,cfg))return fail(res,403,'VOICE_STATUS_NOT_AUTHORIZED');
+  // Emergency stop disables new calls, not signed status callbacks from calls
+  // already in progress; otherwise active sessions can remain locked forever.
+  if(!cfg.configured||!signed(req,cfg))return fail(res,403,'VOICE_STATUS_NOT_AUTHORIZED');
   const attemptId=String(req.query?.attempt||''),providerStatus=String(req.body?.CallStatus||'').toLowerCase();
   const callSid=String(req.body?.CallSid||'');
   if(!validAttemptId(attemptId)||!['initiated','ringing','in-progress','completed','busy','failed','no-answer','canceled'].includes(providerStatus)||
