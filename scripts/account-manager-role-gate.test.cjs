@@ -85,6 +85,7 @@ test('repo module-inventory auditor accepts the source-only installer without fa
 // Private concept production requires an assigned-account check in the route handler.
 // This perimeter only permits the narrowly scoped handoff endpoints.
 test('assigned account managers may reach private website concept handoff endpoints',()=>{
+ const {allowed}=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
  for(const methodPath of [
   ['GET','/api/website-production/customers/cust_123/ai-proposals'],
   ['PATCH','/api/website-production/customers/cust_123/ai-proposals'],
