@@ -5,7 +5,7 @@
 function canCreate(actor,customer,tenantId){
  const tenant=Number(tenantId);
  if(!actor||!customer||!Number.isSafeInteger(tenant)||tenant<1||
-  Number(actor.tenantId)!==tenant||Number(customer.tenantId)!==tenant)return false;
+  (actor.tenantId!=null&&Number(actor.tenantId)!==tenant)||Number(customer.tenantId)!==tenant)return false;
  if(String(actor.role)==='owner')return true;
  const assigned=String(customer.assignedTo||customer.assigned_to||'');
  return String(actor.role)==='account_manager'&&assigned.length>0&&assigned===String(actor.id);
