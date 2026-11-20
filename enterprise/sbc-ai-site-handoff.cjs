@@ -107,7 +107,7 @@ function register(app,{auth,ownerOnly,requireTenant,db,getStore,saveStore,writer
    const {tid,id,customer}=target(req);
    if(!customer)return res.status(404).json({ok:false,code:'CUSTOMER_NOT_FOUND'});
    const saved=current(tid,id);
-   return res.json({ok:true,customerId:id,revision:saved?.revision||0,variants:saved?.variants||{},prompt:buildPrompt(customer),prompts:Object.fromEntries(TIERS.map(t=>[String(t),buildTierPrompt(customer,t)])),mode:'CHATGPT_MANUAL_HANDOFF',automated:false});
+   return res.json({ok:true,customerId:id,canRelease:req.user?.role==='owner',revision:saved?.revision||0,variants:saved?.variants||{},prompt:buildPrompt(customer),prompts:Object.fromEntries(TIERS.map(t=>[String(t),buildTierPrompt(customer,t)])),mode:'CHATGPT_MANUAL_HANDOFF',automated:false});
   }catch(e){return fail(res,e)}
  });
  app.patch(ROOT,auth,conceptOnly,async(req,res)=>{
