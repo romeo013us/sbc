@@ -81,3 +81,21 @@ test('repo module-inventory auditor accepts the source-only installer without fa
  const report=audit.auditModules(ROOT);
  assert.equal(report.ok,true,report.missing.slice(0,10).join(' | '));
 });
+
+// Private concept production requires an assigned-account check in the route handler.
+// This perimeter only permits the narrowly scoped handoff endpoints.
+test('assigned account managers may reach private website concept handoff endpoints',()=>{
+ for(const methodPath of [
+  ['GET','/api/website-production/customers/cust_123/ai-proposals'],
+  ['PATCH','/api/website-production/customers/cust_123/ai-proposals'],
+  ['GET','/api/website-production/customers/cust_123/ai-proposals/uploads'],
+  ['POST','/api/website-production/customers/cust_123/ai-proposals/uploads/199'],
+  ['GET','/api/website-production/customers/cust_123/ai-proposals/uploads/up_0123456789abcdef0123456789abcdef/qa']
+ ])assert.equal(allowed(...methodPath),true,methodPath.join(' '));
+ for(const methodPath of [
+  ['POST','/api/website-production/customers/cust_123/ai-proposals/uploads/up_0123456789abcdef0123456789abcdef/select'],
+  ['GET','/api/website-production/customers/cust_123/ai-proposals/uploads/recovery/export'],
+  ['POST','/api/website-production/customers/cust_123/ai-proposals/publish'],
+  ['POST','/api/website-production/customers/cust_123/ai-proposals/uploads/123']
+ ])assert.equal(allowed(...methodPath),false,methodPath.join(' '));
+});
