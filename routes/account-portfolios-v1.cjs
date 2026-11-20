@@ -6,6 +6,7 @@ const {randomUUID,createHash}=require('node:crypto');
 const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
 const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');
 const AccountManagerReadiness=require('../enterprise/sbc-account-manager-readiness-v6.cjs');
+const SBCVoicePreflightV2=require('../enterprise/sbc-call-command-voice-preflight-v2.cjs');
 const STATUS_BLOCKED=new Set(['do not call','do not contact','dnc','opt out','unsubscribe','lost','bad number','wrong number','deleted']);
 const fail=(res,status,code)=>res.status(status).json({ok:false,code});
 function safeTenant(req){
@@ -99,6 +100,39 @@ function register(app,{auth,getContext}){
     socialPermissionsNotInferred:true,legacyCallerReadOnly:req.user.role==='caller'}});
   }catch{return fail(res,503,'ACCOUNT_PORTFOLIO_MINE_UNAVAILABLE')}
   finally{try{conn?.release()}catch(_){}}
+ });
+
+ // V2 authenticated preflight: read-only. No Twilio tokens or outbound calls.
+ app.get('/api/v6606/crm/account-portfolios/:id/call-preflight',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  const x=context(req,res);if(x.denied)return;
+  if(!['owner','account_manager'].includes(req.user.role)||req.user.active===false)
+   return fail(res,403,'CALL_COMMAND_ROLE_DENIED');
+  let id;try{id=safeId(req.params.id)}catch{return fail(res,400,'ACCOUNT_ID_INVALID')}
+  let conn;
+  try{
+   conn=await x.ctx.mysqlPool.getConnection();
+   const [rows]=await conn.query(
+    'SELECT id,phone,status,assigned_to,tenant_id FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',
+    [x.tenant,id]);
+   if(!Array.isArray(rows)||rows.length!==1)return fail(res,404,'ACCOUNT_NOT_FOUND');
+   const row=rows[0],actor=String(req.user.id||'');
+   if(req.user.role==='account_manager'){
+    const staff=(x.ctx.db?.users||[]).find(u=>String(u.id)===actor&&
+     Number(u.tenantId??u.tenant_id)===x.tenant&&u.role==='account_manager'&&u.active!==false);
+    if(!staff||String(row.assigned_to||'')!==actor)return fail(res,403,'ACCOUNT_NOT_ASSIGNED');
+   }
+   const cached=(x.ctx.db?.customers||[]).find(c=>String(c.id)===id&&
+    Number(c.tenantId??c.tenant_id)===x.tenant);
+   // The CRM currently lacks authoritative outreach-consent / DNC screening
+   // records. Never infer them from untrusted browser fields or a phone number.
+   const flags={doNotContact:cached?.doNotContact===true,
+    doNotCall:cached?.doNotCall===true,salesSuppressed:cached?.salesSuppressed===true};
+   const result=SBCVoicePreflightV2.preflight({account:row,user:req.user,tenantId:x.tenant,flags});
+   return res.json({...result,accountId:id,verified:false,
+    nextStep:'Complete server-verified calling authorization, DNC screening, time zone and Twilio/logging integration.'});
+  }catch{return fail(res,503,'CALL_PREFLIGHT_UNAVAILABLE')}
+  finally{try{conn?.release()}catch{}}
  });
 
  // V6 owner-only evidence: compares independent CRM vs Social ownership.

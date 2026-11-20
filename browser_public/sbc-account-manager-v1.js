@@ -32,8 +32,8 @@
  function configureQuickForm(account){
   const section=$('sbcManagerQuickActions');
   if(!section)return;
-  section.hidden=state.role!=='account_manager';
-  $('noteForm').hidden=state.role==='account_manager';
+  section.hidden=!['owner','account_manager'].includes(state.role);
+  $('noteForm').hidden=['owner','account_manager'].includes(state.role);
   if(section.hidden)return;
   const form=$('sbcManagerOutcomeForm'),blocked=blockedAccount(account);
   form.reset();pendingQuick=null;
@@ -51,7 +51,7 @@
   event.preventDefault();
   const form=event.currentTarget,status=$('sbcQuickStatus');
   const account=state.accounts.find(x=>String(x.id)===String(state.selected));
-  if(state.role!=='account_manager'||!account||blockedAccount(account)){
+  if(!['owner','account_manager'].includes(state.role)||!account||blockedAccount(account)){
    status.textContent='This account is no longer authorized for contact. Refresh the account.';
    return;
   }
@@ -98,7 +98,9 @@
    if(data.outcome==='DO_NOT_CONTACT'||data.outcome==='BAD_NUMBER'){
     form.querySelectorAll('input,select,textarea,button').forEach(x=>x.disabled=true);
    }else{form.reset();updateQuickForm();}
+   window.SBCCallCommand?.saved(id);
   }catch(error){
+   window.SBCCallCommand?.failed(id);
    status.dataset.saved='';
    status.textContent='Not confirmed: '+String(error.message||error)+
     '. The same Save action safely retries the identical request.';
@@ -165,7 +167,7 @@
   // Access may have expired while this page was open. Clear *every* previously
   // authorized customer view (not just the primary account cards).
   state.accounts=[];state.handoffs=[];state.channels=[];state.posts=[];
-  state.selected=null;state.role='';pendingQuick=null;
+  state.selected=null;state.role='';pendingQuick=null;window.SBCCallCommand?.clear();
   $('accountDetail').hidden=true;
   for(const id of ['metrics','handoffList','socialCustomer','socialChannel','socialList',
     'accountFacts','timeline','detailTitle']){
@@ -177,11 +179,12 @@
   $('sbcAccountCount').textContent='Account list unavailable. Sign in or ask the owner for access.';
   $('accountGrid').innerHTML='<p class="empty">Account data could not be verified. Check your login or ask the owner to enable the workstation.</p>';
   message('Workspace unavailable: '+e.message,true);$('rolePill').textContent='NOT AUTHORIZED';}}
- function openAccount(id){const a=state.accounts.find(x=>x.id===id);if(!a)return;state.selected=id;
+ function openAccount(id){if(state.selected&&state.selected!==id&&window.SBCCallCommandLiveV3?.isBusy()){message('End the active call before opening another account.',true);return;}const a=state.accounts.find(x=>x.id===id);if(!a)return;state.selected=id;
   $('accountDetail').hidden=false;$('detailTitle').textContent=a.businessName;
   $('accountFacts').innerHTML=`<p class="muted">Manager: ${escapeHtml(a.managerId)} · CRM status: ${escapeHtml(a.status)} · ${a.doNotContact?'CONTACT SUPPRESSED':'Follow your documented consent and outreach policies'}</p>`;
   $('timeline').innerHTML=(a.timeline||[]).length?a.timeline.map(x=>`<div class="timeline-row"><span class="tag">${escapeHtml(x.kind)}</span> ${escapeHtml(x.summary)}<div class="muted">${escapeHtml(x.createdAt)}</div></div>`).join(''):'<p class="empty">No recorded account interactions yet.</p>';
   configureQuickForm(a);
+  window.SBCCallCommand?.open({account:a,accounts:state.accounts,role:state.role,lang:state.lang,onNext:openAccount});
   if(window.SBC_MANAGER_DESIGN_BRIEFS?.open)window.SBC_MANAGER_DESIGN_BRIEFS.open(a.id,a.businessName);
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
   if(state.role==='account_manager'){void loadAccountHistoryV5(id);void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
@@ -286,7 +289,7 @@
  }catch(e){message('Action not completed: '+e.message,true)}finally{state.busy=false;}}
  document.querySelectorAll('[data-t]').forEach(x=>x.dataset.en=x.textContent);
  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>page(b.dataset.view)));
- $('refresh').addEventListener('click',load);$('sbcAccountSearch').addEventListener('input',renderAccountGrid);$('closeDetail').addEventListener('click',()=>{$('accountDetail').hidden=true});
+ $('refresh').addEventListener('click',load);$('sbcAccountSearch').addEventListener('input',renderAccountGrid);$('closeDetail').addEventListener('click',()=>{if(window.SBCCallCommandLiveV3?.isBusy()){message('End the active call first.',true);return;}$('accountDetail').hidden=true;window.SBCCallCommandLiveV3?.close();window.SBCCallCommand?.clear();});
  $('noteForm').addEventListener('submit',async e=>{e.preventDefault();if(!state.selected)return;
   try{const form=e.target,summary=form.elements.summary.value.trim(),id=state.selected;
    if(state.role==='account_manager'){
@@ -310,6 +313,6 @@
   await api('/api/account-social/v1/posts',{method:'POST',body:{channelId:f.elements.channelId.value,body:f.elements.body.value,mediaUrl:f.elements.mediaUrl.value,ctaUrl:f.elements.ctaUrl.value}});
   f.elements.body.value='';f.elements.mediaUrl.value='';f.elements.ctaUrl.value='';await socialLoad();message('Draft saved. No public post was sent.');}catch(error){message('Draft not saved: '+error.message,true)}});
  document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b&&!state.busy)action(b.dataset.action,b.dataset.id)});
- ['en','es'].forEach(lang=>{$('lang-'+lang).addEventListener('click',()=>{state.lang=lang;document.documentElement.lang=lang;document.querySelectorAll('[data-t]').forEach(x=>{x.textContent=dict[lang]?.[x.dataset.t]||x.dataset.en});$('lang-en').setAttribute('aria-pressed',String(lang==='en'));$('lang-es').setAttribute('aria-pressed',String(lang==='es'));page(state.view);renderAccountGrid()});});
+ ['en','es'].forEach(lang=>{$('lang-'+lang).addEventListener('click',()=>{state.lang=lang;document.documentElement.lang=lang;document.querySelectorAll('[data-t]').forEach(x=>{x.textContent=dict[lang]?.[x.dataset.t]||x.dataset.en});$('lang-en').setAttribute('aria-pressed',String(lang==='en'));$('lang-es').setAttribute('aria-pressed',String(lang==='es'));page(state.view);renderAccountGrid();if(state.selected){const a=state.accounts.find(x=>x.id===state.selected);if(a)window.SBCCallCommand?.open({account:a,accounts:state.accounts,role:state.role,lang:state.lang,onNext:openAccount});}});});
  page('accounts');load();
 })();
