@@ -117,7 +117,7 @@ function register(app,{auth,getContext}){
     // not just the current customer or an optionally hydrated memory cache.
     // Normalize common telephone punctuation inside MySQL for matching.
     const canonical='REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,\' \' ,\'\'),\'-\',\'\'),\'(\',\'\'),\')\',\'\'),\'+\',\'\'),\'.\',\'\')';
-    const digits=phone.replace(/\\D/g,'');
+    const digits=phone.replace(/\D/g,'');
     const candidates=[digits,digits.slice(-10)];
     const sql='SELECT id,phone,status,assigned_to,account_notes_json,tenant_id FROM sbc_customers '+
      'WHERE tenant_id=? AND id<>? AND '+canonical+' IN (?,?) LIMIT 501';
