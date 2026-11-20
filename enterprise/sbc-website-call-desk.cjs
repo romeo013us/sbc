@@ -42,7 +42,9 @@ function createCallScript(customer,site){
  const approved=site?.status==='Approved'&&site.archived!==true&&
   String(site.customerId||'')===String(customer?.id||'')&&!!String(site.slug||'');
  return WEBSITE_PITCH.build({
-  businessName:customer?.businessName||customer?.contactName||'your business',
+  businessName:customer?.businessName||'your business',
+  contactName:customer?.contactName||'',
+  callerName:'John',
   googleVerified:r.verified&&r.googleVerified,
   websitePresence:r.verified?r.websitePresence:'not_checked',
   approved
@@ -50,10 +52,10 @@ function createCallScript(customer,site){
 }
 function coach(){
  return {
-  busy:"Absolutely. I don't want to interrupt your work. Would tomorrow at a specific time be better for a quick 10-minute look? If not, no problem.",
+  busy:"No worries, I know you're working. Is later today or tomorrow better for a quick 10-minute look?",
   website:"That's good to hear. I don't want to assume you don't have one. Would you be open to comparing a different design, or is your current site meeting your needs?",
-  price:"Our one-page website starts at $199. Larger packages are quoted based on the owner's confirmed scope. Let me show you the approved preview first.",
-  send:"Of course. May I send the approved website link to the email address you prefer? We'll only send it with your permission.",
+  price:"Our one-page Starter starts at $199. Let me show you the concept and we can see what fits your business.",
+  send:"Absolutely. I can have the private concept ready for our Zoom. We'll confirm where to send anything first.",
   notInterested:"Understood, thanks for your time. I won't keep pitching you."
  };
 }

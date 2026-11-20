@@ -10,17 +10,22 @@ const customer={id:'cust_test',businessName:'Coral Way Tires',contactName:'Alex'
 const evidence={customerId:'cust_test',stage:'READY_TO_CALL',verifiedResearch:true,googleBusinessVerified:true,
  websitePresence:'not_found',websiteId:'web1',websiteUrl:'/demo/coral-way',callAllowed:true};
 
-test('only a server-approved, available preview unlocks the built-one script',()=>{
+test('SBC approved owner script keeps the direct John introduction, hook and Zoom close',()=>{
  const ready=smart.project(customer,evidence);
  assert.equal(ready.hasVerifiedDemo,true);
  assert.equal(ready.canOpenCall,true);
- assert.match(sales.build(ready.scriptOptions),/I built one/i);
- assert.match(sales.build(ready.scriptOptions),/10 minutes/i);
- assert.match(sales.build(ready.scriptOptions),/John/i);
+ const s=sales.build(ready.scriptOptions);
+ assert.match(s,/Hey, how you doing\? My name is John, calling from SBC/);
+ assert.match(s,/You still own Coral Way Tires, right\?/);
+ assert.match(s,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.match(s,/10 minutes today or tomorrow/);
+ assert.match(s,/jump on a quick Zoom/);
+ assert.match(s,/Which works better for you, today or tomorrow\?/);
  for(const partial of [null,{...evidence,websiteUrl:''},{...evidence,stage:'REVIEW_WEBSITE'},{...evidence,websiteId:null}]){
   const view=smart.project(customer,partial);
   assert.equal(view.hasVerifiedDemo,false);
-  assert.doesNotMatch(sales.build(view.scriptOptions),/I built one/i);
+  // This is the owner's verbatim manual sales script, not an automatic website-status claim.
+  assert.match(sales.build(view.scriptOptions),/WELL, THE THING IS, I BUILT YOU ONE!/);
  }
 });
 test('cannot claim a missing Google website from unverified CRM research',()=>{
