@@ -27,9 +27,9 @@
   const canLog=!!(!locked&&!suppressed(c)&&['owner','account_manager'].includes(role)&&c.id);
   return {
    hasVerifiedDemo,canOpenCall,canLog,canBuild:role==='owner'&&!locked,
-   canSchedule:hasVerifiedDemo&&['owner','manager','caller','account_manager'].includes(role)&&!locked&&!suppressed(c),
+   canSchedule:['owner','manager','caller','account_manager'].includes(role)&&!locked&&!suppressed(c),
    stage:r?.stage||'UNVERIFIED',demoUrl:hasVerifiedDemo?r.websiteUrl:'',
-   nextAction:r?.nextAction||'Confirm research and website approval in SBC before making claims.',
+   nextAction:r?.nextAction||'Call first, qualify interest, then generate the concept and schedule a demo.',
    scriptOptions:{businessName:limited(c.businessName||c.business_name||r?.businessName||'your business'),
     contactName:limited(c.contactName||c.contact_name||r?.contactName||'',80),
     ownerVerified:verified&&r?.ownerContactVerified===true,
@@ -106,10 +106,10 @@
    '<div class="sbc-sc-tools">' +
    '<button type="button" class="btn primary" data-sc-action="call" '+(!ctx.canOpenCall?'disabled':'')+'>☎ Call from SBC</button>' +
    '<button type="button" class="btn" data-sc-action="preview" '+(!ctx.hasVerifiedDemo?'disabled':'')+'>↗ Show approved website</button>' +
-   '<button type="button" class="btn" data-sc-action="build" '+(!ctx.canBuild?'disabled':'')+'>Build private $199 concept</button>' +
-   '<button type="button" class="btn" data-sc-action="appointment" '+(!ctx.canSchedule?'disabled':'')+'>📅 Book 10-minute demo</button>' +
+   '<button type="button" class="btn" data-sc-action="build" '+(!ctx.canBuild?'disabled':'')+'>Generate $199 concept</button>' +
+   '<button type="button" class="btn" data-sc-action="appointment" '+(!ctx.canSchedule?'disabled':'')+'>📅 Schedule Zoom demo</button>' +
    '<button type="button" class="btn" data-sc-action="copy">Copy script</button></div>' +
-   '<p class="sbc-sc-muted">'+(ctx.hasVerifiedDemo?'Approved website preview verified in SBC.':'No approved website preview confirmed; do not say it is built.') +
+   '<p class="sbc-sc-muted">'+(ctx.hasVerifiedDemo?'Approved website preview verified in SBC.':'No preview saved yet. You can qualify interest first, then generate a concept before the demo.') +
    (!ctx.canOpenCall?(hasNumber?' Calling requires verified readiness and authorization.':' Verify a working phone before calling.'):' Calling still requires server-side Twilio clearance.')+'</p>' +
    '<pre class="sbc-sc-script" id="sbcSmartCallScript">'+esc(script)+'</pre>' +
    (ctx.canLog?'<form class="sbc-sc-form" id="sbcSmartCallOutcome"><label>What happened?' +
@@ -140,7 +140,7 @@
     else status('Approved preview exists, but the SBC viewer is unavailable.',true);
    }
    if(action==='build'){
-    if(!ctx.canBuild)return;
+    if(!ctx.canBuild)return status('Website creation is owner-controlled; request a concept from the owner.',true);
     if(typeof win.SBC_WEBSITE_PRODUCTION?.build==='function')win.SBC_WEBSITE_PRODUCTION.build(customer.id,'starter',customer);
     else status('Website Studio unavailable. No website was created.',true);
    }
