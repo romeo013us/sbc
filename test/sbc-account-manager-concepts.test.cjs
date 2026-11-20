@@ -35,3 +35,15 @@ test('owner and account manager see Generate and ChatGPT handoff in both browser
   assert.match(production,/sbcAIHandoffLaunch/);
  }
 });
+
+test('Smart Calling offers assigned AM concept creation and demo scheduling before preview',()=>{
+ const smart=require('../public/sbc-smart-calling-v1.js');
+ const customer={id:'c1',businessName:'Test Shop',phone:'3055550101'};
+ const row={customerId:'c1',callAllowed:true,websiteId:null,websiteUrl:''};
+ const am=smart.project(customer,row,{role:'account_manager'});
+ assert.equal(am.canBuild,true);
+ assert.equal(am.canSchedule,true);
+ assert.equal(am.hasVerifiedDemo,false);
+ assert.equal(smart.project(customer,row,{role:'lead_researcher'}).canBuild,false);
+ assert.equal(smart.project(customer,row,{role:'account_manager',readOnly:true}).canBuild,false);
+});
