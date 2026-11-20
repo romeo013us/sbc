@@ -31,6 +31,32 @@
   if(value?.ok===false)throw Error(value.code||value.error||'Operation was not confirmed');return value};
  const message=(id,msg)=>{const pane=document.getElementById(id);if(pane)pane.textContent=String(msg||'')};
  const linkFor=()=>currentLink||'';
+ // Read-only GET retains error codes hidden by the generic CRM request wrapper.
+ // Writes still use win.api and existing authentication/authorization controls.
+ async function readList(id){
+  const response=await win.fetch('/api/sbc/design-briefs/customer/'+encodeURIComponent(id),{
+   method:'GET',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}
+  });
+  const payload=await response.json().catch(()=>null);
+  if(!response.ok||!payload||payload.ok===false){
+   const code=String(payload?.code||'HTTP_'+response.status);
+   const details=code==='DESIGN_REQUEST_SCHEMA_NOT_READY'?
+    (role()==='owner'?'Design Requests need database activation. Verify a recoverable MySQL backup, then apply the approved design-brief migration. No request was created.':'Design Requests are being set up. Contact the SBC owner. No request was created.'):
+    code==='MYSQL_UNAVAILABLE'?'Design Requests cannot reach MySQL. Check database health; no request was created.':
+    response.status===401||response.status===403?'Sign in with an authorized SBC account to view design requests.':
+    'Design Requests are temporarily unavailable (HTTP '+response.status+'). No request was created.';
+   throw Object.assign(new Error(details),{code,status:response.status});
+  }
+  return payload;
+ }
+ function setAccountCreateState(id,available){
+  const panel=document.getElementById('sbcDesignRequestAccount');
+  if(!panel||panel.dataset.account!==id)return;
+  for(const button of panel.querySelectorAll('[data-sbc-design-create]')){
+   button.disabled=!available||recovery();
+   button.title=button.disabled?'Design Requests are unavailable until the database is ready.':'';
+  }
+ }
  function briefCard(b){
   const answers=b.answers||{},keys=Object.keys(labelText).filter(k=>answers[k]!==undefined&&answers[k]!==null&&answers[k]!==''&&answers[k]!==false);
   const details=keys.map(k=>{
@@ -82,12 +108,14 @@
  async function fetchList(id){
   if(inflight.has(id))return inflight.get(id);
   const job=(async()=>{
-   try{const response=await api('/api/sbc/design-briefs/customer/'+encodeURIComponent(id));
+   try{const response=await readList(id);
     const list=Array.isArray(response.briefs)?response.briefs:[];cache.set(id,list);
+    setAccountCreateState(id,true);
     const slot=document.querySelector('[data-sbc-design-list="'+CSS.escape(id)+'"]');
     if(slot)slot.innerHTML=list.length?list.map(briefCard).join(''):'<p class="mini">No design requests yet. Create a form when the customer is ready.</p>';
-   }catch(e){const slot=document.querySelector('[data-sbc-design-list="'+CSS.escape(id)+'"]');
-    if(slot)slot.textContent='Requests unavailable: '+String(e.message||e);
+   }catch(e){setAccountCreateState(id,false);
+    const slot=document.querySelector('[data-sbc-design-list="'+CSS.escape(id)+'"]');
+    if(slot){slot.textContent=String(e.message||'Design Requests are unavailable.');slot.setAttribute('role','alert');}
    }
   })();
   inflight.set(id,job);try{await job}finally{inflight.delete(id)}
@@ -102,7 +130,7 @@
    currentLink=win.location.origin+result.urlPath;currentCustomerId=id;currentKind=kind;
    shareModal(c,result);
    await fetchList(id);
-  }catch(e){win.toast?.('Form not created: '+String(e.message||e));}
+  }catch(e){win.toast?.('Form not created: '+(String(e.message||e).includes('503')?'Design Requests or MySQL require owner attention. Check Saved requests and the database migration before retrying.':String(e.message||e)));}
   finally{pending=false;}
  }
  function shareModal(c,result){

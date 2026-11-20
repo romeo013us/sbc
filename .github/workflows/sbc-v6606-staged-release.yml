@@ -23,6 +23,7 @@ jobs:
       - name: Verify source quote and economic protections before staging
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
+          node --test test/sbc-customer-design-brief-routes.test.cjs test/sbc-workstation-refresh.test.cjs
           node scripts/v6606-quote-server-hardening.cjs
           node scripts/v6606-quote-server-hardening.test.cjs
           node --test scripts/v66-owner-openai-budget.test.cjs

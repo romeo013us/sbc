@@ -10,7 +10,11 @@ const SCHEMA='sbc_customer_design_briefs_v1';
 const bad=(res,status,code)=>res.status(status).json({ok:false,code});
 const clamp=(x,n)=>String(x??'').trim().slice(0,n);
 function safeError(res,e){
- const code=String(e?.code||e?.message||'DESIGN_REQUEST_UNAVAILABLE');
+ const raw=String(e?.code||e?.message||'DESIGN_REQUEST_UNAVAILABLE');
+ // Never create a production table at startup or while handling a customer request.
+ // Report a missing additive migration without exposing SQL, tenant details or secrets.
+ const code=['ER_NO_SUCH_TABLE','ER_BAD_TABLE_ERROR'].includes(raw)?'DESIGN_REQUEST_SCHEMA_NOT_READY':
+  ['ECONNREFUSED','ETIMEDOUT','PROTOCOL_CONNECTION_LOST','ER_CON_COUNT_ERROR'].includes(raw)?'MYSQL_UNAVAILABLE':raw;
  const status=Number(e?.status)||(/FORBIDDEN|TENANT|NOT_ASSIGNED|OWNER_REQUIRED/.test(code)?403:/NOT_FOUND/.test(code)?404:/EXPIRED|REVOKED|ALREADY_SUBMITTED|ALREADY_REVIEWED/.test(code)?410:/INVALID|REQUIRED|TOO_LARGE|TOO_MANY|CONFIRMATION/.test(code)?422:503);
  return bad(res,status,code.replace(/[^A-Z0-9_]/g,'').slice(0,120)||'DESIGN_REQUEST_UNAVAILABLE');
 }
