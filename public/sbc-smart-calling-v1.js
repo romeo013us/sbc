@@ -27,7 +27,7 @@
   const canLog=!!(!locked&&!suppressed(c)&&['owner','account_manager'].includes(role)&&c.id);
   return {
    hasVerifiedDemo,canOpenCall,canLog,canBuild:role==='owner'&&!locked,
-   canSchedule:['owner','manager','caller','account_manager'].includes(role)&&!locked&&!suppressed(c),
+   canSchedule:hasVerifiedDemo&&['owner','manager','caller','account_manager'].includes(role)&&!locked&&!suppressed(c),
    stage:r?.stage||'UNVERIFIED',demoUrl:hasVerifiedDemo?r.websiteUrl:'',
    nextAction:r?.nextAction||'Confirm research and website approval in SBC before making claims.',
    scriptOptions:{businessName:limited(c.businessName||c.business_name||r?.businessName||'your business'),
