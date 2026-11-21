@@ -1,0 +1,89 @@
+name: SBC V66 Customer Journey and Recovery — Synthetic Readiness
+
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-appointment-recovery.cjs'
+      - 'enterprise/sbc-connected-journey*.cjs'
+      - 'enterprise/sbc-customer-activation.cjs'
+      - 'enterprise/sbc-owned-state-rollback.cjs'
+      - 'public/sbc-customer-journey-v1.js'
+      - 'browser_public/sbc-customer-journey-v1.js'
+      - 'test/sbc-appointment-recovery.test.cjs'
+      - 'test/sbc-connected-journey.test.cjs'
+      - 'test/sbc-journey-http.test.cjs'
+      - 'test/sbc-sales-p0p1.test.cjs'
+      - 'scripts/mysql-backup.js'
+      - 'scripts/mysql-restore-drill.js'
+      - 'scripts/v6683-full-recovery-ci.test.cjs'
+      - '.github/workflows/sbc-v66-customer-journey-reliability.yml'
+  pull_request:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  journey-contracts:
+    name: Customer journey and reminder consent (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependency lockfile without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test all connected customer journey, reminder and HTTP contracts
+        run: |
+          node --test test/sbc-connected-journey.test.cjs test/sbc-appointment-recovery.test.cjs test/sbc-sales-p0p1.test.cjs test/sbc-journey-http.test.cjs
+      - name: Verify mirrored staff workstation and production syntax
+        run: |
+          cmp public/sbc-customer-journey-v1.js browser_public/sbc-customer-journey-v1.js
+          node --check enterprise/sbc-appointment-recovery.cjs
+          node --check public/sbc-customer-journey-v1.js
+          node --check browser_public/sbc-customer-journey-v1.js
+      - name: Audit for exposed credentials
+        run: node scripts/secret-audit.js
+
+  disposable-mysql-restore:
+    name: Disposable synthetic MySQL backup and restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Create an isolated CI MySQL database and exercise safe logical restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Synthetic credentials are generated within the isolated GitHub runner.
+          # This job never connects to GoDaddy or an SBC customer database.
+          pass="$(openssl rand -hex 24)"
+          trap 'docker rm -f sbc-disposable-mysql >/dev/null 2>&1 || true' EXIT
+          docker run -d --name sbc-disposable-mysql -e MYSQL_ROOT_PASSWORD="$pass" \
+            -p 127.0.0.1:3306:3306 mysql:8.0 >/dev/null
+          ready=0
+          for attempt in $(seq 1 60); do
+            if docker exec sbc-disposable-mysql mysqladmin ping -h 127.0.0.1 -uroot -p"$pass" --silent >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then echo 'Disposable CI MySQL did not become ready'; exit 1; fi
+          CI=true SBC_V6683_RESTORE_CI=YES MYSQL_HOST=127.0.0.1 MYSQL_PORT=3306 \
+            SBC_V6683_CI_ROOT_PASSWORD="$pass" \
+            node scripts/v6683-full-recovery-ci.test.cjs
+
+# This workflow is a SYNTHETIC readiness gate, NOT hosted-MySQL, provider-delivery,
+# GoDaddy deployment, Office Box provisioning, or production recovery certification.
