@@ -29,7 +29,7 @@
    hasVerifiedDemo,canOpenCall,canLog,canBuild:['owner','account_manager'].includes(role)&&!locked&&!suppressed(c),
    canSchedule:['owner','manager','caller','account_manager'].includes(role)&&!locked&&!suppressed(c),
    stage:r?.stage||'UNVERIFIED',demoUrl:hasVerifiedDemo?r.websiteUrl:'',
-   nextAction:r?.nextAction||'Confirm research and website approval in SBC before making claims.',
+   nextAction:r?.nextAction||'Verify business research and calling readiness. No concept preview is required to call or book.',
    scriptOptions:{businessName:limited(c.businessName||c.business_name||r?.businessName||'your business'),
     contactName:limited(c.contactName||c.contact_name||r?.contactName||'',80),
     ownerVerified:verified&&r?.ownerContactVerified===true,
@@ -100,7 +100,7 @@
   const script=library&&typeof library.build==='function'?library.build(ctx.scriptOptions):
    'Sales script unavailable. Refresh the Command Center before making calls.';
   const hasNumber=!!limited(customer.phone||row?.phone);
-  panel.innerHTML='<div class="sbc-sc-bar"><div><h3>☎ SBC Smart Calling</h3><p class="sbc-sc-muted">One account · verified website · human call · dated next step</p></div>' +
+  panel.innerHTML='<div class="sbc-sc-bar"><div><h3>☎ SBC Smart Calling</h3><p class="sbc-sc-muted">One account · human call · book Zoom · concept after interest</p></div>' +
    '<strong>'+esc(ctx.stage.replace(/_/g,' '))+'</strong></div>' +
    '<p class="sbc-sc-muted">'+esc(loadError||ctx.nextAction)+'</p>' +
    '<div class="sbc-sc-tools">' +
@@ -109,7 +109,7 @@
    '<button type="button" class="btn" data-sc-action="build" '+(!ctx.canBuild?'disabled':'')+'>Generate website concept</button>' +
    '<button type="button" class="btn" data-sc-action="appointment" '+(!ctx.canSchedule?'disabled':'')+'>📅 Book 10-minute demo</button>' +
    '<button type="button" class="btn" data-sc-action="copy">Copy script</button></div>' +
-   '<p class="sbc-sc-muted">'+(ctx.hasVerifiedDemo?'Approved website preview verified in SBC.':'No saved preview yet. Qualify interest, then generate the concept and arrange the Zoom demo.') +
+   '<p class="sbc-sc-muted">'+(ctx.hasVerifiedDemo?'Approved website preview verified in SBC.':'No saved preview yet. Call first and book the 10-minute Zoom if interested; prepare the private concept after booking and before the presentation.') +
    (!ctx.canOpenCall?(hasNumber?' Calling requires verified readiness and authorization.':' Verify a working phone before calling.'):' Calling still requires server-side Twilio clearance.')+'</p>' +
    '<pre class="sbc-sc-script" id="sbcSmartCallScript">'+esc(script)+'</pre>' +
    (ctx.canLog?'<form class="sbc-sc-form" id="sbcSmartCallOutcome"><label>What happened?' +
