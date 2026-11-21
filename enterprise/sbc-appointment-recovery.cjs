@@ -22,23 +22,49 @@ function createRecovery(service,{enabled=()=>false,senders={}}={}){
   return consent?.granted===true&&!!consent.proof&&Number.isFinite(Date.parse(consent.capturedAt))&&Date.parse(consent.capturedAt)<=Date.parse(now())&&consent.destinationHash===hash(target)&&!!target&&
    sameTenant(a,c.tenantId)&&String(a.customerId)===String(c.id)&&a.status==='Scheduled'&&Date.parse(a.startAt)>Date.parse(now())&&!!safeMeetingLink(a.meetingUrl||a.location);
  }
- function quiet(){const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(new Date(now())));return hour<8||hour>=20}
+ // Evaluate the intended send time, not only the worker's current time. A
+ // reminder due at 07:30 Eastern must not disappear at 08:00 solely because
+ // the normal 15-minute dispatch window elapsed while sending was forbidden.
+ const easternHour=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'});
+ function hourAt(ms){return Number(easternHour.format(new Date(ms)))}
+ function nextAllowedSendAt(due){
+  const hour=hourAt(due);
+  if(hour>=8&&hour<20)return due;
+  // Eastern is always UTC-hour aligned. Move along UTC hour boundaries instead
+  // of assuming an EST/EDT offset; handles the daylight-saving transitions.
+  let next=Math.floor(due/3600000)*3600000;
+  if(next<due)next+=3600000;
+  for(let n=0;n<15;n++,next+=3600000)if(hourAt(next)===8)return next;
+  throw Error('APPOINTMENT_NEXT_SEND_WINDOW_UNAVAILABLE');
+ }
+ function quiet(){const hour=hourAt(Date.parse(now()));return hour<8||hour>=20}
  function candidates(actor,tid){
   const at=Date.parse(now()),rows=[];
   for(const c of db.customers||[]){if(!sameTenant(c,tid)||(actor&&!accessible(c,actor,tid)))continue;
    for(const a of db.appointments||[]){for(const channel of ['email','sms']){
     if(!eligible(c,a,channel))continue;
     const kinds=[['24h',Date.parse(a.startAt)-86400000],['1h',Date.parse(a.startAt)-3600000],['confirmation',Date.parse(a.scheduleConfirmedAt||a.createdAt)]];
-    for(const [kind,due] of kinds){if(!Number.isFinite(due)||at<due||at-due>(kind==='confirmation'?3600000:900000))continue;
+    for(const [kind,due] of kinds){if(!Number.isFinite(due))continue;
+     const sendAt=nextAllowedSendAt(due),maxLag=kind==='confirmation'?3600000:900000;
+     if(at<sendAt||at-sendAt>maxLag)continue;
      const key=hash([c.tenantId,a.id,a.startAt,channel,kind]);if((getState(c).reminders||[]).some(r=>r.key===key))continue;
-     rows.push({key,customerId:c.id,appointmentId:a.id,channel,kind,dueAt:new Date(due).toISOString(),quietHoursHeld:quiet()});
+     rows.push({key,customerId:c.id,appointmentId:a.id,channel,kind,dueAt:new Date(due).toISOString(),scheduledSendAt:new Date(sendAt).toISOString(),quietHoursHeld:sendAt>due});
     }
    }}
   }return rows;
  }
  function preview(actor,tid){if(!['owner','account_manager'].includes(actor?.role))error('NOT_AUTHORIZED',403);
-  const rows=candidates(actor,tid);return {ok:true,sendEnabled:enabled()===true,quietHours:quiet(),rows,
-   receipts:(db.customers||[]).filter(c=>accessible(c,actor,tid)).flatMap(c=>(getState(c).reminders||[]).map(r=>({...r,businessName:c.businessName||c.contactName}))),
+  const rows=candidates(actor,tid);
+  const receipts=(db.customers||[]).filter(c=>accessible(c,actor,tid)).flatMap(c=>(getState(c).reminders||[]).map(r=>({...r,businessName:c.businessName||c.contactName})));
+  const current=Date.parse(now());
+  const attention={requiresReconciliation:0,failed:0,acceptedUnconfirmed:0};
+  for(const r of receipts){
+   const status=String(r.status||'');
+   if(status==='UNKNOWN'||(status==='SENDING'&&current-Date.parse(r.claimedAt||'')>=600000))attention.requiresReconciliation++;
+   if(status==='FAILED')attention.failed++;
+   if(status==='ACCEPTED'&&!r.deliveryConfirmed)attention.acceptedUnconfirmed++;
+  }
+  return {ok:true,sendEnabled:enabled()===true,quietHours:quiet(),rows,receipts,attention,
    note:'Accepted means the provider accepted a request. SENDING or UNKNOWN requires reconciliation; it is never automatically retried.'};
  }
  async function run(tid,actor){

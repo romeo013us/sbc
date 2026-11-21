@@ -29,7 +29,8 @@ test('quiet hours, suppression, missing meeting links and changed destinations b
 test('failed claim persistence never sends, and an ambiguous provider attempt is not retried',async()=>{
  const storage=await fixture();storage.enable();storage.failSave();await assert.rejects(storage.recovery.run(1,owner),/NOT_COMMITTED/);assert.equal(storage.sent,0);
  const uncertain=await fixture();uncertain.enable();uncertain.failSend();await uncertain.recovery.run(1,owner);await uncertain.recovery.run(1,owner);
- assert.equal(uncertain.sent,1);assert.equal(uncertain.recovery.preview(owner,1).receipts[0].status,'UNKNOWN');
+ assert.equal(uncertain.sent,1);const audit=uncertain.recovery.preview(owner,1);assert.equal(audit.receipts[0].status,'UNKNOWN');
+ assert.equal(audit.attention.requiresReconciliation,1,'uncertain provider attempts must appear in the owner attention counter');
 });
 test('revoked consent prevents sending and provider delivery never regresses after delivered',async()=>{
  const f=await fixture();f.enable();await f.recovery.recordConsent('one',owner,1,{channel:'email',granted:false});await f.recovery.run(1,owner);assert.equal(f.sent,0);
@@ -37,4 +38,51 @@ test('revoked consent prevents sending and provider delivery never regresses aft
  await f.recovery.run(1,owner);await f.recovery.delivery('SM'+'1'.repeat(32),'delivered');await f.recovery.delivery('SM'+'1'.repeat(32),'queued');
  const r=f.recovery.preview(owner,1).receipts[0];assert.equal(r.status,'DELIVERED');assert.equal(r.deliveryConfirmed,true);
  await assert.rejects(f.recovery.run(1,{...owner,role:'account_manager'}),/OWNER_REQUIRED/);
+});
+
+test('quiet-hours one-hour reminder is held until the next 8 AM Eastern window, then sent once',async()=>{
+ const f=await fixture();f.enable();
+ f.db.appointments[0].startAt='2026-11-21T13:30:00Z'; // Saturday 8:30 AM Eastern
+ f.db.appointments[0].endAt='2026-11-21T13:40:00Z';
+ f.setTime('2026-11-21T12:45:00Z'); // 7:45 AM Eastern (quiet hours)
+ assert.equal((await f.recovery.run(1,owner)).reason,'QUIET_HOURS');
+ assert.equal(f.sent,0);
+ f.setTime('2026-11-21T13:00:00Z'); // First allowed minute
+ const rows=f.recovery.preview(owner,1).rows;
+ assert.ok(rows.some(row=>row.kind==='1h'&&row.quietHoursHeld===true), 'deferred reminder must remain visible in preview');
+ await f.recovery.run(1,owner);
+ assert.equal(f.sent,1,'quiet-hour reminder should be delivered to sender once after the window opens');
+ await f.recovery.run(1,owner);
+ assert.equal(f.sent,1,'later worker ticks must not repeat the send');
+});
+
+test('quiet-hours deferred reminder expires safely after 15 minutes and never sends after appointment',async()=>{
+ const f=await fixture();f.enable();
+ f.db.appointments[0].startAt='2026-11-21T13:30:00Z';
+ f.db.appointments[0].endAt='2026-11-21T13:40:00Z';
+ f.setTime('2026-11-21T13:20:00Z'); // 8:20 AM, missed the 8:00-8:15 catch-up window
+ assert.equal(f.recovery.preview(owner,1).rows.filter(x=>x.kind==='1h').length,0);
+ await f.recovery.run(1,owner);
+ assert.equal(f.sent,0);
+});
+
+test('24-hour reminders due during quiet hours are deferred until 8 AM Eastern',async()=>{
+ const f=await fixture();f.enable();
+ f.db.appointments[0].startAt='2026-11-22T12:30:00Z'; // Sunday 7:30 AM Eastern
+ f.db.appointments[0].endAt='2026-11-22T12:40:00Z';
+ f.setTime('2026-11-21T13:00:00Z'); // Saturday 8 AM Eastern
+ const pending=f.recovery.preview(owner,1).rows;
+ assert.equal(pending.filter(x=>x.kind==='24h'&&x.quietHoursHeld).length,1);
+ await f.recovery.run(1,owner);assert.equal(f.sent,1);
+});
+
+test('the next allowed quiet-hours window uses Eastern daylight-saving offset, not fixed UTC hours',async()=>{
+ const f=await fixture();f.enable();
+ f.db.appointments[0].startAt='2027-03-15T02:00:00Z'; // Sunday 10 PM EDT
+ f.db.appointments[0].endAt='2027-03-15T02:10:00Z';
+ f.setTime('2027-03-14T12:00:00Z'); // First 8 AM EDT after 2027 spring DST jump
+ const rows=f.recovery.preview(owner,1).rows;
+ assert.equal(rows.filter(x=>x.kind==='24h'&&x.quietHoursHeld).length,1);
+ assert.equal(rows.find(x=>x.kind==='24h').scheduledSendAt,'2027-03-14T12:00:00.000Z');
+ await f.recovery.run(1,owner);assert.equal(f.sent,1);
 });
