@@ -1,0 +1,10 @@
+SBC Command Center V66 — Connected Customer Journey Preview Candidate
+
+Full application update; runtime patch 66.0.26.
+Start: node sbc-godaddy-flat-entrypoint.cjs
+Preflight: SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs
+
+Read docs/SBC-CONNECTED-JOURNEY-INSTALL.md and SBC-CONNECTED-JOURNEY-QA.json.
+Use a separate authenticated writable staging app and test database before promotion.
+Appointment messages default OFF. No live deployment or provider delivery is certified.
+Never install this Node.js ZIP into the PHP public_html folder.

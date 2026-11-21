@@ -2,7 +2,7 @@
  * Browser stores no customer details. All writes are server-authorized.
  */
 (()=>{'use strict';
- const $=id=>document.getElementById(id),state={view:'accounts',accounts:[],handoffs:[],channels:[],posts:[],selected:null,lang:'en',role:'',busy:false};
+ const $=id=>document.getElementById(id),state={view:'accounts',accounts:[],handoffs:[],channels:[],posts:[],accountAppointments:[],selected:new URLSearchParams(location.search).get('account')||null,lang:'en',role:'',busy:false};
  const dict={es:{siteValue:"¿Por qué una página web?",siteValueTitle:"3 razones para tener una página web",siteValueHelp:"Respuestas breves y precisas; sin prometer ventas ni posiciones en Google.",findTitle:"1 · Que le encuentren",findText:"Una página ofrece un lugar claro donde conocer su negocio cuando buscan o escuchan de usted.",trustTitle:"2 · Inspirar confianza",trustText:"Una página profesional ayuda a evaluar servicios y datos comerciales comprobados.",contactTitle:"3 · Facilitar el contacto",contactText:"Un lugar para teléfono, cotizaciones y citas cuando esas funciones estén activadas.",siteNeed:"“¿Por qué necesito una página web?”",siteNeedAnswer:"Ayuda a que le encuentren, genera confianza y facilita el contacto. ¿Cuál de esas ventajas le serviría más?",socialQuestion:"“Pero ya tengo Facebook.”",socialAnswer:"¡Excelente! Mantenga Facebook. Su página lo complementa con servicios y datos de contacto en un solo lugar.",careTitle:"Configuración y gestión mensual",careText:"El paquete inicial figura a $199. Una gestión opcional de $79 al mes está en revisión del propietario; no se debe presentar como disponible. Confirme alcance y facturación antes de ofrecerla.",accounts:'Mis cuentas',handoffs:'Transferencias de investigación',social:'Estudio de redes',controls:'Seguridad y controles',connected:'Conectado al CRM de SBC',back:'Centro de mando',refresh:'Actualizar',portfolio:'Cartera de clientes asignados',portfolioHelp:'Cada contacto pertenece a una empresa con un administrador responsable.',researchQueue:'Investigación → Gestión de cuentas',researchHelp:'Los clientes potenciales verificados se revisan antes de asignarse.',contentStudio:'Estudio de redes sociales',contentHelp:'Prepare publicaciones para Facebook e Instagram. El dueño autoriza cada publicación.',safety:'Controles operativos',customer:'Cliente',channel:'Cuenta social autorizada',caption:'Texto de la publicación',media:'URL pública HTTPS de la imagen (requerida para Instagram)',link:'URL de destino',createDraft:'Crear borrador',contentQueue:'Publicaciones y aprobaciones',note:'Nota de cuenta',saveNote:'Guardar nota',timeline:'Historial de relaciones',quickTitle:'Una acción · Guardar resultado',quickHelp:'Registre lo ocurrido, conserve el historial y programe el siguiente paso. Esto no realiza llamadas ni envía mensajes.',quickOutcome:'¿Qué sucedió?',quickPick:'Seleccione resultado…',quickConnected:'Hablé con el negocio',quickNoAnswer:'Sin respuesta',quickFollowUp:'Solicitó seguimiento',quickBadNumber:'Número incorrecto · requiere investigación',quickDnc:'No contactar · bloquear ahora',quickDate:'Fecha del próximo seguimiento',quickNote:'¿Qué se aprendió o solicitó?',quickGuard:'Verifique la identidad, el número, el consentimiento y las restricciones antes de llamar. Aquí no se inicia ninguna llamada.',quickSave:'Guardar resultado y siguiente paso',accountSearch:'Buscar cuenta'}};
  const t=k=>dict[state.lang]?.[k]||document.querySelector(`[data-t="${k}"]`)?.dataset.en||k;
  const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -119,6 +119,102 @@
   if(view==='social')socialLoad().catch(e=>message(e.message,true));if(view==='handoffs')loadHandoffs().catch(e=>message(e.message,true));
  }
  function accountOptions(){return state.accounts.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.businessName)}</option>`).join('');}
+ async function salesJson(path,options={}){
+  const response=await fetch(path,{method:options.method||'GET',credentials:'same-origin',cache:'no-store',
+   headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{})},
+   ...(options.body?{body:JSON.stringify(options.body)}:{})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||result.ok!==true)throw Error(result.code||'SALES_ACTION_NOT_CONFIRMED');
+  return result;
+ }
+ function todayActionHost(){
+  let host=$('sbcAMTodayRevenueActions');
+  if(!host){host=document.createElement('section');host.id='sbcAMTodayRevenueActions';host.className='account-card';
+   host.style.cssText='border:1px solid #74a6c4;padding:16px;margin:12px 0 22px;border-radius:14px;background:#f5faff;color:#19304a';
+   $('accountGrid').parentElement.insertBefore(host,$('accountGrid'));}
+  return host;
+ }
+ async function loadRevenueActions(){
+  if(!['owner','account_manager'].includes(state.role))return;
+  const host=todayActionHost();host.textContent='Loading assigned revenue actions…';
+  try{
+   const [data,reminders]=await Promise.all([
+    salesJson('/api/sbc/sales/actions/today?limit=80'),
+    salesJson('/api/sbc/sales/reminders/preview').catch(()=>({rows:[],sendEnabled:false}))]);
+   const labels={MEETING_REVIEW:'1 · Past meeting — verify attendance',DUE_CALLBACK:'2 · Due callback',
+    MEETING_PREP:'3 · Prepare confirmed meeting',RESEARCHED_LEAD:'4 · Research-backed prospect'};
+   host.innerHTML='<header><h2 style="font-size:19px;margin:0 0 5px">📈 Today\'s Revenue Actions</h2>'+ 
+    '<p class="muted" style="color:#365269">Missed-meeting review → Due callbacks → Upcoming Zoom prep → Verified prospect opportunities. No automatic outreach.</p></header>'+ 
+    '<p><strong>'+escapeHtml(data.total)+' assigned next steps</strong> · '+escapeHtml(data.counts.meetingReviews)+' meeting reviews · '+escapeHtml(data.counts.dueCallbacks)+' callbacks · '+escapeHtml(data.counts.meetingPrep)+' preparations</p>'+ 
+    '<div style="max-height:320px;overflow:auto">'+(data.rows.length?data.rows.slice(0,30).map(row=> 
+     '<article style="padding:11px 5px;border-top:1px solid #c4d5e2"><strong>'+escapeHtml(row.businessName)+'</strong> · '+escapeHtml(labels[row.type]||row.title)+
+     '<p style="margin:5px 0;color:#365269;font-size:13px">'+escapeHtml(row.nextAction)+'</p>'+ 
+     '<button type="button" class="button secondary" data-action="open-revenue-account" data-id="'+escapeHtml(row.customerId)+'">Open assigned account</button></article>').join(''):
+     '<p>Nothing due in your assigned portfolio. Verify your assigned accounts and refresh.</p>')+'</div>'+ 
+    '<p class="muted" style="color:#365269">Meeting reminder previews: '+escapeHtml(reminders.rows?.length||0)+
+    '. SMS/email dispatch remains OFF until verified consent, provider readiness and a confirmed meeting URL are implemented and accepted.</p>'+ 
+    '<button type="button" class="button secondary" data-action="refresh-revenue-actions">Refresh priorities</button>';
+  }catch(error){host.textContent='Today\'s Revenue Actions unavailable: '+String(error.message||error)+'; no customer contact was initiated.';}
+ }
+ async function loadAccountAppointments(id){
+  let host=$('sbcAMAppointmentBooking');if(!host){host=document.createElement('section');host.id='sbcAMAppointmentBooking';host.className='account-card';$('accountDetail').appendChild(host);}
+  host.textContent='Loading appointment calendar…';
+  try{
+   const data=await salesJson('/api/appointments?customerId='+encodeURIComponent(id));
+   if(state.selected!==id)return;
+   state.accountAppointments=data.appointments||[];
+   host.innerHTML='<a class="button secondary" href="/sbc-customer-journey.html?account='+encodeURIComponent(id)+'">Open customer journey →</a><h3>📅 Discovery appointments · 10-minute Zoom</h3>'+ 
+    '<p class="muted">Call first → Book Zoom → Prepare the private ChatGPT website concept → Present. No website is required to book.</p>'+ 
+    '<button type="button" class="button" data-action="book-zoom" data-id="'+escapeHtml(id)+'">Book 10-minute Zoom</button>'+ 
+    (state.accountAppointments.length?state.accountAppointments.map(a=>
+      '<article class="timeline-row"><strong>'+escapeHtml(a.title)+'</strong> · '+escapeHtml(a.status)+
+      '<p>'+escapeHtml(new Date(a.startAt).toLocaleString())+' · '+escapeHtml(a.location||'Location not yet confirmed')+'</p>'+ 
+      (a.status==='Scheduled'?'<button type="button" class="button secondary" data-action="reschedule-zoom" data-id="'+escapeHtml(a.id)+'">Reschedule</button>':'')+'</article>').join(''):
+     '<p class="muted">No appointment on this account yet.</p>')+
+    '<p class="muted">Saving an appointment does not send a text, email, Zoom invitation, or create a meeting link.</p>';
+  }catch(error){if(state.selected===id)host.textContent='Could not load appointment calendar: '+String(error.message||error)}
+ }
+ function toLocalInput(value){
+  const d=new Date(value);if(!Number.isFinite(d.getTime()))return '';
+  const z=v=>String(v).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+ }
+ async function openBookingEditor(accountId,appointmentId=''){
+  const account=state.accounts.find(x=>String(x.id)===String(accountId));if(!account)throw Error('ASSIGNED_ACCOUNT_REQUIRED');
+  const existing=state.accountAppointments.find(x=>String(x.id)===String(appointmentId));
+  if(appointmentId&&!existing)throw Error('APPOINTMENT_NOT_IN_ASSIGNED_ACCOUNT');
+  let dialog=$('sbcAMBookingDialog');if(!dialog){dialog=document.createElement('dialog');dialog.id='sbcAMBookingDialog';document.body.append(dialog);}
+  const start=existing?new Date(existing.startAt):new Date(Math.ceil((Date.now()+60*60*1000)/(30*60*1000))*(30*60*1000));
+  const end=existing?new Date(existing.endAt):new Date(start.getTime()+10*60000);
+  dialog.innerHTML='<form id="sbcAMBookingForm" style="min-width:min(90vw,390px);max-width:560px;color:#1e293b">'+
+   '<h3 style="margin-top:0">'+(existing?'Reschedule':'Book 10-minute Zoom')+'</h3>'+ 
+   '<p><strong>'+escapeHtml(account.businessName)+'</strong></p>'+ 
+   '<label>Starts (your device local time)<input type="datetime-local" name="startAt" required value="'+escapeHtml(toLocalInput(start))+'"></label>'+ 
+   '<label>Ends<input type="datetime-local" name="endAt" required value="'+escapeHtml(toLocalInput(end))+'"></label>'+ 
+   '<label>Confirmed Zoom link or meeting method<input type="text" name="location" maxlength="255" value="'+escapeHtml(existing?.location||'Video / Zoom link pending')+'"></label>'+ 
+   '<label>Internal preparation notes<textarea name="notes" rows="3" maxlength="3000">'+escapeHtml(existing?.notes||'Prepare a private SBC website concept after this meeting is booked. Confirm meeting link with the customer.')+'</textarea></label>'+ 
+   '<p class="muted">SBC calendar only. No automatic invitation or reminder is sent.</p>'+ 
+   '<p id="sbcAMBookingError" role="alert" style="color:#b91c1c"></p>'+ 
+   '<div style="display:flex;gap:8px;justify-content:end"><button type="button" class="button secondary" id="sbcAMBookingCancel">Cancel</button> '+
+   '<button class="button" type="submit">'+(existing?'Save new time':'Confirm booking')+'</button></div></form>';
+  dialog.showModal();$('sbcAMBookingCancel').onclick=()=>dialog.close();
+  $('sbcAMBookingForm').onsubmit=async event=>{
+   event.preventDefault();const form=event.currentTarget,submit=form.querySelector('[type=submit]');submit.disabled=true;
+   try{
+    const inputs=new FormData(form);
+    const start=new Date(String(inputs.get('startAt')||'')),end=new Date(String(inputs.get('endAt')||''));
+    if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start)throw Error('Choose valid meeting start/end times.');
+    const value={customerId:String(account.id),title:existing?.title||'10-minute SBC website preview',
+     startAt:start.toISOString(),endAt:end.toISOString(),
+     location:String(inputs.get('location')||''),notes:String(inputs.get('notes')||'')};
+    if(existing)value.status=existing.status;
+    const result=await salesJson('/api/appointments'+(existing?'/'+encodeURIComponent(existing.id):''),{method:existing?'PUT':'POST',body:value});
+    if(result.durable!==true)throw Error('APPOINTMENT_NOT_CONFIRMED');
+    dialog.close();await loadAccountAppointments(account.id);await loadRevenueActions();
+    message('Appointment saved in SBC CRM. Add a real Zoom link and confirm it with the customer; reminders are not being sent.');
+   }catch(error){$('sbcAMBookingError').textContent='Booking not saved: '+String(error.message||error);}
+   finally{submit.disabled=false;}
+  };
+ }
  function renderAccountGrid(){
   const term=String($('sbcAccountSearch')?.value||'').trim().toLowerCase();
   const matches=state.accounts.filter(a=>!term||
@@ -161,12 +257,14 @@
   state.handoffs=q||[];
   $('rolePill').textContent=(state.role==='owner'?'OWNER':'ACCOUNT MANAGER')+' · TENANT '+p.tenantId;
   $('metrics').innerHTML=[['Managed accounts',state.accounts.length],['Research handoffs',state.handoffs.length],['DNC / suppressions',state.accounts.filter(x=>x.doNotContact).length],['Connected channels','Verify in Social Studio']].map(([label,v])=>`<div class="metric"><strong>${escapeHtml(v)}</strong><small>${escapeHtml(label)}</small></div>`).join('');
-  renderAccountGrid();
+  renderAccountGrid();void loadRevenueActions();
   $('socialCustomer').innerHTML=accountOptions();renderHandoffs();if(state.selected)openAccount(state.selected);if(state.view==='social')await socialLoad();
  }catch(e){
   // Access may have expired while this page was open. Clear *every* previously
   // authorized customer view (not just the primary account cards).
-  state.accounts=[];state.handoffs=[];state.channels=[];state.posts=[];
+  state.accounts=[];state.handoffs=[];state.channels=[];state.posts=[];state.accountAppointments=[];
+  if($('sbcAMTodayRevenueActions'))$('sbcAMTodayRevenueActions').replaceChildren();
+  if($('sbcAMAppointmentBooking'))$('sbcAMAppointmentBooking').replaceChildren();
   state.selected=null;state.role='';pendingQuick=null;window.SBCCallCommand?.clear();
   $('accountDetail').hidden=true;
   for(const id of ['metrics','handoffList','socialCustomer','socialChannel','socialList',
@@ -188,6 +286,7 @@
   window.SBCCallCommand?.open({account:a,accounts:state.accounts,role:state.role,lang:state.lang,onNext:openAccount});
   if(window.SBC_MANAGER_DESIGN_BRIEFS?.open)window.SBC_MANAGER_DESIGN_BRIEFS.open(a.id,a.businessName);
   $('accountDetail').scrollIntoView({behavior:'smooth',block:'start'});
+  void loadAccountAppointments(id);
   if(state.role==='account_manager'){void loadAccountHistoryV5(id);void loadAccountResearchV4(id);void loadAccountPlanV5(id);}
  }
 
@@ -318,7 +417,10 @@
   $('socialList').innerHTML=state.posts.length?state.posts.map(p=>`<article class="post-row"><div><span class="tag">${escapeHtml(p.platform)} · ${escapeHtml(p.status)}</span><p>${escapeHtml(p.body)}</p><p class="muted">Created ${escapeHtml(p.createdAt||'')} · Approval ${escapeHtml(p.approvedBy||'Required')}</p></div><div class="controls">${p.status==='DRAFT'?`<button class="button secondary" data-action="submit" data-id="${escapeHtml(p.id)}">Submit for approval</button>`:''}${p.status==='PENDING_APPROVAL'&&state.role==='owner'?`<button class="button secondary" data-action="approve" data-id="${escapeHtml(p.id)}">Owner approve</button>`:''}${p.status==='APPROVED'&&state.role==='owner'?`<button class="button" data-action="schedule" data-id="${escapeHtml(p.id)}">Schedule</button>`:''}</div></article>`).join(''):'<p class="empty">No posts for this customer. Create a draft only after you have verified the business details.</p>';
  }
  async function action(name,id){try{state.busy=true;message('');
-  if(['approve','schedule','assign'].includes(name)&&state.role!=='owner')throw Error('OWNER_APPROVAL_REQUIRED');if(name==='open-account'){openAccount(id);return;}if(name==='generate-website'){await openAccountWebsite(id);return;}
+  if(['approve','schedule','assign'].includes(name)&&state.role!=='owner')throw Error('OWNER_APPROVAL_REQUIRED');if(name==='open-account'||name==='open-revenue-account'){openAccount(id);return;}if(name==='generate-website'){await openAccountWebsite(id);return;}
+  if(name==='refresh-revenue-actions'){await loadRevenueActions();return;}
+  if(name==='book-zoom'){await openBookingEditor(id);return;}
+  if(name==='reschedule-zoom'){await openBookingEditor(state.selected,id);return;}
   if(name==='submit'){await api(`/api/account-social/v1/posts/${encodeURIComponent(id)}/submit`,{method:'POST'});message('Post submitted to owner approval.');await socialLoad();return;}
   if(name==='approve'){await api(`/api/account-social/v1/posts/${encodeURIComponent(id)}/approve`,{method:'POST'});message('Post approved; not yet published.');await socialLoad();return;}
   if(name==='schedule'){const val=window.prompt('Schedule ISO-8601 time with timezone (example: 2026-12-01T14:00:00-05:00):');if(!val)return;await api(`/api/account-social/v1/posts/${encodeURIComponent(id)}/schedule`,{method:'POST',body:{scheduledAt:val}});message('Scheduled. Publishing remains guarded by verified server permissions.');await socialLoad();return;}

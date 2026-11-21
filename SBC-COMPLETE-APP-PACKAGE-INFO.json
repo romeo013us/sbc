@@ -1,0 +1,36 @@
+{
+  "name": "SBC Command Center V66 Complete Application Code",
+  "build_source": "verified V66 staged source, not live GoDaddy server export",
+  "version": "66.0.0",
+  "source_commit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
+  "installation_target": "GoDaddy Node.js Command Center app project root (Preview first)",
+  "includes": [
+    "Node.js application entrypoint",
+    "Command Center CRM",
+    "Account 360",
+    "Lorna researcher workstation",
+    "Account Manager workstation",
+    "website production tools",
+    "Smart Calling",
+    "appointments",
+    "scripts",
+    "database migrations",
+    "tests",
+    "public assets",
+    "connected service inquiry and checkout flow",
+    "customer journey workspace",
+    "one-time customer portal activation",
+    "approval-gated delivery plans",
+    "consented appointment outbox"
+  ],
+  "excludes": [
+    "live MySQL records",
+    "live customer content/uploads",
+    "production .env/secrets",
+    "node_modules",
+    "live GoDaddy app export"
+  ],
+  "app_file_count": 1699,
+  "runtime_patch": "66.0.26-connected-journey-preview-candidate",
+  "production_certified": false
+}

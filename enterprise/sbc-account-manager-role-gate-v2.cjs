@@ -5,8 +5,9 @@
  * The global employee gate must call allowAccountManager on every request.
  */
 const STATIC={
- GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk']),
- POST:new Set(['/api/logout','/api/v9/time/clock','/api/training/progress','/api/account-social/v1/posts','/api/sbc/design-briefs'])
+ GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk','/api/appointments','/api/sbc/sales/actions/today','/api/sbc/sales/reminders/preview','/api/sbc/journey/queue','/api/sbc/journey/reminders']),
+ POST:new Set(['/api/logout','/api/v9/time/clock','/api/training/progress','/api/account-social/v1/posts','/api/sbc/design-briefs','/api/appointments']),
+ PUT:new Set([])
 };
 const VALID_ID='[A-Za-z0-9][A-Za-z0-9_-]{0,119}';
 const CONCEPT_BASE='^/api/website-production/customers/'+VALID_ID+'/ai-proposals';
@@ -21,6 +22,7 @@ const CONCEPT={
 };
 const RE={
  GET:[
+  new RegExp('^/api/sbc/journey/accounts/'+VALID_ID+'$'),
   new RegExp('^/api/training/courses/'+VALID_ID+'$'),
   new RegExp('^/api/prospect-intelligence/v4/accounts/'+VALID_ID+'/research$'),
   new RegExp('^/api/prospect-intelligence/v5/accounts/'+VALID_ID+'/plan$'),
@@ -32,6 +34,8 @@ const RE={
   new RegExp('^/api/sbc/design-briefs/customer/'+VALID_ID+'$')
  ],
  POST:[
+  new RegExp('^/api/sbc/journey/accounts/'+VALID_ID+'/(?:review|consent|invite)$'),
+  new RegExp('^/api/sbc/journey/orders/'+VALID_ID+'/progress$'),
   new RegExp('^/api/account-social/v1/accounts/'+VALID_ID+'/interactions$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/(?:note|follow-up)$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/interaction$'),
@@ -39,7 +43,8 @@ const RE={
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'/submit$'),
   new RegExp('^/api/account-social/v1/research/handoffs/'+VALID_ID+'/return$'),
   new RegExp('^/api/sbc/design-briefs/'+VALID_ID+'/(?:revoke|review)$')
- ]
+ ],
+ PUT:[new RegExp('^/api/appointments/'+VALID_ID+'$')]
 };
 function allowed(method,url){
  const verb=String(method||'').toUpperCase();

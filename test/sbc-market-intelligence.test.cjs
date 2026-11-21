@@ -190,16 +190,15 @@ test('release stage wires owner access and durable website receipts, and mirrors
   new vm.Script(staged);
   if (process.env.SBC_MARKET_INTELLIGENCE_EXPECT_STAGED === 'YES') assert.equal(source, staged);
   const start = staged.indexOf('async function confirmWebsiteInquiry(');
-  const end = staged.indexOf("app.use('/api', apiRateLimiter)", start);
+  const end = staged.indexOf('const SBC_CUSTOMER_JOURNEY=', start);
   const handler = staged.slice(staged.indexOf("app.post('/api/web-lead'"), staged.indexOf("app.disable('x-powered-by')", start));
-  assert(handler.indexOf('WEBSITE_INQUIRY_WRITER_UNAVAILABLE') < handler.indexOf('webLeadDuplicate(c0,tenantId)'));
-  assert.equal(handler.match(/await confirmWebsiteInquiry\(tenantId,c\.id,activity\.id\)/g).length, 2);
-  let commits = 0;
+  assert(handler.indexOf('sbcVerifiedWebsiteTenant(req)') < handler.indexOf('SBC_CUSTOMER_JOURNEY.intake(tenantId,b)'));
+  let reads = 0;
   const confirm = vm.runInNewContext(`${staged.slice(start, end)}\nconfirmWebsiteInquiry`, {
-    saveData: async () => { commits++; }, mysqlPool: { query: async ({ sql }, values) => {
-      assert.match(sql, /c\.tenant_id=a\.tenant_id/);
-      assert.equal(Array.from(values).join(','), 'customer-1,1,activity-1');
-      return [commits === 1 ? [{ id: 'activity-1' }] : []];
+    mysqlPool: { query: async ({ sql }, values) => {
+      assert.match(sql, /tenant_id=\?/);assert.match(sql, /JSON_CONTAINS/);
+      assert.equal(Array.from(values).join(','), '1,customer-1,activity-1');
+      return [++reads === 1 ? [{ id: 'customer-1' }] : []];
     } }
   });
   assert.equal(await confirm(1, 'customer-1', 'activity-1'), true);

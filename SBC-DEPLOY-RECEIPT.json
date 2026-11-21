@@ -1,9 +1,10 @@
 {
   "sourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
-  "sourceFingerprint": "faf7ac65864b879487706044a3245342b2f580ca9381b4b70e6b243ee9a9bf7b",
+  "sourceFingerprint": "b3739eb2e59298f7537a25f177671a969e29af529ce9f298f1b755094d4160c3",
   "artifactType": "server.js",
-  "artifactSha256": "f433ca35b63c50374a9c1867bd28801f53447e47003425abf4d39243516333a5",
-  "buildBranch": "a-sbc-master",
-  "deployBranch": "a-sbc-master",
-  "createdBy": "SBC V66 Verified Master Release GitHub Actions"
+  "artifactSha256": "9a29559fcbadc1eb04d6c783e8b2b6b06c0aeeeaa665546dbc4735484c0236fa",
+  "buildBranch": "master-local-candidate",
+  "deployBranch": "NOT_DEPLOYED",
+  "candidateOnly": true,
+  "createdBy": "SBC local connected journey build; not hosted CI or production certification"
 }

@@ -10,9 +10,9 @@ function inspectExisting({tenantId,clientRequestId,packageId,email,businessName,
   notes(o).websiteCheckoutRequestId===clean(clientRequestId));
  if(!existing)return {found:false};
  const customer=(customers||[]).find(c=>String(c.id)===String(existing.customerId)&&Number(c.tenantId)===Number(tenantId));
- const n=notes(existing);
- if(!customer||clean(customer.email).toLowerCase()!==clean(email).toLowerCase()||
-   clean(customer.businessName).toLowerCase()!==clean(businessName).toLowerCase()||
+ const n=notes(existing),buyer=n.websiteCheckoutBuyer||customer||{};
+ if(!customer||clean(buyer.email).toLowerCase()!==clean(email).toLowerCase()||
+   clean(buyer.businessName).toLowerCase()!==clean(businessName).toLowerCase()||
    clean(n.bundleId)!==clean(packageId))
   return {found:true,ok:false,status:409,code:'WEBSITE_CHECKOUT_REQUEST_CONFLICT'};
  if(['PAID','COMPLETED'].includes(clean(existing.paymentStatus).toUpperCase())||

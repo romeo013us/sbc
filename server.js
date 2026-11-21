@@ -1141,11 +1141,13 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
     else if(!String(order.fulfillmentStatus||'').startsWith('QA '))
       order.fulfillmentStatus='QA - NO VENDOR FULFILLMENT';
     if(alreadyPaid){
+      SBC_CUSTOMER_JOURNEY.syncPaidOrder(order);
       rec.duplicateCompletedAt=rec.duplicateCompletedAt||now();
       records.splice(5000); await saveData();
       return {ok:true,orderId:order.id,status:'PAID',squarePaymentId:rec.squarePaymentId,duplicate:true};
     }
     updateOrderParsed(order,{squarePaymentStatus:'PAID',squarePaymentId:rec.squarePaymentId,squarePaymentCompletedAt:rec.completedAt,fulfillmentStatus:sbcLaunchQaDurable?'QA - NO VENDOR FULFILLMENT':'Ready for Fulfillment'});
+    SBC_CUSTOMER_JOURNEY.syncPaidOrder(order);
     addActivity('payment_received',`Square payment received for ${order.id}`,{orderId:order.id,squareOrderId:rec.squareOrderId,squarePaymentId:rec.squarePaymentId,amount:order.price});
     // SBC_V6693_OFFICE_BOX_LEGACY_PRECOMMIT_QUARANTINE: explicit Office Box sales require dedicated POST-COMMIT V2 flow.
     const sbcOfficeBoxExplicitPurchase=(()=>{
@@ -1157,7 +1159,11 @@ async function handleSquarePaymentEvent(event,baseOverride=''){
       return hasLine||hasMeta||hasName;
     })();
     const sbcLaunchQaExplicitPurchase=sbcLaunchQaDurable;
-    if(!sbcOfficeBoxExplicitPurchase&&!sbcLaunchQaExplicitPurchase){
+    if(orderParsed(order).customerJourney&&!orderParsed(order).customerJourney.steps.some(step=>step.key==='release'&&step.completed===true)){
+      order.fulfillmentStatus='Awaiting Requirements and Approvals';
+      updateOrderParsed(order,{fulfillmentStatus:order.fulfillmentStatus});
+      addActivity('journey_approval_hold','Paid order awaits customer proof approval and owner release',{orderId:order.id,customerId:order.customerId},order.tenantId);
+    }else if(!sbcOfficeBoxExplicitPurchase&&!sbcLaunchQaExplicitPurchase){
     try{await REVENUE_AUTOPILOT_V56150.recordFunnelEvent('payment_completed',order.customerId,{tenantId:order.tenantId||TENANT_DEFAULT_ID,orderId:order.id,amount:Number(order.price||0),idempotencyKey:`payment_completed:${order.id}`});}catch(e){}
     const c=db.customers.find(x=>x.id===order.customerId);if(c){c.status='Customer';c.updatedAt=now();ensureProjectForCustomer(c,orderParsed(order).bundleId||'',orderParsed(order).bundleName||order.product);}
     // V60.2 Commercial OS: successful paid orders create/replay a commercial tenant idempotently.
@@ -3408,15 +3414,22 @@ function webLeadDuplicate(candidate,tenantId){const m=leadDuplicateMatches(candi
 function normalizeWebLeadBody(b){return {businessName:String(b.businessName||b.company||b.business||'').trim().slice(0,180),contactName:String(b.contactName||b.name||'').trim().slice(0,140),phone:String(b.phone||'').trim().slice(0,40),email:String(b.email||'').trim().toLowerCase().slice(0,180),website:String(b.website||'').trim().slice(0,300),address:String(b.address||'').trim().slice(0,300),city:String(b.city||'').trim().slice(0,100),region:String(b.region||b.state||'').trim().slice(0,100),zip:String(b.zip||b.postalCode||'').trim().slice(0,30),industry:String(b.industry||b.category||'').trim().slice(0,120),serviceInterest:String(b.serviceInterest||b.service||b.interest||'').trim().slice(0,160),quoteType:String(b.quoteType||'').trim().slice(0,120),quantity:String(b.quantity||'').trim().slice(0,80),message:String(b.message||b.notes||'').trim().slice(0,3000),sourcePage:String(b.sourcePage||b.page||'').trim().slice(0,300)}}
 async function confirmWebsiteInquiry(tenantId,customerId,activityId){
   try{
-    await saveData();
-    const [rows]=await mysqlPool.query({timeout:4000,sql:`
-      SELECT a.id FROM sbc_activities a
-      JOIN sbc_customers c ON c.tenant_id=a.tenant_id AND c.id=?
-      WHERE a.tenant_id=? AND a.id=? AND a.activity_type='web_lead' AND c.status<>'Deleted' LIMIT 1`
-    },[customerId,tenantId,activityId]);
+    const [rows]=await mysqlPool.query({timeout:4000,sql:`SELECT id FROM sbc_customers
+      WHERE tenant_id=? AND id=? AND status<>'Deleted'
+      AND JSON_CONTAINS(lead_intelligence_json,JSON_OBJECT('activityId',?), '$.customerJourney.inquiries')=1 LIMIT 1`},
+      [tenantId,customerId,activityId]);
     return rows.length===1;
   }catch{return false;}
 }
+const SBC_CUSTOMER_JOURNEY=require('./enterprise/sbc-connected-journey.cjs').createService({
+ db:require('./enterprise/sbc-live-db-view.cjs').createLiveDbView(()=>db),id,now,save:()=>saveData(),confirmInquiry:confirmWebsiteInquiry,
+ writerReady:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&Boolean(mysqlPool)&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady
+});
+const SBC_APPOINTMENT_RECOVERY=require('./enterprise/sbc-appointment-recovery.cjs').createRecovery(SBC_CUSTOMER_JOURNEY,{
+ enabled:()=>process.env.SBC_APPOINTMENT_MESSAGES_ENABLED==='true',
+ senders:{email:(c,subject,body)=>sendEmail(c,subject,body),sms:(c,subject,body)=>sendSms({...c,smsConsent:true},body)}
+});
+
 app.use('/api', apiRateLimiter);
 /* SBC_MARKET_INTELLIGENCE */
 require('./enterprise/sbc-market-intelligence.cjs').register(app,{
@@ -3425,36 +3438,15 @@ require('./enterprise/sbc-market-intelligence.cjs').register(app,{
   readSearchCredential:tenantId=>mysqlPool?vaultSecret(SBC_SEARCH_CONSOLE.CREDENTIAL,tenantId):''
 });
 app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}),async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
   const origin=String(req.headers.origin||'');
-  if(origin && !PORTAL_ORIGINS.has(origin)) return res.status(403).json({error:'Web lead origin is not authorized.'});
-  // Verify signed website origin before consuming an IP rate quota.
-  let tenantId;try{tenantId=sbcVerifiedWebsiteTenant(req)}catch(e){return res.status(403).json({ok:false,code:e.code||'SITE_BRIDGE_UNAUTHORIZED'});}
-  if(!webLeadRateLimit(req.ip)) return res.status(429).json({error:'Too many submissions. Please try again shortly.'});
+  if(origin&&!PORTAL_ORIGINS.has(origin))return res.status(403).json({ok:false,code:'WEBSITE_ORIGIN_UNAUTHORIZED'});
+  let tenantId;try{tenantId=sbcVerifiedWebsiteTenant(req)}catch(e){return res.status(403).json({ok:false,code:e.code||'SITE_BRIDGE_UNAUTHORIZED'})}
+  if(!webLeadRateLimit(req.ip))return res.status(429).json({ok:false,code:'INQUIRY_RATE_LIMIT'});
   const b=req.body||{};
-  if(String(b.website_url||b._website||b.honeypot||'').trim()) return res.status(202).json({ok:true,accepted:false,reason:'spam_filter'});
-  const c0=normalizeWebLeadBody(b);
-  if(!c0.businessName && !c0.contactName) return res.status(400).json({error:'Business name or contact name is required.'});
-  if(!c0.phone && !c0.email) return res.status(400).json({error:'Please provide a phone number or email address.'});
-  if(SBC_RUNTIME_READ_ONLY||sbcShutdownStarted||!mysqlPool||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady)
-    return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_WRITER_UNAVAILABLE'});
-  const dup=webLeadDuplicate(c0,tenantId);
-  if(dup){
-    // Never overwrite a verified CRM contact from an anonymous public form.
-    const c=dup.customer;c.webLead=true;c.lastWebLeadAt=now();c.webLeadCount=Math.min(100000,Number(c.webLeadCount||0)+1);
-    c.webLeadPendingReview=true;
-    c.webLeadInquiries=(Array.isArray(c.webLeadInquiries)?c.webLeadInquiries:[]).slice(-9).concat([{at:now(),sourcePage:c0.sourcePage,serviceInterest:c0.serviceInterest,quoteType:c0.quoteType,contactName:c0.contactName,phone:c0.phone,email:c0.email,message:c0.message}]);
-    const activity=addActivity('web_lead',`Website inquiry pending verification for ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,duplicate:true,contactChanged:false},tenantId);
-    if(!await confirmWebsiteInquiry(tenantId,c.id,activity.id))return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_UNCONFIRMED'});
-    return res.status(200).json({ok:true,id:c.id,duplicate:true,verificationRequired:true,assignedTo:c.assignedTo||''});
-  }
-  const c={id:id('cust'),tenantId,businessName:c0.businessName,contactName:c0.contactName,phone:c0.phone,email:c0.email,status:'Lead',source:'sbcmia.com',followUp:'',notes:c0.message,website:c0.website,address:c0.address,city:c0.city,region:c0.region,zip:c0.zip,industry:c0.industry,dealValue:0,assignedTo:'',assignedToName:'',webLead:true,webLeadType:c0.quoteType||c0.serviceInterest||'Website Inquiry',webLeadMessage:c0.message,webLeadService:c0.serviceInterest,webLeadQuantity:c0.quantity,webLeadSourcePage:c0.sourcePage,leadTemperature:'Cold',leadScore:0,verificationStatus:'Needs Verification',webLeadPendingReview:true,pipelineStage:'New Lead',salesQueueState:'',createdAt:now(),updatedAt:now(),inboundAt:now()};
-  normalizeLeadQuality(c);
-  c.verificationStatus='Needs Verification';c.leadTemperature='Cold';c.leadScore=Math.min(49,Math.max(0,Number(c.leadScore)||0));c.webLeadPendingReview=true;
-  db.customers.unshift(c);
-  // Staff verification precedes any qualified-lead call or outbound automation.
-  const activity=addActivity('web_lead',`New SBCMIA inquiry requires verification: ${c.businessName||c.contactName}`,{customerId:c.id,sourcePage:c0.sourcePage,qualified:false},tenantId);
-  if(!await confirmWebsiteInquiry(tenantId,c.id,activity.id))return res.status(503).json({ok:false,code:'WEBSITE_INQUIRY_UNCONFIRMED'});
-  res.status(201).json({ok:true,id:c.id,hot:false,verificationRequired:true,assignedTo:c.assignedTo||'',assignedToName:c.assignedToName||''});
+  if(String(b.website_url||b._website||b.honeypot||'').trim())return res.status(202).json({ok:true,accepted:false});
+  try{return res.status(200).json(await SBC_CUSTOMER_JOURNEY.intake(tenantId,b))}
+  catch(e){return res.status(e.status||503).json({ok:false,code:e.status?e.message:'WEBSITE_INQUIRY_UNCONFIRMED'})}
 });
 
 app.disable('x-powered-by');const sbcProxyHopsRaw=String(process.env.SBC_TRUST_PROXY??'1').trim();const sbcProxyHops=/^(0|[1-9]\d*)$/.test(sbcProxyHopsRaw)?Number(sbcProxyHopsRaw):NaN;if(!Number.isSafeInteger(sbcProxyHops)||sbcProxyHops>4)throw new Error('SBC_TRUST_PROXY_INVALID: configure an integer hop count from 0 to 4; boolean true and arbitrary proxy trust are forbidden.');app.set('trust proxy',sbcProxyHops);app.use((req,res,next)=>{const started=Date.now();const ctx=OBSERVABILITY.contextFromRequest(req);const requestId=crypto.randomUUID();req.requestId=requestId;req.traceId=ctx.traceId;req.traceparent=ctx.traceparent;architectureMetrics.requests++;architectureMetrics.routeCounts[req.path]=(architectureMetrics.routeCounts[req.path]||0)+1;res.setHeader('X-SBC-Request-Id',requestId);res.setHeader('X-SBC-Trace-Id',ctx.traceId);res.setHeader('traceparent',ctx.traceparent);OBSERVABILITY.run(ctx,()=>{res.on('finish',()=>{const ms=Date.now()-started;architectureMetrics.latencyMsTotal+=ms;if(res.statusCode>=500)architectureMetrics.errors++;try{SBC_SLO.recordApi(res.statusCode,ms);}catch{}});next();});});app.use((req,res,next)=>{
@@ -5208,12 +5200,13 @@ app.post('/api/public/checkout',async(req,res)=>{
     const siteSigned=Boolean(req.headers['x-sbc-website-host']);
     let tenantId;try{tenantId=siteSigned?sbcVerifiedWebsiteTenant(req):requireMappedRequestTenant(req)}catch(e){return res.status(e.status||403).json({ok:false,code:e.code||'WEBSITE_CHECKOUT_TENANT_REQUIRED'})}
     const websiteRequestId=siteSigned?String(b.clientRequestId||'').trim():'';
-    const packageId=String(b.packageId||'').trim(); const pkg=CATALOG.packages.find(x=>String(x.id)===packageId);
+    const packageId=String(b.packageId||'').trim(); const pkg=siteSigned?require('./enterprise/sbc-website-checkout-offers.cjs').offer(packageId):CATALOG.packages.find(x=>String(x.id)===packageId);
     if(!pkg)return res.status(400).json({error:'Approved package not found.'});
     const name=String(b.customerName||b.businessName||'').trim(); const email=String(b.customerEmail||b.email||'').trim().toLowerCase(); const phone=normalizeBuyerPhone(b.customerPhone||b.phone);
     if(!name||!email||!phone)return res.status(400).json({error:'Business name, email and phone are required.'});
     if(siteSigned){
-      if(!['quickstart','starter','essentials'].includes(packageId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_PACKAGE_UNAVAILABLE'});
+      if(!['quickstart','starter','website-custom'].includes(packageId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_PACKAGE_UNAVAILABLE'});
+      if(!require('./enterprise/sbc-website-checkout-offers.cjs').amountMatches(pkg,b.expectedAmountCents))return res.status(409).json({ok:false,code:'PUBLIC_OFFER_PRICE_CHANGED'});
       if(!SBC_V6672_SITE_CHECKOUT.requestIdValid(websiteRequestId))return res.status(422).json({ok:false,code:'WEBSITE_CHECKOUT_REQUEST_ID_REQUIRED'});
       const found=SBC_V6672_SITE_CHECKOUT.inspectExisting({tenantId,clientRequestId:websiteRequestId,packageId,email,businessName:name,orders:db.orders,customers:db.customers});
       if(found.found)return res.status(found.ok?200:found.status).json(found);
@@ -5231,9 +5224,14 @@ app.post('/api/public/checkout',async(req,res)=>{
     try{squareLocationProbe=await SBC_SQUARE_LOCATION_PROBE({token:process.env.SQUARE_ACCESS_TOKEN,locationId:process.env.SQUARE_LOCATION_ID,environment:squareEnvironment(),apiVersion:SQUARE_API_VERSION});}
     catch(_){return res.status(503).json({ok:false,code:'SQUARE_PREFLIGHT_UNAVAILABLE',error:'Secure checkout temporarily unavailable. No customer or order was created.'});}
     if(!squareLocationProbe?.reachable)return res.status(503).json({ok:false,code:'SQUARE_PREFLIGHT_UNAVAILABLE',error:'Square location could not be verified. No customer or order was created.'});
-    const c={id:id('cust'),tenantId,businessName:name,contactName:String(b.contactName||'').trim(),phone,email,status:'Proposal',source:siteSigned?'sbcmia.com Checkout':'Public Checkout',createdAt:now(),updatedAt:now()}; db.customers.unshift(c);
+    const c=siteSigned?await SBC_CUSTOMER_JOURNEY.checkoutCustomer(tenantId,{
+      requestId:'checkout_'+websiteRequestId,businessName:name,contactName:String(b.contactName||'').trim(),phone,email,
+      serviceSlug:pkg.serviceSlug,serviceInterest:pkg.name,packageId:pkg.journeyPackage,intent:'checkout',
+      message:'Customer requested the published '+pkg.name+' checkout. Payment has not been confirmed.',sourcePage:b.sourcePage,privacyAcknowledged:b.privacyAcknowledged===true
+    }):{id:id('cust'),tenantId,businessName:name,contactName:String(b.contactName||'').trim(),phone,email,status:'Proposal',source:'Public Checkout',createdAt:now(),updatedAt:now()};
+    if(!siteSigned)db.customers.unshift(c);
     const items=[{id:pkg.id,name:pkg.name,qty:1,unitPrice:Number(pkg.price),category:pkg.category}];
-    const o={id:id('ord'),tenantId,customerId:c.id,customerName:name,product:pkg.name,quantity:1,status:'New',cost:0,price:Number(pkg.price),notes:JSON.stringify({publicCheckout:true,websiteCheckoutRequestId:siteSigned?websiteRequestId:'',websiteCheckoutSource:siteSigned?'sbcmia.com':'',items,bundleId:pkg.id,bundleName:pkg.name,subtotal:Number(pkg.price),discount:0,taxRate:0,tax:0,total:Number(pkg.price),paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now()}),salesRepId:'',salesRepName:'SBC Web Checkout',paymentUrl:'',paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now(),updatedAt:now()};
+    const o={id:id('ord'),tenantId,customerId:c.id,customerName:name,product:pkg.name,quantity:1,status:'New',cost:0,price:Number(pkg.price),notes:JSON.stringify({publicCheckout:true,websiteCheckoutRequestId:siteSigned?websiteRequestId:'',websiteCheckoutSource:siteSigned?'sbcmia.com':'',websiteCheckoutBuyer:siteSigned?{businessName:name,email}:null,websiteOfferFeatures:siteSigned?pkg.features:[],items,bundleId:pkg.id,bundleName:pkg.name,subtotal:Number(pkg.price),discount:0,taxRate:0,tax:0,total:Number(pkg.price),paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now()}),salesRepId:'',salesRepName:'SBC Web Checkout',paymentUrl:'',paymentStatus:'Pending',fulfillmentStatus:'Awaiting Customer Payment',createdAt:now(),updatedAt:now()};
     db.orders.unshift(o); c.dealValue=o.price;
     addActivity('public_checkout',`Customer started checkout for ${pkg.name}`,{orderId:o.id,customerId:c.id,packageId:pkg.id,total:o.price});
     await saveData();
@@ -5593,9 +5591,13 @@ app.post('/api/activities',auth,ownerOnly,async(req,res)=>{const b=req.body||{};
 app.post('/api/tasks',auth,async(req,res)=>{if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Only owner or manager can create and assign team tasks.'});const b=req.body||{};if(!b.title||!b.dueAt)return res.status(400).json({error:'Task title and due date/time are required.'});const c=b.customerId?db.customers.find(x=>x.id===b.customerId):null;const assigneeId=String(b.assignedTo||'');const assignee=assigneeId?(db.users||[]).find(x=>x.id===assigneeId&&x.active!==false&&x.role!=='owner'):null;if(assigneeId&&!assignee)return res.status(400).json({error:'Select an active team member.'});const t={id:id('task'),customerId:String(b.customerId||''),customerName:c?.businessName||c?.contactName||String(b.customerName||''),title:String(b.title),dueAt:String(b.dueAt),type:String(b.type||'Follow-up'),priority:String(b.priority||'Normal'),status:String(b.status||'Open'),notes:String(b.notes||''),assignedTo:assignee?.id||'',assignedToName:assignee?.name||'Unassigned',createdBy:req.user.id,createdAt:now(),updatedAt:now()};db.tasks.unshift(t);addActivity('task',`Task created: ${t.title}${t.customerName?' for '+t.customerName:''}`,{taskId:t.id,customerId:t.customerId,assignedTo:t.assignedTo});await saveData();res.status(201).json(t)});
 app.put('/api/tasks/:id',auth,async(req,res)=>{const t=db.tasks.find(x=>x.id===req.params.id);if(!t)return res.status(404).json({error:'Task not found.'});if(req.user.role!=='owner'&&req.user.role!=='manager'&&t.assignedTo!==req.user.id)return res.status(403).json({error:'Not assigned to you.'});const b=req.body||{};if(b.assignedTo!==undefined){if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Only owner or manager can reassign tasks.'});const u=(db.users||[]).find(x=>x.id===String(b.assignedTo)&&x.active!==false&&x.role!=='owner');if(b.assignedTo&&!u)return res.status(400).json({error:'Select an active team member.'});t.assignedTo=u?.id||'';t.assignedToName=u?.name||'Unassigned';}Object.assign(t,{...b,id:t.id,updatedAt:now()});if(t.status==='Completed'&&!t.completedAt)t.completedAt=now();await saveData();res.json(t)});
 app.delete('/api/tasks/:id',auth,ownerOnly,async(req,res)=>{const i=db.tasks.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Task not found.'});db.tasks.splice(i,1);await saveData();res.json({ok:true})});
-app.post('/api/appointments',auth,ownerOnly,async(req,res)=>{const b=req.body||{};if(!b.customerId||!b.title||!b.startAt)return res.status(400).json({error:'Customer, title and start time are required.'});const c=db.customers.find(x=>x.id===b.customerId);const a={id:id('appt'),customerId:String(b.customerId),customerName:c?.businessName||c?.contactName||String(b.customerName||''),title:String(b.title),startAt:String(b.startAt),endAt:String(b.endAt||''),location:String(b.location||''),notes:String(b.notes||''),status:String(b.status||'Scheduled'),createdAt:now(),updatedAt:now()};db.appointments.unshift(a);addActivity('appointment',`Scheduled ${a.title} with ${a.customerName}`,{appointmentId:a.id,customerId:a.customerId});await saveData();res.status(201).json(a)});
-app.put('/api/appointments/:id',auth,ownerOnly,async(req,res)=>{const a=db.appointments.find(x=>x.id===req.params.id);if(!a)return res.status(404).json({error:'Appointment not found.'});Object.assign(a,req.body||{},{id:a.id,updatedAt:now()});await saveData();res.json(a)});
-app.delete('/api/appointments/:id',auth,ownerOnly,async(req,res)=>{const i=db.appointments.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Appointment not found.'});db.appointments.splice(i,1);await saveData();res.json({ok:true})});
+// SBC_P0P1_BOOKING_AND_DAILY_REVENUE: assigned account managers book before private site generation.
+// The new module reuses authenticated tenant context, writer lease and existing relational persistence.
+const SBC_SALES_P0P1 = require('./enterprise/sbc-sales-p0p1.cjs');
+SBC_SALES_P0P1.register(app,{auth,requireTenant:requireRequestTenant,db:SBC_CUSTOMER_JOURNEY.db,serialize:SBC_CUSTOMER_JOURNEY.serialize,
+ save:()=>saveData(),id,now,addActivity,
+ writerReady:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&Boolean(mysqlPool)&&
+  MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady});
 app.post('/api/sequences',auth,ownerOnly,async(req,res)=>{const b=req.body||{};if(!b.name||!Array.isArray(b.steps)||!b.steps.length)return res.status(400).json({error:'Sequence name and at least one step are required.'});const seq={id:id('seq'),name:String(b.name),description:String(b.description||''),active:b.active!==false,steps:b.steps.map((x,i)=>({id:id('step'),day:Number(x.day||i),channel:String(x.channel||'Task'),subject:String(x.subject||''),body:String(x.body||'')})),createdAt:now(),updatedAt:now()};db.sequences.unshift(seq);await saveData();res.status(201).json(seq)});
 app.post('/api/sequences/:id/enroll',auth,ownerOnly,async(req,res)=>{const seq=db.sequences.find(x=>x.id===req.params.id),c=db.customers.find(x=>x.id===req.body?.customerId);if(!seq||!c)return res.status(404).json({error:'Sequence or customer not found.'});const start=new Date(req.body.startDate||Date.now());const e={id:id('enr'),sequenceId:seq.id,customerId:c.id,status:'Active',startedAt:start.toISOString(),currentStep:0,nextStepAt:new Date(start.getTime()+Number(seq.steps[0].day||0)*864e5).toISOString(),createdAt:now(),updatedAt:now()};db.sequenceEnrollments.unshift(e);addActivity('sequence',`Enrolled ${c.businessName||c.contactName} in ${seq.name}`,{sequenceId:seq.id,customerId:c.id});await saveData();res.status(201).json(e)});
 app.put('/api/sequence-enrollments/:id',auth,ownerOnly,async(req,res)=>{const e=db.sequenceEnrollments.find(x=>x.id===req.params.id);if(!e)return res.status(404).json({error:'Enrollment not found.'});Object.assign(e,req.body||{},{id:e.id,updatedAt:now()});await saveData();res.json(e)});
@@ -6366,6 +6368,7 @@ function fulfillmentItemsForOrder(order){
 }
 async function createFulfillmentJobsForOrder(order){
   SBC_V6651_REQUIRE_PAID(order);
+  require('./enterprise/sbc-connected-journey.cjs').requireRelease(order);
   const m=megaData(), items=fulfillmentItemsForOrder(order);
   const existing=new Set(m.fulfillmentJobs.filter(j=>j.orderId===order.id).map(j=>`${j.itemId}:${j.vendor}`)); let created=[];
   for(const item of items){const vendor=fulfillmentVendorForItem(item),key=`${String(item.id||item.name)}:${vendor}`;if(existing.has(key))continue;const job=fulfillmentJobFor(order,item,vendor);if(job.requiresOwnerClearance){const lock=V569_PRODUCTION_EXPANSION.financialLock({action:'vendor_fulfillment',amount:job.value,tenantId:job.tenantId,resourceId:job.id,metadata:{orderId:job.orderId,provider:job.vendor,product:job.product}});job.financialLockId=lock.id;job.ownerClearanceAt='';job.ownerClearanceBy='';if(mysqlPool){try{await V569_PRODUCTION_EXPANSION.persistFinancialLock(mysqlPool,lock);}catch(e){console.warn('[SBC VAULT] lock persistence failed:',e.message);throw e;}}global.__SBC_RECENT_RUNTIME_EVENTS=Array.isArray(global.__SBC_RECENT_RUNTIME_EVENTS)?global.__SBC_RECENT_RUNTIME_EVENTS:[];global.__SBC_RECENT_RUNTIME_EVENTS.push({id:`vault-${Date.now()}`,timestamp:Date.now(),event:'vault_breakpoint_triggered',level:'WARN',version:BUILD_VERSION,component:'FULFILLMENT_VAULT',context:{lockId:lock.id,transactionId:job.id,amount:job.value,tenantId:job.tenantId,status:lock.status}});global.__SBC_RECENT_RUNTIME_EVENTS=global.__SBC_RECENT_RUNTIME_EVENTS.slice(-500);}m.fulfillmentJobs.unshift(job);created.push(job);}
@@ -6390,6 +6393,7 @@ async function createFulfillmentJobsForOrder(order){
 async function submitVendorJob(job){
   const sourceOrder=(db.orders||[]).find(o=>String(o.id)===String(job?.orderId));
   SBC_V6651_REQUIRE_PAID(sourceOrder,job?.tenantId);
+  require('./enterprise/sbc-connected-journey.cjs').requireRelease(sourceOrder);
   // SBC_V6682_ORDER_AMOUNT_INTEGRITY: a paid $25k order cannot run as a $9k job.
   const amount=V569_PRODUCTION_EXPANSION.financialAmountCents(job?.value)/100;
   const orderAmount=V569_PRODUCTION_EXPANSION.financialAmountCents(sourceOrder?.price)/100;
@@ -6449,7 +6453,7 @@ async function processReadyFulfillmentJobs(){
     if(value>=10000 && !candidate.ownerClearanceAt){
       const m=megaData();const live=m.fulfillmentJobs.find(x=>x.id===candidate.id);if(live){live.status='owner_clearance_required';live.vendorStatus='owner_clearance_required';live.requiresOwnerClearance=true;live.lastError='Order value is at or above the $10,000 automation threshold. Owner clearance required.';live.updatedAt=now();m.automationEvents.unshift({id:id('evt'),type:'owner_clearance_required',message:`Fulfillment ${live.id} paused for owner clearance.`,meta:{jobId:live.id,orderId:live.orderId,value},createdAt:now()});m.automationEvents=m.automationEvents.slice(0,500);await megaSave(m);blocked++;}continue;
     }
-    if(!(await claimFulfillmentJob(candidate)))continue;const live=megaData().fulfillmentJobs.find(x=>x.id===candidate.id);try{const result=await submitVendorJob(live);const m=megaData(),job=m.fulfillmentJobs.find(x=>x.id===live.id);job.status=result.status;job.vendorStatus=result.status;job.vendorOrderNumber=result.vendorOrderNumber||job.vendorOrderNumber;job.trackingNumber=result.trackingNumber||job.trackingNumber;job.lastError='';job.attempts=Number(job.attempts||0)+1;job.claimedAt='';job.processingStartedAt='';job.leaseUntil='';job.nextAttemptAt='';job.updatedAt=now();syncOrderFulfillmentLifecycle(job.orderId);m.automationEvents.unshift({id:id('evt'),type:'fulfillment_worker',message:`Fulfillment worker completed ${job.id} (${job.vendor}/${job.product}).`,createdAt:now()});m.automationEvents=m.automationEvents.slice(0,500);await megaSave(m);processed++;}catch(e){V569_PRODUCTION_EXPANSION.recordTenantFailure(Number(candidate.tenantId||TENANT_DEFAULT_ID),'fulfillment_vendor',e.message);const m=megaData(),job=m.fulfillmentJobs.find(x=>x.id===live.id);job.attempts=Number(job.attempts||0)+1;const errCode=String(e?.code||e?.cause?.code||'').toUpperCase(),errText=String(e.message||e||'').toLowerCase();const paymentHold=errCode==='PAYMENT_EVIDENCE_REQUIRED'||errCode==='TENANT_CONTEXT_REQUIRED';const ambiguous=['ETIMEDOUT','ESOCKETTIMEDOUT','ECONNRESET','ECONNABORTED','EPIPE','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','ERR_SOCKET_CLOSED'].includes(errCode)||/timed? out|socket hang up|connection reset|connection closed|upstream timeout|gateway timeout|bad gateway|\b502\b|\b503\b|\b504\b|response lost after submit/.test(errText);job.status=(ambiguous||paymentHold)?'needs_reconciliation':'failed';job.vendorStatus=paymentHold?'payment_evidence_required':ambiguous?'submission_outcome_unknown':'failed';job.lastError=(paymentHold?'Payment evidence or tenant scope is missing; vendor was not contacted. ':ambiguous?'Vendor submission outcome is ambiguous; automatic retry is paused to prevent a duplicate external order. ':'')+String(e.message||e);job.claimedAt='';job.processingStartedAt='';job.leaseUntil='';job.nextAttemptAt=(ambiguous||paymentHold)?'':new Date(Date.now()+Math.min(60*60*1000,Math.pow(2,Math.min(job.attempts,6))*60*1000)).toISOString();job.updatedAt=now();syncOrderFulfillmentLifecycle(job.orderId);m.automationFailures.unshift({id:id('fail'),status:'Open',type:'fulfillment_vendor',message:`${job.vendor} fulfillment failed for ${job.product}: ${job.lastError}`,meta:{jobId:job.id,orderId:job.orderId,attempts:job.attempts},createdAt:now()});m.automationFailures=m.automationFailures.slice(0,100);await megaSave(m);}}return {processed,recovered,requeued,blocked};}
+    if(!(await claimFulfillmentJob(candidate)))continue;const live=megaData().fulfillmentJobs.find(x=>x.id===candidate.id);try{const result=await submitVendorJob(live);const m=megaData(),job=m.fulfillmentJobs.find(x=>x.id===live.id);job.status=result.status;job.vendorStatus=result.status;job.vendorOrderNumber=result.vendorOrderNumber||job.vendorOrderNumber;job.trackingNumber=result.trackingNumber||job.trackingNumber;job.lastError='';job.attempts=Number(job.attempts||0)+1;job.claimedAt='';job.processingStartedAt='';job.leaseUntil='';job.nextAttemptAt='';job.updatedAt=now();syncOrderFulfillmentLifecycle(job.orderId);m.automationEvents.unshift({id:id('evt'),type:'fulfillment_worker',message:`Fulfillment worker completed ${job.id} (${job.vendor}/${job.product}).`,createdAt:now()});m.automationEvents=m.automationEvents.slice(0,500);await megaSave(m);processed++;}catch(e){V569_PRODUCTION_EXPANSION.recordTenantFailure(Number(candidate.tenantId||TENANT_DEFAULT_ID),'fulfillment_vendor',e.message);const m=megaData(),job=m.fulfillmentJobs.find(x=>x.id===live.id);job.attempts=Number(job.attempts||0)+1;const errCode=String(e?.code||e?.cause?.code||'').toUpperCase(),errText=String(e.message||e||'').toLowerCase();const paymentHold=errCode==='PAYMENT_EVIDENCE_REQUIRED'||errCode==='TENANT_CONTEXT_REQUIRED'||errCode==='CUSTOMER_APPROVAL_AND_OWNER_RELEASE_REQUIRED';const ambiguous=['ETIMEDOUT','ESOCKETTIMEDOUT','ECONNRESET','ECONNABORTED','EPIPE','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','ERR_SOCKET_CLOSED'].includes(errCode)||/timed? out|socket hang up|connection reset|connection closed|upstream timeout|gateway timeout|bad gateway|\b502\b|\b503\b|\b504\b|response lost after submit/.test(errText);job.status=(ambiguous||paymentHold)?'needs_reconciliation':'failed';job.vendorStatus=paymentHold?'payment_evidence_required':ambiguous?'submission_outcome_unknown':'failed';job.lastError=(paymentHold?'Payment evidence or tenant scope is missing; vendor was not contacted. ':ambiguous?'Vendor submission outcome is ambiguous; automatic retry is paused to prevent a duplicate external order. ':'')+String(e.message||e);job.claimedAt='';job.processingStartedAt='';job.leaseUntil='';job.nextAttemptAt=(ambiguous||paymentHold)?'':new Date(Date.now()+Math.min(60*60*1000,Math.pow(2,Math.min(job.attempts,6))*60*1000)).toISOString();job.updatedAt=now();syncOrderFulfillmentLifecycle(job.orderId);m.automationFailures.unshift({id:id('fail'),status:'Open',type:'fulfillment_vendor',message:`${job.vendor} fulfillment failed for ${job.product}: ${job.lastError}`,meta:{jobId:job.id,orderId:job.orderId,attempts:job.attempts},createdAt:now()});m.automationFailures=m.automationFailures.slice(0,100);await megaSave(m);}}return {processed,recovered,requeued,blocked};}
 
 function syncOrderFulfillmentLifecycle(orderId){
  const order=(db.orders||[]).find(o=>String(o.id)===String(orderId));if(!order)return null;
@@ -7779,6 +7783,24 @@ app.post('/api/portal/login',rateLimit(),async(req,res)=>{
   if(!a||!verifyPassword(password,a.passwordHash))return res.status(401).json({error:'Email or password is incorrect.'});
   const c=(db.customers||[]).find(x=>x.id===a.customerId&&Number(x.tenantId)===websiteTenant);if(!c)return res.status(401).json({error:'Email or password is incorrect.'});a.lastLoginAt=now();await saveData();res.json({ok:true,token:makePortalToken(a),customer:portalSafeCustomer(c)});
 });
+const SBC_CUSTOMER_ACCESS=require('./enterprise/sbc-customer-activation.cjs').createAccess(SBC_CUSTOMER_JOURNEY,{hashPassword});
+app.post('/api/sbc/journey/accounts/:id/invite',auth,async(req,res)=>{res.setHeader('Cache-Control','no-store');try{return res.json(await SBC_CUSTOMER_ACCESS.invite(req.params.id,req.user,requireRequestTenant(req),req.body||{}))}catch(e){return res.status(e.status||503).json({ok:false,code:e.status?e.message:'INVITATION_UNCONFIRMED'})}});
+app.post('/api/portal/activate',rateLimit(),async(req,res)=>{
+ if(!sbcPortalSessionsConfigured())return res.status(503).json({ok:false,code:'SBC_PORTAL_SESSION_SECRET_REQUIRED'});
+ let tenantId;try{tenantId=sbcVerifiedWebsiteTenant(req)}catch{return res.status(403).json({ok:false,code:'SITE_BRIDGE_UNAUTHORIZED'})}
+ try{return res.json(await SBC_CUSTOMER_ACCESS.activate(tenantId,req.body||{}))}catch(e){return res.status(e.status||503).json({ok:false,code:e.status?e.message:'ACTIVATION_UNCONFIRMED'})}
+});
+require('./enterprise/sbc-connected-journey-routes.cjs').register(app,{service:SBC_CUSTOMER_JOURNEY,recovery:SBC_APPOINTMENT_RECOVERY,auth,portalAuth,requireTenant:requireRequestTenant});
+// Dispatch remains opt-in, writer-gated and silent unless explicitly configured.
+if(process.env.SBC_APPOINTMENT_MESSAGES_ENABLED==='true'){
+ let recoveryRunning=false;
+ const recoveryTimer=setInterval(async()=>{
+  if(recoveryRunning)return;recoveryRunning=true;
+  try{const tenants=new Set((db.users||[]).filter(u=>u.role==='owner'&&u.active!==false).map(u=>Number(u.tenantId)).filter(t=>Number.isSafeInteger(t)&&t>0));
+   for(const tenantId of tenants)await SBC_APPOINTMENT_RECOVERY.run(tenantId);
+  }catch{console.warn('[SBC Appointment Recovery] cycle held for review')}finally{recoveryRunning=false}
+ },60000);recoveryTimer.unref();
+}
 app.get('/api/portal/profile',portalAuth,(req,res)=>res.json({ok:true,customer:portalSafeCustomer(req.portalCustomer),account:{email:req.portalAccount.email,createdAt:req.portalAccount.createdAt,lastLoginAt:req.portalAccount.lastLoginAt}}));
 app.get('/api/portal/me',portalAuth,(req,res)=>res.json({ok:true,customer:portalSafeCustomer(req.portalCustomer),account:{email:req.portalAccount.email,createdAt:req.portalAccount.createdAt,lastLoginAt:req.portalAccount.lastLoginAt}}));
 app.post('/api/portal/logout',portalAuth,async(req,res)=>{req.portalAccount.portalSessionVersion=(Number(req.portalAccount.portalSessionVersion)||0)+1;await saveData();res.json({ok:true,revoked:true});});
@@ -9183,6 +9205,7 @@ app.post('/api/webhooks/twilio/status',async(req,res)=>{
        ON DUPLICATE KEY UPDATE id=id`,
       ['twilio.status','communication',sid,'twilio_webhook_listener',JSON.stringify(b),idem,'pending',2]
     );
+    if(/^SM[a-f0-9]{32}$/i.test(sid))await SBC_APPOINTMENT_RECOVERY.delivery(sid,state);
     res.json({ok:true,queued:true,idempotencyKey:idem});
   }catch(e){res.status(503).json({ok:false,error:e.message});}
 });

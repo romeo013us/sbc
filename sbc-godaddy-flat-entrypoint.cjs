@@ -38,7 +38,7 @@ if(hasReceipt){
  if(receipt.artifactType==='server.js'&&receipt.artifactSha256!==release.serverSha256){
   throw Error('[SBC DEPLOY IDENTITY] deployment receipt compiled server digest mismatch');
  }
- if(!stageIntegrity.legacy&&receipt.artifactType==='server.js'){
+ if(!stageIntegrity.legacy&&receipt.artifactType==='server.js'&&release.candidateOnly!==true){
   require('./config/deployed-build.cjs').recordVerifiedBuild(release.sourceCommit);
  }
 }

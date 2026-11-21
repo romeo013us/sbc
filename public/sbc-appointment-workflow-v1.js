@@ -33,7 +33,7 @@
  function websiteDemoDefaults(){return {title:'10-minute SBC website preview',durationMinutes:10,location:'Phone or video',notes:'Call first, book the 10-minute Zoom, then prepare the private ChatGPT website concept before the presentation. Confirm scope and next steps.'};}
  function canWriteAppointment(me,data){
   const role=String(me?.role||'');
-  return ['owner','manager','caller','account_manager'].includes(role)&&me?.active!==false&&
+  return ['owner','account_manager'].includes(role)&&me?.active!==false&&
    !data?.readOnly&&!data?.recoveryRequired&&!data?.mysqlRecoveryRequired&&!data?.recovery?.required;
  }
  function install(win){
@@ -66,7 +66,8 @@
    pane.dataset.renderKey=key;
    pane.innerHTML='<div class="sbc-appt-heading"><div><h3>📅 Customer appointments</h3><p class="mini">Book, view and reschedule meetings linked to this account.</p></div>'+
     '<button type="button" class="btn primary" data-sbc-appt-new="'+escapeHtml(id)+'"'+(!canWrite()?' disabled':'')+'>+ Set appointment</button></div>'+rows(id)+
-    '<p class="mini">SBC Calendar record only. No automatic invitation, call, email or text.</p>';
+    '<p class="mini">Booking saves the SBC calendar record. Appointment message dispatch depends on consent and configured recovery controls.</p>'+
+    '<a class="btn" href="/sbc-customer-journey.html?account='+encodeURIComponent(id)+'">Open customer journey →</a>';
   }
   function mountCall(){
    const host=callHost();if(!host)return;

@@ -159,3 +159,56 @@
  let timerCount=0;
  window.SBC_WEBSITE_CALL_DESK=Object.freeze({open});
 })();
+
+
+/* SBC owner · Today's Revenue Actions. Read-only; never calls, bills or messages. */
+(function(){
+ 'use strict';
+ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const currentRole=()=>{try{return typeof state!=='undefined'?String(state?.me?.role||''):''}catch{return ''}};
+ const groups={MEETING_REVIEW:'Meeting outcome needs verification',DUE_CALLBACK:'Callback due',MEETING_PREP:'Prepare customer Zoom',RESEARCHED_LEAD:'Research-backed lead'};
+ let openInFlight=false;
+ async function open(){
+  if(currentRole()!=='owner'||openInFlight||typeof window.openModal!=='function')return;
+  openInFlight=true;window.openModal('📈 Today’s Revenue Actions','<p>Loading customer follow-ups and meeting readiness…</p>');
+  try{
+   const [actions,reminders]=await Promise.all([
+    fetch('/api/sbc/sales/actions/today?limit=120',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)throw Error(d.code||'REVENUE_QUEUE_UNAVAILABLE');return d}),
+    fetch('/api/sbc/sales/reminders/preview',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}}).then(async r=>{const d=await r.json().catch(()=>({}));return r.ok&&d.ok?d:{rows:[]}})
+   ]);
+   const rows=actions.rows||[];
+   const content='<section style="padding:14px;max-height:75vh;overflow:auto;color:#162c46;background:#f7fafc">'+
+    '<h3 style="margin:0">'+esc(actions.total)+' assigned revenue actions</h3>'+ 
+    '<p>Order: past meeting review → due callbacks → upcoming meeting preparation → verified website opportunities.</p>'+ 
+    '<p style="color:#475569">No automated messages, voice calls, bookings or payment actions are triggered by this view.</p>'+ 
+    (rows.length?rows.map((row,index)=>'<article style="border:1px solid #d1dce8;border-radius:10px;background:#fff;padding:12px;margin:8px 0">'+ 
+      '<strong>'+esc(index+1)+'. '+esc(row.businessName)+'</strong> · '+esc(groups[row.type]||row.type)+ 
+      '<p style="margin:7px 0">'+esc(row.nextAction)+'</p>'+ 
+      '<button class="btn" type="button" data-sbc-revenue-open="'+esc(row.customerId)+'">Open Account 360</button></article>').join(''):
+     '<p>No due tasks for this authenticated owner tenant.</p>')+
+    '<p style="font-size:12px;color:#475569">Reminder previews: '+esc(reminders.rows?.length||0)+'. SMS/email sending is OFF pending verified consent and provider acceptance. A saved SBC appointment is not automatically a Zoom meeting.</p></section>';
+   window.openModal('📈 Today’s Revenue Actions',content);
+   document.querySelectorAll('[data-sbc-revenue-open]').forEach(el=>el.addEventListener('click',()=>{
+    const id=el.getAttribute('data-sbc-revenue-open');
+    if(typeof window.SBC_LEAD_PROFILE?.open==='function')window.SBC_LEAD_PROFILE.open(id);
+    else window.toast?.('Account 360 is not ready; use CRM search for the selected business.');
+   }));
+  }catch(e){window.openModal('📈 Today’s Revenue Actions','<p role="alert">'+esc(String(e.message||e))+'</p>')}
+  finally{openInFlight=false;}
+ }
+ function install(){
+  const anchor=document.getElementById('sbcBuildVersion');if(!anchor)return;
+  let button=document.getElementById('sbc-revenue-today-owner');
+  if(!button){button=document.createElement('button');button.id='sbc-revenue-today-owner';button.type='button';button.className='btn';button.textContent='📈 Revenue Today';
+   button.setAttribute('aria-label','Open Today’s Revenue Actions');
+   button.style.cssText='background:#164f75;border:1px solid #123e59;color:#fff;font-weight:750';
+   anchor.insertAdjacentElement('afterend',button);button.addEventListener('click',open);}
+  button.hidden=currentRole()!=='owner';
+  let journey=document.getElementById('sbc-connected-journey-owner');
+  if(!journey){journey=document.createElement('a');journey.id='sbc-connected-journey-owner';journey.className='btn';journey.href='/sbc-customer-journey.html';journey.textContent='Customer Journey';button.insertAdjacentElement('afterend',journey)}
+  journey.hidden=currentRole()!=='owner';
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+ let count=0;const interval=setInterval(()=>{install();if(++count>120)clearInterval(interval)},1500);
+ window.SBC_REVENUE_TODAY=Object.freeze({open});
+})();

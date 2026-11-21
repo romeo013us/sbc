@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "release": "SBC Connected Customer Journey",
+  "prepared_date_eastern": "2026-11-20",
+  "status": "LOCAL_PREVIEW_CANDIDATE_NOT_DEPLOYED",
+  "baseline": {
+    "command_center_zip_sha256": "7cd4c263bd3657308b42911864399dc374d74949ca9e3045b8b6c7a91b92aefd",
+    "sbcmia_source_zip_sha256": "9f11849ab39192b91ab7121492a6866c8b89cb3cb0f8953df51399cd1bd7cc98",
+    "git_source_in_supplied_zip": "3852e20c6a7748c87cff98a9c52e8b3b5d468907"
+  },
+  "local_checks": {
+    "critical_workflow_tests": {
+      "tests": 29,
+      "passed": 29,
+      "failed": 0
+    },
+    "command_center_full_node_suite": {
+      "tests": 385,
+      "passed": 378,
+      "failed": 6,
+      "skipped": 1,
+      "failures_match_unmodified_baseline": true,
+      "failure_reason": "GitHub workflows and historical source documents are omitted from the supplied deployment ZIP.",
+      "mysql_skip_reason": "No isolated configured MySQL database."
+    },
+    "unmodified_baseline_node_suite": {
+      "tests": 367,
+      "passed": 360,
+      "failed": 6,
+      "skipped": 1
+    },
+    "website_full_suite": {
+      "tests": 78,
+      "passed": 78,
+      "failed": 0
+    },
+    "php_syntax": {
+      "files": 37,
+      "failed": 0
+    },
+    "javascript_bundle_check": true,
+    "css_bundle_check": true,
+    "secret_audit": true,
+    "legacy_npm_aggregate": "Stops on the same omitted RELEASE-NOTES-V65.1.5-BUYER-DEMO-STABILITY.md in baseline and candidate."
+  },
+  "browser_acceptance": {
+    "passed": true,
+    "synthetic_only": true,
+    "checks": [
+      "Desktop staff inquiry review",
+      "Paid delivery steps and revised proof",
+      "Staff mobile layout without horizontal overflow",
+      "Customer proof approval through local HTTP APIs",
+      "Authenticated synthetic customer reschedule request",
+      "Activation fragment scrub and analytics exclusion",
+      "No browser JavaScript errors"
+    ],
+    "limits": "Injected local persistence and portal authentication relay; no real MySQL or provider calls."
+  },
+  "hosted_acceptance": {
+    "godaddy_writable_staging": false,
+    "mysql_booking_or_restart_proof": false,
+    "square_sandbox_or_live_capture": false,
+    "sms_or_email_delivery": false,
+    "production_deployment": false
+  },
+  "defaults": {
+    "appointment_message_dispatch": false,
+    "automatic_zoom_creation": false,
+    "automatic_vendor_purchase": false,
+    "automatic_website_publication": false
+  },
+  "review_fixes": [
+    "Gate existing fulfillment creation and vendor submission on journey approvals",
+    "Provide one-time customer activation",
+    "Preserve concurrent writes during failed saves, including JSON notes",
+    "Tie reminder consent to the destination actually sent",
+    "Protect terminal provider states and reschedule confirmations",
+    "Exclude activation analytics and stale invitation UI results"
+  ],
+  "notes": [
+    "SBCMIA $499 Custom is a distinct public checkout offer; existing economic cost mappings are still required.",
+    "Office Box and reseller integration retain existing operational boundaries and need hosted acceptance."
+  ]
+}

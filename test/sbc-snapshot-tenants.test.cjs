@@ -125,8 +125,8 @@ test('the compiled normal writer calls the scoped snapshot inside its existing t
   assert.match(writer, /assessPersistenceSafety\(reconciledVisibleCore,sourceCore\)/);
   assert.doesNotMatch(writer, /tenant_id=VALUES\(tenant_id\)/);
   assert.match(compiled, /fulfillmentJobs=durableJobs\.map\(r=>\(\{id:r\.id,tenantId:Number\(r\.tenant_id\)/);
-  assert.match(compiled, /sourcePage:c0\.sourcePage,duplicate:true,contactChanged:false\},tenantId\)/);
-  assert.match(compiled, /sourcePage:c0\.sourcePage,qualified:false\},tenantId\)/);
+  assert.match(compiled, /SBC_CUSTOMER_JOURNEY\.intake\(tenantId,b\)/);
+  assert.match(compiled, /confirmInquiry:confirmWebsiteInquiry/);
 });
 
 test('MySQL preserves row ownership, tombstones and uniqueness through commit and rollback', {

@@ -1,43 +1,22 @@
-# SBC V63 — GOD TIER ALL-IN-ONE
+# SBC Command Center V66 — Full GoDaddy Application (P0/P1 Sales Preview Candidate)
 
-This is a unified Kevin executive-intelligence overlay. It collapses the planned V62.x capability ladder into one governed architecture:
+This is the **full Node.js application archive**, not a patch-only ZIP and not a backup from the live GoDaddy instance.
 
-- World Model
-- Event-driven telemetry
-- Persistent experience memory
-- Simulation / counterfactual planning
-- Universal execution fabric
-- Multi-agent engineering council
-- Executive prediction
-- Kim ↔ Kevin bridge
-- Adversarial review
-- Governance / owner veto / credential protection
-- Rollback and verification receipts
-- Autonomy ladder
+**Build status:** Locally generated preview candidate from the user-supplied V66 archive. Not production certified; no live customer data, environment secrets, `node_modules`, or database dump included.
 
-## Architecture
+## What's new
+- Authenticated, tenant-scoped Account Manager appointment creation and rescheduling without a prior website concept.
+- Assigned-account access, DNC/suppression checks, writer/recovery gate, 10-minute booking, double-booking prevention.
+- An immediately actionable daily revenue priority queue for the owner and Account Managers.
+- Upcoming appointment preparation, evidence-based research opportunities, and **draft-only** 24-hour/1-hour reminder previews.
+- Calling script unchanged. No automatic outbound SMS/email, Zoom meeting creation, voice calls, or public rescheduling tokens.
 
-Romeo = Sovereign Owner and final authority.
-Kevin = executive intelligence, reasoning, orchestration, simulation, prediction and governed execution.
-Kim = conversational glass cockpit / translator / command surface.
-Specialized agents = bounded analyst, finance, security, architect, coder, tester, critic and operations roles.
+## Installation
+1. Back up the existing GoDaddy Node.js Command Center, database, uploads and credentials.
+2. Install into the Node.js application root (not the public PHP website's `public_html`).
+3. Install dependencies with the platform's supported Node.js 22/npm 10 flow; `package-lock.json` is included.
+4. Verify integrity with `SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs`.
+5. Verify on a **separate writable staging database** with authenticated Account Manager role. Do not bypass GoDaddy Preview read-only state.
+6. Promote to Published only after end-to-end results are accepted and rollback backup exists.
 
-## Safety model
-
-Kevin does not self-promote, alter credentials, bypass owner veto, or perform unrestricted production mutation. Consequential mutations require policy authorization, simulation where applicable, verification, and rollback metadata.
-
-## Integration
-
-This package is intentionally an overlay because the complete V61/V62 production source tree was not present in the supplied material. It is not honestly labeled as a merged production deployment. The `enterprise/integration/sbc-adapter.js` adapter is the single integration seam for the existing SBC state/evolution engines.
-
-## GoDaddy secret constraint
-
-No new environment secrets are required by this overlay. Reuse existing credentials through the existing SBC credential/configuration layer. Do not add a 51st GoDaddy secret.
-
-## Test
-
-Run:
-
-    node scripts/v63-integrity-test.js
-
-The test is deterministic and offline. It verifies module loading, governance, world model synthesis, simulation, prediction, agent council, adversarial review, execution authorization, rollback metadata, memory, and Kim↔Kevin routing.
+See `docs/SBC-P0-P1-PREVIEW-RELEASE-NOTES.md` and `SBC-P0P1-PREVIEW-QA.json` for tests, safety restrictions, and limits.

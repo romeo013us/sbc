@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "candidateOnly": true,
+  "baselineSourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
+  "patch": "v66.0.25-sales-p0p1-preview-candidate",
+  "scope": [
+    "assigned-Account-Manager-booking",
+    "ten-minute-website-Zoom",
+    "tenant+assignment+suppression+writer gates",
+    "daily revenue actions",
+    "appointment reschedule",
+    "reminder drafts only"
+  ],
+  "focusTests": {
+    "passed": 19,
+    "failed": 0
+  },
+  "bundleStaticCheck": "PASS (node scripts/v66-safe-js-bundles.cjs --check)",
+  "cssStaticCheck": "PASS (node scripts/v66-owner-ui-css-bundle.cjs --check)",
+  "pending": [
+    "authenticated independent writable staging E2E",
+    "actual Zoom link generation",
+    "Twilio/email consent-verified dispatch",
+    "public self-reschedule token",
+    "production approval"
+  ],
+  "outboundNotificationsEnabled": false,
+  "autonomousCallsEnabled": false,
+  "liveDbMutationTested": false,
+  "productionDeployed": false,
+  "provenance": "User-uploaded SBC Command Center V66 ZIP; locally modified candidate; no new GitHub commit claimed"
+}
