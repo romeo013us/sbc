@@ -5,7 +5,7 @@
 (function(){
  'use strict';
  if(window.SBC_FREE_ACTIONS_V1)return;
- var PATH='/api/sbc/free-actions/today?limit=12',board=null,items=null,status=null,count=null,dialog=null,loading=false;
+ var PATH='/api/sbc/free-actions/today?limit=12',board=null,items=null,status=null,count=null,dialog=null,loading=false,refreshPending=false,lastFetchAt=0;
  function node(tag,className,text){var el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=String(text);return el;}
  function newButton(label,className,click){var b=node('button',className,label);b.type='button';b.addEventListener('click',click);return b;}
  function setup(){
@@ -75,8 +75,20 @@
   if(!owner)open.setAttribute('aria-label','Open '+String(row.businessName||'assigned account'));
   card.appendChild(open);return card;
  }
+ function refreshAfterCommit(force){
+  if(!board||document.visibilityState==='hidden')return;
+  // Owner drawer refreshes when opened; don't query while the drawer is closed.
+  if(dialog&&!dialog.open)return;
+  if(loading){refreshPending=true;return;}
+  if(!force&&Date.now()-lastFetchAt<60000)return;
+  void load();
+ }
+ document.addEventListener('sbc:crm-committed',function(){refreshAfterCommit(true);});
+ document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible')refreshAfterCommit(false);
+ });
  async function load(){
-  if(!board||loading)return;
+  if(!board||loading){if(loading)refreshPending=true;return;}
   loading=true;status.textContent='Checking live authorized CRM records…';
   clear();count.textContent='';
   try{
@@ -91,7 +103,11 @@
    if(!data.actions.length)items.appendChild(node('p','sbc-actions-empty','No next actions in the current account sample.'));
    if(data.moreRecordsPossible)items.appendChild(node('p','sbc-actions-note','Showing a prioritized sample of the latest 500 CRM records. More accounts may exist.'));
   }catch(_){showError();}
-  finally{loading=false;}
+  finally{
+   loading=false;lastFetchAt=Date.now();
+   // A durable CRM commit during an in-flight read must not be lost.
+   if(refreshPending){refreshPending=false;refreshAfterCommit(true);}
+  }
  }
  function boot(){
   if(setup())return;

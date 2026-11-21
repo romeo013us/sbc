@@ -64,6 +64,23 @@ assert(css.includes('prefers-reduced-motion:reduce'));
 assert(css.includes(':focus-visible'));
 assert(!/https?:\/\//i.test(css),'all motion styles must be self-hosted');
 
+// Automatic CRM-commit -> next-action refresh must be strictly read-only,
+// emitted only AFTER durable server confirmation. No polling or paid AI.
+const managerJs=file('public/sbc-account-manager-v1.js');
+const outcome=managerJs.slice(managerJs.indexOf('async function submitQuickOutcome('),managerJs.indexOf(' const message='));
+const confirmed=outcome.indexOf("if(!res.ok||data.ok!==true||data.durable!==true)");
+const eventAt=outcome.indexOf("document.dispatchEvent(new Event('sbc:crm-committed'))");
+assert(confirmed>=0&&eventAt>confirmed,'only durable account outcomes may signal a CRM refresh');
+assert(eventAt<outcome.indexOf('await loadAccountHistoryV5(id)'), 'update next actions immediately after durable CRM commit');
+assert(!outcome.slice(outcome.indexOf('}catch(error){')).includes("document.dispatchEvent(new Event('sbc:crm-committed'))"),
+  'failed saves must not trigger confirmed-commit refresh');
+const boardScript=file('public/sbc-free-actions-v1.js');
+assert(boardScript.includes("document.addEventListener('sbc:crm-committed'"),'read-only action panel must listen for committed CRM changes');
+assert(boardScript.includes("document.addEventListener('visibilitychange'"),'returning to a workspace must refresh stale priorities');
+assert(boardScript.includes('refreshPending'),'an update during an in-flight read must not be lost');
+assert(!/setInterval\s*\(/.test(boardScript),'no perpetual polling or extra hosting workload');
+assert(!/openai|anthropic|api\.openai/i.test(boardScript),'never call paid AI from action panel');
+
 const handlers=new Map(),queries=[];
 const app={get:(p,...args)=>handlers.set(p,args.at(-1))};
 const users=[{id:'manager_001',role:'account_manager',tenantId:7,active:true}];
