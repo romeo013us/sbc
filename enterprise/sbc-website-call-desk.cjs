@@ -78,16 +78,24 @@ function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:
   !['deleted','duplicate','archived'].includes(String(c.status||'').trim().toLowerCase())&&c.isTestRecord!==true&&c.test!==true&&(!customerId||String(c.id)===String(customerId))).map(c=>{
   const cId=String(c.id),s=chosen.get(cId)||null,r=research(c),phone=cleanPhone(c.phone||c.primaryPhone);
   const held=Date.parse(c.websiteSalesBadNumberUntil||'')>nowMs;
-  const meeting=(appointments||[]).find(a=>sameTenant(a,id)&&String(a.customerId)===cId&&String(a.websiteId||'')===String(s?.id||'')&&String(a.status)==='Scheduled');
+  // A confirmed website Zoom may exist before a private concept is created.
+  // The appointment editor creates website demos without a websiteId; recognize
+  // its explicit title without counting unrelated, expired or foreign meetings.
+  const meeting=(appointments||[]).filter(a=>sameTenant(a,id)&&String(a.customerId)===cId&&
+   String(a.status)==='Scheduled'&&Number.isFinite(Date.parse(a.startAt||''))&&
+   Date.parse(a.endAt||a.startAt)>nowMs&&
+   (/^10-minute SBC website preview$/i.test(String(a.title||'').trim())||
+    (s&&a.websiteId&&String(a.websiteId)===String(s.id))))
+   .sort((a,b)=>Date.parse(a.startAt)-Date.parse(b.startAt))[0]||null;
   const last=(calls||[]).filter(x=>sameTenant(x,id)&&String(x.customerId)===cId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0];
   let stage='READY_TO_CALL';
   if(suppressed(c)||last?.kind==='DO_NOT_CALL')stage='SUPPRESSED';
   else if(held)stage='NUMBER_COOLDOWN';
   else if(!r.verified)stage='RESEARCH_REQUIRED';
   else if(!phone)stage='CONTACT_UNVERIFIED';
+  else if(meeting)stage='APPOINTMENT_BOOKED';
   else if(!s)stage='BUILD_WEBSITE';
   else if(s.status!=='Approved')stage='REVIEW_WEBSITE';
-  else if(meeting)stage='APPOINTMENT_BOOKED';
   else if(last?.kind==='NOT_INTERESTED')stage='DECLINED';
   else if(last?.kind==='INTERESTED'||last?.kind==='APPOINTMENT_REQUESTED')stage='INTERESTED';
   return {customerId:cId,businessName:String(c.businessName||c.contactName||'Business').slice(0,120),
@@ -104,17 +112,18 @@ function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:
     SUPPRESSED:'No further outreach',NUMBER_COOLDOWN:'Return number to research; do not retry before cooldown',
     RESEARCH_REQUIRED:'Return to Lorna to verify business details and website presence',
     CONTACT_UNVERIFIED:'Ask Lorna to verify a working number',BUILD_WEBSITE:'Call to qualify interest first; generate a private concept if requested',
-    REVIEW_WEBSITE:'Call to qualify interest; owner reviews the private draft before external sharing',APPOINTMENT_BOOKED:'Prepare confirmed 10-minute walkthrough',
+    REVIEW_WEBSITE:'Call first; review any draft only before a customer presentation',APPOINTMENT_BOOKED:s?.status==='Approved'?'Confirmed Zoom: rehearse the existing private preview':s?'Confirmed Zoom: review the draft before presenting it':'Confirmed Zoom: prepare the private ChatGPT website concept before the presentation',
     DECLINED:'Respect refusal and stop outreach',INTERESTED:'Agree on a meeting time',READY_TO_CALL:'Human salesperson can consider a compliant manual call'
    }[stage]};
  });
- const priority=['READY_TO_CALL','INTERESTED','APPOINTMENT_BOOKED','REVIEW_WEBSITE','BUILD_WEBSITE','RESEARCH_REQUIRED','CONTACT_UNVERIFIED','NUMBER_COOLDOWN','DECLINED','SUPPRESSED'];
+ const priority=['APPOINTMENT_BOOKED','INTERESTED','READY_TO_CALL','BUILD_WEBSITE','REVIEW_WEBSITE','RESEARCH_REQUIRED','CONTACT_UNVERIFIED','NUMBER_COOLDOWN','DECLINED','SUPPRESSED'];
  rows.sort((a,b)=>priority.indexOf(a.stage)-priority.indexOf(b.stage)||a.businessName.localeCompare(b.businessName));
  const max=Math.max(1,Math.min(200,int(limit)||100));
  return {ok:true,actorRole:String(actor.role),total:rows.length,rows:rows.slice(0,max),
   summary:{readyToCall:rows.filter(x=>x.callAllowed).length,needsBuild:rows.filter(x=>x.stage==='BUILD_WEBSITE').length,
    requiresResearch:rows.filter(x=>['RESEARCH_REQUIRED','CONTACT_UNVERIFIED','NUMBER_COOLDOWN'].includes(x.stage)).length,
    awaitingReview:rows.filter(x=>x.stage==='REVIEW_WEBSITE').length,booked:rows.filter(x=>x.stage==='APPOINTMENT_BOOKED').length,
+   bookedNeedsConcept:rows.filter(x=>x.stage==='APPOINTMENT_BOOKED'&&!x.websiteUrl).length,
    suppressed:rows.filter(x=>x.stage==='SUPPRESSED').length},
   safety:{autoDialEnabled:false,aiVoiceEnabled:false,description:'No automated dialing, voice calls, emails, messages, or bookings are executed from this desk.'}};
 }
