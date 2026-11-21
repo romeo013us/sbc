@@ -37,13 +37,37 @@ function signHandoffV2(event,secret,epochSeconds=Math.floor(Date.now()/1000)){
  const signature=crypto.createHmac('sha256',secret).update(timestamp+'.').update(raw).digest('hex');
  return {method:'POST',path:'/api/sbc/handoff',body,headers:{'content-type':'application/json','x-sbc-timestamp':timestamp,'x-sbc-signature-v2':'sha256='+signature}};
 }
-function interpretAck(reply){
+function interpretAck(reply,{correlationId,origin}={}){
  const data=reply?.data;
- if(reply?.ok!==true||!data||data.accepted!==true)return {accepted:false,reason:'OFFICEBOX_NO_AUTHORITATIVE_ACK'};
- const url=String(data.activation_url||'');
- if(data.duplicate===true)return {accepted:true,duplicate:true,activationUrl:null,reason:'OFFICEBOX_RECONCILE_EXISTING_INVITE'};
- let safeUrl=null;
- try{const u=new URL(url);if(u.protocol==='https:'&&!u.username&&!u.password&&u.searchParams.has('token'))safeUrl=url}catch{}
- return {accepted:true,duplicate:false,activationUrl:safeUrl,reason:safeUrl?'PENDING_CUSTOMER_ACTIVATION':'OFFICEBOX_MISSING_ACTIVATION_URL'};
+ if(reply?.ok!==true||!data||data.accepted!==true)
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_NO_AUTHORITATIVE_ACK'};
+ // The ACK is not proof of the payment unless it identifies the exact
+ // original signed handoff; a generic accepted:true is never enough.
+ if(!validId(correlationId)||data.correlationId!==correlationId)
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_ACK_CORRELATION_MISMATCH'};
+ let expected;
+ try{expected=new URL(String(origin||''))}catch{
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_TRUSTED_ORIGIN_MISSING'};
+ }
+ if(expected.protocol!=='https:'||expected.username||expected.password||
+    expected.search||expected.hash||expected.pathname!=='/'||
+    !expected.hostname||expected.port&&expected.port!=='443')
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_TRUSTED_ORIGIN_INVALID'};
+ // Replay is idempotent: the recipient must not create or resend another
+ // activation token merely because Office Box acknowledged a duplicate.
+ if(data.duplicate===true)
+   return {accepted:true,duplicate:true,activationUrl:null,reason:'OFFICEBOX_RECONCILE_EXISTING_INVITE'};
+ const rawUrl=String(data.activation_url||'');
+ try{
+   const u=new URL(rawUrl);
+   // Office Box generates 32 cryptographically random bytes as a 43-character
+   // base64url token at the exact /activate path on its configured origin.
+   if(u.protocol==='https:'&&u.origin===expected.origin&&!u.username&&!u.password&&
+      !u.hash&&u.pathname==='/activate'&&u.searchParams.size===1&&
+      /^[A-Za-z0-9_-]{43}$/.test(String(u.searchParams.get('token')||'')))
+     return {accepted:true,duplicate:false,activationUrl:u.toString(),reason:'PENDING_CUSTOMER_ACTIVATION'};
+ }catch{}
+ return {accepted:false,activationUrl:null,reason:'OFFICEBOX_UNTRUSTED_ACTIVATION_URL'};
 }
+
 module.exports={PLANS,prepareHandoff,signHandoffV2,interpretAck};
