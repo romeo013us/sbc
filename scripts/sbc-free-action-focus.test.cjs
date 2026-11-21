@@ -42,6 +42,28 @@ for(const fail of [
  {tenantId:7,actor,rows:null,today:now}
 ])assert.throws(()=>planActions(fail));
 assert.equal(planActions({tenantId:7,actor,rows:[],today:now}).total,0);
+// The sealed owner shell must keep its fixed CSS/JS tag counts. The existing
+// focus loader attaches new assets only after the owner nav is present.
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const file=n=>fs.readFileSync(path.join(root,n),'utf8');
+for(const name of ['index.html','sbc-account-manager-v1.html','sbc-command-center-focus-v1.js','sbc-free-actions-v1.js','sbc-free-actions-v1.css']){
+ assert.equal(file('public/'+name),file('browser_public/'+name),'published/browser mirror mismatch: '+name);
+}
+const index=file('public/index.html');
+assert(!index.includes('<script defer src="/sbc-free-actions-v1.js'),'do not expand sealed owner bundle script counts');
+assert(!index.includes('<link rel="stylesheet" href="/sbc-free-actions-v1.css'),'do not expand sealed owner bundle CSS count');
+const bootstrap=file('public/sbc-command-center-focus-v1.js');
+assert(bootstrap.includes("actionScript.src='/sbc-free-actions-v1.js?v=1'"));
+assert(bootstrap.includes("actionStyle.href='/sbc-free-actions-v1.css?v=1'"));
+const amHtml=file('public/sbc-account-manager-v1.html');
+assert(amHtml.includes('src="/sbc-free-actions-v1.js?v=1"'));
+assert(amHtml.includes('href="/sbc-free-actions-v1.css?v=1"'));
+const css=file('public/sbc-free-actions-v1.css');
+assert(css.includes('prefers-reduced-motion:reduce'));
+assert(css.includes(':focus-visible'));
+assert(!/https?:\/\//i.test(css),'all motion styles must be self-hosted');
+
 const handlers=new Map(),queries=[];
 const app={get:(p,...args)=>handlers.set(p,args.at(-1))};
 const users=[{id:'manager_001',role:'account_manager',tenantId:7,active:true}];
