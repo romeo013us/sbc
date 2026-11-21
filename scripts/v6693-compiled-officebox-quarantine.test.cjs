@@ -36,6 +36,9 @@ function fixture({failSave=false,saveReceipt='verified',readonly=false,recovery=
   process:{env:{SQUARE_LOCATION_ID:'sq_location_999',SBC_PUBLIC_URL:'https://invalid.example.test'}},
   squarePaymentRecords:()=>db.squarePayments,squareMoneyCents:n=>Math.round(n*100),orderParsed,updateOrderParsed,
   SBC_V6659_SQUARE_PROOF:P,SBC_V6671_SQUARE_WEBHOOK:R,
+  // The compiled handler now syncs the paid journey before allowing fulfillment.
+  // Keep this test isolated from the CRM; dedicated journey tests cover state changes.
+  SBC_CUSTOMER_JOURNEY:{syncPaidOrder:o=>{assert.equal(o.tenantId,7);events.push('journey-sync')}},
   squareApi:async(path)=>{assert.match(path,/^\/v2\/payments\//);events.push('provider-readback');return {payment:ctx.providerPayment};},
   SBC_RUNTIME_READ_ONLY:readonly,MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:recovery,
   sbcWriterLeaseReady:lease,sbcWriterLeaseConn:lease?{}:null,mysqlPool:pool?{}:null,

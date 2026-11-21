@@ -1560,7 +1560,7 @@ e31f4602c75ab476541eb7f5795e82cd4c8bba297a4122145393e520f0aeee69  ./scripts/v668
 966c416fac7e26fb21dd733711de9afcc524b72622d88882b7d697e198cdc4b6  ./scripts/v6690-voice-role-authorization.test.cjs
 96603e49bd1e33cdd4ab9bda57fcd2bb7d3c9dbd0328b54fdefb1f809a2b22d9  ./scripts/v6691-actionable-exceptions-voice-diagnostics.test.cjs
 7bbb9478a2164cfbd9645dcbddc8d66bfac4e3621f00b63a86265e223759f869  ./scripts/v6691-stage-actionable-exceptions.cjs
-cfdbbae54e62bf768499b2330288ecb31a22c8c87effb5a361570a15db4a71e6  ./scripts/v6693-compiled-officebox-quarantine.test.cjs
+ed4507214df280efe40bf67f922eb2aed744774445849aeda697cb976c1ee6f0  ./scripts/v6693-compiled-officebox-quarantine.test.cjs
 f4ff6c28df31b3f9792e21e8cc25fa5b26bf29918aaa60c193aad6f81407d42d  ./scripts/v6694-owner-launch-qa.test.cjs
 2a0e5ba2197a6ea707b5e17857a0fe9442bf1a3a22ded141ad9b4a0513b08e2f  ./scripts/v6695-stage-voice-token.cjs
 2e0ae396b8f3f7f4f6d53f8b81e495a8e5abd0f281f51f72088ed4798281487a  ./scripts/v6695-voice-token.test.cjs
