@@ -93,6 +93,11 @@ function route(vault,status='owner_clearance_required'){
     const vmSource=patched.slice(begin,end)+'\nsubmit=submitVendorJob;';
     const context={
       db:{orders:[{id:'order-1',tenantId:1,price:25000}]},
+      // Exercise the actual approval guard; the VM has no CommonJS globals.
+      require:modulePath=>{
+        assert.equal(modulePath,'./enterprise/sbc-connected-journey.cjs');
+        return require('../enterprise/sbc-connected-journey.cjs');
+      },
       SBC_V6651_REQUIRE_PAID:()=>{},
       V569_PRODUCTION_EXPANSION:finance,
       TENANT_DEFAULT_ID:1,mysqlPool:pool([LOCK()]),
@@ -102,6 +107,9 @@ function route(vault,status='owner_clearance_required'){
     vm.runInNewContext(vmSource,context);
     await assert.rejects(context.submit({orderId:'order-1',tenantId:1,value:9000,vendor:'4over4'}),/FULFILLMENT_ORDER_AMOUNT_MISMATCH/);
     assert.equal(vendorCalls,0);
+    context.db.orders[0].notes=JSON.stringify({customerJourney:{steps:[{key:'release',completed:false}]}});
+    await assert.rejects(context.submit({orderId:'order-1',tenantId:1,value:25000,vendor:'4over4'}),/CUSTOMER_APPROVAL_AND_OWNER_RELEASE_REQUIRED/);
+    assert.equal(vendorCalls,0,'approval guard must prevent any vendor submission');
   });
   await test('route missing vault never clears UI',async()=>{
     const r=route(null),x=await r.call();assert.equal(x.code,400);assert.equal(r.saves(),0);assert.equal(r.job.status,'owner_clearance_required');
