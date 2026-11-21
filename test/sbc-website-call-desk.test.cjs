@@ -174,3 +174,16 @@ test('Call Desk supports appointment-first customer journey with verified manual
  assert.doesNotMatch(ui,/Lorna researches and imports\. SBC builds a real website\. The assigned human caller books/);
  assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-website-call-desk-v1.js'),'utf8'));
 });
+
+
+test('real call outcomes outrank missing website concept',()=>{
+ const d=data();
+ d.calls=[
+  {id:'c1',tenantId:1,customerId:'needsite',kind:'INTERESTED',createdAt:'2026-11-12T21:30:00.000Z'},
+  {id:'c2',tenantId:1,customerId:'already',kind:'NOT_INTERESTED',createdAt:'2026-11-12T21:45:00.000Z'}
+ ];
+ const p=project({...d,actor:caller,tenantId:1,now});
+ assert.equal(p.rows.find(x=>x.customerId==='needsite').stage,'INTERESTED');
+ assert.equal(p.rows.find(x=>x.customerId==='already').stage,'DECLINED');
+ assert.match(p.rows.find(x=>x.customerId==='needsite').nextAction,/meeting|zoom/i);
+});
