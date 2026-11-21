@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
-  "sourceFingerprint": "b3739eb2e59298f7537a25f177671a969e29af529ce9f298f1b755094d4160c3",
+  "sourceCommit": "b0901841dd372cb00802646b12a909e39e39cab6",
+  "sourceFingerprint": "08d9cc446dcb065486345a921471eb1dda1c0ab2d616840b1b9cb7c7e32c9a5b",
   "artifactType": "server.js",
   "artifactSha256": "9a29559fcbadc1eb04d6c783e8b2b6b06c0aeeeaa665546dbc4735484c0236fa",
-  "buildBranch": "master-local-candidate",
-  "deployBranch": "NOT_DEPLOYED",
+  "buildBranch": "a-sbc-master",
+  "deployBranch": "PREVIEW_CANDIDATE_ONLY",
   "candidateOnly": true,
-  "createdBy": "SBC local connected journey build; not hosted CI or production certification"
+  "createdBy": "SBC exact-source diagnostic repair; not production certification"
 }

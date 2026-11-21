@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
+  "sourceCommit": "b0901841dd372cb00802646b12a909e39e39cab6",
   "candidateOnly": true,
   "runtimePatch": "66.0.26-connected-journey-preview-candidate",
   "files": {
@@ -1446,7 +1446,7 @@
     "scripts/v66107-elite-academy.test.cjs": "8cdc56bc1e725c0d11b409e9ddc2feba19fbc0a0f96b67856ebd4c129b9e7159",
     "scripts/v66108-war-gate.test.cjs": "622a4936a4c4dde41cbc09a24cc9486b9be031529af91865d9de9f8db94075ea",
     "scripts/v66109-workforce-audio.test.cjs": "e0e049b80cd40342acac8512a57c8db089473331d2f786a6c33d56a582be3f65",
-    "scripts/v6611-verify-stage-inventory.cjs": "9973eece08097539caae435bcb5ec0327fa5a6c52f953c692487eb076c167cb9",
+    "scripts/v6611-verify-stage-inventory.cjs": "8ab4880a2821c99a0971d2789ce87afe3b928c961eef627ae4f7980d7627984b",
     "scripts/v66110-gateway.test.cjs": "03abd6fa970d5d7363e9209b3ffe154a8c077ee903dad9b36fbd40b5dedb3101",
     "scripts/v66110-stage-safe-launch-activation.cjs": "303d78d9b7c84dbfe14dd6d07deae6257d756a8f5b03010d90fcb00390213125",
     "scripts/v66111-stage-tenant-safe-ingest.cjs": "a1038aa078d7bf505250bba5717b0222fe864a6dc80edc3e0f89f2f8da5709d8",
@@ -1680,7 +1680,7 @@
     "test/smart-dialing-engine.test.js": "9834187e7a72ab998508eb97429f77e7c7e20adc8a0fbb54725bc5e54d047a12",
     "test/smart-dialing-projection.test.js": "89e3f61e3f0c4a2793ae44ab2adb04648d201c1b29a9e36e278a26a50f3eb959",
     "test/smart-dialing-workspace.test.js": "7843d116de3e385ba59e56b98dd76af5f528ce7624df661e64ff60e3a4aa9780",
-    "test/v66-deployment-artifact-gate.test.cjs": "22c3c67525cd83da21ceedb56c945e674551bdad8addaa8ee753b74217bd0802",
+    "test/v66-deployment-artifact-gate.test.cjs": "fa7a6e161ba35a13179a5ed615ff754ac523e9076f340a580f019affe108c512",
     "test/v66-owner-ui-css-bundle.test.cjs": "ec1ecc885ed83e9143cc66bf4da051fea77ae51e8f349a5e65318fc06465a5f5",
     "test/v66-preview-browser-acceptance.test.cjs": "b71388d27d3ccc38b6e837f4edd63d7ac65f95b575872287e63b14e12ae559b7",
     "test/v66-release-foundation.test.cjs": "b060c86e7efa940e50638c483a5a1331c55fc876391ae315c59dfec47e38c122",

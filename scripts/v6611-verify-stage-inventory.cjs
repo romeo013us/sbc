@@ -39,8 +39,11 @@ function verifyStagedInventory(root,identity){
     const full=path.join(root,name);
     const stat=fs.lstatSync(full);
     if(!stat.isFile())throw Error('[SBC STAGED INVENTORY] not a regular file: '+name);
-    if(sha256(fs.readFileSync(full))!==expected)
-      throw Error('[SBC STAGED INVENTORY] asset checksum mismatch: '+name);
+    const bytes=fs.readFileSync(full);
+    const actual=sha256(bytes);
+    if(actual!==expected)
+      throw Error('[SBC STAGED INVENTORY] asset checksum mismatch: '+name+
+        ' (expected='+expected+' actual='+actual+' bytes='+bytes.length+')');
     checked++;
   }
   if(checked<100)throw Error('[SBC STAGED INVENTORY] suspiciously incomplete release: '+checked);

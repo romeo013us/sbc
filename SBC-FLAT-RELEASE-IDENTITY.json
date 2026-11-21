@@ -1,14 +1,13 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
-  "sourceFingerprint": "b3739eb2e59298f7537a25f177671a969e29af529ce9f298f1b755094d4160c3",
+  "sourceCommit": "b0901841dd372cb00802646b12a909e39e39cab6",
+  "sourceFingerprint": "08d9cc446dcb065486345a921471eb1dda1c0ab2d616840b1b9cb7c7e32c9a5b",
   "serverSha256": "9a29559fcbadc1eb04d6c783e8b2b6b06c0aeeeaa665546dbc4735484c0236fa",
-  "runtimePatch": "66.0.26-connected-journey-preview-candidate",
-  "runtimePatchFrom": "supplied full V66 P0/P1 ZIP plus locally committed connected journey changes",
-  "stagedInventorySha256": "9496bfacc3ecd486ee70ab2119ec8d3e2f9b4b8dc4fca550d04ddda74505166c",
+  "runtimePatch": "66.0.27-hosted-integrity-diagnostics-preview-candidate",
+  "runtimePatchFrom": "GitHub b090184 source plus checksum diagnostics; hosting acceptance pending",
+  "stagedInventorySha256": "42a5e34f82ec62cccb20d204f3e20ccca46d72a9ac794ec2409868987cbe00c4",
   "candidateOnly": true,
   "baselineSourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
-  "productionCertified": false,
-  "localCandidateCommit": "146d68c989107a0dc12b4555debbad14909b4906"
+  "productionCertified": false
 }

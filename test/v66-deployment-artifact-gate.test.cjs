@@ -43,6 +43,16 @@ test('fail closed when the server or a required website asset was tampered with'
  fs.appendFileSync(path.join(root,'public/sales-caller.js'),'\nTAMPER');
  assert.throws(()=>verifyDeploymentArtifact(root),/checksum mismatch/i);
 }));
+test('checksum failures identify deployed bytes without logging file contents',()=>using(({root})=>{
+ const name='public/sales-caller.js',contents='PRIVATE_CONTENT_MUST_NOT_APPEAR';
+ fs.writeFileSync(path.join(root,name),contents);
+ assert.throws(()=>verifyDeploymentArtifact(root),error=>{
+  assert.match(error.message,/asset checksum mismatch: public\/sales-caller\.js/);
+  assert.match(error.message,/expected=[a-f0-9]{64} actual=[a-f0-9]{64} bytes=31/);
+  assert(!error.message.includes(contents));
+  return true;
+ });
+}));
 test('fail closed if receipt, inventory or core website asset is absent',()=>using(({root})=>{
  fs.unlinkSync(path.join(root,'SBC-DEPLOY-RECEIPT.json'));
  assert.throws(()=>verifyDeploymentArtifact(root),/receipt/i);
