@@ -16,8 +16,10 @@ const order={id:'ord_officebox_abc123',customer_id:'cust_officebox_abc123',produ
 const customer={id:'cust_officebox_abc123',business_name:'Synthetic Auto Detail',email:'synthetic@example.com',industry:'Auto Detailing'};
 const payment={id:'square_payment_abc123',order_id:'square_order_abc123',location_id:'sq_location_abc123',status:'COMPLETED',amount_money:{currency:'USD',amount:34900}};
 const secret=Buffer.alloc(40,0x63).toString('hex'); // synthetic HMAC fixture, not a credential
+const signedCorrelation='sbc_officebox_'+crypto.createHash('sha256').update(order.id+'|'+payment.id).digest('hex').slice(0,24);
+const validActivationUrl='https://office.example.test/activate?token='+('A'.repeat(43));
 const clone=x=>JSON.parse(JSON.stringify(x));
-function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:true,activation_url:'https://office.example.test/activate?token=fake-token'}},commitOrder=true}={}){
+function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:true,correlationId:signedCorrelation,activation_url:validActivationUrl}},commitOrder=true}={}){
  const calls={mysql:[],square:[],fetch:[]};
  const pool={query:async(sql,params)=>{calls.mysql.push({sql,params});if(sql.includes('FROM sbc_orders'))return [commitOrder?[clone(o)]:[]];if(sql.includes('FROM sbc_customers'))return [[clone(c)]];throw Error('UNEXPECTED_SQL')}};
  const deps={pool,baseUrl:'https://office.example.test',secret,locationId:'sq_location_abc123',
@@ -28,7 +30,7 @@ function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:
 (async()=>{
  const t=fixture();
  const result=await api.reconcile({tenantId:1,orderId:order.id},t.deps);
- assert.equal(result.accepted,true);assert.equal(result.status,'INVITATION_PENDING');assert.equal(result.activationUrl,'https://office.example.test/activate?token=fake-token');
+ assert.equal(result.accepted,true);assert.equal(result.status,'INVITATION_PENDING');assert.equal(result.activationUrl,validActivationUrl);
  assert.equal(t.calls.mysql.length,2);assert.equal(t.calls.square.length,1);assert.equal(t.calls.fetch.length,1);
  assert.deepEqual(t.calls.mysql[0].params,[1,order.id]);
  assert.deepEqual(t.calls.mysql[1].params,[1,order.customer_id]);
@@ -57,8 +59,12 @@ function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:
  ]){
    const f=fixture({p:{...payment,...changes}});await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},f.deps),new RegExp(reason),name);assert.equal(f.calls.fetch.length,0,name);
  }
- const duplicate=fixture({response:{ok:true,data:{accepted:true,duplicate:true}}});
+ const duplicate=fixture({response:{ok:true,data:{accepted:true,duplicate:true,correlationId:signedCorrelation}}});
  const d=await api.reconcile({tenantId:1,orderId:order.id},duplicate.deps);assert.equal(d.status,'INVITATION_RECONCILIATION_REQUIRED');assert.equal(d.activationUrl,null);
+ const foreignAck=fixture({response:{ok:true,data:{accepted:true,correlationId:'sbc_officebox_'+('b'.repeat(24)),activation_url:validActivationUrl}}});
+ await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},foreignAck.deps),/HANDOFF_NOT_ACKNOWLEDGED/);
+ const foreignOrigin=fixture({response:{ok:true,data:{accepted:true,correlationId:signedCorrelation,activation_url:'https://wrong.example.test/activate?token='+('A'.repeat(43))}}});
+ await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},foreignOrigin.deps),/HANDOFF_NOT_ACKNOWLEDGED/);
  const noAck=fixture({response:{ok:false,error:'rejected'}});await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},noAck.deps),/HANDOFF_NOT_ACKNOWLEDGED/);
  const badHost=fixture();badHost.deps.baseUrl='http://localhost:3000';await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},badHost.deps),/HTTPS_ORIGIN_REQUIRED/);assert.equal(badHost.calls.square.length,0);
  // Explicitly reject private and literal network destinations before touching Square.
