@@ -111,25 +111,26 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
   const s=getState(c),latest=(s.inquiries||[]).at(-1),assigned=ownerFor(c);
   const pending=(s.inquiries||[]).filter(i=>i.status==='Needs review').length;
   const orders=(db.orders||[]).filter(o=>sameTenant(o,c.tenantId)&&String(o.customerId)===String(c.id));
-  const activeOrders=orders.filter(o=>parsed(o).customerJourney?.status!=='Delivered'&&providerCapturedSquare(o));
+  const customerOrders=orders.filter(o=>!parsed(o).sbcLaunchQa);
+  const activeOrders=customerOrders.filter(o=>parsed(o).customerJourney?.status!=='Delivered'&&providerCapturedSquare(o));
   const upcoming=(db.appointments||[]).filter(a=>sameTenant(a,c.tenantId)&&String(a.customerId)===String(c.id)&&a.status==='Scheduled'&&Date.parse(a.endAt)>Date.parse(now()));
   return {customerId:c.id,businessName:c.businessName||c.contactName||'Account',assignedTo:assigned?.id||'',assignedToName:assigned?.name||assigned?.role||'Owner assignment required',
    ownerFallback:!!assigned&&String(assigned.id)!==String(c.assignedTo||''),serviceSlug:latest?.serviceSlug||'',packageId:latest?.packageId||'',intent:latest?.intent||'',
-   sourcePage:s.lastSource||'',pendingInquiries:pending,paidOrders:orders.filter(providerCapturedSquare).length,openOrders:activeOrders.length,
+   sourcePage:s.lastSource||'',pendingInquiries:pending,paidOrders:customerOrders.filter(providerCapturedSquare).length,openOrders:activeOrders.length,
    nextAction:pending?'Verify inquiry and respond':activeOrders.length?'Continue paid order checklist':upcoming.length?'Prepare confirmed appointment':'Review next follow-up',
    contactSuppressed:suppressed(c),updatedAt:c.updatedAt||c.createdAt||''};
  }
  function queue(actor,tid){if(!active(actor,tid)||!['owner','account_manager'].includes(actor.role))fail('NOT_AUTHORIZED',403);
-  const rows=(db.customers||[]).filter(c=>accessible(c,actor,tid)&&((getState(c).inquiries||[]).length||(db.orders||[]).some(o=>sameTenant(o,tid)&&String(o.customerId)===String(c.id))))
+  const rows=(db.customers||[]).filter(c=>accessible(c,actor,tid)&&!c._recoveryProjection&&!['Deleted','Duplicate','Archived'].includes(String(c.status||'')))
    .map(row).sort((a,b)=>b.pendingInquiries-a.pendingInquiries||b.openOrders-a.openOrders||b.updatedAt.localeCompare(a.updatedAt));
-  return {ok:true,rows,counts:{accounts:rows.length,inquiries:rows.reduce((n,r)=>n+r.pendingInquiries,0),openOrders:rows.reduce((n,r)=>n+r.openOrders,0)}};
+  return {ok:true,readOnly:!writerReady(),rows,counts:{accounts:rows.length,inquiries:rows.reduce((n,r)=>n+r.pendingInquiries,0),openOrders:rows.reduce((n,r)=>n+r.openOrders,0)}};
  }
  function ordersFor(c){return (db.orders||[]).filter(o=>sameTenant(o,c.tenantId)&&String(o.customerId)===String(c.id))}
- function orderView(o){const p=parsed(o).customerJourney;return {id:o.id,product:o.product,price:Number(o.price)||0,paymentVerified:providerCapturedSquare(o),
-  status:providerCapturedSquare(o)?p?.status||'Paid — checklist pending':'Payment verification required',revision:p?.revision||0,
-  steps:p?.steps||[],previewUrl:safeUrl(p?.previewUrl),deliveryUrl:providerCapturedSquare(o)&&p?.status==='Delivered'?safeUrl(p?.deliveryUrl):'',customerMessage:p?.customerMessage||'',
-  canApprove:providerCapturedSquare(o)&&!!safeUrl(p?.previewUrl)&&p?.steps?.some(s=>s.key==='qa'&&s.completed)&&!p?.steps?.some(s=>s.key==='approval'&&s.completed)};}
- function detail(cid,actor,tid){const c=account(cid,actor,tid),s=getState(c);return {ok:true,account:row(c),inquiries:s.inquiries||[],events:s.events||[],
+ function orderView(o){const p=parsed(o).customerJourney,qa=!!parsed(o).sbcLaunchQa;return {id:o.id,product:o.product,price:Number(o.price)||0,paymentVerified:providerCapturedSquare(o),protectedQa:qa,
+  status:qa?'Protected QA — not customer fulfillment':providerCapturedSquare(o)?p?.status||'Paid — checklist pending':'Payment verification required',revision:p?.revision||0,
+  steps:qa?[]:p?.steps||[],previewUrl:qa?'':safeUrl(p?.previewUrl),deliveryUrl:!qa&&providerCapturedSquare(o)&&p?.status==='Delivered'?safeUrl(p?.deliveryUrl):'',customerMessage:qa?'Internal QA payment; excluded from customer revenue and delivery.':p?.customerMessage||'',
+  canApprove:!qa&&providerCapturedSquare(o)&&!!safeUrl(p?.previewUrl)&&p?.steps?.some(s=>s.key==='qa'&&s.completed)&&!p?.steps?.some(s=>s.key==='approval'&&s.completed)};}
+ function detail(cid,actor,tid){const c=account(cid,actor,tid),s=getState(c);return {ok:true,readOnly:!writerReady(),account:row(c),inquiries:s.inquiries||[],events:s.events||[],
   orders:ordersFor(c).map(orderView),appointments:(db.appointments||[]).filter(a=>sameTenant(a,tid)&&String(a.customerId)===String(c.id)),consents:s.consents||{},reminders:s.reminders||[]}}
  function review(cid,actor,tid,body){return transaction(()=>{const c=account(cid,actor,tid),s=editState(c),i=(s.inquiries||[]).find(i=>i.id===body.inquiryId);
   if(!i)fail('INQUIRY_NOT_FOUND',404);if(body.verified!==true)fail('CONTACT_VERIFICATION_REQUIRED');
@@ -153,6 +154,7 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
   for(const o of db.orders||[])if(sameTenant(o,tid)&&syncPaidOrder(o))created++;return {ok:true,durable:true,created};});
  function progress(oid,actor,tid,b){return transaction(()=>{
   const o=(db.orders||[]).find(o=>String(o.id)===String(oid)&&sameTenant(o,tid));if(!o)fail('ORDER_NOT_FOUND',404);const c=account(o.customerId,actor,tid);
+  if(parsed(o).sbcLaunchQa)fail('PROTECTED_QA_ORDER',409);
   if(!providerCapturedSquare(o))fail('PAYMENT_VERIFICATION_REQUIRED',423);syncPaidOrder(o);const p=clone(parsed(o).customerJourney);
   if(Number(b.expectedRevision)!==p.revision)fail('ORDER_REVISION_CONFLICT',409);
   if(b.step==='preview'){
@@ -181,6 +183,7 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
  }
  function portalSummary(req){const c=portalCustomer(req);return {ok:true,orders:ordersFor(c).map(o=>{const view=orderView(o);return {...view,steps:view.steps.map(s=>({key:s.key,label:s.label,completed:s.completed}))}}),appointments:(db.appointments||[]).filter(a=>sameTenant(a,c.tenantId)&&String(a.customerId)===String(c.id)).map(a=>({id:a.id,title:a.title,startAt:a.startAt,endAt:a.endAt,status:a.status,location:a.location||'',rescheduleRequest:a.rescheduleRequest?{status:a.rescheduleRequest.status,preferredWindow:a.rescheduleRequest.preferredWindow}:null}))}}
  function approve(req,oid,b){return transaction(()=>{const c=portalCustomer(req),o=ordersFor(c).find(o=>o.id===oid);if(!o)fail('ORDER_NOT_FOUND',404);
+  if(parsed(o).sbcLaunchQa)fail('PROTECTED_QA_ORDER',409);
   const stored=parsed(o).customerJourney;if(!providerCapturedSquare(o)||!stored)fail('PAYMENT_VERIFICATION_REQUIRED',423);const p=clone(stored);
   if(Number(b.expectedRevision)!==p.revision)fail('PROOF_CHANGED_REFRESH_REQUIRED',409);
   if(!safeUrl(p.previewUrl)||!p.steps.find(s=>s.key==='qa')?.completed)fail('PROOF_NOT_READY',409);

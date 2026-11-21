@@ -24,6 +24,7 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           node --test test/sbc-customer-design-brief-routes.test.cjs test/sbc-workstation-refresh.test.cjs
+          node --test test/sbc-private-audit-regressions.test.cjs test/sbc-connected-journey.test.cjs test/sbc-journey-http.test.cjs test/sbc-appointment-workflow.test.cjs
           node scripts/v6606-quote-server-hardening.cjs
           node scripts/v6606-quote-server-hardening.test.cjs
           node --test scripts/v66-owner-openai-budget.test.cjs

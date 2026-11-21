@@ -13,6 +13,7 @@ on:
       - 'test/sbc-appointment-recovery.test.cjs'
       - 'test/sbc-connected-journey.test.cjs'
       - 'test/sbc-journey-http.test.cjs'
+      - 'test/sbc-private-audit-regressions.test.cjs'
       - 'test/sbc-sales-p0p1.test.cjs'
       - 'scripts/mysql-backup.js'
       - 'scripts/mysql-restore-drill.js'
@@ -40,7 +41,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test all connected customer journey, reminder and HTTP contracts
         run: |
-          node --test test/sbc-connected-journey.test.cjs test/sbc-appointment-recovery.test.cjs test/sbc-sales-p0p1.test.cjs test/sbc-journey-http.test.cjs
+          node --test test/sbc-connected-journey.test.cjs test/sbc-appointment-recovery.test.cjs test/sbc-sales-p0p1.test.cjs test/sbc-journey-http.test.cjs test/sbc-private-audit-regressions.test.cjs
       - name: Verify mirrored staff workstation and production syntax
         run: |
           cmp public/sbc-customer-journey-v1.js browser_public/sbc-customer-journey-v1.js
