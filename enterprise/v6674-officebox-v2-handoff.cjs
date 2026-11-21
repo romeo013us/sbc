@@ -40,19 +40,19 @@ function signHandoffV2(event,secret,epochSeconds=Math.floor(Date.now()/1000)){
 function interpretAck(reply,{correlationId,origin}={}){
  const data=reply?.data;
  if(reply?.ok!==true||!data||data.accepted!==true)
-   return {accepted:false,reason:'OFFICEBOX_NO_AUTHORITATIVE_ACK'};
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_NO_AUTHORITATIVE_ACK'};
  // The ACK is not proof of the payment unless it identifies the exact
  // original signed handoff; a generic accepted:true is never enough.
  if(!validId(correlationId)||data.correlationId!==correlationId)
-   return {accepted:false,reason:'OFFICEBOX_ACK_CORRELATION_MISMATCH'};
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_ACK_CORRELATION_MISMATCH'};
  let expected;
  try{expected=new URL(String(origin||''))}catch{
-   return {accepted:false,reason:'OFFICEBOX_TRUSTED_ORIGIN_MISSING'};
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_TRUSTED_ORIGIN_MISSING'};
  }
  if(expected.protocol!=='https:'||expected.username||expected.password||
     expected.search||expected.hash||expected.pathname!=='/'||
     !expected.hostname||expected.port&&expected.port!=='443')
-   return {accepted:false,reason:'OFFICEBOX_TRUSTED_ORIGIN_INVALID'};
+   return {accepted:false,activationUrl:null,reason:'OFFICEBOX_TRUSTED_ORIGIN_INVALID'};
  // Replay is idempotent: the recipient must not create or resend another
  // activation token merely because Office Box acknowledged a duplicate.
  if(data.duplicate===true)
@@ -67,7 +67,7 @@ function interpretAck(reply,{correlationId,origin}={}){
       /^[A-Za-z0-9_-]{43}$/.test(String(u.searchParams.get('token')||'')))
      return {accepted:true,duplicate:false,activationUrl:u.toString(),reason:'PENDING_CUSTOMER_ACTIVATION'};
  }catch{}
- return {accepted:false,reason:'OFFICEBOX_UNTRUSTED_ACTIVATION_URL'};
+ return {accepted:false,activationUrl:null,reason:'OFFICEBOX_UNTRUSTED_ACTIVATION_URL'};
 }
 
 module.exports={PLANS,prepareHandoff,signHandoffV2,interpretAck};
