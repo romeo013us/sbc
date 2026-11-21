@@ -30,7 +30,7 @@
   if(!isNew){if(!['Scheduled','Completed','Cancelled'].includes(String(fields.status||'')))throw Error('Choose a valid appointment status.');result.status=fields.status;}
   return result;
  }
- function websiteDemoDefaults(){return {title:'10-minute SBC website preview',durationMinutes:10,location:'Phone or video',notes:'Show private approved website concept; confirm scope and next steps.'};}
+ function websiteDemoDefaults(){return {title:'10-minute SBC website preview',durationMinutes:10,location:'Phone or video',notes:'Call first, book the 10-minute Zoom, then prepare the private ChatGPT website concept before the presentation. Confirm scope and next steps.'};}
  function canWriteAppointment(me,data){
   const role=String(me?.role||'');
   return ['owner','manager','caller','account_manager'].includes(role)&&me?.active!==false&&
@@ -106,7 +106,7 @@
     '<label>Location / method<input name="location" maxlength="255" value="'+escapeHtml(a?.location||(demo?defaults.location:''))+'" placeholder="Phone, office, video meeting"></label>'+
     (a?'<label>Status<select name="status">'+['Scheduled','Completed','Cancelled'].map(v=>'<option'+(v===status?' selected':'')+'>'+v+'</option>').join('')+'</select></label>':'')+
     '<label style="grid-column:1/-1">Notes<textarea name="notes" maxlength="3000" rows="3" placeholder="Agreed agenda, next step, or meeting details">'+escapeHtml(a?.notes||(demo?defaults.notes:''))+'</textarea></label></div>'+
-    '<p class="mini">Local time on this device. Saving updates SBC Calendar and the linked customer record. No automatic notifications are sent.</p>'+
+    '<p class="mini">Local time on this device. Saving updates SBC Calendar and the linked customer record. No automatic notifications are sent. SBC does not generate Zoom meeting links automatically; add a confirmed link before the presentation.</p>'+
     '<p role="alert" id="sbcApptFormError"></p><div class="actions"><button type="button" class="btn" id="sbcApptCancelEditor">Back</button><button type="submit" class="btn primary">'+(a?'Save changes':'Save appointment')+'</button></div></form>');
    const form=doc.getElementById('sbcAppointmentForm');if(!form)return;
    doc.getElementById('sbcApptCancelEditor').onclick=()=>{win.closeModal?.();if(lastContext)win.SBC_LEAD_PROFILE?.open(lastContext);};
