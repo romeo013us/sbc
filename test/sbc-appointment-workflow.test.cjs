@@ -55,3 +55,14 @@ test('call-screen appointment card stays dark and readable even when legacy them
  assert.match(source,/#sbcCallAppointments :is\(h3,h4,p,label,strong,\.mini\)\{[^}]*color:#f6fbff!important/);
  assert.match(source,/#sbcCallAppointments select\{[^}]*background:#0b1d32!important;[^}]*color:#fff!important/);
 });
+
+
+test('website Zoom appointments explicitly follow call → book → ChatGPT concept flow',()=>{
+ const defaults=mod.websiteDemoDefaults();
+ assert.equal(defaults.title,'10-minute SBC website preview');
+ assert.match(defaults.notes,/book.*then prepare.*private.*concept/i);
+ for(const root of ['public','browser_public']){
+  const s=require('node:fs').readFileSync(require('node:path').join(__dirname,'..',root,'sbc-appointment-workflow-v1.js'),'utf8');
+  assert.match(s,/SBC does not generate Zoom meeting links automatically/);
+ }
+});
