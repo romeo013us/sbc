@@ -86,3 +86,21 @@ test('assigned account managers can see and record only their accounts in call d
  assert.equal(accessible({...same,tenantId:2},actor,1),false);
  assert.equal(project({customers:[same],actor,tenantId:1}).rows.length,1);
 });
+
+test('owner and Account Managers can call and book first without a website preview',()=>{
+ const noSite={...evidence,stage:'BUILD_WEBSITE',websiteId:null,websiteUrl:'',callAllowed:true};
+ for(const role of ['owner','account_manager']){
+  const view=smart.project(customer,noSite,{role});
+  assert.equal(view.hasVerifiedDemo,false);
+  assert.equal(view.canOpenCall,true);
+  assert.equal(view.canSchedule,true);
+  assert.match(sales.build(view.scriptOptions),/WELL, THE THING IS, I BUILT YOU ONE!/);
+ }
+ for(const root of ['public','browser_public']){
+  const ui=fs.readFileSync(path.join(__dirname,'..',root,'sbc-smart-calling-v1.js'),'utf8');
+  assert.match(ui,/Call first and book the 10-minute Zoom if interested/);
+  assert.match(ui,/prepare the private concept after booking and before the presentation/);
+  assert.doesNotMatch(ui,/One account · verified website · human call/);
+  assert.doesNotMatch(ui,/Qualify interest, then generate the concept and arrange the Zoom demo/);
+ }
+});
