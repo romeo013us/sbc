@@ -97,3 +97,16 @@ test('journey renders a bounded queue while searching every authorized record',a
  assert.match(elements.queue.innerHTML,/data-account="lead819"/);
  assert.equal((elements.queue.innerHTML.match(/data-account=/g)||[]).length,1);
 });
+
+test('payment center presents current storefront offers separately from legacy Square packages',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8'),start=app.indexOf('function payments(){');
+ const next=app.slice(start+1).search(/\n(?:async )?function /);assert(start>0&&next>0);
+ const context={state:{data:{settings:{paymentLinks:{}}},me:{role:'owner'},catalog:{packages:[]}},URL,esc:v=>String(v??''),money:v=>'$'+Number(v).toFixed(2)};
+ vm.runInNewContext(app.slice(start,start+1+next)+'\nthis.renderPayments=payments;',context);
+ const html=context.renderPayments(),current=html.match(/<section[^>]+data-sbc-current-offers[^>]*>[\s\S]*?<\/section>/)?.[0];
+ assert(current,'current offers must be the first, distinct payment choice');
+ for(const price of [99,199,499,799,999])assert(current.includes('$'+price+'.00'));
+ assert.match(current,/sbcmia\.com\/checkout\.php\?package=starter/);assert.match(current,/sbcmia\.com\/checkout\.php\?package=custom/);
+ assert.doesNotMatch(current,/square\.link|\$349|\$699/);
+ assert.match(html,/Legacy website packages/);assert.match(html,/250 cards; standard shipping included/);
+});
