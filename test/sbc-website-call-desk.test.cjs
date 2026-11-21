@@ -129,3 +129,48 @@ test('full Website Call Desk is available to owner and assigned sales staff, no 
  assert.doesNotMatch(ui,/twilio.*calls.*create|autoDial|startAIVoiceCall/i);
  for(const name of ['public/index.html','browser_public/index.html'])assert.match(read(name),/sbc-website-call-desk-v1\.js/);
 });
+
+
+test('booked 10-minute website Zoom is recognized before a concept exists',()=>{
+ const d=data();
+ d.appointments=[
+  {id:'zoom-ready',tenantId:1,customerId:'needsite',title:'10-minute SBC website preview',status:'Scheduled',
+   startAt:'2026-11-13T16:00:00.000Z',endAt:'2026-11-13T16:10:00.000Z'},
+  {id:'wrong-customer',tenantId:1,customerId:'another',title:'10-minute SBC website preview',status:'Scheduled',
+   startAt:'2026-11-13T17:00:00.000Z',endAt:'2026-11-13T17:10:00.000Z'},
+  {id:'foreign',tenantId:2,customerId:'review',title:'10-minute SBC website preview',status:'Scheduled',
+   startAt:'2026-11-13T18:00:00.000Z',endAt:'2026-11-13T18:10:00.000Z'}
+ ];
+ const p=project({...d,actor:caller,tenantId:1,now});
+ const need=p.rows.find(x=>x.customerId==='needsite');
+ assert.equal(need.stage,'APPOINTMENT_BOOKED');
+ assert.equal(need.websiteId,null);
+ assert.equal(need.appointmentAt,'2026-11-13T16:00:00.000Z');
+ assert.match(need.nextAction,/prepare.*concept/i);
+ assert.equal(p.summary.booked,1);
+ assert.equal(p.summary.bookedNeedsConcept,1);
+ assert.equal(p.summary.readyToCall>0,true);
+ assert.equal(p.rows.find(x=>x.customerId==='review').stage,'REVIEW_WEBSITE');
+ assert.equal(p.rows.find(x=>x.customerId==='another'),undefined);
+});
+test('website appointment recognition rejects expired, cancelled, unrelated, or cross-tenant meetings',()=>{
+ const d=data();
+ d.appointments=[
+  {tenantId:1,customerId:'needsite',title:'10-minute SBC website preview',status:'Cancelled',startAt:'2026-11-13T16:00:00Z',endAt:'2026-11-13T16:10:00Z'},
+  {tenantId:1,customerId:'needsite',title:'Bookkeeping appointment',status:'Scheduled',startAt:'2026-11-13T16:00:00Z',endAt:'2026-11-13T16:30:00Z'},
+  {tenantId:1,customerId:'needsite',title:'10-minute SBC website preview',status:'Scheduled',startAt:'2026-11-11T16:00:00Z',endAt:'2026-11-11T16:10:00Z'},
+  {tenantId:2,customerId:'needsite',title:'10-minute SBC website preview',status:'Scheduled',startAt:'2026-11-13T16:00:00Z',endAt:'2026-11-13T16:10:00Z'}
+ ];
+ const p=project({...d,actor:caller,tenantId:1,now});
+ assert.equal(p.rows.find(x=>x.customerId==='needsite').stage,'BUILD_WEBSITE');
+ assert.equal(p.summary.booked,0);
+ assert.equal(p.summary.bookedNeedsConcept,0);
+});
+test('Call Desk supports appointment-first customer journey with verified manual booking control',()=>{
+ const ui=fs.readFileSync(path.join(__dirname,'../public/sbc-website-call-desk-v1.js'),'utf8');
+ assert.match(ui,/Book 10-minute Zoom/);
+ assert.match(ui,/sbcBookWebsiteDemo/);
+ assert.match(ui,/call first/i);
+ assert.doesNotMatch(ui,/Lorna researches and imports\. SBC builds a real website\. The assigned human caller books/);
+ assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-website-call-desk-v1.js'),'utf8'));
+});
