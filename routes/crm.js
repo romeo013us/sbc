@@ -37,6 +37,9 @@ module.exports = function registerCRM(app, { auth, getContext }) {
   // manual outcomes and owner-only readiness diagnostics. Handler enforces
   // tenant and role checks on every request; Social Studio stays separate.
   require('./account-portfolios-v1.cjs')(app,{auth,getContext});
+  // SUPER_SBC_FREE_ACTIONS_V1: read-only, owner/manager next actions from
+  // authoritative CRM; no AI tokens, publishing, reminders or new tables.
+  require('./sbc-free-action-focus.cjs').register(app,{auth,getContext,tenantForRead});
   // SBC Call Command V3: private, tenant-scoped manual voice with signed callbacks.
   require('./sbc-call-command-live-v3.cjs').register(app,{auth,getContext});
   // SBC_ACCOUNT_SOCIAL_V1_SAFE_MOUNT: opt-in, fail-closed Account Manager / Lorna / Social integration.
