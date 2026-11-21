@@ -83,7 +83,7 @@
  function panel(){
   return '<style>@media(max-width:720px){#sbcWebcallLayout{grid-template-columns:1fr!important}}</style><div class="sbc-ops-surface sbc-call-surface" style="max-width:1240px"><div style="display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap">'+
    '<div><p style="font-size:11px;letter-spacing:.12em;font-weight:850;color:#15836e;margin:0">SUCCESSFUL BY CHOICE · LEAD → CALL → ZOOM → CONCEPT → SALE</p>'+
-   '<h2 style="font-size:28px;margin:5px 0">SBC Website Call Desk</h2><p style="font-size:13px;color:#52667a">Lorna verifies. John or the assigned Account Manager calls first, books the 10-minute Zoom, then prepares a private ChatGPT website concept for the presentation.</p></div>'+
+   '<h2 style="font-size:28px;margin:5px 0">SBC Website Call Desk</h2><p style="font-size:13px;color:#52667a">Lorna verifies. John or the assigned Account Manager: call first, book the 10-minute Zoom, then prepare a private ChatGPT website concept for the presentation.</p></div>'+
    '<button type="button" class="btn" id="sbcWebcallRefresh">Refresh</button></div>'+leader()+
    '<div style="display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:16px;align-items:start" id="sbcWebcallLayout">'+
    '<div style="max-height:620px;overflow:auto;padding:4px" aria-label="Assigned website leads">'+leadCards()+'</div>'+
