@@ -6,7 +6,7 @@
   "serverSha256": "9a29559fcbadc1eb04d6c783e8b2b6b06c0aeeeaa665546dbc4735484c0236fa",
   "runtimePatch": "66.0.27-hosted-integrity-diagnostics-preview-candidate",
   "runtimePatchFrom": "GitHub b090184 source plus checksum diagnostics; hosting acceptance pending",
-  "stagedInventorySha256": "4dfe352e91b4bb66015071f0f6e203f16cba7777f466217e30d59394a0808648",
+  "stagedInventorySha256": "149981560c247186612f3e19243c2d67b09e6fb4c230d302df9b7186c8e5d086",
   "candidateOnly": true,
   "baselineSourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
   "productionCertified": false

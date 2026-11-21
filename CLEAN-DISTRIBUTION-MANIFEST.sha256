@@ -1536,7 +1536,7 @@ f1d673c5a9254687d36c30d243cdf8b40e9f43ad9752d713cfda37caddd22dfa  ./scripts/v667
 f862712bf6af4e6d80f86e96df7f9a8413e384a782a9a9a6f21ddafa6e99fe61  ./scripts/v6671-square-webhook-readback.test.cjs
 98e3108dd7e99239527c3c380e9ffd25ab47399306e74b6df433affb4fb08a1a  ./scripts/v6671-square-webhook-stage.cjs
 2910ecb202840da420865aaf53cc8f3e3a787a54b8f00a8ae96680d471933e9b  ./scripts/v6672-site-checkout-stage.cjs
-24905065bac828d5e38f8457805f320555bd4cd536bd7f27d68369750f223a4f  ./scripts/v6672-site-checkout.test.cjs
+e0dde173a01fed48d999fe1ee56240677268726e739b74d9af8bf758c66e9ca8
 d2590acdffd5905ccca48d97364a43cb8dcbfec4395f00c0d601705007dbef8c  ./scripts/v6673-owner-smtp-transport.test.cjs
 e552a413c957b0a608a8e0f687419234b8131fface1174e7d49b22ebd940d8e4  ./scripts/v6674-officebox-v2-handoff.test.cjs
 732ce871f478e338127accc1b903ecaf75baff33da5848dca01f8fbb85b00e8d  ./scripts/v6675-payment-center-readback.test.cjs
