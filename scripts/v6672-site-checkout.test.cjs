@@ -3,6 +3,8 @@
 const assert=require('node:assert/strict'),crypto=require('node:crypto'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 const bridge=require('../enterprise/v6660-website-bridge.cjs');
 const safety=require('../enterprise/v6672-site-checkout-integrity.cjs');
+const offers=require('../enterprise/sbc-website-checkout-offers.cjs');
+const {createService}=require('../enterprise/sbc-connected-journey.cjs');
 const stage=require('./v6672-site-checkout-stage.cjs');
 const raw=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
 const compiled=stage.patchServer(raw).source;
@@ -10,11 +12,15 @@ assert.equal(stage.patchServer(compiled).source,compiled,'stage is idempotent');
 assert.ok(compiled.includes(stage.MARK));
 const key='sbc-website-hmac-synthetic-key-at-least-32-characters-00001';
 let seq=0,write=0,links=0,activity=0,holdProbe=false,releaseProbe,failLink=false;
-const db={customers:[],orders:[]},registered={};
+const owner={id:'owner-ci',role:'owner',tenantId:1,active:true};
+const db={users:[owner],customers:[],orders:[],appointments:[],tasks:[],activities:[]},registered={};
+const journey=createService({db,id:p=>p+'_'+(++seq),now:()=>new Date().toISOString(),save:async()=>({persisted:true}),writerReady:()=>true});
 const ctx={
- require:p=>{assert.equal(p,'./enterprise/v6672-site-checkout-integrity.cjs');return safety},
+ require:p=>{if(p==='./enterprise/v6672-site-checkout-integrity.cjs')return safety;
+  if(p==='./enterprise/sbc-website-checkout-offers.cjs')return offers;
+  throw Error('Unexpected runtime dependency in synthetic checkout: '+p)},
  app:{post:(url,...handlers)=>{registered[url]=handlers.at(-1)}},
- SBC_V6672_SITE_CHECKOUT:safety,SBC_V6672_CHECKOUT_INFLIGHT:new Set(),
+ SBC_V6672_SITE_CHECKOUT:safety,SBC_V6672_CHECKOUT_INFLIGHT:new Set(),SBC_CUSTOMER_JOURNEY:journey,
  PUBLIC_CHECKOUT_RATE:new Map(),
  sbcVerifiedWebsiteTenant:req=>{
    const v=bridge.verify(req,{key});
@@ -50,7 +56,7 @@ assert.ok(start>=0&&end>start);
 vm.runInNewContext(compiled.slice(start,end),ctx,{timeout:3000});
 const route=registered['/api/public/checkout'];
 assert.equal(typeof route,'function');
-const base={clientRequestId:'sbcweb_'+'a'.repeat(32),packageId:'starter',customerName:'Synthetic Store',contactName:'Test Owner',customerEmail:'owner@example.test',customerPhone:'3055550000'};
+const base={expectedAmountCents:19900,clientRequestId:'sbcweb_'+'a'.repeat(32),packageId:'starter',customerName:'Synthetic Store',contactName:'Test Owner',customerEmail:'owner@example.test',customerPhone:'3055550000'};
 function req(body,{signed=true,badSignature=false}={}){
  const payload=JSON.stringify(body),now=String(Math.floor(Date.now()/1000)),nonce=crypto.randomBytes(16).toString('hex');
  const h={host:'cc.example.test'};
@@ -110,5 +116,14 @@ async function post(body,opts){const r=res();await route(req(body,opts),r);retur
  assert.equal(db.orders.length,3);
  assert.equal(links,3,'no second Square link request after uncertain provider response');
  assert.equal(ctx.SBC_V6672_CHECKOUT_INFLIGHT.size,0);
- console.log('[SBC V6672] PASS: HMAC origin, exact tenant, catalog price, stable duplicate key, concurrent request exclusion, no repeat Square link, pending-reconcile, paid retry block. Synthetic only.');
+ const wrongPrice=await post({...base,clientRequestId:'sbcweb_'+'d'.repeat(32),expectedAmountCents:199});
+ assert.equal(wrongPrice.code,409);
+ assert.equal(wrongPrice.jsonBody.code,'PUBLIC_OFFER_PRICE_CHANGED');
+ const custom={...base,clientRequestId:'sbcweb_'+'e'.repeat(32),packageId:'website-custom',expectedAmountCents:49900};
+ failLink=false;
+ const customCreated=await post(custom);
+ assert.equal(customCreated.code,201,JSON.stringify(customCreated.jsonBody));
+ assert.equal(customCreated.jsonBody.package.price,499);
+ assert.equal(db.orders[0].price,499);
+ console.log('[SBC V6672] PASS: HMAC origin, exact tenant, $199/$499 fixed public prices, price mismatch refusal, stable duplicate key, concurrent request exclusion, no repeat Square link, pending-reconcile, paid retry block. Synthetic only.');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
