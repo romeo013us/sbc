@@ -1,0 +1,34 @@
+name: SBC Office Box signed activation ACK safety
+
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/v6674-officebox-v2-handoff.cjs'
+      - 'scripts/v6674-officebox-v2-handoff.test.cjs'
+      - 'scripts/v66159-officebox-ack-origin-contract.test.cjs'
+      - '.github/workflows/sbc-officebox-ack-safety.yml'
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/v6674-officebox-v2-handoff.cjs'
+      - 'scripts/v6674-officebox-v2-handoff.test.cjs'
+      - 'scripts/v66159-officebox-ack-origin-contract.test.cjs'
+      - '.github/workflows/sbc-officebox-ack-safety.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ack-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 pinned
+        with:
+          node-version: '22'
+      - run: node --check enterprise/v6674-officebox-v2-handoff.cjs
+      - run: node scripts/v66159-officebox-ack-origin-contract.test.cjs
+      - run: node scripts/v6674-officebox-v2-handoff.test.cjs
