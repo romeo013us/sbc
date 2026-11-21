@@ -69,7 +69,7 @@ async function reconcile(input,dep){
    body=await response.json();
  }catch(e){fail('OFFICEBOX_HANDOFF_TRANSPORT_FAILED',502)}
  const reply={ok:Boolean(response.ok)&&body?.ok===true,data:body?.data||body};
- const ack=interpretAck(reply);
+ const ack=interpretAck(reply,{correlationId:event.correlationId,origin:target});
  if(!ack.accepted)fail('OFFICEBOX_HANDOFF_NOT_ACKNOWLEDGED',502);
  return {ok:true,accepted:true,duplicate:ack.duplicate===true,
    status:ack.duplicate?'INVITATION_RECONCILIATION_REQUIRED':ack.activationUrl?'INVITATION_PENDING':'ACTIVATION_URL_UNCONFIRMED',
