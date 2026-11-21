@@ -1,4 +1,4 @@
-/* SBC Website Call Desk: Lorna-verified leads → full sites → human call → appointment.
+/* SBC Website Call Desk: researched lead → human call → booked Zoom → private concept → presentation.
  * AI call coach is a deterministic drafting assistant; it never places calls. */
 (function(){
  'use strict';
@@ -8,7 +8,7 @@
  const fmt=x=>x?new Date(x).toLocaleString():'—';
  let desk=null,selectedId='',loading=false;
  const labels={READY_TO_CALL:'Ready to call',INTERESTED:'Interested',APPOINTMENT_BOOKED:'Meeting booked',
-  REVIEW_WEBSITE:'Owner review',BUILD_WEBSITE:'Build full website',RESEARCH_REQUIRED:'Return to Lorna',
+  REVIEW_WEBSITE:'Review private concept',BUILD_WEBSITE:'Call ready · concept later',RESEARCH_REQUIRED:'Return to Lorna',
   CONTACT_UNVERIFIED:'Verify contact',NUMBER_COOLDOWN:'Bad number · 15-day hold',
   DECLINED:'Declined',SUPPRESSED:'Do not contact'};
  const statuses={
@@ -24,8 +24,8 @@
  const current=()=>desk?.rows?.find(x=>x.customerId===selectedId);
  function leader(){
   const m=desk?.summary||{};
-  const stats=[['Ready for human calling',m.readyToCall],['Websites to build',m.needsBuild],['Awaiting owner review',m.awaitingReview],
-   ['Return to research',m.requiresResearch],['Meetings booked',m.booked],['Suppressed',m.suppressed]];
+  const stats=[['Ready for human calling',m.readyToCall],['Unbuilt concepts',m.needsBuild],['Awaiting concept review',m.awaitingReview],
+   ['Return to research',m.requiresResearch],['Meetings booked',m.booked],['Booked · concept pending',m.bookedNeedsConcept],['Suppressed',m.suppressed]];
   return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 22px">'+stats.map(([name,value])=>
    '<div style="min-width:125px;flex:1;border:1px solid #dde8e4;background:#f6fbfa;border-radius:12px;padding:15px">'+
    '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#475569">'+esc(name)+'</div>'+
@@ -43,13 +43,18 @@
  }
  function detail(){
   const x=current();
-  if(!x)return '<div style="padding:20px">Select a verified business to see the completed site and calling plan.</div>';
+  if(!x)return '<div style="padding:20px">Select a researched business to see its Smart Calling script and meeting plan.</div>';
   const ready=x.callAllowed===true;
   const script='<pre id="sbcWebcallScript" style="white-space:pre-wrap;word-break:break-word;font:13px/1.7 system-ui,Arial,sans-serif;background:#f7fafb;border:1px solid #e0e8ea;border-radius:12px;padding:17px">'+esc(x.script)+'</pre>';
   const phone=ready&&x.phone?'<span style="font-weight:800">'+esc(x.phone)+'</span> · <button type="button" class="btn" id="sbcWebcallCopyPhone">Copy Number</button>':'<strong>No outbound call is authorized from this screen.</strong>';
   const site=x.websiteId
-   ?'<button type="button" id="sbcWebcallOpenSite" class="btn primary">Open Complete Website</button>'
-   :'<button type="button" id="sbcWebcallBuildSite" class="btn primary">Build Complete Website</button>';
+   ?'<button type="button" id="sbcWebcallOpenSite" class="btn">Review saved concept</button>'
+   :'<button type="button" id="sbcWebcallBuildSite" class="btn">Prepare private website concept</button>';
+  const canBook=x.verifiedResearch&&!!x.phone&&
+   !['SUPPRESSED','NUMBER_COOLDOWN','RESEARCH_REQUIRED','CONTACT_UNVERIFIED','DECLINED'].includes(x.stage);
+  const booking=x.appointmentAt
+   ?'<span style="font-weight:750;color:#116a50">✓ 10-minute Zoom booked</span>'
+   :canBook?'<button type="button" id="sbcWebcallBookDemo" class="btn primary">📅 Book 10-minute Zoom</button>':'';
   const presentation=x.websiteUrl?'<a href="'+esc(x.websiteUrl)+'" target="_blank" rel="noopener noreferrer" class="btn">View Approved Website ↗</a>':'<span style="font-size:12px;color:#6e7581">Private, pending approval or not yet built</span>';
   const opts=Object.entries(statuses).map(([key,label])=>'<option value="'+esc(key)+'">'+esc(label)+'</option>').join('');
   const outcomes=ready||x.stage==='APPOINTMENT_BOOKED'||x.stage==='INTERESTED'
@@ -63,22 +68,22 @@
   return '<div><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">'+
    '<div><p style="text-transform:uppercase;font-size:11px;font-weight:800;color:#17725e;margin:0">SBC / LIVE SALES WORKFLOW</p><h3 style="font-size:25px;margin:6px 0">'+esc(x.businessName)+'</h3>'+
    '<p style="color:#586679;font-size:13px;margin:0">'+esc(x.industry||'Industry not verified')+' · '+esc(labels[x.stage]||x.stage)+'</p></div>'+
-   '<div>'+site+' '+presentation+'</div></div>'+
+   '<div>'+booking+' '+site+' '+presentation+'</div></div>'+
    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:17px 0">'+
     '<div style="padding:13px;background:#f6f8fb;border-radius:10px"><strong>Research</strong><p style="font-size:12px">'+(x.verifiedResearch?'Lorna verified CRM record':'Further research required')+'</p>'+
     '<p style="font-size:12px">Google profile: '+(x.googleBusinessVerified?'verified':'not confirmed')+'</p><p style="font-size:12px">Website: '+esc(x.websitePresence.replace('_',' '))+'</p></div>'+
     '<div style="padding:13px;background:#f6f8fb;border-radius:10px"><strong>Manual call</strong><p style="font-size:12px">'+phone+'</p><p style="font-size:11px;color:#64748b">The salesperson initiates any permitted call manually.</p></div>'+
     '<div style="padding:13px;background:#f6f8fb;border-radius:10px"><strong>Next action</strong><p style="font-size:12px">'+esc(x.nextAction)+'</p><p style="font-size:11px">'+(x.appointmentAt?'Booked: '+esc(fmt(x.appointmentAt)):(x.cooldownUntil?'Hold until: '+esc(fmt(x.cooldownUntil)):'No appointment on this record'))+'</p></div>'+
    '</div>'+
-   '<h4 style="margin:20px 0 8px">Truthful, personalized sales opening</h4>'+script+
+   '<h4 style="margin:20px 0 8px">John’s owner-approved Smart Calling script</h4>'+script+
    '<button type="button" class="btn" id="sbcWebcallCopyScript">Copy Calling Script</button>'+
    '<h4 style="margin:22px 0 5px">AI call coach · objection playbook</h4><p style="font-size:12px;color:#64748b">Uses existing SBC knowledge without paid AI calls or voice generation.</p>'+coach+
    outcomes+'<p style="font-size:12px;color:#586679;line-height:1.6;margin:20px 0 5px"><strong>AI voice outbound:</strong> disabled. Separate written consent, do-not-call screening, disclosure requirements and legal review are mandatory before considering any autonomous AI calling.</p></div>';
  }
  function panel(){
   return '<style>@media(max-width:720px){#sbcWebcallLayout{grid-template-columns:1fr!important}}</style><div class="sbc-ops-surface sbc-call-surface" style="max-width:1240px"><div style="display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap">'+
-   '<div><p style="font-size:11px;letter-spacing:.12em;font-weight:850;color:#15836e;margin:0">SUCCESSFUL BY CHOICE · VERIFIED LEAD → ACTUAL WEBSITE → SALE</p>'+
-   '<h2 style="font-size:28px;margin:5px 0">SBC Website Call Desk</h2><p style="font-size:13px;color:#52667a">Lorna researches and imports. SBC builds a real website. The assigned human caller books the presentation.</p></div>'+
+   '<div><p style="font-size:11px;letter-spacing:.12em;font-weight:850;color:#15836e;margin:0">SUCCESSFUL BY CHOICE · LEAD → CALL → ZOOM → CONCEPT → SALE</p>'+
+   '<h2 style="font-size:28px;margin:5px 0">SBC Website Call Desk</h2><p style="font-size:13px;color:#52667a">Lorna verifies. John or the assigned Account Manager calls first, books the 10-minute Zoom, then prepares a private ChatGPT website concept for the presentation.</p></div>'+
    '<button type="button" class="btn" id="sbcWebcallRefresh">Refresh</button></div>'+leader()+
    '<div style="display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:16px;align-items:start" id="sbcWebcallLayout">'+
    '<div style="max-height:620px;overflow:auto;padding:4px" aria-label="Assigned website leads">'+leadCards()+'</div>'+
@@ -102,6 +107,11 @@
   });
   document.getElementById('sbcWebcallBuildSite')?.addEventListener('click',()=>{
    const id=current()?.customerId;if(id&&window.SBC_WEBSITE_PRODUCTION&&typeof window.SBC_WEBSITE_PRODUCTION.build==='function')window.SBC_WEBSITE_PRODUCTION.build(id,'starter',current());
+  });
+  document.getElementById('sbcWebcallBookDemo')?.addEventListener('click',()=>{
+   const id=current()?.customerId;
+   if(id&&typeof window.sbcBookWebsiteDemo==='function')window.sbcBookWebsiteDemo(id);
+   else notice('The 10-minute meeting editor is not available. No appointment was booked.',true);
   });
   document.getElementById('sbcWebcallSaveOutcome')?.addEventListener('click',saveOutcome);
  }
@@ -129,7 +139,7 @@
  }
  async function open(){
   if(!allowed()||loading)return;
-  loading=true;if(typeof openModal==='function')openModal('SBC Website Call Desk','<p style="padding:22px">Loading verified leads, completed websites, and manual call guidance…</p>');
+  loading=true;if(typeof openModal==='function')openModal('SBC Website Call Desk','<p style="padding:22px">Loading verified leads, human calling and booked Zoom readiness…</p>');
   try{await load()}catch(e){if(typeof openModal==='function')openModal('SBC Website Call Desk','<p role="alert">'+esc(e.message||'Call desk unavailable')+'</p>')}
   finally{loading=false}
  }
