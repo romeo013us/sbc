@@ -34,9 +34,9 @@ const invalidCases=[
 ];
 for(const [over,code] of invalidCases)assert.throws(()=>prepareHandoff(over),e=>e.code===code,code);
 assert.throws(()=>signHandoffV2(verified,'short',1700000000),/SECRET_NOT_CONFIGURED/);
-const ack={ok:true,data:{accepted:true,status:'READY_FOR_ACTIVATION',correlationId:verified.correlationId,activation_url:'https://office-box.example.test/activate?token=synthetic_token'}};
-assert.equal(interpretAck(ack).reason,'PENDING_CUSTOMER_ACTIVATION');
-assert.equal(interpretAck({ok:true,data:{accepted:true,duplicate:true}}).reason,'OFFICEBOX_RECONCILE_EXISTING_INVITE');
-assert.equal(interpretAck({ok:false}).accepted,false);
-assert.equal(interpretAck({ok:true,data:{accepted:true,activation_url:'http://localhost/activate?token=x'}}).activationUrl,null);
+const ack={ok:true,data:{accepted:true,status:'READY_FOR_ACTIVATION',correlationId:verified.correlationId,activation_url:'https://office-box.example.test/activate?token='+('A'.repeat(43))}};
+assert.equal(interpretAck(ack,{correlationId:verified.correlationId,origin:'https://office-box.example.test'}).reason,'PENDING_CUSTOMER_ACTIVATION');
+assert.equal(interpretAck({ok:true,data:{accepted:true,duplicate:true,correlationId:verified.correlationId}},{correlationId:verified.correlationId,origin:'https://office-box.example.test'}).reason,'OFFICEBOX_RECONCILE_EXISTING_INVITE');
+assert.equal(interpretAck({ok:false},{correlationId:verified.correlationId,origin:'https://office-box.example.test'}).accepted,false);
+assert.equal(interpretAck({ok:true,data:{accepted:true,correlationId:verified.correlationId,activation_url:'http://localhost/activate?token=x'}},{correlationId:verified.correlationId,origin:'https://office-box.example.test'}).activationUrl,null);
 console.log('SBC V6674 PASS: committed Square event, Office Box V2 envelope and HMAC, replay behavior, QA exclusion. No live I/O.');
