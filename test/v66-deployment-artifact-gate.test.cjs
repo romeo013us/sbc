@@ -48,7 +48,7 @@ test('checksum failures identify deployed bytes without logging file contents',(
  fs.writeFileSync(path.join(root,name),contents);
  assert.throws(()=>verifyDeploymentArtifact(root),error=>{
   assert.match(error.message,/asset checksum mismatch: public\/sales-caller\.js/);
-  assert.match(error.message,/expected=[a-f0-9]{64} actual=[a-f0-9]{64} bytes=31/);
+  assert.match(error.message,/expected digest [a-f0-9:]{71} actual digest [a-f0-9:]{71} bytes=31/);
   assert(!error.message.includes(contents));
   return true;
  });

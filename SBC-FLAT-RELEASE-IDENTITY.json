@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "b0901841dd372cb00802646b12a909e39e39cab6",
-  "sourceFingerprint": "08d9cc446dcb065486345a921471eb1dda1c0ab2d616840b1b9cb7c7e32c9a5b",
+  "sourceCommit": "119a922f5942bad3f223d732a88d1db9cb837c54",
+  "sourceFingerprint": "44a04b03818044d3c9ca8b4e0abdd62feea6c304e8cb4ef50cdbcd177c6506f3",
   "serverSha256": "9a29559fcbadc1eb04d6c783e8b2b6b06c0aeeeaa665546dbc4735484c0236fa",
   "runtimePatch": "66.0.27-hosted-integrity-diagnostics-preview-candidate",
   "runtimePatchFrom": "GitHub b090184 source plus checksum diagnostics; hosting acceptance pending",
-  "stagedInventorySha256": "42a5e34f82ec62cccb20d204f3e20ccca46d72a9ac794ec2409868987cbe00c4",
+  "stagedInventorySha256": "4dfe352e91b4bb66015071f0f6e203f16cba7777f466217e30d59394a0808648",
   "candidateOnly": true,
   "baselineSourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
   "productionCertified": false

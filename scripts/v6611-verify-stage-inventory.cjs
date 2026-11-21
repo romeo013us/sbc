@@ -8,6 +8,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const sha256=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
+// Host log scrubbers redact uninterrupted digests. Group these non-secret
+// checksums so an operator can compare source and deployed bytes safely.
+const displayDigest=value=>value.match(/.{1,8}/g).join(':');
 const shaPattern=/^[0-9a-f]{64}$/;
 function verifyStagedInventory(root,identity){
   const filename='SBC-STAGED-INVENTORY.json';
@@ -41,9 +44,16 @@ function verifyStagedInventory(root,identity){
     if(!stat.isFile())throw Error('[SBC STAGED INVENTORY] not a regular file: '+name);
     const bytes=fs.readFileSync(full);
     const actual=sha256(bytes);
-    if(actual!==expected)
+    if(actual!==expected){
+      let jsonKeys='';
+      if(name==='.airo/config.json'){
+        try{jsonKeys=' jsonKeys='+Object.keys(JSON.parse(bytes.toString('utf8')))
+          .filter(key=>/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key)).sort().join(',');}catch{}
+      }
       throw Error('[SBC STAGED INVENTORY] asset checksum mismatch: '+name+
-        ' (expected='+expected+' actual='+actual+' bytes='+bytes.length+')');
+        ' (expected digest '+displayDigest(expected)+' actual digest '+displayDigest(actual)+
+        ' bytes='+bytes.length+jsonKeys+')');
+    }
     checked++;
   }
   if(checked<100)throw Error('[SBC STAGED INVENTORY] suspiciously incomplete release: '+checked);
