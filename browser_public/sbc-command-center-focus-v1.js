@@ -107,6 +107,18 @@ function install(){
   script.src='/sbc-chatgpt-os-v1.js?v=66.0.132-resume';script.async=true;
   document.body.appendChild(script);
  }
+
+ // Keep the content-addressed owner shell intact: load optional free-action
+ // UI through its existing focus bootstrap, not as new index.html tags.
+ if(!document.getElementById('sbc-free-actions-script-loader')){
+  var actionStyle=document.createElement('link');actionStyle.id='sbc-free-actions-css-loader';
+  actionStyle.rel='stylesheet';actionStyle.href='/sbc-free-actions-v1.css?v=1';
+  document.head.appendChild(actionStyle);
+  var actionScript=document.createElement('script');actionScript.id='sbc-free-actions-script-loader';
+  actionScript.src='/sbc-free-actions-v1.js?v=1';actionScript.async=true;
+  document.body.appendChild(actionScript);
+ }
+
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 window.SBC_COMMAND_FOCUS=Object.freeze({enable:function(){setCompact(true);},showAll:function(){setCompact(false);}});

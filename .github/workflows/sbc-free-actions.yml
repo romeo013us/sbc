@@ -1,0 +1,44 @@
+name: Super SBC no-paid-AI action focus and safe motion
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-free-action-focus.cjs'
+      - 'routes/sbc-free-action-focus.cjs'
+      - 'routes/crm.js'
+      - 'scripts/sbc-free-action-focus.test.cjs'
+      - 'public/sbc-free-actions-v1.js'
+      - 'public/sbc-free-actions-v1.css'
+      - 'public/index.html'
+      - 'browser_public/index.html'
+      - 'public/sbc-account-manager-v1.html'
+      - 'browser_public/sbc-account-manager-v1.html'
+      - '.github/workflows/sbc-free-actions.yml'
+  push:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-ai-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Pure rules and authenticated read-only route
+        run: |
+          node scripts/sbc-free-action-focus.test.cjs
+          node --check enterprise/sbc-free-action-focus.cjs
+          node --check routes/sbc-free-action-focus.cjs
+          node --check public/sbc-free-actions-v1.js
+          cmp public/index.html browser_public/index.html
+          cmp public/sbc-account-manager-v1.html browser_public/sbc-account-manager-v1.html
+      - name: No send, paid AI, or implicit charge in new workflow
+        run: |
+          if grep -En 'openai|anthropic|api\.openai|sendEmail\(|sendSms\(|charge\(|fetch\(' enterprise/sbc-free-action-focus.cjs routes/sbc-free-action-focus.cjs; then
+            echo 'No-AI read-only workflow must not call external services or mutate payments' >&2
+            exit 1
+          fi
