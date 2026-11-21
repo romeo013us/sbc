@@ -94,6 +94,9 @@
     'Saved. Contact is suppressed and follow-up cleared. Do not contact this business.':
     'Saved in the existing CRM. '+(data.followUp?'Next review: '+data.followUp+'. ':'')+
      'No phone call or customer message was sent.';
+   // Only a verified durable CRM outcome may invalidate local read-only priorities.
+   // No customer identifiers or content are broadcast, and no outbound action runs.
+   document.dispatchEvent(new Event('sbc:crm-committed'));
    await loadAccountHistoryV5(id);
    if(data.outcome==='DO_NOT_CONTACT'||data.outcome==='BAD_NUMBER'){
     form.querySelectorAll('input,select,textarea,button').forEach(x=>x.disabled=true);
