@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "af3f7b7bdca8b1e00556502003db91c46f28ebd7",
+  "sourceCommit": "bdc070916547bf5627d8c07011b6db190b427c14",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -30,7 +30,7 @@
     "RELEASE-MANIFEST-V65.0.4.json": "610532c912a2c7aa7b4c38550f479a619d18d5720b01b049ffd18b5f79dc415d",
     "SBC-COMPLETE-APP-PACKAGE-INFO.json": "72153f8eeb41689c12e4a97c891ad07b2289ebee0a6160b164069b364222ae47",
     "SBC-CONNECTED-JOURNEY-QA.json": "1384e8cc5f8e2118620b76d6379926938f4258ee6c2a24952c3eecc9994060c0",
-    "SBC-DEPLOY-RECEIPT.json": "1418ecf45d295af54d5fae427604808434979961a612c3ebf92f8b2ce30a2f87",
+    "SBC-DEPLOY-RECEIPT.json": "567ab04df8e4d268709d8ee5de20b0d3e31101e5932907a5e9cdc31928a747ad",
     "SBC-P0P1-PREVIEW-QA.json": "cd5c017c6403715df30f5d916ce01f502731bdf72d9ffb39a89c5f7b0ab4b2c5",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "START-HERE-SBC-COMMAND-CENTER-V66.txt": "ade97e1c1fb37e4398759ffb22dc47bdd25df0be196bc2002417418db36847c8",
@@ -1309,6 +1309,8 @@
     "routes/worker-health.js": "050bc05db1b54b57baa25362cb6874710abd58b9352f4d1e66778bbebfbbafc5",
     "runtime-env-beacon.js": "d8ab7106c2970d89728e86ffb09510a53ea7a5a010d73647ee74ac600a64c562",
     "sbc-godaddy-flat-entrypoint.cjs": "1d62cda8a1cad8ea1f8d17d20e4ffe7ed60915869b9195997c5b5cebeb685516",
+    "scripts/academy360-auto-media.cjs": "dadc2617990b982d827c6c28cd231f51071f40a33194d3b60687bb93f79e81aa",
+    "scripts/academy360-auto-media.test.cjs": "427f80c585377ef3effbf3f1f6c03bbaefec67500bfee7df48fac551b2c45231",
     "scripts/account-manager-role-gate.test.cjs": "8c4a64aa30f36883c2108406f61f909501bae644dfdb3f9a1b22338c71f58662",
     "scripts/account-manager-ui.test.cjs": "fd843519768adeb3b211dc65e2721680b7a790221024de12c1ab247055336efb",
     "scripts/account-social-core.test.cjs": "c50557f0a4bb5f9ab57fde3ec15cf63849b26ebd793643758db3e394e8b4e805",
