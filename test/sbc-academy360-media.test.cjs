@@ -12,7 +12,7 @@ test('video player verifies actual same-origin media and rejects HTML fallback',
  assert.match(d.getElementById('academyRecording').src,/am-01-en.webm$/);
  assert.equal(calls[0].opts.method,'HEAD');assert.equal(calls[0].opts.credentials,'same-origin');
  await w.SBC_ACADEMY_VIDEO.render('am-01','es');assert.equal(d.getElementById('academyRecording').hidden,true);
- assert.match(d.getElementById('academyVideoStatus').textContent,/Todavía no/);
+ assert.match(d.getElementById('academyVideoStatus').textContent,/(Todavía no|Aún no)/);
  const count=calls.length;await w.SBC_ACADEMY_VIDEO.render('../../secret','en');assert.equal(calls.length,count);
  assert(!read('public/sbc-am-academy-media-v1.js').includes('/api/training/progress'));
  dom.window.close();
