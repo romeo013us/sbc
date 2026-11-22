@@ -1,0 +1,30 @@
+name: SBC Sales Compensation Safety
+on:
+  push:
+    paths:
+      - 'enterprise/sbc-sales-compensation-v1.cjs'
+      - 'routes/sbc-sales-command-v1.cjs'
+      - 'scripts/sbc-sales-compensation-v1.test.cjs'
+      - 'scripts/sbc-sales-command-routes.test.cjs'
+      - 'scripts/v66160-stage-sales-command.cjs'
+      - 'migrations/20261122_001_sbc_sales_command.sql'
+      - '.github/workflows/sbc-sales-compensation.yml'
+  pull_request:
+    paths:
+      - 'enterprise/sbc-sales-compensation-v1.cjs'
+      - 'routes/sbc-sales-command-v1.cjs'
+      - 'scripts/sbc-sales-compensation-v1.test.cjs'
+      - 'scripts/sbc-sales-command-routes.test.cjs'
+      - 'scripts/v66160-stage-sales-command.cjs'
+      - '.github/workflows/sbc-sales-compensation.yml'
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/sbc-sales-compensation-v1.test.cjs scripts/sbc-sales-command-routes.test.cjs
+      - run: node scripts/v66160-stage-sales-command.cjs
