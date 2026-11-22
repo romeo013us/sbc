@@ -934,7 +934,7 @@ function importClientFindr(){
       if(f.size>25*1024*1024)throw Error('CSV exceeds 25 MB.');
       const rows=parseCSV(await f.text());
       if(!rows.length)throw Error('No lead rows found in this CSV.');
-      if(rows.length>500)throw Error('Maximum 500 rows per batch. Split larger files.');
+      if(rows.length>1000)throw Error('Maximum 1000 rows per batch. Split larger files.');
       const present=state.data&&Array.isArray(state.data.customers)?state.data.customers:[];
       const nm=v=>String(v||'').trim().toLowerCase();
       const pn=v=>String(v||'').replace(/\D/g,'');
@@ -1102,7 +1102,7 @@ async function openLeadQuarantineStatus(){
   try{const q=await api('/api/v56131/lead-intake/quarantine');openModal('🛡️ Lead Quarantine',`<div class="grid three"><div class="stat"><div class="label">TOTAL QUARANTINED</div><div class="value">${q.total}</div><div class="sub">Held outside the active CRM</div></div><div class="stat"><div class="label">ACTIVE</div><div class="value">${q.quarantined}</div><div class="sub">Requires cleanup/review</div></div><div class="stat"><div class="label">RELEASED</div><div class="value">${q.released}</div><div class="sub">Returned to intake later</div></div></div><div class="install-tip" style="margin-top:14px"><strong>Fail-closed rule:</strong> low-quality spreadsheet rows do not enter the CRM or Revenue PLAY. They remain quarantined until deliberately reviewed.</div>`)}catch(e){toast(e.message||'Quarantine status unavailable.')}}
 
 function openSmartLeadIngest(){
-  openModal('⚡ SBC Smart Lead Ingest',`<div class="install-tip"><strong>Designed for targeted prospect batches.</strong><br>CSV limit: 25 MB · up to 500 rows per batch. Nothing is sent to a vendor by this action.</div>
+  openModal('⚡ SBC Smart Lead Ingest',`<div class="install-tip"><strong>Designed for targeted prospect batches.</strong><br>CSV limit: 25 MB · up to 1000 rows per batch. Nothing is sent to a vendor by this action.</div>
     <label style="margin-top:14px">Lead source<input id="smartLeadSource" value="Lorna Targeted Research" maxlength="100"></label>
     <label>CSV file<input id="smartLeadFile" type="file" accept=".csv,text/csv"></label>
     <div id="smartLeadPreview" class="mini" style="margin-top:14px"></div>
@@ -1117,6 +1117,7 @@ function openSmartLeadIngest(){
       state._smartLeadFile={name:f.name,contentBase64:b64};
       $('#smartLeadPreview').textContent='Analyzing CSV…';
       const p=await api('/api/v56131/lead-intake/spreadsheet/preview',{method:'POST',body:JSON.stringify({filename:f.name,csvBase64:b64,source:$('#smartLeadSource')?.value||'Lorna Targeted Research'})});
+      if(Number(p.counts.received)>1000)throw new Error('Maximum 1000 rows per batch. Split larger files.');
       $('#smartLeadPreview').innerHTML=`<strong>${p.counts.received}</strong> rows detected · <strong>${p.counts.accepted}</strong> scored · <strong>${p.counts.quarantine||0}</strong> will be quarantined · <strong>${p.counts.duplicates}</strong> duplicate rows · previewing ${Math.min(25,p.leads.length)}.<br><span class="mini">Hot ${p.counts.hot} · Warm ${p.counts.warm} · Cold/Quarantine ${p.counts.cold}</span>`;
       const btn=$('#smartLeadImportBtn'); if(btn)btn.disabled=false;
     }catch(e){state._smartLeadFile=null;$('#smartLeadPreview').innerHTML=`<span class="badge red">${esc(e.message)}</span>`;}
