@@ -39,3 +39,17 @@ The system **does not automatically initiate payments, contact leads, pay contra
 The dashboards do not yet compute actual net profit after all payroll, taxes, software, advertising, and owner time; they show **owner-attested deal-level gross profit** and estimated commission. Targets are not guarantees.
 
 **Never represent the presence of source code on GitHub as production activation.**
+
+## Phase 2 — Hiring & Profitability, advisory-only
+
+The owner-only Sales Command page now contains a **live bilingual candidate scorecard** and a **monthly operating contribution scenario calculator**. They call authenticated stateless endpoints:
+- `POST /api/owner/sales-command/hiring/evaluate` — returns evidence gaps, score and human-review recommendation; does not store candidate records.
+- `POST /api/owner/sales-command/hiring/forecast` — estimates product gross profit minus base compensation, threshold-dependent commissions and explicit overhead.
+
+The rubric totals 100: verified B2B closing history 20; English live role-play 15; Spanish live role-play 20; objection handling and close 20; CRM proficiency 10; account ownership 10; reliability 5. A candidate must reach 85/100, score at least 15 in Spanish, 10 in English, 15 in closing, and have references, results and live demonstrations independently verified before a shortlist recommendation. Hiring remains a human decision. No gender/age or other protected trait is accepted as a score input.
+
+30-day probation advisory review requires four complete weeks, 3/4 weeks meeting a provisional $600 weekly individual collected-sales checkpoint, plus owner review of verified sales, attendance, lead quality, and compliance. This checkpoint is separate from the $600 **team daily** growth objective and monthly compensation quota.
+
+The ROI model assumes equal sales distribution between active managers, a supplied gross margin, 52/12 weeks per month, and the agreed quota-gated commission rates. It is **not** an actual profit-and-loss statement and does not include unentered costs. Never use it as the sole basis for terminating or promoting anyone.
+
+Tests: `scripts/sbc-sales-hiring-scorecard-v1.test.cjs` plus protected-route tests in `scripts/sbc-sales-command-routes.test.cjs`. Phase 2 is not yet deployed to the live GoDaddy app.
