@@ -26,7 +26,10 @@
       if(v==='production-control') b.onclick=()=>go(v);
       if(v==='training') b.onclick=()=>go('training');
       if(v==='supernova') b.onclick=()=>go('supernova');
-      if(b.parentElement!==n || b.previousElementSibling!==home) n.insertBefore(b,home.nextSibling);
+      // A grouped Dashboard button is not a direct nav child: use its direct-child ancestor.
+      let anchor=home;while(anchor&&anchor.parentElement!==n)anchor=anchor.parentElement;
+      if(!anchor)return;
+      if(b.parentElement!==n || b.previousElementSibling!==anchor)n.insertBefore(b,anchor.nextSibling);
     });
     // Remove duplicate/low-value owner-only destinations from the primary rail.
     ['signature','settings'].forEach(v=>{const b=n.querySelector(`[data-view="${v}"]`);if(b)b.classList.add('sbc-secondary-hidden');});

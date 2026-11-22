@@ -29,3 +29,15 @@ body[data-theme="light"] #modal #sbcQuoteSaveError {
 }
 
 
+
+/* V66.161: private login WCAG AA contrast, independent of saved theme. */
+#login:not(.hidden) .login-card {background:#fff!important;color:#17283a!important;}
+#login:not(.hidden) .login-card h1 {color:#17283a!important;}
+#login:not(.hidden) .login-card .eyebrow {color:#17446b!important;}
+#login:not(.hidden) .login-card p {color:#354a5f!important;font-size:14px!important;line-height:1.6;}
+#login:not(.hidden) .login-card label {color:#243c51!important;font-size:14px!important;}
+#login:not(.hidden) .login-card input {color:#17283a!important;background:#fff!important;border:1px solid #637d94!important;font-size:16px;}
+#login:not(.hidden) .login-card input::placeholder {color:#455c70!important;opacity:1!important;}
+#login:not(.hidden) .login-card .btn.primary {background:#0756a4!important;border-color:#0756a4!important;color:#fff!important;opacity:1!important;}
+#login:not(.hidden) .login-card .btn.primary:focus-visible {outline:3px solid #dd8619!important;outline-offset:3px;}
+#login:not(.hidden) .login-card #loginError:not(:empty) {color:#84202e!important;font-size:14px!important;line-height:1.5;}

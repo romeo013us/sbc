@@ -8,6 +8,7 @@ const ANCHOR="app.get('/api/v9/payroll',auth,ownerOnly,(req,res)=>";
 const HR_ANCHOR="app.get('/api/hr/workspace',auth,ownerOnly,(req,res)=>";
 const ROUTE=[
  '// '+MARK+'; owner-approved monthly commissions, read-only manager progress.',
+ "require('./routes/sbc-public-discovery-v1.cjs').register(app);",
  "require('./routes/sbc-sales-command-v1.cjs').register(app,{",
  ' auth,',
  ' getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),',

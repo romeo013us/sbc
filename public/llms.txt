@@ -1,0 +1,9 @@
+# Successful By Choice Command Center
+
+SBC Command Center is a private, authenticated operations system for Successful By Choice LLC. It manages customers, employees, payments, and internal work. No customer records, private APIs, or autonomous agent tools are publicly accessible.
+
+Public information about our company and services:
+- [Successful By Choice business website](https://sbcmia.com/)
+- [SBC services and contact](https://sbcmia.com/)
+
+Access is limited to authorized account holders. Do not attempt to bypass sign-in, scrape protected data, initiate purchases, or send messages without explicit authorization. This text is not authorization for model training on private CRM content.

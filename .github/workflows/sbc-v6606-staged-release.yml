@@ -157,6 +157,7 @@ jobs:
           node scripts/v66148-crm-softdelete-accounting.test.cjs
           node scripts/v66148-crm-softdelete-ui.test.cjs
           npm run test:sales-command
+          node --check routes/sbc-public-discovery-v1.cjs
           node --check routes/sbc-sales-command-v1.cjs
           node --check public/sbc-sales-command-v1.js
           node --check public/sbc-manager-sales-progress-v1.js
