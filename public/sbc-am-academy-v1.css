@@ -18,3 +18,13 @@
 #academyPhotoDialog{background:#0a2232;color:var(--text);border:2px solid var(--line);border-radius:12px;width:min(94vw,1050px);max-height:90vh;overflow:auto}
 #academyPhotoDialog::backdrop{background:#000b}#academyPhotoDialog img{width:100%;height:auto;max-height:72vh;object-fit:contain;display:block;margin:14px 0}
 @media(max-width:540px){.academy-photo-gallery{grid-template-columns:1fr}.academy-av-controls button{flex:1 1 auto}.academy-media-tabs button{flex:1 1 auto}}
+
+/* Academy 360 learner coach: visible grading gates, bilingual steps and mobile next action */
+.academy-guide{display:flex;gap:20px;align-items:center;justify-content:space-between;padding:21px 24px;margin:0 0 22px;border:1px solid #366d84;border-radius:16px;background:#112b42}
+.academy-guide h3{margin:5px 0 10px;font-size:19px}.academy-guide p{font-size:13px;line-height:1.55;color:#e1eaf1}
+.academy-guide button{flex-shrink:0;max-width:240px}.academy-step-list{list-style:none;margin:10px 0;padding:0;display:flex;flex-wrap:wrap;gap:9px}
+.academy-step-list li{font-size:11px;border:1px solid #42667b;border-radius:10px;padding:9px 12px;flex:1 1 135px;min-width:120px;color:#dce7ef}
+.academy-step-list li.complete{border-color:#438b77;color:#b8f3d6;background:#123b37}
+.academy-score-help{font-size:13px;line-height:1.5;margin:12px 0;color:#e7e7cb}
+.academy-score-help[role=status]{border-left:3px solid #e7c86b;padding:8px 11px;background:rgba(219,184,78,.06)}
+@media(max-width:800px){.academy-guide{flex-direction:column;align-items:flex-start}.academy-guide button{max-width:none;width:100%}}

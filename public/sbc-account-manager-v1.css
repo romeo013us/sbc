@@ -55,3 +55,6 @@
 #sbcAMWebsiteDialog .sbc-ai-actions{display:flex;gap:8px;flex-wrap:wrap}
 #sbcAMWebsiteDialog .sbc-ai-error{color:#ad202c!important;font-weight:700}
 @media(max-width:640px){#sbcAMWebsiteDialog .sbc-am-site-content{padding:10px}#sbcAMWebsiteDialog .sbc-am-site-header{padding:12px}}
+
+/* Account Manager classroom is a first-class, safe navigation destination. */
+.sidebar nav a.tab{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit}.sidebar nav a.tab:hover,.sidebar nav a.tab:focus-visible{outline:2px solid #f4ca75;outline-offset:2px}
