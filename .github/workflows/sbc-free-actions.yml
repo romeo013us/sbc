@@ -7,6 +7,7 @@ on:
       - 'routes/sbc-free-action-focus.cjs'
       - 'routes/crm.js'
       - 'scripts/sbc-free-action-focus.test.cjs'
+      - 'scripts/sbc-free-actions-triage.test.cjs'
       - 'public/sbc-free-actions-v1.js'
       - 'public/sbc-free-actions-v1.css'
       - 'public/index.html'
@@ -31,6 +32,7 @@ jobs:
       - name: Pure rules and authenticated read-only route
         run: |
           node scripts/sbc-free-action-focus.test.cjs
+          node scripts/sbc-free-actions-triage.test.cjs
           node --check enterprise/sbc-free-action-focus.cjs
           node --check routes/sbc-free-action-focus.cjs
           node --check public/sbc-free-actions-v1.js
