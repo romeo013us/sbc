@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>SBC Academy 360 · Screen Recording Studio</title><link rel="stylesheet" href="/sbc-am-academy-v1.css?v=66.167"><script defer src="/sbc-am-academy-recorder-v1.js?v=66.167"></script></head>
+<body><main class="recorder-layout"><a class="owner-link" href="/sbc-am-academy-owner.html">← Owner review desk</a>
+<span class="eyebrow">SUCCESSFUL BY CHOICE · ACADEMY 360</span><h1>Actual workstation recording studio</h1><p>Record SBC's REAL Account Manager interface using a test employee login and fictional records. Make original, narrated walkthroughs—not stock footage. This is a local-only recorder. No media is automatically uploaded.</p>
+<div class="recorder-grid"><section class="owner-card"><span class="eyebrow">01 · FILM THE WORKFLOW</span>
+<label for="lessonSelect">Lesson</label><select id="lessonSelect"></select><label for="languageSelect">Language</label><select id="languageSelect"><option value="en">English</option><option value="es">Español</option></select>
+<h2 id="shotTitle"></h2><p id="shotNotes"></p><p class="media-note">Record 60–90 seconds from the signed-in test Account Manager workstation, preferably in a separate private browser window. No actual customers, real calls, passwords, or payment records.</p>
+<p>Output filename: <strong id="videoFilename"></strong></p>
+<label class="check-row"><input type="checkbox" id="fictionalOnly"><span>I verified that the captured screen has only approved fictional/test data and no credentials.</span></label>
+<label class="check-row"><input type="checkbox" id="withMic" checked><span>Record microphone narration</span></label>
+<div class="capture-actions"><button id="startRecord" type="button" class="primary">● Start screen capture</button><button id="stopRecord" type="button" disabled>■ Stop</button></div>
+<p id="recorderStatus" class="notice" role="status" aria-live="polite">Ready. Permission is requested only when you start capture.</p></section>
+<section class="owner-card"><span class="eyebrow">02 · REVIEW AND EXPORT</span><h2>Review recorded video</h2>
+<video id="previewVideo" controls playsinline hidden></video><button id="downloadVideo" type="button" disabled>Download WebM video</button>
+<h3>Caption draft</h3><label for="transcript">Actual spoken transcript, one subtitle line per paragraph</label><textarea id="transcript" rows="7" placeholder="Welcome to the SBC Account Manager workstation.&#10;Open the fictional example account.&#10;Record the next follow-up action."></textarea>
+<button id="downloadVtt" type="button" disabled>Download draft WebVTT captions</button>
+<p class="media-note">Caption timing is only a starting estimate. A human MUST verify every caption word and timestamp before publishing.</p>
+<h3>03 · Owner review and publish</h3>
+<p>Publish validated files to <code>public/academy-media/academy360/</code> in the complete application release, using names like <code>am-01-en.webm</code>, <code>am-01-en.vtt</code> and the corresponding Spanish files. Test on GoDaddy Preview before production. This screen does not upload files or approve certifications.</p></section></div></main></body></html>
