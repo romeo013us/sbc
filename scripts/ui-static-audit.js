@@ -31,6 +31,20 @@ for(const file of ['sbc-account-social-v1.cjs','sbc-lorna-handoff-v1.cjs']){
   routes.push(prefix[1]+match[1]);
  }
 }
+// Derive registered paths from real router source. This is NOT an endpoint allowlist.
+for(const file of fs.readdirSync(path.join(root,'routes')).filter(f=>/\.cjs$/.test(f))){
+ const source=read(path.join(root,'routes',file));
+ const prefixes=Object.fromEntries([...source.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*)\s*=\s*['\"](\/api\/[^'\"]+)['\"]/g)].map(m=>[m[1],m[2]]));
+ for(const m of source.matchAll(/\bapp\.(?:get|post|put|patch|delete|all)\(\s*([A-Z][A-Z0-9_]*)\s*\+\s*['\"](\/[^'\"]+)['\"]/g)){
+  if(prefixes[m[1]])routes.push(prefixes[m[1]]+m[2]);
+ }
+ for(const method of ['get','post']){
+  for(const [variable,prefix] of Object.entries(prefixes)){
+   if(!source.includes('app.'+method+'('+variable+'+path'))continue;
+   for(const m of source.matchAll(new RegExp('\\b'+method+'\\(\\s*[\\\"\\\'](\\/[^\\\"\\\']+)[\\\"\\\']','g')))routes.push(prefix+m[1]);
+  }
+ }
+}
 const toRe=r=>new RegExp('^'+r.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replace(/:[A-Za-z_]+/g,'[^/]+').replace(/\*/g,'.*')+'/?$');
 // Catch-all routes (containing '*' or mounted at '/') would make EVERY path look valid, so they are excluded.
 const specific=routes.filter(r=>!r.includes('*')&&r!=='/'&&r!=='/api');
@@ -45,12 +59,14 @@ const handlers=new Set();
 for(const m of html.matchAll(/\bon(?:click|change|submit|input|keydown|keyup)=["']([^"']+)["']/g))for(const c of m[1].matchAll(/([A-Za-z_$][\w$.]*)\s*\(/g)){const n=c[1];if(!/^(if|return|function|event|this|window\.event|alert|confirm|prompt|setTimeout|document\.|Math\.|JSON\.|console\.)/.test(n))handlers.add(n.replace(/^window\./,''))}
 for(const n of handlers){const b=n.split('.')[0];if(!new RegExp('(function\\s+'+b+'\\b|window\\.'+b+'\\s*=|\\b'+b+'\\s*=\\s*(?:async\\s*)?(?:function|\\()|(?:const|let|var)\\s+'+b+'\\b|window\\[[\'"]'+b+'[\'"]\\]\\s*=)').test(js))fail('inline handler not defined in loaded scripts: '+n)}
 const allpub=fs.readdirSync(pub).filter(f=>f.endsWith('.js')).map(f=>read(path.join(pub,f))).join('\n');
-const calls=new Set([...allpub.matchAll(/['"`](\/api\/[A-Za-z0-9_\/\-\.:]+)(?:\?[^'"`]*)?['"`]/g)].map(m=>m[1].replace(/\/$/,'')));
+const literalApiPaths=[...allpub.matchAll(/['"`](\/api\/[A-Za-z0-9_\/\-\.:]+)(?:\?[^'"`]*)?['"`]/g)].map(m=>m[1]);
+const calls=new Set(literalApiPaths.map(p=>p.replace(/\/$/,'')));
 // Routes mounted through routers/enterprise modules can't be resolved purely from app.get(...) text, so an API path
 // also counts as defined when its last two segments appear literally in server/routes/enterprise source (heuristic).
 const entDir=path.join(root,'enterprise');
 const allSrc=[srv,...readModules(entDir)].join('\n');
-const apiDefined=c=>isRoute(c)||allSrc.includes(c.split('/').slice(-2).join('/'));
+const apiDefined=c=>isRoute(c)||allSrc.includes(c.split('/').slice(-2).join('/'))||
+ (literalApiPaths.includes(c+'/')&&specific.some(route=>route.startsWith(c+'/')));
 for(const c of calls)if(!apiDefined(c))fail('frontend calls an API path with no server route: '+c);
 console.log(`UI static audit: ${refs.length} asset refs, ${handlers.size} inline handlers, ${calls.size} API paths, ${routes.length} server routes, ${bad} problems`);
 process.exit(bad?1:0);
