@@ -1,0 +1,518 @@
+{
+  "schema": 1,
+  "version": "66.169",
+  "source": "REAL_SBC_WORKSTATION_HTML_JS_WITH_LOCAL_SYNTHETIC_API",
+  "authenticatedEmployeeRecording": false,
+  "syntheticOnly": true,
+  "noLiveOutreach": true,
+  "notice": "AUTOMATED TRAINING SIMULATIONS, NOT LIVE EMPLOYEE RECORDINGS",
+  "createdAt": "2026-11-22T22:56:41.724Z",
+  "files": [
+    "am-01-en.mp4",
+    "am-01-en-audio.webm",
+    "am-01-en.vtt",
+    "am-01-en-01.webp",
+    "am-01-en-02.webp",
+    "am-01-en-03.webp",
+    "am-01-en-04.webp",
+    "am-01-es.mp4",
+    "am-01-es-audio.webm",
+    "am-01-es.vtt",
+    "am-01-es-01.webp",
+    "am-01-es-02.webp",
+    "am-01-es-03.webp",
+    "am-01-es-04.webp",
+    "am-02-en.mp4",
+    "am-02-en-audio.webm",
+    "am-02-en.vtt",
+    "am-02-en-01.webp",
+    "am-02-en-02.webp",
+    "am-02-en-03.webp",
+    "am-02-en-04.webp",
+    "am-02-es.mp4",
+    "am-02-es-audio.webm",
+    "am-02-es.vtt",
+    "am-02-es-01.webp",
+    "am-02-es-02.webp",
+    "am-02-es-03.webp",
+    "am-02-es-04.webp",
+    "am-03-en.mp4",
+    "am-03-en-audio.webm",
+    "am-03-en.vtt",
+    "am-03-en-01.webp",
+    "am-03-en-02.webp",
+    "am-03-en-03.webp",
+    "am-03-en-04.webp",
+    "am-03-es.mp4",
+    "am-03-es-audio.webm",
+    "am-03-es.vtt",
+    "am-03-es-01.webp",
+    "am-03-es-02.webp",
+    "am-03-es-03.webp",
+    "am-03-es-04.webp",
+    "am-04-en.mp4",
+    "am-04-en-audio.webm",
+    "am-04-en.vtt",
+    "am-04-en-01.webp",
+    "am-04-en-02.webp",
+    "am-04-en-03.webp",
+    "am-04-en-04.webp",
+    "am-04-es.mp4",
+    "am-04-es-audio.webm",
+    "am-04-es.vtt",
+    "am-04-es-01.webp",
+    "am-04-es-02.webp",
+    "am-04-es-03.webp",
+    "am-04-es-04.webp",
+    "am-05-en.mp4",
+    "am-05-en-audio.webm",
+    "am-05-en.vtt",
+    "am-05-en-01.webp",
+    "am-05-en-02.webp",
+    "am-05-en-03.webp",
+    "am-05-en-04.webp",
+    "am-05-es.mp4",
+    "am-05-es-audio.webm",
+    "am-05-es.vtt",
+    "am-05-es-01.webp",
+    "am-05-es-02.webp",
+    "am-05-es-03.webp",
+    "am-05-es-04.webp",
+    "am-06-en.mp4",
+    "am-06-en-audio.webm",
+    "am-06-en.vtt",
+    "am-06-en-01.webp",
+    "am-06-en-02.webp",
+    "am-06-en-03.webp",
+    "am-06-en-04.webp",
+    "am-06-es.mp4",
+    "am-06-es-audio.webm",
+    "am-06-es.vtt",
+    "am-06-es-01.webp",
+    "am-06-es-02.webp",
+    "am-06-es-03.webp",
+    "am-06-es-04.webp",
+    "am-07-en.mp4",
+    "am-07-en-audio.webm",
+    "am-07-en.vtt",
+    "am-07-en-01.webp",
+    "am-07-en-02.webp",
+    "am-07-en-03.webp",
+    "am-07-en-04.webp",
+    "am-07-es.mp4",
+    "am-07-es-audio.webm",
+    "am-07-es.vtt",
+    "am-07-es-01.webp",
+    "am-07-es-02.webp",
+    "am-07-es-03.webp",
+    "am-07-es-04.webp",
+    "am-08-en.mp4",
+    "am-08-en-audio.webm",
+    "am-08-en.vtt",
+    "am-08-en-01.webp",
+    "am-08-en-02.webp",
+    "am-08-en-03.webp",
+    "am-08-en-04.webp",
+    "am-08-es.mp4",
+    "am-08-es-audio.webm",
+    "am-08-es.vtt",
+    "am-08-es-01.webp",
+    "am-08-es-02.webp",
+    "am-08-es-03.webp",
+    "am-08-es-04.webp",
+    "am-09-en.mp4",
+    "am-09-en-audio.webm",
+    "am-09-en.vtt",
+    "am-09-en-01.webp",
+    "am-09-en-02.webp",
+    "am-09-en-03.webp",
+    "am-09-en-04.webp",
+    "am-09-es.mp4",
+    "am-09-es-audio.webm",
+    "am-09-es.vtt",
+    "am-09-es-01.webp",
+    "am-09-es-02.webp",
+    "am-09-es-03.webp",
+    "am-09-es-04.webp",
+    "am-10-en.mp4",
+    "am-10-en-audio.webm",
+    "am-10-en.vtt",
+    "am-10-en-01.webp",
+    "am-10-en-02.webp",
+    "am-10-en-03.webp",
+    "am-10-en-04.webp",
+    "am-10-es.mp4",
+    "am-10-es-audio.webm",
+    "am-10-es.vtt",
+    "am-10-es-01.webp",
+    "am-10-es-02.webp",
+    "am-10-es-03.webp",
+    "am-10-es-04.webp",
+    "am-11-en.mp4",
+    "am-11-en-audio.webm",
+    "am-11-en.vtt",
+    "am-11-en-01.webp",
+    "am-11-en-02.webp",
+    "am-11-en-03.webp",
+    "am-11-en-04.webp",
+    "am-11-es.mp4",
+    "am-11-es-audio.webm",
+    "am-11-es.vtt",
+    "am-11-es-01.webp",
+    "am-11-es-02.webp",
+    "am-11-es-03.webp",
+    "am-11-es-04.webp",
+    "am-12-en.mp4",
+    "am-12-en-audio.webm",
+    "am-12-en.vtt",
+    "am-12-en-01.webp",
+    "am-12-en-02.webp",
+    "am-12-en-03.webp",
+    "am-12-en-04.webp",
+    "am-12-es.mp4",
+    "am-12-es-audio.webm",
+    "am-12-es.vtt",
+    "am-12-es-01.webp",
+    "am-12-es-02.webp",
+    "am-12-es-03.webp",
+    "am-12-es-04.webp"
+  ],
+  "lessons": [
+    {
+      "lessonId": "am-01",
+      "lang": "en",
+      "seconds": 61,
+      "files": [
+        "am-01-en.mp4",
+        "am-01-en-audio.webm",
+        "am-01-en.vtt",
+        "am-01-en-01.webp",
+        "am-01-en-02.webp",
+        "am-01-en-03.webp",
+        "am-01-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-01",
+      "lang": "es",
+      "seconds": 59,
+      "files": [
+        "am-01-es.mp4",
+        "am-01-es-audio.webm",
+        "am-01-es.vtt",
+        "am-01-es-01.webp",
+        "am-01-es-02.webp",
+        "am-01-es-03.webp",
+        "am-01-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-02",
+      "lang": "en",
+      "seconds": 58,
+      "files": [
+        "am-02-en.mp4",
+        "am-02-en-audio.webm",
+        "am-02-en.vtt",
+        "am-02-en-01.webp",
+        "am-02-en-02.webp",
+        "am-02-en-03.webp",
+        "am-02-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-02",
+      "lang": "es",
+      "seconds": 57,
+      "files": [
+        "am-02-es.mp4",
+        "am-02-es-audio.webm",
+        "am-02-es.vtt",
+        "am-02-es-01.webp",
+        "am-02-es-02.webp",
+        "am-02-es-03.webp",
+        "am-02-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-03",
+      "lang": "en",
+      "seconds": 56,
+      "files": [
+        "am-03-en.mp4",
+        "am-03-en-audio.webm",
+        "am-03-en.vtt",
+        "am-03-en-01.webp",
+        "am-03-en-02.webp",
+        "am-03-en-03.webp",
+        "am-03-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-03",
+      "lang": "es",
+      "seconds": 56,
+      "files": [
+        "am-03-es.mp4",
+        "am-03-es-audio.webm",
+        "am-03-es.vtt",
+        "am-03-es-01.webp",
+        "am-03-es-02.webp",
+        "am-03-es-03.webp",
+        "am-03-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-04",
+      "lang": "en",
+      "seconds": 57,
+      "files": [
+        "am-04-en.mp4",
+        "am-04-en-audio.webm",
+        "am-04-en.vtt",
+        "am-04-en-01.webp",
+        "am-04-en-02.webp",
+        "am-04-en-03.webp",
+        "am-04-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-04",
+      "lang": "es",
+      "seconds": 57,
+      "files": [
+        "am-04-es.mp4",
+        "am-04-es-audio.webm",
+        "am-04-es.vtt",
+        "am-04-es-01.webp",
+        "am-04-es-02.webp",
+        "am-04-es-03.webp",
+        "am-04-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-05",
+      "lang": "en",
+      "seconds": 56,
+      "files": [
+        "am-05-en.mp4",
+        "am-05-en-audio.webm",
+        "am-05-en.vtt",
+        "am-05-en-01.webp",
+        "am-05-en-02.webp",
+        "am-05-en-03.webp",
+        "am-05-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-05",
+      "lang": "es",
+      "seconds": 56,
+      "files": [
+        "am-05-es.mp4",
+        "am-05-es-audio.webm",
+        "am-05-es.vtt",
+        "am-05-es-01.webp",
+        "am-05-es-02.webp",
+        "am-05-es-03.webp",
+        "am-05-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-06",
+      "lang": "en",
+      "seconds": 66,
+      "files": [
+        "am-06-en.mp4",
+        "am-06-en-audio.webm",
+        "am-06-en.vtt",
+        "am-06-en-01.webp",
+        "am-06-en-02.webp",
+        "am-06-en-03.webp",
+        "am-06-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-06",
+      "lang": "es",
+      "seconds": 59,
+      "files": [
+        "am-06-es.mp4",
+        "am-06-es-audio.webm",
+        "am-06-es.vtt",
+        "am-06-es-01.webp",
+        "am-06-es-02.webp",
+        "am-06-es-03.webp",
+        "am-06-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-07",
+      "lang": "en",
+      "seconds": 60,
+      "files": [
+        "am-07-en.mp4",
+        "am-07-en-audio.webm",
+        "am-07-en.vtt",
+        "am-07-en-01.webp",
+        "am-07-en-02.webp",
+        "am-07-en-03.webp",
+        "am-07-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-07",
+      "lang": "es",
+      "seconds": 57,
+      "files": [
+        "am-07-es.mp4",
+        "am-07-es-audio.webm",
+        "am-07-es.vtt",
+        "am-07-es-01.webp",
+        "am-07-es-02.webp",
+        "am-07-es-03.webp",
+        "am-07-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-08",
+      "lang": "en",
+      "seconds": 58,
+      "files": [
+        "am-08-en.mp4",
+        "am-08-en-audio.webm",
+        "am-08-en.vtt",
+        "am-08-en-01.webp",
+        "am-08-en-02.webp",
+        "am-08-en-03.webp",
+        "am-08-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-08",
+      "lang": "es",
+      "seconds": 56,
+      "files": [
+        "am-08-es.mp4",
+        "am-08-es-audio.webm",
+        "am-08-es.vtt",
+        "am-08-es-01.webp",
+        "am-08-es-02.webp",
+        "am-08-es-03.webp",
+        "am-08-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-09",
+      "lang": "en",
+      "seconds": 57,
+      "files": [
+        "am-09-en.mp4",
+        "am-09-en-audio.webm",
+        "am-09-en.vtt",
+        "am-09-en-01.webp",
+        "am-09-en-02.webp",
+        "am-09-en-03.webp",
+        "am-09-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-09",
+      "lang": "es",
+      "seconds": 56,
+      "files": [
+        "am-09-es.mp4",
+        "am-09-es-audio.webm",
+        "am-09-es.vtt",
+        "am-09-es-01.webp",
+        "am-09-es-02.webp",
+        "am-09-es-03.webp",
+        "am-09-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-10",
+      "lang": "en",
+      "seconds": 60,
+      "files": [
+        "am-10-en.mp4",
+        "am-10-en-audio.webm",
+        "am-10-en.vtt",
+        "am-10-en-01.webp",
+        "am-10-en-02.webp",
+        "am-10-en-03.webp",
+        "am-10-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-10",
+      "lang": "es",
+      "seconds": 58,
+      "files": [
+        "am-10-es.mp4",
+        "am-10-es-audio.webm",
+        "am-10-es.vtt",
+        "am-10-es-01.webp",
+        "am-10-es-02.webp",
+        "am-10-es-03.webp",
+        "am-10-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-11",
+      "lang": "en",
+      "seconds": 57,
+      "files": [
+        "am-11-en.mp4",
+        "am-11-en-audio.webm",
+        "am-11-en.vtt",
+        "am-11-en-01.webp",
+        "am-11-en-02.webp",
+        "am-11-en-03.webp",
+        "am-11-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-11",
+      "lang": "es",
+      "seconds": 56,
+      "files": [
+        "am-11-es.mp4",
+        "am-11-es-audio.webm",
+        "am-11-es.vtt",
+        "am-11-es-01.webp",
+        "am-11-es-02.webp",
+        "am-11-es-03.webp",
+        "am-11-es-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-12",
+      "lang": "en",
+      "seconds": 61,
+      "files": [
+        "am-12-en.mp4",
+        "am-12-en-audio.webm",
+        "am-12-en.vtt",
+        "am-12-en-01.webp",
+        "am-12-en-02.webp",
+        "am-12-en-03.webp",
+        "am-12-en-04.webp"
+      ]
+    },
+    {
+      "lessonId": "am-12",
+      "lang": "es",
+      "seconds": 58,
+      "files": [
+        "am-12-es.mp4",
+        "am-12-es-audio.webm",
+        "am-12-es.vtt",
+        "am-12-es-01.webp",
+        "am-12-es-02.webp",
+        "am-12-es-03.webp",
+        "am-12-es-04.webp"
+      ]
+    }
+  ]
+}
