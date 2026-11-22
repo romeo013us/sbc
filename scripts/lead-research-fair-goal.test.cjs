@@ -30,7 +30,8 @@ assert.match(create,/revenuePhoneShape\(phone\)\|\|revenueEmailShape\(email\)\|\
 assert.match(create,/c\.leadIntelligence\.researchStatus=researchComplete\?'RESEARCH_SUBMITTED':'NEEDS_RESEARCH'/);
 assert.match(create,/researchComplete:researchComplete,researchSource:researchSource/);
 assert.match(create,/enqueueLeadAssist\(c\.id,'lead_submission','high'\)/);
-assert.match(create,/leadAssist:\{status:'QUEUED'/);
+assert.match(create,/leadAssist:SBC_TRUSTED_LEADS\.isTrusted\(c\)\?\{status:'OWNER_TRUSTED_RESEARCH'/,'Lorna-approved research must stay explicitly owner-trusted');
+assert.match(create,/status:'QUEUED'/,'untrusted research still queues independent checks');
 assert.doesNotMatch(create,/c\.verificationStatus='Verified'|b\.verifiedResearch/,'researchers cannot self-promote new leads to Verified');
 const get=after.slice(after.indexOf("app.get('/api/v9/lead-verification',auth,"),after.indexOf("app.post('/api/v9/lead-verification/:id',auth,"));
 assert.match(get,/leadAssistStatus:c\.leadAssist\?\.status/,'employee sees real machine verification state');
