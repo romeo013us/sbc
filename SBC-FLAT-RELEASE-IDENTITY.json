@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "c1c60bc541b9df82b6308a8afd8bd8e33e1746cf",
-  "sourceFingerprint": "b39dfb47d6842994d255531c585f2eea95f7c37b839b2459826a7a60cc83037c",
+  "sourceCommit": "11888ceb1efbec5b7bd4b1e1ddbd49b6a6fac7f8",
+  "sourceFingerprint": "fafad3145b415d02a0bf7c1225158e378b5f80419029339d2dcd93b83861e603",
   "serverSha256": "e6e8987889d46480e7fb0b15cf3e0481796221896b8f1f99771b12d0a1791fbd",
   "runtimePatch": "v66.0.24-static-assets-routed",
   "runtimePatchFrom": "a-sbc-master",
-  "stagedInventorySha256": "03da8d2de2e818f18a8b2dd9e6b3a4bd68779159b719e3daa6be49223c48cc90",
+  "stagedInventorySha256": "1bf75c3bd1b7645662c84aee44bac340b674e1603d99792edb7cb733b00ac6fe",
   "candidateOnly": true,
   "baselineSourceCommit": "f5d95fbef4ce2669e0f2e7bd06e9827e652dd604",
   "productionCertified": false,
-  "academyRelease": "66.169",
-  "academyMediaManifestSha256": "7fa1cb339051418e8efbdf8c6097133feeffcb26731cb3091ad07ff0ca9b5727"
+  "academyRelease": "66.171",
+  "academyMediaManifestSha256": "4d78356d8183e1b0b6b6a61bd95dde0f2e35d940c8f2ded13612fe7d23f8b486"
 }
