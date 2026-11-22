@@ -13,7 +13,7 @@ function harness({recovery=false,missingDb=false}={}){
   async beginTransaction(){transaction++},async commit(){transaction--},async rollback(){transaction--},release(){},
   async query(sql,args){
    if(sql.startsWith('SELECT')&&sql.includes('FOR UPDATE')){const row=records.get(args[0]+':'+args[1]);return [[row||null].filter(Boolean)];}
-   if(sql.startsWith('UPDATE sbc_customers')){writes++;const row=records.get(args[2]+':'+args[3]);row.lead_intelligence_json=args[0];return [{affectedRows:1}];}
+   if(sql.startsWith('UPDATE sbc_customers')){writes++;const row=records.get(args[1]+':'+args[2]);row.lead_intelligence_json=args[0];return [{affectedRows:1}];}
    throw Error('Unexpected SQL: '+sql);
   }
  }}};
