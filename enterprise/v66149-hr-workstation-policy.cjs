@@ -5,7 +5,7 @@
  * automated contractor classification, or elevated owner privileges.
  */
 const HR_ROLE='hr_manager';
-const STAFF_ROLES=new Set(['caller','lead_researcher','fulfillment','hr_manager']);
+const STAFF_ROLES=new Set(['caller','account_manager','lead_researcher','fulfillment','hr_manager']);
 const METHODS=new Set(['Remitly Business','Payoneer','Business bank transfer','Other owner-approved provider']);
 const API_RULES=new Set([
  'GET /api/me',
