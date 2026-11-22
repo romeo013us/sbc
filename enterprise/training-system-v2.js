@@ -20,10 +20,11 @@
 const VERSION = '2.0.0';
 const SCHEMA_VERSION = 2;
 const SBC_V66107_ELITE_ACADEMY=require('./v66107-academy-2026.cjs');
+const SBC_AM_ACADEMY_360=require('./sbc-am-academy-v1.cjs');
 const now = () => new Date().toISOString();
 const uid = p => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
-const TRAINING_ROLES = ['owner','manager','caller','lead_researcher','fulfillment','kim_operator','system'];
-const WORKFORCE_ROLES = ['caller','lead_researcher','lead_generator','researcher','prospector','fulfillment','manager','kim_operator'];
+const TRAINING_ROLES = ['owner','manager','caller','account_manager','lead_researcher','fulfillment','kim_operator','system'];
+const WORKFORCE_ROLES = ['caller','account_manager','lead_researcher','lead_generator','researcher','prospector','fulfillment','manager','kim_operator'];
 const COURSE_STATUSES = ['draft','published','archived','retired'];
 const PROGRESS_STATUSES = ['not_started','in_progress','completed','passed','failed','retraining_required'];
 const ASSIGNMENT_STATUSES = ['assigned','in_progress','completed','passed','failed','retraining_required','withdrawn'];
@@ -66,7 +67,7 @@ function emptyState() {
     schemaVersion:SCHEMA_VERSION,
     createdAt:now(),updatedAt:now(),
     courses:LEGACY_IMPORTED_COURSES.map(c=>normalizeCourse(c,'SBC Academy legacy content imported into Training V2')),
-    assignments:[],progress:[],attempts:[],certifications:[],reviews:[],events:[],notes:[],sessions:[],
+    assignments:[],progress:[],attempts:[],certifications:[],reviews:[],events:[],notes:[],sessions:[],amTrainingWindows:[],
     migration:{legacyV1Imported:false,legacyV9Imported:false},
   };
 }
@@ -75,6 +76,7 @@ function normalizeState(s) {
   const x=s&&typeof s==='object'?s:emptyState();
   x.schemaVersion=SCHEMA_VERSION;
   for(const k of ['courses','assignments','progress','attempts','certifications','reviews','events','notes','sessions']) if(!Array.isArray(x[k])) x[k]=[];
+  if(!Array.isArray(x.amTrainingWindows))x.amTrainingWindows=[];
   x.courses=x.courses.map(c=>normalizeCourse(c,'training-v2'));
   return x;
 }
@@ -130,10 +132,12 @@ function ensureState(db) {
       db.settings.trainingCenterV2=current;
     }
     SBC_V66107_ELITE_ACADEMY.install(current,normalizeCourse,now);
+    SBC_AM_ACADEMY_360.install(current,normalizeCourse,now);
     return current;
   }
   const migrated=migrateLegacy(db);
   SBC_V66107_ELITE_ACADEMY.install(migrated,normalizeCourse,now);
+  SBC_AM_ACADEMY_360.install(migrated,normalizeCourse,now);
   db.settings.trainingCenterV2=migrated;
   return migrated;
 }
@@ -148,7 +152,7 @@ function normalizedTrainingRole(user) {
     'researcher':'lead_researcher',
     'prospector':'lead_researcher',
     'business_prospecting_specialist':'lead_researcher',
-    'sales_account_manager':'caller',
+    'sales_account_manager':'account_manager',
     'sales_rep':'caller',
     'sales':'caller'
   };

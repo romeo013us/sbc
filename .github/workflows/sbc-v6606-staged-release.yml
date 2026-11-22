@@ -159,6 +159,10 @@ jobs:
           npm run test:sales-command
           npm run test:trusted-leads
           npm run test:owner-csv-1000
+          npm run test:academy360
+          node --check routes/sbc-am-academy-v1.cjs
+          node --check enterprise/sbc-am-academy-v1.cjs
+          node --check public/sbc-am-academy-v1.js
           node --check routes/sbc-owner-trusted-leads-v1.cjs
           node --check public/sbc-trusted-leads-v1.js
           node --check routes/sbc-public-discovery-v1.cjs
@@ -340,6 +344,8 @@ jobs:
           node scripts/v66163-stage-owner-trusted-leads.cjs --verify-staged
           SBC_V66164_ISOLATED_STAGE=YES node scripts/v66164-stage-owner-csv-1000.cjs --apply
           node scripts/v66164-stage-owner-csv-1000.cjs --verify-staged
+          SBC_V66165_ISOLATED_STAGE=YES node scripts/v66165-stage-am-academy.cjs --apply
+          node scripts/v66165-stage-am-academy.cjs --verify-staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
