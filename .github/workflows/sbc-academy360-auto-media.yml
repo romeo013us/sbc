@@ -50,6 +50,23 @@ jobs:
           echo '019b3803293c93e34a206dd2e53a3889209a514e786fd7144f7b70196c579b63  /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx' | sha256sum -c
           python3 -m json.tool /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx.json >/dev/null
           python3 -m json.tool /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx.json >/dev/null
+          # The pinned es_MX model serializes an old Python Enum spelling. Normalize
+          # this textual config value after verifying the 63 MB voice weight SHA.
+          python3 - <<'PY'
+          import json,pathlib
+          for name in ('en_US-lessac-medium','es_MX-ald-medium'):
+              path=pathlib.Path('/tmp/sbc-academy-voice-models')/(name+'.onnx.json')
+              data=json.loads(path.read_text())
+              if data.get('phoneme_type')=='PhonemeType.ESPEAK':
+                  data['phoneme_type']='espeak'
+              if data.get('phoneme_type','espeak') not in ('espeak','text'):
+                  raise SystemExit('Unexpected Piper phoneme type in '+name)
+              path.write_text(json.dumps(data,ensure_ascii=False))
+          PY
+          echo 'Welcome to SBC Academy 360.' | /tmp/sbc-academy-piper/bin/piper --model /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx --output_file /tmp/sbc-academy-en-sample.wav
+          echo 'Bienvenido a la Academia 360 de SBC.' | /tmp/sbc-academy-piper/bin/piper --model /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx --output_file /tmp/sbc-academy-es-sample.wav
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/sbc-academy-en-sample.wav
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/sbc-academy-es-sample.wav
           /tmp/sbc-academy-piper/bin/piper --help | head -18
 
       - name: Test safety and exact bilingual course coverage
