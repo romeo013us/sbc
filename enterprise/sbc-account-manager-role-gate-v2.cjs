@@ -5,7 +5,7 @@
  * The global employee gate must call allowAccountManager on every request.
  */
 const STATIC={
- GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk','/api/appointments','/api/sbc/sales/actions/today','/api/sbc/sales/reminders/preview','/api/sbc/journey/queue','/api/sbc/journey/reminders']),
+ GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk','/api/appointments','/api/sbc/sales/actions/today','/api/sbc/sales/reminders/preview','/api/sbc/journey/queue','/api/sbc/journey/reminders','/api/sbc/sales/compensation/me']),
  POST:new Set(['/api/logout','/api/v9/time/clock','/api/training/progress','/api/account-social/v1/posts','/api/sbc/design-briefs','/api/appointments']),
  PUT:new Set([])
 };
