@@ -128,8 +128,9 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
    const {ctx,t,actor}=gate(req,'account_manager'),month=monthReq(req);
    staff(ctx,t,actor);
    const r=await read(ctx,t,actor,month);
-   const {profitCents,...safe}=r; // company gross profit remains owner-private
-   return res.json({ok:true,readOnly:true,...safe,managerId:actor,
+   const {profitCents,lockedStatement,...safe}=r; // company gross profit remains owner-private
+   const visibleLocked=lockedStatement?((({profitCents,...fields})=>fields)(lockedStatement)):null;
+   return res.json({ok:true,readOnly:true,...safe,lockedStatement:visibleLocked,managerId:actor,
      statusNote:'Estimated until month close and owner approval. No automatic payouts.'});
   }catch(e){return error(res,e)}
  });
