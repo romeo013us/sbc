@@ -71,7 +71,7 @@ assert.match(app,/sbcVoiceRememberError\(e,'start'\)/);
 const html=read('public/index.html');
 assert.equal(html,read('browser_public/index.html'));
 assert.match(html,/v32-3-expansion\.js\?v=66\.0\.91-actionable/);
-assert.match(html,/app\.js\?v=66\.0\.91-voice-code/);
+assert.match(html,/app\.js\?v=66\.164-owner-csv-1000/);
 (async()=>{await phone.sbcVoiceCopySafeDiagnostic();
  assert(alerts.some(s=>s.includes('"code":"20103"')),'safe diagnostic copy includes error code');
  assert(!alerts.some(s=>s.includes(token)),'copied report never includes JWT');
