@@ -10351,9 +10351,10 @@ const startOperationalRuntime=async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('[
 }).catch(e=>{console.error('[SBC STARTUP] production startup blocked:',e.message);process.exitCode=1;});
 // SBC_V66_IMPORT_ROUTING_HOTFIX: mount owner-only import routes for readonly Preview and Published writer independently of autonomous-worker initialization.
 // SBC_V6541_LEAD_IMPORT: authenticated CSV lead import with preview, tenant scoping, duplicate checks, and recovery-safe writes.
+// SBC_V66164_OWNER_CSV_1000 — existing guarded owner CRM route, maximum 1000 rows
 app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{/* SBC_V66140_CORRUPT_CRM_TEXT_GATE */const SBC_CRM_TEXT=require('./enterprise/crm-text-integrity-v66140.cjs');
  const requestedDryRun=req.body?.dryRun;const dryRun=!(requestedDryRun===false||String(requestedDryRun).toLowerCase()==='false'||req.body?.mode==='import');const rows=Array.isArray(req.body?.rows)?req.body.rows:[];
- if(!rows.length||rows.length>500)return res.status(400).json({ok:false,error:'Provide between 1 and 500 lead rows.'});
+ if(!rows.length||rows.length>1000)return res.status(400).json({ok:false,error:'Provide between 1 and 1000 lead rows.'});
  const clean=(v,max=1000)=>String(v==null?'':v).trim().slice(0,max),normPhone=v=>clean(v,80).replace(/\D/g,''),normEmail=v=>clean(v,254).toLowerCase(),normName=v=>clean(v,255).toLowerCase().replace(/\s+/g,' ');
  const normalized=rows.map((r,i)=>({row:i+1,businessName:clean(r.business_name||r.businessName,255),contactName:clean(r.contact_name||r.contactName,255),phone:clean(r.phone,80),email:clean(r.email,254),website:clean(r.website,1000),websiteStatus:clean(r.website_status||r.websiteStatus,120),source:clean(r.lead_source||r.source,255)||'User-provided lead research',notes:clean(r.research_notes||r.notes,4000),industry:clean(r.business_category||r.industry,255)||'Barber Shop'}));
  const textGate=SBC_CRM_TEXT.inspectBatch(normalized);if(!textGate.ok)return res.status(400).json({ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',invalidRows:textGate.invalid,error:'Binary-looking or malformed lead text rejected. No rows imported.'});
@@ -10403,7 +10404,7 @@ app.get('/owner/lead-import',auth,ownerOnly,(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Referrer-Policy','no-referrer');
  res.setHeader('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
- res.type('html').send("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>SBC · Owner Lead Import</title></head><body><main><h1>SBC · Private Lead Import</h1><p id=\"sbc-import-page-status\">Preparing owner-only CSV review. No leads are imported automatically.</p><p><a href=\"/\">Return to Command Center</a></p><p>Verification, consent, and Do Not Call screening remain required before outreach.</p></main><script src=\"/sbc-lead-import-v6541.js?v=66.67-owner\"></script><script src=\"/sbc-v6667-private-owner-import.js?v=66.67-owner\"></script></body></html>");
+ res.type('html').send("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>SBC · Owner Lead Import</title></head><body><main><h1>SBC · Private Lead Import</h1><p id=\"sbc-import-page-status\">Preparing owner-only CSV review. No leads are imported automatically.</p><p><a href=\"/\">Return to Command Center</a></p><p>Verification, consent, and Do Not Call screening remain required before outreach.</p></main><script src=\"/sbc-lead-import-v6541.js?v=66.164-owner-csv-1000\"></script><script src=\"/sbc-v6667-private-owner-import.js?v=66.67-owner\"></script></body></html>");
 });
 
 // V54.0.9 — legacy Office Box route redirects to the live Office Box.
