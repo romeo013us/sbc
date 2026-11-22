@@ -29,6 +29,7 @@ test('work samples cannot be accessed by a foreign tenant, researcher, owner imp
  for(const options of [{tenant:2},{readonly:true},{role:'lead_researcher'}]){const h=harness(options),r=await h.request('POST','/window/start');assert.notEqual(r.status,200);assert.equal(h.counts.save,0);}
  const h=harness();assert.equal((await h.request('GET','/owner/roster')).status,403);
  h.setRole('owner');assert.equal((await h.request('POST','/lab/:moduleId',{params:{moduleId:'am-01'},body:{}})).status,403);
+ assert.equal((await harness({readonly:true}).request('GET','/window')).data.readOnly,true,'Preview advertises its read-only status to the learner');
  const list=await h.request('GET','/owner/roster');assert.equal(list.data.learners.length,1);assert.equal(list.data.learners[0].id,'am');
  assert.equal((await h.request('GET','/owner/readiness/:userId',{params:{userId:'foreign'}})).status,404);
 });

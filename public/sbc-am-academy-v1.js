@@ -41,7 +41,7 @@
   $('ownerLink').hidden=!owner();renderNav();
  }
  async function refreshBudget(){
-  try{state.budget=await call(PREFIX+'/window');renderBudget();controls();}
+  try{state.budget=await call(PREFIX+'/window');state.readOnly=Boolean(state.readOnly||state.budget.readOnly);renderBudget();controls();}
   catch(e){state.budget=null;controls();$('budgetMessage').textContent=e.message;throw e;}
  }
  function renderBudget(){
