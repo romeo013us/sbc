@@ -80,7 +80,11 @@ async function show(page,scene,lang){
  }else{
   await page.locator('[data-view="'+scene+'"]').click();
  }
- if(scene==='notes')await page.locator('#noteForm input[name="summary"]').fill('FICTIONAL training note: verify business information and request permission before follow-up.');
+ if(scene==='notes'){
+  const field=page.locator('#noteForm input[name="summary"]');
+  // A guarded Account 360 may legitimately keep this panel hidden. Do not fabricate an interaction.
+  if(await field.isVisible())await field.fill('FICTIONAL training note: verify business information and request permission before follow-up.');
+ }
  await page.locator(lang==='es'?'#lang-es':'#lang-en').click();
  const focus={accounts:'#accountGrid',account:'#accountDetail',notes:'#noteForm','website-value':'#view-website-value',sales:'#view-sales',social:'#view-social',handoffs:'#view-handoffs',controls:'#view-controls'}[scene];
  await page.locator(focus).scrollIntoViewIfNeeded().catch(()=>{});
