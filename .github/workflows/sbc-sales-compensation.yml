@@ -4,8 +4,13 @@ on:
     paths:
       - 'enterprise/sbc-sales-compensation-v1.cjs'
       - 'enterprise/sbc-sales-hiring-scorecard-v1.cjs'
-      - 'scripts/sbc-sales-hiring-scorecard-v1.test.cjs scripts/sbc-sales-approval-recheck.test.cjs scripts/sbc-sales-acceptance-war.test.cjs scripts/sbc-sales-readiness.test.cjs scripts/sbc-sales-readiness-ui.test.cjs'
+      - 'scripts/sbc-sales-hiring-scorecard-v1.test.cjs'
       - 'routes/sbc-sales-command-v1.cjs'
+      - 'public/v32-2-upgrade.js'
+      - 'browser_public/v32-2-upgrade.js'
+      - 'scripts/sbc-v66161-nav-and-public-discovery.test.cjs'
+      - 'scripts/sbc-v66162-ops-revenue-truth.test.cjs'
+      - 'package.json'
       - 'scripts/sbc-sales-compensation-v1.test.cjs'
       - 'scripts/sbc-sales-command-routes.test.cjs'
       - 'scripts/sbc-sales-approval-recheck.test.cjs'
@@ -19,6 +24,11 @@ on:
     paths:
       - 'enterprise/sbc-sales-compensation-v1.cjs'
       - 'routes/sbc-sales-command-v1.cjs'
+      - 'public/v32-2-upgrade.js'
+      - 'browser_public/v32-2-upgrade.js'
+      - 'scripts/sbc-v66161-nav-and-public-discovery.test.cjs'
+      - 'scripts/sbc-v66162-ops-revenue-truth.test.cjs'
+      - 'package.json'
       - 'scripts/sbc-sales-compensation-v1.test.cjs'
       - 'scripts/sbc-sales-command-routes.test.cjs'
       - 'scripts/sbc-sales-approval-recheck.test.cjs'
@@ -36,5 +46,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test scripts/sbc-sales-compensation-v1.test.cjs scripts/sbc-sales-command-routes.test.cjs scripts/sbc-sales-hiring-scorecard-v1.test.cjs
+      - run: npm run test:sales-command
       - run: node scripts/v66160-stage-sales-command.cjs

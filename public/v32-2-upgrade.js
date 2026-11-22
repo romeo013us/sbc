@@ -8,22 +8,32 @@
   const money2=v=>typeof money==='function'?money(v):`$${Number(v||0).toFixed(2)}`;
   const D=()=>window.state?.data||{};
   const today2=()=>new Date().toISOString().slice(0,10);
+  // Revenue-classification parity with v6640-payment-evidence (SBC-recorded provider
+  // metadata, NOT independent settlement). Status-only and QA orders never count.
+  function capturedSquare(o){
+    if(!o||o.sbcTest===true||o.testMode===true)return false;
+    let notes={};try{if(typeof o.notes==='string'&&o.notes.trim().startsWith('{'))notes=JSON.parse(o.notes)}catch(_){notes={};}
+    if(/sbc system test|full-cycle test|do not service/i.test(String(o.notes||'')+' '+String(o.product||'')+' '+String(o.customerName||'')))return false;
+    const parsed=o.parsed&&typeof o.parsed==='object'?o.parsed:{};
+    const metadata=o.metadata&&typeof o.metadata==='object'?o.metadata:{};
+    const field=k=>o[k]||parsed[k]||metadata[k]||notes[k]||'';
+    const state=String(field('squarePaymentStatus')).trim().toUpperCase();
+    const payment=String(o.paymentStatus||'').trim().toUpperCase();
+    if(['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED'].includes(state)||
+       ['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED'].includes(payment))return false;
+    const sqOrder=String(field('squareOrderId')).trim(),sqPayment=String(field('squarePaymentId')).trim();
+    const capturedAt=String(field('squarePaymentCompletedAt')).trim();
+    const capturedUsd=Number(o.price??o.total);
+    return Boolean(sqOrder&&sqPayment&&['PAID','COMPLETED'].includes(state)&&capturedAt&&Number.isFinite(Date.parse(capturedAt))&&
+      Number.isFinite(capturedUsd)&&capturedUsd>0&&capturedUsd<=1000000&&
+      Math.abs(Math.round(capturedUsd*100)-capturedUsd*100)<=0.001);
+  }
   function metrics(){
     const d=D(), customers=d.customers||[], quotes=d.quotes||[], orders=d.orders||[], tasks=d.tasks||[], renewals=d.renewals||[];
     // SBC_V6652_MANUAL_PAYMENT_PROOF: paid ≠ fulfilled or owner-entered receipt.
-    const paidOrders=orders.filter(o=>{
-      let p={};try{p=typeof o.notes==='string'&&o.notes.trim().startsWith('{')?JSON.parse(o.notes):{}}catch(_){}
-      if(o.parsed&&typeof o.parsed==='object')p={...p,...o.parsed};
-      const manual=o.manualPaymentEvidence===true||o.manualPaymentConfirmation===true||p.manualPaymentEvidence===true||p.manualPaymentConfirmation===true;
-      const sq=String(o.squarePaymentStatus||p.squarePaymentStatus||'').toUpperCase();
-      const id=String(o.squarePaymentId||p.squarePaymentId||'').trim();
-      if(manual&&!(id&&['PAID','COMPLETED'].includes(sq)))return false;
-      if(['REFUNDED','CHARGEBACK','VOID','VOIDED'].includes(String(o.paymentStatus||'').toUpperCase()))return false;
-      return ['PAID','COMPLETED'].includes(String(o.paymentStatus||'').toUpperCase())||['PAID','COMPLETED'].includes(sq);
-    });
-    const quoteWon=quotes.filter(q=>['Won','Paid'].includes(String(q.status||'')));
-    const revenue=paidOrders.reduce((s,o)=>s+Number(o.price||0),0); // Won quotes are pipeline, not collected revenue.
-    const cost=orders.reduce((s,o)=>s+Number(o.cost||0),0);
+    const paidOrders=orders.filter(capturedSquare);
+    const revenue=paidOrders.reduce((s,o)=>s+Number(o.price??o.total??0),0); // Won quotes are pipeline, not collected revenue.
+    const cost=paidOrders.reduce((s,o)=>{const n=Number(o.cost??0);return s+(Number.isFinite(n)&&n>=0?n:0);},0);
     const overdueTasks=tasks.filter(t=>t.status!=='Completed'&&t.dueAt&&new Date(t.dueAt)<new Date()).length;
     const waiting=tasks.filter(t=>t.status!=='Completed'&&/customer|client/i.test(`${t.title||''} ${t.notes||''}`)).length;
     const activeFulfillment=orders.filter(o=>['Paid','In Progress','Ready','Fulfillment','Ready for Fulfillment'].includes(String(o.status||''))||o.fulfillmentStatus==='Ready for Fulfillment').length;
@@ -34,7 +44,7 @@
   }
   function exceptions(){
     const d=D(), out=[];
-    (d.orders||[]).forEach(o=>{if((String(o.paymentStatus||'').toLowerCase()==='paid'||['Paid','Completed'].includes(o.status))&&!o.fulfillmentStatus)out.push({level:'high',title:'Paid order missing fulfillment status',detail:`${o.customerName||'Customer'} · ${o.product||'Order'} · ${money2(o.price)}`});});
+    (d.orders||[]).forEach(o=>{if(capturedSquare(o)&&!o.fulfillmentStatus)out.push({level:'high',title:'Paid order missing fulfillment status',detail:`${o.customerName||'Customer'} · ${o.product||'Order'} · ${money2(o.price)}`});});
     (d.squarePayments||[]).filter(p=>!p.sbcOrderId&&['COMPLETED','PAID','CAPTURED'].includes(String(p.status||'').toUpperCase())).slice(0,10).forEach(p=>out.push({level:'high',title:'Unmatched payment',detail:`${p.customerName||'Unlinked customer'} · ${money2(p.amount||p.amountMoney?.amount/100)} · ${p.reference||p.receiptNumber||p.squarePaymentId||'No reference'}`}));
     (d.tasks||[]).filter(t=>t.status!=='Completed'&&t.dueAt&&new Date(t.dueAt)<new Date()).slice(0,10).forEach(t=>out.push({level:'medium',title:'Overdue task',detail:t.title||'Untitled task'}));
     (d.customers||[]).filter(c=>c.status!=='Customer'&&c.status!=='Lost'&&c.followUp&&c.followUp<today2()).slice(0,10).forEach(c=>out.push({level:'medium',title:'Follow-up overdue',detail:c.businessName||c.contactName||c.id}));
@@ -51,7 +61,7 @@
     ];
     return `<div class="v322-shell">
       <div class="hero"><div><div class="eyebrow" style="color:#f7a842">V32.2 · FIRST-CUSTOMER OPERATIONS UPGRADE</div><h2>Run SBC from the money all the way to delivery.</h2><p>Payment → Order → Fulfillment → Approval → Handoff. Exceptions are surfaced instead of hidden.</p></div><div class="hero-actions"><button class="btn primary" onclick="openV322Reconcile()">💳 Verify Payment</button><button class="btn ghost" onclick="window.sbcAskKim?.('Review the SBC Operations 360 panel and identify the highest-priority exception.')">🤖 Ask Kim</button></div></div>
-      <div class="grid stats"><div class="stat"><div class="label">RECORDED REVENUE</div><div class="value">${money2(m.revenue)}</div><div class="sub">Paid orders + won/paid quotes</div></div><div class="stat"><div class="label">PAID ORDERS</div><div class="value">${m.paidOrders}</div><div class="sub">Recorded in SBC</div></div><div class="stat"><div class="label">ACTIVE FULFILLMENT</div><div class="value">${m.activeFulfillment}</div><div class="sub">Orders needing delivery work</div></div><div class="stat"><div class="label">NET RECORDED MARGIN</div><div class="value">${money2(m.margin)}</div><div class="sub">Known order cost only</div></div></div>
+      <div class="grid stats"><div class="stat"><div class="label">RECORDED REVENUE</div><div class="value">${money2(m.revenue)}</div><div class="sub">SBC-recorded Square capture metadata; verify provider settlement</div></div><div class="stat"><div class="label">PAID ORDERS</div><div class="value">${m.paidOrders}</div><div class="sub">Recorded in SBC</div></div><div class="stat"><div class="label">ACTIVE FULFILLMENT</div><div class="value">${m.activeFulfillment}</div><div class="sub">Orders needing delivery work</div></div><div class="stat"><div class="label">EST. CAPTURED ORDER CONTRIBUTION</div><div class="value">${money2(m.margin)}</div><div class="sub">Captured sales less entered direct costs, before overhead and payroll</div></div></div>
       <div class="grid three section"><div class="stat"><div class="label">🚨 EXCEPTIONS</div><div class="value">${ex.length}</div><div class="sub">${m.unmatched} unmatched payments</div></div><div class="stat"><div class="label">⏰ OVERDUE WORK</div><div class="value">${m.overdueTasks+m.stale}</div><div class="sub">Tasks + customer follow-ups</div></div><div class="stat"><div class="label">🔁 RENEWALS SOON</div><div class="value">${m.renew}</div><div class="sub">Next 30 days</div></div></div>
       <div class="grid two section"><div class="card"><div class="card-head"><h2>🚨 Operations Exception Center</h2><span class="badge ${ex.length?'orange':'green'}">${ex.length?'ACTION NEEDED':'HEALTHY'}</span></div><div class="card-body">${ex.map(x=>`<div class="list-card v322-exception"><div><strong>${x.level==='high'?'🔴':'🟠'} ${esc2(x.title)}</strong><div class="meta">${esc2(x.detail)}</div></div></div>`).join('')||'<div class="empty">No current exceptions detected.</div>'}</div></div>
       <div class="card"><div class="card-head"><h2>👤 Customer 360</h2><span class="badge blue">LIVE CRM</span></div><div class="card-body"><p class="mini">Open a customer with everything SBC currently knows: contact, orders, quotes, payments, tasks, communications and activity.</p><div class="form-grid"><label>Select customer<select id="v322CustomerSelect"><option value="">Choose a customer…</option>${(d.customers||[]).map(c=>`<option value="${esc2(c.id)}">${esc2(c.businessName||c.contactName||c.id)}</option>`).join('')}</select></label></div><div class="actions"><button class="btn primary" onclick="openV322Customer360()">Open Customer 360</button></div></div></div></div>
