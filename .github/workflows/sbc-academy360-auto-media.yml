@@ -1,0 +1,65 @@
+name: SBC Academy 360 - Automatic Video Audio Photos
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - scripts/academy360-auto-media.cjs
+      - scripts/academy360-auto-media.test.cjs
+      - .github/workflows/sbc-academy360-auto-media.yml
+      - enterprise/sbc-am-academy-v1.cjs
+      - enterprise/sbc-am-academy-es-v2.cjs
+      - public/sbc-account-manager-v1.html
+      - public/sbc-account-manager-v1.css
+      - public/sbc-account-manager-v1.js
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: academy360-generated-training-media
+  cancel-in-progress: false
+jobs:
+  produce:
+    if: github.ref == 'refs/heads/a-sbc-master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Check out approved SBC source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+      - name: Use Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install local browser video and narration tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.58.0
+          npx playwright install --with-deps chromium
+      - name: Test safety and exact bilingual course coverage
+        run: node --test scripts/academy360-auto-media.test.cjs
+      - name: Generate 12 English and 12 Spanish UI-based videos with narration and pictures
+        run: node scripts/academy360-auto-media.cjs --generate
+      - name: Prove videos, audio, screenshots and mirrored assets exist
+        run: node scripts/academy360-auto-media.cjs --verify
+      - name: Archive the actual generated learning media
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: SBC-ACADEMY-360-24-EN-ES-VIDEO-AUDIO-PHOTO-LESSONS
+          path: public/academy-media/academy360/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 1
+      - name: Automatically bundle reviewed synthetic-only media into the source branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/academy-media/academy360 browser_public/academy-media/academy360
+          if git diff --cached --quiet; then
+            echo "Automatic Academy media is already identical"
+          else
+            git commit -m "build(academy360): automated fictional-data English Spanish video audio and photos"
+            git push origin HEAD:a-sbc-master
+          fi
