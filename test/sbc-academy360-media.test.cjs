@@ -76,3 +76,18 @@ test('each lesson provides narration fallback without inventing missing screen r
  assert.equal(d.getElementById('playScene').textContent.includes('Narrate'),true);
  dom.window.close();
 });
+
+test('recorder exports actual workstation stills and optional microphone-only audio for a lesson',()=>{
+ const dom=new JSDOM(read('public/sbc-am-academy-recorder.html'),{url:'https://academy.test/sbc-am-academy-recorder.html',runScripts:'outside-only'});
+ dom.window.eval(read('public/sbc-am-academy-recorder-v1.js'));
+ const d=dom.window.document,r=dom.window.SBC_ACADEMY_RECORDER;
+ assert.equal(d.getElementById('captureStill').disabled,true);
+ assert.equal(d.getElementById('downloadAudio').disabled,true);
+ assert.equal(r.screenshotName(1),'am-01-en-01.webp');
+ assert.equal(r.screenshotName(4),'am-01-en-04.webp');
+ d.getElementById('lessonSelect').value='am-07';d.getElementById('languageSelect').value='es';
+ assert.equal(r.screenshotName(2),'am-07-es-02.webp');
+ assert.match(read('public/sbc-am-academy-recorder-v1.js'),/canvas\.toBlob/);
+ assert.match(read('public/sbc-am-academy-recorder-v1.js'),/new MediaRecorder\(microphone/);
+ dom.window.close();
+});
