@@ -4,7 +4,7 @@
  * Deliberately no live HR-manager role: role activation requires audited
  * deny-by-default session/RBAC, manager invite and finance separation.
  */
-const WORKERS=new Set(['caller','lead_researcher','fulfillment']);
+const WORKERS=new Set(['caller','account_manager','lead_researcher','fulfillment']);
 const MAX_PEOPLE=500;
 function tenant(id){
  const t=Number(id);
