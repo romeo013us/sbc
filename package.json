@@ -107,7 +107,7 @@
     "test:sbc-sales-p0p1": "node --test test/sbc-sales-p0p1.test.cjs test/sbc-appointment-workflow.test.cjs",
     "test:sales-command": "node --test scripts/sbc-sales-compensation-v1.test.cjs scripts/sbc-sales-command-routes.test.cjs scripts/sbc-sales-hr-integration.test.cjs scripts/sbc-sales-approval-recheck.test.cjs scripts/sbc-sales-acceptance-war.test.cjs scripts/sbc-sales-readiness.test.cjs scripts/sbc-sales-readiness-ui.test.cjs scripts/sbc-v66161-nav-and-public-discovery.test.cjs scripts/sbc-v66162-ops-revenue-truth.test.cjs",
     "stage:sales-command": "node scripts/v66160-stage-sales-command.cjs",
-    "test:trusted-leads": "node --test scripts/sbc-trusted-research-v1.test.cjs scripts/sbc-owner-trusted-leads-routes.test.cjs scripts/v66163-stage-owner-trusted-leads.test.cjs"
+    "test:trusted-leads": "node --test scripts/sbc-trusted-research-v1.test.cjs scripts/sbc-owner-trusted-leads-routes.test.cjs scripts/v66163-stage-owner-trusted-leads.test.cjs scripts/sbc-owner-trust-kim-outreach.test.cjs"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
