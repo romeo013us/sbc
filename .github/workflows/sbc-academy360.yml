@@ -2,7 +2,7 @@ name: SBC Academy 360 practical readiness
 on:
   push:
     branches: [a-sbc-master]
-    paths: ['enterprise/*academ*', 'enterprise/*training*', 'enterprise/sbc-am-*', 'routes/sbc-am-*', 'public/sbc-am-*', 'browser_public/sbc-am-*', 'test/sbc-academy*', 'scripts/v6616*', 'package*.json', '.github/workflows/sbc-academy360.yml']
+    paths: ['enterprise/*academ*', 'enterprise/*training*', 'enterprise/sbc-am-*', 'routes/sbc-am-*', 'public/sbc-am-*', 'browser_public/sbc-am-*', 'public/sales-caller.*', 'browser_public/sales-caller.*', 'public/sbc-account-manager-v1.html', 'browser_public/sbc-account-manager-v1.html', 'public/academy-media/academy360/AUTO_GENERATED_MANIFEST.json', 'browser_public/academy-media/academy360/AUTO_GENERATED_MANIFEST.json', 'test/sbc-academy*', 'scripts/v6616*', 'scripts/academy360-auto-media*.cjs', 'package*.json', '.github/workflows/sbc-academy360.yml']
   pull_request:
     branches: [a-sbc-master]
   workflow_dispatch:
