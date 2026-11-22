@@ -118,7 +118,7 @@ async function one(browser,url,story,temp,previous){
    await page.waitForTimeout(250);
    const png=p.join(dir,'frame-'+i+'.png'),webp=p.join(outputs[0],screenshotName(story.id,story.lang,i));
    frames.push(png);await page.screenshot({path:png,animations:'disabled'});
-   safeguard(webp,previous);await page.screenshot({path:webp,type:'webp',quality:75,animations:'disabled'});
+   safeguard(webp,previous);run('ffmpeg',['-y','-v','error','-i',png,'-c:v','libwebp','-q:v','75',webp]);
    const raw=p.join(dir,'voice-'+i+'.wav'),padded=p.join(dir,'voicep-'+i+'.wav');
    run('espeak-ng',['-v',story.lang==='es'?'es':'en-us','-s','142','-w',raw,story.phrases[i]]);
    const seconds=Math.max(14,Math.ceil(length(raw)+1));durations.push(seconds);
