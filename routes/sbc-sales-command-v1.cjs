@@ -257,6 +257,30 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
    return res.json({ok:true,month,managerId:m,...result,providerTransfers:0});
   }catch(e){return error(res,e)}
  });
+ // Revalidate every frozen sale before approving or recording a payout. A Square
+ // refund/chargeback can arrive AFTER closing; a stale snapshot must fail closed.
+ // Owner must reconcile these differences manually under the signed agreement.
+ async function validateClosedStatement(conn,ctx,t,m,month,locked){
+  const [credits]=await conn.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? AND manager_id=? ORDER BY captured_at ASC LIMIT 10001 FOR UPDATE',[t,m]);
+  if(credits.length>10000)throw Object.assign(Error('CREDIT_RECONCILIATION_LIMIT_REACHED'),{status:409});
+  for(const row of credits){
+   if(CALC.miamiMonth(creditRow(row).capturedAt)!==month)continue;
+   let payment;
+   try{payment=findOrder(ctx,t,String(row.order_id));}
+   catch(_){throw Object.assign(Error('CAPTURE_OR_ORDER_CHANGED_RECONCILIATION_REQUIRED'),{status:409});}
+   const {order,proof,grossCents}=payment;
+   if(grossCents!==Number(row.gross_cents)||HASH(proof.id)!==String(row.square_payment_hash)||
+      String(order.customerId)!==String(row.customer_id)||CALC.miamiMonth(proof.completedAt)!==month)
+    throw Object.assign(Error('CAPTURE_OR_ORDER_CHANGED_RECONCILIATION_REQUIRED'),{status:409});
+  }
+  const computed=createReport(t,m,month,credits,{tier:String(locked.tier)},null);
+  for(const [field,snapshot] of [
+   ['quotaCents',locked.quota_cents],['revenueCents',locked.revenue_cents],
+   ['profitCents',locked.profit_cents],['commissionCents',locked.commission_cents]]){
+   if(computed[field]!==Number(snapshot))
+    throw Object.assign(Error('CLOSED_STATEMENT_RECONCILIATION_REQUIRED'),{status:409});
+  }
+ }
  async function transition(req,res,nextStatus){
   try{
    const {ctx,t,actor}=gate(req,'owner',true),m=CALC.id(req.params.managerId),
@@ -272,6 +296,7 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
     const old=rows[0],expected=approval?'DRAFT':'APPROVED';
     if(old.status!==expected)throw Error('INVALID_COMMISSION_TRANSITION');
     if(Number(old.commission_cents)<=0)throw Error('NO_COMMISSION_DUE');
+    await validateClosedStatement(conn,ctx,t,m,month,old);
     if(approval){
      await conn.query("UPDATE sbc_commission_statement_v1 SET status='APPROVED',approved_by=?,approved_at=UTC_TIMESTAMP(3) WHERE tenant_id=? AND manager_id=? AND month_key=? AND status='DRAFT'",
       [actor,t,m,month]);
