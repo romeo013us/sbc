@@ -1,0 +1,35 @@
+name: SBC Workstations — remove Research Intelligence launcher
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/lead-research.html'
+      - 'public/sales-caller.html'
+      - 'public/sbc-account-manager-v1.html'
+      - 'browser_public/lead-research.html'
+      - 'browser_public/sales-caller.html'
+      - 'browser_public/sbc-account-manager-v1.html'
+      - 'test/sbc-prospect-workforce-v2.test.cjs'
+      - '.github/workflows/sbc-workstation-button-cleanup.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  workforce-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify no launcher, mirrored HTML and retained offline handoff contracts
+        run: |
+          node --test test/sbc-prospect-workforce-v2.test.cjs
+          for page in lead-research.html sales-caller.html sbc-account-manager-v1.html; do
+            cmp "public/$page" "browser_public/$page"
+            if grep -Ei 'sbc-prospect-handoff-v2\.(js|css)' "public/$page"; then
+              echo "Research Intelligence launcher still loaded in $page" >&2
+              exit 1
+            fi
+          done
