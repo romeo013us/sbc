@@ -56,7 +56,6 @@ jobs:
         run: node --test scripts/academy360-auto-media.test.cjs
       - name: Generate 12 English and 12 Spanish UI-based videos with neural narration and pictures
         env:
-          PATH: /tmp/sbc-academy-piper/bin:${{ env.PATH }}
           SBC_ACADEMY_NEURAL_VOICE: required
           SBC_ACADEMY_PIPER_EN: /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx
           SBC_ACADEMY_PIPER_ES: /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx

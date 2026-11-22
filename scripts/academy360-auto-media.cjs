@@ -127,7 +127,7 @@ async function one(browser,url,story,temp,previous){
    if(process.env.SBC_ACADEMY_NEURAL_VOICE==='required'){
     const model=story.lang==='es'?process.env.SBC_ACADEMY_PIPER_ES:process.env.SBC_ACADEMY_PIPER_EN;
     if(!model||!fs.existsSync(model))throw Error('ACADEMY_PINNED_NEURAL_VOICE_NOT_AVAILABLE_'+story.lang);
-    run('piper',['--model',model,'--output_file',raw],story.phrases[i]+'\\n');
+    run('piper',['--model',model,'--output_file',raw],story.phrases[i]+'\n');
    }else{
     // Explicit local-only legacy fallback, never used by the required GitHub production media job.
     run('espeak-ng',['-v',story.lang==='es'?'es':'en-us','-s','142','-w',raw,story.phrases[i]]);
