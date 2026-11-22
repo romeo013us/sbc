@@ -47,7 +47,7 @@ function register(app,{auth,getDb,tenantForRead,writer,isReadOnly,save}={}){
   try{res.setHeader('Cache-Control','no-store');return res.json({ok:true,...await run});}catch(e){return error(res,e)}
  });}
  const budget=(ctx,id=ctx.user.id)=>BUDGET.asOf(ctx.s,ctx.db,id);
- get('/window',ctx=>({...budget(ctx),payrollAuthority:'SBC official employee time clock',wagesNotCapped:true}));
+ get('/window',ctx=>({...budget(ctx),readOnly:isReadOnly(),payrollAuthority:'SBC official employee time clock',wagesNotCapped:true}));
  post('/window/start',ctx=>{if(ctx.user.role!=='account_manager')fail('ACADEMY_ACCOUNT_MANAGER_ONLY',403);const r=BUDGET.start(ctx.s,ctx.db,ctx.user.id);if(r.created)TRAINING.recordEvent(ctx.s,{type:'am_training_shift_started',userId:ctx.user.id,courseId:ACADEMY.COURSE_ID,actorId:ctx.user.id});return {...budget(ctx),created:r.created};});
  get('/owner/readiness/:userId',(ctx,req)=>{owner(ctx);const u=target(ctx,req.params.userId);return {userId:String(u.id),readiness:GATES.readiness(ctx.s,ctx.db,u.id),budget:budget(ctx,u.id)};});
  get('/owner/roster',(ctx,req)=>{

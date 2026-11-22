@@ -1,6 +1,6 @@
 {
   "release": "66.166",
-  "sourceCommit": "94dfe7b0447c01f1b0858e59c1b69147bd2ae018",
+  "sourceCommit": "f2a2765b70f3e22a4a4b1e18d283468ede9b0a34",
   "baseline": "SBC-Academy-360-V66.165-GoDaddy-STAGING.zip",
   "node": "22.23.5",
   "focusedChecks": {
