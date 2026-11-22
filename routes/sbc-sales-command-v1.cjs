@@ -5,6 +5,7 @@
  */
 const crypto=require('node:crypto');
 const CALC=require('../enterprise/sbc-sales-compensation-v1.cjs');
+const HIRING=require('../enterprise/sbc-sales-hiring-scorecard-v1.cjs');
 const MONEY=require('../enterprise/v6640-payment-evidence.cjs');
 const TRUTH=require('../enterprise/sbc-revenue-reporting-truth-v66142.cjs');
 const NEGATIVE=new Set(['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED']);
@@ -97,6 +98,17 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   const [locked]=await ctx.mysqlPool.query('SELECT * FROM sbc_commission_statement_v1 WHERE tenant_id=? AND manager_id=? AND month_key=? LIMIT 1',[t,m,month]);
   return createReport(t,m,month,credits,terms[0],locked[0]);
  }
+ // Stateless advisory endpoints: no applicant storage, no worker mutation or provider calls.
+ app.post('/api/owner/sales-command/hiring/evaluate',auth,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{gate(req);return res.json({ok:true,readOnly:true,result:HIRING.evaluate(req.body?.scores,req.body?.evidence)});}
+  catch(e){return error(res,e)}
+ });
+ app.post('/api/owner/sales-command/hiring/forecast',auth,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{gate(req);return res.json({ok:true,readOnly:true,result:HIRING.forecast(req.body||{})});}
+  catch(e){return error(res,e)}
+ });
  // Owner sees the team dashboard; sales are credited from the approved ledger, never client input.
  app.get('/api/owner/sales-command/overview',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
