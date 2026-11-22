@@ -56,9 +56,9 @@ test('manager can see only own progress, not owner dashboard or company profit',
 test('eligible order list excludes refunded, charged-back, and invalid-value captured orders',async()=>{
  const env=setup();
  env.db.orders=[
-  {id:'valid',tenantId:1,customerId:'c1',price:199,paymentStatus:'PAID',paymentProvider:'square',squarePaymentId:'sq-valid',squarePaymentStatus:'COMPLETED',squareCompletedAt:'2026-11-20T18:00:00Z'},
-  {id:'refund',tenantId:1,customerId:'c1',price:199,paymentStatus:'REFUNDED',paymentProvider:'square',squarePaymentId:'sq-refund',squarePaymentStatus:'COMPLETED',squareCompletedAt:'2026-11-20T18:00:00Z'},
-  {id:'bad-price',tenantId:1,customerId:'c1',price:-99,paymentStatus:'PAID',paymentProvider:'square',squarePaymentId:'sq-negative',squarePaymentStatus:'COMPLETED',squareCompletedAt:'2026-11-20T18:00:00Z'}
+  {id:'valid',tenantId:1,customerId:'c1',price:199,paymentStatus:'PAID',paymentProvider:'square',squarePaymentId:'sq-valid',squarePaymentStatus:'COMPLETED',squareOrderId:'order-proof',squarePaymentCompletedAt:'2026-11-20T18:00:00Z'},
+  {id:'refund',tenantId:1,customerId:'c1',price:199,paymentStatus:'REFUNDED',paymentProvider:'square',squarePaymentId:'sq-refund',squarePaymentStatus:'COMPLETED',squareOrderId:'order-proof',squarePaymentCompletedAt:'2026-11-20T18:00:00Z'},
+  {id:'bad-price',tenantId:1,customerId:'c1',price:-99,paymentStatus:'PAID',paymentProvider:'square',squarePaymentId:'sq-negative',squarePaymentStatus:'COMPLETED',squareOrderId:'order-proof',squarePaymentCompletedAt:'2026-11-20T18:00:00Z'}
  ];
  const r=await env.call('GET','/api/owner/sales-command/eligible-orders',{id:'owner',role:'owner',tenantId:1});
  assert.equal(r.code,200);
