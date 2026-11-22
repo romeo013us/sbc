@@ -53,3 +53,17 @@ The rubric totals 100: verified B2B closing history 20; English live role-play 1
 The ROI model assumes equal sales distribution between active managers, a supplied gross margin, 52/12 weeks per month, and the agreed quota-gated commission rates. It is **not** an actual profit-and-loss statement and does not include unentered costs. Never use it as the sole basis for terminating or promoting anyone.
 
 Tests: `scripts/sbc-sales-hiring-scorecard-v1.test.cjs` plus protected-route tests in `scripts/sbc-sales-command-routes.test.cjs`. Phase 2 is not yet deployed to the live GoDaddy app.
+
+## Phase 3 — Staging acceptance and late-payment integrity
+
+The owner-only `GET /api/owner/sales-command/readiness` route checks all four required commission tables with parameterized, tenant-scoped read queries, and verifies the MySQL recovery hold. It never runs migrations or invokes providers. It reports `ready=false` and specific missing table names if staging is not provisioned. The owner Sales Command dashboard must pass this preflight before it enables commission mutations.
+
+**Do not apply `migrations/20261122_001_sbc_sales_command.sql` to Published automatically.** Back up the writable *staging* database and confirm rollback procedures first. A successful GitHub candidate ZIP validates source and packaging, not migration on the hosted database.
+
+The credit → signed terms → monthly quota → month close → owner approval → external payment attestation workflow has a stateful transactional test harness in `scripts/sbc-sales-acceptance-war.test.cjs`. It uses test doubles for MySQL and stored Square capture evidence. This is not a live Square sandbox or GoDaddy staging network test.
+
+**Late refunds and chargebacks are now safety-critical:** on both APPROVE and PAID recording, the API rechecks every credited order against currently stored Square capture evidence and compares locked revenue, direct-cost profit and commission totals. A changed payment or stale statement returns a 409 reconciliation hold without authorizing a payout. Owner must resolve discrepancies against actual provider records and signed agreements. Do not automatically recalculate, revoke, or withhold earned wages without reviewing applicable law and the contract.
+
+Acceptance tests: `scripts/sbc-sales-approval-recheck.test.cjs`, `scripts/sbc-sales-acceptance-war.test.cjs`, `scripts/sbc-sales-readiness.test.cjs`, and `scripts/sbc-sales-readiness-ui.test.cjs`. All are included in `npm run test:sales-command` and the V66 signed staging workflow.
+
+**Before production activation:** signed staging ZIP + successful GitHub checks, migration readiness, owner/manager role login, real staging MySQL persistence and restart, sandbox payment capture/refund/chargeback, duplicate-webhook test, owner-approval control test, external-payment bookkeeping, backup restore, and final owner go/no-go.
