@@ -2900,6 +2900,12 @@ if(e?.code==='SESSION_STORE_UNAVAILABLE'){
   if(u.role==='owner'&&!ADMIN_PASSWORD)return res.status(503).json({error:'Add SBC_ADMIN_PASSWORD in GoDaddy Secrets.'});
   if(u.role==='manager'||u.role==='sales_manager')return res.status(403).json({error:'This legacy management role is no longer an active SBC workforce position. Sign in again after the account role is corrected.'});if(u.role==='caller'&&(u.active===false||!SBC_V66101_CALLER_POLICY.allowed(req.method,req.path))){res.setHeader('Cache-Control','no-store');return res.status(403).json({ok:false,error:'CALLER_WORKSPACE_ONLY',message:'Sales callers only have access to their assigned workstation services.'});}
   // SBC_ACCOUNT_MANAGER_ROLE_V2: an account manager gets only the assigned Account/Social workspace.
+  // Before certification an Account Manager may access Academy and clocking only.
+  if(u.role==='account_manager'&&!SBC_AM_ACADEMY_GATES.isTrainingSafeRoute(req.method,req.path)&&
+     !SBC_AM_ACADEMY_GATES.hasClearance(db.settings?.trainingCenterV2,db,u.id)){
+     res.setHeader('Cache-Control','no-store');
+     return res.status(403).json({ok:false,error:'ACCOUNT_MANAGER_ACADEMY_CERTIFICATION_REQUIRED'});
+  }
   if(u.role==='account_manager'&&!SBC_ACCOUNT_MANAGER_ROLE_GATE.allowAccountManager(u,req.method,req.path)) {
     res.setHeader('Cache-Control','no-store');
     return res.status(403).json({ok:false,error:'ACCOUNT_MANAGER_WORKSPACE_ONLY'});
@@ -6798,6 +6804,18 @@ app.get('/api/v9/bootstrap',auth,async(req,res)=>{
 
 const trainingAdmin=role=>['owner','manager'].includes(String(role||''));
 const trainingOwner=role=>String(role||'')==='owner';
+// SBC_V66165_AM_ACADEMY_360 · Dedicated AM curriculum, score integrity, training budget and owner approval
+const SBC_AM_ACADEMY_360=require('./enterprise/sbc-am-academy-v1.cjs');
+const SBC_AM_ACADEMY_GATES=require('./enterprise/sbc-am-academy-gates-v1.cjs');
+const SBC_AM_TRAINING_BUDGET=require('./enterprise/sbc-am-training-budget-v1.cjs');
+require('./routes/sbc-am-academy-v1.cjs').register(app,{
+ auth,
+ getDb:()=>db,
+ tenantForRead:req=>requireRequestTenant(req),
+ isReadOnly:()=>SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,
+ writer:()=>SBC_V6649_REQUIRE_WRITER(),
+ save:()=>saveData()
+});
 app.get('/api/training',auth,async(req,res)=>{
   // Recovery-safe catalog reads use a detached snapshot. Catalog repair and assignment
   // generation must not mutate the live in-memory DB or call saveData while MySQL is locked.
@@ -6832,6 +6850,16 @@ app.post('/api/training/progress',auth,async(req,res)=>{
   if(!TRAINING_SYSTEM.userCanSeeCourse(req.user,c))return res.status(403).json({error:'This training is not available to your role.'});
   const allowed=TRAINING_SYSTEM.PROGRESS_STATUSES||['not_started','in_progress','completed','passed','failed','retraining_required'];
   const status=allowed.includes(String(b.status))?String(b.status):'in_progress';
+  if(c.id===SBC_AM_ACADEMY_360.COURSE_ID){
+    if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED)return res.status(423).json({ok:false,error:'ACADEMY_RECOVERY_READ_ONLY'});
+    try{SBC_V6649_REQUIRE_WRITER()}catch(e){return res.status(423).json({ok:false,error:'ACADEMY_WRITER_LEASE_REQUIRED'})}
+    if(req.user.role!=='account_manager'||!SBC_AM_ACADEMY_GATES.canEnter(s,uid,m.id))return res.status(423).json({ok:false,error:'ACADEMY_STAGE_LOCKED'});
+    if(['completed','passed'].includes(status)){
+      if(status==='passed')return res.status(403).json({ok:false,error:'ACADEMY_OWNER_REVIEW_REQUIRED'});
+      if(!SBC_AM_ACADEMY_GATES.objectivePassed(s,uid,m.id)||!SBC_AM_ACADEMY_GATES.practiced(s,uid,m.id)||String(b.evidence||'').trim().length<80)return res.status(422).json({ok:false,error:'ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED'});
+      try{SBC_AM_TRAINING_BUDGET.permit(s,db,uid)}catch(e){return res.status(e.status||423).json({ok:false,error:String(e.message)})}
+    }
+  }
   const prior=TRAINING_SYSTEM.progressFor(s,uid,c.id,m.id)||{};
   const p=TRAINING_SYSTEM.upsertProgress(s,{userId:uid,courseId:c.id,moduleId:m.id,status,score:b.score==null?(prior.score??null):Math.max(0,Math.min(100,Number(b.score))),studySeconds:Math.max(Number(prior.studySeconds||0),Number(b.studySeconds||0)),startedAt:prior.startedAt||now(),completedAt:['completed','passed'].includes(status)?(prior.completedAt||now()):prior.completedAt||null,evidence:String(b.evidence||prior.evidence||'').slice(0,5000),notes:String(b.notes||prior.notes||'').slice(0,3000)});
   TRAINING_SYSTEM.recordEvent(s,{type:'progress',userId:uid,courseId:c.id,moduleId:m.id,status,actorId:req.user.id}); await TRAINING_SYSTEM.saveState(db,s,()=>saveData()); audit(req.user,'training_progress_v2',`Training ${status}: ${c.title} / ${m.title}`,{userId:uid,courseId:c.id,moduleId:m.id});
@@ -6841,6 +6869,7 @@ app.post('/api/training/attempts',auth,async(req,res)=>{
   const b=req.body||{},s=TRAINING_SYSTEM.ensureState(db),uid=req.user.id,c=TRAINING_SYSTEM.findCourse(s,b.courseId),m=TRAINING_SYSTEM.findModule(s,b.courseId,b.moduleId);
   if(!c||!m)return res.status(404).json({error:'Training course or module not found.'});
   if(!TRAINING_SYSTEM.userCanSeeCourse(req.user,c))return res.status(403).json({error:'This training is not available to your role.'});
+  if(c.id===SBC_AM_ACADEMY_360.COURSE_ID)return res.status(403).json({ok:false,error:'ACADEMY_SERVER_GRADED_ASSESSMENT_ONLY'});
   const attempt=new TRAINING_SYSTEM.TrainingSessionController(db,()=>{}).submitAttempt(uid,c.id,m.id,{type:b.type,answers:b.answers,response:b.response,score:b.score,passed:b.passed});
   // submitAttempt writes the state; persist through the normal application save path as well.
   await TRAINING_SYSTEM.saveState(db,s,()=>saveData()); audit(req.user,'training_attempt_submitted_v2',`Submitted assessment: ${m.title}`,{attemptId:attempt.id,userId:uid}); res.json({ok:true,attempt});
@@ -6851,10 +6880,23 @@ app.post('/api/training/assign',auth,async(req,res)=>{
 });
 app.post('/api/training/review/:attemptId',auth,async(req,res)=>{
   if(!trainingAdmin(req.user.role))return res.status(403).json({error:'Owner or manager access required.'});
+  const academyAttempt=(TRAINING_SYSTEM.ensureState(db).attempts||[]).find(x=>String(x.id)===String(req.params.attemptId));
+  if(academyAttempt?.courseId===SBC_AM_ACADEMY_360.COURSE_ID){
+   if(req.user.role!=='owner')return res.status(403).json({ok:false,error:'ACADEMY_OWNER_REVIEW_ONLY'});
+   if(academyAttempt.type==='sbc_am_objective')return res.status(403).json({ok:false,error:'ACADEMY_OBJECTIVE_GRADES_IMMUTABLE'});
+  }
   try{const r=TRAINING_SYSTEM.reviewAttempt(db,()=>saveData(),req.user,String(req.params.attemptId),req.body?.score,req.body?.passed,req.body?.notes); audit(req.user,'training_assessment_review_v2','Reviewed training assessment',{attemptId:req.params.attemptId,score:r.attempt.score,passed:r.attempt.passed}); res.json({ok:true,...r});}catch(e){res.status(400).json({error:e.message})}
 });
 app.post('/api/training/certification/:userId',auth,async(req,res)=>{
   if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner approval required.'});
+  const certUser=(db.users||[]).find(x=>String(x.id)===String(req.params.userId));
+  if(certUser?.role==='account_manager'&&req.body?.status==='Certified'){
+   if(req.body?.courseId!==SBC_AM_ACADEMY_360.COURSE_ID)return res.status(422).json({ok:false,error:'ACADEMY_CURRENT_COURSE_REQUIRED'});
+   const decision=SBC_AM_ACADEMY_GATES.readiness(TRAINING_SYSTEM.ensureState(db),db,certUser.id);
+   if(!decision.ready)return res.status(409).json({ok:false,error:'ACADEMY_READINESS_INCOMPLETE',...decision});
+   if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED)return res.status(423).json({ok:false,error:'ACADEMY_RECOVERY_READ_ONLY'});
+   try{SBC_V6649_REQUIRE_WRITER()}catch(e){return res.status(423).json({ok:false,error:'ACADEMY_WRITER_LEASE_REQUIRED'})}
+  }
   try{const c=TRAINING_SYSTEM.certify(db,()=>saveData(),req.user,String(req.params.userId),req.body||{}); audit(req.user,'training_certification_v2',`Training certification ${c.status}`,{userId:c.userId,certificationId:c.id}); res.json({ok:true,certification:c});}catch(e){res.status(400).json({error:e.message})}
 });
 app.post('/api/training/courses',auth,async(req,res)=>{
