@@ -1,13 +1,14 @@
 {
   "schema": 1,
   "version": "66.0.0",
-  "sourceCommit": "e8dea626471e005f2851f4bfb15cc7dd4b0f69b6",
-  "sourceFingerprint": "6621303faee109245d064ff9961a12cb4d3a12857e400c2ef9b4c77c83433e65",
-  "serverSha256": "4f8fe39beee82811d51f97bc6d6cd2733ae7265c14c78f0c9af15748ea80dec0",
+  "sourceCommit": "94dfe7b0447c01f1b0858e59c1b69147bd2ae018",
+  "sourceFingerprint": "1de86981ab237389ea51ea65c9c861bbf4ff3762904594e97ca372632d8a04d8",
+  "serverSha256": "e6e8987889d46480e7fb0b15cf3e0481796221896b8f1f99771b12d0a1791fbd",
   "runtimePatch": "v66.0.24-static-assets-routed",
   "runtimePatchFrom": "a-sbc-master",
-  "stagedInventorySha256": "4c6ea35ab3770b2461d5003e9d0127fbf898cc2604f6bf33553109238b17f9b7",
+  "stagedInventorySha256": "709ba7f2fd73c2aea74845fe7756909328d2e92d011dd6358bff3ebfe0c3579a",
   "candidateOnly": true,
-  "baselineSourceCommit": "3852e20c6a7748c87cff98a9c52e8b3b5d468907",
-  "productionCertified": false
+  "baselineSourceCommit": "f5d95fbef4ce2669e0f2e7bd06e9827e652dd604",
+  "productionCertified": false,
+  "academyRelease": "66.166"
 }
