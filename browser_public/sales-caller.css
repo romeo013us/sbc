@@ -215,3 +215,12 @@ html[data-sbc-theme="light"] #desk .sbc-account-next-touch input,html[data-sbc-t
 /* Clarify caller-to-Account-Manager transition without changing permissions. */
 #desk .sbc-workstation-legacy-note{margin:10px 0 15px;padding:12px 16px;border:1px solid #476985;border-left:4px solid #f2b866;border-radius:10px;background:#142d44;color:#e7f3ff;font-size:13px;line-height:1.55}
 #desk .sbc-workstation-legacy-note strong{color:#ffd9a0}
+
+/* Academy 360 entry reconciliation: legacy caller role is never represented as AM certification. */
+.academy-legacy-notice{border:1px solid #e4b465;border-left:5px solid #e4b465;border-radius:12px;padding:16px 18px;margin:0 0 19px;background:rgba(231,181,85,.1);color:inherit}
+.academy-legacy-notice strong{display:block;font-size:1.05rem}
+.academy-legacy-notice p{margin:.6rem 0}
+.academy-legacy-notice a{display:inline-block;font-weight:700;text-decoration:underline;text-underline-offset:.2rem}
+.academy-legacy-notice a:focus-visible{outline:3px solid #f4ca75;outline-offset:4px}
+.academy-legacy-notice small{display:inline-block;font-size:.82rem;line-height:1.5}
+@media(max-width:540px){.academy-legacy-notice{padding:13px;margin-bottom:14px}.academy-legacy-notice a{display:block;margin-bottom:.5rem}}

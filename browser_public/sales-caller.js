@@ -41,7 +41,7 @@ async function load(){
  data=result;
  const shiftSelector=$('sales-shift-length');if(shiftSelector){try{shiftSelector.value=localStorage.getItem('sbc-sales-shift-minutes-v1:'+result.user.id)==='360'?'360':'240';}catch(_){shiftSelector.value='240';}}
  if(window.SBCWorkforceTheme)window.SBCWorkforceTheme.attach(result.role,result.user.id);
- $('employee-name').textContent=(result.user?.name||'Employee')+' · '+(result.role==='caller'?'Account Manager':result.role.replace('_',' '));
+ $('employee-name').textContent=(result.user?.name||'Employee')+' · '+(result.role==='caller'?'Legacy Sales Caller':result.role.replace('_',' '));
  $('preview-banner').hidden=!preview;
  $('m-leads').textContent=result.metrics.assigned;
  $('m-callable').textContent=result.role==='caller'?result.metrics.callable:'—';
@@ -642,6 +642,7 @@ function bind(){
  try{
   const auth=await api('/api/me');me=auth.user;
   preview=me?.role==='owner'&&Boolean(previewUserId);
+  if(me?.role==='account_manager'&&!preview){location.replace('/sbc-am-academy.html');return;}
   if(!preview&&me?.role!=='caller')throw Error('This desk requires a Sales Caller account or owner preview link.');
   bind();await load();
   const locale=window.SBCSalesLocale;
