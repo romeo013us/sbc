@@ -26,8 +26,9 @@ function evaluate(scores={},evidence={}){
  closingSimulationPassed:'CLOSING_SIMULATION_REQUIRED'
  })[k]);
  const passedScore=total>=85;
+ const demonstratedSkills=scores.spanishRoleplay>=15&&scores.englishRoleplay>=10&&scores.objectionClosing>=15;
  return {score:total,maxScore:100,criteria,passedScore,missing,
-  decision:missing.length?'HOLD_FOR_VERIFICATION':passedScore?'SHORTLIST':'DO_NOT_ADVANCE',
+  decision:missing.length?'HOLD_FOR_VERIFICATION':passedScore&&demonstratedSkills?'SHORTLIST':'DO_NOT_ADVANCE',
   ownerInterviewRequired:true,automaticHiring:false,
   notice:'Job-related performance criteria only; human review required. No protected traits considered.'};
 }
