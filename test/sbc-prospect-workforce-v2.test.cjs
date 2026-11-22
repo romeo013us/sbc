@@ -116,3 +116,22 @@ test('Research Intelligence launcher absent from all employee workstations, pack
  assert.match(file('public/sbc-prospect-intelligence.js'),/Export owner-reviewed research handoff/);
  assert.match(file('public/sbc-prospect-intelligence.js'),/SBCProspectHandoffV2/);
 });
+
+
+test('owner research packet module does not auto-mount a workstation launcher',()=>{
+ const vm=require('node:vm');
+ const script=file('public/sbc-prospect-handoff-v2.js');
+ for(const pathname of ['/lead-research.html','/sales-caller.html','/sbc-account-manager-v1.html']){
+  let fetches=0,buttons=0;
+  const document={readyState:'complete',visibilityState:'visible',
+   addEventListener(){},body:{appendChild(){buttons++}},
+   createElement(){buttons++;return {addEventListener(){},setAttribute(){}};}};
+  const window={document,location:{pathname},fetch(){fetches++;return Promise.resolve({
+   ok:true,json:async()=>({authenticated:true,user:{id:'owner-1',role:'owner',tenantId:1}})
+  });}};
+  vm.runInNewContext(script,{window,TextDecoder,Buffer,URL,Date,Set}, {timeout:1000});
+  assert.equal(fetches,0,'research packet parser must not make an authentication request just to add a button on '+pathname);
+  assert.equal(buttons,0,'research packet parser must not mount a floating launcher on '+pathname);
+  assert.equal(typeof window.SBCProspectHandoffV2?.createPacket,'function','owner research packet API remains available');
+ }
+});
