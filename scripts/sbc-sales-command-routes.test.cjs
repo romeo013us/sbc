@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const ROUTE=require('../routes/sbc-sales-command-v1.cjs');
 const STAGE=require('./v66160-stage-sales-command.cjs');
 const ROLE=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
-function setup(recovery=false){
+function setup(recovery=false,locked=null){
  const handlers=new Map(),calls=[];
  const db={users:[{id:'m1',tenantId:1,role:'account_manager',name:'Manager One',active:true},
                   {id:'m2',tenantId:2,role:'account_manager',name:'Foreign Worker',active:true}]};
@@ -11,7 +11,7 @@ function setup(recovery=false){
   calls.push({sql,args});
   if(sql.startsWith('SELECT * FROM sbc_sales_credit_v1'))return [[]];
   if(sql.startsWith('SELECT tier FROM sbc_commission_terms_v1'))return [[{tier:'standard'}]];
-  if(sql.startsWith('SELECT * FROM sbc_commission_statement_v1'))return [[]];
+  if(sql.startsWith('SELECT * FROM sbc_commission_statement_v1'))return [locked?[locked]:[]];
   if(sql.startsWith('SELECT order_id FROM sbc_sales_credit_v1'))return [[]];
   throw Error('Unexpected read query: '+sql);
  },async getConnection(){throw Error('Should never reach mutation in guard tests')}};
@@ -52,6 +52,14 @@ test('manager can see only own progress, not owner dashboard or company profit',
  assert.equal(blocked.code,403);
  const cross=await env.call('GET','/api/sbc/sales/compensation/me',{...m,tenantId:2});
  assert.equal(cross.code,403);
+});
+test('manager locked statement protects company profit fields',async()=>{
+ const env=setup(false,{status:'APPROVED',revenue_cents:280000,profit_cents:9999999,commission_cents:16800,external_payment_reference:'private',closed_at:'2026-11-30'});
+ const result=await env.call('GET','/api/sbc/sales/compensation/me',{id:'m1',role:'account_manager',tenantId:1,active:true},{},{month:'2026-11'});
+ assert.equal(result.code,200);assert.equal(result.json.lockedStatement.commissionCents,16800);
+ assert.equal(result.json.lockedStatement.profitCents,undefined);
+ assert(!JSON.stringify(result.json).includes('9999999'));
+ assert(!JSON.stringify(result.json).includes('private'));
 });
 test('write operations fail closed when preview is read-only or owner authorization absent',async()=>{
  const env=setup(true);
