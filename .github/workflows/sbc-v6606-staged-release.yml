@@ -156,6 +156,10 @@ jobs:
           node scripts/v66147-owner-activation-ui.test.cjs
           node scripts/v66148-crm-softdelete-accounting.test.cjs
           node scripts/v66148-crm-softdelete-ui.test.cjs
+          npm run test:sales-command
+          node --check routes/sbc-sales-command-v1.cjs
+          node --check public/sbc-sales-command-v1.js
+          node --check public/sbc-manager-sales-progress-v1.js
           node scripts/v66149-hr-workstation.test.cjs
           node scripts/v66149-hr-policy.test.cjs
           node scripts/v66150-hr-delegation.test.cjs
@@ -325,6 +329,8 @@ jobs:
           SBC_V66157_ISOLATED_STAGE=YES node scripts/v66157-stage-hr-ledger-retention.cjs --apply
           node scripts/v66157-hr-ledger-retention.test.cjs --staged
           node scripts/v66157-stage-hr-ledger-retention.cjs --verify-staged
+          SBC_V66160_ISOLATED_STAGE=YES node scripts/v66160-stage-sales-command.cjs --apply
+          node scripts/v66160-stage-sales-command.cjs --verify-staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
