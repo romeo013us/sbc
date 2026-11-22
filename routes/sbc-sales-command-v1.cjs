@@ -109,6 +109,29 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{gate(req);return res.json({ok:true,readOnly:true,result:HIRING.forecast(req.body||{})});}
   catch(e){return error(res,e)}
  });
+ // Read-only preflight: table visibility and MySQL recovery, never auto-migrate.
+ app.get('/api/owner/sales-command/readiness',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t}=gate(req);
+   const tables=['sbc_sales_credit_v1','sbc_commission_terms_v1',
+     'sbc_commission_statement_v1','sbc_commission_audit_v1'];
+   const missingTables=[];
+   for(const table of tables){
+    try{await ctx.mysqlPool.query('SELECT 1 FROM '+table+' WHERE tenant_id=? LIMIT 0',[t]);}
+    catch(e){
+     if(e?.code==='ER_NO_SUCH_TABLE')missingTables.push(table);
+     else return fail(res,503,'SALES_SCHEMA_READ_UNAVAILABLE');
+    }
+   }
+   const schemaReady=missingTables.length===0;
+   const writeReady=typeof ctx.recoveryRequired==='function'&&ctx.recoveryRequired()===false;
+   return res.json({ok:true,ready:schemaReady&&writeReady,schemaReady,writeReady,
+    missingTables,migrationExecuted:false,providerCalls:0,readOnly:true,
+    nextAction:!schemaReady?'REVIEW_AND_APPLY_STAGING_MIGRATION':
+      !writeReady?'RESOLVE_MYSQL_RECOVERY_HOLD':'RUN_STAGING_SANDBOX_ACCEPTANCE'});
+  }catch(e){return error(res,e)}
+ });
  // Owner sees the team dashboard; sales are credited from the approved ledger, never client input.
  app.get('/api/owner/sales-command/overview',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
