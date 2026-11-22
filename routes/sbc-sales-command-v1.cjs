@@ -214,9 +214,13 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
    const {ctx,t}=gate(req),[ledger]=await ctx.mysqlPool.query('SELECT order_id FROM sbc_sales_credit_v1 WHERE tenant_id=? LIMIT 10001',[t]);
    if(ledger.length>10000)throw Error('SALES_LEDGER_QUERY_TRUNCATED');
    const credited=new Set(ledger.map(x=>String(x.order_id)));
-   const candidates=(Array.isArray(ctx.db?.orders)?ctx.db.orders:[]).filter(o=>
-     Number(o?.tenantId??o?.tenant_id)===t&&MONEY.providerCapturedSquare(o)&&
-     !TRUTH.isQaOrder(o)&&!credited.has(String(o.id))).slice(0,80).map(o=>({
+   const candidates=(Array.isArray(ctx.db?.orders)?ctx.db.orders:[]).filter(o=>{
+     if(Number(o?.tenantId??o?.tenant_id)!==t||!MONEY.providerCapturedSquare(o)||
+        TRUTH.isQaOrder(o)||credited.has(String(o.id)))return false;
+     const amount=Number(o.price??o.total);
+     return Number.isFinite(amount)&&amount>0&&amount<=1000000&&
+       Math.abs(Math.round(amount*100)-amount*100)<=0.001;
+    }).slice(0,80).map(o=>({
       orderId:String(o.id),customerId:String(o.customerId||''),grossCents:Math.round(Number(o.price??o.total)*100),
       capturedAt:MONEY.proofFields(o).completedAt,requiresOwnerCostVerification:true
      })).filter(x=>Number.isSafeInteger(x.grossCents)&&x.grossCents>0);
