@@ -1,0 +1,66 @@
+name: SBC Academy 360 - Integrate Generated Training Videos
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - .github/workflows/sbc-academy360-integrate-completed-media.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  integrate:
+    if: github.ref == 'refs/heads/a-sbc-master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout current SBC source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Use Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Fetch completed and verified training media artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --silent --show-error --location --retry 3 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/romeo013us/sbc/actions/artifacts/14776987842/zip \
+            --output /tmp/sbc-academy-media.zip
+          mkdir -p /tmp/sbc-academy-extracted
+          unzip -q /tmp/sbc-academy-media.zip -d /tmp/sbc-academy-extracted
+          root="$(dirname "$(find /tmp/sbc-academy-extracted -name AUTO_GENERATED_MANIFEST.json -type f -print -quit)")"
+          test -f "$root/am-01-en.mp4"
+          mkdir -p public/academy-media/academy360 browser_public/academy-media/academy360
+          cp -a "$root/." public/academy-media/academy360/
+          cp -a "$root/." browser_public/academy-media/academy360/
+      - name: Verify exact media inventory and source transparency
+        run: |
+          node --test scripts/academy360-auto-media.test.cjs
+          node scripts/academy360-auto-media.cjs --verify
+          du -sh public/academy-media/academy360/
+      - name: Integrate the media into a-sbc-master without overwriting other releases
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/academy-media/academy360 browser_public/academy-media/academy360
+          if git diff --cached --quiet; then
+            echo "No media changes required"
+            exit 0
+          fi
+          git commit -m "build(academy360): integrate 24 EN ES auto-generated video audio photo lessons"
+          for attempt in 1 2 3; do
+            git fetch origin a-sbc-master
+            git rebase origin/a-sbc-master
+            if git push origin HEAD:a-sbc-master; then
+              echo "Media integrated into a-sbc-master"
+              exit 0
+            fi
+          done
+          echo "Branch update remained unavailable; files are retained in the verified run artifact" >&2
+          exit 1
