@@ -25,7 +25,7 @@ const RE={
   new RegExp('^/api/sbc/journey/accounts/'+VALID_ID+'$'),
   new RegExp('^/api/training/courses/'+VALID_ID+'$'),
   /^\/api\/sbc\/academy-am\/v1\/window$/,
-  /^\/api\/sbc\/academy-am\/v1\/quiz\/am-[0-9]{2}$/,
+  /^\/api\/sbc\/academy-am\/v1\/(?:quiz|lab)\/am-[0-9]{2}$/,
   new RegExp('^/api/prospect-intelligence/v4/accounts/'+VALID_ID+'/research$'),
   new RegExp('^/api/prospect-intelligence/v5/accounts/'+VALID_ID+'/plan$'),
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/history$'),
@@ -37,7 +37,7 @@ const RE={
  ],
  POST:[
   /^\/api\/sbc\/academy-am\/v1\/window\/start$/,
-  /^\/api\/sbc\/academy-am\/v1\/(?:quiz|roleplay)\/am-[0-9]{2}$/,
+  /^\/api\/sbc\/academy-am\/v1\/(?:quiz|roleplay|lab)\/am-[0-9]{2}$/,
   new RegExp('^/api/sbc/journey/accounts/'+VALID_ID+'/(?:review|consent|invite)$'),
   new RegExp('^/api/sbc/journey/orders/'+VALID_ID+'/progress$'),
   new RegExp('^/api/account-social/v1/accounts/'+VALID_ID+'/interactions$'),

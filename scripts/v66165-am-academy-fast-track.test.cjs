@@ -106,6 +106,7 @@ test('stage gate cannot be defeated by a perfect late-stage quiz',()=>{
   T.upsertProgress(s,{userId:'am1',courseId:A.COURSE_ID,moduleId:id,status:'completed'});
   s.attempts.push({userId:'am1',courseId:A.COURSE_ID,moduleId:id,type:'sbc_am_objective',score:100,passed:true});
   s.attempts.push({userId:'am1',courseId:A.COURSE_ID,moduleId:id,type:'sbc_am_roleplay_for_owner_review',response:'This is a fictional training practice explanation meeting the eighty character threshold, not actual customer contact.'});
+  s.attempts.push({userId:'am1',courseId:A.COURSE_ID,moduleId:id,type:'sbc_am_work_sample',passed:true,score:100,workSample:{version:'2026.11.22.2',critical:[]}});
  }
  assert(G.canEnter(s,'am1','am-04'));
  assert(!G.canEnter(s,'am1','am-07'));
@@ -167,7 +168,8 @@ test('recovery hold, cross-tenant, and researcher attempts fail closed with no t
 });
 test('isolated staging injects owner-certification and legacy bypass gates without mutating master server',()=>{
  const baseline=read('server.js'),patched=STAGE.patchServer(baseline);
- assert.notEqual(patched,baseline);
+ if(baseline.includes('// '+STAGE.MARK))assert.equal(patched,baseline,'already compiled release remains unchanged');
+ else assert.notEqual(patched,baseline);
  assert.equal(STAGE.patchServer(patched),patched,'idempotent staging');
  assert.match(patched,/ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED/);
  assert.match(patched,/ACADEMY_SERVER_GRADED_ASSESSMENT_ONLY/);
@@ -185,7 +187,7 @@ test('visual training studio has a real SVG/CSS visual story, browser narration,
   assert(html.includes('TRAINING')||html.includes('training'));
   assert(html.includes('No customer calls'));
   assert(js.includes('SpeechSynthesisUtterance')&&js.includes("es-ES"));
-  assert(js.includes('/api/v9/time/clock')&&js.includes('/api/sbc/academy-am/v1/window'));
+  assert(js.includes('/api/v9/time/clock')&&js.includes('/api/sbc/academy-am/v1')&&js.includes('/window'));
   assert(css.includes('screen-body')&&css.includes('prefers-reduced-motion'));
   new vm.Script(js,{filename:prefix+'sbc-am-academy-v1.js'});
  }

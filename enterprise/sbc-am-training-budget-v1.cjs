@@ -30,7 +30,7 @@ function start(state,db,userId,at=new Date().toISOString()){
 function asOf(state,db,userId,now=Date.now()){
  const w=state?.amTrainingWindows?.find(x=>String(x.userId)===String(userId));
  if(!w)return {status:'NOT_STARTED',active:false,trainingMinutes:0,shiftsUsed:0,minutesRemaining:POLICY.baseMinutes,
-  shiftsRemaining:POLICY.baseShifts,clockedIn:Boolean(activeEntry(db,userId)),ownerReviewRequired:false,policy:POLICY};
+  shiftsRemaining:POLICY.baseShifts,approvedMinutes:POLICY.baseMinutes,approvedShifts:POLICY.baseShifts,extensionMinutes:0,extensionShifts:0,clockedIn:Boolean(activeEntry(db,userId)),ownerReviewRequired:false,policy:POLICY};
  const origin=Date.parse(w.startedAt),timestamp=now instanceof Date?now.getTime():Number(now);
  if(!Number.isFinite(origin)||!Number.isFinite(timestamp))throw Error('ACADEMY_TRAINING_CLOCK_INVALID');
  const relevant=entries(db,userId).filter(e=>Date.parse(e.clockIn)>=origin-1000);
@@ -49,11 +49,12 @@ function asOf(state,db,userId,now=Date.now()){
  const minutes=Math.ceil(totalMilliseconds/60000);
  const cap=POLICY.baseMinutes+Math.max(0,Number(w.extensionMinutes)||0);
  const maxShifts=POLICY.baseShifts+Math.max(0,Number(w.extensionShifts)||0);
- const budgetReached=minutes>=cap||closedShifts>=maxShifts;
+ const budgetReached=totalMilliseconds>=cap*60000||closedShifts>=maxShifts;
  const live=Boolean(relevant.find(e=>!e.clockOut));
  return {status:budgetReached?'OWNER_REVIEW_REQUIRED':'IN_PROGRESS',active:!budgetReached&&live,
   trainingMinutes:minutes,shiftsUsed:shifts,closedShifts,
   minutesRemaining:Math.max(0,cap-minutes),shiftsRemaining:Math.max(0,maxShifts-closedShifts),
+  approvedMinutes:cap,approvedShifts:maxShifts,extensionMinutes:Number(w.extensionMinutes)||0,extensionShifts:Number(w.extensionShifts)||0,
   clockedIn:live,ownerReviewRequired:budgetReached,
   ownerOverride:w.ownerOverride?{approvedAt:w.ownerOverride.approvedAt,reason:w.ownerOverride.reason}:null,
   policy:POLICY,startedAt:w.startedAt};

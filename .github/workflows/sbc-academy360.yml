@@ -1,0 +1,28 @@
+name: SBC Academy 360 practical readiness
+on:
+  push:
+    branches: [a-sbc-master]
+    paths: ['enterprise/*academ*', 'enterprise/*training*', 'enterprise/sbc-am-*', 'routes/sbc-am-*', 'public/sbc-am-*', 'browser_public/sbc-am-*', 'test/sbc-academy*', 'scripts/v6616*', 'package*.json', '.github/workflows/sbc-academy360.yml']
+  pull_request:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  academy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:academy360
+      - run: npm run test:academy360:ui
+      - run: node --test test/sbc-account-manager-readiness-v6.test.cjs scripts/account-manager-role-gate.test.cjs scripts/v66107-elite-academy.test.cjs scripts/lorna-training-daily-missions.test.cjs
+      - run: node --check server.js
+      - run: node scripts/v66166-stage-academy-practice.cjs --verify-staged
+      - run: node scripts/v66166-training-write-serialization.cjs --verify-staged
+      - run: node scripts/v66-static-mirror-gate.cjs

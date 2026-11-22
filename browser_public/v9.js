@@ -160,7 +160,7 @@ function renderTrainingV2(r){
   const total=assigned.reduce((n,x)=>n+(x.course?.modules||[]).length,0),pct=total?Math.round(done/total*100):0;
   const courses=[...assigned.map(x=>({course:x.course,summary:x.summary,assigned:true})),...available.map(c=>({course:c,summary:null,assigned:false}))];
   return shell('SBC Training Center','SBC Academy · Learn → Practice → Complete → Review',`
-    ${['owner','account_manager'].includes(state.me?.role)?'<div class="notice"><a class="btn primary" href="/sbc-am-academy.html">🎓 Open Account Manager Academy 360 · 8-hour fast track</a> · Owner-reviewed skills certification</div>':''}
+    ${['owner','account_manager'].includes(state.me?.role)?'<div class="notice"><a class="btn primary" href="/sbc-am-academy.html">🎓 Open Account Manager Academy 360 · 8-hour fast track</a>'+(state.me?.role==='owner'?' <a class="btn" href="/sbc-am-academy-owner.html">Owner review desk</a>':'')+' · Owner-reviewed skills certification</div>':''}
 
     <div class="academy-head">
       <div><div class="academy-eyebrow">SBC ACADEMY</div><h2>Training Center</h2><p>Formal training workspace for learning, practice, assessment and completion.</p></div>

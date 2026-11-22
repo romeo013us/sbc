@@ -6816,6 +6816,15 @@ require('./routes/sbc-am-academy-v1.cjs').register(app,{
  writer:()=>SBC_V6649_REQUIRE_WRITER(),
  save:()=>saveData()
 });
+// SBC_V66166_TRAINING_SERIALIZATION · Legacy and Academy training operations share one state lock.
+app.use('/api/training',(req,res,next)=>{
+ TRAINING_SYSTEM.withWriteLock(db,()=>new Promise((resolve,reject)=>{
+  if(res.destroyed||res.writableEnded)return resolve();
+  const done=()=>{res.removeListener('finish',done);res.removeListener('close',done);resolve()};
+  res.once('finish',done);res.once('close',done);
+  try{next()}catch(e){res.removeListener('finish',done);res.removeListener('close',done);reject(e)}
+ })).catch(e=>{if(!res.headersSent)res.status(e.status||500).json({ok:false,error:'TRAINING_WRITE_NOT_CONFIRMED'})});
+});
 app.get('/api/training',auth,async(req,res)=>{
   // Recovery-safe catalog reads use a detached snapshot. Catalog repair and assignment
   // generation must not mutate the live in-memory DB or call saveData while MySQL is locked.
@@ -6856,7 +6865,7 @@ app.post('/api/training/progress',auth,async(req,res)=>{
     if(req.user.role!=='account_manager'||!SBC_AM_ACADEMY_GATES.canEnter(s,uid,m.id))return res.status(423).json({ok:false,error:'ACADEMY_STAGE_LOCKED'});
     if(['completed','passed'].includes(status)){
       if(status==='passed')return res.status(403).json({ok:false,error:'ACADEMY_OWNER_REVIEW_REQUIRED'});
-      if(!SBC_AM_ACADEMY_GATES.objectivePassed(s,uid,m.id)||!SBC_AM_ACADEMY_GATES.practiced(s,uid,m.id)||String(b.evidence||'').trim().length<80)return res.status(422).json({ok:false,error:'ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED'});
+      if(!SBC_AM_ACADEMY_GATES.objectivePassed(s,uid,m.id)||!SBC_AM_ACADEMY_GATES.practiced(s,uid,m.id)||!SBC_AM_ACADEMY_GATES.labPassed(s,uid,m.id)||String(b.evidence||'').trim().length<80)return res.status(422).json({ok:false,error:'ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED'});
       try{SBC_AM_TRAINING_BUDGET.permit(s,db,uid)}catch(e){return res.status(e.status||423).json({ok:false,error:String(e.message)})}
     }
   }
@@ -6881,6 +6890,8 @@ app.post('/api/training/assign',auth,async(req,res)=>{
 app.post('/api/training/review/:attemptId',auth,async(req,res)=>{
   if(!trainingAdmin(req.user.role))return res.status(403).json({error:'Owner or manager access required.'});
   const academyAttempt=(TRAINING_SYSTEM.ensureState(db).attempts||[]).find(x=>String(x.id)===String(req.params.attemptId));
+  // SBC_V66166_ACADEMY_PRACTICE · Dedicated owner rubric and certification APIs are authoritative.
+  if(academyAttempt?.courseId===SBC_AM_ACADEMY_360.COURSE_ID)return res.status(403).json({ok:false,error:'ACADEMY_DEDICATED_OWNER_REVIEW_REQUIRED'});
   if(academyAttempt?.courseId===SBC_AM_ACADEMY_360.COURSE_ID){
    if(req.user.role!=='owner')return res.status(403).json({ok:false,error:'ACADEMY_OWNER_REVIEW_ONLY'});
    if(academyAttempt.type==='sbc_am_objective')return res.status(403).json({ok:false,error:'ACADEMY_OBJECTIVE_GRADES_IMMUTABLE'});
@@ -6890,6 +6901,7 @@ app.post('/api/training/review/:attemptId',auth,async(req,res)=>{
 app.post('/api/training/certification/:userId',auth,async(req,res)=>{
   if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner approval required.'});
   const certUser=(db.users||[]).find(x=>String(x.id)===String(req.params.userId));
+  if(certUser?.role==='account_manager')return res.status(403).json({ok:false,error:'ACADEMY_DEDICATED_CERTIFICATION_REQUIRED'});
   if(certUser?.role==='account_manager'&&req.body?.status==='Certified'){
    if(req.body?.courseId!==SBC_AM_ACADEMY_360.COURSE_ID)return res.status(422).json({ok:false,error:'ACADEMY_CURRENT_COURSE_REQUIRED'});
    const decision=SBC_AM_ACADEMY_GATES.readiness(TRAINING_SYSTEM.ensureState(db),db,certUser.id);

@@ -1,289 +1,115 @@
 'use strict';
 (()=>{
- const COURSE='sbc-account-manager-mastery-20261122';
+ const COURSE='sbc-account-manager-mastery-20261122',PREFIX='/api/sbc/academy-am/v1';
  const STAGES=[
-  {title:'Prospect intelligence',subtitle:'Understand SBC and the account',ids:['am-01','am-02','am-03']},
-  {title:'Website-first discovery',subtitle:'Research trust and qualification',ids:['am-04','am-05']},
-  {title:'Live concept presentation',subtitle:'Show the work truthfully',ids:['am-07']},
-  {title:'Consultative proposal',subtitle:'Quote the correct scope',ids:['am-06','am-08']},
-  {title:'Square & paid order evidence',subtitle:'Never infer captured payment',ids:['am-10']},
-  {title:'Owner approval & governance',subtitle:'Know your decision boundary',ids:['am-09']},
-  {title:'Durable delivery handoff',subtitle:'Never lose the next step',ids:['am-11']},
-  {title:'Retention & certification',subtitle:'Prove complete account stewardship',ids:['am-12']}
+  [['Prospect intelligence','Inteligencia del prospecto'],['am-01','am-02','am-03']],
+  [['Website-first discovery','Descubrimiento de necesidades'],['am-04','am-05']],
+  [['Honest website demonstration','Demostración web honesta'],['am-07']],
+  [['Consultative proposal','Propuesta consultiva'],['am-06','am-08']],
+  [['Square & payment evidence','Square y evidencia de cobro'],['am-10']],
+  [['Follow-up & owner controls','Seguimiento y controles'],['am-09']],
+  [['Delivery & account care','Entrega y cuidado de cuenta'],['am-11']],
+  [['Bilingual capstone','Simulación final bilingüe'],['am-12']]
  ];
  const $=id=>document.getElementById(id);
- const state={course:null,summary:null,attempts:[],certs:[],moduleId:STAGES[0].ids[0],scene:0,lang:'en',speaking:false,paused:false,voice:null,busy:false,questions:null,score:null,readOnly:true,budget:null};
+ const state={lang:'en',course:null,summary:null,attempts:[],certs:[],user:null,moduleId:'am-01',scene:0,questions:[],lab:null,nodes:null,path:[],node:'start',budget:null,readOnly:true,busy:false,tab:'Lesson',voice:null,speaking:false,paused:false};
  const t=(en,es)=>state.lang==='es'?es:en;
- function notice(message,error=false){$('notice').textContent=message;$('notice').classList.toggle('error',error);}
+ const ES={skip:'Ir al estudio',journey:'SU RECORRIDO DE CERTIFICACIÓN',practiceOnly:'● PRÁCTICA FICTICIA',isolated:'Desarrolle habilidades en casos aislados. Las cuentas reales y los pagos quedan fuera de esta aula.',workspace:'← Gestión de cuentas',ownerDesk:'Revisión del dueño →',loading:'Conectando su registro…',fastTrack:'INCORPORACIÓN PARA PERSONAL EXPERIMENTADO',headline:'Gane la confianza. Cuide la relación.',intro:'El proceso de SBC, desde la primera conversación hasta la próxima renovación. Observe. Practique. Demuestre.',eightStages:'8 etapas',twelveLabs:'12 laboratorios',ownerObserved:'Simulación observada por el dueño',progress:'avance',timeBudget:'SU PRESUPUESTO DE CAPACITACIÓN',budgetTitle:'2 turnos · 8 horas de trabajo pagadas',clockIn:'Registrar entrada e iniciar',clockOut:'Registrar salida',refresh:'Actualizar',nextMove:'SU SIGUIENTE PASO',continue:'Continuar →',lessonTab:'01 · Aprenda',labTab:'02 · Practique',knowledgeTab:'03 · Demuestre',visualStudio:'ESTUDIO VISUAL DE APRENDIZAJE',illustration:'PROCESO ILUSTRADO',fictional:'FICTICIO',proof:'EVIDENCIA',sourceFirst:'Primero la fuente',authority:'AUTORIDAD',ownerControlled:'Control del dueño',play:'▶ Narrar',pause:'Pausar',nextScene:'Siguiente →',speed:'Velocidad',voiceNote:'Narración del navegador. Es una ilustración, no una grabación del sistema real.',fieldNotes:'NOTAS DEL ENTRENADOR',mustKnow:'Lo que debe saber',critical:'LÍMITE CRÍTICO',tryPractice:'Practicar →',workSample:'SU MUESTRA DE TRABAJO',objectionArena:'Conversación con decisiones',resetPractice:'Reiniciar conversación',submitLab:'Evaluar mi trabajo',humanSkill:'HABILIDAD HUMANA · EVIDENCIA',practiceConversation:'Practique la conversación',ownResponse:'Su respuesta original · solo información ficticia',capstoneNote:'En la simulación final, coordine una llamada y una demostración observadas en inglés y español. Este texto es una nota; no demuestra fluidez oral.',submitPractice:'Presentar evidencia',noShortcuts:'SIN ATAJOS',sampleRule:'Mínimo 90%. Un error crítico causa una falla. El dueño revisa por separado la nota y la simulación observada.',knowledgeGate:'EVALUACIÓN EN EL SERVIDOR',proveUnderstanding:'Demuestre lo que entiende',quizRule:'Mínimo 90% por lección. Esta evaluación de tres preguntas requiere las tres correctas. Revise los comentarios y repita si hace falta.',submitQuiz:'Evaluar conocimientos',nextLesson:'Siguiente lección →',sbcStandard:'EL ESTÁNDAR SBC',certEarned:'La certificación se gana.',certRequirements:'Conocimientos, decisiones prácticas, observación bilingüe y aprobación de Jonathan. Completar lecciones no otorga acceso a clientes.',footer:'Successful By Choice LLC · Because Why Not? · Capacitación privada · Sin llamadas reales ni intentos de pago'};
+ const original=new Map([...document.querySelectorAll('[data-i18n]')].map(e=>[e,e.innerHTML]));
+ function translate(){document.documentElement.lang=state.lang;for(const [e,en] of original){if(state.lang==='es')e.textContent=ES[e.dataset.i18n]||e.textContent;else e.innerHTML=en;}for(const l of ['en','es'])$('lang'+(l==='en'?'En':'Es')).setAttribute('aria-pressed',String(state.lang===l));}
+ function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad);}
  async function call(path,{method='GET',body}={}){
-  const response=await fetch(path,{method,cache:'no-store',credentials:'same-origin',redirect:'manual',
-   headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},
-   ...(body?{body:JSON.stringify(body)}:{})});
-  if(response.redirected||response.type==='opaqueredirect')throw Error('Your SBC sign-in expired. Sign in again to continue training.');
-  const data=await response.json().catch(()=>null);
-  if(!response.ok||!data||data.ok===false)throw Error(String(data?.error||data?.message||'Academy unavailable')+' (HTTP '+response.status+')');
-  return data;
+  const r=await fetch(path,{method,credentials:'same-origin',cache:'no-store',redirect:'manual',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
+  const d=await r.json().catch(()=>null);if(!r.ok||!d||d.ok===false)throw Error(d?.error||d?.message||t('Academy unavailable. Sign in again if your session expired.','Academia no disponible. Inicie sesión si ha caducado.')+' ('+r.status+')');return d;
  }
- const module=()=>state.course?.modules?.find(m=>m.id===state.moduleId);
- const progress=()=>state.summary?.modules?.find(m=>m.id===state.moduleId);
- const completed=id=>['completed','passed'].includes(String(state.summary?.modules?.find(m=>m.id===id)?.status||''));
- const stageIndex=id=>STAGES.findIndex(s=>s.ids.includes(id));
- const unlocked=stage=>STAGES.slice(0,stage).every(s=>s.ids.every(completed));
- const quizPassed=id=>state.attempts.some(a=>a.courseId===COURSE&&a.moduleId===id&&a.type==='sbc_am_objective'&&a.passed===true&&Number(a.score)>=90);
- const practiced=id=>state.attempts.some(a=>a.courseId===COURSE&&a.moduleId===id&&a.type==='sbc_am_roleplay_for_owner_review');
- const loadData=async()=>{
-  const data=await call('/api/training/courses/'+encodeURIComponent(COURSE));
-  state.course=data.course;state.summary=data.summary;state.readOnly=Boolean(data.readOnly||data.recoveryRequired);
-  const user=await call('/api/training');
-  state.attempts=Array.isArray(user.attempts)?user.attempts:[];
-  state.certs=Array.isArray(user.certifications)?user.certifications:[];
-  $('session').textContent=(user.user?.name||'SBC employee')+' · '+(user.user?.role||'Training');
- };
+ const mod=()=>state.course?.modules.find(m=>m.id===state.moduleId);
+ const localized=m=>state.lang==='es'?{...m,...m.translations.es}:m;
+ const owner=()=>state.user?.role==='owner';
+ const latest=(id,type)=>state.attempts.filter(a=>a.courseId===COURSE&&a.moduleId===id&&a.type===type).at(-1);
+ const knowledge=id=>latest(id,'sbc_am_objective')?.passed===true;
+ const practiced=id=>{const a=latest(id,'sbc_am_roleplay_for_owner_review');return Boolean(a&&a.passed!==false);};
+ const sampled=id=>latest(id,'sbc_am_work_sample')?.passed===true;
+ const complete=id=>['completed','passed'].includes(state.summary?.modules.find(m=>m.id===id)?.status)&&knowledge(id)&&practiced(id)&&sampled(id);
+ const stage=id=>STAGES.findIndex(s=>s[1].includes(id));
+ const unlocked=i=>owner()||STAGES.slice(0,i).every(s=>s[1].every(complete));
+ const writable=()=>!owner()&&!state.readOnly&&!state.busy&&state.budget?.active===true;
+ function controls(){$('quizSubmit').disabled=!writable()||!state.questions.length;$('labSubmit').disabled=!writable()||!state.lab;$('submitPractice').disabled=!writable();$('clockInAcademy').disabled=state.busy||state.readOnly||owner()||Boolean(state.budget?.clockedIn)||Boolean(state.budget?.ownerReviewRequired);$('clockOutAcademy').disabled=state.busy||state.readOnly||owner()||!state.budget?.clockedIn;}
+ async function loadData(){
+  const [data,record]=await Promise.all([call('/api/training/courses/'+COURSE),call('/api/training')]);
+  state.course=data.course;state.summary=data.summary;state.user=record.user;state.attempts=record.attempts||[];state.certs=record.certifications||[];state.readOnly=Boolean(data.readOnly||record.readOnly||data.recoveryRequired);
+  $('session').textContent=(state.user?.name||'SBC')+' · '+(owner()?t('Owner preview','Vista del dueño'):t('Account Manager','Gerente de cuentas'));
+  $('ownerLink').hidden=!owner();renderNav();
+ }
  async function refreshBudget(){
-  try{
-   const b=await call('/api/sbc/academy-am/v1/window');state.budget=b;
-   const used=Number(b.trainingMinutes)||0;
-   $('budgetUsed').textContent=used+' / '+(b.policy?.baseMinutes+(b.ownerOverride?Number(b.policy?.maxExtensionMinutes||0):0))+' tracked training minutes';
-   $('budgetShifts').textContent=String(b.closedShifts??0)+' closed / '+(b.policy?.baseShifts||2)+' planned shifts';
-   $('budgetState').textContent=b.ownerReviewRequired?'Owner review required':b.status==='NOT_STARTED'?'Not started':b.clockedIn?'Training clock running':'Ready for next shift';
-   const locked=b.ownerReviewRequired||!b.clockedIn||b.status==='NOT_STARTED';
-   $('budgetMessage').textContent=b.ownerReviewRequired?
-    'Training budget reached. No additional assigned lessons are permitted until the owner decides whether to certify, reassign, or explicitly approve an extension. Worked time remains payable.' :
-    'Target: complete the Academy within two scheduled training shifts (eight time-clock hours). '+Math.max(0,Number(b.minutesRemaining??480))+' minutes remain in this training budget. Passing and owner certification are separate.';
-   document.querySelector('.budget').classList.toggle('review',Boolean(b.ownerReviewRequired));
-   $('clockInAcademy').disabled=b.ownerReviewRequired||b.clockedIn;
-   $('clockOutAcademy').disabled=!b.clockedIn;
-   $('quizSubmit').disabled=state.readOnly||state.busy||locked||!state.questions?.length;
-   $('submitPractice').disabled=state.readOnly||state.busy||locked;
-   return b;
-  }catch(e){state.budget=null;$('budgetMessage').textContent='Training-clock status unavailable: '+e.message;
-   $('quizSubmit').disabled=true;$('submitPractice').disabled=true;
-   throw e;
-  }
+  try{state.budget=await call(PREFIX+'/window');renderBudget();controls();}
+  catch(e){state.budget=null;controls();$('budgetMessage').textContent=e.message;throw e;}
  }
- function activeCert(){return state.certs.slice().reverse().find(c=>c.courseId===COURSE&&c.status==='Certified')||null;}
+ function renderBudget(){
+  const b=state.budget;if(!b)return;
+  $('budgetUsed').textContent=b.trainingMinutes+' / '+b.approvedMinutes+t(' training minutes',' minutos de capacitación');
+  $('budgetShifts').textContent=(b.closedShifts||0)+' / '+b.approvedShifts+t(' shifts completed',' turnos completados');
+  $('budgetState').textContent=b.ownerReviewRequired?t('Owner review required','Revisión del dueño requerida'):b.clockedIn?t('Official clock running','Reloj oficial activo'):t('Clock stopped','Reloj detenido');
+  $('budgetMessage').textContent=owner()?t('Owner preview. Review trainee time and certification from the owner desk.','Vista del dueño. Revise el tiempo y la certificación de cada empleado en su panel.'):b.ownerReviewRequired?t('Training budget reached. Additional assigned training needs the owner’s decision. Worked time remains payable.','Presupuesto agotado. El dueño debe decidir antes de asignar más capacitación. El trabajo realizado sigue siendo pagadero.'):t('400 minutes of core lessons + 80 minutes for review and flexibility. ','400 minutos de contenido + 80 para revisión y flexibilidad. ')+b.minutesRemaining+t(' minutes remain. Only the official training clock counts.',' minutos restantes. Solo cuenta el reloj oficial.');
+  document.querySelector('.budget').classList.toggle('review',Boolean(b.ownerReviewRequired));
+ }
+ function title(m){return state.lang==='es'?m.translations.es.title:m.title;}
  function renderNav(){
-  const nav=$('stageNav');nav.replaceChildren();
-  let done=0;const total=STAGES.reduce((s,v)=>s+v.ids.length,0);
-  for(let i=0;i<STAGES.length;i++){
-   const st=STAGES[i],locked=!unlocked(i),finished=st.ids.every(completed);
-   done+=st.ids.filter(completed).length;
-   const b=document.createElement('button');
-   b.type='button';b.disabled=locked;b.className=i===stageIndex(state.moduleId)?'active':'';
-   b.setAttribute('aria-current',b.className==='active'?'step':'false');
-   const badge=document.createElement('span');badge.className='step-num';badge.textContent=finished?'✓':String(i+1).padStart(2,'0');
-   const text=document.createElement('span');text.className='step-copy';
-   const name=document.createElement('b');name.textContent=st.title;
-   const sub=document.createElement('small');sub.textContent=locked?'🔒 Prerequisite required':finished?'Completed · review anytime':st.subtitle;
-   text.append(name,sub);b.append(badge,text);
-   b.addEventListener('click',()=>{if(!locked)select(st.ids.find(id=>!completed(id))||st.ids[0])});nav.append(b);
-  }
-  const pct=total?Math.round(done/total*100):0;
-  $('percent').textContent=pct+'%';
-  $('completionSummary').textContent=done+' of '+total+' lessons completed';
-  $('ring').style.background='conic-gradient(#74e6d9 '+(pct*3.6)+'deg,#2b5475 0)';
-  const certified=activeCert();
-  $('certLabel').textContent=certified?'Owner-certified Account Manager':pct===100?'All lessons complete · owner review needed':'Training in progress';
-  $('certState').textContent=certified?'CERTIFIED · OWNER APPROVED':'OWNER CERTIFICATION REQUIRED';
+  const nav=$('stageNav');nav.replaceChildren();let done=0;
+  STAGES.forEach((s,i)=>{const b=document.createElement('button'),finished=s[1].every(complete);done+=s[1].filter(complete).length;b.type='button';b.disabled=!unlocked(i)||state.busy;b.className=stage(state.moduleId)===i?'active':'';b.setAttribute('aria-current',stage(state.moduleId)===i?'step':'false');const badge=document.createElement('span');badge.className='step-num';badge.textContent=finished?'✓':String(i+1).padStart(2,'0');const copy=document.createElement('span');copy.className='step-copy';const label=document.createElement('b');label.textContent=s[0][state.lang==='es'?1:0];const small=document.createElement('small');small.textContent=finished?t('Complete · review','Completo · revisar'):unlocked(i)?t('Practice and prove competence','Practique y demuestre competencia'):t('Previous stage required','Requiere la etapa anterior');copy.append(label,small);b.append(badge,copy);b.onclick=()=>select(s[1].find(id=>!complete(id))||s[1][0]);nav.append(b);});
+  const pct=Math.round(done/12*100);$('percent').textContent=pct+'%';$('ring').style.background='conic-gradient(#f4ca75 '+pct*3.6+'deg,#26475b 0)';$('completionSummary').textContent=done+t(' of 12 lessons completed',' de 12 lecciones completadas');
+  const cert=state.certs.filter(c=>c.courseId===COURSE).at(-1);
+  const certified=done===12&&cert?.status==='Certified'&&cert.academyVersion==='2026.11.22.2'&&(!cert.expiresAt||Date.parse(cert.expiresAt)>Date.now())&&cert.capstoneAttemptId===latest('am-12','sbc_am_roleplay_for_owner_review')?.id&&cert.capstoneReviewId===latest('am-12','sbc_am_roleplay_for_owner_review')?.academyRubric?.reviewId;
+  $('certLabel').textContent=certified?t('Owner certification recorded','Certificación del dueño registrada'):t('Live clearance requires owner approval','El acceso requiere aprobación del dueño');
+  $('certState').textContent=certified?t('OWNER CERTIFIED','CERTIFICADO POR EL DUEÑO'):t('OWNER REVIEW REQUIRED','REVISIÓN DEL DUEÑO');
+  $('nextMove').textContent=done===12?t('Complete the observed bilingual capstone and ask Jonathan to review the evidence.','Complete la simulación observada en ambos idiomas y solicite la revisión de Jonathan.'):t('Finish the lesson, pass the work sample, submit practice, then pass the knowledge check.','Complete la lección, apruebe la práctica, presente evidencia y apruebe conocimientos.');
+  const modules=$('moduleNav');modules.replaceChildren();
+  for(const id of STAGES[stage(state.moduleId)][1]){const m=state.course?.modules.find(m=>m.id===id);if(!m)continue;const b=document.createElement('button');b.type='button';b.textContent=(complete(id)?'✓ ':'')+title(m);b.setAttribute('aria-current',String(id===state.moduleId));b.onclick=()=>select(id);modules.append(b);}
  }
- function sceneData(m){
-  const info=m.academyMedia||{},s=STAGES[stageIndex(m.id)]||STAGES[0];
-  const text=(state.lang==='es'&&Array.isArray(info.spanish))?info.spanish:[];
-  const english=[info.scenario,m.lesson?.learn?.[0],m.lesson?.learn?.[3],info.script];
-  return [
-    {title:t('Understand the customer','Comprender al cliente'),body:text[0]||english[0],label:'UNDERSTAND',status:'RESEARCH',flow:0},
-    {title:t('Ask the right question','Haga la pregunta correcta'),body:text[1]||english[1],label:'DISCOVER',status:'REVIEW',flow:1},
-    {title:t('Follow the SBC process','Siga el proceso de SBC'),body:text[2]||english[2],label:'PROTECT',status:'CONTROLLED',flow:2},
-    {title:t('Deliver the next action','Confirme el siguiente paso'),body:text[3]||english[3],label:'HANDOFF',status:'OWNER REVIEW',flow:2}
-  ].map(x=>({...x,stage:s.title}));
- }
- function stopVoice(){
-  state.speaking=false;state.paused=false;
-  if('speechSynthesis'in window)try{window.speechSynthesis.cancel()}catch(_){}
-  $('playScene').textContent=t('▶ Play lesson','▶ Reproducir lección');
-  $('pauseVoice').textContent=t('⏸ Pause','⏸ Pausar');
- }
+ function scenes(){const m=mod(),x=localized(m);return state.lang==='es'?[x.scenario,x.learn[0],x.learn[3],x.script]:[m.academyMedia.scenario,m.lesson.learn[0],m.lesson.learn[3],m.academyMedia.script];}
+ function stopVoice(){state.speaking=false;state.paused=false;state.voice=null;try{window.speechSynthesis?.cancel()}catch(_){}$('playScene').textContent=t('▶ Narrate','▶ Narrar');$('pauseVoice').textContent=t('Pause','Pausar');}
  function renderScene(){
-  const m=module();if(!m)return;
-  const items=sceneData(m),scene=items[state.scene]||items[0],canvas=$('motionCanvas');
-  $('sceneCount').textContent=String(state.scene+1).padStart(2,'0')+' / 04';
-  $('captionTitle').textContent=scene.title;
-  $('caption').textContent=scene.body;
-  $('sceneTitle').textContent=t('Animated workflow walkthrough','Demostración visual interactiva');
-  $('screenLabel').textContent='SBC · '+scene.stage.toUpperCase().slice(0,26);
-  $('mockEyebrow').textContent=t('FICTIONAL BUSINESS / LEARNING MODE','NEGOCIO FICTICIO / PRÁCTICA');
-  $('mockTitle').textContent=scene.title;
-  $('mockBody').textContent=scene.body;
-  $('mockStat').textContent=scene.status;
-  $('flowOne').textContent=t('RESEARCH','INVESTIGAR');
-  $('flowTwo').textContent=t('DISCOVER','DESCUBRIR');
-  $('flowThree').textContent=t('APPROVE','APROBAR');
-  for(const [i,id] of ['flowOne','flowTwo','flowThree'].entries())$(id).classList.toggle('focus',scene.flow===i);
-  canvas.classList.remove('animating');
-  void canvas.offsetWidth;
-  canvas.classList.add('animating');
-  $('prevScene').disabled=state.scene<=0;
-  $('nextScene').disabled=state.scene>=3;
+  if(!mod())return;const labels=state.lang==='es'?['Comprenda la necesidad','Haga una pregunta útil','Aplique el proceso','Confirme el siguiente paso']:['Understand the need','Ask a useful question','Apply the process','Confirm the next action'];
+  $('sceneTitle').textContent=labels[state.scene];$('sceneCount').textContent=String(state.scene+1).padStart(2,'0')+' / 04';$('mockTitle').textContent=labels[state.scene];$('mockBody').textContent=scenes()[state.scene];$('screenLabel').textContent='SBC · '+t('FICTIONAL CASE','CASO FICTICIO');
+  ['flowOne','flowTwo','flowThree'].forEach((id,i)=>{$(id).textContent=(state.lang==='es'?['INVESTIGAR','DESCUBRIR','APROBAR']:['RESEARCH','DISCOVER','APPROVE'])[i];$(id).classList.toggle('focus',Math.min(state.scene,2)===i);});
+  $('prevScene').disabled=state.scene===0;$('nextScene').disabled=state.scene===3;
+  $('motionCanvas').classList.remove('scene-enter');void $('motionCanvas').offsetWidth;$('motionCanvas').classList.add('scene-enter');
  }
- function speak(){
-  const m=module();if(!m)return;
-  if(!('speechSynthesis'in window)||typeof window.SpeechSynthesisUtterance!=='function'){
-   $('voiceStatus').textContent=t('Narration is unavailable in this browser. Use the visual lesson and written transcript.','La narración no está disponible en este navegador.');
-   return;
-  }
-  stopVoice();state.speaking=true;
-  $('playScene').textContent=t('◼ Stop narration','◼ Detener narración');
-  function next(){
-   if(!state.speaking)return;
-   const scene=sceneData(m)[state.scene];
-   const utterance=new window.SpeechSynthesisUtterance(scene.title+'. '+scene.body);
-   utterance.lang=state.lang==='es'?'es-ES':'en-US';
-   utterance.rate=Number($('voiceRate').value)||1;
-   utterance.pitch=1;utterance.volume=1;
-   const voice=(window.speechSynthesis.getVoices?.()||[]).find(v=>String(v.lang).toLowerCase().startsWith(state.lang==='es'?'es':'en'));
-   if(voice)utterance.voice=voice;
-   state.voice=utterance;
-   utterance.onend=()=>{
-    if(!state.speaking||state.voice!==utterance)return;
-    if(state.scene>=3){state.speaking=false;$('playScene').textContent=t('▶ Replay lesson','▶ Repetir lección');$('voiceStatus').textContent=t('Visual narration complete.','Narración completada.');return}
-    state.scene++;renderScene();next();
-   };
-   utterance.onerror=()=>{if(state.voice===utterance)stopVoice();};
-   $('voiceStatus').textContent=t('Narrating visual scene ','Narrando escena visual ')+(state.scene+1)+' / 4';
-   window.speechSynthesis.speak(utterance);
-  }
+ function narrate(){
+  if(state.speaking){stopVoice();return;}
+  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){$('voiceStatus').textContent=t('Narration is unavailable. The full written lesson remains available.','La narración no está disponible. Puede leer la lección completa.');return;}
+  stopVoice();state.speaking=true;const id=state.moduleId,lang=state.lang;
+  function next(){if(!state.speaking||state.moduleId!==id||state.lang!==lang)return;const u=new SpeechSynthesisUtterance(scenes()[state.scene]);const v=speechSynthesis.getVoices().find(v=>v.lang.toLowerCase().startsWith(lang));u.lang=lang==='es'?'es-ES':'en-US';if(v)u.voice=v;u.rate=Number($('voiceRate').value);state.voice=u;$('playScene').textContent=t('Stop narration','Detener narración');$('voiceStatus').textContent=t('Narrating scene ','Narrando escena ')+(state.scene+1)+' / 4';u.onend=()=>{if(state.voice!==u||!state.speaking)return;if(state.scene<3){state.scene++;renderScene();next();}else stopVoice();};u.onerror=()=>{if(state.voice===u){stopVoice();$('voiceStatus').textContent=t('Voice could not play. Read the written transcript.','No se pudo reproducir la voz. Lea la transcripción.');}};speechSynthesis.speak(u);}
   next();
  }
+ function renderLesson(){const m=mod();if(!m)return;const x=localized(m),es=state.lang==='es';$('lessonKicker').textContent=t('STAGE ','ETAPA ')+(stage(m.id)+1)+' / 8 · '+m.minutes+t(' core minutes',' minutos');$('lessonTitle').textContent=title(m);$('lessonObjective').textContent=es?x.objective:m.description;$('scenario').textContent=es?x.scenario:m.academyMedia.scenario;$('sampleScript').textContent='“'+(es?x.script:m.academyMedia.script)+'”';$('redFlags').textContent=es?x.redFlags:m.academyMedia.redFlags;$('practicePrompt').textContent=es?x.practice:m.lesson.practice.prompt;const list=document.createElement('ul');for(const point of es?x.learn:m.lesson.learn){const li=document.createElement('li');li.textContent=point;list.append(li);}$('learnPoints').replaceChildren(list);renderScene();}
+ function fieldset(q,i,prefix){const field=document.createElement('fieldset');field.className=prefix==='lab'?'lab-field':'quiz-item';const legend=document.createElement('legend');legend.textContent=(i+1)+'. '+(q.label||q.prompt);field.append(legend);for(const [j,choice] of (q.options||q.choices).entries()){const l=document.createElement('label'),input=document.createElement('input'),text=document.createElement('span');input.type='radio';input.name=prefix+'-'+(q.id||i);input.value=String(j);input.required=true;text.textContent=choice;l.append(input,text);field.append(l);}return field;}
+ function renderQuestions(){const host=$('quizQuestions');host.replaceChildren();state.questions.forEach((q,i)=>host.append(fieldset(q,i,'quiz')));controls();}
+ function renderLab(){if(!state.lab)return;$('labTitle').textContent=state.lab.title;$('artifactPrompt').textContent=state.lab.artifactPrompt;const host=$('labFields');host.replaceChildren();state.lab.fields.forEach((f,i)=>host.append(fieldset(f,i,'lab')));$('dialogueArena').hidden=!['am-08','am-12'].includes(state.moduleId);renderDialogue();controls();}
+ function renderDialogue(){if(!state.nodes)return;const node=state.nodes[state.node],host=$('dialogueChoices');host.replaceChildren();$('dialoguePrompt').textContent=node?.prompt||t('Conversation finished. Submit your work sample for server feedback.','Conversación terminada. Presente el trabajo para recibir comentarios.');if(node)node.choices.forEach((c,i)=>{const b=document.createElement('button');b.type='button';b.textContent=c.label;b.onclick=()=>{state.path.push(i);state.node=c.next;renderDialogue();};host.append(b);});}
  async function select(id){
-  stopVoice();state.moduleId=id;state.scene=0;state.score=null;state.questions=null;
-  renderNav();renderLesson();
-  $('quizQuestions').replaceChildren();$('quizFeedback').textContent='';
-  $('practiceResponse').value='';$('practiceStatus').textContent='';
-  $('quizSubmit').disabled=true;
-  if(!unlocked(stageIndex(id))){
-   notice('This stage is locked until all lessons in the previous stage are complete.',true);return;
-  }
-  try{
-   const result=await call('/api/sbc/academy-am/v1/quiz/'+encodeURIComponent(id));
-   if(state.moduleId!==id)return;
-   state.questions=result.questions||[];renderQuiz();
-   notice(state.readOnly?t('Recovery mode: you may study but cannot save scores or practice evidence.','Modo recuperación: puede estudiar, pero no guardar evidencias.'):t('Training connected. Assessments and practice evidence save to your SBC account.','Capacitación conectada. Sus resultados y prácticas se guardan en SBC.'),state.readOnly);
-  }catch(e){notice('Quiz service: '+e.message,true)}
+  if(state.busy)return;if(!unlocked(stage(id))){notice(t('Finish the previous stage first.','Complete primero la etapa anterior.'),true);return;}
+  stopVoice();state.moduleId=id;state.scene=0;state.questions=[];state.lab=null;state.path=[];state.node='start';
+  $('quizFeedback').textContent='';$('labFeedback').textContent='';$('practiceStatus').textContent='';$('practiceResponse').value=latest(id,'sbc_am_roleplay_for_owner_review')?.response||'';$('caseArtifact').value=latest(id,'sbc_am_work_sample')?.response||'';
+  renderNav();renderLesson();$('quizQuestions').replaceChildren();$('labFields').replaceChildren();controls();
+  try{const [q,l]=await Promise.all([call(PREFIX+'/quiz/'+id+'?lang='+state.lang),call(PREFIX+'/lab/'+id+'?lang='+state.lang)]);if(state.moduleId!==id)return;state.questions=q.questions;state.lab=l.lab;state.nodes=l.dialogue;renderQuestions();renderLab();notice(state.readOnly?t('View-only recovery mode. Scores and evidence cannot be saved.','Modo de recuperación: solo lectura. No se guardan evaluaciones.'):t('Training record connected. Use fictional information throughout.','Registro conectado. Use solo información ficticia.'));}catch(e){notice(e.message,true);}
  }
- function renderLesson(){
-  const m=module();if(!m)return;
-  const info=m.academyMedia||{},st=STAGES[stageIndex(m.id)];
-  $('lessonKicker').textContent='STAGE '+String(stageIndex(m.id)+1).padStart(2,'0')+' / 08 · '+(info.skill||'SBC MASTERY').toUpperCase();
-  $('lessonTitle').textContent=m.title;
-  $('lessonObjective').textContent=state.lang==='es'?'Objetivo: '+(info.spanish?.[0]||m.description):m.description;
-  $('scenario').textContent=t(info.scenario||m.lesson?.knowledgeCheck?.prompt,info.spanish?.[0]||info.scenario||'Ejercicio basado en un negocio ficticio.');
-  $('sampleScript').textContent='“'+t(info.script||'',info.spanish?.[3]||info.script||'')+'”';
-  $('redFlags').textContent=info.redFlags||'Do not fabricate a customer fact or payment.';
-  const points=$('learnPoints');points.replaceChildren();
-  const learn=state.lang==='es'&&info.spanish?.length?info.spanish:m.lesson?.learn||[];
-  for(const copy of learn){const p=document.createElement('div');p.className='point';p.textContent=copy;points.append(p)}
-  $('practiceStatus').textContent=practiced(m.id)?t('Practice previously submitted for review.','Práctica enviada anteriormente.'):'';
-  $('quizFeedback').className='feedback';
-  $('quizFeedback').textContent=quizPassed(m.id)?t('Knowledge gate previously passed.','Evaluación de conocimientos aprobada anteriormente.'):'';
-  $('submitPractice').disabled=state.readOnly||state.busy||!state.budget?.clockedIn||state.budget.ownerReviewRequired;
-  renderScene();
- }
- function renderQuiz(){
-  const host=$('quizQuestions');host.replaceChildren();
-  const qs=state.questions||[];
-  for(let i=0;i<qs.length;i++){
-   const q=qs[i],field=document.createElement('fieldset');field.className='quiz-item';
-   const legend=document.createElement('legend');legend.textContent=(i+1)+'. '+q.prompt;field.append(legend);
-   for(let j=0;j<(q.choices||[]).length;j++){
-    const label=document.createElement('label'),input=document.createElement('input');
-    input.type='radio';input.name='question-'+i;input.value=String(j);
-    input.required=true;
-    const text=document.createElement('span');text.textContent=q.choices[j];label.append(input,text);field.append(label);
-   }host.append(field);
-  }
-  $('quizSubmit').disabled=state.readOnly||!qs.length||!state.budget?.clockedIn||state.budget.ownerReviewRequired;
- }
- async function finishIfReady(){
-  const id=state.moduleId;
-  if(completed(id)||!quizPassed(id)||!practiced(id))return;
-  await call('/api/training/progress',{method:'POST',body:{courseId:COURSE,moduleId:id,status:'completed',
-   evidence:'SBC Academy 360: Completed the server-scored >=90% assessment, submitted a written fictional practice response for owner review and reviewed all four motion scenes; training completion does not authorize live customer interaction.'}});
-  await loadData();renderNav();renderLesson();
-  notice(t('Lesson completed and saved. The next stage unlocks when all lessons in this stage are complete.','Lección guardada. La siguiente etapa se abrirá al completar todas las lecciones.'));
- }
- $('playScene').addEventListener('click',()=>{if(state.speaking)stopVoice();else speak()});
- $('pauseVoice').addEventListener('click',()=>{
-  if(!state.speaking||!('speechSynthesis'in window))return;
-  if(state.paused){window.speechSynthesis.resume();state.paused=false;$('pauseVoice').textContent='⏸ Pause';}
-  else{window.speechSynthesis.pause();state.paused=true;$('pauseVoice').textContent='▶ Resume';}
- });
- $('prevScene').addEventListener('click',()=>{stopVoice();state.scene=Math.max(0,state.scene-1);renderScene()});
- $('nextScene').addEventListener('click',()=>{stopVoice();state.scene=Math.min(3,state.scene+1);renderScene()});
- for(const lang of ['en','es'])$('lang'+lang.charAt(0).toUpperCase()+lang.slice(1)).addEventListener('click',()=>{
-  stopVoice();state.lang=lang;
-  $('langEn').setAttribute('aria-pressed',String(lang==='en'));
-  $('langEs').setAttribute('aria-pressed',String(lang==='es'));
-  if(module()){renderLesson();renderQuiz()}
- });
- $('submitPractice').addEventListener('click',async()=>{
-  if(state.busy||state.readOnly||!state.budget?.clockedIn||state.budget.ownerReviewRequired)return;
-  const response=$('practiceResponse').value.trim();
-  if(response.length<80||response.length>3500){$('practiceStatus').textContent='Write between 80 and 3,500 characters of original fictional practice.';return}
-  state.busy=true;$('submitPractice').disabled=true;
-  try{
-   const result=await call('/api/sbc/academy-am/v1/roleplay/'+state.moduleId,{method:'POST',body:{response}});
-   $('practiceStatus').textContent=result.submitted?'Practice saved for owner review.':'Submission not confirmed.';
-   await loadData();await finishIfReady();
-  }catch(e){$('practiceStatus').textContent=e.message;notice(e.message,true)}
-  finally{state.busy=false;await refreshBudget().catch(()=>{})}
- });
- $('quiz').addEventListener('submit',async e=>{
-  e.preventDefault();
-  if(state.busy||state.readOnly||!state.budget?.clockedIn||state.budget.ownerReviewRequired||!state.questions?.length)return;
-  const values=state.questions.map((q,i)=>{
-   const selected=document.querySelector('input[name="question-'+i+'"]:checked');
-   return selected?Number(selected.value):null;
-  });
-  if(values.includes(null)){$('quizFeedback').textContent='Answer all three questions before submitting.';return}
-  state.busy=true;$('quizSubmit').disabled=true;
-  try{
-   const result=await call('/api/sbc/academy-am/v1/quiz/'+state.moduleId,{method:'POST',body:{answers:values}});
-   $('quizFeedback').className='feedback '+(result.passed?'good':'bad');
-   $('quizFeedback').textContent=(result.passed?'PASS':'RETRY')+' · '+result.score+'% · '+result.correct+' of '+result.total+' correct. '+(result.remediation||'Remember: the owner reviews practice and grants certification separately.');
-   await loadData();await finishIfReady();
-  }catch(e){$('quizFeedback').className='feedback bad';$('quizFeedback').textContent=e.message;notice(e.message,true)}
-  finally{state.busy=false;await refreshBudget().catch(()=>{})}
- });
- $('budgetRefresh').addEventListener('click',()=>refreshBudget().catch(e=>notice(e.message,true)));
- $('clockInAcademy').addEventListener('click',async()=>{
-  if(state.busy)return;state.busy=true;$('clockInAcademy').disabled=true;
-  try{
-   const current=await call('/api/v9/time/status');
-   if(current.open&&current.open.mode!=='training')throw Error('You are clocked in for a different shift. End that shift using the official time clock before beginning training.');
-   if(!current.open)await call('/api/v9/time/clock',{method:'POST',body:{action:'in',mode:'training'}});
-   await call('/api/sbc/academy-am/v1/window/start',{method:'POST',body:{}});
-   await refreshBudget();renderLesson();renderQuiz();
-   notice('Official training clock is running. The eight-hour fast-track budget is active.');
-  }catch(e){notice('Training shift not started: '+e.message+'. Verify the official time clock before retrying.',true)}
-  finally{state.busy=false;await refreshBudget().catch(()=>{})}
- });
- $('clockOutAcademy').addEventListener('click',async()=>{
-  if(state.busy)return;state.busy=true;$('clockOutAcademy').disabled=true;
-  try{
-   await call('/api/v9/time/clock',{method:'POST',body:{action:'out'}});
-   await refreshBudget();notice('Official training time recorded. Your progress is saved. Return for the next approved shift or owner review.');
-  }catch(e){notice('Clock-out not confirmed: '+e.message,true)}
-  finally{state.busy=false;await refreshBudget().catch(()=>{})}
- });
- window.addEventListener('pagehide',stopVoice,{once:true});
- document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.speaking&&'speechSynthesis'in window)try{window.speechSynthesis.pause();state.paused=true}catch(_){}});
- (async()=>{try{
-  await loadData();
-  if(!state.course||!Array.isArray(state.course.modules))throw Error('SBC Academy curriculum is not installed in this release.');
-  renderNav();await refreshBudget();await select(state.moduleId);
- }catch(e){
-  notice(e.message+' No account records or training scores were changed.',true);
-  $('lessonObjective').textContent='The Academy requires your authenticated SBC account and an installed training catalog.';
-  $('playScene').disabled=true;$('submitPractice').disabled=true;$('quizSubmit').disabled=true;
- }})();
+ function showTab(tab){state.tab=tab;for(const name of ['Lesson','Lab','Knowledge']){const selected=name===tab;$('panel'+name).hidden=!selected;$('tab'+name).setAttribute('aria-selected',String(selected));$('tab'+name).tabIndex=selected?0:-1;}}
+ async function finishIfReady(id){if(!knowledge(id)||!practiced(id)||!sampled(id))return;await call('/api/training/progress',{method:'POST',body:{courseId:COURSE,moduleId:id,status:'completed',evidence:'Academy 360: server-scored knowledge and structured fictional work sample passed, and an original practice case note was submitted. Owner observation and certification remain separate.'}});await loadData();renderNav();notice(t('Lesson evidence saved. Continue to the next lesson.','Evidencia guardada. Continúe con la siguiente lección.'));}
+ async function submit(action){if(!writable())return;state.busy=true;controls();try{await action();}catch(e){notice(e.message,true);}finally{state.busy=false;renderNav();await refreshBudget().catch(()=>{});controls();}}
+ $('quiz').onsubmit=e=>{e.preventDefault();const id=state.moduleId;submit(async()=>{const answers=state.questions.map(q=>Number(document.querySelector('input[name="quiz-'+q.id+'"]:checked')?.value??NaN));if(answers.some(n=>!Number.isInteger(n)))throw Error(t('Answer every question.','Responda todas las preguntas.'));const r=await call(PREFIX+'/quiz/'+id,{method:'POST',body:{answers,lang:state.lang}});$('quizFeedback').className='feedback '+(r.passed?'good':'bad');$('quizFeedback').textContent=(r.passed?t('PASS','APROBADO'):t('RETRY','REPETIR'))+' · '+r.score+'%\n'+r.details.map((d,i)=>(i+1)+'. '+d.rationale).join('\n');await loadData();await finishIfReady(id);});};
+ $('labForm').onsubmit=e=>{e.preventDefault();const id=state.moduleId;submit(async()=>{const decisions=Object.fromEntries(state.lab.fields.map(f=>[f.id,Number(document.querySelector('input[name="lab-'+f.id+'"]:checked')?.value??NaN)]));if(Object.values(decisions).some(n=>!Number.isInteger(n)))throw Error(t('Make every work-sample decision.','Responda cada decisión.'));const r=await call(PREFIX+'/lab/'+id,{method:'POST',body:{decisions,artifact:$('caseArtifact').value,lang:state.lang,dialogue:state.path}});$('labFeedback').className='feedback '+(r.passed?'good':'bad');$('labFeedback').textContent=(r.passed?t('PASS','APROBADO'):t('RETRY','REPETIR'))+' · '+r.score+'%\n'+r.feedback.map(f=>(f.correct?'✓ ':'• ')+f.feedback).join('\n')+(r.dialogue?'\n'+t('Conversation: ','Conversación: ')+r.dialogue.score+'%\n'+r.dialogue.feedback.map(f=>f.message).join('\n'):'')+(r.critical.length?'\n'+t('Critical boundary failed.','Falla de límite crítico.'):'');await loadData();await finishIfReady(id);});};
+ $('submitPractice').onclick=()=>{const id=state.moduleId;submit(async()=>{await call(PREFIX+'/roleplay/'+id,{method:'POST',body:{response:$('practiceResponse').value}});$('practiceStatus').textContent=t('Case note saved for owner review.','Nota guardada para la revisión del dueño.');await loadData();await finishIfReady(id);});};
+ for(const tab of ['Lesson','Lab','Knowledge']){$('tab'+tab).onclick=()=>showTab(tab);$('tab'+tab).onkeydown=e=>{const names=['Lesson','Lab','Knowledge'];if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const i=names.indexOf(state.tab),n=e.key==='Home'?0:e.key==='End'?2:(i+(e.key==='ArrowRight'?1:2))%3;showTab(names[n]);$('tab'+names[n]).focus();}};}
+ $('goPractice').onclick=()=>showTab('Lab');$('dialogueReset').onclick=()=>{state.path=[];state.node='start';renderDialogue();};
+ function nextLesson(){const order=STAGES.flatMap(s=>s[1]),i=order.indexOf(state.moduleId),id=order[i+1];if(id&&unlocked(stage(id))){select(id);showTab('Lesson');}else notice(t('Finish this stage or arrange owner capstone review.','Complete esta etapa o coordine la revisión del dueño.'));}
+ $('nextLesson').onclick=nextLesson;$('continueLesson').onclick=()=>{const id=STAGES.flatMap(s=>s[1]).find(id=>!complete(id));if(id)select(id);showTab('Lesson');};
+ $('playScene').onclick=narrate;$('pauseVoice').onclick=()=>{if(!state.speaking)return;if(state.paused){speechSynthesis.resume();state.paused=false;}else{speechSynthesis.pause();state.paused=true;}$('pauseVoice').textContent=state.paused?t('Resume','Continuar'):t('Pause','Pausar');};
+ $('prevScene').onclick=()=>{stopVoice();state.scene=Math.max(0,state.scene-1);renderScene();};$('nextScene').onclick=()=>{stopVoice();state.scene=Math.min(3,state.scene+1);renderScene();};
+ for(const lang of ['en','es'])$('lang'+(lang==='en'?'En':'Es')).onclick=async()=>{if(state.busy)return;const response=$('practiceResponse').value,artifact=$('caseArtifact').value;state.lang=lang;translate();renderBudget();await select(state.moduleId);$('practiceResponse').value=response;$('caseArtifact').value=artifact;};
+ $('budgetRefresh').onclick=()=>refreshBudget().catch(e=>notice(e.message,true));
+ $('clockInAcademy').onclick=()=>{if(state.busy||state.readOnly||owner())return;state.busy=true;controls();(async()=>{try{const c=await call('/api/v9/time/status');if(c.open&&c.open.mode!=='training')throw Error(t('End your other official shift before training.','Termine el otro turno antes de capacitarse.'));if(!c.open)await call('/api/v9/time/clock',{method:'POST',body:{action:'in',mode:'training'}});await call(PREFIX+'/window/start',{method:'POST',body:{}});notice(t('Official training clock started.','Reloj oficial de capacitación iniciado.'));}catch(e){notice(e.message,true);}finally{state.busy=false;await refreshBudget().catch(()=>{});controls();}})();};
+ $('clockOutAcademy').onclick=()=>{if(state.busy||state.readOnly||owner())return;state.busy=true;controls();(async()=>{try{await call('/api/v9/time/clock',{method:'POST',body:{action:'out'}});notice(t('Official clock-out recorded.','Salida registrada en el reloj oficial.'));}catch(e){notice(e.message,true);}finally{state.busy=false;await refreshBudget().catch(()=>{});controls();}})();};
+ window.addEventListener('pagehide',stopVoice);document.addEventListener('visibilitychange',()=>{if(document.hidden)stopVoice();});
+ let poll;window.addEventListener('pagehide',()=>clearInterval(poll));
+ (async()=>{try{await loadData();await refreshBudget();state.moduleId=STAGES.flatMap(s=>s[1]).find(id=>!complete(id))||'am-01';await select(state.moduleId);poll=setInterval(()=>{if(!document.hidden&&!state.busy)refreshBudget().catch(()=>{});},30000);}catch(e){notice(e.message,true);controls();}})();
 })();

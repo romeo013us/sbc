@@ -4,7 +4,9 @@
  * clearly labeled. Neither reading nor quiz scores grant production access.
  * Tenant/customer information is NEVER included in built-in lessons.
  */
-const VERSION='2026.11.22';
+const VERSION='2026.11.22.2';
+const ES=require('./sbc-am-academy-es-v2.cjs');
+const PRACTICE=require('./sbc-am-practice-v2.cjs');
 const COURSE_ID='sbc-account-manager-mastery-20261122';
 const M=[
 {
@@ -265,11 +267,12 @@ const COURSE=Object.freeze({
  role:'account_manager',version:VERSION,status:'published',
  description:'SBC-specific customer relationship apprenticeship: 12 intensive lessons, narrated visual simulations, role-play, objective quizzes, scenario evidence and owner-approved certification.',
  source:'SBC owner-commissioned Academy 360 V66.165',curriculumVersion:VERSION,
- estimatedMinutes:M.reduce((s,m)=>s+m.mins,0),
+ estimatedMinutes:480,coreMinutes:400,reviewAndFlexMinutes:80,
  completionStandard:'Read/watch narrated simulations, score at least 90% on server-graded knowledge checks, submit observed role-play evidence, and obtain explicit owner certification. A quiz does not authorize outreach.',
  certification:{ownerApprovalRequired:true,liveAccountAccessNotGranted:true,knowledgeThreshold:90,capstoneObserved:true},
  modules:M.map((m,i)=>({
-  id:m.id,role:'account_manager',order:i+1,minutes:m.mins,title:m.title,description:m.objective,
+  id:m.id,role:'account_manager',order:i+1,minutes:[15,20,25,25,35,30,35,35,25,30,35,90][i],title:m.title,description:m.objective,
+  translations:{es:ES.LESSONS[m.id]},
   status:'published',phase:i<4?'Operating standards':i<8?'Sales mastery':'Account stewardship',
   lesson:{objective:m.objective,learn:m.learn,practice:{prompt:m.practice,evidence:'Owner-reviewed fictional case, attributed notes and a specific next action.'},
   knowledgeCheck:{prompt:m.case,passingRule:'At least 90% on server-graded multiple choice, plus authentic scenario evidence and owner observation.'}},
@@ -283,22 +286,30 @@ const COURSE=Object.freeze({
 });
 const QUESTIONS=Object.freeze(Object.fromEntries(M.map(m=>[m.id,m.quiz.map(([prompt,choices,correct,rationale],i)=>({
  id:m.id+'-q'+(i+1),prompt,choices,correct,rationale}))])));
-function publicQuestions(id){
- const q=QUESTIONS[id];return q?q.map(({id,prompt,choices})=>({id,prompt,choices})):null;
+function publicQuestions(id,lang='en'){
+ const l=PRACTICE.language(lang),q=QUESTIONS[id],translated=ES.QUESTIONS[Number(String(id).slice(-2))-1];
+ return q?q.map(({id,prompt,choices},i)=>({id,prompt:l==='es'?translated[i][0]:prompt,choices:l==='es'?translated[i][1]:choices})):null;
 }
-function grade(id,answers){
+function grade(id,answers,lang='en'){
+ const l=PRACTICE.language(lang);
  const qs=QUESTIONS[id];
  if(!qs)throw Object.assign(Error('UNKNOWN_LESSON'),{status:404});
  if(!Array.isArray(answers)||answers.length!==qs.length||answers.some(v=>!Number.isInteger(v)||v<0||v>2))
   throw Object.assign(Error('INVALID_ASSESSMENT'),{status:422});
  let correct=0;const details=qs.map((q,i)=>{const ok=answers[i]===q.correct;
-  if(ok)correct++;return {id:q.id,correct:ok,rationale:q.rationale};});
+  if(ok)correct++;return {id:q.id,correct:ok,rationale:l==='es'?(ok?'Decisión correcta según el proceso de SBC.':'Revise el punto de la lección relacionado y repita la práctica ficticia.'):q.rationale};});
  const score=Math.round(correct/qs.length*100);
- return {score,passed:score>=90,correct,total:qs.length,details,remediation:score>=90?'':'Review the lesson, repeat the fictional simulation, and retake the assessment.'};
+ return {score,passed:score>=90,correct,total:qs.length,details,remediation:score>=90?'':l==='es'?'Revise la lección, repita el caso ficticio y vuelva a evaluar.':'Review the lesson, repeat the fictional simulation, and retake the assessment.'};
 }
 function install(s,normalizeCourse,clock=()=>new Date().toISOString()){
  if(!s||!Array.isArray(s.courses)||typeof normalizeCourse!=='function')throw Error('TRAINING_CATALOG_REQUIRED');
- if(s.courses.some(c=>String(c.id)===COURSE_ID))return false;
+ const existing=s.courses.find(c=>String(c.id)===COURSE_ID);
+ if(existing){
+  if(existing.curriculumVersion===VERSION)return false;
+  const refreshed=normalizeCourse(COURSE,'SBC Academy 360 Account Manager Mastery');
+  Object.assign(existing,refreshed,{status:existing.status,createdAt:existing.createdAt||refreshed.createdAt});
+  s.migration=s.migration||{};s.migration.amAcademyV2PendingSave=true;s.updatedAt=clock();return true;
+ }
  s.courses.push(normalizeCourse(COURSE,'SBC Academy 360 Account Manager Mastery'));
  s.migration=s.migration||{};s.migration.amAcademy20261122Applied=true;
  s.migration.amAcademy20261122At=clock();s.migration.elite2026PendingSave=true;s.updatedAt=clock();
