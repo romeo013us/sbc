@@ -28,7 +28,7 @@ assert.equal(manager.actions.every(a=>/^[\w.:-]+$/.test(a.accountId)),true);
 assert.equal(JSON.stringify(manager).includes('305555'),false,'no phone contact values in action response');
 assert.deepEqual(planActions({tenantId:7,actor,rows,today:now,limit:25}),manager,'stable deterministic output');
 const owner=planActions({tenantId:7,actor:{id:'owner_001',role:'owner',active:true},rows,today:now});
-assert.equal(owner.actions.find(a=>a.accountId==='lead_new_0003').code,'ASSIGN_MANAGER');
+assert.equal(owner.actions.find(a=>a.code==='UNASSIGNED_QUEUE_REVIEW').batchCount,1);
 assert.equal(owner.actions.find(a=>a.accountId==='lead_other_05').code,'FOLLOW_UP_DUE');
 assert.equal(owner.actions.length,6);
 const limited=planActions({tenantId:7,actor,rows,today:now,limit:2});
