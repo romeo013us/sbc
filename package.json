@@ -110,7 +110,7 @@
     "test:trusted-leads": "node --test scripts/sbc-trusted-research-v1.test.cjs scripts/sbc-owner-trusted-leads-routes.test.cjs scripts/v66163-stage-owner-trusted-leads.test.cjs scripts/sbc-owner-trust-kim-outreach.test.cjs",
     "test:owner-csv-1000": "node --test scripts/v66164-owner-csv-1000.test.cjs",
     "test:academy360": "node --test scripts/v66165-am-academy-fast-track.test.cjs test/sbc-academy360-v2.test.cjs test/sbc-academy360-legacy-api.test.cjs",
-    "test:academy360:ui": "node --test test/sbc-academy360-ui.test.cjs"
+    "test:academy360:ui": "node --test test/sbc-academy360-ui.test.cjs test/sbc-academy360-media.test.cjs"
   },
   "dependencies": {
     "amqplib": "^0.10.9",
