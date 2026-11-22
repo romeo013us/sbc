@@ -3,6 +3,7 @@ on:
   push:
     branches: [a-sbc-master]
     paths:
+      - .github/workflows/sbc-academy360-auto-media.yml
       - scripts/academy360-auto-media.cjs
       - scripts/academy360-auto-media.test.cjs
       - enterprise/sbc-am-academy-v1.cjs
