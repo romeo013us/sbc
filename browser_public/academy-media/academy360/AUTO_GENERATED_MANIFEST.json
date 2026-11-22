@@ -1,12 +1,13 @@
 {
   "schema": 1,
-  "version": "66.169",
+  "version": "66.171",
   "source": "REAL_SBC_WORKSTATION_HTML_JS_WITH_LOCAL_SYNTHETIC_API",
   "authenticatedEmployeeRecording": false,
   "syntheticOnly": true,
   "noLiveOutreach": true,
+  "narrationEngine": "Piper offline neural EN-US lessac-medium, ES-MX ald-medium",
   "notice": "AUTOMATED TRAINING SIMULATIONS, NOT LIVE EMPLOYEE RECORDINGS",
-  "createdAt": "2026-11-22T22:56:41.724Z",
+  "createdAt": "2026-11-22T23:33:22.265Z",
   "files": [
     "am-01-en.mp4",
     "am-01-en-audio.webm",
@@ -181,7 +182,7 @@
     {
       "lessonId": "am-01",
       "lang": "en",
-      "seconds": 61,
+      "seconds": 57,
       "files": [
         "am-01-en.mp4",
         "am-01-en-audio.webm",
@@ -195,7 +196,7 @@
     {
       "lessonId": "am-01",
       "lang": "es",
-      "seconds": 59,
+      "seconds": 57,
       "files": [
         "am-01-es.mp4",
         "am-01-es-audio.webm",
@@ -209,7 +210,7 @@
     {
       "lessonId": "am-02",
       "lang": "en",
-      "seconds": 58,
+      "seconds": 56,
       "files": [
         "am-02-en.mp4",
         "am-02-en-audio.webm",
@@ -223,7 +224,7 @@
     {
       "lessonId": "am-02",
       "lang": "es",
-      "seconds": 57,
+      "seconds": 56,
       "files": [
         "am-02-es.mp4",
         "am-02-es-audio.webm",
@@ -265,7 +266,7 @@
     {
       "lessonId": "am-04",
       "lang": "en",
-      "seconds": 57,
+      "seconds": 56,
       "files": [
         "am-04-en.mp4",
         "am-04-en-audio.webm",
@@ -279,7 +280,7 @@
     {
       "lessonId": "am-04",
       "lang": "es",
-      "seconds": 57,
+      "seconds": 56,
       "files": [
         "am-04-es.mp4",
         "am-04-es-audio.webm",
@@ -321,7 +322,7 @@
     {
       "lessonId": "am-06",
       "lang": "en",
-      "seconds": 66,
+      "seconds": 58,
       "files": [
         "am-06-en.mp4",
         "am-06-en-audio.webm",
@@ -335,7 +336,7 @@
     {
       "lessonId": "am-06",
       "lang": "es",
-      "seconds": 59,
+      "seconds": 56,
       "files": [
         "am-06-es.mp4",
         "am-06-es-audio.webm",
@@ -349,7 +350,7 @@
     {
       "lessonId": "am-07",
       "lang": "en",
-      "seconds": 60,
+      "seconds": 56,
       "files": [
         "am-07-en.mp4",
         "am-07-en-audio.webm",
@@ -363,7 +364,7 @@
     {
       "lessonId": "am-07",
       "lang": "es",
-      "seconds": 57,
+      "seconds": 56,
       "files": [
         "am-07-es.mp4",
         "am-07-es-audio.webm",
@@ -377,7 +378,7 @@
     {
       "lessonId": "am-08",
       "lang": "en",
-      "seconds": 58,
+      "seconds": 56,
       "files": [
         "am-08-en.mp4",
         "am-08-en-audio.webm",
@@ -405,7 +406,7 @@
     {
       "lessonId": "am-09",
       "lang": "en",
-      "seconds": 57,
+      "seconds": 56,
       "files": [
         "am-09-en.mp4",
         "am-09-en-audio.webm",
@@ -433,7 +434,7 @@
     {
       "lessonId": "am-10",
       "lang": "en",
-      "seconds": 60,
+      "seconds": 56,
       "files": [
         "am-10-en.mp4",
         "am-10-en-audio.webm",
@@ -447,7 +448,7 @@
     {
       "lessonId": "am-10",
       "lang": "es",
-      "seconds": 58,
+      "seconds": 56,
       "files": [
         "am-10-es.mp4",
         "am-10-es-audio.webm",
@@ -461,7 +462,7 @@
     {
       "lessonId": "am-11",
       "lang": "en",
-      "seconds": 57,
+      "seconds": 56,
       "files": [
         "am-11-en.mp4",
         "am-11-en-audio.webm",
@@ -489,7 +490,7 @@
     {
       "lessonId": "am-12",
       "lang": "en",
-      "seconds": 61,
+      "seconds": 57,
       "files": [
         "am-12-en.mp4",
         "am-12-en-audio.webm",
@@ -503,7 +504,7 @@
     {
       "lessonId": "am-12",
       "lang": "es",
-      "seconds": 58,
+      "seconds": 56,
       "files": [
         "am-12-es.mp4",
         "am-12-es-audio.webm",

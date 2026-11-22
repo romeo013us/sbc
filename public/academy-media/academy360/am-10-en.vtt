@@ -17,30 +17,30 @@ Only the owner-approved quote and checkout rail determine the
 agreed offer, total, conditions, tax and special terms.
 
 5
-00:00:28.000 --> 00:00:31.440
+00:00:28.000 --> 00:00:30.640
 Example customer conversation: The next step is an owner-approved
 
 6
-00:00:31.440 --> 00:00:34.880
+00:00:30.640 --> 00:00:33.280
 written quote. When you are comfortable with the exact
 
 7
-00:00:34.880 --> 00:00:38.320
+00:00:33.280 --> 00:00:35.920
 scope, SBC will send the appropriate checkout link. We
 
 8
-00:00:38.320 --> 00:00:41.760
+00:00:35.920 --> 00:00:38.560
 do not start paid fulfillment until the payment is
 
 9
-00:00:41.760 --> 00:00:45.200
+00:00:38.560 --> 00:00:41.200
 verified.
 
 10
-00:00:46.000 --> 00:00:52.600
+00:00:42.000 --> 00:00:48.600
 Safety boundary: Fake receipts, estimated paid totals, emailing credit-card
 
 11
-00:00:52.600 --> 00:00:59.200
+00:00:48.600 --> 00:00:55.200
 data, or manually initiating vendor spend.
 
