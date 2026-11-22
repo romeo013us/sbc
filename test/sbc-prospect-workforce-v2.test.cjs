@@ -102,13 +102,15 @@ test('owner dashboard loads newly versioned workforce export module rather than 
  assert.equal(file('public/index.html'),file('browser_public/index.html'));
  assert.equal(file('public/sbc-market-intelligence.js'),file('browser_public/sbc-market-intelligence.js'));
 });
-test('installed in research, sales and account-manager workspaces without source code edits to existing workers',()=>{
+test('Research Intelligence launcher absent from all employee workstations, packet tools retained',()=>{
  for(const name of ['lead-research.html','sales-caller.html','sbc-account-manager-v1.html']){
   const html=file('public/'+name);
-  assert.match(html,/sbc-prospect-handoff-v2\.js\?v=2/);
-  assert.match(html,/sbc-prospect-handoff-v2\.css\?v=2/);
+  assert.doesNotMatch(html,/sbc-prospect-handoff-v2\.js/i,'remove injected launcher script');
+  assert.doesNotMatch(html,/sbc-prospect-handoff-v2\.css/i,'remove unused launcher CSS');
   assert.equal(html,file('browser_public/'+name));
  }
+ assert.equal(typeof H.createPacket,'function','owner-reviewed packet module must remain usable');
+ assert.equal(typeof H.validatePacket,'function','packet validation must remain usable');
  assert.equal(file('public/sbc-prospect-handoff-v2.js'),file('browser_public/sbc-prospect-handoff-v2.js'));
  assert.equal(file('public/sbc-prospect-handoff-v2.css'),file('browser_public/sbc-prospect-handoff-v2.css'));
  assert.match(file('public/sbc-prospect-intelligence.js'),/Export owner-reviewed research handoff/);
