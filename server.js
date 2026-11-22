@@ -6667,6 +6667,13 @@ app.post('/api/hr/payout-preferences/:userId/decision',auth,ownerOnly,async(req,
 app.get('/api/v9/compensation',auth,ownerOnly,(req,res)=>{const users=(db.users||[]).filter(u=>isWorkforceRole(u.role));res.json(users.map(u=>({user:v9User(u),compensation:compFor(u.id),payroll:payrollFor(u.id)})))})
 app.put('/api/v9/compensation/:userId',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.userId&&isWorkforceRole(x.role));if(!u)return res.status(404).json({error:'Workforce member not found.'});const v=v9data();v.compensation=v.compensation||{};const old=compFor(u.id), b=req.body||{};v.compensation[u.id]={...old,payRate:Math.max(0,Number(b.payRate??old.payRate)),currency:String(b.currency||old.currency),bonusPerQualifiedAppointment:Math.max(0,Number(b.bonusPerQualifiedAppointment ?? (old.bonusPerQualifiedAppointment || 0))),bonusPerSale:Math.max(0,Number(b.bonusPerSale ?? (old.bonusPerSale || 0))),payPeriod:['Weekly','Biweekly','Monthly'].includes(b.payPeriod)?b.payPeriod:old.payPeriod,commissionRates:{...old.commissionRates,...Object.fromEntries(Object.entries(b.commissionRates||{}).map(([k,v])=>[k,Math.max(0,Math.min(0.25,Number(v)))]))},highValueBonus699:0,monthlyBonuses:{...old.monthlyBonuses,...(b.monthlyBonuses||{})},commissionPayCycleDays:Math.max(1,Number(b.commissionPayCycleDays ?? (old.commissionPayCycleDays || 30))),returnWindowDays:Math.max(0,Math.min(60,Number(b.returnWindowDays ?? (old.returnWindowDays || 14)))),effectiveFrom:String(b.effectiveFrom||old.effectiveFrom)};await v9save(v);audit(req.user,'compensation_updated',`Updated compensation for ${u.name}`,{userId:u.id});res.json({compensation:v.compensation[u.id],payroll:payrollFor(u.id)})})
 // SBC_V66149_HR_DEPARTMENT_OWNER_ROUTE; workforce-only read model; no provider, money, account or HR writes.
+// SBC_V66160_SALES_COMMAND_OWNER_LEDGER; owner-approved monthly commissions, read-only manager progress.
+require('./routes/sbc-sales-command-v1.cjs').register(app,{
+ auth,
+ getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),
+ tenantForRead:req=>requireRequestTenant(req),
+ writer:()=>SBC_V6649_REQUIRE_WRITER()
+});
 app.get('/api/hr/workspace',auth,ownerOnly,(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
