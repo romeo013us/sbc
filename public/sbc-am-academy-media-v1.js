@@ -84,13 +84,13 @@
     const t=document.createElement('track');t.kind='captions';t.label=es?'Español':'English';t.srclang=lang;t.src=vtt;t.default=true;video.append(t);
     try{t.track.mode=captionOn?'showing':'disabled';}catch(_){}
    }
-   $('academyVideoStatus').textContent=tr(es,'Real SBC workstation recording ready.'+(captions?' Captions available.':' Captions not yet approved.'),'Grabación real del sistema SBC disponible.'+(captions?' Subtítulos disponibles.':' Subtítulos pendientes.'));
+   $('academyVideoStatus').textContent=tr(es,'Automated SBC workstation-interface demonstration with fictional accounts ready.'+(captions?' Captions available.':' Captions not yet approved.'),'Demostración automática de la interfaz SBC con cuentas ficticias.'+(captions?' Subtítulos disponibles.':' Subtítulos pendientes.'));
   }else $('academyVideoStatus').textContent=tr(es,'Screen recording not published yet. Use the narrated illustrated workflow below.','Aún no se ha publicado el video real. Use la guía ilustrada narrada de abajo.');
   const sound=await findRecording(id,lang,'audio',['webm','mp3','m4a'],['audio/webm','audio/mpeg','audio/mp4']);
   if(ticket!==generation)return;
   if(sound){
    audio.src=sound;audio.hidden=false;available.audio=true;
-   $('academyAudioStatus').textContent=tr(es,'Original instructor audio ready. Listen, pause and change the speed.','Audio original del instructor disponible. Escuche, pause y cambie la velocidad.');
+   $('academyAudioStatus').textContent=tr(es,'Automatically generated lesson narration ready. Listen, pause and change the speed.','Narración generada automáticamente. Escuche, pause y cambie la velocidad.');
   }else $('academyAudioStatus').textContent=tr(es,'Recorded audio not published yet. Use ▶ Narrate below for spoken instruction in your language.','El audio grabado aún no está publicado. Use ▶ Narrar abajo para escuchar la guía en su idioma.');
   const gallery=$('academyPhotoGallery');
   for(let index=1;index<=4;index++){

@@ -35,3 +35,16 @@ test('source capture explicitly refuses an employee-authenticated/live-state rec
  assert.match(source,/127\.0\.0\.1/);
  assert(!source.includes('https://tyvrqnjz57'));
 });
+
+test('required production media generates 24 neural-voice lessons instead of the old robotic espeak voice',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const source=fs.readFileSync(path.join(__dirname,'academy360-auto-media.cjs'),'utf8');
+ const ci=fs.readFileSync(path.join(__dirname,'../.github/workflows/sbc-academy360-auto-media.yml'),'utf8');
+ assert.match(source,/SBC_ACADEMY_NEURAL_VOICE==='required'/);
+ assert.match(source,/NEURAL_VOICE_NOT_PROVEN/);
+ assert.match(ci,/piper-tts==1\.3\.0/);
+ assert.match(ci,/SBC_ACADEMY_NEURAL_VOICE: required/);
+ assert.match(ci,/sha256sum -c/);
+ assert.match(ci,/es_MX-ald-medium/);
+ assert.match(ci,/en_US-lessac-medium/);
+});

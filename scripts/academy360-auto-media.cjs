@@ -29,7 +29,7 @@ function plan(){
   return {id:m.id,lang,title:es?x.title:m.title,phrases,scenes:actions[m.id]};
  }));
 }
-function run(binary,args){return cp.execFileSync(binary,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],maxBuffer:1000000}).trim();}
+function run(binary,args,input){return cp.execFileSync(binary,args,{encoding:'utf8',stdio:['pipe','pipe','pipe'],input:input===undefined?undefined:String(input),maxBuffer:1000000}).trim();}
 function length(filename){
  const n=Number(run('ffprobe',['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',filename]));
  if(!Number.isFinite(n)||n<=0)throw Error('BAD_MEDIA_DURATION');return n;
@@ -124,7 +124,14 @@ async function one(browser,url,story,temp,previous){
    frames.push(png);await page.screenshot({path:png,animations:'disabled'});
    safeguard(webp,previous);run('ffmpeg',['-y','-v','error','-i',png,'-c:v','libwebp','-q:v','75',webp]);
    const raw=p.join(dir,'voice-'+i+'.wav'),padded=p.join(dir,'voicep-'+i+'.wav');
-   run('espeak-ng',['-v',story.lang==='es'?'es':'en-us','-s','142','-w',raw,story.phrases[i]]);
+   if(process.env.SBC_ACADEMY_NEURAL_VOICE==='required'){
+    const model=story.lang==='es'?process.env.SBC_ACADEMY_PIPER_ES:process.env.SBC_ACADEMY_PIPER_EN;
+    if(!model||!fs.existsSync(model))throw Error('ACADEMY_PINNED_NEURAL_VOICE_NOT_AVAILABLE_'+story.lang);
+    run('piper',['--model',model,'--output_file',raw],story.phrases[i]+'\\n');
+   }else{
+    // Explicit local-only legacy fallback, never used by the required GitHub production media job.
+    run('espeak-ng',['-v',story.lang==='es'?'es':'en-us','-s','142','-w',raw,story.phrases[i]]);
+   }
    const seconds=Math.max(14,Math.ceil(length(raw)+1));durations.push(seconds);
    run('ffmpeg',['-y','-v','error','-i',raw,'-af','apad','-t',String(seconds),'-ar','22050','-ac','1',padded]);
    voices.push(padded);
@@ -158,8 +165,8 @@ async function generate(){
   const results=[];
   for(const story of plan()){console.log('AUTOMATING',story.id,story.lang);results.push(await one(browser,'http://127.0.0.1:'+svc.address().port,story,dir,previous));}
   const filenames=results.flatMap(r=>r.files);
-  const manifest={schema:1,version:'66.169',source:'REAL_SBC_WORKSTATION_HTML_JS_WITH_LOCAL_SYNTHETIC_API',authenticatedEmployeeRecording:false,
-   syntheticOnly:true,noLiveOutreach:true,notice:'AUTOMATED TRAINING SIMULATIONS, NOT LIVE EMPLOYEE RECORDINGS',createdAt:new Date().toISOString(),files:filenames,lessons:results};
+  const manifest={schema:1,version:process.env.SBC_ACADEMY_NEURAL_VOICE==='required'?'66.171':'66.169',source:'REAL_SBC_WORKSTATION_HTML_JS_WITH_LOCAL_SYNTHETIC_API',authenticatedEmployeeRecording:false,
+   syntheticOnly:true,noLiveOutreach:true,narrationEngine:process.env.SBC_ACADEMY_NEURAL_VOICE==='required'?'Piper offline neural EN-US lessac-medium, ES-MX ald-medium':'legacy offline espeak-ng',notice:'AUTOMATED TRAINING SIMULATIONS, NOT LIVE EMPLOYEE RECORDINGS',createdAt:new Date().toISOString(),files:filenames,lessons:results};
   for(const output of outputs)fs.writeFileSync(p.join(output,'AUTO_GENERATED_MANIFEST.json'),JSON.stringify(manifest,null,2)+'\n');
   console.log('MEDIA GENERATED',results.length,'bilingual videos and audio tracks,',results.length*4,'real-code UI screenshots');
  }finally{if(browser)await browser.close();await new Promise(r=>svc.close(r));fs.rmSync(dir,{recursive:true,force:true});}
@@ -167,6 +174,7 @@ async function generate(){
 function verify(){
  const m=JSON.parse(fs.readFileSync(p.join(outputs[0],'AUTO_GENERATED_MANIFEST.json')));
  if(m.lessons.length!==24||m.authenticatedEmployeeRecording!==false||m.files.length!==168)throw Error('AUTO_MEDIA_INCOMPLETE');
+ if(process.env.SBC_ACADEMY_NEURAL_VOICE==='required'&&(m.version!=='66.171'||!String(m.narrationEngine||'').startsWith('Piper offline neural')))throw Error('NEURAL_VOICE_NOT_PROVEN');
  for(const name of m.files){
   if(!/^am-(0[1-9]|1[0-2])-(en|es)(?:-audio)?\.(?:mp4|webm|vtt)$/.test(name)&&!/^am-(0[1-9]|1[0-2])-(en|es)-0[1-4]\.webp$/.test(name))throw Error('UNSAFE_FILENAME');
   const a=p.join(outputs[0],name),b=p.join(outputs[1],name);

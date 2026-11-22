@@ -15,7 +15,7 @@ permissions:
   contents: write
 concurrency:
   group: academy360-generated-training-media
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   produce:
     if: github.ref == 'refs/heads/a-sbc-master'
@@ -37,11 +37,35 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.58.0
           npx playwright install --with-deps chromium
+      - name: Install pinned local neural narrator (no paid API) and verify voice file digests
+        run: |
+          python3 -m venv /tmp/sbc-academy-piper
+          /tmp/sbc-academy-piper/bin/pip install --disable-pip-version-check --no-input piper-tts==1.3.0
+          mkdir -p /tmp/sbc-academy-voice-models
+          curl --fail --location --retry 3 --silent --show-error -o /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx
+          curl --fail --location --retry 3 --silent --show-error -o /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+          curl --fail --location --retry 3 --silent --show-error -o /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/ald/medium/es_MX-ald-medium.onnx
+          curl --fail --location --retry 3 --silent --show-error -o /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json
+          echo '5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f  /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx' | sha256sum -c
+          echo '019b3803293c93e34a206dd2e53a3889209a514e786fd7144f7b70196c579b63  /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx' | sha256sum -c
+          python3 -m json.tool /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx.json >/dev/null
+          python3 -m json.tool /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx.json >/dev/null
+          /tmp/sbc-academy-piper/bin/piper --help | head -18
+
       - name: Test safety and exact bilingual course coverage
         run: node --test scripts/academy360-auto-media.test.cjs
-      - name: Generate 12 English and 12 Spanish UI-based videos with narration and pictures
-        run: node scripts/academy360-auto-media.cjs --generate
-      - name: Prove videos, audio, screenshots and mirrored assets exist
+      - name: Generate 12 English and 12 Spanish UI-based videos with neural narration and pictures
+        env:
+          PATH: /tmp/sbc-academy-piper/bin:${{ env.PATH }}
+          SBC_ACADEMY_NEURAL_VOICE: required
+          SBC_ACADEMY_PIPER_EN: /tmp/sbc-academy-voice-models/en_US-lessac-medium.onnx
+          SBC_ACADEMY_PIPER_ES: /tmp/sbc-academy-voice-models/es_MX-ald-medium.onnx
+        run: |
+          export PATH="/tmp/sbc-academy-piper/bin:$PATH"
+          node scripts/academy360-auto-media.cjs --generate
+      - name: Prove neural narration, videos, screenshots and captions in both languages
+        env:
+          SBC_ACADEMY_NEURAL_VOICE: required
         run: node scripts/academy360-auto-media.cjs --verify
       - name: Archive the actual generated learning media
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
