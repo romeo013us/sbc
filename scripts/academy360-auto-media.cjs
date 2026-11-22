@@ -94,7 +94,7 @@ async function annotate(page,story,i,focus){
  await page.evaluate(data=>{
   let el=document.querySelector('#academy-video-disclosure');
   if(!el){el=document.createElement('aside');el.id='academy-video-disclosure';document.body.append(el);}
-  el.style.cssText='position:fixed!important;z-index:2147483000!important;bottom:0;left:0;right:0;background:#092739f5;color:white;padding:10px 24px;border-top:4px solid #f4ca75;font:600 15px/1.45 Arial,sans-serif;text-align:left;box-shadow:0 0 20px #1118;';
+  el.style.cssText='position:fixed!important;z-index:2147483000!important;pointer-events:none!important;bottom:0;left:0;right:0;background:#092739f5;color:white;padding:10px 24px;border-top:4px solid #f4ca75;font:600 15px/1.45 Arial,sans-serif;text-align:left;box-shadow:0 0 20px #1118;';
   const title=document.createElement('div');title.textContent='SBC ACADEMY 360 · '+data.title+' · '+(data.i+1)+'/4';
   const subtitle=document.createElement('div');subtitle.style.fontSize='13px';subtitle.textContent=data.phrase.slice(0,145);
   const notice=document.createElement('div');notice.style.cssText='font-size:11px;color:#ffdc88';

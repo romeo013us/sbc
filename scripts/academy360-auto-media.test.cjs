@@ -48,3 +48,9 @@ test('required production media generates 24 neural-voice lessons instead of the
  assert.match(ci,/es_MX-ald-medium/);
  assert.match(ci,/en_US-lessac-medium/);
 });
+
+test('fictional-data disclosure never intercepts learner controls in automated screenshots',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const source=fs.readFileSync(path.join(__dirname,'academy360-auto-media.cjs'),'utf8');
+ assert.match(source,/pointer-events:none!important/);
+});
