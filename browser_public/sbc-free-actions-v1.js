@@ -57,14 +57,21 @@
   card.appendChild(tag);
   card.appendChild(node('strong','sbc-actions-business',String(row.businessName||'Business account')));
   card.appendChild(node('p','sbc-actions-detail',String(row.detail||'Review this account.')));
+  var grouped=Number.isSafeInteger(row.batchCount)&&row.batchCount>0;
+  if(grouped)card.appendChild(node('small','sbc-actions-due',row.batchCount+' CRM records in this review queue.'));
   if(row.dueDate)card.appendChild(node('small','sbc-actions-due','Follow-up date: '+String(row.dueDate)));
   var owner=!document.getElementById('view-accounts');
-  var open=newButton(owner?'Open CRM':'Open assigned account','sbc-actions-go',function(){
+  var open=newButton(grouped?(owner?'Open CRM assignment list':'Review assigned accounts'):(owner?'Open CRM list':'Open assigned account'),'sbc-actions-go',function(){
     if(owner){
      if(dialog?.open)dialog.close();
      if(typeof window.sbcNavigate==='function')window.sbcNavigate('customers');
      else document.querySelector('.nav-item[data-view="customers"]')?.click();
     }else{
+     if(grouped){
+      document.querySelector('.tab[data-view="accounts"]')?.click();
+      document.getElementById('sbcAccountSearch')?.focus();
+      return;
+     }
      // The existing Account Manager handler enforces the assigned-portfolio
      // check again before opening the selected business.
      var b=node('button');b.type='button'; // reuse existing authorized action handler
@@ -96,9 +103,12 @@
    var data=await response.json().catch(function(){return null;});
    if(!response.ok||!data||data.ok!==true||data.readOnly!==true||data.source!=='AUTHORITATIVE_CRM_MYSQL'||!Array.isArray(data.actions))
     throw Error('VERIFIED_CRM_ACTIONS_UNAVAILABLE');
-   count.textContent=String(data.total||0)+' next steps';
-   status.textContent=data.total?'Highest-priority actions from existing CRM records. Review permissions before contacting anyone.':
-     'No actions found in the verified CRM sample. This is not proof that all work is complete.';
+   count.textContent=String(data.total||0)+' prioritized decision'+(data.total===1?'':'s');
+   status.textContent=data.total?'Highest-priority decisions from recent authorized CRM records. No automatic outreach.':
+     'No prioritized decisions in this CRM sample. This does not mean all account work is complete.';
+   if(data.dataQualityCount){
+    items.appendChild(node('p','sbc-actions-note',data.dataQualityCount+' CRM business names need source verification; source records were not changed.'));
+   }
    data.actions.forEach(function(row){items.appendChild(one(row));});
    if(!data.actions.length)items.appendChild(node('p','sbc-actions-empty','No next actions in the current account sample.'));
    if(data.moreRecordsPossible)items.appendChild(node('p','sbc-actions-note','Showing a prioritized sample of the latest 500 CRM records. More accounts may exist.'));
