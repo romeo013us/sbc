@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark">
+<title>SBC · Sales Command | Owner</title>
+<link rel="stylesheet" href="/sbc-sales-command-v1.css">
+<script defer src="/sbc-sales-command-v1.js"></script>
+</head><body>
+<div class="shell">
+<header class="head"><div class="brand"><span class="mark">S</span><div><strong>SUCCESSFUL BY CHOICE</strong><small>OWNER-ONLY · SALES COMMAND V1</small></div></div><div><a class="back" href="/">← Command Center</a><span class="owner">OWNER CONTROL REQUIRED</span></div></header>
+<main>
+<div class="intro"><div><p class="eyebrow">REVENUE OPERATIONS / FINANCIAL CONTROL</p><h1>Sales Command</h1><p>Grow revenue. Protect margin. Reward results. No automatic purchases or payouts.</p></div><div class="month"><label for="month">Reporting month</label><input id="month" type="month"><button id="refresh">Refresh</button></div></div>
+<div class="message" id="notice" role="status" aria-live="polite">Sign in as SBC owner to load actual records.</div>
+<section class="kpis" id="kpis" aria-label="Team financial results"></section>
+<section class="panel"><div class="panelhead"><div><h2>Account manager scoreboard</h2><p>Owner-reconciled paid orders, not prospect forecasts.</p></div><strong>$600 / team day</strong></div><div class="tablewrap"><table><thead><tr><th>Manager</th><th>Tier</th><th>Collected</th><th>Monthly goal</th><th>Profit</th><th>Commission</th><th>Statement</th></tr></thead><tbody id="managers"><tr><td colspan="7">Loading…</td></tr></tbody></table></div></section>
+<div class="columns">
+<section class="panel"><h2>1 · Confirm compensation agreement</h2><p class="help">Record agreed terms for this manager and month before a commission can be closed.</p>
+<form id="termsForm"><label>Manager<select id="termsManager" required></select></label><label>Commission tier<select id="tier"><option value="standard">Standard · $5/hr · 10%</option><option value="senior">Senior · $6/hr · 15%</option></select></label><label class="wide">Signed agreement reference<input id="agreementRef" required minlength="12" maxlength="180" placeholder="Signed agreement/document reference"></label><button type="submit">Record agreed monthly terms</button></form></section>
+<section class="panel"><h2>2 · Reconcile real paid orders</h2><p class="help">Vendor costs, delivery labor and processing fees need evidence before commission credit.</p>
+<form id="creditForm"><label>Paid order<select id="creditOrder" required><option value="">Select eligible captured order</option></select></label><label>Credited account manager<select id="creditManager" required></select></label><label>Sale category<select id="saleSource"><option value="NEW_CUSTOMER">New customer</option><option value="ACTIVE_UPSELL">Active upsell</option><option value="MANUALLY_SOLD_RENEWAL">Manager-sold renewal</option></select></label><label>Direct vendor costs ($)<input id="directCost" type="number" min="0" max="1000000" step=".01" required></label><label>Delivery labor costs ($)<input id="laborCost" type="number" min="0" step=".01" value="0" required></label><label>Processing fees ($)<input id="processingCost" type="number" min="0" step=".01" value="0" required></label><label class="wide">Cost evidence / source<input id="costEvidence" maxlength="500" minlength="12" required placeholder="Vendor quote or invoice + labor calculation"></label><button type="submit">Review and record paid sale</button></form></section>
+</div>
+<section class="panel"><h2>3 · Monthly commission approval</h2><p class="help">Closing is available after the month ends. Approval does not send money; Paid records a transfer you already made.</p><div class="actions"><label>Manager<select id="actionManager"></select></label><button id="closeMonth">Close month → Draft</button><button id="approveMonth" class="accent">Approve statement</button><label>External payment reference<input id="paymentRef" maxlength="180" placeholder="Enter after making payment"></label><button id="paidMonth">Record payment already sent</button></div></section>
+<footer>SBC · Because Why Not? · Source: owner-reconciled Square capture metadata. Not a bank settlement or legal worker-classification report. Contractor transfers, vendor purchases and customer fulfillment remain owner-controlled.</footer>
+</main></div>
+</body></html>
