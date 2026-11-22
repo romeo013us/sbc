@@ -334,6 +334,26 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script defer src="/v66-129-owner-checkout-lab.js?v=66.0.129"></script>
 <script defer src="/sbc-nextday-sales-prep-v1.js?v=1"></script>
 <script defer src="/sbc-command-center-focus-v1.js?v=20261116-panel-resume"></script>
-<script defer src="/sbc-sales-command-nav-v1.js?v=20261122"></script>
+<script>
+/* Owner-only nav visibility; API remains the authority. */
+(function(){
+ var link=document.getElementById('sbc-sales-command-owner-nav');
+ if(!link)return;
+ var serial=0;
+ async function verify(){
+  var check=++serial;link.hidden=true;
+  try{
+   var response=await fetch('/api/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   if(!response.ok)return;
+   var data=await response.json(),who=data.user||data.me||data.profile||data;
+   if(serial===check&&String(who&&who.role||'').toLowerCase()==='owner')link.hidden=false;
+  }catch(_){}
+ }
+ var app=document.getElementById('app');
+ if(app&&window.MutationObserver)new MutationObserver(verify).observe(app,{attributes:true,attributeFilter:['class']});
+ document.getElementById('logoutBtn')?.addEventListener('click',function(){serial++;link.hidden=true});
+ verify();
+})();
+</script>
 </body>
 </html>
