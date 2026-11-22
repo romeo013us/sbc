@@ -5,6 +5,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const MARK='SBC_V66160_SALES_COMMAND_OWNER_LEDGER';
 const ANCHOR="app.get('/api/v9/payroll',auth,ownerOnly,(req,res)=>";
+const HR_ANCHOR="app.get('/api/hr/workspace',auth,ownerOnly,(req,res)=>";
 const ROUTE=[
  '// '+MARK+'; owner-approved monthly commissions, read-only manager progress.',
  "require('./routes/sbc-sales-command-v1.cjs').register(app,{",
@@ -20,8 +21,11 @@ function patchServer(raw){
  if(s.includes(MARK))return s;
  if(!s.includes('function v9data()')||!s.includes('SBC_V6649_REQUIRE_WRITER'))
   throw Error('SALES_COMMAND_REQUIRES_FULL_SECURE_SERVER');
- if(s.split(ANCHOR).length!==2)throw Error('SALES_COMMAND_ANCHOR_NOT_UNIQUE');
- return s.replace(ANCHOR,ROUTE+ANCHOR);
+ // Existing HR tests isolate the route block from HR -> payroll. Insert BEFORE HR.
+ // Canonical unstaged source may not contain HR yet, so allow a dry-run fallback.
+ const target=s.includes(HR_ANCHOR)?HR_ANCHOR:ANCHOR;
+ if(s.split(target).length!==2)throw Error('SALES_COMMAND_ANCHOR_NOT_UNIQUE');
+ return s.replace(target,ROUTE+target);
 }
 if(require.main===module){
  const p=path.resolve(__dirname,'../server.js'),before=fs.readFileSync(p,'utf8'),after=patchServer(before);
