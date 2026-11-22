@@ -193,12 +193,19 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
       const candidates=(db?.customers||[]).filter(c=>Number(c?.tenantId)===selectedTenant).filter(eligible).filter(c=>!recentMission(c)).slice(0,cap);
       const autonomousOutbound=!advisoryOnly && String(process.env.SBC_KIM_MISSION_AUTONOMOUS_OUTBOUND||'false').toLowerCase()==='true';
       const results=[];
+      let humanSalesReview=0;
       for(const customer of candidates){
+        // Owner-accepted human research is NOT consent for autonomous outbound,
+        // purchase intent, or an AI checkout. Keep it visible in advisory/CRM.
+        if(customer?.leadIntelligence?.ownerTrust?.basis && customer.leadIntelligence.ownerTrust.outboundConsentGranted!==true){
+          humanSalesReview++;
+          continue;
+        }
         try{results.push(await runMission(customer,{text:customer.researchNotes||customer.notes||'',needsMatrix:customer.consultativeNeeds?.discovery?.matrix||{}},{mode:autonomousOutbound?'dispatch':'evaluate'}));}
         catch(e){results.push({ok:false,customerId:customer.id,error:clean(e.message,500)});}
       }
       const fulfillment=advisoryOnly?{processed:0,results:[]}:await reconcilePaidOrders(cap,selectedTenant);
-      state.lastCycleAt=now();state.lastCycleResult={ok:true,reason,prospects:candidates.length,missions:results.length,fulfillment,metrics:safeMetric(db),durationMs:Date.now()-started};
+      state.lastCycleAt=now();state.lastCycleResult={ok:true,reason,prospects:candidates.length,missions:results.length,humanSalesReview,fulfillment,metrics:safeMetric(db),durationMs:Date.now()-started};
       await persist();
       return state.lastCycleResult;
     }catch(e){state.lastCycleAt=now();state.lastCycleResult={ok:false,reason,error:clean(e.message,500),durationMs:Date.now()-started};return state.lastCycleResult;}
