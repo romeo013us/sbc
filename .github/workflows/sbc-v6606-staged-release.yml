@@ -157,6 +157,9 @@ jobs:
           node scripts/v66148-crm-softdelete-accounting.test.cjs
           node scripts/v66148-crm-softdelete-ui.test.cjs
           npm run test:sales-command
+          npm run test:trusted-leads
+          node --check routes/sbc-owner-trusted-leads-v1.cjs
+          node --check public/sbc-trusted-leads-v1.js
           node --check routes/sbc-public-discovery-v1.cjs
           node --check routes/sbc-sales-command-v1.cjs
           node --check public/sbc-sales-command-v1.js
@@ -332,6 +335,8 @@ jobs:
           node scripts/v66157-stage-hr-ledger-retention.cjs --verify-staged
           SBC_V66160_ISOLATED_STAGE=YES node scripts/v66160-stage-sales-command.cjs --apply
           node scripts/v66160-stage-sales-command.cjs --verify-staged
+          SBC_V66163_ISOLATED_STAGE=YES node scripts/v66163-stage-owner-trusted-leads.cjs --apply
+          node scripts/v66163-stage-owner-trusted-leads.cjs --verify-staged
           node scripts/v66145-owner-acceptance-ui.test.cjs
           SBC_V66145_ISOLATED_STAGE=YES node scripts/v66145-stage-owner-acceptance-ui.cjs --apply
           node scripts/v66145-owner-acceptance-ui.test.cjs --staged
