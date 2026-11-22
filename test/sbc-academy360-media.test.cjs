@@ -33,3 +33,46 @@ test('new media is shipped in both public and browser_public with unchanged cert
  assert.match(read('public/sbc-am-academy-v1.js'),/SBC_ACADEMY_VIDEO\?\.render/);
  assert.match(read('public/sbc-am-academy-owner.html'),/sbc-am-academy-recorder.html/);
 });
+
+test('media hub presents video, audio, screenshot gallery, seek/speed, captions and full screen controls',async()=>{
+ const dom=new JSDOM(read('public/sbc-am-academy.html'),{url:'https://academy.test/sbc-am-academy.html',runScripts:'outside-only'});
+ const w=dom.window,d=w.document;w.HTMLMediaElement.prototype.pause=()=>{};w.HTMLMediaElement.prototype.load=()=>{};w.HTMLMediaElement.prototype.play=()=>Promise.resolve();
+ const looked=[];w.fetch=async(url,opts)=>{looked.push(url);let mime='text/html';if(url.endsWith('.webm'))mime=url.includes('-audio.')?'audio/webm':'video/webm';if(url.endsWith('.vtt'))mime='text/vtt';if(url.endsWith('-01.webp'))mime='image/webp';return {ok:mime!=='text/html',headers:{get:()=>mime}};};
+ w.eval(read('public/sbc-am-academy-media-v1.js'));
+ await w.SBC_ACADEMY_VIDEO.render('am-03','en');
+ assert.equal(d.getElementById('academyRecording').hidden,false);
+ assert.equal(d.getElementById('academyAudioRecording').hidden,false);
+ assert.equal(d.querySelectorAll('#academyPhotoGallery figure').length,1);
+ assert.equal(d.getElementById('academyVideoCaptions').hidden,false);
+ d.getElementById('academyModePhotos').click();
+ assert.equal(d.getElementById('academyPhotosPane').hidden,false);
+ assert.equal(d.getElementById('academyVideoPane').hidden,true);
+ assert.equal(d.getElementById('academyAvControls').hidden,true);
+ d.getElementById('academyModeAudio').click();
+ assert.equal(d.getElementById('academyAvControls').hidden,false);
+ const audio=d.getElementById('academyAudioRecording');audio.currentTime=20;
+ d.getElementById('academyMediaForward').click();assert.equal(audio.currentTime,30);
+ d.getElementById('academyMediaRewind').click();assert.equal(audio.currentTime,20);
+ d.getElementById('academyMediaSpeed').value='1.5';
+ d.getElementById('academyMediaSpeed').dispatchEvent(new w.Event('change'));
+ assert.equal(audio.playbackRate,1.5);
+ d.getElementById('academyModeVideo').click();d.getElementById('academyVideoCaptions').click();
+ assert.equal(d.getElementById('academyVideoCaptions').getAttribute('aria-pressed'),'false');
+ assert(looked.some(u=>u.endsWith('am-03-en-01.webp')));
+ dom.window.close();
+});
+test('each lesson provides narration fallback without inventing missing screen recordings or screenshots',async()=>{
+ const dom=new JSDOM(read('public/sbc-am-academy.html'),{url:'https://academy.test/sbc-am-academy.html',runScripts:'outside-only'});
+ const w=dom.window,d=w.document;w.HTMLMediaElement.prototype.pause=()=>{};w.HTMLMediaElement.prototype.load=()=>{};
+ w.fetch=async()=>({ok:false,headers:{get:()=> 'text/html'}});
+ w.eval(read('public/sbc-am-academy-media-v1.js'));
+ await w.SBC_ACADEMY_VIDEO.render('am-12','es');
+ assert.equal(d.getElementById('academyRecording').hidden,true);
+ assert.equal(d.getElementById('academyAudioRecording').hidden,true);
+ assert.equal(d.querySelectorAll('#academyPhotoGallery img').length,0);
+ assert.match(d.getElementById('academyPhotosStatus').textContent,/aún no hay capturas reales/i);
+ assert.match(d.getElementById('academyAudioStatus').textContent,/Narrar/);
+ assert.equal(d.getElementById('academyAvControls').hidden,true);
+ assert.equal(d.getElementById('playScene').textContent.includes('Narrate'),true);
+ dom.window.close();
+});

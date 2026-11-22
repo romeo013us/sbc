@@ -4,3 +4,17 @@
 .academy-video-panel h3{font-size:20px;margin:10px 0}.academy-video-panel p{font-size:13px}
 .academy-video-panel video,.recorder-layout video{display:block;max-height:480px;width:100%;aspect-ratio:16/9;object-fit:contain;border-radius:10px;background:#03121e;margin:12px 0}
 .recorder-layout{max-width:1250px;margin:0 auto;padding:32px 24px 70px}.recorder-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.recorder-grid>.owner-card{padding:24px}.recorder-grid label{display:block;margin-top:13px;font-size:13px}.recorder-grid .check-row{display:flex;align-items:flex-start;gap:10px}.recorder-grid .check-row input{flex:none;width:18px;height:18px}.capture-actions{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0}.recorder-layout code{overflow-wrap:anywhere}@media(max-width:800px){.recorder-grid{grid-template-columns:1fr}.recorder-layout{padding:18px}}
+
+.academy-media-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 18px}
+.academy-media-tabs button{min-width:105px}.academy-media-tabs [aria-pressed=true]{background:var(--gold);color:#082131;border-color:var(--gold)}
+.academy-av-controls{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:15px 0}
+.academy-av-controls label{display:flex;align-items:center;gap:7px;font-size:12px}.academy-av-controls select{width:auto;min-width:90px}
+.academy-av-controls button{min-height:42px}.academy-video-panel audio{display:block;width:100%;margin:14px 0;min-height:54px}
+.academy-photo-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.academy-photo-gallery figure{margin:0;background:#091e2e;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.academy-photo-gallery .academy-photo-open{display:block;width:100%;height:auto;border:0;padding:0;background:#081725;min-height:120px;cursor:zoom-in}
+.academy-photo-gallery img{display:block;max-height:300px;aspect-ratio:16/9;object-fit:contain;width:100%;background:#061c2a}
+.academy-photo-gallery figcaption{font-size:12px;padding:9px;color:var(--muted)}
+#academyPhotoDialog{background:#0a2232;color:var(--text);border:2px solid var(--line);border-radius:12px;width:min(94vw,1050px);max-height:90vh;overflow:auto}
+#academyPhotoDialog::backdrop{background:#000b}#academyPhotoDialog img{width:100%;height:auto;max-height:72vh;object-fit:contain;display:block;margin:14px 0}
+@media(max-width:540px){.academy-photo-gallery{grid-template-columns:1fr}.academy-av-controls button{flex:1 1 auto}.academy-media-tabs button{flex:1 1 auto}}
