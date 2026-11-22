@@ -5,7 +5,6 @@ on:
     paths:
       - scripts/academy360-auto-media.cjs
       - scripts/academy360-auto-media.test.cjs
-      - .github/workflows/sbc-academy360-auto-media.yml
       - enterprise/sbc-am-academy-v1.cjs
       - enterprise/sbc-am-academy-es-v2.cjs
       - public/sbc-account-manager-v1.html
@@ -61,5 +60,14 @@ jobs:
             echo "Automatic Academy media is already identical"
           else
             git commit -m "build(academy360): automated fictional-data English Spanish video audio and photos"
-            git push origin HEAD:a-sbc-master
+            for attempt in 1 2 3; do
+              git fetch origin a-sbc-master
+              git rebase origin/a-sbc-master
+              if git push origin HEAD:a-sbc-master; then
+                echo "All generated SBC multimedia lessons integrated into the latest branch"
+                exit 0
+              fi
+            done
+            echo "Another release moved the branch; validated artifact remains available" >&2
+            exit 1
           fi
