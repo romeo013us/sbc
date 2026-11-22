@@ -28,7 +28,7 @@ function setup(recovery=false,locked=null){
   await handlers.get(method+' '+path)(req,res);
   return {code,json,cache};
  }
- return {handlers,calls,call,get writes(){return writes}};
+ return {handlers,calls,call,db,get writes(){return writes}};
 }
 test('owner sees tenant-scoped manager summary without phantom payment',async()=>{
  const env=setup();
@@ -52,6 +52,18 @@ test('manager can see only own progress, not owner dashboard or company profit',
  assert.equal(blocked.code,403);
  const cross=await env.call('GET','/api/sbc/sales/compensation/me',{...m,tenantId:2});
  assert.equal(cross.code,403);
+});
+test('eligible order list excludes refunded, charged-back, and invalid-value captured orders',async()=>{
+ const env=setup();
+ env.db.orders=[
+  {id:'valid',tenantId:1,customerId:'c1',price:199,paymentStatus:'PAID',paymentProvider:'square',squarePaymentId:'sq-valid',squarePaymentStatus:'COMPLETED',squareCompletedAt:'2026-11-20T18:00:00Z'},
+  {id:'refund',tenantId:1,customerId:'c1',price:199,paymentStatus:'REFUNDED',paymentProvider:'square',squarePaymentId:'sq-refund',squarePaymentStatus:'COMPLETED',squareCompletedAt:'2026-11-20T18:00:00Z'},
+  {id:'bad-price',tenantId:1,customerId:'c1',price:-99,paymentStatus:'PAID',paymentProvider:'square',squarePaymentId:'sq-negative',squarePaymentStatus:'COMPLETED',squareCompletedAt:'2026-11-20T18:00:00Z'}
+ ];
+ const r=await env.call('GET','/api/owner/sales-command/eligible-orders',{id:'owner',role:'owner',tenantId:1});
+ assert.equal(r.code,200);
+ assert(!r.json.candidates.some(x=>x.orderId==='refund'));
+ assert(!r.json.candidates.some(x=>x.orderId==='bad-price'));
 });
 test('manager locked statement protects company profit fields',async()=>{
  const env=setup(false,{status:'APPROVED',revenue_cents:280000,profit_cents:9999999,commission_cents:16800,external_payment_reference:'private',closed_at:'2026-11-30'});
