@@ -61,6 +61,17 @@ test('manager locked statement protects company profit fields',async()=>{
  assert(!JSON.stringify(result.json).includes('9999999'));
  assert(!JSON.stringify(result.json).includes('private'));
 });
+test('owner can evaluate a bilingual candidate and run margin forecast without creating records',async()=>{
+ const env=setup();const owner={id:'owner',role:'owner',tenantId:1};
+ const scores={verifiedClosingHistory:20,englishRoleplay:15,spanishRoleplay:20,objectionClosing:20,crmFluency:10,accountOwnership:10,reliability:5};
+ const evidence={referenceVerified:true,salesEvidenceVerified:true,englishLive:true,spanishLive:true,closingSimulationPassed:true};
+ const score=await env.call('POST','/api/owner/sales-command/hiring/evaluate',owner,{scores,evidence});
+ assert.equal(score.code,200);assert.equal(score.json.result.decision,'SHORTLIST');assert.equal(env.writes,0);
+ const forecast=await env.call('POST','/api/owner/sales-command/hiring/forecast',owner,{monthlyRevenueCents:1300000,productGrossMarginBps:4000,standardManagers:1,seniorManagers:1,hoursPerWeek:30,fixedOverheadCents:100000});
+ assert.equal(forecast.code,200);assert.equal(forecast.json.result.isForecast,true);
+ const denied=await env.call('POST','/api/owner/sales-command/hiring/evaluate',{id:'m1',role:'account_manager',tenantId:1},{scores,evidence});
+ assert.equal(denied.code,403);
+});
 test('write operations fail closed when preview is read-only or owner authorization absent',async()=>{
  const env=setup(true);
  const blocked=await env.call('POST','/api/owner/sales-command/credits',{id:'owner',role:'owner',tenantId:1});
