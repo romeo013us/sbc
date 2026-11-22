@@ -7088,6 +7088,15 @@ app.post('/api/v9/call-report/:id/approve',auth,ownerOnly,async(req,res)=>{const
 app.post('/api/v9/users/:id/reset-certification',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.id);if(!u)return res.status(404).json({error:'User not found.'});const v=v9data();delete v.certifications[u.id];v.trainingProgress[u.id]={modules:{},finalScore:null,finalPassed:false};await v9save(v);audit(req.user,'cert_reset',`Reset training/certification for ${u.name}`,{userId:u.id});res.json({ok:true})})
 
 app.post('/api/v10/orders/:id/assign',auth,async(req,res)=>{if(req.user.role!=='owner')return res.status(403).json({error:'Only Romeo / owner can assign fulfillment.'});const o=(db.orders||[]).find(x=>x.id===req.params.id);if(!o)return res.status(404).json({error:'Order not found.'});const uid=String(req.body?.userId||'');const owner=(db.users||[]).find(x=>String(x.username||'').toLowerCase()==='owner');if(uid&&uid!==owner?.id)return res.status(403).json({error:'Fulfillment is owner-controlled. Romeo is the only fulfillment operator.'});o.fulfillmentOwner=uid?owner.id:'';o.fulfillmentOwnerName=uid?owner.name||'Romeo':'';o.updatedAt=now();await saveData();audit(req.user,'fulfillment_assignment',`Assigned order ${o.id} to ${o.fulfillmentOwnerName||'Unassigned'}`,{orderId:o.id,userId:o.fulfillmentOwner});res.json(o)});
+//SBC_V66163_OWNER_TRUSTED_RESEARCH
+const SBC_TRUSTED_LEADS=require('./enterprise/sbc-trusted-research-v1.cjs');
+require('./routes/sbc-owner-trusted-leads-v1.cjs').register(app,{
+ auth,ownerOnly,
+ getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),
+ tenantForRead:req=>requireRequestTenant(req),
+ writer:()=>SBC_V6649_REQUIRE_WRITER(),
+ audit
+});
 app.post('/api/workforce/leads',auth,async(req,res)=>{
   if(!canSubmitResearchLeads(req.user))return res.status(403).json({error:'Lead research access required.',code:'LEAD_RESEARCH_ROLE_REQUIRED'});
   // Canonical workforce lead submission: delegate to the same durable implementation below.
@@ -7116,14 +7125,15 @@ app.post('/api/workforce/leads',auth,async(req,res)=>{
   c.leadIntelligence.researchSource=researchSource;
   c.leadIntelligence.autoVerificationStatus='QUEUED';
   c.leadIntelligence.researchSubmittedBy=String(req.user.id);
+  if(SBC_TRUSTED_LEADS.isLorna(req.user))SBC_TRUSTED_LEADS.trust(c,{actorId:req.user.id,basis:'LORNA_RESEARCH_SUBMISSION'});
   if(mysqlPool){await mysqlPool.query(`INSERT INTO sbc_customers (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,lead_intelligence_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[c.id,c.tenantId,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,'[]',JSON.stringify(c.leadIntelligence||{}),sqlDateTime(c.createdAt),sqlDateTime(c.updatedAt)]);}
   db.customers.unshift(c);
-  enqueueLeadAssist(c.id,'lead_submission','high');
+  if(!SBC_TRUSTED_LEADS.isTrusted(c))enqueueLeadAssist(c.id,'lead_submission','high');
   addActivity('customer',`Added ${c.businessName||c.contactName||c.phone} from ${c.researcherName}`,{customerId:c.id,source:c.source,researcherId:c.researcherId,researcherName:c.researcherName});
   audit(req.user,'workforce_lead_created',`Submitted lead ${business||phone}`,{customerId:c.id,researcherId:c.researcherId,source:c.source,researchComplete:researchComplete,researchSource:researchSource});
   saveData().catch(e=>console.warn('[SBC WORKFORCE LEAD] secondary snapshot sync:',e?.message||e));
   if(mysqlPool){const [rows]=await mysqlPool.query('SELECT id FROM sbc_customers WHERE id=? LIMIT 1',[c.id]);if(!rows.length)return res.status(503).json({error:'The central CRM write could not be verified. Please try Save Lead again.',retryable:true});}
-  res.status(201).json({...c,persistence:{local:true,mysql:Boolean(mysqlPool),verified:true,writeMode:mysqlPool?'direct-relational':'local-fallback'},route:'workforce-leads-v1',researchComplete:researchComplete,leadAssist:{status:'QUEUED',message:'Saved in SBC CRM. Automatic Lead Assist verification queued.'},message:'Lead saved to the central SBC CRM and queued for automatic verification.'});
+  res.status(201).json({...c,persistence:{local:true,mysql:Boolean(mysqlPool),verified:true,writeMode:mysqlPool?'direct-relational':'local-fallback'},route:'workforce-leads-v1',researchComplete:researchComplete,leadAssist:SBC_TRUSTED_LEADS.isTrusted(c)?{status:'OWNER_TRUSTED_RESEARCH',message:'Lorna research accepted by owner policy. No second verification requested.'}:{status:'QUEUED',message:'Saved in SBC CRM. Automatic Lead Assist verification queued.'},message:SBC_TRUSTED_LEADS.isTrusted(c)?'Lead saved as owner-trusted research. Outreach remains separately controlled.':'Lead saved to the central SBC CRM and queued for automatic verification.'});
 });
 
 
@@ -7250,7 +7260,7 @@ app.post('/api/v10/leads/submit',auth,async(req,res)=>{
     // Only after the canonical write succeeds do we mutate the live CRM object.
     db.customers.unshift(c);
     assignLeadAutomatically(c);
-    enqueueLeadAssist(c.id,'lead_submission','high');
+    if(!SBC_TRUSTED_LEADS.isTrusted(c))enqueueLeadAssist(c.id,'lead_submission','high');
     try{SUPERNOVA_V2.appendWrite('lead.created',{event:'lead.created',businessName:c.businessName,contactName:c.contactName,phone:c.phone,email:c.email,source:c.source,customerId:c.id,researcherId:c.researcherId},req.user?.tenantId||'1')}catch{}
     addActivity('customer',`Added ${c.businessName||c.contactName||c.phone} from ${c.researcherName}`,{customerId:c.id,source:c.source,researcherId:c.researcherId,researcherName:c.researcherName});
     audit(req.user,'lead_submitted',`Submitted lead ${business||phone}`,{customerId:c.id,leadAssistQueued:true,source:c.source,researcherId:c.researcherId});
@@ -7434,7 +7444,7 @@ async function processLeadAssistQueue(limit=5,scopedTenantId=null){
   const knownJobs=new Set(q.filter(j=>['QUEUED','PROCESSING','COMPLETE','FAILED'].includes(j.status)).map(j=>String(j.customerId)));
   for(const c of (db.customers||[]))if(c.leadIntelligence?.autoVerificationStatus==='QUEUED'&&c.leadIntelligence?.researchSubmittedBy&&!knownJobs.has(String(c.id))){enqueueLeadAssist(c.id,'recover_research_auto_check','high');knownJobs.add(String(c.id));}
   const work=q.filter(x=>(x.status==='QUEUED'||(x.status==='PROCESSING'&&Date.now()-Date.parse(x.updatedAt||x.createdAt||0)>10*60*1000))&&(scopedTenantId===null||(db.customers||[]).some(c=>String(c.id)===String(x.customerId)&&Number(c.tenantId)===scopedTenantId))).sort((a,b)=>(a.priority==='high'?0:1)-(b.priority==='high'?0:1)||new Date(a.createdAt)-new Date(b.createdAt)).slice(0,Math.max(1,Math.min(10,limit)));const out=[];
-  for(const job of work){const c=(db.customers||[]).find(x=>String(x.id)===String(job.customerId));if(!c){job.status='SKIPPED';job.error='Lead no longer exists.';continue;}job.status='PROCESSING';job.attempts=Number(job.attempts||0)+1;job.updatedAt=now();
+  for(const job of work){const c=(db.customers||[]).find(x=>String(x.id)===String(job.customerId));if(!c){job.status='SKIPPED';job.error='Lead no longer exists.';continue;}if(SBC_TRUSTED_LEADS.isTrusted(c)){job.status='SKIPPED';job.reason='OWNER_TRUSTED_RESEARCH';job.updatedAt=now();continue;}job.status='PROCESSING';job.attempts=Number(job.attempts||0)+1;job.updatedAt=now();
     try{
       const publicResearch=await LEAD_INTELLIGENCE.enrichBusiness(c);
       const cfg=leadAssistProviderConfig();
