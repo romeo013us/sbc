@@ -32,6 +32,7 @@ jobs:
           node --test test/v66-release-foundation.test.cjs
           node --test test/v66-release-selection.test.cjs
           node --test test/v66-deployment-artifact-gate.test.cjs
+          node --test test/sbc-academy360-release-identity.test.cjs
           node scripts/v66-static-mirror-gate.cjs
           node scripts/secret-audit.js
           node --check hotfix-assets/apply-v6693-quarantine-legacy-officebox.js
@@ -411,6 +412,11 @@ jobs:
             finance:sha('enterprise/financial-governor-v56-25-3.js'),
             app:sha('public/app.js'),html:sha('public/index.html')
           })).digest('hex');
+          // Bind the candidate to the actual generated media, never a stale Academy version.
+          const media=require('./scripts/sbc-academy-media-release-gate.cjs');
+          const stamped=media.stamp(process.cwd(),identity);
+          identity.academyRelease=stamped.academyRelease;
+          identity.academyMediaManifestSha256=stamped.academyMediaManifestSha256;
           identity.runtimePatch='v66.0.24-static-assets-routed';
           identity.runtimePatchFrom='a-sbc-master';
           fs.writeFileSync('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify(identity,null,2)+'\n');

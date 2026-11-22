@@ -6,6 +6,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {verifyStagedInventory}=require('./v6611-verify-stage-inventory.cjs');
 const {excludedReleasePath}=require('../enterprise/v66155-public-asset-policy.cjs');
+const ACADEMY_MEDIA=require('./sbc-academy-media-release-gate.cjs');
 const sha256=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const SHA64=/^[a-f0-9]{64}$/;
 const SHA40=/^[a-f0-9]{40}$/;
@@ -47,10 +48,12 @@ function verifyDeploymentArtifact(base){
  for(const name of REQUIRED){
   if(!Object.hasOwn(inventory.files,name))throw Error('[SBC ARTIFACT GATE] required asset omitted: '+name);
  }
+ const academyPresent=Object.hasOwn(inventory.files,'public/academy-media/academy360/AUTO_GENERATED_MANIFEST.json')||Boolean(identity.academyRelease);
+ const academy=academyPresent?ACADEMY_MEDIA.verify(root,identity,inventory.files):null;
  const pkg=load(root,'package.json');
  if(pkg.main!=='sbc-godaddy-flat-entrypoint.cjs'||!/\bsbc-godaddy-flat-entrypoint\.cjs\b/.test(String(pkg.scripts?.start||'')))
   throw Error('[SBC ARTIFACT GATE] unexpected runtime entrypoint');
- return {checked:proof.checked,sourceCommit:identity.sourceCommit,receipt:'VERIFIED',staging:true};
+ return {checked:proof.checked,sourceCommit:identity.sourceCommit,receipt:'VERIFIED',staging:true,academy};
 }
 if(require.main===module){
  try{
