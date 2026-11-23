@@ -125,7 +125,10 @@ test('account manager may use Academy and time clock, not financial, payment or 
 });
 function harness({role='account_manager',tenant=1,readOnly=false,writerThrows=false,clock=true}={}){
  const db=getDb(),handlers={},actor=role==='owner'?db.users[1]:role==='lead_researcher'?db.users[3]:db.users[0],counts={save:0,writer:0};
- if(!clock)db.settings.v9.timeEntries=[];
+ // Route integration tests need a recent training-mode shift; the budget unit
+ // tests above intentionally use fixed timestamps with explicit asOf clocks.
+ if(clock)db.settings.v9.timeEntries[0].clockIn=new Date(Date.now()-60_000).toISOString();
+ else db.settings.v9.timeEntries=[];
  R.register({
   get(route,auth,fn){handlers['GET '+route]=fn},
   post(route,auth,fn){handlers['POST '+route]=fn}
