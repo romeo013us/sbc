@@ -510,7 +510,8 @@ async function loadSbcCallLedger(){
    (rows.length?rows.map(x=>'<div class="list-card"><div><strong>'+esc(x.number||'Unknown number')+'</strong> · '+esc(x.businessName|| (x.manualDial?'Manual dial':'CRM lead'))+
    '<div class="mini">'+esc(x.endedAt||x.startedAt||x.createdAt||'')+' · '+esc(x.userName||'')+' · '+esc(x.status||'')+
    ' · '+esc(x.outcome||'Pending')+' · '+Number(x.durationSec||0)+' sec</div>'+
-   (x.notes?'<div class="mini" style="white-space:pre-wrap">'+esc(x.notes)+'</div>':'')+'</div></div>').join(''):
+   (x.notes?'<div class="mini" style="white-space:pre-wrap">'+esc(x.notes)+'</div>':'')+'</div>'+
+   (x.customerId&&state.data.customers?.some(c=>String(c.id)===String(x.customerId))?'<button type="button" class="btn small" onclick="moveSbcLeadToSpanishQueue(\''+esc(x.customerId)+'\')">🇪🇸 Move to Spanish Queue</button>':'')+'</div>').join(''):
    '<div class="empty">No saved calls match this search.</div>')+'</div>';
  }catch(e){if(host.isConnected)host.innerHTML='<div class="card-body">Dialed Number History unavailable: '+esc(String(e.message||e))+'</div>'}
 }
