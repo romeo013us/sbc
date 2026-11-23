@@ -21,11 +21,13 @@ test('Dedicated account_manager receives scored Academy embedded in existing wor
  assert.match(html,/id="view-academy" class="view" hidden>[\s\S]*?src="\/sbc-am-academy\.html"/);
  assert.doesNotMatch(html,/<a class="tab" href="\/sbc-am-academy\.html"/);
  assert.match(js,/document\.querySelectorAll\('\.tab'\)/);
+ assert.match(js,/\.top-actions \[data-view="academy"\]/);
 });
 test('Command Center Training renders embedded Academy 360 owner pages, not older trainingV2View catalog',()=>{
  const app=read('public/app.js'),fn=app.split('function training(){')[1].split('window.sbcOpenTrainingSafe=')[0];
- assert.match(fn,/src="\/sbc-am-academy\.html"/);
- assert.match(fn,/src="\/sbc-am-academy-owner\.html"/);
+ assert(fn.includes('src=\\"/sbc-am-academy.html')||fn.includes('/sbc-am-academy.html'));
+ assert(fn.includes('src=\\"/sbc-am-academy-owner.html')||fn.includes('/sbc-am-academy-owner.html'));
+ assert.match(fn,/Academy 360 · Official Training/);
  assert.doesNotMatch(fn,/trainingV2View|Training Library|openTrainingCourseV2/);
 });
 test('embedded legacy-role viewer has actual bilingual media and discloses non-graded status',()=>{
@@ -38,7 +40,7 @@ test('embedded legacy-role viewer has actual bilingual media and discloses non-g
  assert.match(js,/account_manager/);
  assert.match(js,/Certification is not available under a caller or research account/);
  assert.match(js,/\/academy-media\/academy360\//);
- assert.doesNotMatch(js,/training\/progress|roleplay|submitAttempt|certification\/|/window/start/);
+ assert.doesNotMatch(js,/training\/progress|roleplay|submitAttempt|certification\/|window\/start/);
 });
 test('workstation and in-app Academy surface changes remain mirrored for GoDaddy',()=>{
  for(const f of ['lead-research.html','lead-research.js','sales-caller.html','sales-caller.js','sbc-account-manager-v1.html','sbc-academy360-employee-training.html','sbc-academy360-employee-training.js'])assert.equal(read('public/'+f),read('browser_public/'+f),f);

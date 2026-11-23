@@ -6,9 +6,9 @@ test('Legacy caller workstation does not impersonate the Account Manager trainin
  assert.match(html,/>Legacy Sales Caller Workspace</);
  assert.match(js,/result\.role==='caller'\?'Legacy Sales Caller'/);
  assert.doesNotMatch(js,/result\.role==='caller'\?'Account Manager'/);
- assert.match(html,/Legacy caller training — not Academy 360/);
- assert.match(html,/Account Manager login required/);
- assert.match(html,/href="\/sbc-am-academy\.html"/);
+ assert.doesNotMatch(html,/Legacy caller training — not Academy 360|Legacy SBC Academy/);
+ assert.match(html,/src="\/sbc-academy360-employee-training\.html"/);
+ assert.doesNotMatch(html,/href="\/sbc-am-academy\.html"/);
  for(const file of ['sales-caller.html','sales-caller.js'])
   assert.equal(read('public/'+file),read('browser_public/'+file),file+' mirrored');
 });
@@ -19,7 +19,8 @@ test('A verified dedicated account_manager entering the legacy caller desk is se
 });
 test('Real Account Manager desk links directly to the multimedia Academy and preserves independent certification',()=>{
  const html=read('public/sbc-account-manager-v1.html'),academy=read('public/sbc-am-academy.html');
- assert.match(html,/href="\/sbc-am-academy\.html"/);
+ assert.match(html,/data-view="academy"/);
+ assert.match(html,/src="\/sbc-am-academy\.html"/);
  assert.match(academy,/<video id="academyRecording"/);
  assert.match(academy,/<audio id="academyAudioRecording"/);
  assert.match(academy,/id="academyPhotoGallery"/);

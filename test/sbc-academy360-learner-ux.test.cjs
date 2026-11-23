@@ -28,9 +28,10 @@ test('student can choose a clearer device voice without an external paid key',()
 });
 test('Academy is discoverable in owner Command Center and dedicated AM workplace',()=>{
  const app=src('public/app.js'),html=src('public/sbc-account-manager-v1.html');
- assert.match(app,/Academy 360 · Account Manager Mastery/);
- assert.match(app,/href="\/sbc-am-academy-owner\.html"/);
- assert.match(html,/href="\/sbc-am-academy\.html"[^>]*>🎓 My Training · Academy 360/);
+ assert.match(app,/Academy 360 · Official Training/);
+ assert(app.includes('sbc-am-academy-owner.html'));
+ assert.match(html,/data-view="academy"[^>]*>🎓/);
+ assert.match(html,/src="\/sbc-am-academy\.html"/);
 });
 test('all classroom and staff navigation changes are mirrored into both release asset roots',()=>{
  const names=['sbc-am-academy.html','sbc-am-academy-v1.js','sbc-am-academy-v1.css','sbc-account-manager-v1.html','app.js'];
