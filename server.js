@@ -6188,6 +6188,37 @@ app.post('/api/sales/spanish-callbacks/:id/claim',auth,async(req,res)=>{
   await saveData();res.json({ok:true,durable:true,customerId:c.id});
  }catch(e){SBC_CALL_ROUTING.restoreSnapshot(c,before);res.status(503).json({ok:false,error:'CLAIM_SAVE_FAILED'})}
 });
+// SBC Spanish callback manual review outcome: never fabricates a provider call.
+app.post('/api/sales/spanish-callbacks/:id/resolve',auth,async(req,res)=>{
+ const actor=req.user||{},owner=['owner','manager'].includes(String(actor.role||'')),approved=SBC_CALL_ROUTING.isSpanishApproved(actor);
+ if(!owner&&!approved)return res.status(403).json({ok:false,error:'SPANISH_REP_APPROVAL_REQUIRED'});
+ const tenant=requireRequestTenant(req),c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenant));
+ if(!c||!['spanish_callback','callback_assigned'].includes(String(c.salesQueueState||'')))return res.status(404).json({ok:false,error:'SPANISH_CALLBACK_NOT_FOUND'});
+ if(!owner&&String(c.salesCallbackAssignedTo||'')!==String(actor.id))return res.status(403).json({ok:false,error:'SPANISH_CALLBACK_NOT_ASSIGNED'});
+ const outcome=String(req.body?.outcome||'').trim();
+ const allowed=new Set(['Interested','Appointment booked','Not interested','Do Not Call','No answer','Follow-up requested']);
+ if(!allowed.has(outcome))return res.status(400).json({ok:false,error:'INVALID_SPANISH_CALLBACK_DISPOSITION'});
+ if(SBC_CALL_ROUTING.hasDnc(c)&&outcome!=='Do Not Call')return res.status(409).json({ok:false,error:'CONTACT_SUPPRESSED'});
+ const notes=String(req.body?.notes||'').trim().slice(0,1200);if(notes.length<12)return res.status(400).json({ok:false,error:'CALLBACK_REVIEW_NOTES_REQUIRED'});
+ const date=Date.parse(String(req.body?.followUpAt||'')),needsDate=outcome==='Follow-up requested';
+ if(needsDate&&(!Number.isFinite(date)||date<=Date.now()))return res.status(400).json({ok:false,error:'FUTURE_CALLBACK_DATE_REQUIRED'});
+ const before=JSON.parse(JSON.stringify(c)),stamp=now(),priorAudit=(db.auditLog||[]).length,priorActivities=(db.activities||[]).length;
+ try{
+  c.salesDisposition=outcome;c.salesSpanishCallbackNote=notes;c.salesSpanishCallbackReviewedAt=stamp;
+  c.salesSpanishCallbackReviewedBy=String(actor.id);c.updatedAt=stamp;
+  if(outcome==='Do Not Call'){c.doNotContact=true;c.salesSuppressed=true;c.status='Do Not Call';c.salesQueueState='retired';c.salesCallbackAssignedTo='';c.salesNextAttemptAt='';}
+  else if(outcome==='Not interested'){c.salesQueueState='retired';c.salesCallbackAssignedTo='';c.salesNextAttemptAt='';}
+  else if(outcome==='Interested'||outcome==='Appointment booked'){c.salesQueueState='pipeline';c.salesCallbackAssignedTo='';c.salesNextAttemptAt='';if(c.status==='Lead')c.status='Contacted';}
+  else if(outcome==='No answer'){c.salesQueueState='callback_assigned';c.salesNextAttemptAt=new Date(Date.now()+24*3600000).toISOString();}
+  else if(outcome==='Follow-up requested'){c.salesQueueState='callback_assigned';c.salesNextAttemptAt=new Date(date).toISOString();}
+  audit(actor,'spanish_callback_reviewed','Bilingual callback outcome recorded',{customerId:c.id,outcome,notesLength:notes.length});
+  addActivity('call','Bilingual callback reviewed by an SBC representative',{customerId:c.id,outcome,reviewedBy:String(actor.id)});
+  await saveData();if(!mysqlPool)throw Error('CALLBACK_REVIEW_MYSQL_UNAVAILABLE');
+  res.json({ok:true,durable:true,customerId:c.id,queueState:c.salesQueueState,outcome,providerVerified:false});
+ }catch(e){SBC_CALL_ROUTING.restoreSnapshot(c,before);db.auditLog=(db.auditLog||[]).slice(0,priorAudit);db.activities=(db.activities||[]).slice(0,priorActivities);
+  res.status(503).json({ok:false,error:'SPANISH_CALLBACK_REVIEW_NOT_DURABLE'})}
+});
+
 app.get('/api/sales/call-history',auth,(req,res)=>{
  const role=String(req.user?.role||'');if(!['owner','manager','caller'].includes(role))return res.status(403).json({ok:false,error:'SALES_ROLE_REQUIRED'});
  try{
