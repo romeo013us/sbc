@@ -50,7 +50,15 @@ function authorize(ctx,row,user,tenant,cfg){
  const scoped=V3.evaluate({account:row,user,tenantId:tenant,cert:ev.cert,
   providerReady:cfg.configured,loggingReady:!ctx.recoveryRequired?.(),
   enabled:cfg.enabled,now:new Date(),suppressed:V3.isSuppressed(row,cache)});
- return {result:scoped,cert:ev.cert,notes:ev.notes};
+ const reasons=[...(scoped.reasons||[])];
+ // Spanish callbacks remain owner-approved and due-date-gated even after assignment.
+ if(user?.role==='account_manager'&&cache&&['spanish_callback','callback_assigned'].includes(String(cache.salesQueueState||''))){
+  if(String(cache.salesCallbackAssignedTo||'')!==String(user.id)||user.spanishCallingApprovedByOwner!==true)reasons.push('BILINGUAL_ACCOUNT_MANAGER_APPROVAL_REQUIRED');
+  const due=Date.parse(String(cache.salesNextAttemptAt||''));
+  if(Number.isFinite(due)&&due>Date.now())reasons.push('SPANISH_CALLBACK_NOT_DUE');
+ }
+ const result=Object.freeze({...scoped,allowed:reasons.length===0,reasons});
+ return {result,cert:ev.cert,notes:ev.notes};
 }
 function selectedContext(req,res,getContext,write=false){
  if(!req.user||!['owner','account_manager'].includes(req.user.role)||req.user.active===false){
