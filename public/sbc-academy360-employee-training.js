@@ -4,18 +4,18 @@
  */
 (()=>{
  const COURSE=[
-  ['am-01','The SBC Standard · Because Why Not?'],
-  ['am-02','Fantastic 4 · One Business, Connected Systems'],
-  ['am-03','Account 360 · Own Every Relationship'],
-  ['am-04','Research Trust, Permission & Outreach Safety'],
-  ['am-05','Discovery Mastery · Diagnose Before You Pitch'],
-  ['am-06','Product & Price Intelligence · No Hidden Promises'],
-  ['am-07','Instant Sites · Sell the Demonstration, Not a Fiction'],
-  ['am-08','Objection Lab · Respond Without Pressure'],
-  ['am-09','Follow-Up Engine · Meetings, Notes & Next Actions'],
-  ['am-10','Square, Quotes & Fulfillment · The Trust Boundary'],
-  ['am-11','Relationship Growth · Office Box, Retention & Renewals'],
-  ['am-12','Final Field Simulation · Account Manager Certification']
+  ["am-01","The SBC Standard · Because Why Not?","El estándar SBC · Because Why Not?"],
+  ["am-02","Fantastic 4 · One Business, Connected Systems","Fantastic 4 · Un negocio, sistemas conectados"],
+  ["am-03","Account 360 · Own Every Relationship","Account 360 · Cuide cada relación"],
+  ["am-04","Research Trust, Permission & Outreach Safety","Investigación, permiso y contacto seguro"],
+  ["am-05","Discovery Mastery · Diagnose Before You Pitch","Descubrimiento · Diagnostique antes de ofrecer"],
+  ["am-06","Product & Price Intelligence · No Hidden Promises","Productos, precios y límites del alcance"],
+  ["am-07","Instant Sites · Sell the Demonstration, Not a Fiction","Instant Sites · Demuestre trabajo real"],
+  ["am-08","Objection Lab · Respond Without Pressure","Objeciones · Responda sin presión"],
+  ["am-09","Follow-Up Engine · Meetings, Notes & Next Actions","Seguimiento · Reuniones, notas y tareas"],
+  ["am-10","Square, Quotes & Fulfillment · The Trust Boundary","Square, cotizaciones y evidencia del cobro"],
+  ["am-11","Relationship Growth · Office Box, Retention & Renewals","Relación, Office Box y renovaciones"],
+  ["am-12","Final Field Simulation · Account Manager Certification","Simulación final · Certificación"]
  ];
  const $=id=>document.getElementById(id),base='/academy-media/academy360/';
  const state={lang:'en',idx:0,mode:'video',allowed:false,ticket:0};
@@ -37,7 +37,7 @@
  async function show(index){
   if(!state.allowed)return;
   state.idx=Math.min(COURSE.length-1,Math.max(0,index));
-  const ticket=++state.ticket,[id,title]=COURSE[state.idx],lang=state.lang,stem=id+'-'+lang;
+  const ticket=++state.ticket,[id,titleEn,titleEs]=COURSE[state.idx],title=tr(titleEn,titleEs),lang=state.lang,stem=id+'-'+lang;
   hideMedia();$('lessonTitle').textContent=title;$('lessonDescription').textContent=tr('Module '+(state.idx+1)+' of 12 · Narrated interface walkthrough','Módulo '+(state.idx+1)+' de 12 · Demostración narrada');
   $('previousLesson').disabled=state.idx===0;$('nextLesson').disabled=state.idx===COURSE.length-1;
   for(const b of $('lessonList').querySelectorAll('button')){b.classList.toggle('active',b.dataset.lesson===id);b.setAttribute('aria-current',b.dataset.lesson===id?'step':'false');}
@@ -71,8 +71,8 @@
     'Account Manager: use the scored Academy panel in your official workstation to submit answers, progress and owner review. This view is media-only.':
     role==='owner'?'Owner read-only media preview. Employee scores are assessed and reviewed separately in your authorized Academy review panel.':
     'Certification is not available under a caller or research account. You can watch the new Academy 360 videos here; official Account Manager scores and owner certification require an approved account_manager login. Your historic research/caller course records are preserved.';
-  for(const [id,title] of COURSE){const b=document.createElement('button');b.type='button';b.dataset.lesson=id;b.textContent=String(COURSE.findIndex(x=>x[0]===id)+1).padStart(2,'0')+' · '+title;b.onclick=()=>show(COURSE.findIndex(x=>x[0]===id));$('lessonList').append(b);}
-  for(const lang of ['en','es'])$('lang-'+lang).onclick=()=>{state.lang=lang;document.documentElement.lang=lang;for(const l of ['en','es'])$('lang-'+l).setAttribute('aria-pressed',String(l===lang));show(state.idx);};
+  for(const [id,en,esTitle] of COURSE){const b=document.createElement('button');b.type='button';b.dataset.lesson=id;b.textContent=String(COURSE.findIndex(x=>x[0]===id)+1).padStart(2,'0')+' · '+tr(en,esTitle);b.onclick=()=>show(COURSE.findIndex(x=>x[0]===id));$('lessonList').append(b);}
+  for(const lang of ['en','es'])$('lang-'+lang).onclick=()=>{state.lang=lang;document.documentElement.lang=lang;for(const l of ['en','es'])$('lang-'+l).setAttribute('aria-pressed',String(l===lang));for(const b of $('lessonList').querySelectorAll('button')){const [id,en,esTitle]=COURSE.find(item=>item[0]===b.dataset.lesson)||[];if(id)b.textContent=String(COURSE.findIndex(x=>x[0]===id)+1).padStart(2,'0')+' · '+tr(en,esTitle);}show(state.idx);};
   for(const mode of ['video','audio','photos'])$('mode-'+mode).onclick=()=>choose(mode);
   $('previousLesson').onclick=()=>show(state.idx-1);$('nextLesson').onclick=()=>show(state.idx+1);
   await show(0);

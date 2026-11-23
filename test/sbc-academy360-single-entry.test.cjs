@@ -44,6 +44,8 @@ test('embedded legacy-role viewer has actual bilingual media and discloses non-g
  assert.match(js,/account_manager/);
  assert.match(js,/Certification is not available under a caller or research account/);
  assert.match(js,/\/academy-media\/academy360\//);
+ assert.match(js,/El estándar SBC · Because Why Not/);
+ assert.match(js,/Investigación, permiso y contacto seguro/);
  assert.doesNotMatch(js,/training\/progress|roleplay|submitAttempt|certification\/|window\/start/);
 });
 test('workstation and in-app Academy surface changes remain mirrored for GoDaddy',()=>{
