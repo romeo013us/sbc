@@ -17,14 +17,17 @@ test('scoring remains performed by the server and owner observation stays mandat
  assert.match(js,/Owner observation and certification remain separate/);
  assert(!js.includes('score=answers.filter(Boolean).length'));
 });
-test('student can choose a clearer device voice without an external paid key',()=>{
+test('video first; only Learn and Prove It; optional illustration separate from video',()=>{
  const html=src('public/sbc-am-academy.html'),js=src('public/sbc-am-academy-v1.js');
- assert.match(html,/id="narrationVoice"/);
- assert.match(html,/id="voiceSample"/);
- assert.match(js,/function chooseVoice\(/);
- assert.match(js,/speechSynthesis\.getVoices\(\)/);
- assert.match(js,/function populateVoices\(/);
- assert.match(js,/localStorage\.setItem\('sbc-academy360-voice-/);
+ assert(html.indexOf('id="lessonTitle"')<html.indexOf('id="academyRecording"'));
+ assert(html.indexOf('id="academyRecording"')<html.indexOf('id="academyMore"'));
+ assert.match(html,/id="tabLesson"[^>]*>01 · Learn/);
+ assert.match(html,/id="tabKnowledge"[^>]*>02 · Prove It/);
+ assert(!html.includes('id="tabLab"'));
+ for(const id of ['proofPanel','proofSample','proofRoleplay','proofQuiz','academyIllustratedMore'])assert(html.includes('id="'+id+'"'));
+ assert(!html.includes('id="narrationVoice"')&&!html.includes('id="voiceSample"'));
+ assert(js.includes('chooseVoice(speechSynthesis.getVoices(),lang,null)'));
+ assert(!js.includes('populateVoices')&&!js.includes("showTab('Lab')"));
 });
 test('Academy is discoverable in owner Command Center and dedicated AM workplace',()=>{
  const app=src('public/app.js'),html=src('public/sbc-account-manager-v1.html');

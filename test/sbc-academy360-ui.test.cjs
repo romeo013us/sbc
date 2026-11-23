@@ -36,7 +36,7 @@ test('learner interface completes all twelve Spanish labs and owner interface re
   click(d,'clockInAcademy');await wait(()=>!d.getElementById('labSubmit').disabled,'official clock');click(d,'langEs');await wait(()=>d.documentElement.lang==='es'&&d.querySelector('#quizQuestions legend')?.textContent.includes('función'),'Spanish questions');
   for(const [id,[decisions,answers]] of Object.entries(plans)){
    await wait(()=>d.querySelector('input[name="quiz-'+id+'-q1"]'),'lesson '+id);
-   click(d,'tabLab');for(const [key,value] of Object.entries(decisions))check(d,'lab-'+key,value);d.getElementById('caseArtifact').value=note;
+   click(d,'tabKnowledge');d.getElementById('proofSample').open=true;for(const [key,value] of Object.entries(decisions))check(d,'lab-'+key,value);d.getElementById('caseArtifact').value=note;
    if(['am-08','am-12'].includes(id)){for(let n=0;n<3;n++)d.querySelector('#dialogueChoices button').click();}
    submit(dom,'labForm');await wait(()=>d.getElementById('labFeedback').textContent.startsWith('APROBADO'),'sample '+id);await wait(()=>!d.getElementById('submitPractice').disabled,'sample saved');
    d.getElementById('practiceResponse').value=note;click(d,'submitPractice');await wait(()=>d.getElementById('practiceStatus').textContent.includes('guardada'),'practice '+id);await wait(()=>!d.getElementById('quizSubmit').disabled,'practice saved');
