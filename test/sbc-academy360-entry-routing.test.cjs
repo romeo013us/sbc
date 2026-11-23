@@ -12,9 +12,9 @@ test('Legacy caller workstation does not impersonate the Account Manager trainin
  for(const file of ['sales-caller.html','sales-caller.js'])
   assert.equal(read('public/'+file),read('browser_public/'+file),file+' mirrored');
 });
-test('A verified dedicated account_manager entering the legacy caller desk is sent to real Academy 360',()=>{
+test('A verified account_manager entering the old caller desk is returned to the real AM workstation with inline Academy 360',()=>{
  const js=read('public/sales-caller.js');
- assert.match(js,/me\?\.role==='account_manager'&&!preview\)\{location\.replace\('\/sbc-am-academy\.html'\);return;\}/);
+ assert.match(js,/me\?\.role==='account_manager'&&!preview\)\{location\.replace\('\/sbc-account-manager-v1\.html'\);return;\}/);
  assert.match(js,/if\(!preview&&me\?\.role!=='caller'\)throw Error/);
 });
 test('Real Account Manager desk links directly to the multimedia Academy and preserves independent certification',()=>{

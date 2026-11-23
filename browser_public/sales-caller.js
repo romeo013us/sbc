@@ -644,7 +644,7 @@ function bind(){
  try{
   const auth=await api('/api/me');me=auth.user;
   preview=me?.role==='owner'&&Boolean(previewUserId);
-  if(me?.role==='account_manager'&&!preview){location.replace('/sbc-am-academy.html');return;}
+  if(me?.role==='account_manager'&&!preview){location.replace('/sbc-account-manager-v1.html');return;}
   if(!preview&&me?.role!=='caller')throw Error('This desk requires a Sales Caller account or owner preview link.');
   bind();await load();
   const locale=window.SBCSalesLocale;

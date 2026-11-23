@@ -33,6 +33,7 @@ test('Command Center Training renders embedded Academy 360 owner pages, not olde
  assert.match(read('public/v9.js'),/window\.trainingV2View=training/);
  assert.doesNotMatch(fn,/return training\(\)/);
  assert.match(app,/training:typeof window\.sbcCanonicalTrainingView/);
+ assert.match(app,/window\.location\.replace\('\/sbc-account-manager-v1\.html'\)/);
 });
 test('embedded legacy-role viewer has actual bilingual media and discloses non-graded status',()=>{
  const html=read('public/sbc-academy360-employee-training.html'),js=read('public/sbc-academy360-employee-training.js');
