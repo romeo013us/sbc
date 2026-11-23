@@ -36,7 +36,7 @@ const mysqlPool={async query(sql,params){
 }};
 let serial=0;
 const load=new Function('app','auth','db','requireRequestTenant','now','id',
- 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY','SBC_PHONE_RECOVERY',serialPrelude+'\n'+getSource+'\n'+postSource);
+ 'normalizeDialNumber','saveData','audit','addActivity','mysqlPool','SBC_V66101_CALLER_POLICY','SBC_PHONE_RECOVERY','SBC_CALL_ROUTING',serialPrelude+'\n'+getSource+'\n'+postSource);
 load(app,()=>{},db,
  req=>{if(!Number.isInteger(req.authTenant)||req.authTenant<1)throw Error('AUTHENTICATED_TENANT_REQUIRED');return req.authTenant},
  ()=>new Date('2026-10-24T14:05:09.000Z').toISOString(),
@@ -47,7 +47,8 @@ load(app,()=>{},db,
  ()=>{counters.activities++},
  mysqlPool,
  require('../enterprise/v66101-caller-access.cjs'),
- require('../enterprise/sbc-phone-recovery-v66137.cjs')
+ require('../enterprise/sbc-phone-recovery-v66137.cjs'),
+ require('../enterprise/sbc-call-routing-v1.cjs')
 );
 const post=app.handlers.get('POST /api/voice/log');
 const get=app.handlers.get('GET /api/voice/logs');
