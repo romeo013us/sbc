@@ -1,0 +1,43 @@
+name: SBC Call Routing and Spanish Handoff Tests
+on:
+  push:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-call-routing-v1.cjs'
+      - 'enterprise/sbc-voice-ledger-v1.cjs'
+      - 'enterprise/sbc-account-manager-role-gate-v2.cjs'
+      - 'server.js'
+      - 'public/app.js'
+      - 'browser_public/app.js'
+      - 'public/sbc-spanish-am-queue-v1.js'
+      - 'browser_public/sbc-spanish-am-queue-v1.js'
+      - 'scripts/sbc-call-routing-v1.test.cjs'
+      - 'scripts/sbc-voice-ledger-v1.test.cjs'
+      - 'scripts/sbc-calling-integration-v1.test.cjs'
+      - '.github/workflows/sbc-call-routing-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  targeted-call-center-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node syntax checks
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check browser_public/app.js
+          node --check enterprise/sbc-account-manager-role-gate-v2.cjs
+      - name: Routing, ledger, and browser/permission integration
+        run: node --test scripts/sbc-call-routing-v1.test.cjs scripts/sbc-voice-ledger-v1.test.cjs scripts/sbc-calling-integration-v1.test.cjs
+      - name: Existing call-log durability regression
+        run: node scripts/v6615-call-log-durable-test.cjs
+      - name: Existing voice-log role and tenant regression
+        run: node scripts/v6614-voice-call-log-integrity-test.cjs
+      - name: Existing account-manager role gate regression
+        run: node scripts/account-manager-role-gate.test.cjs
