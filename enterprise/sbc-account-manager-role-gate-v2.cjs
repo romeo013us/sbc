@@ -47,7 +47,7 @@ const RE={
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'/submit$'),
   new RegExp('^/api/account-social/v1/research/handoffs/'+VALID_ID+'/return$'),
   new RegExp('^/api/sbc/design-briefs/'+VALID_ID+'/(?:revoke|review)$'),
-  new RegExp('^/api/sales/spanish-callbacks/'+VALID_ID+'/claim$')
+  new RegExp('^/api/sales/spanish-callbacks/'+VALID_ID+'/(?:claim|resolve)$')
  ],
  PUT:[new RegExp('^/api/appointments/'+VALID_ID+'$')]
 };
