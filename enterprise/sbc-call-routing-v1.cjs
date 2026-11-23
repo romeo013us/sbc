@@ -5,7 +5,7 @@ const FINAL_STATUSES=new Set(['completed','ended','no-answer','busy']);
 const TERMINAL_ACCOUNT_STATUSES=new Set(['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified']);
 const OUTCOMES=new Set(['Pending','Interested','Follow-up requested','Appointment booked','No answer','Left voicemail','Not interested','Do Not Call','Order ready','Bad number','Spanish callback needed']);
 const DNC_VALUES=new Set(['do not call','do not contact','dnc','opt out','unsubscribe']);
-const EXCLUDED_STATES=new Set(['pipeline','retired','processed','spanish_callback','callback_assigned','contacted_review','followup_unscheduled']);
+const EXCLUDED_STATES=new Set(['pipeline','retired','processed','spanish_callback','callback_assigned','contacted_review','followup_unscheduled','phone_hold']);
 const RETRY_MS=24*60*60*1000;
 const ts=v=>{const n=Date.parse(v||'');return Number.isFinite(n)?n:0};
 const userTenant=x=>Number(x?.tenantId??x?.tenant_id);
