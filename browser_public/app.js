@@ -1175,7 +1175,7 @@ function sbcAcademySelectOwnerView(which){
   if(a){a.classList.toggle('primary',studying);a.setAttribute('aria-pressed',String(studying));}
   if(b){b.classList.toggle('primary',!studying);b.setAttribute('aria-pressed',String(!studying));}
 }
-function training(){
+function sbcAcademy360EmbeddedOwnerTraining(){
   // The owner sees only the new Academy 360 in the Command Center Training view.
   // Do not resurrect the V9/legacy library, or score employee work from an owner preview.
   if(state.me?.role==='owner')return "<div class=\"card section\" aria-label=\"Academy 360 embedded owner training\"><div class=\"card-head\"><div><h2>🎓 Academy 360 · Official Training</h2><p class=\"mini\">One Academy, inside Command Center. Owner review and the complete EN/ES video curriculum share this training screen.</p></div><span class=\"badge blue\">BILINGUAL · 12 LESSONS</span></div><div class=\"card-body\"><div class=\"actions\" role=\"group\" aria-label=\"Academy 360 owner training views\"><button class=\"btn primary\" type=\"button\" id=\"sbcAcademyStudyTab\" onclick=\"sbcAcademySelectOwnerView('study')\">▶ Learn / Videos</button><button class=\"btn\" type=\"button\" id=\"sbcAcademyReviewTab\" onclick=\"sbcAcademySelectOwnerView('review')\">✓ Owner Review / Certification</button></div><div id=\"sbcAcademyStudyFrame\"><iframe title=\"Academy 360 lesson viewer inside Command Center\" src=\"/sbc-am-academy.html\" class=\"academy360-embedded-frame\" loading=\"lazy\" referrerpolicy=\"same-origin\" style=\"width:100%;border:1px solid #32516a;border-radius:14px;height:1050px;min-height:75vh;margin-top:16px\"></iframe></div><div id=\"sbcAcademyReviewFrame\" hidden><iframe title=\"Academy 360 Owner Review Desk inside Command Center\" src=\"/sbc-am-academy-owner.html\" class=\"academy360-embedded-frame\" loading=\"lazy\" referrerpolicy=\"same-origin\" style=\"width:100%;border:1px solid #32516a;border-radius:14px;height:1050px;min-height:75vh;margin-top:16px\"></iframe></div></div></div>";
@@ -1396,7 +1396,7 @@ const sbcTrainingShell=(title,eyebrow,body)=>`<div class="crm-toolbar"><div><str
 function sbcCanonicalTrainingView(){
     // Single-entry V66.172: route the real Command Center training dispatcher into the embedded Academy 360.
     // Old V9/V55 course views are retained in source only for non-destructive history migration, never rendered.
-    return training();
+    return sbcAcademy360EmbeddedOwnerTraining();
     // V55.10.1: Training is now completely canonical. It never delegates
     // rendering to legacy trainingV2View/openTrainingCourseV2 renderers.
     const c=state.trainingCourse, summary=state.trainingCourseSummary||{};

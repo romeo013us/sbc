@@ -24,12 +24,14 @@ test('Dedicated account_manager receives scored Academy embedded in existing wor
  assert.match(js,/\.top-actions \[data-view="academy"\]/);
 });
 test('Command Center Training renders embedded Academy 360 owner pages, not older trainingV2View catalog',()=>{
- const app=read('public/app.js'),fn=app.split('function training(){')[1].split('window.sbcOpenTrainingSafe=')[0];
+ const app=read('public/app.js'),fn=app.split('function sbcAcademy360EmbeddedOwnerTraining(){')[1].split('window.sbcOpenTrainingSafe=')[0];
  assert(fn.includes('src=\\"/sbc-am-academy.html')||fn.includes('/sbc-am-academy.html'));
  assert(fn.includes('src=\\"/sbc-am-academy-owner.html')||fn.includes('/sbc-am-academy-owner.html'));
  assert.match(fn,/Academy 360 · Official Training/);
  assert.doesNotMatch(fn,/trainingV2View|Training Library|openTrainingCourseV2/);
- assert.match(app,/function sbcCanonicalTrainingView\(\)\{[\s\S]{0,290}return training\(\);/);
+ assert.match(app,/function sbcCanonicalTrainingView\(\)\{[\s\S]{0,290}return sbcAcademy360EmbeddedOwnerTraining\(\);/);
+ assert.match(read('public/v9.js'),/window\.trainingV2View=training/);
+ assert.doesNotMatch(fn,/return training\(\)/);
  assert.match(app,/training:typeof window\.sbcCanonicalTrainingView/);
 });
 test('embedded legacy-role viewer has actual bilingual media and discloses non-graded status',()=>{
