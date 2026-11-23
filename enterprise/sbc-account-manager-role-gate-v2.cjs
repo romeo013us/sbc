@@ -5,7 +5,7 @@
  * The global employee gate must call allowAccountManager on every request.
  */
 const STATIC={
- GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk','/api/appointments','/api/sbc/sales/actions/today','/api/sbc/sales/reminders/preview','/api/sbc/journey/queue','/api/sbc/journey/reminders','/api/sbc/sales/compensation/me']),
+ GET:new Set(['/api/me','/api/v9/time/status','/api/training','/api/account-social/v1/portfolio','/api/account-social/v1/research/queue','/api/v6606/crm/account-portfolios/mine','/api/website-production/call-desk','/api/appointments','/api/sbc/sales/actions/today','/api/sbc/sales/reminders/preview','/api/sbc/journey/queue','/api/sbc/journey/reminders','/api/sbc/sales/compensation/me','/api/sales/spanish-callbacks']),
  POST:new Set(['/api/logout','/api/v9/time/clock','/api/training/progress','/api/account-social/v1/posts','/api/sbc/design-briefs','/api/appointments']),
  PUT:new Set([])
 };
@@ -46,7 +46,48 @@ const RE={
   new RegExp('^/api/v6606/crm/account-portfolios/'+VALID_ID+'/call-start$'),
   new RegExp('^/api/account-social/v1/posts/'+VALID_ID+'/submit$'),
   new RegExp('^/api/account-social/v1/research/handoffs/'+VALID_ID+'/return$'),
-  new RegExp('^/api/sbc/design-briefs/'+VALID_ID+'/(?:revoke|review)$')
+  new RegExp('^/api/sbc/design-briefs/'+VALID_ID+'/(?:revoke|review)
+ ],
+ PUT:[new RegExp('^/api/appointments/'+VALID_ID+'$')]
+};
+function allowed(method,url){
+ const verb=String(method||'').toUpperCase();
+ if(!Object.hasOwn(STATIC,verb)&&!Object.hasOwn(CONCEPT,verb))return false;
+ const path=String(url||'').split('?')[0];
+ if(path.includes('%')||path.includes('\\')||path.includes('//')||path.includes('..'))return false;
+ return (STATIC[verb]?.has(path)||false)||(RE[verb]?.some(rule=>rule.test(path))||false)||(CONCEPT[verb]?.some(rule=>rule.test(path))||false);
+}
+function allowAccountManager(user,method,url,now=new Date()){
+ if(user?.role!=='account_manager'||user.active===false)return false;
+ if(user.expiresAt){
+  const expiry=Date.parse(user.expiresAt);
+  if(!Number.isFinite(expiry)||expiry<=new Date(now).getTime())return false;
+ }
+ return allowed(method,url);
+}
+module.exports=Object.freeze({allowed,allowAccountManager});
+),
+  new RegExp('^/api/sales/spanish-callbacks/'+VALID_ID+'/claim
+ ],
+ PUT:[new RegExp('^/api/appointments/'+VALID_ID+'$')]
+};
+function allowed(method,url){
+ const verb=String(method||'').toUpperCase();
+ if(!Object.hasOwn(STATIC,verb)&&!Object.hasOwn(CONCEPT,verb))return false;
+ const path=String(url||'').split('?')[0];
+ if(path.includes('%')||path.includes('\\')||path.includes('//')||path.includes('..'))return false;
+ return (STATIC[verb]?.has(path)||false)||(RE[verb]?.some(rule=>rule.test(path))||false)||(CONCEPT[verb]?.some(rule=>rule.test(path))||false);
+}
+function allowAccountManager(user,method,url,now=new Date()){
+ if(user?.role!=='account_manager'||user.active===false)return false;
+ if(user.expiresAt){
+  const expiry=Date.parse(user.expiresAt);
+  if(!Number.isFinite(expiry)||expiry<=new Date(now).getTime())return false;
+ }
+ return allowed(method,url);
+}
+module.exports=Object.freeze({allowed,allowAccountManager});
+)
  ],
  PUT:[new RegExp('^/api/appointments/'+VALID_ID+'$')]
 };
