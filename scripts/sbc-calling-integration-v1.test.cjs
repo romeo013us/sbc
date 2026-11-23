@@ -46,3 +46,13 @@ test('failed calling queue refresh clears stale leads and shows a safe retry, in
   assert.doesNotMatch(view.innerHTML,/OLD QUEUE/,file+' stale lead still callable');
  }
 });
+
+test('queue replenishment announces no replacement inventory rather than implying leads will appear',()=>{
+ for(const file of ['public/app.js','browser_public/app.js']){
+  const source=read(file),start=source.indexOf('function salesQueuePanel(){'),end=source.indexOf('\nconst SBC_SPANISH_HANDOFF_REASON',start);
+  assert.ok(start>=0&&end>start,file+' queue panel missing');
+  const render=available=>vm.runInNewContext(source.slice(start,end)+'\nsalesQueuePanel',{state:{salesQueue:{target:50,count:1,available,leads:[]}},esc:v=>String(v)},{timeout:1000})();
+  assert.match(render(0),/No replacement leads available/,file+' falsely implies inventory');
+  assert.doesNotMatch(render(5),/No replacement leads available/,file+' hides available pool');
+ }
+});
