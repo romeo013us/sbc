@@ -48,8 +48,7 @@
   }
   const open=event.target?.closest('[data-sbc-spanish-open]');
   if(open&&host()?.contains(open)){
-   const search=$('sbcAccountSearch');if(search){search.value='';$('refresh')?.click();}
-   host()?.scrollIntoView({behavior:'smooth',block:'start'});
+   window.location.assign('/sbc-account-manager-v1.html?account='+encodeURIComponent(open.dataset.sbcSpanishOpen));
   }
  });
  document.addEventListener('DOMContentLoaded',()=>{if(host())reload();});
