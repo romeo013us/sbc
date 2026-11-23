@@ -30,3 +30,19 @@ test('Account Manager inbox is visible and permissions are narrow',()=>{
  assert.equal(gate.allowed('POST','/api/sales/spanish-callbacks/cust_123/move'),false);
  assert.equal(gate.allowed('GET','/api/sales/call-history'),false);
 });
+
+test('failed calling queue refresh clears stale leads and shows a safe retry, in both mirrored clients',async()=>{
+ for(const file of ['public/app.js','browser_public/app.js']){
+  const source=read(file),start=source.indexOf('async function loadSalesQueue(){'),end=source.indexOf('\nfunction salesQueuePanel(){',start);
+  assert.ok(start>=0&&end>start,file+' function missing');
+  const view={innerHTML:'OLD QUEUE: call this person'};
+  const state={me:{role:'owner'},salesQueue:{leads:[{id:'old'}]}};
+  const sandbox={state,api:async()=>{throw new Error('network unavailable')},$:()=>view,salesQueuePanel:()=>'<p>stale</p>',loadSbcSpanishCallbackQueue:()=>{},loadSbcCallLedger:()=>{},console:{warn:()=>{}}};
+  const run=vm.runInNewContext(source.slice(start,end)+'\nloadSalesQueue',sandbox,{timeout:1000});
+  assert.equal(await run(),null);
+  assert.equal(state.salesQueue,null,file+' stale state retained');
+  assert.match(view.innerHTML,/Calling Queue Unavailable/,file+' error not announced');
+  assert.match(view.innerHTML,/Retry Calling Queue/,file+' retry missing');
+  assert.doesNotMatch(view.innerHTML,/OLD QUEUE/,file+' stale lead still callable');
+ }
+});

@@ -424,7 +424,14 @@ async function loadSalesQueue(){
     const mount=$('#sbcDynamicQueueMount');
     if(mount){mount.innerHTML=salesQueuePanel()+'<div id="sbcSpanishCallingPanel" class="card section"></div><div id="sbcDialedNumberLedger" class="card section"></div>';loadSbcSpanishCallbackQueue();loadSbcCallLedger();}
     return q;
-  }catch(e){console.warn('Sales queue:',e.message);return null}
+  }catch(e){
+    console.warn('Sales queue:',e.message);
+    // Never leave an old prospect looking immediately callable when a queue refresh failed.
+    state.salesQueue=null;
+    const mount=$('#sbcDynamicQueueMount');
+    if(mount)mount.innerHTML='<div class="card section sbc-dynamic-queue" role="alert"><div class="card-head"><h2>Calling Queue Unavailable</h2></div><div class="card-body"><p>The current calling list could not be verified. Do not dial from a previous list. Your CRM data has not been changed.</p><button type="button" class="btn small" onclick="loadSalesQueue()">↻ Retry Calling Queue</button></div></div>';
+    return null;
+  }
 }
 function salesQueuePanel(){
   const q=state.salesQueue||{target:50,count:0,available:0,leads:[]};
