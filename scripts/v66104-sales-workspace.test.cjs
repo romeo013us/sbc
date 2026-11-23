@@ -16,7 +16,9 @@ assert.equal((html.match(/id="lang-en"/g)||[]).length,1);
 assert.match(html,/role="group" aria-label="Whole-workspace language"/);
 assert.match(html,/https:\/\/sbcmia\.com"/);assert.match(html,/https:\/\/sbcwebsites\.com"/);
 assert.equal((html.match(/rel="noopener noreferrer"/g)||[]).length,2,'external links must be safe new tabs');
-assert.match(html,/id="training-detail"/);assert.match(html,/academy-sales-hero/);
+assert.match(html,/id="academy360CallerFrame"[^>]*src="\/sbc-academy360-employee-training\.html"/);
+assert.doesNotMatch(html,/id="training-detail"|academy-sales-hero|Legacy SBC Academy/);
+assert.match(source,/if\(academy\)\{academy\.title=.*?;return;\}/);
 assert(!source.includes("Mark lesson studied"),'legacy one-click lesson completion removed');
 assert(!source.includes("prompt('Briefly describe what you learned"),'no legacy popup completion');
 for(const term of [
@@ -63,4 +65,4 @@ assert(callerPolicy.allowed('POST','/api/training/progress'));
 assert(!callerPolicy.allowed('GET','/api/orders'));
 assert(!callerPolicy.allowed('GET','/api/customers'));
 assert(!callerPolicy.allowed('POST','/api/payments'));
-console.log('PASS V66.104 — structured Academy reader, gated completion, full-desk ES/EN, mirrored assets, secure sites, untouched shift/dialer, role access');
+console.log('PASS V66.104 — Academy 360 replaces old Training panel; legacy historical records isolated, EN/ES, mirrored assets, secure sites, shift/dialer unchanged');
