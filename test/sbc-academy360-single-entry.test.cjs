@@ -29,6 +29,8 @@ test('Command Center Training renders embedded Academy 360 owner pages, not olde
  assert(fn.includes('src=\\"/sbc-am-academy-owner.html')||fn.includes('/sbc-am-academy-owner.html'));
  assert.match(fn,/Academy 360 · Official Training/);
  assert.doesNotMatch(fn,/trainingV2View|Training Library|openTrainingCourseV2/);
+ assert.match(app,/function sbcCanonicalTrainingView\(\)\{[\s\S]{0,290}return training\(\);/);
+ assert.match(app,/training:typeof window\.sbcCanonicalTrainingView/);
 });
 test('embedded legacy-role viewer has actual bilingual media and discloses non-graded status',()=>{
  const html=read('public/sbc-academy360-employee-training.html'),js=read('public/sbc-academy360-employee-training.js');

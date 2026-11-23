@@ -1394,6 +1394,9 @@ names.kim410=['AI OPERATIONS','Kim Operations Backbone'];names.kim420=['ENTERPRI
   // V55.12.3: canonical Training owns its shell locally. Legacy global shell() is not a runtime dependency.
 const sbcTrainingShell=(title,eyebrow,body)=>`<div class="crm-toolbar"><div><strong>${esc(title)}</strong><span>${esc(eyebrow)}</span></div></div>${body}`;
 function sbcCanonicalTrainingView(){
+    // Single-entry V66.172: route the real Command Center training dispatcher into the embedded Academy 360.
+    // Old V9/V55 course views are retained in source only for non-destructive history migration, never rendered.
+    return training();
     // V55.10.1: Training is now completely canonical. It never delegates
     // rendering to legacy trainingV2View/openTrainingCourseV2 renderers.
     const c=state.trainingCourse, summary=state.trainingCourseSummary||{};
