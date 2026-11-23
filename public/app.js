@@ -1168,25 +1168,19 @@ function timeclock(){
   const controls=!open?action('in','training'):`${open.activeBreak?action('break_end'):action('break_start')}${action('out',open.mode)}`;
   return `<div class="section"><div class="card-head"><div><h2>⏱️ Time Clock</h2><div class="mini">SBC workforce time and attendance</div></div><span class="badge ${open?'green':'orange'}">${open?'CLOCKED IN':'OFF CLOCK'}</span></div><div class="card-body"><div class="grid three"><div class="stat"><div class="label">STATUS</div><div class="value">${open?'WORKING':'OFF'}</div><div class="sub">${open?`Since ${escT(fmt(open.clockIn))}`:'Ready to start a work session'}</div></div><div class="stat"><div class="label">MODE</div><div class="value" style="font-size:20px">${escT(open?.mode||'—')}</div><div class="sub">Training / calling work mode</div></div><div class="stat"><div class="label">CURRENT SESSION</div><div class="value">${open?Math.floor(total(open)/60)+'h '+(total(open)%60)+'m':'0h 0m'}</div><div class="sub">Break time excluded</div></div></div><div class="actions" style="margin-top:16px">${controls}<button class="btn" type="button" onclick="state.view='training';render()">🎓 Training Center</button><button class="btn" type="button" onclick="state.view='callcenter';render()">☎️ Call Center</button></div><h3 style="margin-top:22px">Recent Time Records</h3><div class="table-wrap"><table><thead><tr><th>Clock In</th><th>Clock Out</th><th>Mode</th><th>Worked</th></tr></thead><tbody>${entries.slice(0,20).map(e=>`<tr><td>${escT(fmt(e.clockIn))}</td><td>${escT(fmt(e.clockOut))}</td><td>${escT(e.mode||'training')}</td><td>${Math.floor(total(e)/60)}h ${total(e)%60}m</td></tr>`).join('')||'<tr><td colspan="4">No time records yet.</td></tr>'}</tbody></table></div></div></div>`;
 }
+function sbcAcademySelectOwnerView(which){
+  const studying=which!=='review',study=document.getElementById('sbcAcademyStudyFrame'),review=document.getElementById('sbcAcademyReviewFrame');
+  if(!study||!review)return;study.hidden=!studying;review.hidden=studying;
+  const a=document.getElementById('sbcAcademyStudyTab'),b=document.getElementById('sbcAcademyReviewTab');
+  if(a){a.classList.toggle('primary',studying);a.setAttribute('aria-pressed',String(studying));}
+  if(b){b.classList.toggle('primary',!studying);b.setAttribute('aria-pressed',String(!studying));}
+}
 function training(){
-  const academyGateway=state.me?.role==='owner'?'<section class="card section" aria-label="Academy 360 account manager certification"><div class="card-head"><h2>🎓 Academy 360 · Account Manager Mastery</h2><span class="badge blue">12 BILINGUAL LESSONS · VIDEO + AUDIO + PHOTOS</span></div><div class="card-body"><p>The official Account Manager curriculum is a separate scored learning path. Staff must log in with their own <strong>account_manager</strong> account. Owner preview cannot score trainee answers.</p><div class="actions"><a class="btn primary" href="/sbc-am-academy-owner.html">Open Owner Review Desk · Score observed capstone</a><a class="btn" href="/sbc-am-academy.html">Preview Academy 360 · Video Lessons</a><a class="btn" href="/sbc-account-manager-v1.html">Account Manager Workstation</a></div></div></section>':'';
-  if(typeof window.trainingV2View==='function') return academyGateway+window.trainingV2View();
-  // V55.10.1: never strand Training on a legacy loading placeholder.
-  setTimeout(async()=>{
-    if(state.view!=='training')return;
-    const el=document.getElementById('content'); if(!el)return;
-    const escT=x=>String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    try{
-      const r=await api('/api/training',{timeoutMs:15000});
-      window.sbcTrainingFallbackData=r;
-      const courses=[...(r.assigned||[]).map(x=>({...x.course,_assigned:true})),...(r.available||[]).map(x=>({...x,_assigned:false}))];
-      const cards=courses.map(c=>`<div class="list-card"><div><strong>${escT(c.title||'Training Course')}</strong><div class="meta">${escT(c.role||'All Employees')} · ${(c.modules||[]).length} modules · ${escT(c.status||'published')}</div><div class="mini">${escT(c.description||'')}</div></div><div class="actions"><button class="btn small primary" onclick="sbcOpenTrainingSafe('${escT(c.id)}')">${c._assigned?'Open':'View'}</button></div></div>`).join('');
-      el.innerHTML=academyGateway+`<div class="crm-toolbar"><div><strong>SBC Training Center</strong><span>Learn → practice → submit → review → pass</span></div></div><div class="card section"><div class="card-head"><h2>Training Library</h2><span class="badge blue">${courses.length} COURSES</span></div><div class="card-body">${cards||'<div class="empty">No training courses are available.</div>'}</div></div>`;
-    }catch(e){
-      el.innerHTML=academyGateway+`<div class="card section"><div class="card-head"><h2>Training Center</h2><span class="badge red">LOAD ERROR</span></div><div class="card-body"><p>${escT(e?.message||String(e))}</p><button class="btn primary" onclick="state.view='training';render()">↻ Retry Training</button></div></div>`;
-    }
-  },0);
-  return academyGateway+'<div class="card section"><div class="card-body"><div class="install-tip">🎓 Loading Training Center…</div><div class="mini">Connecting to the SBC training service.</div></div></div>';
+  // The owner sees only the new Academy 360 in the Command Center Training view.
+  // Do not resurrect the V9/legacy library, or score employee work from an owner preview.
+  if(state.me?.role==='owner')return "<div class=\"card section\" aria-label=\"Academy 360 embedded owner training\"><div class=\"card-head\"><div><h2>🎓 Academy 360 · Official Training</h2><p class=\"mini\">One Academy, inside Command Center. Owner review and the complete EN/ES video curriculum share this training screen.</p></div><span class=\"badge blue\">BILINGUAL · 12 LESSONS</span></div><div class=\"card-body\"><div class=\"actions\" role=\"group\" aria-label=\"Academy 360 owner training views\"><button class=\"btn primary\" type=\"button\" id=\"sbcAcademyStudyTab\" onclick=\"sbcAcademySelectOwnerView('study')\">▶ Learn / Videos</button><button class=\"btn\" type=\"button\" id=\"sbcAcademyReviewTab\" onclick=\"sbcAcademySelectOwnerView('review')\">✓ Owner Review / Certification</button></div><div id=\"sbcAcademyStudyFrame\"><iframe title=\"Academy 360 lesson viewer inside Command Center\" src=\"/sbc-am-academy.html\" class=\"academy360-embedded-frame\" loading=\"lazy\" referrerpolicy=\"same-origin\" style=\"width:100%;border:1px solid #32516a;border-radius:14px;height:1050px;min-height:75vh;margin-top:16px\"></iframe></div><div id=\"sbcAcademyReviewFrame\" hidden><iframe title=\"Academy 360 Owner Review Desk inside Command Center\" src=\"/sbc-am-academy-owner.html\" class=\"academy360-embedded-frame\" loading=\"lazy\" referrerpolicy=\"same-origin\" style=\"width:100%;border:1px solid #32516a;border-radius:14px;height:1050px;min-height:75vh;margin-top:16px\"></iframe></div></div></div>";
+  // Other role sessions are already routed to their restricted employee workstations.
+  return '<div class="card section"><h2>Academy 360</h2><p>Use My Training in your authenticated employee workstation. Your existing course records are preserved.</p></div>';
 }
 window.sbcOpenTrainingSafe=async function(id){
   if(typeof window.openTrainingCourseV2==='function'){return window.openTrainingCourseV2(id);}

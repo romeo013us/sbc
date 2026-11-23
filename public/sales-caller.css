@@ -224,3 +224,10 @@ html[data-sbc-theme="light"] #desk .sbc-account-next-touch input,html[data-sbc-t
 .academy-legacy-notice a:focus-visible{outline:3px solid #f4ca75;outline-offset:4px}
 .academy-legacy-notice small{display:inline-block;font-size:.82rem;line-height:1.5}
 @media(max-width:540px){.academy-legacy-notice{padding:13px;margin-bottom:14px}.academy-legacy-notice a{display:block;margin-bottom:.5rem}}
+
+/* Inline Academy 360 replaces old Sales Caller course list, with no role escalation. */
+#training .academy360-inline-header{padding:18px 22px;margin:0 0 17px;border:1px solid #376d85;border-radius:14px;background:#0d3143}
+#training .academy360-inline-header h2{margin:7px 0}
+#training .academy360-inline-header p{font-size:13px;line-height:1.5}
+#training .academy360-eyebrow{font-size:11px;font-weight:800;letter-spacing:.1em}
+#training .academy360-embedded-frame{display:block;width:100%;height:1130px;min-height:78vh;border:1px solid #355775;border-radius:15px;background:#081725}

@@ -58,3 +58,7 @@
 
 /* Account Manager classroom is a first-class, safe navigation destination. */
 .sidebar nav a.tab{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit}.sidebar nav a.tab:hover,.sidebar nav a.tab:focus-visible{outline:2px solid #f4ca75;outline-offset:2px}
+
+/* Academy 360 stays inside the role-restricted Account Manager workspace. */
+#view-academy .academy360-embedded-frame{display:block;border:1px solid #365970;background:#081725;border-radius:16px;width:100%;height:1120px;min-height:78vh}
+@media(max-width:740px){#view-academy .academy360-embedded-frame{height:1050px}}

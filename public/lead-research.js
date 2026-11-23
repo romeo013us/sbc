@@ -542,6 +542,8 @@ function lessonContent(parent,mod,courseId,status){
  parent.append(form);
 }
 async function loadTraining(){
+ var academy=$('academy360EmployeeFrame');
+ if(academy){academy.title='Academy 360 · Multimedia lessons inside My Training';return;}
  try{
   var data=await api('/api/training');
   if(!data||data.ok===false||!Array.isArray(data.assigned))throw Error('SBC training catalog returned an unexpected format.');

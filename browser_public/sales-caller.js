@@ -481,6 +481,8 @@ function showLesson(parent,module,courseId,status){
  parent.append(form);
 }
 async function renderTraining(){
+ const academy=$('academy360CallerFrame');
+ if(academy){academy.title='Academy 360 · Multimedia lessons inside My Training';return;}
  const host=$('training-list'),detail=$('training-detail');
  host.hidden=false;detail.hidden=true;detail.replaceChildren();
  $('training-status').textContent='Onboarding: '+data.onboarding.status+' · Certification: '+data.certification.status+' · Live calls '+(data.canLiveCall?'approved':'blocked until owner clearance');
