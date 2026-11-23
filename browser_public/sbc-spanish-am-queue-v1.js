@@ -26,7 +26,12 @@
       '<p style="white-space:pre-wrap">'+esc(c.lastNotes||'No call notes')+'</p>'+
       '<p>'+ (c.dnc?'Do Not Call — no callback permitted.':c.assignedTo?'Assigned to a bilingual Account Manager.':'Unassigned — bilingual review needed.')+'</p>'+
       (!c.assignedTo&&!c.dnc?'<button type="button" class="button secondary" data-sbc-spanish-claim="'+esc(c.id)+'">Claim Spanish Callback</button>':'')+
-      (c.assignedTo&&!c.dnc?'<button type="button" class="button secondary" data-sbc-spanish-open="'+esc(c.id)+'">Open My Accounts</button>':'')+
+      (c.assignedTo&&!c.dnc?'<button type="button" class="button secondary" data-sbc-spanish-open="'+esc(c.id)+'">Open My Accounts / Call</button>':'')+
+      (c.assignedTo&&!c.dnc?'<form data-sbc-spanish-resolve="'+esc(c.id)+'" style="display:grid;gap:8px;margin-top:10px">'+
+       '<label>Outcome <select name="outcome" required><option value="Interested">Interested</option><option value="Appointment booked">Appointment booked</option><option value="Follow-up requested">Follow-up requested</option><option value="No answer">No answer</option><option value="Not interested">Not interested</option><option value="Do Not Call">Do Not Call</option></select></label>'+
+       '<label>Actual conversation notes<textarea name="notes" minlength="12" maxlength="1200" required rows="3" placeholder="Document what happened in the Spanish callback"></textarea></label>'+
+       '<label>Agreed follow-up date/time (required if follow-up requested)<input name="followUpAt" type="datetime-local"></label>'+
+       '<button type="submit" class="button secondary">Save Account Outcome</button></form>':'')+
     '</article>').join(''):'<p>No Spanish-language handoffs are waiting.</p>');
   }catch(e){
    const denied=/APPROVAL|CERTIFICATION|WORKSPACE_ONLY|403/i.test(String(e.message||e));
@@ -50,6 +55,25 @@
   if(open&&host()?.contains(open)){
    window.location.assign('/sbc-account-manager-v1.html?account='+encodeURIComponent(open.dataset.sbcSpanishOpen));
   }
+ });
+
+ document.addEventListener('submit',async event=>{
+  const form=event.target?.closest('[data-sbc-spanish-resolve]');
+  if(!form||!host()?.contains(form))return;
+  event.preventDefault();
+  const customerId=form.dataset.sbcSpanishResolve,button=form.querySelector('button[type=submit]');
+  if(!form.reportValidity())return;
+  const outcome=String(form.elements.outcome.value),notes=String(form.elements.notes.value).trim();
+  const local=String(form.elements.followUpAt.value||'');
+  if(outcome==='Follow-up requested'&&!local)return alert('Enter the follow-up date/time agreed with the customer.');
+  let followUpAt='';if(local){const dt=new Date(local);if(!Number.isFinite(+dt))return alert('Choose a valid follow-up date.');followUpAt=dt.toISOString();}
+  button.disabled=true;
+  try{
+   const result=await request('/api/sales/spanish-callbacks/'+encodeURIComponent(customerId)+'/resolve',{
+    method:'POST',body:JSON.stringify({outcome,notes,followUpAt})});
+   if(result?.durable!==true)throw Error('Outcome was not confirmed durable.');
+   await reload();$('refresh')?.click();
+  }catch(e){button.disabled=false;alert('Spanish callback outcome not saved: '+String(e.message||e))}
  });
  document.addEventListener('DOMContentLoaded',()=>{if(host())reload();});
  window.SBCSpanishCallbacks=Object.freeze({reload});
