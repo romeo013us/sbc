@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "be3b0de82c2a10ce18bd7e02afab820050610056",
+  "sourceCommit": "170474c48f1abea5e22b28b5e196bfb85affd1c1",
   "files": {
     ".gitignore": "402264cd0913c76a5303ffadea253dc2670634cdce237f5478f7d5e7af390aa8",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -30,7 +30,7 @@
     "RELEASE-MANIFEST-V65.0.4.json": "610532c912a2c7aa7b4c38550f479a619d18d5720b01b049ffd18b5f79dc415d",
     "SBC-COMPLETE-APP-PACKAGE-INFO.json": "72153f8eeb41689c12e4a97c891ad07b2289ebee0a6160b164069b364222ae47",
     "SBC-CONNECTED-JOURNEY-QA.json": "1384e8cc5f8e2118620b76d6379926938f4258ee6c2a24952c3eecc9994060c0",
-    "SBC-DEPLOY-RECEIPT.json": "a76f8ceb9f5cb5a872893f85cfc1055cd51418712d31e299591da1f76f57f0ad",
+    "SBC-DEPLOY-RECEIPT.json": "e6e61b425300696cd5fdd20f152baedf062db76939095678cb20187641d97d9f",
     "SBC-P0P1-PREVIEW-QA.json": "cd5c017c6403715df30f5d916ce01f502731bdf72d9ffb39a89c5f7b0ab4b2c5",
     "SHA256-V65.0.9-OWNER-LEADS.txt": "33f60d789ca3558cf18f2acb7407dfc3aeb2f3957e855ded9bbf310ad1eb48d4",
     "START-HERE-SBC-COMMAND-CENTER-V66.txt": "ade97e1c1fb37e4398759ffb22dc47bdd25df0be196bc2002417418db36847c8",
@@ -822,6 +822,7 @@
     "enterprise/sbc-trusted-research-v1.cjs": "5914d9f7925239cdab3ea238320a2b39f1d3a281c3eeeb6e9a2e614477d4d5ee",
     "enterprise/sbc-unattended-notifications-v6504.cjs": "1c03864e321c0d8192d8bec67766df8a472869ffa93023a6d83c7bd9556ec7fc",
     "enterprise/sbc-v56131-tier1.js": "c8b4a3f878f797e469933fe23095c4c9572d8c07ac7b8f7a9cde385b735b0b35",
+    "enterprise/sbc-voice-ledger-v1.cjs": "a7c000711256c4b92148850ae1df14770cdfa2f32661d0bd2b9fc703512c4ecf",
     "enterprise/sbc-website-appointments.cjs": "dc1b06570e89d8a3e00b6d14c4cb96eb040177c0a453357c559819aaf8dc8db1",
     "enterprise/sbc-website-call-desk.cjs": "b7ada23aef2abc30adec734da3fd25df120e5a51e92df5d1ef499258c40f80d1",
     "enterprise/sbc-website-checkout-offers.cjs": "632d2df75f519c7f561ad5064289ace8416d8085df8c922ac791ba44f73840df",
