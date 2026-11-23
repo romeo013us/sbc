@@ -25,7 +25,8 @@ function eligibleForEnglish(customer,logs,tenantId,nowDate=new Date()){
  const last=lastAttempt(customer,logs,tenantId);
  if(last){
   const outcome=String(last.outcome||'Pending');
-  if(['Spanish callback needed','Do Not Call','Not interested','Bad number','Interested','Appointment booked','Order ready','Follow-up requested'].includes(outcome))return false;
+  if(['Spanish callback needed','Do Not Call','Not interested','Bad number','Interested','Appointment booked','Order ready'].includes(outcome))return false;
+  if(outcome==='Follow-up requested'&&!(state==='callback'&&ts(customer.salesNextAttemptAt)&&ts(customer.salesNextAttemptAt)<=+new Date(nowDate)))return false;
   if(ts(last.endedAt||last.updatedAt||last.createdAt)+RETRY_MS>+new Date(nowDate))return false;
  }
  return true;
@@ -46,7 +47,9 @@ function routingUpdate(customer,log,stamp=new Date()){
   customer.salesQueueState=customer.salesCallbackAssignedTo?'callback_assigned':'spanish_callback';
   customer.salesNextAttemptAt='';customer.salesCallbackAssignedTo=customer.salesCallbackAssignedTo||'';
   customer.salesCallbackRequestedAt=customer.salesCallbackRequestedAt||new Date(now).toISOString();
- }else if(outcome==='Bad number'||outcome==='Not interested'){
+ }else if(outcome==='Bad number'){
+  customer.salesQueueState='phone_hold';customer.salesNextAttemptAt='';
+ }else if(outcome==='Not interested'){
   customer.salesQueueState='retired';customer.salesNextAttemptAt='';
  }else if(['Interested','Appointment booked','Order ready'].includes(outcome)){
   customer.salesQueueState='pipeline';customer.salesNextAttemptAt='';
