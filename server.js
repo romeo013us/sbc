@@ -5941,6 +5941,8 @@ app.get('/api/call-scripts',auth,(req,res)=>res.json(CALL_SCRIPTS));
 
 // ===== V26.1 DYNAMIC SALES QUEUE AUTOMATION =====
 const SBC_PHONE_RECOVERY=require('./enterprise/sbc-phone-recovery-v66137.cjs');
+const SBC_CALL_ROUTING=require('./enterprise/sbc-call-routing-v1.cjs');
+const SBC_VOICE_LEDGER=require('./enterprise/sbc-voice-ledger-v1.cjs');
 // SBC_V66137_PHONE_RECOVERY
 const TERMINAL_SALES_OUTCOMES=new Set(['Not Interested','Bad Number','Do Not Call','Closed Business','Not Qualified','Duplicate']);
 const ACTIVE_SALES_OUTCOMES=new Set(['Interested','Appointment Requested','Order Ready']);
@@ -5960,11 +5962,15 @@ function queueForCaller(callerId){
 }
 function salesQueueCandidates(callerId){
   const {q}=queueForCaller(callerId);
+  const caller=(db.users||[]).find(u=>String(u.id)===String(callerId));
+  if(!caller)return [];
+  const tenant=tenantIdForUser(caller);
   const existing=new Set(q.leadIds.map(String));
   const terminalStatuses=new Set(['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified']);
   const activeCallerIds=new Set((db.users||[]).filter(u=>u.role==='caller'&&u.active!==false).map(u=>String(u.id)));
   return (db.customers||[]).filter(c=>{
     if(existing.has(String(c.id)))return false;
+    if(!SBC_CALL_ROUTING.eligibleForEnglish(c,db.callLogs||[],tenant,new Date()))return false;
     if(terminalStatuses.has(String(c.status||''))||SBC_PHONE_RECOVERY.isHeld(c)||SBC_PHONE_RECOVERY.hasUnreachableLog(c,db.callLogs||[]))return false;
     if(c.status==='Customer'||c.status==='Lost')return false;
     if(!String(c.phone||'').trim())return false;
@@ -6000,10 +6006,13 @@ function salesQueueCandidates(callerId){
 }
 async function replenishSalesQueue(callerId,reason='queue_sync'){
   const {m,q}=queueForCaller(callerId);
+  const caller=(db.users||[]).find(u=>String(u.id)===String(callerId));
+  if(!caller)throw Error('SALES_CALLER_NOT_FOUND');
+  const tenant=tenantIdForUser(caller);
   const before=q.leadIds.length;
   q.leadIds=q.leadIds.filter(idv=>{
     const c=db.customers.find(x=>String(x.id)===String(idv));
-    return c && !SBC_PHONE_RECOVERY.isHeld(c) && !SBC_PHONE_RECOVERY.hasUnreachableLog(c,db.callLogs||[]) && !['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(c.status||''));
+    return c && SBC_CALL_ROUTING.eligibleForEnglish(c,db.callLogs||[],tenant,new Date()) && !SBC_PHONE_RECOVERY.isHeld(c) && !SBC_PHONE_RECOVERY.hasUnreachableLog(c,db.callLogs||[]) && !['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(c.status||''));
   });
   const need=Math.max(0,q.target-q.leadIds.length);
   if(need){
@@ -6034,6 +6043,8 @@ async function processSalesDisposition(report,c){
     c.salesQueueState='retired';
     c.salesDisposition=outcome;
     c.updatedAt=now();
+  }else if(outcome==='Spanish callback needed'){
+    SBC_CALL_ROUTING.routingUpdate(c,{id:report.id,tenantId:c.tenantId,status:'completed',outcome,endedAt:report.createdAt},report.createdAt);
   }else if(RETRY_SALES_OUTCOMES.has(outcome)){
     c.salesQueueState='retry';
     c.salesDisposition=outcome;
@@ -6084,6 +6095,108 @@ app.put('/api/sales/queue/settings',auth,ownerOnly,async(req,res)=>{
   m.settings.salesQueueTarget=target;await megaSave(m);
   const out={};for(const u of (db.users||[]).filter(x=>x.role==='caller'&&x.active!==false))out[u.id]=await replenishSalesQueue(u.id,'owner_target_change');
   res.json({ok:true,target,queues:out});
+});
+
+
+// SBC_CALL_ROUTING_V1: owner-reviewed language handoff; all endpoints are tenant-scoped.
+// This code never sends an SMS, starts a call, or treats a hang-up as consent.
+app.get('/api/sales/spanish-callbacks',auth,(req,res)=>{
+ const user=req.user||{},owner=['owner','manager'].includes(String(user.role||''));
+ if(!owner&&!SBC_CALL_ROUTING.isSpanishApproved(user))return res.status(403).json({ok:false,error:'SPANISH_REP_APPROVAL_REQUIRED'});
+ const tenant=requireRequestTenant(req);
+ const rows=SBC_CALL_ROUTING.spanishCallbacks(db.customers||[],tenant)
+ .filter(c=>owner||!c.salesCallbackAssignedTo||String(c.salesCallbackAssignedTo)===String(user.id))
+ .map(c=>{const log=SBC_CALL_ROUTING.lastAttempt(c,db.callLogs||[],tenant);
+  return {id:c.id,businessName:c.businessName||'',contactName:c.contactName||'',phone:c.phone||'',
+   industry:c.industry||'',preferredContactLanguage:'es',salesQueueState:c.salesQueueState,
+   assignedTo:c.salesCallbackAssignedTo||'',requestedAt:c.salesCallbackRequestedAt||'',
+   lastCalledAt:log?.endedAt||'',lastOutcome:c.salesDisposition||log?.outcome||'',
+   lastNotes:log?.notes||'',nextAction:log?.nextAction||'',
+   callable:!SBC_CALL_ROUTING.hasDnc(c),dnc:SBC_CALL_ROUTING.hasDnc(c)};
+ });
+ res.setHeader('Cache-Control','no-store');res.json({ok:true,count:rows.length,rows});
+});
+app.get('/api/sales/spanish-callbacks/agents',auth,ownerOnly,(req,res)=>{
+ const tenant=requireRequestTenant(req);
+ const rows=(db.users||[]).filter(u=>Number(u.tenantId)===Number(tenant)&&['account_manager','manager'].includes(String(u.role||''))&&u.active!==false)
+ .map(u=>({id:u.id,name:u.name||u.username||'',role:u.role,approved:SBC_CALL_ROUTING.isSpanishApproved(u)}));
+ res.json({ok:true,rows});
+});
+app.post('/api/sales/spanish-callbacks/agents/:userId/approval',auth,ownerOnly,async(req,res)=>{
+ const tenant=requireRequestTenant(req),u=(db.users||[]).find(x=>String(x.id)===String(req.params.userId)&&Number(x.tenantId)===Number(tenant));
+ if(!u||!['account_manager','manager'].includes(String(u.role)))return res.status(404).json({ok:false,error:'ACCOUNT_MANAGER_NOT_FOUND'});
+ if(typeof req.body?.approved!=='boolean')return res.status(400).json({ok:false,error:'BOOLEAN_APPROVAL_REQUIRED'});
+ const before=u.spanishCallingApprovedByOwner;
+ try{u.spanishCallingApprovedByOwner=req.body.approved;audit(req.user,'spanish_rep_approval','Spanish rep eligibility reviewed',{userId:u.id,approved:u.spanishCallingApprovedByOwner});await saveData();res.json({ok:true,agentId:u.id,approved:u.spanishCallingApprovedByOwner})}
+ catch(e){u.spanishCallingApprovedByOwner=before;res.status(503).json({ok:false,error:'APPROVAL_SAVE_FAILED'})}
+});
+app.post('/api/sales/spanish-callbacks/:id/move',auth,async(req,res)=>{
+ const actor=req.user||{};if(!['owner','manager','caller'].includes(String(actor.role||'')))return res.status(403).json({ok:false,error:'SALES_ROLE_REQUIRED'});
+ const tenant=requireRequestTenant(req);
+ const c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenant));
+ if(!c)return res.status(404).json({ok:false,error:'LEAD_NOT_FOUND'});
+ if(actor.role==='caller'&&String(c.assignedTo||'')!==String(actor.id))return res.status(403).json({ok:false,error:'ASSIGNED_CALLER_REQUIRED'});
+ if(SBC_CALL_ROUTING.hasDnc(c))return res.status(409).json({ok:false,error:'CONTACT_SUPPRESSED'});
+ const reason=String(req.body?.reason||'').trim().slice(0,1200);
+ if(reason.length<12)return res.status(400).json({ok:false,error:'LANGUAGE_HANDOFF_REASON_REQUIRED'});
+ const log=SBC_CALL_ROUTING.lastAttempt(c,db.callLogs||[],tenant);
+ if(!log)return res.status(409).json({ok:false,error:'NO_COMPLETED_SBC_CALL_TO_HANDOFF'});
+ if(String(c.salesQueueState)==='spanish_callback'||String(c.salesQueueState)==='callback_assigned')return res.json({ok:true,alreadyQueued:true,customerId:c.id});
+ const before=JSON.parse(JSON.stringify(c)),logBefore={...log};
+ const auditBefore=(db.auditLog||[]).length,activityBefore=(db.activities||[]).length;
+ try{
+  log.previousOutcome=log.previousOutcome||log.outcome||'Pending';
+  log.outcome='Spanish callback needed';log.outcomeCorrectionReason=reason;
+  log.outcomeCorrectedBy=String(actor.id);log.outcomeCorrectedAt=now();
+  SBC_CALL_ROUTING.routingUpdate(c,log,now());
+  c.salesCallbackAssignedTo='';
+  audit(actor,'spanish_handoff','Spanish-language callback handoff requested',{customerId:c.id,callLogId:log.id,reason});
+  addActivity('call','Spanish-language callback needs bilingual review',{customerId:c.id,callLogId:log.id});
+  await saveData();
+  if(!mysqlPool)throw Error('VOICE_HANDOFF_MYSQL_NOT_AVAILABLE');
+  const [rows]=await mysqlPool.query("SELECT JSON_CONTAINS(payload,JSON_OBJECT('id',?,'tenantId',?,'outcome',?),'$.callLogs') AS confirmed FROM sbc_workspace WHERE id=1",[log.id,Number(tenant),log.outcome]);
+  if(Number(rows?.[0]?.confirmed)!==1)throw Error('VOICE_HANDOFF_NOT_DURABLE');
+  res.json({ok:true,durable:true,customerId:c.id,queueState:c.salesQueueState});
+ }catch(e){
+  SBC_CALL_ROUTING.restoreSnapshot(c,before);Object.assign(log,logBefore);
+  db.auditLog=(db.auditLog||[]).slice(0,auditBefore);db.activities=(db.activities||[]).slice(0,activityBefore);
+  res.status(503).json({ok:false,error:'SPANISH_HANDOFF_SAVE_FAILED'});
+ }
+});
+app.post('/api/sales/spanish-callbacks/:id/assign',auth,ownerOnly,async(req,res)=>{
+ const tenant=requireRequestTenant(req),c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenant));
+ if(!c||!['spanish_callback','callback_assigned'].includes(String(c.salesQueueState||'')))return res.status(404).json({ok:false,error:'SPANISH_CALLBACK_NOT_FOUND'});
+ if(SBC_CALL_ROUTING.hasDnc(c))return res.status(409).json({ok:false,error:'SUPPRESSED_CONTACT_NOT_ASSIGNABLE'});
+ const rep=(db.users||[]).find(x=>String(x.id)===String(req.body?.agentId)&&Number(x.tenantId)===Number(tenant));
+ if(!SBC_CALL_ROUTING.isSpanishApproved(rep))return res.status(403).json({ok:false,error:'OWNER_APPROVED_BILINGUAL_REP_REQUIRED'});
+ const before=JSON.parse(JSON.stringify(c));try{
+  c.salesCallbackPreviousAssignedTo=c.assignedTo||'';
+  c.salesCallbackAssignedTo=rep.id;c.assignedTo=rep.id;c.salesQueueState='callback_assigned';c.updatedAt=now();
+  audit(req.user,'spanish_callback_assigned','Bilingual callback assigned',{customerId:c.id,repId:rep.id});await saveData();
+  res.json({ok:true,durable:true,customerId:c.id,agentId:rep.id});
+ }catch(e){SBC_CALL_ROUTING.restoreSnapshot(c,before);res.status(503).json({ok:false,error:'ASSIGNMENT_SAVE_FAILED'})}
+});
+app.post('/api/sales/spanish-callbacks/:id/claim',auth,async(req,res)=>{
+ const actor=req.user||{};if(!SBC_CALL_ROUTING.isSpanishApproved(actor))return res.status(403).json({ok:false,error:'SPANISH_REP_APPROVAL_REQUIRED'});
+ const tenant=requireRequestTenant(req),c=(db.customers||[]).find(x=>String(x.id)===String(req.params.id)&&Number(x.tenantId??x.tenant_id)===Number(tenant));
+ if(!c||String(c.salesQueueState)!=='spanish_callback')return res.status(409).json({ok:false,error:'SPANISH_CALLBACK_UNAVAILABLE'});
+ if(SBC_CALL_ROUTING.hasDnc(c))return res.status(409).json({ok:false,error:'CONTACT_SUPPRESSED'});
+ const before=JSON.parse(JSON.stringify(c));try{
+  c.salesCallbackPreviousAssignedTo=c.assignedTo||'';c.salesCallbackAssignedTo=actor.id;c.assignedTo=actor.id;
+  c.salesQueueState='callback_assigned';c.updatedAt=now();
+  audit(actor,'spanish_callback_claimed','Approved bilingual rep claimed callback',{customerId:c.id});
+  await saveData();res.json({ok:true,durable:true,customerId:c.id});
+ }catch(e){SBC_CALL_ROUTING.restoreSnapshot(c,before);res.status(503).json({ok:false,error:'CLAIM_SAVE_FAILED'})}
+});
+app.get('/api/sales/call-history',auth,(req,res)=>{
+ const role=String(req.user?.role||'');if(!['owner','manager','caller'].includes(role))return res.status(403).json({ok:false,error:'SALES_ROLE_REQUIRED'});
+ try{
+  const tenant=requireRequestTenant(req);
+  const result=SBC_VOICE_LEDGER.list(db.callLogs||[],db.customers||[],{tenantId:tenant,actorId:req.user.id,
+   isOwner:['owner','manager'].includes(role),number:req.query.number,from:req.query.from,to:req.query.to,
+   outcome:req.query.outcome,status:req.query.status,customerId:req.query.customerId,limit:req.query.limit,offset:req.query.offset});
+  res.setHeader('Cache-Control','no-store');res.json({...result,retentionNote:'Shows records retained in SBC callLogs; historical archives are not included.'});
+ }catch(e){res.status(400).json({ok:false,error:'CALL_HISTORY_QUERY_INVALID'})}
 });
 
 app.post('/api/call-reports',auth,async(req,res)=>{const b=req.body||{},c=db.customers.find(x=>x.id===String(b.customerId));if(!c)return res.status(404).json({error:'Lead not found.'});const autoApproveCaller=req.user.role==='caller';const r={id:id('call'),customerId:c.id,callerId:req.user.id,callerName:req.user.name,createdAt:now(),status:autoApproveCaller?'Approved':'Pending',autoApproved:autoApproveCaller,contactName:String(b.contactName||''),outcome:String(b.outcome||''),services:Array.isArray(b.services)?b.services.map(String):[],packageInterest:String(b.packageInterest||''),decisionMaker:String(b.decisionMaker||''),need:String(b.need||''),pain:String(b.pain||''),requirements:String(b.requirements||''),quantity:String(b.quantity||''),budget:String(b.budget||''),timeline:String(b.timeline||''),callbackAt:String(b.callbackAt||''),appointmentRequested:Boolean(b.appointmentRequested),orderReady:Boolean(b.orderReady),paymentGuideRequested:Boolean(b.paymentGuideRequested),notes:String(b.notes||'').slice(0,3000)};db.callReports.unshift(r);audit(req.user,'call_report','Submitted call report',{callReportId:r.id,customerId:c.id});addActivity('call',`${req.user.name} submitted call report for ${c.businessName||c.contactName}`,{customerId:c.id,callReportId:r.id,callerId:req.user.id});await saveData();let queue=null;try{queue=await processSalesDisposition(r,c)}catch(e){console.warn('Sales queue automation:',e.message)}if(autoApproveCaller){r.reviewedAt=now();r.reviewedBy='system_auto_approval';audit(req.user,'call_report_auto_approved','Caller call report auto-approved for speed',{callReportId:r.id,customerId:c.id})}res.status(201).json({...r,queue})});
@@ -8836,7 +8949,7 @@ app.post('/api/voice/twiml',sbcSignedTwimlV6619,(req,res)=>{const verdict=SBC_V6
 // SBC_V6614_VOICE_CALL_LOG_INTEGRITY: verified tenant scoping + terminal-status timestamp checks.
 app.get('/api/voice/logs',auth,(req,res)=>{/* SBC_V6690_VOICE_ROLE_GATE */const role=String(req.user?.role||'').trim().toLowerCase();if(!['owner','manager','caller'].includes(role))return res.status(403).json({ok:false,error:'VOICE_CALLER_ROLE_REQUIRED'});try{const tenantId=requireRequestTenant(req);/* SBC_V6696_MANUAL_DIAL_LOG */const customerId=String(req.query.customerId||'').trim().slice(0,120);const manualMode=String(req.query.manual||'')==='1'&&!customerId;if(!customerId&&!manualMode)return res.status(400).json({ok:false,error:'customerId is required.'});const customer=manualMode?null:(db.customers||[]).find(c=>String(c.id)===customerId&&Number(c.tenantId??c.tenant_id)===Number(tenantId));if(!manualMode&&!customer)return res.status(404).json({ok:false,error:'Customer not found in this workspace.'});const canReviewAll=['owner','manager'].includes(String(req.user?.role||''));const rows=(db.callLogs||[]).filter(x=>(manualMode?x.manualDial===true:String(x.customerId)===customerId)&&Number(x.tenantId||0)===Number(tenantId)&&(canReviewAll||String(x.userId)===String(req.user.id))).sort((a,b)=>new Date(b.endedAt||b.startedAt||b.createdAt||0)-new Date(a.endedAt||a.startedAt||a.createdAt||0)).slice(0,25).map(x=>({id:x.id,userName:x.userName||'',customerId:x.customerId,manualDial:x.manualDial===true,status:x.status,direction:x.direction,to:x.to,callSid:x.callSid,durationSec:Number(x.durationSec||0),startedAt:x.startedAt,endedAt:x.endedAt,createdAt:x.createdAt,notes:String(x.notes||''),outcome:String(x.outcome||''),nextAction:String(x.nextAction||''),followUpAt:String(x.followUpAt||'')}));res.json({ok:true,rows})}catch(e){res.status(503).json({ok:false,error:e.message||'Call history is temporarily unavailable.'})}});
 let sbcVoiceLogCommitTailV6615=Promise.resolve();
-app.post('/api/voice/log',auth,async(req,res)=>{/* SBC_V6690_VOICE_ROLE_GATE */const role=String(req.user?.role||'').trim().toLowerCase();if(!['owner','manager','caller'].includes(role))return res.status(403).json({ok:false,error:'VOICE_CALLER_ROLE_REQUIRED'});const prior=sbcVoiceLogCommitTailV6615;let release;sbcVoiceLogCommitTailV6615=new Promise(resolve=>{release=resolve});await prior;/* SBC_V6615_CALL_LOG_MYSQL_DURABILITY: serialized writes with best-effort in-memory rollback */const previousLogs=(db.callLogs||[]).map(row=>({...row}));const previousActivity=(db.activities||[]).map(row=>({...row}));const previousAudit=(db.auditLog||[]).map(row=>({...row}));let sbcPhoneCustomer=null,sbcPhonePrior=null;try{const b=req.body||{};const tenantId=requireRequestTenant(req);const customerId=String(b.customerId||'').trim().slice(0,120);const manualDial=b.manualDial===true&&!customerId;if(b.manualDial===true&&customerId)return res.status(400).json({ok:false,error:'MANUAL_DIAL_MUST_NOT_LINK_CUSTOMER'});if(!customerId&&!manualDial)return res.status(400).json({ok:false,error:'customerId is required to log an SBC call.'});const customer=manualDial?null:(db.customers||[]).find(c=>String(c.id)===customerId&&Number(c.tenantId??c.tenant_id)===Number(tenantId));if(!manualDial&&!customer)return res.status(404).json({ok:false,error:'Customer not found in this workspace.'});if(req.user.role==='caller'&&(manualDial||!customer||String(customer.assignedTo||'')!==String(req.user.id)||Number(customer.tenantId??customer.tenant_id)!==Number(tenantId)||SBC_V66101_CALLER_POLICY.suppressed(customer)))return res.status(403).json({ok:false,error:'CALLER_ASSIGNED_LEAD_REQUIRED'});const manualTo=manualDial?normalizeDialNumber(b.to):'';if(manualDial&&!/^\+[1-9]\d{7,14}$/.test(manualTo))return res.status(400).json({ok:false,error:'MANUAL_DIAL_INVALID_NUMBER'});if(manualDial&&(db.customers||[]).some(c=>Number(c.tenantId??c.tenant_id)===Number(tenantId)&&normalizeDialNumber(c.phone)===manualTo&&(c.doNotContact===true||c.salesSuppressed===true||c.isSuppressed===true||['do not call','do not contact','dnc','opt out','unsubscribe'].includes(String(c.status||'').trim().toLowerCase()))))return res.status(403).json({ok:false,error:'MANUAL_DIAL_SUPPRESSED_CONTACT'});const sessionId=String(b.sessionId||'').trim().slice(0,100);let log=sessionId?(db.callLogs||[]).find(x=>String(x.sessionId||'')===sessionId&&String(x.userId)===String(req.user.id)&&Number(x.tenantId||tenantId)===Number(tenantId)&&String(x.customerId)===customerId&&Boolean(x.manualDial)===manualDial):null;if(log&&manualDial&&manualTo!==log.to)return res.status(409).json({ok:false,error:'MANUAL_DIAL_NUMBER_LOCKED'});const isNew=!log;const priorStatus=String(log?.status||'');const allowedStatus=new Set(['connecting','in-progress','completed','ended','failed','busy','no-answer','canceled','unknown']);const wantedStatus=String(b.status||'completed').toLowerCase().slice(0,32);const status=allowedStatus.has(wantedStatus)?wantedStatus:'completed';const allowedOutcome=new Set(['Pending','Interested','Follow-up requested','Appointment booked','No answer','Left voicemail','Not interested','Do Not Call','Order ready','Bad number']);const outcome=allowedOutcome.has(String(b.outcome||''))?String(b.outcome):String(log?.outcome||'Pending');const stamp=now();if(customer&&!manualDial&&outcome==='Bad number'&&!SBC_PHONE_RECOVERY.isHeld(customer)){sbcPhoneCustomer=customer;sbcPhonePrior={leadIntelligence:JSON.parse(JSON.stringify(customer.leadIntelligence||{})),salesQueueState:customer.salesQueueState,salesDisposition:customer.salesDisposition,salesNextAttemptAt:customer.salesNextAttemptAt,updatedAt:customer.updatedAt,verificationStatus:customer.verificationStatus};SBC_PHONE_RECOVERY.flag(customer,{at:stamp,actor:String(req.user.id),callLogId:sessionId});customer.verificationStatus='Needs Verification';}const terminal=new Set(['completed','ended','failed','busy','no-answer','canceled']);const notes=Object.prototype.hasOwnProperty.call(b,'notes')?String(b.notes||'').slice(0,12000):String(log?.notes||'');const nextAction=Object.prototype.hasOwnProperty.call(b,'nextAction')?String(b.nextAction||'').slice(0,1000):String(log?.nextAction||'');const followUpAt=Object.prototype.hasOwnProperty.call(b,'followUpAt')?String(b.followUpAt||'').slice(0,40):String(log?.followUpAt||'');const durationSec=Math.max(0,Math.min(86400,Number.isFinite(Number(b.durationSec))?Math.round(Number(b.durationSec)):Number(log?.durationSec||0)));if(isNew){log={id:id('calllog'),sessionId:sessionId,tenantId:Number(tenantId),userId:req.user.id,userName:req.user.name||req.user.username||'SBC Team',customerId,manualDial,to:normalizeDialNumber(b.to),direction:'outbound',callSid:String(b.callSid||'').slice(0,120),status,durationSec,startedAt:String(b.startedAt||now()).slice(0,40),endedAt:terminal.has(status)?String(b.endedAt||stamp).slice(0,40):'',createdAt:stamp,updatedAt:stamp,notes,outcome,nextAction,followUpAt};db.callLogs=db.callLogs||[];db.callLogs.unshift(log);db.callLogs=db.callLogs.slice(0,1000)}else{log.tenantId=Number(tenantId);log.status=status;log.durationSec=durationSec;log.notes=notes;log.outcome=outcome;log.nextAction=nextAction;log.followUpAt=followUpAt;log.updatedAt=stamp;if(b.to&&!manualDial)log.to=normalizeDialNumber(b.to);if(b.callSid)log.callSid=String(b.callSid).slice(0,120);if(b.startedAt&&!log.startedAt)log.startedAt=String(b.startedAt).slice(0,40);if(terminal.has(status))log.endedAt=String(b.endedAt||stamp).slice(0,40)}const finalChanged=terminal.has(status)&&priorStatus!==status;if(finalChanged){audit(req.user,'voice_call','Outbound SBC business call '+status,{callLogId:log.id,customerId,manualDial,callSid:log.callSid,to:log.to,durationSec:log.durationSec,outcome:log.outcome,notesLength:log.notes.length});addActivity('call',String(req.user.name||req.user.username||'SBC Team')+' logged an SBC business call',{customerId,callLogId:log.id,callSid:log.callSid,status,durationSec:log.durationSec,outcome:log.outcome,nextAction:log.nextAction,followUpAt:log.followUpAt})}await saveData();if(!mysqlPool)throw Object.assign(new Error('VOICE_LOG_MYSQL_NOT_AVAILABLE'),{code:'VOICE_LOG_NOT_DURABLE'});const [durabilityRows]=await mysqlPool.query("SELECT JSON_CONTAINS(payload,JSON_OBJECT('id',?,'tenantId',?,'status',?,'notes',?,'outcome',?),'$.callLogs') AS confirmed FROM sbc_workspace WHERE id=1",[log.id,Number(tenantId),log.status,log.notes,log.outcome]);if(Number(durabilityRows?.[0]?.confirmed)!==1)throw Object.assign(new Error('VOICE_LOG_MYSQL_NOT_DURABLE'),{code:'VOICE_LOG_NOT_DURABLE'});res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt,phoneHoldApplied:!!customer&&SBC_PHONE_RECOVERY.isHeld(customer)})}catch(e){db.callLogs=previousLogs;db.activities=previousActivity;db.auditLog=previousAudit;if(sbcPhoneCustomer&&sbcPhonePrior)Object.assign(sbcPhoneCustomer,sbcPhonePrior);const code=e?.statusCode===423?423:503;res.status(code).json({ok:false,durable:false,error:e.code==='VOICE_LOG_NOT_DURABLE'?'VOICE_LOG_NOT_DURABLE':(e.message||'Unable to save the SBC call log.')})}finally{release()}});
+app.post('/api/voice/log',auth,async(req,res)=>{/* SBC_V6690_VOICE_ROLE_GATE */const role=String(req.user?.role||'').trim().toLowerCase();if(!['owner','manager','caller'].includes(role))return res.status(403).json({ok:false,error:'VOICE_CALLER_ROLE_REQUIRED'});const prior=sbcVoiceLogCommitTailV6615;let release;sbcVoiceLogCommitTailV6615=new Promise(resolve=>{release=resolve});await prior;/* SBC_V6615_CALL_LOG_MYSQL_DURABILITY: serialized writes with best-effort in-memory rollback */const previousLogs=(db.callLogs||[]).map(row=>({...row}));const previousActivity=(db.activities||[]).map(row=>({...row}));const previousAudit=(db.auditLog||[]).map(row=>({...row}));let sbcPhoneCustomer=null,sbcPhonePrior=null,sbcRoutingCustomer=null,sbcRoutingBefore=null;try{const b=req.body||{};const tenantId=requireRequestTenant(req);const customerId=String(b.customerId||'').trim().slice(0,120);const manualDial=b.manualDial===true&&!customerId;if(b.manualDial===true&&customerId)return res.status(400).json({ok:false,error:'MANUAL_DIAL_MUST_NOT_LINK_CUSTOMER'});if(!customerId&&!manualDial)return res.status(400).json({ok:false,error:'customerId is required to log an SBC call.'});const customer=manualDial?null:(db.customers||[]).find(c=>String(c.id)===customerId&&Number(c.tenantId??c.tenant_id)===Number(tenantId));if(!manualDial&&!customer)return res.status(404).json({ok:false,error:'Customer not found in this workspace.'});if(req.user.role==='caller'&&(manualDial||!customer||String(customer.assignedTo||'')!==String(req.user.id)||Number(customer.tenantId??customer.tenant_id)!==Number(tenantId)||SBC_V66101_CALLER_POLICY.suppressed(customer)))return res.status(403).json({ok:false,error:'CALLER_ASSIGNED_LEAD_REQUIRED'});if(customer&&!manualDial){sbcRoutingCustomer=customer;sbcRoutingBefore=JSON.parse(JSON.stringify(customer));}const manualTo=manualDial?normalizeDialNumber(b.to):'';if(manualDial&&!/^\+[1-9]\d{7,14}$/.test(manualTo))return res.status(400).json({ok:false,error:'MANUAL_DIAL_INVALID_NUMBER'});if(manualDial&&(db.customers||[]).some(c=>Number(c.tenantId??c.tenant_id)===Number(tenantId)&&normalizeDialNumber(c.phone)===manualTo&&(c.doNotContact===true||c.salesSuppressed===true||c.isSuppressed===true||['do not call','do not contact','dnc','opt out','unsubscribe'].includes(String(c.status||'').trim().toLowerCase()))))return res.status(403).json({ok:false,error:'MANUAL_DIAL_SUPPRESSED_CONTACT'});const sessionId=String(b.sessionId||'').trim().slice(0,100);let log=sessionId?(db.callLogs||[]).find(x=>String(x.sessionId||'')===sessionId&&String(x.userId)===String(req.user.id)&&Number(x.tenantId||tenantId)===Number(tenantId)&&String(x.customerId)===customerId&&Boolean(x.manualDial)===manualDial):null;if(log&&manualDial&&manualTo!==log.to)return res.status(409).json({ok:false,error:'MANUAL_DIAL_NUMBER_LOCKED'});const isNew=!log;const priorStatus=String(log?.status||'');const allowedStatus=new Set(['connecting','in-progress','completed','ended','failed','busy','no-answer','canceled','unknown']);const wantedStatus=String(b.status||'completed').toLowerCase().slice(0,32);const status=allowedStatus.has(wantedStatus)?wantedStatus:'completed';const allowedOutcome=new Set(['Pending','Interested','Follow-up requested','Appointment booked','No answer','Left voicemail','Not interested','Do Not Call','Order ready','Bad number','Spanish callback needed']);const outcome=allowedOutcome.has(String(b.outcome||''))?String(b.outcome):String(log?.outcome||'Pending');const stamp=now();if(customer&&!manualDial&&outcome==='Bad number'&&!SBC_PHONE_RECOVERY.isHeld(customer)){sbcPhoneCustomer=customer;sbcPhonePrior={leadIntelligence:JSON.parse(JSON.stringify(customer.leadIntelligence||{})),salesQueueState:customer.salesQueueState,salesDisposition:customer.salesDisposition,salesNextAttemptAt:customer.salesNextAttemptAt,updatedAt:customer.updatedAt,verificationStatus:customer.verificationStatus};SBC_PHONE_RECOVERY.flag(customer,{at:stamp,actor:String(req.user.id),callLogId:sessionId});customer.verificationStatus='Needs Verification';}const terminal=new Set(['completed','ended','failed','busy','no-answer','canceled']);const notes=Object.prototype.hasOwnProperty.call(b,'notes')?String(b.notes||'').slice(0,12000):String(log?.notes||'');const nextAction=Object.prototype.hasOwnProperty.call(b,'nextAction')?String(b.nextAction||'').slice(0,1000):String(log?.nextAction||'');const followUpAt=Object.prototype.hasOwnProperty.call(b,'followUpAt')?String(b.followUpAt||'').slice(0,40):String(log?.followUpAt||'');const durationSec=Math.max(0,Math.min(86400,Number.isFinite(Number(b.durationSec))?Math.round(Number(b.durationSec)):Number(log?.durationSec||0)));if(isNew){log={id:id('calllog'),sessionId:sessionId,tenantId:Number(tenantId),userId:req.user.id,userName:req.user.name||req.user.username||'SBC Team',customerId,manualDial,to:normalizeDialNumber(b.to),direction:'outbound',callSid:String(b.callSid||'').slice(0,120),status,durationSec,startedAt:String(b.startedAt||now()).slice(0,40),endedAt:terminal.has(status)?String(b.endedAt||stamp).slice(0,40):'',createdAt:stamp,updatedAt:stamp,notes,outcome,nextAction,followUpAt};db.callLogs=db.callLogs||[];db.callLogs.unshift(log);db.callLogs=db.callLogs.slice(0,1000)}else{log.tenantId=Number(tenantId);log.status=status;log.durationSec=durationSec;log.notes=notes;log.outcome=outcome;log.nextAction=nextAction;log.followUpAt=followUpAt;log.updatedAt=stamp;if(b.to&&!manualDial)log.to=normalizeDialNumber(b.to);if(b.callSid)log.callSid=String(b.callSid).slice(0,120);if(b.startedAt&&!log.startedAt)log.startedAt=String(b.startedAt).slice(0,40);if(terminal.has(status))log.endedAt=String(b.endedAt||stamp).slice(0,40)}if(customer&&!manualDial)SBC_CALL_ROUTING.routingUpdate(customer,log,stamp);const finalChanged=terminal.has(status)&&priorStatus!==status;if(finalChanged){audit(req.user,'voice_call','Outbound SBC business call '+status,{callLogId:log.id,customerId,manualDial,callSid:log.callSid,to:log.to,durationSec:log.durationSec,outcome:log.outcome,notesLength:log.notes.length});addActivity('call',String(req.user.name||req.user.username||'SBC Team')+' logged an SBC business call',{customerId,callLogId:log.id,callSid:log.callSid,status,durationSec:log.durationSec,outcome:log.outcome,nextAction:log.nextAction,followUpAt:log.followUpAt})}await saveData();if(!mysqlPool)throw Object.assign(new Error('VOICE_LOG_MYSQL_NOT_AVAILABLE'),{code:'VOICE_LOG_NOT_DURABLE'});const [durabilityRows]=await mysqlPool.query("SELECT JSON_CONTAINS(payload,JSON_OBJECT('id',?,'tenantId',?,'status',?,'notes',?,'outcome',?),'$.callLogs') AS confirmed FROM sbc_workspace WHERE id=1",[log.id,Number(tenantId),log.status,log.notes,log.outcome]);if(Number(durabilityRows?.[0]?.confirmed)!==1)throw Object.assign(new Error('VOICE_LOG_MYSQL_NOT_DURABLE'),{code:'VOICE_LOG_NOT_DURABLE'});res.status(isNew?201:200).json({ok:true,durable:true,id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt,phoneHoldApplied:!!customer&&SBC_PHONE_RECOVERY.isHeld(customer)})}catch(e){db.callLogs=previousLogs;db.activities=previousActivity;db.auditLog=previousAudit;if(sbcRoutingCustomer&&sbcRoutingBefore)SBC_CALL_ROUTING.restoreSnapshot(sbcRoutingCustomer,sbcRoutingBefore);if(sbcPhoneCustomer&&sbcPhonePrior)Object.assign(sbcPhoneCustomer,sbcPhonePrior);const code=e?.statusCode===423?423:503;res.status(code).json({ok:false,durable:false,error:e.code==='VOICE_LOG_NOT_DURABLE'?'VOICE_LOG_NOT_DURABLE':(e.message||'Unable to save the SBC call log.')})}finally{release()}});
 
 app.get('/api/ai/attention',auth,(req,res)=>{
   const u=req.user, alerts=[]; const cs=(db.customers||[]).map(normalizeLeadQuality);
