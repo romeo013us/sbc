@@ -46,7 +46,7 @@ document.querySelectorAll('[data-tab]').forEach(function(el){el.classList.toggle
  txt('page-title',titles[tab]);clearNote();
  if(tab==='training'&&!train)loadTraining();
  if(tab==='clock'&&!clock)loadClock();
- if(tab==='today'){renderDailyPlan();renderShiftPlan();}
+ if(tab==='today'){renderDailyPlan();renderShiftPlan();void loadAssignedTasks();}
 }
 function leadAutomationStatus(c){
  var state=String(c?.leadAssistStatus||'NOT_CHECKED');
@@ -451,6 +451,29 @@ function trainedToday(){
   return !Number.isNaN(when.valueOf())&&fmt.format(when)===date;
  }).length;
 }
+
+var assignedTaskSequence=0;
+async function loadAssignedTasks(){
+ var list=$('assigned-task-list'),status=$('assigned-task-status'),button=$('assigned-task-refresh');
+ if(!list||!status||!button||!user)return;
+ var seq=++assignedTaskSequence;
+ button.disabled=true;list.replaceChildren();status.textContent='Loading assigned work…';
+ try{
+  var result=await api('/api/workforce/assigned-tasks');
+  if(seq!==assignedTaskSequence)return;
+  if(result.ok!==true||!Array.isArray(result.tasks)||!Number.isSafeInteger(result.total)||result.total<result.tasks.length)throw Error('Unconfirmed assignment response.');
+  status.textContent=result.total?('Showing '+result.tasks.length+' of '+result.total+' open assignments.'+(result.readOnly?' Read-only workspace.':'')):'No open owner-assigned tasks.';
+  result.tasks.forEach(function(task){
+   var row=element('div','daily-task-row'),body=element('div','daily-task-body'),due=new Date(task.dueAt);
+   body.append(element('strong',null,task.title||'Assigned task'),element('p',null,[task.type,task.priority,task.status].filter(Boolean).join(' · ')));
+   body.append(element('small',null,Number.isFinite(due.getTime())?'Due '+due.toLocaleString():'Due date unavailable'));
+   if(task.notes){var notes=element('p',null,task.notes);notes.style.whiteSpace='pre-wrap';notes.style.overflowWrap='anywhere';body.append(notes);}
+   row.append(body);list.append(row);
+  });
+ }catch(e){if(seq===assignedTaskSequence){list.replaceChildren();status.textContent='Assignments unavailable. Refresh to retry; absence of assignments cannot be confirmed.';}}
+ finally{if(seq===assignedTaskSequence)button.disabled=false;}
+}
+
 function renderDailyPlan(){
  var list=$('daily-task-list');if(!list)return;
  var et=easternDay(),themes={Monday:'barbers and beauty businesses',Tuesday:'restaurants and cafés',Wednesday:'auto services and repair shops',Thursday:'local retail stores',Friday:'professional and home services',Saturday:'quality checks and existing lead cleanup',Sunday:'prepare next week’s research queue'},
@@ -658,7 +681,7 @@ async function submitLead(event){
 }
 async function refresh(){
  $('refresh').disabled=true;
- try{await Promise.allSettled([loadLeads(),loadProgress(),loadTraining(),loadClock()]);}
+ try{await Promise.allSettled([loadLeads(),loadProgress(),loadTraining(),loadClock(),loadAssignedTasks()]);}
  finally{$('refresh').disabled=false;}
 }
 
@@ -809,6 +832,7 @@ $('search').addEventListener('input',drawLeads);
 $('mine-search').addEventListener('input',function(){mineVisibleCount=12;drawLeads();});
 $('mine-more').addEventListener('click',function(){mineVisibleCount+=12;drawLeads();});
 $('refresh').addEventListener('click',refresh);
+$('assigned-task-refresh')?.addEventListener('click',loadAssignedTasks);
 $('lead-form').addEventListener('submit',submitLead);
 $('import-preview').addEventListener('click',previewImport);
 $('import-reset').addEventListener('click',resetImport);
