@@ -89,13 +89,26 @@
       <div class="mi-watchlist">${competitors.join('')}</div></section>`;
   }
 
+
+  function nationalPanel(data) {
+    const title='<h3 id="mi-national-title">National Market Intelligence</h3>';
+    if(data?.status!=='available'||!Array.isArray(data.rows)||data.coverage!==51)
+      return '<section class="mi-panel" aria-labelledby="mi-national-title">'+title+'<p>Current Census research data is unavailable. Retry later; no market ranking is inferred.</p></section>';
+    const rows=data.rows.slice(0,51).map((r,i)=>'<tr><th scope="row">'+(i+1)+'. '+escape(r.state)+'</th><td>'+count.format(r.applications)+'</td><td>'+count.format(r.priorApplications)+'</td><td>'+ (r.yearOverYearPct==null?'—':escape(r.yearOverYearPct)+'%')+'</td></tr>').join('');
+    return '<section class="mi-panel" aria-labelledby="mi-national-title">'+title+
+      '<p class="mi-period">'+escape(data.periodStart)+' to '+escape(data.periodEnd)+' · compared with '+escape(data.comparisonStart)+' to '+escape(data.comparisonEnd)+' · 50 states and DC</p>'+
+      '<p>Ranked by recent business application volume, not purchase probability. Select markets for manual research of website gaps and verified business contacts.</p>'+
+      '<div style="overflow-x:auto"><table class="table"><thead><tr><th>State</th><th>Applications</th><th>Prior year</th><th>Change</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<p class="mi-footnote">'+escape(data.limitation)+'</p><p><a href="https://www.census.gov/econ/bfs/data.html" target="_blank" rel="noopener noreferrer">U.S. Census Bureau — Business Formation Statistics</a></p></section>';
+  }
+
   function mount(content) {
     if (!isOwner() || content.querySelector('[data-sbc-market-intelligence]')) return;
     const account = ownerKey();
     content.innerHTML = `<section data-sbc-market-intelligence aria-label="Market Intelligence">
       <header class="mi-header"><div><h2>Market Intelligence</h2><p>Track how customers find SBC, where checkout records convert, and which public offers are worth studying.</p></div>
-      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button></div></header>
-      <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div></section>`;
+      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button><button type="button" class="secondary" data-mi-national>National Market Research</button></div></header>
+      <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div><div data-mi-national-results aria-live="polite"></div></section>`;
     const root = content.firstElementChild;
     const refresh = root.querySelector('[data-mi-refresh]');
     const windowSelect = root.querySelector('select');
@@ -153,6 +166,18 @@
         root.querySelector('[data-sbc-prospect-intelligence]')?.scrollIntoView({block:'start',behavior:'smooth'});
       }catch{if(active())status.textContent='Prospect Intelligence could not be loaded. Please refresh and try again.'}
       finally{if(button.isConnected)button.disabled=false}
+    });
+
+    root.querySelector('[data-mi-national]').addEventListener('click',async()=>{
+      const button=root.querySelector('[data-mi-national]'),panel=root.querySelector('[data-mi-national-results]');
+      button.disabled=true;panel.setAttribute('aria-busy','true');panel.textContent='Loading official Census research data…';
+      try{
+        const response=await fetch('/api/owner/market-intelligence/national',{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(16000)});
+        if(!response.ok)throw Error('Unavailable');
+        const data=await response.json();
+        if(active())panel.innerHTML=nationalPanel(data);
+      }catch{if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
+      finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
     });
     refresh.addEventListener('click', load);
     windowSelect.addEventListener('change', load);
