@@ -104,14 +104,14 @@
    if(!response.ok||!data||data.ok!==true||data.readOnly!==true||data.source!=='AUTHORITATIVE_CRM_MYSQL'||!Array.isArray(data.actions))
     throw Error('VERIFIED_CRM_ACTIONS_UNAVAILABLE');
    count.textContent=String(data.total||0)+' prioritized decision'+(data.total===1?'':'s');
-   status.textContent=data.total?'Highest-priority decisions from recent authorized CRM records. No automatic outreach.':
+   status.textContent=data.total?'Prioritized decisions from authorized CRM records, with upcoming and overdue follow-ups sampled first. No automatic outreach.':
      'No prioritized decisions in this CRM sample. This does not mean all account work is complete.';
    if(data.dataQualityCount){
     items.appendChild(node('p','sbc-actions-note',data.dataQualityCount+' CRM business names need source verification; source records were not changed.'));
    }
    data.actions.forEach(function(row){items.appendChild(one(row));});
    if(!data.actions.length)items.appendChild(node('p','sbc-actions-empty','No next actions in the current account sample.'));
-   if(data.moreRecordsPossible)items.appendChild(node('p','sbc-actions-note','Showing a prioritized sample of the latest 500 CRM records. More accounts may exist.'));
+   if(data.moreRecordsPossible)items.appendChild(node('p','sbc-actions-note','Showing a bounded sample of up to 500 CRM records, with due and upcoming commitments first. Counts apply to this sample, not the entire portfolio.'));
   }catch(_){showError();}
   finally{
    loading=false;lastFetchAt=Date.now();

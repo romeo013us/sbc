@@ -8,6 +8,7 @@ on:
       - 'routes/crm.js'
       - 'scripts/sbc-free-action-focus.test.cjs'
       - 'scripts/sbc-free-actions-triage.test.cjs'
+      - 'scripts/sbc-free-actions-coverage.test.cjs'
       - 'public/sbc-free-actions-v1.js'
       - 'public/sbc-free-actions-v1.css'
       - 'public/index.html'
@@ -33,6 +34,7 @@ jobs:
         run: |
           node scripts/sbc-free-action-focus.test.cjs
           node scripts/sbc-free-actions-triage.test.cjs
+          node --test scripts/sbc-free-actions-coverage.test.cjs
           node --check enterprise/sbc-free-action-focus.cjs
           node --check routes/sbc-free-action-focus.cjs
           node --check public/sbc-free-actions-v1.js
