@@ -296,3 +296,14 @@ test('geographic revenue refuses incomplete volumes, cross-tenant rows and provi
   await withReport({getPool:()=>({query})},async request=>{const d=await (await request('/geography')).json();assert.equal(d.status,status);assert.equal(d.rows.length,0);assert.doesNotMatch(JSON.stringify(d),/private SQL/);});
  }
 });
+
+test('geographic report UI distinguishes unknown location, recorded capture and unavailable evidence',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, geographyPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.geographyPanel;
+ const html=render({status:'available',period:{startDate:'2026-10-13',endDate:'2026-11-11'},totals:{newCrmRecords:1,paidOrders:1,capturedCents:19900},rows:[{state:'unknown',newCrmRecords:1,paidOrders:1,capturedCents:19900}],conflictingPaymentIds:2,methodology:'Recorded capture, not independent bank settlement.'});
+ assert.match(html,/Unknown location/);assert.match(html,/\$199\.00/);assert.match(html,/2 conflicting payment references/);assert.match(html,/not independent bank settlement/);
+ assert.match(render({status:'volume_limit'}),/No partial totals/);assert.match(render({status:'unavailable'}),/no totals can be confirmed/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
