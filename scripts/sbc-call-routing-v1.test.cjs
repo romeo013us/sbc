@@ -69,3 +69,21 @@ test('durability failure restores in-memory customer exactly',()=>{
  const c=customer(),prior=structuredClone(c);flow.routingUpdate(c,call('Spanish callback needed'),at);
  flow.restoreSnapshot(c,prior);assert.deepEqual(c,prior);
 });
+
+const row=(patch={})=>({id:'test-1',tenantId:1,status:'Lead',salesQueueState:'spanish_callback',...patch});
+test('legacy explicit doNotCall flag suppresses both queues and prevents language re-routing',()=>{
+ const c=row({doNotCall:true,salesQueueState:''});
+ assert.equal(flow.hasDnc(c),true);
+ assert.equal(flow.eligibleForEnglish(c,[],1,new Date(at)),false);
+ assert.equal(flow.routingUpdate(c,{id:'attempt',customerId:c.id,tenantId:1,status:'ended',outcome:'Spanish callback needed',endedAt:at},at).changed,false);
+});
+test('Spanish callback selection excludes suppressed and closed accounts even with stale assigned state',()=>{
+ const ready=row({id:'ready'}), assigned=row({id:'assigned',salesQueueState:'callback_assigned'});
+ const blocked=[row({doNotContact:true}),row({doNotCall:true}),row({salesSuppressed:true}),row({isSuppressed:true}),row({status:'Do Not Call'}),row({status:'Lost'}),row({status:' closed '}),row({status:'Duplicate'}),row({tenantId:2})];
+ assert.deepEqual(flow.spanishCallbacks([ready,...blocked,assigned],1),[ready,assigned]);
+});
+test('invalid tenant or evaluation clock never makes a record callable',()=>{
+ assert.equal(flow.eligibleForEnglish(row({salesQueueState:'',tenantId:0}),[],0,new Date(at)),false);
+ assert.equal(flow.eligibleForEnglish(row({salesQueueState:''}),[],1,new Date('bad')),false);
+ assert.deepEqual(flow.spanishCallbacks([row({tenantId:0})],0),[]);
+});

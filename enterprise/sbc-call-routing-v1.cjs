@@ -2,14 +2,16 @@
 /* SBC Call Routing V1: deterministic, no outreach side effects.
  * Queue transitions persist with the authoritative call log snapshot. */
 const FINAL_STATUSES=new Set(['completed','ended','no-answer','busy']);
-const TERMINAL_ACCOUNT_STATUSES=new Set(['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified']);
+const TERMINAL_ACCOUNT_STATUSES=new Set(['customer','lost','do not call','closed','duplicate','not qualified']);
 const OUTCOMES=new Set(['Pending','Interested','Follow-up requested','Appointment booked','No answer','Left voicemail','Not interested','Do Not Call','Order ready','Bad number','Spanish callback needed']);
 const DNC_VALUES=new Set(['do not call','do not contact','dnc','opt out','unsubscribe']);
 const EXCLUDED_STATES=new Set(['pipeline','retired','processed','spanish_callback','callback_assigned','contacted_review','followup_unscheduled','phone_hold']);
 const RETRY_MS=24*60*60*1000;
 const ts=v=>{const n=Date.parse(v||'');return Number.isFinite(n)?n:0};
 const userTenant=x=>Number(x?.tenantId??x?.tenant_id);
-const hasDnc=c=>Boolean(c&&(c.doNotContact===true||c.salesSuppressed===true||c.isSuppressed===true||DNC_VALUES.has(String(c.status||'').trim().toLowerCase())));
+const hasDnc=c=>Boolean(c&&(c.doNotContact===true||c.doNotCall===true||c.salesSuppressed===true||c.isSuppressed===true||DNC_VALUES.has(String(c.status||'').trim().toLowerCase())));
+const validTenant=t=>Number.isSafeInteger(Number(t))&&Number(t)>0;
+const isTerminalAccount=c=>TERMINAL_ACCOUNT_STATUSES.has(String(c?.status||'').trim().toLowerCase());
 const isTerminalLog=log=>!!log&&FINAL_STATUSES.has(String(log.status||'').toLowerCase());
 function lastAttempt(customer,logs,tenantId){
  const cid=String(customer?.id||'');
@@ -17,7 +19,7 @@ function lastAttempt(customer,logs,tenantId){
  .sort((a,b)=>ts(b.endedAt||b.updatedAt||b.createdAt)-ts(a.endedAt||a.updatedAt||a.createdAt))[0]||null;
 }
 function eligibleForEnglish(customer,logs,tenantId,nowDate=new Date()){
- if(!customer||userTenant(customer)!==Number(tenantId)||hasDnc(customer)||TERMINAL_ACCOUNT_STATUSES.has(String(customer.status||'')))return false;
+ if(!validTenant(tenantId)||!Number.isFinite(+new Date(nowDate))||!customer||userTenant(customer)!==Number(tenantId)||hasDnc(customer)||isTerminalAccount(customer))return false;
  const state=String(customer.salesQueueState||'');
  if(EXCLUDED_STATES.has(state))return false;
  if(['retry','callback'].includes(state)&&(!ts(customer.salesNextAttemptAt)||ts(customer.salesNextAttemptAt)>+new Date(nowDate)))return false;
@@ -71,7 +73,7 @@ function restoreSnapshot(target,copy){
  Object.assign(target,copy);
 }
 const spanishCallbacks=(customers,tenantId)=>(customers||[])
- .filter(c=>userTenant(c)===Number(tenantId)&&['spanish_callback','callback_assigned'].includes(String(c.salesQueueState||'')))
+ .filter(c=>validTenant(tenantId)&&c&&userTenant(c)===Number(tenantId)&&!hasDnc(c)&&!isTerminalAccount(c)&&['spanish_callback','callback_assigned'].includes(String(c.salesQueueState||'')))
  .sort((a,b)=>ts(a.salesCallbackRequestedAt)-ts(b.salesCallbackRequestedAt));
 const isSpanishApproved=user=>!!user&&user.active!==false&&user.spanishCallingApprovedByOwner===true&&['account_manager','manager'].includes(String(user.role||''));
 module.exports=Object.freeze({OUTCOMES,hasDnc,isTerminalLog,lastAttempt,eligibleForEnglish,routingUpdate,restoreSnapshot,spanishCallbacks,isSpanishApproved});
