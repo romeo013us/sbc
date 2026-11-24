@@ -1,4 +1,4 @@
--- Additive archive schema; no deletion or migration of real call records.
+-- Additive archive schema with no deletion or migration of real call records.
 -- Authoritative writer activation and retention approval are separate gates.
 CREATE TABLE IF NOT EXISTS sbc_call_attempt_archive_v1 (
  tenant_id BIGINT NOT NULL,
