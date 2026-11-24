@@ -72,3 +72,40 @@ test('archive session recovery returns null on a miss and refuses mismatched sto
  const wrong=prepare({...row,userId:'other'});
  await assert.rejects(findSession({async query(){return [[{payload_json:wrong.json}]]}},scope,input),/CALL_ARCHIVE_IDENTITY_CONFLICT/);
 });
+
+test('archive history read is explicitly gated and never silently falls back',async()=>{
+ const {readHistory}=require('../enterprise/sbc-call-archive-v1.cjs');
+ const scope={tenantId:1,actorId:'rep',role:'caller'};
+ const conn={query(){throw Error('unexpected database access')}};
+ const env={SBC_CALL_ARCHIVE_CAPTURE:'YES',SBC_CALL_ARCHIVE_RETENTION_APPROVED:'YES',SBC_CALL_ARCHIVE_RETENTION_POLICY_REF:'fixture',SBC_CALL_ARCHIVE_READ:'YES'};
+ await assert.rejects(readHistory(conn,scope,{},{}),/CALL_ARCHIVE_READ_DISABLED/);
+ await assert.rejects(readHistory(conn,scope,{}, {...env,SBC_CALL_ARCHIVE_RETENTION_APPROVED:'NO'}),/CALL_ARCHIVE_READ_DISABLED/);
+ await assert.rejects(readHistory(conn,{...scope,role:'lead_researcher'},{},env),/CALL_ARCHIVE_SCOPE_REQUIRED/);
+ await assert.rejects(readHistory(null,scope,{},env),/CALL_ARCHIVE_READ_UNAVAILABLE/);
+});
+test('archive history returns compatible paginated ledger rows, scoped to the authenticated actor',async()=>{
+ const {readHistory}=require('../enterprise/sbc-call-archive-v1.cjs');
+ const env={SBC_CALL_ARCHIVE_CAPTURE:'YES',SBC_CALL_ARCHIVE_RETENTION_APPROVED:'YES',SBC_CALL_ARCHIVE_RETENTION_POLICY_REF:'fixture',SBC_CALL_ARCHIVE_READ:'YES'};
+ const scope={tenantId:1,actorId:'rep',role:'caller'};
+ const conn={async query(sql,args){
+  assert.match(sql,/a\.tenant_id=\? AND a\.actor_id=\?/);
+  assert.deepEqual(args.slice(0,2),[1,'rep']);
+  if(sql.includes('COUNT(*)'))return [[{total:2}]];
+  return [[{payload_json:prepare(row).json,business_name:'Synthetic Business'}]];
+ }};
+ const result=await readHistory(conn,scope,{limit:1,tenantId:9,callerId:'other'},env);
+ assert.equal(result.ok,true);assert.equal(result.source,'sql_archive');assert.equal(result.total,2);
+ assert.equal(result.nextOffset,1);assert.equal(result.rows[0].number,row.to);
+ assert.equal(result.rows[0].businessName,'Synthetic Business');assert.equal(result.rows[0].id,row.id);
+ assert.equal(Object.hasOwn(result.rows[0],'sessionId'),false);
+});
+test('existing sales history endpoint preserves rolling default and explicit archive read',()=>{
+ const s=require('node:fs').readFileSync(require('node:path').join(__dirname,'../server.js'),'utf8');
+ const route=s.slice(s.indexOf("app.get('/api/sales/call-history'"),s.indexOf("app.post('/api/call-reports'"));
+ assert.match(route,/auth,async\(req,res\)/);
+ assert.match(route,/requireRequestTenant\(req\)/);
+ assert.match(route,/req\.query\.source==='archive'/);
+ assert.match(route,/readHistory\(mysqlPool,\{tenantId:tenant,actorId:req\.user\.id,role\}/);
+ assert.match(route,/SBC_VOICE_LEDGER\.list/);
+ assert.match(route,/Cache-Control','no-store'/);
+});

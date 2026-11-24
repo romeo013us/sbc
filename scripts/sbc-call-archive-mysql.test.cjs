@@ -54,6 +54,16 @@ test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback
   assert.equal(JSON.parse(saved.payload).callLogs.length,1000);
   const historical=await archive.list(conn,{...owner,tenantId:3},{limit:250});
   assert.equal(historical.total,1001);
+  const historyEnv={...env,SBC_CALL_ARCHIVE_READ:'YES'};
+  const archivePage=await archive.readHistory(conn,{...owner,tenantId:3},{limit:250,offset:1000},historyEnv);
+  assert.equal(archivePage.total,1001);
+  assert.equal(archivePage.rows.length,1);
+  assert.equal(archivePage.nextOffset,null);
+  assert.equal(archivePage.source,'sql_archive');
+  const evictedPage=await archive.readHistory(conn,{...owner,tenantId:3},{limit:10},historyEnv);
+  assert(evictedPage.rows.some(r=>r.id==='rolling-0'));
+  assert.equal((await archive.readHistory(conn,{tenantId:3,actorId:'other',role:'caller'},{callerId:'rep'},historyEnv)).total,0);
+
   const [[evicted]]=await conn.query("SELECT COUNT(*) AS total FROM sbc_call_attempt_archive_v1 WHERE tenant_id=3 AND log_id='rolling-0'");
   assert.equal(Number(evicted.total),1);
   await conn.beginTransaction();
