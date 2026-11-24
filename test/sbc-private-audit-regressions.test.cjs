@@ -173,3 +173,23 @@ test('researcher assignments read only their own scoped tasks and never expose u
  f.context.SBC_RUNTIME_READ_ONLY=true;
  const preview=await f.call('get','/api/workforce/assigned-tasks',{user:actor});assert.equal(preview.body.readOnly,true);
 });
+
+test('national assignment is owner approved, tenant scoped, replay safe and visible to the assigned researcher',async()=>{
+ const f=taskRouteFixture(),route='/api/owner/national-research/assignments',actor={id:'r1',role:'lead_researcher'};
+ const body={requestId:'nr_1234567890abcdef1234567890abcdef',assignedTo:'r1',states:['TX','GA','NC'],industry:'auto',target:16,dueAt:'2026-11-30T16:00:00Z',periodStart:'2026-08',periodEnd:'2026-10',approved:true};
+ const staff=await f.call('get','/api/owner/national-research/assignees');assert.equal(staff.code,200);assert.deepEqual(Array.from(staff.body.assignees,u=>u.id),['r1']);
+ assert.equal((await f.call('post',route,{user:actor,body})).code,403);
+ for(const bad of [{assignedTo:'r2'},{states:['TX','TX']},{states:['XX']},{target:100},{approved:false},{industry:'unknown'},{dueAt:'invalid'}])assert.equal((await f.call('post',route,{body:{...body,...bad}})).code,400);
+ assert.equal(f.writes,0);
+ const made=await f.call('post',route,{body});assert.equal(made.code,201);assert.equal(made.body.task.tenantId,1);assert.equal(made.body.task.assignedTo,'r1');
+ assert.match(made.body.task.notes,/TX: 6 candidates/);assert.match(made.body.task.notes,/GA: 5 candidates/);assert.match(made.body.task.notes,/Do not infer language/i);
+ const retry=await f.call('post',route,{body});assert.equal(retry.code,200);assert.equal(retry.body.task.id,made.body.task.id);assert.equal(f.writes,1);
+ assert.equal((await f.call('post',route,{body:{...body,target:20}})).code,409);
+ const assigned=await f.call('get','/api/workforce/assigned-tasks',{user:actor});assert(assigned.body.tasks.some(t=>t.id===made.body.task.id));assert.equal(f.db.customers.length,2);
+});
+test('national assignment cannot write in Preview or retain a failed task save',async()=>{
+ const f=taskRouteFixture(),route='/api/owner/national-research/assignments',body={requestId:'nr_1234567890abcdef1234567890abcdef',assignedTo:'r1',states:['TX'],industry:'auto',target:16,dueAt:'2026-11-30T16:00:00Z',periodStart:'2026-08',periodEnd:'2026-10',approved:true};
+ f.context.SBC_RUNTIME_READ_ONLY=true;assert.equal((await f.call('post',route,{body})).code,423);
+ f.context.SBC_RUNTIME_READ_ONLY=false;f.fail=true;assert.equal((await f.call('post',route,{body})).code,503);
+ assert.equal(f.db.tasks.length,4);assert.equal(f.db.activities.length,0);
+});
