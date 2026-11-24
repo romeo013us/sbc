@@ -121,3 +121,42 @@ test('payment center presents current storefront offers separately from legacy S
  assert.doesNotMatch(current,/square\.link|\$349|\$699/);
  assert.match(html,/Legacy website packages/);assert.match(html,/250 cards; standard shipping included/);
 });
+
+function taskRouteFixture(){
+ const handlers={},db={customers:[{id:'c1',tenantId:1,businessName:'Own'},{id:'c2',tenantId:2,businessName:'Foreign'}],users:[{id:'r1',tenantId:1,role:'lead_researcher',name:'Own researcher',active:true},{id:'r2',tenantId:2,role:'lead_researcher',name:'Foreign researcher',active:true},{id:'o1',tenantId:1,role:'owner',active:true}],tasks:[{id:'foreign',tenantId:2,assignedTo:'r2',title:'Foreign task'},{id:'own',tenantId:1,assignedTo:'r1',title:'Own task',createdBy:'o1'},{id:'legacy',assignedTo:'r1',createdBy:'o1',title:'Legacy task'},{id:'ambiguous',title:'Unknown ownership'}],activities:[]};
+ let writes=0,fail=false,next=0;
+ const context={db,app:Object.fromEntries(['post','put','delete','get'].map(m=>[m,(p,...h)=>{handlers[m+' '+p]=h.at(-1)}])),auth(){},ownerOnly(){},requireRequestTenant(req){if(!req.tenantId)throw Error('tenant');return req.tenantId},now:()=> '2026-11-24T15:00:00Z',id:p=>p+'-'+(++next),addActivity(type,message,meta,tenantId){const a={id:'act-'+(++next),type,message,meta,tenantId};db.activities.unshift(a);return a},mysqlPool:{},SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,sbcShutdownStarted:false,saveData:async()=>{writes++;if(fail)throw Error('write failed')},console};
+ const start=source.indexOf("app.post('/api/activities'"),end=source.indexOf('// SBC_P0P1_BOOKING_AND_DAILY_REVENUE:',start);assert(start>0&&end>start);
+ vm.runInNewContext(source.slice(start,end),context);
+ const call=async(method,path,{id='',tenantId=1,user={id:'o1',role:'owner'},body={}}={})=>{const res={code:200,status(n){this.code=n;return this},json(v){this.body=v;return this}};await handlers[method+' '+path]({tenantId,user,params:{id},body},res);return res};
+ return {db,call,context,get writes(){return writes},set fail(v){fail=v}};
+}
+test('task routes reject foreign tenant customers, staff and task identifiers before writes',async()=>{
+ const f=taskRouteFixture(),body={title:'National research',dueAt:'2026-11-30T16:00:00Z'};
+ assert.equal((await f.call('post','/api/tasks',{body:{...body,assignedTo:'r2'}})).code,400);
+ assert.equal((await f.call('post','/api/tasks',{body:{...body,customerId:'c2'}})).code,400);
+ assert.equal((await f.call('put','/api/tasks/:id',{id:'foreign',body:{status:'Completed'}})).code,404);
+ assert.equal((await f.call('delete','/api/tasks/:id',{id:'foreign'})).code,404);
+ assert.equal((await f.call('put','/api/tasks/:id',{id:'ambiguous',body:{status:'Completed'}})).code,404);
+ assert.equal(f.writes,0);assert.equal(f.db.tasks.length,4);
+});
+test('team task ownership is server-derived, legacy ownership is proven, employees cannot inject protected fields',async()=>{
+ const f=taskRouteFixture();const made=await f.call('post','/api/tasks',{body:{title:'National research',dueAt:'2026-11-30T16:00:00Z',assignedTo:'r1',tenantId:2,createdBy:'forged'}});
+ assert.equal(made.code,201);assert.equal(made.body.tenantId,1);assert.equal(made.body.createdBy,'o1');assert.equal(made.body.assignedTo,'r1');
+ const actor={id:'r1',role:'lead_researcher'};
+ assert.equal((await f.call('put','/api/tasks/:id',{id:'own',user:actor,body:{tenantId:2,createdBy:'forged'}})).code,400);
+ assert.equal((await f.call('put','/api/tasks/:id',{id:'own',user:actor,body:{assignedTo:'r2'}})).code,403);
+ assert.equal((await f.call('put','/api/tasks/:id',{id:'own',body:{assignedTo:'r2'}})).code,400);
+ const done=await f.call('put','/api/tasks/:id',{id:'legacy',user:actor,body:{status:'Completed'}});
+ assert.equal(done.code,200);assert.equal(done.body.tenantId,1);assert.equal(done.body.status,'Completed');assert.equal(done.body.assignedTo,'r1');
+ assert.equal(f.db.tasks.find(t=>t.id==='own').createdBy,'o1');
+});
+test('team task writes fail closed in Preview and restore local task state after a rejected save',async()=>{
+ const f=taskRouteFixture();const body={title:'Research',dueAt:'2026-11-30T16:00:00Z',assignedTo:'r1'};
+ f.context.SBC_RUNTIME_READ_ONLY=true;
+ assert.equal((await f.call('post','/api/tasks',{body})).code,423);assert.equal(f.writes,0);assert.equal(f.db.tasks.length,4);
+ f.context.SBC_RUNTIME_READ_ONLY=false;f.fail=true;
+ assert.equal((await f.call('post','/api/tasks',{body})).code,503);assert.equal(f.db.tasks.length,4);assert.equal(f.db.activities.length,0);
+ assert.equal((await f.call('put','/api/tasks/:id',{id:'own',body:{status:'Completed'}})).code,503);assert.equal(f.db.tasks.find(t=>t.id==='own').status,undefined);
+ assert.equal((await f.call('delete','/api/tasks/:id',{id:'own'})).code,503);assert(f.db.tasks.some(t=>t.id==='own'));
+});
