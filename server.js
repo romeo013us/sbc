@@ -5603,9 +5603,83 @@ app.post('/api/import',auth,ownerOnly,(req,res)=>{
   return res.status(410).json({ok:false,error:'LEGACY_WORKSPACE_IMPORT_RETIRED',message:'Use the CRM lead importer for new leads. For database recovery, restore a MySQL backup into a separate database first.'});
 });
 app.post('/api/activities',auth,ownerOnly,async(req,res)=>{const b=req.body||{};if(!b.customerId||!b.type||!b.message)return res.status(400).json({error:'Customer, activity type and note are required.'});const c=db.customers.find(x=>x.id===b.customerId);const a={id:id('act'),type:String(b.type),message:String(b.message).slice(0,500),meta:{customerId:b.customerId,customerName:c?.businessName||c?.contactName||''},createdAt:now()};db.activities.unshift(a);db.activities=db.activities.slice(0,200);if(c&&b.nextFollowUp)c.followUp=String(b.nextFollowUp).slice(0,10);await saveData();res.status(201).json(a)});
-app.post('/api/tasks',auth,async(req,res)=>{if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Only owner or manager can create and assign team tasks.'});const b=req.body||{};if(!b.title||!b.dueAt)return res.status(400).json({error:'Task title and due date/time are required.'});const c=b.customerId?db.customers.find(x=>x.id===b.customerId):null;const assigneeId=String(b.assignedTo||'');const assignee=assigneeId?(db.users||[]).find(x=>x.id===assigneeId&&x.active!==false&&x.role!=='owner'):null;if(assigneeId&&!assignee)return res.status(400).json({error:'Select an active team member.'});const t={id:id('task'),customerId:String(b.customerId||''),customerName:c?.businessName||c?.contactName||String(b.customerName||''),title:String(b.title),dueAt:String(b.dueAt),type:String(b.type||'Follow-up'),priority:String(b.priority||'Normal'),status:String(b.status||'Open'),notes:String(b.notes||''),assignedTo:assignee?.id||'',assignedToName:assignee?.name||'Unassigned',createdBy:req.user.id,createdAt:now(),updatedAt:now()};db.tasks.unshift(t);addActivity('task',`Task created: ${t.title}${t.customerName?' for '+t.customerName:''}`,{taskId:t.id,customerId:t.customerId,assignedTo:t.assignedTo});await saveData();res.status(201).json(t)});
-app.put('/api/tasks/:id',auth,async(req,res)=>{const t=db.tasks.find(x=>x.id===req.params.id);if(!t)return res.status(404).json({error:'Task not found.'});if(req.user.role!=='owner'&&req.user.role!=='manager'&&t.assignedTo!==req.user.id)return res.status(403).json({error:'Not assigned to you.'});const b=req.body||{};if(b.assignedTo!==undefined){if(!['owner','manager'].includes(req.user.role))return res.status(403).json({error:'Only owner or manager can reassign tasks.'});const u=(db.users||[]).find(x=>x.id===String(b.assignedTo)&&x.active!==false&&x.role!=='owner');if(b.assignedTo&&!u)return res.status(400).json({error:'Select an active team member.'});t.assignedTo=u?.id||'';t.assignedToName=u?.name||'Unassigned';}Object.assign(t,{...b,id:t.id,updatedAt:now()});if(t.status==='Completed'&&!t.completedAt)t.completedAt=now();await saveData();res.json(t)});
-app.delete('/api/tasks/:id',auth,ownerOnly,async(req,res)=>{const i=db.tasks.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:'Task not found.'});db.tasks.splice(i,1);await saveData();res.json({ok:true})});
+// SBC_TEAM_TASK_TENANT_GUARD: preserve legacy records; ambiguous ownership requires reconciliation.
+function sbcTaskTenant(record){
+ const t=Number(record?.tenantId??record?.tenant_id);
+ if(!Number.isSafeInteger(t)||t<1)return null;
+ if(record.tenantId!=null&&record.tenant_id!=null&&Number(record.tenantId)!==Number(record.tenant_id))return null;
+ return t;
+}
+function sbcTaskUnique(rows,key){
+ const matches=(rows||[]).filter(r=>String(r.id)===String(key));
+ return matches.length===1?matches[0]:null;
+}
+function sbcTaskOwnership(task){
+ if(task.tenantId!=null||task.tenant_id!=null)return sbcTaskTenant(task);
+ const refs=[[db.users,task.assignedTo],[db.users,task.createdBy],[db.customers,task.customerId]].filter(([,key])=>key);
+ const tenants=refs.map(([rows,key])=>sbcTaskTenant(sbcTaskUnique(rows,key)));
+ return tenants.length&&tenants.every(t=>t&&t===tenants[0])?tenants[0]:null;
+}
+function sbcTaskWriterReady(){return !SBC_RUNTIME_READ_ONLY&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady&&!sbcShutdownStarted&&Boolean(mysqlPool);}
+function sbcTaskAssignee(key,tenant){const u=sbcTaskUnique(db.users,key);return u&&sbcTaskTenant(u)===tenant&&u.active!==false&&u.role!=='owner'?u:null;}
+let sbcTaskMutationTail=Promise.resolve();
+function sbcTaskSerialize(fn){const result=sbcTaskMutationTail.then(fn);sbcTaskMutationTail=result.catch(()=>{});return result;}
+function sbcTaskError(res,status,error){return res.status(status).json({ok:false,error});}
+function sbcTaskRequestTenant(req){try{return requireRequestTenant(req);}catch{return null;}}
+function sbcTaskText(value,max){return typeof value==='string'&&value.length<=max?value:null;}
+app.post('/api/tasks',auth,async(req,res)=>sbcTaskSerialize(async()=>{
+ if(!['owner','manager'].includes(req.user.role))return sbcTaskError(res,403,'Only owner or manager can create and assign team tasks.');
+ const tenant=sbcTaskRequestTenant(req);if(!tenant)return sbcTaskError(res,403,'Tenant context required.');
+ if(!sbcTaskWriterReady())return sbcTaskError(res,423,'Published writer required.');
+ const b=req.body||{},title=sbcTaskText(b.title,300),dueAt=sbcTaskText(b.dueAt,80),notes=sbcTaskText(b.notes??'',12000);
+ if(!title?.trim()||!dueAt||!Number.isFinite(Date.parse(dueAt))||notes===null)return sbcTaskError(res,400,'Valid task title, due date and notes are required.');
+ const c=b.customerId?sbcTaskUnique(db.customers,b.customerId):null;
+ if(b.customerId&&(!c||sbcTaskTenant(c)!==tenant))return sbcTaskError(res,400,'Select a customer in your workspace.');
+ const assignee=b.assignedTo?sbcTaskAssignee(b.assignedTo,tenant):null;
+ if(b.assignedTo&&!assignee)return sbcTaskError(res,400,'Select an active team member in your workspace.');
+ const stamp=now(),t={id:id('task'),tenantId:tenant,customerId:c?.id||'',customerName:c?.businessName||c?.contactName||'',title:title.trim(),dueAt,type:String(b.type||'Follow-up').slice(0,80),priority:String(b.priority||'Normal').slice(0,80),status:'Open',notes,assignedTo:assignee?.id||'',assignedToName:assignee?.name||'Unassigned',createdBy:req.user.id,createdAt:stamp,updatedAt:stamp};
+ db.tasks.unshift(t);let activity;
+ try{activity=addActivity('task','Task created: '+t.title,{taskId:t.id,customerId:t.customerId,assignedTo:t.assignedTo},tenant);await saveData();return res.status(201).json(t);}
+ catch{db.tasks=db.tasks.filter(x=>x!==t);if(activity)db.activities=db.activities.filter(x=>x!==activity);return sbcTaskError(res,503,'Task save could not be confirmed.');}
+}));
+app.put('/api/tasks/:id',auth,async(req,res)=>sbcTaskSerialize(async()=>{
+ const tenant=sbcTaskRequestTenant(req);if(!tenant)return sbcTaskError(res,403,'Tenant context required.');
+ if(!sbcTaskWriterReady())return sbcTaskError(res,423,'Published writer required.');
+ const t=sbcTaskUnique(db.tasks,req.params.id);
+ if(!t||sbcTaskOwnership(t)!==tenant)return sbcTaskError(res,404,'Task not found.');
+ const manager=['owner','manager'].includes(req.user.role);
+ if(!manager){if(String(t.assignedTo||'')!==String(req.user.id))return sbcTaskError(res,403,'Not assigned to you.');}
+ const b=req.body||{};
+ if(!manager&&Object.hasOwn(b,'assignedTo'))return sbcTaskError(res,403,'Only owner or manager can reassign tasks.');
+ const allowed=new Set(manager?['title','dueAt','type','priority','status','notes','assignedTo']:['status','notes']);
+ if(Object.keys(b).some(k=>!allowed.has(k)))return sbcTaskError(res,400,'Unsupported or protected task field.');
+ const patch={};
+ for(const k of ['title','dueAt','type','priority','status','notes'])if(Object.hasOwn(b,k)){
+  const value=sbcTaskText(b[k],k==='notes'?12000:k==='title'?300:80);
+  if(value===null||(k==='title'&&!value.trim())||(k==='dueAt'&&!Number.isFinite(Date.parse(value))))return sbcTaskError(res,400,'Invalid task field.');
+  if(k==='status'&&!['Open','Pending','In Progress','Completed','Cancelled','Canceled','Blocked','Overdue'].includes(value))return sbcTaskError(res,400,'Invalid task status.');
+  patch[k]=value;
+ }
+ if(Object.hasOwn(b,'assignedTo')){
+  const assignee=b.assignedTo?sbcTaskAssignee(b.assignedTo,tenant):null;
+  if(b.assignedTo&&!assignee)return sbcTaskError(res,400,'Select an active team member in your workspace.');
+  patch.assignedTo=assignee?.id||'';patch.assignedToName=assignee?.name||'Unassigned';
+ }
+ const previous={...t};Object.assign(t,patch,{tenantId:tenant,updatedAt:now()});
+ if(t.status==='Completed'&&!t.completedAt)t.completedAt=now();
+ try{await saveData();return res.json(t);}
+ catch{for(const k of Object.keys(t))if(!Object.hasOwn(previous,k))delete t[k];Object.assign(t,previous);return sbcTaskError(res,503,'Task save could not be confirmed.');}
+}));
+app.delete('/api/tasks/:id',auth,ownerOnly,async(req,res)=>sbcTaskSerialize(async()=>{
+ if(req.user.role!=='owner')return sbcTaskError(res,403,'Owner access required.');
+ const tenant=sbcTaskRequestTenant(req);if(!tenant)return sbcTaskError(res,403,'Tenant context required.');
+ if(!sbcTaskWriterReady())return sbcTaskError(res,423,'Published writer required.');
+ const t=sbcTaskUnique(db.tasks,req.params.id);
+ if(!t||sbcTaskOwnership(t)!==tenant)return sbcTaskError(res,404,'Task not found.');
+ const index=db.tasks.indexOf(t);db.tasks.splice(index,1);
+ try{await saveData();return res.json({ok:true});}
+ catch{if(!db.tasks.includes(t))db.tasks.splice(Math.min(index,db.tasks.length),0,t);return sbcTaskError(res,503,'Task delete could not be confirmed.');}
+}));
 // SBC_P0P1_BOOKING_AND_DAILY_REVENUE: assigned account managers book before private site generation.
 // The new module reuses authenticated tenant context, writer lease and existing relational persistence.
 const SBC_SALES_P0P1 = require('./enterprise/sbc-sales-p0p1.cjs');
