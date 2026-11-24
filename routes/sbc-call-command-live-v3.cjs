@@ -51,11 +51,24 @@ function authorize(ctx,row,user,tenant,cfg){
   providerReady:cfg.configured,loggingReady:!ctx.recoveryRequired?.(),
   enabled:cfg.enabled,now:new Date(),suppressed:V3.isSuppressed(row,cache)});
  const reasons=[...(scoped.reasons||[])];
- // Spanish callbacks remain owner-approved and due-date-gated even after assignment.
- if(user?.role==='account_manager'&&cache&&['spanish_callback','callback_assigned'].includes(String(cache.salesQueueState||''))){
-  if(String(cache.salesCallbackAssignedTo||'')!==String(user.id)||user.spanishCallingApprovedByOwner!==true)reasons.push('BILINGUAL_ACCOUNT_MANAGER_APPROVAL_REQUIRED');
-  const due=Date.parse(String(cache.salesNextAttemptAt||''));
-  if(Number.isFinite(due)&&due>Date.now())reasons.push('SPANISH_CALLBACK_NOT_DUE');
+ // Every Account Manager dial rechecks the current employee's training clearance
+ // and tenant-scoped CRM language state, including signed Twilio webhooks. A
+ // missing/partially loaded CRM cache must fail closed rather than bypass approval.
+ if(user?.role==='account_manager'){
+  const worker=(ctx.db?.users||[]).find(u=>String(u.id)===String(user.id)&&
+   Number(u.tenantId??u.tenant_id)===Number(tenant)&&u.role==='account_manager'&&u.active!==false);
+  if(!worker)reasons.push('ACCOUNT_MANAGER_NOT_ACTIVE');
+  let cleared=false;
+  try{cleared=typeof ctx.academyCleared==='function'&&ctx.academyCleared(worker)===true}catch{}
+  if(!cleared)reasons.push('ACADEMY_CERTIFICATION_REQUIRED');
+  if(!cache)reasons.push('ACCOUNT_ROUTING_CONTEXT_UNAVAILABLE');
+  if(cache&&['spanish_callback','callback_assigned'].includes(String(cache.salesQueueState||''))){
+   if(String(cache.salesCallbackAssignedTo||'')!==String(user.id)||
+    worker?.spanishCallingApprovedByOwner!==true)
+    reasons.push('BILINGUAL_ACCOUNT_MANAGER_APPROVAL_REQUIRED');
+   const due=Date.parse(String(cache.salesNextAttemptAt||''));
+   if(Number.isFinite(due)&&due>Date.now())reasons.push('SPANISH_CALLBACK_NOT_DUE');
+  }
  }
  const result=Object.freeze({...scoped,allowed:reasons.length===0,reasons});
  return {result,cert:ev.cert,notes:ev.notes};
