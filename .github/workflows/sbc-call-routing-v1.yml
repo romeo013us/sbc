@@ -20,6 +20,9 @@ on:
     paths:
       - 'enterprise/sbc-call-routing-v1.cjs'
       - 'scripts/sbc-call-routing-v1.test.cjs'
+      - 'scripts/sbc-call-routing-restart.test.cjs'
+      - 'enterprise/integration/sbc-snapshot-tenants.cjs'
+      - 'server.js'
       - '.github/workflows/sbc-call-routing-v1.yml'
   workflow_dispatch:
 permissions:
@@ -40,7 +43,7 @@ jobs:
           node --check browser_public/app.js
           node --check enterprise/sbc-account-manager-role-gate-v2.cjs
       - name: Routing, ledger, and browser/permission integration
-        run: node --test scripts/sbc-call-routing-v1.test.cjs scripts/sbc-voice-ledger-v1.test.cjs scripts/sbc-calling-integration-v1.test.cjs
+        run: node --test scripts/sbc-call-routing-v1.test.cjs scripts/sbc-voice-ledger-v1.test.cjs scripts/sbc-calling-integration-v1.test.cjs scripts/sbc-call-routing-restart.test.cjs
       - name: Existing call-log durability regression
         run: node scripts/v6615-call-log-durable-test.cjs
       - name: Existing voice-log role and tenant regression
