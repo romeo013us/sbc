@@ -5967,7 +5967,8 @@ function salesQueueCandidates(callerId){
   const tenant=tenantIdForUser(caller);
   const existing=new Set(q.leadIds.map(String));
   const terminalStatuses=new Set(['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified']);
-  const activeCallerIds=new Set((db.users||[]).filter(u=>u.role==='caller'&&u.active!==false).map(u=>String(u.id)));
+  // Preserve active sales portfolio ownership when refilling any owner's calling queue.
+  const activeSalesOwnerIds=new Set((db.users||[]).filter(u=>['caller','account_manager','manager'].includes(String(u.role||''))&&u.active!==false).map(u=>String(u.id)));
   return (db.customers||[]).filter(c=>{
     if(existing.has(String(c.id)))return false;
     if(!SBC_CALL_ROUTING.eligibleForEnglish(c,db.callLogs||[],tenant,new Date()))return false;
@@ -5979,7 +5980,7 @@ function salesQueueCandidates(callerId){
     // Lead-generator/owner assignment must not strand a verified phone lead.
     // Preserve ownership when another active CALLER owns the lead, but allow
     // leads assigned to research/admin/non-caller users to enter the caller queue.
-    if(c.assignedTo && String(c.assignedTo)!==String(callerId) && activeCallerIds.has(String(c.assignedTo)))return false;
+    if(c.assignedTo && String(c.assignedTo)!==String(callerId) && activeSalesOwnerIds.has(String(c.assignedTo)))return false;
 
     const queueState=String(c.salesQueueState||'');
     if(['pipeline','retired','processed'].includes(queueState))return false;
@@ -6009,10 +6010,11 @@ async function replenishSalesQueue(callerId,reason='queue_sync'){
   const caller=(db.users||[]).find(u=>String(u.id)===String(callerId));
   if(!caller)throw Error('SALES_CALLER_NOT_FOUND');
   const tenant=tenantIdForUser(caller);
+  const activeSalesOwnerIds=new Set((db.users||[]).filter(u=>['caller','account_manager','manager'].includes(String(u.role||''))&&u.active!==false).map(u=>String(u.id)));
   const before=q.leadIds.length;
   q.leadIds=q.leadIds.filter(idv=>{
     const c=db.customers.find(x=>String(x.id)===String(idv));
-    return c && SBC_CALL_ROUTING.eligibleForEnglish(c,db.callLogs||[],tenant,new Date()) && !SBC_PHONE_RECOVERY.isHeld(c) && !SBC_PHONE_RECOVERY.hasUnreachableLog(c,db.callLogs||[]) && !['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(c.status||''));
+    return c && (!activeSalesOwnerIds.has(String(c.assignedTo||''))||String(c.assignedTo)===String(callerId)) && SBC_CALL_ROUTING.eligibleForEnglish(c,db.callLogs||[],tenant,new Date()) && !SBC_PHONE_RECOVERY.isHeld(c) && !SBC_PHONE_RECOVERY.hasUnreachableLog(c,db.callLogs||[]) && !['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(c.status||''));
   });
   const need=Math.max(0,q.target-q.leadIds.length);
   if(need){
