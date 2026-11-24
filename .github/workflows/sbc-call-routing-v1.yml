@@ -15,6 +15,12 @@ on:
       - 'scripts/sbc-voice-ledger-v1.test.cjs'
       - 'scripts/sbc-calling-integration-v1.test.cjs'
       - '.github/workflows/sbc-call-routing-v1.yml'
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-call-routing-v1.cjs'
+      - 'scripts/sbc-call-routing-v1.test.cjs'
+      - '.github/workflows/sbc-call-routing-v1.yml'
   workflow_dispatch:
 permissions:
   contents: read
