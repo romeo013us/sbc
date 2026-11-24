@@ -12,3 +12,29 @@ test('a public health response with wrong build cannot establish release identit
 test('expected identities must be supplied independently',()=>{assert.equal(evaluate(fixture(),{now:opts.now}).releaseIdentity,'UNVERIFIED');});
 test('all public checks and exact identities still cannot certify authenticated commerce',()=>{const r=evaluate(fixture(),opts);assert.equal(r.publicSurface,'VERIFIED');assert.equal(r.releaseIdentity,'VERIFIED');assert.equal(r.commercialReadiness,'UNVERIFIED');assert.equal(r.productionCertified,false);});
 test('non-read-only evidence and false green diagnostic are rejected',()=>{const e=fixture();e.providerCharges=1;e.checks.find(x=>x.name==='cc_diag_direct').http=200;assert.equal(evaluate(e,opts).publicSurface,'BLOCKED');});
+
+test('same-second Python microsecond receipt stays fresh with a Date evaluation clock',()=>{
+ const e=fixture();e.observedAtUtc='2026-11-24T19:05:27.054217+00:00';
+ const r=evaluate(e,{...opts,now:new Date('2026-11-24T19:05:27.114Z')});
+ assert(!r.blockers.includes('EVIDENCE_TIMESTAMP_INVALID_OR_STALE'));
+ assert.equal(r.publicSurface,'VERIFIED');
+});
+test('millisecond age boundaries remain strict; invalid clock types fail closed',()=>{
+ const e=fixture();e.observedAtUtc='2026-11-24T15:00:00.500Z';
+ for(const [now,allowed] of [
+  [new Date('2026-11-24T15:00:00.499Z'),false],
+  [new Date('2026-11-24T15:00:00.500Z'),true],
+  [new Date('2026-11-24T16:00:00.500Z'),true],
+  [new Date('2026-11-24T16:00:00.501Z'),false],
+  [new Date(NaN),false],[0,false],[null,false]
+ ]){
+  assert.equal(evaluate(e,{...opts,now}).blockers.includes('EVIDENCE_TIMESTAMP_INVALID_OR_STALE'),!allowed,String(now));
+ }
+});
+test('fixing fresh timestamp never certifies a blocked reseller cart or commerce',()=>{
+ const e=fixture();e.observedAtUtc='2026-11-24T19:05:27.054217+00:00';
+ Object.assign(e.checks.at(-1),{status:'UNVERIFIED',http:403});
+ const r=evaluate(e,{...opts,now:new Date('2026-11-24T19:05:27.114Z')});
+ assert.deepEqual(r.blockers,['reseller_cart:UNVERIFIED']);
+ assert.equal(r.publicSurface,'BLOCKED');assert.equal(r.commercialReadiness,'UNVERIFIED');assert.equal(r.productionCertified,false);
+});

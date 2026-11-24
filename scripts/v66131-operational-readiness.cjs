@@ -1,7 +1,12 @@
 'use strict';
 const REQUIRED=['cc_health','cc_ready','cc_api','cc_checkout_ui','cc_workforce_ui','cc_lorna_ui','cc_diag_direct','cc_diag_alias','office_health','office_api','office_i18n','office_locale_ui','public_sbc','public_reseller','active_reseller','reseller_domains','reseller_cart'];
 function evaluate(evidence,{now=new Date(),expected={}}={}){
- const blockers=[], byName=new Map(), age=Date.parse(now)-Date.parse(evidence?.observedAtUtc);
+ // Date.parse(Date) stringifies the Date and loses its milliseconds. Keep the
+ // exact clock so a fresh Python ISO receipt from this same second is not
+ // incorrectly classified as future evidence.
+ const clock=now instanceof Date?now.getTime():typeof now==='string'?Date.parse(now):NaN;
+ const observed=typeof evidence?.observedAtUtc==='string'?Date.parse(evidence.observedAtUtc):NaN;
+ const blockers=[], byName=new Map(), age=clock-observed;
  if(!Number.isFinite(age)||age<0||age>3600000)blockers.push('EVIDENCE_TIMESTAMP_INVALID_OR_STALE');
  if(evidence?.forbiddenOperationsPerformed!==0||evidence?.providerCharges!==0)blockers.push('READ_ONLY_CONTRACT_UNVERIFIED');
  for(const row of Array.isArray(evidence?.checks)?evidence.checks:[]){
