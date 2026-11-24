@@ -502,25 +502,42 @@ async function sbcAssignSpanishCallback(id){
  if(r?.ok!==true)throw Error(r.error||'Not confirmed');toast('Spanish callback assigned to approved bilingual Account Manager.');loadSbcSpanishCallbackQueue();}
  catch(e){toast('Assignment not saved: '+String(e.message||e))}
 }
-async function loadSbcCallLedger(){
+async function loadSbcCallLedger(offset=0){
  const host=$('#sbcDialedNumberLedger');if(!host)return;
- const number=String($('#sbcDialHistoryNumber')?.value||'').replace(/[^0-9+]/g,'').slice(0,18);
- host.innerHTML='<div class="card-head"><h2>☎️ Dialed Number History</h2></div><div class="card-body mini">Loading saved call history…</div>';
+ const value=id=>String($('#'+id)?.value||'').trim();
+ const filters={source:value('sbcDialHistorySource')==='archive'?'archive':'rolling',number:value('sbcDialHistoryNumber').replace(/[^0-9+]/g,'').slice(0,18),business:value('sbcDialHistoryBusiness').slice(0,120),from:value('sbcDialHistoryFrom'),to:value('sbcDialHistoryTo'),outcome:value('sbcDialHistoryOutcome').slice(0,80),callerId:value('sbcDialHistoryCaller').slice(0,120)};
+ const archive=filters.source==='archive';const requestedOffset=Number.isSafeInteger(offset)&&offset>=0&&offset<=100000?offset:0;
+ const params=new URLSearchParams({limit:'50',offset:String(requestedOffset)});
+ if(archive)params.set('source','archive');
+ for(const key of ['number','from','to','outcome'])if(filters[key])params.set(key,filters[key]);
+ if(archive)for(const key of ['business','callerId'])if(filters[key])params.set(key,filters[key]);
+ const input=(id,label,type,val,max='')=>'<label class="mini" style="display:flex;flex-direction:column;gap:4px">'+esc(label)+'<input id="'+id+'" type="'+type+'" value="'+esc(val)+'" '+(max?'maxlength="'+max+'"':'')+'></label>';
+ const controls='<div class="actions" style="align-items:end;flex-wrap:wrap;gap:10px"><label class="mini">History source<select id="sbcDialHistorySource"><option value="rolling"'+(!archive?' selected':'')+'>Recent saved calls</option><option value="archive"'+(archive?' selected':'')+'>SQL archive</option></select></label>'+
+ input('sbcDialHistoryNumber','Dialed number','search',filters.number,18)+input('sbcDialHistoryBusiness','Business (archive only)','search',filters.business,120)+input('sbcDialHistoryFrom','From date','date',filters.from)+input('sbcDialHistoryTo','To date','date',filters.to)+input('sbcDialHistoryOutcome','Exact outcome','search',filters.outcome,80)+input('sbcDialHistoryCaller','Employee ID (archive only)','search',filters.callerId,120)+
+ '<button type="button" class="btn small" onclick="loadSbcCallLedger(0)">Search calls</button></div>';
+ const head='<div class="card-head"><h2>☎️ Dialed Number History</h2></div>';
+ const hint='<p class="mini">Recent saved calls use rolling retention. SQL archive requires approved activation and covers retained, reconciled history only. Business and employee filters apply to the archive.</p>';
+ const request=(host.sbcHistoryRequest||0)+1;host.sbcHistoryRequest=request;
+ host.innerHTML=head+'<div class="card-body">'+hint+controls+'<p role="status" class="mini">Loading saved call history…</p></div>';
  try{
-  const d=await api('/api/sales/call-history?limit=50'+(number?'&number='+encodeURIComponent(number):''));
-  if(!host.isConnected)return;
-  const rows=d.rows||[];
-  host.innerHTML='<div class="card-head"><h2>☎️ Dialed Number History</h2><span class="badge blue">'+Number(d.total||0)+' SAVED ATTEMPTS</span></div>'+
-   '<div class="card-body"><p class="mini">Saved SBC calls include CRM calls and manually dialed numbers. Calls made outside SBC require a manual report. The current ledger has an existing rolling-retention limit; it is not an unlimited archive.</p>'+
-   '<div class="actions"><input id="sbcDialHistoryNumber" aria-label="Search called phone number" placeholder="Search dialed number" value="'+esc(number)+'" maxlength="18">'+
-   '<button type="button" class="btn small" onclick="loadSbcCallLedger()">Search calls</button></div>'+
-   (rows.length?rows.map(x=>'<div class="list-card"><div><strong>'+esc(x.number||'Unknown number')+'</strong> · '+esc(x.businessName|| (x.manualDial?'Manual dial':'CRM lead'))+
-   '<div class="mini">'+esc(x.endedAt||x.startedAt||x.createdAt||'')+' · '+esc(x.userName||'')+' · '+esc(x.status||'')+
-   ' · '+esc(x.outcome||'Pending')+' · '+Number(x.durationSec||0)+' sec</div>'+
-   (x.notes?'<div class="mini" style="white-space:pre-wrap">'+esc(x.notes)+'</div>':'')+'</div>'+
-   (x.customerId&&state.data.customers?.some(c=>String(c.id)===String(x.customerId))?'<button type="button" class="btn small" onclick="moveSbcLeadToSpanishQueue(\''+esc(x.customerId)+'\')">🇪🇸 Move to Spanish Queue</button>':'')+'</div>').join(''):
-   '<div class="empty">No saved calls match this search.</div>')+'</div>';
- }catch(e){if(host.isConnected)host.innerHTML='<div class="card-body">Dialed Number History unavailable: '+esc(String(e.message||e))+'</div>'}
+  const d=await api('/api/sales/call-history?'+params.toString());
+  if(!host.isConnected||host.sbcHistoryRequest!==request)return;
+  if(d?.ok!==true||(archive&&d.source!=='sql_archive'))throw Error(d?.error||'CALL_HISTORY_SOURCE_UNCONFIRMED');
+  const rows=Array.isArray(d.rows)?d.rows:[],total=Number(d.total),actualOffset=Number(d.offset??requestedOffset);
+  if(!Number.isSafeInteger(total)||total<0||!Number.isSafeInteger(actualOffset)||actualOffset<0)throw Error('CALL_HISTORY_PAGE_INVALID');
+  const next=Number.isSafeInteger(d.nextOffset)&&d.nextOffset>actualOffset&&d.nextOffset<=100000?d.nextOffset:null;
+  const previous=Math.max(0,actualOffset-50);
+  const navigation='<div class="actions" style="flex-wrap:wrap"><span class="mini">'+(rows.length?(actualOffset+1)+'–'+(actualOffset+rows.length)+' of '+total:'0 results on this page')+'</span>'+
+    (actualOffset>0?'<button type="button" class="btn small" onclick="loadSbcCallLedger('+previous+')">Previous</button>':'')+
+    (next!==null?'<button type="button" class="btn small" onclick="loadSbcCallLedger('+next+')">Next</button>':'')+'</div>';
+  host.innerHTML='<div class="card-head"><h2>☎️ Dialed Number History</h2><span class="badge blue">'+total+' SAVED ATTEMPTS</span></div><div class="card-body">'+hint+controls+
+   '<p class="mini">'+esc(d.retentionNote||'Recent saved call history only.')+'</p>'+navigation+
+   (rows.length?rows.map(x=>'<div class="list-card"><div><strong>'+esc(x.number||'Unknown number')+'</strong> · '+esc(x.businessName||(x.manualDial?'Manual dial':'CRM lead'))+
+    '<div class="mini">'+esc(x.endedAt||x.startedAt||x.createdAt||'')+' · '+esc(x.userName||'')+' · '+esc(x.status||'')+' · '+esc(x.outcome||'Pending')+' · '+esc(Number(x.durationSec||0))+' sec</div>'+
+    (x.notes?'<div class="mini" style="white-space:pre-wrap">'+esc(x.notes)+'</div>':'')+'</div>'+
+    (!archive&&x.customerId&&state.data.customers?.some(c=>String(c.id)===String(x.customerId))?'<button type="button" class="btn small" data-sbc-history-handoff="'+esc(x.customerId)+'">🇪🇸 Move to Spanish Queue</button>':'')+'</div>').join(''):'<div class="empty">No saved calls match this search.</div>')+navigation+'</div>';
+  if(typeof host.querySelectorAll==='function')for(const btn of host.querySelectorAll('[data-sbc-history-handoff]'))btn.addEventListener('click',()=>moveSbcLeadToSpanishQueue(btn.dataset.sbcHistoryHandoff));
+ }catch(e){if(host.isConnected&&host.sbcHistoryRequest===request)host.innerHTML=head+'<div class="card-body">'+hint+controls+'<p role="alert">Dialed Number History unavailable: '+esc(String(e.message||e))+'</p></div>'}
 }
 
 function big3EcosystemView(){return `<div class="hero"><div><div class="eyebrow" style="color:#f7a842">SBC BIG 3 · ECOSYSTEM CONTROL</div><h2>Build it → Run it → Grow it</h2><p>The Website acquires customers, the Command Center runs SBC's side of the relationship, and Office Box becomes the customer's business workspace. Keep the applications separate; connect them through signed contracts.</p></div><div class="hero-actions"><button class="btn orange" onclick="window.open('${(state.data?.settings?.website||'https://sbcmia.com')}','_blank')">🌐 Website</button><button class="btn ghost" onclick="state.view='customers';render()">🧠 Command Center CRM</button><button class="btn ghost" onclick="window.open('/api/ecosystem/contract','_blank')">🔗 Contract</button></div></div><div class="grid three section"><div class="card"><h2>🌐 Website</h2><p class="mini">Public storefront, packages, checkout and customer acquisition.</p><span class="badge blue">STOREFRONT</span></div><div class="card"><h2>🧠 Command Center</h2><p class="mini">Leads, sales, payment evidence, fulfillment, support, team and owner control.</p><span class="badge green">CONTROL PLANE</span></div><div class="card"><h2>🏢 Office Box</h2><p class="mini">Customer workspace activated from an entitled paid order.</p><span class="badge orange">CUSTOMER WORKSPACE</span></div></div><div class="card section"><div class="card-head"><div><h2>Integration Contract</h2><div class="mini">Signed, idempotent handoff. No passwords in the payload.</div></div><span id="big3ContractBadge" class="badge blue">Checking…</span></div><div class="card-body"><div id="big3ContractOut" class="grid two"><div class="install-tip">Loading contract status…</div></div></div></div><div class="card section"><div class="card-head"><h2>Package Entitlements</h2><span class="badge blue">CUSTOMER JOURNEY</span></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>Package</th><th>Price</th><th>Office Box</th><th>Next step</th></tr></thead><tbody><tr><td>Business Visibility</td><td>$99</td><td>Upgrade</td><td>Lead / service fulfillment</td></tr><tr><td>Business Starter</td><td>$199</td><td>Upgrade</td><td>Website + setup</td></tr><tr><td>Business Essentials</td><td>$349</td><td>Upgrade</td><td>Website + support</td></tr><tr><td><strong>SBC Complete Business Launch</strong></td><td><strong>$699</strong></td><td><strong>Foundation included</strong></td><td><strong>Paid → signed handoff → activation</strong></td></tr></tbody></table></div></div></div>`}
