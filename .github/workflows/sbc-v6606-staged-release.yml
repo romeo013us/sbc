@@ -74,6 +74,7 @@ jobs:
           node scripts/v6671-square-webhook-readback.test.cjs
           node scripts/v6671-square-webhook-stage.cjs
           node scripts/v6672-site-checkout.test.cjs
+          node --test scripts/sbc-website-checkout-replay.test.cjs
           node scripts/v6674-officebox-v2-handoff.test.cjs
           node scripts/v66159-officebox-ack-origin-contract.test.cjs
           node scripts/v6675-payment-center-readback.test.cjs
