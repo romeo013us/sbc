@@ -64,7 +64,8 @@ test('V3 account permission, one-use Twilio webhook, no client-number overrides 
     throw Error('Unexpected SQL: '+sql);
    }};
  }};
- const ctx={db:{users,customers:[]},mysqlPool:pool,recoveryRequired:()=>false};
+ const cached={id:'cust-1',tenantId:7,assignedTo:'m1',salesQueueState:'available',phone:'3055550147'};
+ const ctx={db:{users,customers:[cached]},mysqlPool:pool,recoveryRequired:()=>false,academyCleared:()=>true};
  const app=express();app.use(express.urlencoded({extended:false}));app.use(express.json());
  app.use((req,res,next)=>{
   if(req.path.startsWith('/api/v6606/crm/call-command/'))return next();
@@ -95,6 +96,26 @@ test('V3 account permission, one-use Twilio webhook, no client-number overrides 
   assert.equal(saved.status,200);assert.equal(saved.data.durable,true);
   ready=await request('GET',url+'/call-readiness');
   assert.equal(ready.data.liveCallAvailable,true,JSON.stringify(ready.data));
+  ctx.academyCleared=()=>false;
+  let rejected=await request('GET',url+'/call-readiness');
+  assert.equal(rejected.data.liveCallAvailable,false,'revoked Academy certification must block dial readiness');
+  assert(rejected.data.reasons.includes('ACADEMY_CERTIFICATION_REQUIRED'),'explicit Academy clearance required');
+  assert.equal((await request('POST',url+'/call-start',{requestId:'0'.repeat(32)})).status,403);
+  ctx.academyCleared=()=>true;
+  ctx.db.customers=[];
+  rejected=await request('GET',url+'/call-readiness');
+  assert.equal(rejected.data.liveCallAvailable,false,'missing routing context must fail closed');
+  assert(rejected.data.reasons.includes('ACCOUNT_ROUTING_CONTEXT_UNAVAILABLE'));
+  ctx.db.customers=[cached];
+  cached.salesQueueState='callback_assigned';
+  cached.salesCallbackAssignedTo='m1';
+  rejected=await request('GET',url+'/call-readiness');
+  assert.equal(rejected.data.liveCallAvailable,false,'Spanish callback cannot be called without owner-approved bilingual rep');
+  assert(rejected.data.reasons.includes('BILINGUAL_ACCOUNT_MANAGER_APPROVAL_REQUIRED'));
+  users[0].spanishCallingApprovedByOwner=true;
+  ready=await request('GET',url+'/call-readiness');
+  assert.equal(ready.data.liveCallAvailable,true,'certified bilingual AM can see owner-attested assigned callback');
+
   assert.equal((await request('GET',url+'/call-readiness',null,'outsider')).status,403);
   const requestId='a'.repeat(32);
   const prepared=await request('POST',url+'/call-start',{requestId});
