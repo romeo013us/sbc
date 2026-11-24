@@ -6962,6 +6962,19 @@ require('./routes/sbc-am-academy-v1.cjs').register(app,{
  writer:()=>SBC_V6649_REQUIRE_WRITER(),
  save:()=>saveData()
 });
+// SBC_AM_CALL_COMMAND_V3_MOUNT: distinct tenant-scoped signed Twilio calling;
+// this is intentionally disabled unless SBC_CALL_COMMAND_V3_ENABLED=1.
+// Unlike legacy owner Voice, the dedicated account-manager flow has a one-use
+// durable attempt, an owner-attested 7-day phone authorization, and rechecks
+// Academy clearance at request and signed provider callback time.
+require('./routes/sbc-call-command-live-v3.cjs').register(app,{
+ auth,
+ getContext:()=>({
+  db,mysqlPool,
+  recoveryRequired:()=>SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,
+  academyCleared:u=>Boolean(u&&SBC_AM_ACADEMY_GATES.hasClearance(db.settings?.trainingCenterV2,db,u.id))
+ })
+});
 // SBC_V66166_TRAINING_SERIALIZATION · Legacy and Academy training operations share one state lock.
 app.use('/api/training',(req,res,next)=>{
  TRAINING_SYSTEM.withWriteLock(db,()=>new Promise((resolve,reject)=>{
