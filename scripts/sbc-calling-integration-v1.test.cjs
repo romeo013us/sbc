@@ -122,7 +122,7 @@ test('fifty-lead completed Pending call persists same-shift rotation without fab
 
 test('reassigned active Account Manager and caller portfolios cannot remain in another caller queue',async()=>{
  const source=read('server.js');
- const from=source.indexOf('async function replenishSalesQueue('),end=source.indexOf('\\nfunction removeFromSalesQueue(',from);
+ const from=source.indexOf('async function replenishSalesQueue('),end=source.indexOf('\nfunction removeFromSalesQueue(',from);
  assert.ok(from>=0&&end>from,'server queue refresher not found');
  const users=[{id:'owner1',role:'owner',tenantId:1,active:true},{id:'am2',role:'account_manager',tenantId:1,active:true},{id:'caller3',role:'caller',tenantId:1,active:true}];
  const customers=[
@@ -135,12 +135,12 @@ test('reassigned active Account Manager and caller portfolios cannot remain in a
  const sandbox={db:{users,customers,callLogs:[]},queueForCaller:()=>({m,q}),tenantIdForUser:()=>1,
   SBC_CALL_ROUTING:{eligibleForEnglish:()=>true},SBC_PHONE_RECOVERY:{isHeld:()=>false,hasUnreachableLog:()=>false},
   salesQueueCandidates:()=>[],megaSave:async()=>{},now:()=>new Date().toISOString(),id:()=> 'evt-1'};
- const refresh=vm.runInNewContext(source.slice(from,end)+'\\nreplenishSalesQueue',sandbox,{timeout:1000});
+ const refresh=vm.runInNewContext(source.slice(from,end)+'\nreplenishSalesQueue',sandbox,{timeout:1000});
  await refresh('owner1');
  assert.equal(q.leadIds.join(','),'owner-owned','reassigned sales portfolios must be removed from the old queue');
- const start=source.indexOf('function salesQueueCandidates('),stop=source.indexOf('\\nasync function replenishSalesQueue(',start);
+ const start=source.indexOf('function salesQueueCandidates('),stop=source.indexOf('\nasync function replenishSalesQueue(',start);
  assert(start>=0&&stop>start,'server candidate selector not found');
  q.leadIds=[];
- const candidates=vm.runInNewContext(source.slice(start,stop)+'\\nsalesQueueCandidates',sandbox,{timeout:1000});
+ const candidates=vm.runInNewContext(source.slice(start,stop)+'\nsalesQueueCandidates',sandbox,{timeout:1000});
  assert.equal(candidates('owner1').map(x=>x.id).join(','),'owner-owned','candidate refill must also exclude other active sales owners');
 });
