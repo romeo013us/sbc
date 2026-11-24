@@ -109,3 +109,37 @@ test('existing sales history endpoint preserves rolling default and explicit arc
  assert.match(route,/SBC_VOICE_LEDGER\.list/);
  assert.match(route,/Cache-Control','no-store'/);
 });
+
+test('dialed history UI can select the archive and paginate without changing records',async()=>{
+ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+ const source=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
+ const start=source.indexOf('async function loadSbcCallLedger('),end=source.indexOf('function big3EcosystemView(',start);
+ assert(start>=0&&end>start);
+ const fields={sbcDialHistorySource:{value:'archive'},sbcDialHistoryNumber:{value:'305555'},sbcDialHistoryBusiness:{value:'Synthetic'},sbcDialHistoryFrom:{value:'2026-11-01'},sbcDialHistoryTo:{value:'2026-11-24'},sbcDialHistoryOutcome:{value:'Spanish callback needed'},sbcDialHistoryCaller:{value:'rep'}};
+ const host={isConnected:true,innerHTML:''},urls=[];
+ const ctx={URLSearchParams,state:{data:{customers:[{id:'c1'}]}},$:id=>id==='#sbcDialedNumberLedger'?host:fields[id.slice(1)],esc:v=>String(v??''),api:async url=>{urls.push(url);return {ok:true,source:'sql_archive',total:1001,offset:50,limit:50,nextOffset:100,rows:[{id:'old',customerId:'c1',number:'3055550100',notes:'Synthetic notes'}],retentionNote:'Retained SQL archive only'};}};
+ vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
+ await ctx.loadSbcCallLedger(50);
+ const params=new URLSearchParams(urls[0].split('?')[1]);
+ assert.equal(params.get('source'),'archive');assert.equal(params.get('offset'),'50');
+ assert.equal(params.get('business'),'Synthetic');assert.equal(params.get('callerId'),'rep');
+ assert.equal(params.get('from'),'2026-11-01');assert.equal(params.get('outcome'),'Spanish callback needed');
+ assert.match(host.innerHTML,/Retained SQL archive only/);assert.match(host.innerHTML,/loadSbcCallLedger\(100\)/);assert.match(host.innerHTML,/loadSbcCallLedger\(0\)/);
+ assert.doesNotMatch(host.innerHTML,/Move to Spanish Queue/);
+});
+test('archive history UI retains controls on error and never silently falls back',async()=>{
+ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+ const source=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
+ const start=source.indexOf('async function loadSbcCallLedger('),end=source.indexOf('function big3EcosystemView(',start);
+ const host={isConnected:true,innerHTML:''},urls=[];
+ const ctx={URLSearchParams,state:{data:{}},$:id=>id==='#sbcDialedNumberLedger'?host:id==='#sbcDialHistorySource'?{value:'archive'}:null,esc:v=>String(v??''),api:async url=>{urls.push(url);throw Error('CALL_ARCHIVE_READ_DISABLED')}};
+ vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);await ctx.loadSbcCallLedger();
+ assert.equal(urls.length,1);assert.match(urls[0],/source=archive/);
+ assert.match(host.innerHTML,/sbcDialHistorySource/);assert.match(host.innerHTML,/CALL_ARCHIVE_READ_DISABLED/);
+ assert.doesNotMatch(host.innerHTML,/0 SAVED ATTEMPTS/);
+});
+test('call history UI is mirrored for compiled deployment',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.join(__dirname,'..');
+ assert.equal(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),fs.readFileSync(path.join(root,'browser_public/app.js'),'utf8'));
+});
