@@ -256,3 +256,19 @@ test('national market panel renders comparable figures and discloses missing evi
  assert.doesNotMatch(render({status:'unavailable',rows:[]}),/0 applications/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('research brief allocates exactly the approved 16 or 20 daily candidates across selected markets',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, buildResearchBrief };'),ctx);
+ const build=ctx.window.SBCMarketIntelligence.buildResearchBrief;
+ const data={status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',rows:bfsStates.map((state,i)=>({state,applications:1000+i}))};
+ const result=build(data,['GA','TX','NC'],'auto',16);
+ assert.equal(result.total,16);
+ assert.deepEqual(Array.from(result.markets,x=>x.target),[6,5,5]);
+ assert.deepEqual(Array.from(result.markets,x=>x.state),['GA','TX','NC']);
+ assert.match(result.brief,/16 research candidates/);assert.match(result.brief,/2026-08/);assert.match(result.brief,/website gap/);
+ assert.match(result.brief,/Do not infer language/i);assert.match(result.brief,/not assigned/i);
+ assert.equal(build(data,['TX'],'beauty',20).markets[0].target,20);
+ for(const args of [[data,['XX'],'auto',16],[data,['TX','TX'],'auto',16],[data,['TX'],'unknown',16],[data,['TX'],'auto',100],[{status:'unavailable'},['TX'],'auto',16],[data,[],'auto',16]])assert.throws(()=>build(...args));
+});
