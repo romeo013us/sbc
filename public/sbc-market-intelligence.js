@@ -90,6 +90,36 @@
   }
 
 
+
+  const researchIndustries=Object.freeze({auto:'Auto repair, collision repair, tire and wheel shops, and window tinting',beauty:'Barbershops, beauty salons and hair salons',food:'Independent restaurants and food service',retail:'Independent local retail stores',services:'Independent home and professional service businesses'});
+  function buildResearchBrief(data,states,industry,target){
+    if(data?.status!=='available'||data.coverage!==51||!Array.isArray(data.rows)||data.rows.length!==51||!Array.isArray(states)||states.length<1||states.length>5||new Set(states).size!==states.length||!Object.hasOwn(researchIndustries,industry)||![16,20].includes(target))throw Error('Select 1–5 different markets, one industry and an approved daily target.');
+    const valid=new Map(data.rows.map(r=>[r.state,r]));
+    if(valid.size!==51||states.some(state=>!/^[A-Z]{2}$/.test(state)||!valid.has(state))||!/^\d{4}-\d{2}$/.test(data.periodStart)||!/^\d{4}-\d{2}$/.test(data.periodEnd))throw Error('Research evidence unavailable.');
+    const base=Math.floor(target/states.length),extra=target%states.length;
+    const markets=states.map((state,i)=>({state,target:base+(i<extra?1:0)}));
+    const brief=[
+      'SBC — NATIONAL RESEARCH BRIEF (DRAFT; not assigned)',
+      target+' research candidates · '+researchIndustries[industry],
+      'Census business-application research signal: '+data.periodStart+' to '+data.periodEnd+' (not confirmed website buyers).',
+      ...markets.map(m=>m.state+': '+m.target+' candidates'),
+      'Research independently verified business records, prioritizing a documented website gap. Record business name, decision maker (if verified), primary business phone, business email, street/city/state/ZIP, Google Business Profile URL and separate GBP address, industry, website status, research source and evidence URLs.',
+      'Record address mismatches, residential and service-area flags. Check existing CRM for duplicates and suppression before submitting; do not overwrite existing records.',
+      'Do not infer language from a name, location, ethnicity or photo. Record preferred language only if directly confirmed; otherwise unknown.',
+      'Flag missing or contradictory evidence for owner review. Keep verified contact data separate from consent or sales readiness. Do not call or message prospects as part of this research brief.',
+      'Owner reviews and assigns through the existing research workflow. No task or CRM record has been created by this draft.'
+    ].join('\n');
+    return {total:target,markets,brief};
+  }
+  function researchControls(data){
+    const options=data.rows.map(r=>'<option value="'+escape(r.state)+'">'+escape(r.state)+' — '+count.format(r.applications)+' applications</option>').join('');
+    const industries=Object.entries(researchIndustries).map(([key,label])=>'<option value="'+key+'">'+escape(label)+'</option>').join('');
+    return '<details class="mi-connect"><summary>Create daily research brief</summary><p>Choose up to five states. Targets are research candidates, not guaranteed qualified leads. Review the draft before assigning it.</p>'+
+      '<form data-mi-research-form><label>Markets (select 1–5)<select data-mi-research-states multiple required size="5">'+options+'</select></label>'+
+      '<label>Industry<select data-mi-research-industry>'+industries+'</select></label><label>Daily research target<select data-mi-research-target><option value="16">16 · Standard</option><option value="20">20 · Stretch</option></select></label>'+
+      '<button type="submit" class="secondary">Generate reviewable brief</button></form><label>Draft for owner review<textarea data-mi-research-brief readonly rows="12" style="width:100%"></textarea></label><p data-mi-research-status role="status">No assignment has been made.</p></details>';
+  }
+
   function nationalPanel(data) {
     const title='<h3 id="mi-national-title">National Market Intelligence</h3>';
     if(data?.status!=='available'||!Array.isArray(data.rows)||data.coverage!==51)
@@ -99,7 +129,7 @@
       '<p class="mi-period">'+escape(data.periodStart)+' to '+escape(data.periodEnd)+' · compared with '+escape(data.comparisonStart)+' to '+escape(data.comparisonEnd)+' · 50 states and DC</p>'+
       '<p>Ranked by recent business application volume, not purchase probability. Select markets for manual research of website gaps and verified business contacts.</p>'+
       '<div style="overflow-x:auto"><table class="table"><thead><tr><th>State</th><th>Applications</th><th>Prior year</th><th>Change</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-      '<p class="mi-footnote">'+escape(data.limitation)+'</p><p><a href="https://www.census.gov/econ/bfs/data.html" target="_blank" rel="noopener noreferrer">U.S. Census Bureau — Business Formation Statistics</a></p></section>';
+      researchControls(data)+'<p class="mi-footnote">'+escape(data.limitation)+'</p><p><a href="https://www.census.gov/econ/bfs/data.html" target="_blank" rel="noopener noreferrer">U.S. Census Bureau — Business Formation Statistics</a></p></section>';
   }
 
   function mount(content) {
@@ -175,7 +205,19 @@
         const response=await fetch('/api/owner/market-intelligence/national',{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(16000)});
         if(!response.ok)throw Error('Unavailable');
         const data=await response.json();
-        if(active())panel.innerHTML=nationalPanel(data);
+        if(active()){
+          panel.innerHTML=nationalPanel(data);
+          panel.querySelector('[data-mi-research-form]')?.addEventListener('submit',event=>{
+            event.preventDefault();
+            if(!active())return;
+            const out=panel.querySelector('[data-mi-research-brief]'),status=panel.querySelector('[data-mi-research-status]');
+            try{
+              const states=Array.from(panel.querySelector('[data-mi-research-states]').selectedOptions,o=>o.value);
+              const result=buildResearchBrief(data,states,panel.querySelector('[data-mi-research-industry]').value,Number(panel.querySelector('[data-mi-research-target]').value));
+              out.value=result.brief;status.textContent='Draft generated. Select and copy the brief for review; no assignment has been made.';
+            }catch(error){out.value='';status.textContent=error.message;}
+          });
+        }
       }catch{if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
       finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
     });
