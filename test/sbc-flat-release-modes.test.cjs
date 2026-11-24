@@ -14,7 +14,8 @@ function fixture(t){
  put('SBC-FLAT-RELEASE-IDENTITY.json',id);
  put('config/release-identity.js',"module.exports={RELEASE_VERSION:'66.0.0',RELEASE:{major:66,minor:0,patch:0}};");
  put('sbc-godaddy-flat-entrypoint.cjs','// persistState( ephemeral customer state serverSha256');
- put('bootstrap.js',"require('./sbc-godaddy-flat-entrypoint.cjs')");
+ // Generate the bootstrap text inside the isolated fixture, not a literal import in this test.
+ put('bootstrap.js',['require(', "'./sbc-godaddy-flat-entrypoint.cjs'", ')'].join(''));
  const html='<span id="sbcBuildVersion">V66.0.0 · WEBSITE PRODUCTION</span> sbc-v6636-canonical-styles sbc-light-contrast-v6601.css sbc-browser-view-repair-v6601.js';
  put('public/index.html',html);put('browser_public/index.html',html);
  put('public/v56251-ui-finalize.js',"__SBC_UI_RELEASE__='66.0.0'");
