@@ -31,7 +31,7 @@ jobs:
           node scripts/v66155-release-hygiene.test.cjs
           node --test test/v66-release-foundation.test.cjs
           node --test test/v66-release-selection.test.cjs
-          node --test test/v66-deployment-artifact-gate.test.cjs
+          node --test test/v66-deployment-artifact-gate.test.cjs test/sbc-verified-ref.test.cjs test/sbc-provider-evidence.test.cjs test/sbc-marketing-readback.test.cjs
           node --test test/sbc-academy360-release-identity.test.cjs
           node scripts/v66-static-mirror-gate.cjs
           node scripts/secret-audit.js
@@ -756,6 +756,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "release(godaddy): tested QA runtime from $GITHUB_SHA"
+          node scripts/v66-deployment-artifact-gate.cjs .
+          bash scripts/pin-verified-godaddy-ref.sh "$GITHUB_SHA"
           # Fast-forward ONLY if this exact source commit is still at branch HEAD.
           # On an Actions rerun, a prior successful job may have ALREADY pushed
           # the exact verified compiled release. Accept only an identical direct
@@ -789,8 +791,9 @@ jobs:
           console.log('[SBC MASTER] PASS: identical signed-off release already published; rerun is idempotent, no push needed');
           NODE
           fi
+          bash scripts/advance-verified-preview.sh "$GITHUB_SHA"
           echo "### GoDaddy GitHub Preview candidate" >> "$GITHUB_STEP_SUMMARY"
           echo "Source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
-          echo "Select GoDaddy GitHub branch: $BRANCH (compiled verified master)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Verified-only Preview source: deploy/godaddy-verified-preview. Recovery ref: release/verified-godaddy-$GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
           echo "Validated: complete runtime, no stale receipt, 20% margin, owner-only QA, supplier holds." >> "$GITHUB_STEP_SUMMARY"
           echo "**No GoDaddy Preview or Published deployment occurred.**" >> "$GITHUB_STEP_SUMMARY"
