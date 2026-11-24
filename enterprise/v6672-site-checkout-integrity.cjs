@@ -3,11 +3,15 @@
 // Never infer payment settlement from a browser request, a Square URL or email.
 const idPattern=/^sbcweb_[a-f0-9]{32}$/;
 const clean=x=>String(x??'').trim();
-function notes(order){try{return typeof order?.notes==='string'?JSON.parse(order.notes):order?.notes||{}}catch{return {}}}
+function notes(order){try{const n=typeof order?.notes==='string'?JSON.parse(order.notes):order?.notes;return n&&typeof n==='object'&&!Array.isArray(n)?n:{}}catch{return {}}}
+const blockedState=x=>/^(CANCELLED|CANCELED|REFUNDED|EXPIRED|FAILED|DELETED|ARCHIVED|VOID|VOIDED|PARTIALLY[ _-]REFUNDED)$/.test(clean(x).toUpperCase());
+const reconciliation=()=>({found:true,ok:false,status:409,code:'WEBSITE_CHECKOUT_RECONCILIATION_REQUIRED',automaticRetry:false});
 function requestIdValid(value){return idPattern.test(clean(value))}
 function inspectExisting({tenantId,clientRequestId,packageId,email,businessName,orders,customers}){
- const existing=(orders||[]).find(o=>Number(o.tenantId)===Number(tenantId)&&
+ const matches=(orders||[]).filter(o=>o&&Number(o.tenantId)===Number(tenantId)&&
   notes(o).websiteCheckoutRequestId===clean(clientRequestId));
+ if(matches.length>1)return reconciliation();
+ const existing=matches[0];
  if(!existing)return {found:false};
  const customer=(customers||[]).find(c=>String(c.id)===String(existing.customerId)&&Number(c.tenantId)===Number(tenantId));
  const n=notes(existing),buyer=n.websiteCheckoutBuyer||customer||{};
@@ -18,6 +22,7 @@ function inspectExisting({tenantId,clientRequestId,packageId,email,businessName,
  if(['PAID','COMPLETED'].includes(clean(existing.paymentStatus).toUpperCase())||
     ['PAID','COMPLETED'].includes(clean(existing.status).toUpperCase()))
   return {found:true,ok:false,status:409,code:'WEBSITE_CHECKOUT_ALREADY_PAID'};
+ if(blockedState(existing.status)||blockedState(existing.paymentStatus))return reconciliation();
  const url=clean(existing.paymentUrl||n.squarePaymentLinkUrl);
  if(!url||!n.squareOrderId)
   return {found:true,ok:false,status:409,code:'WEBSITE_CHECKOUT_RECONCILIATION_REQUIRED',

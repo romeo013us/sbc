@@ -64,6 +64,7 @@ jobs:
           node scripts/v6670-quote-order-journey.test.cjs
           node scripts/v6671-square-webhook-readback.test.cjs
           node scripts/v6672-site-checkout.test.cjs
+          node --test scripts/sbc-website-checkout-replay.test.cjs
           node scripts/v6674-officebox-v2-handoff.test.cjs
           node scripts/v66120-officebox-commerce-boundary.test.cjs
           node scripts/v66122-central-square-officebox-guard.test.cjs
