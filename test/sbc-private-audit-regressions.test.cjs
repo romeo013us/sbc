@@ -128,7 +128,7 @@ function taskRouteFixture(){
  const context={db,app:Object.fromEntries(['post','put','delete','get'].map(m=>[m,(p,...h)=>{handlers[m+' '+p]=h.at(-1)}])),auth(){},ownerOnly(){},requireRequestTenant(req){if(!req.tenantId)throw Error('tenant');return req.tenantId},now:()=> '2026-11-24T15:00:00Z',id:p=>p+'-'+(++next),addActivity(type,message,meta,tenantId){const a={id:'act-'+(++next),type,message,meta,tenantId};db.activities.unshift(a);return a},mysqlPool:{},SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,sbcShutdownStarted:false,saveData:async()=>{writes++;if(fail)throw Error('write failed')},console};
  const start=source.indexOf("app.post('/api/activities'"),end=source.indexOf('// SBC_P0P1_BOOKING_AND_DAILY_REVENUE:',start);assert(start>0&&end>start);
  vm.runInNewContext(source.slice(start,end),context);
- const call=async(method,path,{id='',tenantId=1,user={id:'o1',role:'owner'},body={}}={})=>{const res={code:200,status(n){this.code=n;return this},json(v){this.body=v;return this}};await handlers[method+' '+path]({tenantId,user,params:{id},body},res);return res};
+ const call=async(method,path,{id='',tenantId=1,user={id:'o1',role:'owner'},body={}}={})=>{const res={code:200,setHeader(){},status(n){this.code=n;return this},json(v){this.body=v;return this}};await handlers[method+' '+path]({tenantId,user,params:{id},body},res);return res};
  return {db,call,context,get writes(){return writes},set fail(v){fail=v}};
 }
 test('task routes reject foreign tenant customers, staff and task identifiers before writes',async()=>{
