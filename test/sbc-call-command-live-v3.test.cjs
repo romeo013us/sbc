@@ -1,6 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const v3=require('../enterprise/sbc-call-command-live-v3.cjs');
+const {randomBytes}=require('node:crypto');
 const actor={id:'manager-1',role:'account_manager',active:true,tenantId:7};
 const account={id:'cust-1',tenant_id:7,assigned_to:'manager-1',phone:'3055550147',status:'Lead'};
 const cert={kind:'SBC_CALL_AUTH_V3',phone:'+13055550147',authorizedAt:'2026-11-19T12:00:00.000Z',
@@ -47,9 +48,9 @@ test('account call credentials never leak from preflight alone',()=>{
 
 test('configured human-click calling is operational by default; explicit stop still wins',()=>{
  const cfg={SBC_PUBLIC_URL:'https://sbc.example',TWILIO_ACCOUNT_SID:'AC'+'1'.repeat(32),
- TWILIO_API_KEY_SID:'SK'+'2'.repeat(32),TWILIO_API_KEY_SECRET:'offline-test-fixture',
+ TWILIO_API_KEY_SID:'SK'+'2'.repeat(32),TWILIO_API_KEY_SECRET:randomBytes(24).toString('hex'),
  SBC_CALL_COMMAND_TWIML_APP_SID:'AP'+'3'.repeat(32),TWILIO_PHONE_NUMBER:'+13055550199',
- TWILIO_AUTH_TOKEN:'offline-webhook-fixture'};
+ TWILIO_AUTH_TOKEN:randomBytes(24).toString('hex')};
  const ready=v3.settings(cfg);
  assert.equal(ready.configured,true);
  assert.equal(ready.enabled,true,'configured calling should not silently remain off');
