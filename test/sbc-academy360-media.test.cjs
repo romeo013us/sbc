@@ -91,3 +91,32 @@ test('recorder exports actual workstation stills and optional microphone-only au
  assert.match(read('public/sbc-am-academy-recorder-v1.js'),/new MediaRecorder\(microphone/);
  dom.window.close();
 });
+
+test('synthetic Academy lesson media never masquerades as authentic employee screen recordings',async()=>{
+ const receipt=JSON.parse(read('public/academy-media/academy360/AUTO_GENERATED_MANIFEST.json'));
+ assert.equal(receipt.syntheticOnly,true);
+ assert.equal(receipt.authenticatedEmployeeRecording,false);
+ for(const lang of ['en','es']){
+  const dom=new JSDOM(read('public/sbc-am-academy.html'),{url:'https://academy.test/sbc-am-academy.html',runScripts:'outside-only'});
+  const w=dom.window,d=w.document;
+  w.HTMLMediaElement.prototype.pause=()=>{};
+  w.HTMLMediaElement.prototype.load=()=>{};
+  w.fetch=async url=>{
+   const mime=String(url).endsWith('.mp4')?'video/mp4':String(url).endsWith('.webp')?'image/webp':'text/html';
+   return {ok:mime!=='text/html',headers:{get:()=>mime}};
+  };
+  w.eval(read('public/sbc-am-academy-media-v1.js'));
+  await w.SBC_ACADEMY_VIDEO.render('am-01',lang);
+  const status=d.getElementById('academyVideoStatus').textContent;
+  const gallery=d.getElementById('academyPhotosStatus').textContent;
+  const photo=d.querySelector('#academyPhotoGallery figcaption');
+  assert(photo,'synthetic still was not rendered');
+  assert.match(status,/simulat|simulad/i,'video explicitly labeled as simulated');
+  assert.match(gallery,/simulat|simulad/i,'gallery explicitly labeled as simulated');
+  assert.match(photo.textContent,/simulat|simulad/i,'individual still explicitly labeled as simulated');
+  assert.doesNotMatch(photo.textContent,/\\breal\\b|verified|verificad/i,'synthetic still falsely called authentic');
+  assert.match(status,/authentic|auténtic|original/i,'real employee capture remains pending');
+  dom.window.close();
+ }
+ assert.equal(read('public/sbc-am-academy-media-v1.js'),read('browser_public/sbc-am-academy-media-v1.js'));
+});
