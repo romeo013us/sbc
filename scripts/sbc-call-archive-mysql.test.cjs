@@ -61,6 +61,19 @@ test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback
   await conn.commit();
   const [[replayed]]=await conn.query('SELECT COUNT(*) AS total FROM sbc_call_attempt_revision_v1 WHERE tenant_id=3');
   assert.equal(Number(replayed.total),1001);
+  // Lookup the exact original session even though it has left the rolling snapshot.
+  const session={sessionId:'rolling-session-0',customerId:'archive-lead',manualDial:false};
+  const actor={tenantId:3,actorId:'rep',role:'caller'};
+  const recovered=await archive.findSession(conn,actor,session);
+  assert.equal(recovered.id,'rolling-0');
+  assert.equal(await archive.findSession(conn,{...actor,tenantId:2},session),null);
+  assert.equal(await archive.findSession(conn,{...actor,actorId:'other'},session),null);
+  assert.equal(await archive.findSession(conn,actor,{...session,customerId:'different-lead'}),null);
+  assert.equal(await archive.findSession(conn,actor,{...session,customerId:'',manualDial:true}),null);
+  const current=await archive.findSession(conn,staff,{sessionId:changed.sessionId,customerId:changed.customerId,manualDial:false});
+  assert.equal(current.outcome,'Spanish callback needed');
+  assert.equal(current.notes,'Synthetic corrected outcome');
+
 
  }finally{await conn.end().catch(()=>{});}
 });
