@@ -311,6 +311,7 @@ function sbcLornaAllowedRequest(req,user){
  if(p==='/api/v9/time/status')return m==='GET';
  if(p==='/api/workforce/lorna')return m==='GET';
  if(p==='/api/workforce/research-progress')return m==='GET';
+ if(p==='/api/workforce/assigned-tasks')return m==='GET';
  // Legacy employee draft service is not exposed here.
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
  // Individual lead data is accessed through the scoped research queue.
@@ -5627,6 +5628,17 @@ function sbcTaskSerialize(fn){const result=sbcTaskMutationTail.then(fn);sbcTaskM
 function sbcTaskError(res,status,error){return res.status(status).json({ok:false,error});}
 function sbcTaskRequestTenant(req){try{return requireRequestTenant(req);}catch{return null;}}
 function sbcTaskText(value,max){return typeof value==='string'&&value.length<=max?value:null;}
+// Researcher readback uses the same ownership rules as the existing Task Center.
+app.get('/api/workforce/assigned-tasks',auth,(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ const roles=['lead_researcher','lead_generator','researcher','prospector'];
+ const tenant=sbcTaskRequestTenant(req),actor=sbcTaskUnique(db.users,req.user.id);
+ if(!tenant||!roles.includes(String(req.user.role||'').toLowerCase())||!actor||sbcTaskTenant(actor)!==tenant||actor.active===false||!roles.includes(String(actor.role||'').toLowerCase()))return sbcTaskError(res,403,'Researcher access required.');
+ if(!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!mysqlPool)return sbcTaskError(res,503,'Assigned tasks are temporarily unavailable.');
+ const rows=(db.tasks||[]).filter(t=>sbcTaskOwnership(t)===tenant&&String(t.assignedTo||'')===String(actor.id)&&!['completed','cancelled','canceled'].includes(String(t.status||'').toLowerCase()));
+ rows.sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity)||String(a.id).localeCompare(String(b.id)));
+ return res.json({ok:true,readOnly:!sbcTaskWriterReady(),total:rows.length,tasks:rows.slice(0,100).map(t=>({id:String(t.id),title:String(t.title||''),notes:String(t.notes||''),dueAt:String(t.dueAt||''),type:String(t.type||''),priority:String(t.priority||''),status:String(t.status||'Open')}))});
+});
 app.post('/api/tasks',auth,async(req,res)=>sbcTaskSerialize(async()=>{
  if(!['owner','manager'].includes(req.user.role))return sbcTaskError(res,403,'Only owner or manager can create and assign team tasks.');
  const tenant=sbcTaskRequestTenant(req);if(!tenant)return sbcTaskError(res,403,'Tenant context required.');

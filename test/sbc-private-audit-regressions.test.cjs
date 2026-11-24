@@ -128,7 +128,7 @@ function taskRouteFixture(){
  const context={db,app:Object.fromEntries(['post','put','delete','get'].map(m=>[m,(p,...h)=>{handlers[m+' '+p]=h.at(-1)}])),auth(){},ownerOnly(){},requireRequestTenant(req){if(!req.tenantId)throw Error('tenant');return req.tenantId},now:()=> '2026-11-24T15:00:00Z',id:p=>p+'-'+(++next),addActivity(type,message,meta,tenantId){const a={id:'act-'+(++next),type,message,meta,tenantId};db.activities.unshift(a);return a},mysqlPool:{},SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:false,sbcWriterLeaseReady:true,sbcShutdownStarted:false,saveData:async()=>{writes++;if(fail)throw Error('write failed')},console};
  const start=source.indexOf("app.post('/api/activities'"),end=source.indexOf('// SBC_P0P1_BOOKING_AND_DAILY_REVENUE:',start);assert(start>0&&end>start);
  vm.runInNewContext(source.slice(start,end),context);
- const call=async(method,path,{id='',tenantId=1,user={id:'o1',role:'owner'},body={}}={})=>{const res={code:200,status(n){this.code=n;return this},json(v){this.body=v;return this}};await handlers[method+' '+path]({tenantId,user,params:{id},body},res);return res};
+ const call=async(method,path,{id='',tenantId=1,user={id:'o1',role:'owner'},body={}}={})=>{const res={code:200,setHeader(){},status(n){this.code=n;return this},json(v){this.body=v;return this}};await handlers[method+' '+path]({tenantId,user,params:{id},body},res);return res};
  return {db,call,context,get writes(){return writes},set fail(v){fail=v}};
 }
 test('task routes reject foreign tenant customers, staff and task identifiers before writes',async()=>{
@@ -159,4 +159,17 @@ test('team task writes fail closed in Preview and restore local task state after
  assert.equal((await f.call('post','/api/tasks',{body})).code,503);assert.equal(f.db.tasks.length,4);assert.equal(f.db.activities.length,0);
  assert.equal((await f.call('put','/api/tasks/:id',{id:'own',body:{status:'Completed'}})).code,503);assert.equal(f.db.tasks.find(t=>t.id==='own').status,undefined);
  assert.equal((await f.call('delete','/api/tasks/:id',{id:'own'})).code,503);assert(f.db.tasks.some(t=>t.id==='own'));
+});
+
+test('researcher assignments read only their own scoped tasks and never expose unresolved or foreign ownership',async()=>{
+ const f=taskRouteFixture(),actor={id:'r1',role:'lead_researcher'};
+ f.db.tasks.push({id:'other-assignee',tenantId:1,assignedTo:'o1',title:'Private task'},{id:'foreign-collision',tenantId:2,assignedTo:'r1',title:'Foreign collision'},{id:'own-done',tenantId:1,assignedTo:'r1',title:'Finished research',status:'Completed'});
+ const res=await f.call('get','/api/workforce/assigned-tasks',{user:actor});
+ assert.equal(res.code,200);assert.equal(res.body.ok,true);
+ assert.deepEqual(Array.from(res.body.tasks,t=>t.id).sort(),['legacy','own']);
+ assert.equal(res.body.readOnly,false);assert.equal(f.writes,0);
+ assert.equal((await f.call('get','/api/workforce/assigned-tasks',{user:{id:'o1',role:'owner'}})).code,403);
+ assert.equal((await f.call('get','/api/workforce/assigned-tasks',{user:actor,tenantId:2})).code,403);
+ f.context.SBC_RUNTIME_READ_ONLY=true;
+ const preview=await f.call('get','/api/workforce/assigned-tasks',{user:actor});assert.equal(preview.body.readOnly,true);
 });

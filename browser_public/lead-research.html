@@ -23,7 +23,7 @@
 <script src="/sbc-lorna-checklist.js?v=2" defer></script>
 <link rel="stylesheet" href="/sbc-lorna-handoff-v1.css?v=20261117">
 <script defer src="/sbc-lorna-handoff-v1.js?v=20261117"></script>
-<script src="/lead-research.js?v=12" defer></script>
+<script src="/lead-research.js?v=13-assigned-tasks" defer></script>
 <link rel="stylesheet" href="/sbc-chatgpt-os-v1.css?v=66.0.132-resume">
 
 </head>
@@ -94,6 +94,7 @@
 </div>
 </section>
 <section class="pane" data-pane="today" hidden>
+<div class="card daily-page"><div class="card-head"><div><div class="eyebrow">OWNER-ASSIGNED WORK</div><h2>My research assignments</h2><p>Approved tasks from the existing SBC Task Center. These are separate from the suggested shift checklist.</p></div><button type="button" class="outline" id="assigned-task-refresh">Refresh assignments</button></div><p id="assigned-task-status" role="status">Assignments not loaded.</p><div id="assigned-task-list" class="daily-task-list"></div></div>
 <div class="card shift-card" id="shift-card">
  <div class="card-head"><div><div class="eyebrow">YOUR ROLE · 4-HOUR SHIFT</div><h2>Today's Shift Checklist</h2><p id="shift-clock-label">Time blocks will start when your verified clock-in is loaded.</p></div><div class="shift-summary"><strong id="shift-progress">0 of 8</strong><small>Checklist items complete</small></div></div>
  <div class="shift-track" role="progressbar" aria-label="Shift checklist completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="shift-progress-track"><div id="shift-progress-fill"></div></div>
