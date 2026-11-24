@@ -7,7 +7,7 @@
   "noLiveOutreach": true,
   "narrationEngine": "Piper offline neural EN-US lessac-medium, ES-MX ald-medium",
   "notice": "AUTOMATED TRAINING SIMULATIONS, NOT LIVE EMPLOYEE RECORDINGS",
-  "createdAt": "2026-11-23T15:50:09.884Z",
+  "createdAt": "2026-11-24T18:38:19.057Z",
   "files": [
     "am-01-en.mp4",
     "am-01-en-audio.webm",
@@ -322,7 +322,7 @@
     {
       "lessonId": "am-06",
       "lang": "en",
-      "seconds": 58,
+      "seconds": 59,
       "files": [
         "am-06-en.mp4",
         "am-06-en-audio.webm",
@@ -490,7 +490,7 @@
     {
       "lessonId": "am-12",
       "lang": "en",
-      "seconds": 56,
+      "seconds": 57,
       "files": [
         "am-12-en.mp4",
         "am-12-en-audio.webm",
