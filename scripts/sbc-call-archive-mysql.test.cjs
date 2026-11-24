@@ -1,0 +1,35 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const archive=require('../enterprise/sbc-call-archive-v1.cjs');
+test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback and scoped history after reconnect',{skip:process.env.SBC_CALL_ARCHIVE_MYSQL_CI!=='YES'},async()=>{
+ assert.equal(process.env.CI,'true');
+ const mysql=require('mysql2/promise');
+ const config={host:'127.0.0.1',port:3306,user:'root',password:process.env.SBC_V6682_CI_MYSQL_PASSWORD,database:'sbc_v6682_ci'};
+ assert(config.password);
+ let conn=await mysql.createConnection(config);
+ try{
+  const [[db]]=await conn.query('SELECT DATABASE() AS name');assert.equal(db.name,'sbc_v6682_ci');
+  await conn.query('CREATE TABLE IF NOT EXISTS sbc_customers (id VARCHAR(120) PRIMARY KEY,tenant_id BIGINT NOT NULL,business_name VARCHAR(255)) ENGINE=InnoDB');
+  await conn.query("INSERT INTO sbc_customers(id,tenant_id,business_name) VALUES ('archive-lead',1,'Synthetic Archive Business')");
+  const migration=fs.readFileSync(path.join(__dirname,'../migrations/20261124_001_sbc_call_archive.sql'),'utf8');
+  for(const statement of migration.split(';').map(s=>s.trim()).filter(Boolean))await conn.query(statement);
+  const base={tenantId:1,userId:'rep',customerId:'archive-lead',to:'+13055550100',status:'ended',outcome:'Pending',endedAt:'2026-11-24T14:00:00Z',updatedAt:'2026-11-24T14:01:00Z'};
+  const rows=Array.from({length:10000},(_,i)=>({...base,id:'attempt-'+String(i).padStart(5,'0'),sessionId:'session-'+i,tenantId:i%10===0?2:1,userId:i%2?'rep':'other'}));
+  await conn.beginTransaction();assert.equal((await archive.appendBatch(conn,rows)).inserted,10000);await conn.commit();
+  await conn.beginTransaction();assert.equal((await archive.appendBatch(conn,rows.slice(0,100))).unchanged,100);
+  const changed={...rows[1],outcome:'Spanish callback needed',notes:'Synthetic corrected outcome',updatedAt:'2026-11-24T14:02:00Z'};
+  assert.equal((await archive.appendBatch(conn,[changed])).advanced,1);await conn.commit();
+  await conn.beginTransaction();assert.equal((await archive.appendBatch(conn,[rows[1]])).older,1);await conn.commit();
+  await conn.beginTransaction();await assert.rejects(archive.appendBatch(conn,[{...changed,id:'duplicate-session'}]),/Duplicate entry/);await conn.rollback();
+  await conn.end();conn=await mysql.createConnection(config);
+  const owner={tenantId:1,actorId:'owner',role:'owner'},staff={tenantId:1,actorId:'rep',role:'caller'};
+  const a=await archive.list(conn,owner,{limit:250}),b=await archive.list(conn,owner,{limit:250,offset:250});
+  assert.equal(a.total,9000);assert.equal(a.rows.length,250);assert.equal(a.nextOffset,250);
+  assert(!a.rows.some(x=>b.rows.some(y=>x.id===y.id)));
+  assert.equal((await archive.list(conn,staff,{callerId:'other'})).total,5000);
+  assert.equal((await archive.list(conn,{...owner,tenantId:2})).total,1000);
+  assert.equal((await archive.list(conn,owner,{business:'Archive Business'})).total,9000);
+  const corrected=await archive.list(conn,owner,{outcome:'Spanish callback needed'});assert.equal(corrected.total,1);assert.equal(corrected.rows[0].id,changed.id);
+  const [[rev]]=await conn.query('SELECT COUNT(*) AS total FROM sbc_call_attempt_revision_v1');assert.equal(Number(rev.total),10001);
+ }finally{await conn.end().catch(()=>{});}
+});
