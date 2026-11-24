@@ -27,9 +27,14 @@ test('actual MySQL hydration retains relational address, routing and staff appro
  const context={SNAPSHOT_TENANTS,seed:{settings:{}},PERSISTENCE_EPOCH_KEY:'epoch',db:{},persistenceEpoch:0,normalize:x=>x,
   safeJsonParse:(s,f)=>{try{return JSON.parse(s)}catch{return f}},fromSqlDate:v=>v||'',fromSqlDateTime:v=>v||'',console,
   mysqlPool:{query:async sql=>{statements.push(sql);return [/FROM sbc_customers/.test(sql)?[{id:'lead1',tenant_id:1,business_name:'Synthetic Garage',address:'123 Example St, Miami, FL 33101',status:'Lead'}]:/FROM sbc_workforce_users/.test(sql)?[{id:'rep1',tenant_id:1,role:'account_manager',active:1}]:/FROM sbc_workspace/.test(sql)?[{payload:JSON.stringify({callRoutingStateV1:routingState})}]:[]]}}};
- vm.runInNewContext(source.slice(start,end)+'\nthis.hydrate=readRelational;',context);
+ const scoreStart=source.lastIndexOf('function leadQuality(c){'),scoreEnd=source.indexOf('function isActiveSalesLead(',scoreStart);
+ assert(scoreStart>=0&&scoreEnd>scoreStart);
+ vm.runInNewContext(source.slice(scoreStart,scoreEnd)+'\n'+source.slice(start,end)+'\nthis.hydrate=readRelational;',context);
  await context.hydrate();assert.equal(context.db.customers[0].address,'123 Example St, Miami, FL 33101');
  assert.equal(context.db.customers[0].tenantId,1);
+ assert.equal(context.db.customers[0].leadTemperature,'Cold');
+ assert.equal(context.db.customers[0].leadScore,20);
+ assert.equal(context.db.customers[0].verificationStatus,'Needs Verification');
  assert.equal(context.db.customers[0].salesQueueState,'spanish_callback');
  assert.equal(context.db.customers[0].preferredContactLanguage,'es');
  assert.equal(context.db.users[0].spanishCallingApprovedByOwner,true);
