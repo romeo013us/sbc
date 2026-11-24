@@ -142,4 +142,19 @@ async function findSession(conn,scope,input){
  if(saved.payload.tenantId!==tid||saved.payload.userId!==actor||saved.sessionKey!==key||saved.payload.sessionId!==session||saved.payload.customerId!==customer||saved.payload.manualDial!==input.manualDial)fail('CALL_ARCHIVE_IDENTITY_CONFLICT');
  return saved.payload;
 }
-module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot,findSession};
+// Explicit, owner-gated read path. A disabled or failed archive never presents
+// the rolling cache as a complete historical result.
+async function readHistory(conn,scope,filters={},env=process.env){
+ if(env.SBC_CALL_ARCHIVE_READ!=='YES'||env.SBC_CALL_ARCHIVE_CAPTURE!=='YES'||env.SBC_CALL_ARCHIVE_RETENTION_APPROVED!=='YES'||typeof env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF!=='string'||!env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.trim()||env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.length>120)fail('CALL_ARCHIVE_READ_DISABLED');
+ queryPlan(scope,filters);
+ if(!conn||typeof conn.query!=='function')fail('CALL_ARCHIVE_READ_UNAVAILABLE');
+ const page=await list(conn,scope,filters);
+ return {ok:true,source:'sql_archive',total:page.total,offset:page.offset,limit:page.limit,nextOffset:page.nextOffset,rows:page.rows.map(log=>({
+  id:log.id,customerId:log.customerId||'',businessName:log.businessName||'',
+  userId:log.userId||'',userName:log.userName||'',number:log.to||'',manualDial:log.manualDial===true,
+  status:log.status||'',outcome:log.outcome||'Pending',notes:log.notes||'',nextAction:log.nextAction||'',
+  followUpAt:log.followUpAt||'',durationSec:Number(log.durationSec||0),startedAt:log.startedAt||'',
+  endedAt:log.endedAt||'',createdAt:log.createdAt||'',callSid:log.callSid||''
+ })),retentionNote:'Shows retained SQL archive records only; coverage is limited to captured and reconciled history under the approved retention policy.'};
+}
+module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot,findSession,readHistory};
