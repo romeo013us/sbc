@@ -72,11 +72,21 @@ function settings(env=process.env){
  const appSid=get('SBC_CALL_COMMAND_TWIML_APP_SID','SBC_CALL_COMMAND_TWIML_APP_SID');
  const callerId=phone(get('TWILIO_PHONE_NUMBER','SBC_TWILIO_FROM'));
  const authToken=get('TWILIO_AUTH_TOKEN','SBC_TWILIO_AUTH_TOKEN');
- const configured=Boolean(origin&&/^AC[0-9a-f]{32}$/i.test(accountSid)&&
-  /^SK[0-9a-f]{32}$/i.test(apiKeySid)&&apiKeySecret&&
-  /^AP[0-9a-f]{32}$/i.test(appSid)&&callerId&&authToken);
+ // Normal operation is ready when the dedicated provider configuration is
+ // complete. An explicit emergency stop still overrides readiness, and
+ // malformed switch values never accidentally authorize dialing.
+ const missingSettings=Object.entries({
+  SBC_PUBLIC_URL:!!origin,TWILIO_ACCOUNT_SID:/^AC[0-9a-f]{32}$/i.test(accountSid),
+  TWILIO_API_KEY_SID:/^SK[0-9a-f]{32}$/i.test(apiKeySid),TWILIO_API_KEY_SECRET:!!apiKeySecret,
+  SBC_CALL_COMMAND_TWIML_APP_SID:/^AP[0-9a-f]{32}$/i.test(appSid),
+  TWILIO_PHONE_NUMBER:!!callerId,TWILIO_AUTH_TOKEN:!!authToken
+ }).filter(([,valid])=>!valid).map(([key])=>key);
+ const configured=missingSettings.length===0;
+ const flag=String(env.SBC_CALL_COMMAND_V3_ENABLED??'').trim();
+ const activationState=flag==='0'?'PAUSED_BY_OWNER':flag!==''&&flag!=='1'?'INVALID_SETTING':
+  !configured?'PROVIDER_SETUP_REQUIRED':'CONFIGURED';
  return {origin,accountSid,apiKeySid,apiKeySecret,appSid,callerId,authToken,configured,
-  enabled:env.SBC_CALL_COMMAND_V3_ENABLED==='1'};
+  enabled:activationState==='CONFIGURED',activationState,missingSettings};
 }
 function voiceToken(cfg,identity,twilio=require('twilio')){
  if(!cfg?.configured||!identity)throw Error('VOICE_NOT_CONFIGURED');

@@ -26,9 +26,9 @@ test('Account Manager access permits only dedicated per-account calling endpoint
  ['POST','/api/v6606/crm/account-portfolios/acc_1/call-revoke']])
  assert(!gate.allowed(verb,route),'privileged route must remain denied: '+route);
 });
-test('dedicated Twilio V3 remains opt-in, signed, one-use and owner-attested',()=>{
+test('dedicated Twilio V3 preserves emergency stop, signed one-use permit and owner attestation',()=>{
  const route=src('routes/sbc-call-command-live-v3.cjs'),adapter=src('enterprise/sbc-call-command-live-v3.cjs');
- assert.match(adapter,/SBC_CALL_COMMAND_V3_ENABLED==='1'/);
+ assert.match(adapter,/flag==='0'\?'PAUSED_BY_OWNER'/);
  assert.match(route,/!cfg.enabled\|\|!cfg.configured/);
  assert.match(route,/!signed\(req,cfg\)/);
  assert.match(route,/CALL_PERMISSION_CHANGED/);

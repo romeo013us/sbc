@@ -88,6 +88,7 @@ function selectedContext(req,res,getContext,write=false){
  return {ctx,tenant};
 }
 function configPublic(cfg){return {enabled:cfg.enabled,configured:cfg.configured,
+  activationState:cfg.activationState,missingSettings:cfg.missingSettings,
   webhookUrl:cfg.origin?cfg.origin+WEB+'/twiml':'',ownerSetupRequired:!cfg.configured}};
 function parseAttempt(row){
  try{const m=JSON.parse(row.meta_json);return m&&typeof m==='object'?m:null}catch{return null}
@@ -193,7 +194,7 @@ function register(app,{auth,getContext}){
   const requestId=String(req.body?.requestId||'');
   if(!/^[a-f0-9]{32}$/.test(requestId))return fail(res,400,'REQUEST_ID_REQUIRED');
   const cfg=V3.settings();
-  if(!cfg.enabled||!cfg.configured)return fail(res,423,'CALL_COMMAND_NOT_CONFIGURED');
+  if(!cfg.enabled||!cfg.configured)return fail(res,423,cfg.activationState==='PAUSED_BY_OWNER'?'CALL_COMMAND_PAUSED_BY_OWNER':cfg.activationState==='INVALID_SETTING'?'CALL_COMMAND_INVALID_SETTING':'CALL_COMMAND_NOT_CONFIGURED');
   try{
    const id=safeId(req.params.id),identity=V3.identityFor(x.tenant,req.user.id);
    const result=await transaction(x.ctx.mysqlPool,async conn=>{
