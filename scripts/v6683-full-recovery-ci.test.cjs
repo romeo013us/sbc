@@ -66,6 +66,10 @@ async function main(){
     const backup=processNode('mysql-backup.js',[out],sourceEnv);
     assert.equal(backup.status,0,backup.stderr);
     assert.ok(fs.statSync(out).size>500,'SBC logical backup missing');
+    assert.equal(fs.statSync(out).mode&0o777,0o600,'Backup must remain private');
+    const originalDigest=crypto.createHash('sha256').update(fs.readFileSync(out)).digest('hex');
+    assertDenied(processNode('mysql-backup.js',[out],sourceEnv),/EEXIST/);
+    assert.equal(crypto.createHash('sha256').update(fs.readFileSync(out)).digest('hex'),originalDigest,'Existing backup overwritten');
     const restoredEnv={
       CI:'true',SBC_RESTORE_CONFIRM:'YES',SBC_RESTORE_DISPOSABLE:'YES',
       SBC_RESTORE_DB_HOST:'127.0.0.1',SBC_RESTORE_DB_PORT:'3306',
