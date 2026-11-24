@@ -121,7 +121,93 @@ function recommendedActions(site, search) {
   return actions;
 }
 
-function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, clock = Date.now }) {
+
+const BFS_SOURCE='https://www.census.gov/econ/bfs/csv/bfs_monthly.csv';
+const BFS_STATES='AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');
+const BFS_MONTHS='jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
+const BFS_LIMITATION='Business applications are a geographic research signal, not evidence of actual business formation, website purchase intent, preferred language, consent, or qualified sales leads.';
+const BFS_MAX_BYTES=8*1024*1024;
+function parseBfs(text,time){
+ const lines=text.replace(/^\uFEFF/,'').trim().split(/\r?\n/);
+ const cells=line=>line.split(',').map(v=>v.trim().replace(/^"([^"]*)"$/,'$1'));
+ const head=cells(lines.shift()||'').map(v=>v.toLowerCase());
+ const required=['sa','naics_sector','series','geo','year',...BFS_MONTHS];
+ if(required.some(k=>head.indexOf(k)<0||head.indexOf(k)!==head.lastIndexOf(k)))throw Error('BFS_SCHEMA');
+ const idx=Object.fromEntries(required.map(k=>[k,head.indexOf(k)]));
+ const states=new Set(BFS_STATES),values=new Map();
+ const d=new Date(time),last=d.getUTCFullYear()*12+d.getUTCMonth()-1;
+ if(!Number.isFinite(last))throw Error('BFS_CLOCK');
+ for(const line of lines){
+  if(!line.trim())continue;
+  const row=cells(line);
+  if(row[idx.sa]!=='U'||row[idx.naics_sector]!=='TOTAL'||row[idx.series]!=='BA_BA'||!states.has(row[idx.geo]))continue;
+  if(row.length!==head.length||!/^\d{4}$/.test(row[idx.year]))throw Error('BFS_ROW');
+  const year=Number(row[idx.year]),state=row[idx.geo],key=state+':'+year;
+  if(values.has(key))throw Error('BFS_DUPLICATE');
+  values.set(key,BFS_MONTHS.map(m=>{
+   const raw=row[idx[m]];
+   if(!/^\d+$/.test(raw||''))return null;
+   const n=Number(raw);return Number.isSafeInteger(n)&&n>=0?n:null;
+  }));
+ }
+ const get=(state,period)=>values.get(state+':'+Math.floor(period/12))?.[period%12]??null;
+ const triple=(state,p)=>[get(state,p),get(state,p-1),get(state,p-2)];
+ const sum=ns=>ns.reduce((a,b)=>a+b,0);
+ let period=null;
+ for(let p=last;p>=last-2;p--){
+  if(BFS_STATES.every(s=>[...triple(s,p),...triple(s,p-12)].every(n=>n!==null))){period=p;break;}
+ }
+ if(period===null)throw Error('BFS_INCOMPLETE_OR_STALE');
+ const month=p=>String(Math.floor(p/12))+'-'+String(p%12+1).padStart(2,'0');
+ const rows=BFS_STATES.map(state=>{
+  const applications=sum(triple(state,period)),priorApplications=sum(triple(state,period-12));
+  if(!Number.isSafeInteger(applications)||!Number.isSafeInteger(priorApplications))throw Error('BFS_RANGE');
+  return {state,applications,priorApplications,yearOverYearPct:priorApplications===0?null:Math.round((applications-priorApplications)/priorApplications*1000)/10};
+ }).sort((a,b)=>b.applications-a.applications||a.state.localeCompare(b.state));
+ return {status:'available',coverage:rows.length,periodStart:month(period-2),periodEnd:month(period),comparisonStart:month(period-14),comparisonEnd:month(period-12),series:'BA_BA',seasonallyAdjusted:false,source:BFS_SOURCE,limitation:BFS_LIMITATION,rows};
+}
+async function readBfsResponse(response){
+ if(!response?.ok||!response.body?.getReader)throw Error('BFS_HTTP');
+ const reader=response.body.getReader(),decoder=new TextDecoder(),chunks=[];
+ let bytes=0;
+ try{
+  for(;;){
+   const {done,value}=await reader.read();
+   if(done)break;
+   bytes+=value.byteLength;
+   if(bytes>BFS_MAX_BYTES)throw Error('BFS_SIZE');
+   chunks.push(decoder.decode(value,{stream:true}));
+  }
+  chunks.push(decoder.decode());return chunks.join('');
+ }catch(e){await reader.cancel().catch(()=>{});throw e;}
+ finally{reader.releaseLock();}
+}
+function createNationalReader(fetcher,clock){
+ let cache=null,inflight=null;
+ return async()=>{
+  const now=clock();
+  if(cache&&now>=cache.at&&now-cache.at<6*60*60*1000)return cache.data;
+  if(inflight)return inflight;
+  inflight=(async()=>{
+   try{
+    const response=await fetcher(BFS_SOURCE,{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),headers:{Accept:'text/csv'}});
+    const data={...parseBfs(await readBfsResponse(response),now),fetchedAt:new Date(now).toISOString()};
+    cache={at:now,data};return data;
+   }catch{return {status:'unavailable',source:BFS_SOURCE,limitation:BFS_LIMITATION,rows:[],coverage:0};}
+  })();
+  try{return await inflight;}finally{inflight=null;}
+ };
+}
+
+function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, clock = Date.now }) {
+  const readNational=createNationalReader(nationalFetcher,clock);
+  app.get('/api/owner/market-intelligence/national',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try{const tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
+    catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'NATIONAL_QUERY_INVALID'});
+    const data=await readNational();return res.json({ok:true,...data});
+  });
   const readSearch = Search.createReader(fetcher);
   // Additive, owner-only, read-only public Lighthouse research endpoint.
   ProspectIntelligence.register(app,{auth,ownerOnly,requireTenant,fetcher,clock});
