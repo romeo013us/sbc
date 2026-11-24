@@ -6222,10 +6222,21 @@ app.post('/api/sales/spanish-callbacks/:id/resolve',auth,async(req,res)=>{
   res.status(503).json({ok:false,error:'SPANISH_CALLBACK_REVIEW_NOT_DURABLE'})}
 });
 
-app.get('/api/sales/call-history',auth,(req,res)=>{
+app.get('/api/sales/call-history',auth,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
  const role=String(req.user?.role||'');if(!['owner','manager','caller'].includes(role))return res.status(403).json({ok:false,error:'SALES_ROLE_REQUIRED'});
  try{
   const tenant=requireRequestTenant(req);
+  if(req.query.source==='archive'){
+   try{
+    const result=await require('./enterprise/sbc-call-archive-v1.cjs').readHistory(mysqlPool,{tenantId:tenant,actorId:req.user.id,role},{number:req.query.number,from:req.query.from,to:req.query.to,outcome:req.query.outcome,status:req.query.status,customerId:req.query.customerId,callerId:req.query.callerId,business:req.query.business,limit:req.query.limit,offset:req.query.offset});
+    return res.json(result);
+   }catch(e){
+    const code=String(e?.code||'');
+    if(['CALL_ARCHIVE_DATE_INVALID','CALL_ARCHIVE_NUMBER_INVALID','CALL_ARCHIVE_PAGE_INVALID','CALL_ARCHIVE_FIELD_INVALID'].includes(code))return res.status(400).json({ok:false,error:'CALL_HISTORY_QUERY_INVALID'});
+    return res.status(503).json({ok:false,error:code==='CALL_ARCHIVE_READ_DISABLED'?code:'CALL_ARCHIVE_READ_UNAVAILABLE'});
+   }
+  }
   const result=SBC_VOICE_LEDGER.list(db.callLogs||[],db.customers||[],{tenantId:tenant,actorId:req.user.id,
    isOwner:['owner','manager'].includes(role),number:req.query.number,from:req.query.from,to:req.query.to,
    outcome:req.query.outcome,status:req.query.status,customerId:req.query.customerId,limit:req.query.limit,offset:req.query.offset});
