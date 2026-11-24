@@ -272,3 +272,27 @@ test('research brief allocates exactly the approved 16 or 20 daily candidates ac
  assert.equal(build(data,['TX'],'beauty',20).markets[0].target,20);
  for(const args of [[data,['XX'],'auto',16],[data,['TX','TX'],'auto',16],[data,['TX'],'unknown',16],[data,['TX'],'auto',100],[{status:'unavailable'},['TX'],'auto',16],[data,[],'auto',16]])assert.throws(()=>build(...args));
 });
+
+test('geographic revenue uses scoped recorded location evidence and deduplicated capture metadata, never status alone',async()=>{
+ const brief=(state,verified=true)=>JSON.stringify({researchBrief:{streetState:state,streetAddressVerification:verified?'verified':'not_checked',streetAddressEvidenceUrl:'https://example.invalid/evidence'}});
+ const leads=[{id:'c1',tenant_id:1,business_name:'Fixture A',address:'1 Example Road, Austin TX',lead_intelligence_json:brief('TX'),created_at:'2026-11-01T00:00:00Z'},{id:'c2',tenant_id:1,business_name:'Fixture B',address:'2 Example Road',lead_intelligence_json:brief('FL',false),created_at:'2026-11-01T00:00:00Z'},{id:'c3',tenant_id:1,business_name:'SBC SYSTEM TEST',address:'3 Example Road',lead_intelligence_json:brief('TX'),created_at:'2026-11-01T00:00:00Z'}];
+ const order=(id,c,payment,extra={})=>({id,tenant_id:1,customer_id:c,customer_name:'Fixture',status:'New',price:'199.00',created_at:'2026-11-01T00:00:00Z',notes:JSON.stringify(payment?{squareOrderId:'order-'+id,squarePaymentId:payment,squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-11-02T00:00:00Z'}:{paymentStatus:'Paid'}),...extra});
+ const orders=[order('a','c1','p1'),order('b','c2','p2'),order('c','c1',null),order('d','c1','duplicate'),order('e','c2','duplicate'),order('f','c1','refund',{status:'Refunded'}),order('g','c3','qa'),order('h','missing','unlinked')];
+ const query=async({sql,timeout},params)=>{assert.match(sql,/^\s*SELECT\b/);assert.match(sql,/WHERE tenant_id\s*=\s*\?/);assert.equal(timeout,4000);assert.deepEqual(params,[1,5001]);return [sql.includes('FROM sbc_customers')?leads:orders]};
+ await withReport({getPool:()=>({query})},async request=>{
+  assert.equal((await request('/geography',{})).status,401);
+  assert.equal((await request('/geography',{'x-test-role':'lead_researcher'})).status,403);
+  assert.equal((await request('/geography?days=7')).status,400);
+  const r=await request('/geography?days=30'),d=await r.json();
+  assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(d.status,'available');
+  assert.deepEqual(d.rows.find(x=>x.state==='TX'),{state:'TX',newCrmRecords:1,paidOrders:1,capturedCents:19900});
+  assert.deepEqual(d.rows.find(x=>x.state==='unknown'),{state:'unknown',newCrmRecords:1,paidOrders:2,capturedCents:39800});
+  assert.equal(d.conflictingPaymentIds,1);assert.equal(d.totals.capturedCents,59700);assert.match(d.methodology,/not independent/i);
+  assert.doesNotMatch(JSON.stringify(d),/Fixture A|Example Road|p1|example.invalid/);
+ });
+});
+test('geographic revenue refuses incomplete volumes, cross-tenant rows and provider read failures',async()=>{
+ for(const [query,status] of [[async()=>[Array(5001).fill({tenant_id:1})],'volume_limit'],[async()=>[[{tenant_id:2}]],'unavailable'],[async()=>{throw Error('private SQL')},'unavailable']]){
+  await withReport({getPool:()=>({query})},async request=>{const d=await (await request('/geography')).json();assert.equal(d.status,status);assert.equal(d.rows.length,0);assert.doesNotMatch(JSON.stringify(d),/private SQL/);});
+ }
+});
