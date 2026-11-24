@@ -27,9 +27,9 @@ async function stagePaidCheckoutPlan(connection,input){
   const hash=fingerprint(plan);
   // Called only inside existing checkout worker transaction with checkout ledger FOR UPDATE.
   const [existing]=await connection.query(
-    'SELECT plan_hash FROM sbc_fulfillment_plan_steps WHERE tenant_id=? AND checkout_ledger_id=? FOR UPDATE',
+    'SELECT plan_hash,order_id,sku FROM sbc_fulfillment_plan_steps WHERE tenant_id=? AND checkout_ledger_id=? FOR UPDATE',
     [plan.tenantId,Number(input.checkoutLedgerId)]);
-  if(existing.some(x=>x.plan_hash!==hash))fail('FULFILLMENT_PLAN_DRIFT_RECONCILIATION_REQUIRED');
+  if(existing.some(x=>x.plan_hash!==hash||String(x.order_id)!==plan.orderId||String(x.sku)!==plan.sku))fail('FULFILLMENT_PLAN_DRIFT_RECONCILIATION_REQUIRED');
   for(const step of plan.steps){
     await connection.query('INSERT INTO sbc_fulfillment_plan_steps (tenant_id,checkout_ledger_id,order_id,sku,step_key,plan_hash,service_code,line_number,quantity,lane,description,depends_on_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW()) ON DUPLICATE KEY UPDATE step_key=step_key',
       [plan.tenantId,Number(input.checkoutLedgerId),plan.orderId,plan.sku,step.id,hash,step.serviceCode,step.line,step.quantity,step.lane,step.description,JSON.stringify(step.dependsOn),statusFor(step)]);
@@ -44,7 +44,7 @@ function dependencies(value){
 }
 function actionable(rows){
   const statuses=new Map(rows.map(x=>[String(x.step_key),x.status]));
-  return rows.filter(x=>x.status!==DONE && dependencies(x.depends_on_json).every(key=>statuses.get(key)===DONE) && statuses.has(String(x.step_key)));
+  return rows.filter(x=>Object.hasOwn(LANES,x.lane)&&x.status===LANES[x.lane]&&dependencies(x.depends_on_json).every(key=>statuses.get(key)===DONE));
 }
 // Must be invoked inside a transaction by a server-side authenticated operation.
 // It updates only SBC-owned work records, never external suppliers.
@@ -59,18 +59,22 @@ async function completeStep(connection,{tenantId,checkoutLedgerId,stepKey,eviden
   const step=rows.find(x=>x.step_key===stepKey);
   if(!step)fail('FULFILLMENT_STEP_NOT_FOUND');
   if(step.status===DONE)return {status:'ALREADY_COMPLETED',unblocked:[]};
+  if(!Object.hasOwn(LANES,step.lane))fail('FULFILLMENT_STEP_LANE_INVALID');
   const allowed=LANES[step.lane];
   if(step.status!==allowed)fail('FULFILLMENT_STEP_NOT_READY');
   const map=new Map(rows.map(x=>[String(x.step_key),x.status]));
   if(!dependencies(step.depends_on_json).every(k=>map.get(k)===DONE))fail('FULFILLMENT_DEPENDENCY_INCOMPLETE');
-  await connection.query('UPDATE sbc_fulfillment_plan_steps SET status=?,evidence_json=?,completed_by=?,completed_at=NOW(),updated_at=NOW() WHERE tenant_id=? AND checkout_ledger_id=? AND step_key=? AND status=?', [DONE,JSON.stringify(evidence),actorId,t,ledger,stepKey,allowed]);
+  const [completed]=await connection.query('UPDATE sbc_fulfillment_plan_steps SET status=?,evidence_json=?,completed_by=?,completed_at=NOW(),updated_at=NOW() WHERE tenant_id=? AND checkout_ledger_id=? AND step_key=? AND status=?', [DONE,JSON.stringify(evidence),actorId,t,ledger,stepKey,allowed]);
+  if(completed?.affectedRows!==1)fail('FULFILLMENT_COMPLETION_WRITE_CONFLICT');
   map.set(stepKey,DONE);
   const ready=[];
   for(const item of rows){
     if(item.status!=='WAITING_DEPENDENCIES')continue;
     if(dependencies(item.depends_on_json).every(k=>map.get(k)===DONE)){
+      if(!Object.hasOwn(LANES,item.lane))fail('FULFILLMENT_STEP_LANE_INVALID');
       const target=LANES[item.lane];
-      await connection.query('UPDATE sbc_fulfillment_plan_steps SET status=?,updated_at=NOW() WHERE tenant_id=? AND checkout_ledger_id=? AND step_key=? AND status=?',[target,t,ledger,item.step_key,'WAITING_DEPENDENCIES']);
+      const [updated]=await connection.query('UPDATE sbc_fulfillment_plan_steps SET status=?,updated_at=NOW() WHERE tenant_id=? AND checkout_ledger_id=? AND step_key=? AND status=?',[target,t,ledger,item.step_key,'WAITING_DEPENDENCIES']);
+      if(updated?.affectedRows!==1)fail('FULFILLMENT_DEPENDENCY_WRITE_CONFLICT');
       ready.push({stepKey:item.step_key,status:target});
     }
   }

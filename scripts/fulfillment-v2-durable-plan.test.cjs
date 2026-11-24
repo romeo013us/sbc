@@ -7,7 +7,7 @@ class FakeConnection {
  constructor(){this.rows=[];this.writes=0;}
  async query(sql,args){
    const q=sql.replace(/\s+/g,' ').trim();
-   if(q.startsWith('SELECT plan_hash'))return [this.rows.filter(x=>x.tenant_id===args[0]&&x.checkout_ledger_id===args[1]).map(x=>({plan_hash:x.plan_hash}))];
+   if(q.startsWith('SELECT plan_hash'))return [this.rows.filter(x=>x.tenant_id===args[0]&&x.checkout_ledger_id===args[1]).map(x=>({plan_hash:x.plan_hash,order_id:x.order_id,sku:x.sku}))];
    if(q.startsWith('INSERT INTO sbc_fulfillment_plan_steps')){
      const [tenant_id,checkout_ledger_id,order_id,sku,step_key,plan_hash,service_code,line_number,quantity,lane,description,depends_on_json,status]=args;
      if(!this.rows.some(x=>x.tenant_id===tenant_id&&x.checkout_ledger_id===checkout_ledger_id&&x.step_key===step_key))this.rows.push({tenant_id,checkout_ledger_id,order_id,sku,step_key,plan_hash,service_code,line_number,quantity,lane,description,depends_on_json,status});
@@ -67,4 +67,34 @@ test('evidence and tenant context required for completion',async()=>{
 });
 test('nothing in blueprint is an OpenAI API call',()=>{
  assert.equal(buildPlan(input()).executionAllowed,false);
+});
+
+test('a ledger replay with a different order identity cannot append or accept a prior plan',async()=>{
+ const db=new FakeConnection();await stagePaidCheckoutPlan(db,input());const count=db.rows.length,writes=db.writes;
+ await assert.rejects(stagePaidCheckoutPlan(db,{...input(),orderId:'ord_other123'}),{code:'FULFILLMENT_PLAN_DRIFT_RECONCILIATION_REQUIRED'});
+ assert.equal(db.rows.length,count);assert.equal(db.writes,writes);
+});
+test('completion does not announce success or unlock dependencies when the guarded write affects zero rows',async()=>{
+ const db=new FakeConnection();await stagePaidCheckoutPlan(db,input());const query=db.query.bind(db);
+ db.query=async(sql,args)=>sql.startsWith('UPDATE sbc_fulfillment_plan_steps')&&sql.includes('evidence_json=?')?[{affectedRows:0}]:query(sql,args);
+ await assert.rejects(completeStep(db,{tenantId:1,checkoutLedgerId:25,stepKey:'shared_customer_intake',actorId:'employee_123',evidence:{reference:'crm:customer-123'}}),{code:'FULFILLMENT_COMPLETION_WRITE_CONFLICT'});
+ assert.equal(db.rows.find(x=>x.step_key==='shared_customer_intake').status,'WAITING_CUSTOMER');
+ assert(db.rows.filter(x=>x.line>0).every(x=>x.status==='WAITING_DEPENDENCIES'));
+});
+test('dependency update failure requires transaction rollback instead of reporting an unblocked step',async()=>{
+ const db=new FakeConnection();await stagePaidCheckoutPlan(db,input());const query=db.query.bind(db);
+ db.query=async(sql,args)=>sql.startsWith('UPDATE sbc_fulfillment_plan_steps')&&!sql.includes('evidence_json=?')?[{affectedRows:0}]:query(sql,args);
+ await assert.rejects(completeStep(db,{tenantId:1,checkoutLedgerId:25,stepKey:'shared_customer_intake',actorId:'employee_123',evidence:{reference:'crm:customer-123'}}),{code:'FULFILLMENT_DEPENDENCY_WRITE_CONFLICT'});
+});
+test('a ready-looking step cannot bypass a known lane or a missing prerequisite',()=>{
+ const {actionable}=require('../enterprise/fulfillment-v2-durable-plan.cjs');
+ const rows=[
+  {step_key:'done',status:'COMPLETED',lane:'customer',depends_on_json:'[]'},
+  {step_key:'ready',status:'READY_SPECIALIST',lane:'specialist',depends_on_json:'["done"]'},
+  {step_key:'cancelled',status:'CANCELLED',lane:'specialist',depends_on_json:'["done"]'},
+  {step_key:'held',status:'WAITING_DEPENDENCIES',lane:'specialist',depends_on_json:'["done"]'},
+  {step_key:'wrong-lane',status:'READY_AUTOMATION',lane:'owner',depends_on_json:'[]'},
+  {step_key:'missing',status:'READY_SPECIALIST',lane:'specialist',depends_on_json:'["not-there"]'}
+ ];
+ assert.deepEqual(actionable(rows).map(x=>x.step_key),['ready']);
 });
