@@ -2,6 +2,11 @@ name: SBC Fantastic 4 Published Smoke (read-only)
 on:
   push:
     branches: [a-sbc-master]
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'scripts/v66131-*'
+      - '.github/workflows/sbc-v66131-live-published-smoke.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,6 +19,11 @@ jobs:
     steps:
       - name: Checkout immutable workflow source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Test operational readiness evidence policy
+        run: node --test scripts/v66131-operational-readiness.test.cjs
       - name: Check no-mutation smoke contract
         run: |
           python3 scripts/v66131-published-f4-smoke.py --self-test
@@ -29,11 +39,20 @@ jobs:
           PY
       - name: Check GoDaddy Published public health and current UI
         run: python3 scripts/v66131-published-f4-smoke.py
+      - name: Distinguish public availability from operational readiness
+        if: always()
+        env:
+          SBC_EXPECT_CC: ${{ vars.SBC_EXPECT_CC }}
+          SBC_EXPECT_OFFICE: ${{ vars.SBC_EXPECT_OFFICE }}
+          SBC_EXPECT_SITE: ${{ vars.SBC_EXPECT_SITE }}
+        run: node scripts/v66131-operational-readiness.cjs f4-published-smoke-results.json
       - name: Preserve exact safe results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbc-f4-published-public-smoke
-          path: f4-published-smoke-results.json
+          path: |
+            f4-published-smoke-results.json
+            f4-operational-readiness.json
           if-no-files-found: warn
           retention-days: 30
