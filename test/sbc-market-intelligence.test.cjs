@@ -244,3 +244,15 @@ test('national research fails explicitly on incomplete or duplicate source data 
   const d=await (await request('/national')).json();assert.equal(d.status,'unavailable');assert.equal(d.rows.length,0);assert.doesNotMatch(JSON.stringify(d),/private error/);
  });
 });
+
+test('national market panel renders comparable figures and discloses missing evidence',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const context={window:{},Intl,URL};vm.createContext(context);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, nationalPanel };'),context);
+ const render=context.window.SBCMarketIntelligence.nationalPanel;
+ const html=render({status:'available',periodStart:'2026-08',periodEnd:'2026-10',comparisonStart:'2025-08',comparisonEnd:'2025-10',coverage:51,rows:[{state:'TX',applications:15000,priorApplications:10000,yearOverYearPct:50},{state:'FL',applications:5000,priorApplications:0,yearOverYearPct:null}],limitation:'Not proof of website purchase intent.'});
+ assert.match(html,/National Market Intelligence/);assert.match(html,/2026-08/);assert.match(html,/15,000/);assert.match(html,/50%/);assert.match(html,/Not proof of website purchase intent/);
+ assert.match(render({status:'unavailable',rows:[]}),/unavailable/i);
+ assert.doesNotMatch(render({status:'unavailable',rows:[]}),/0 applications/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
