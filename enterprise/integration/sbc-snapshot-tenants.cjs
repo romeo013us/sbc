@@ -163,4 +163,70 @@ async function persist(conn, { scope }, { sqlDate, sqlDateTime, now }) {
   }), { immutable: ['created_at', 'username'] });
 }
 
-module.exports = { prepare, persist, pendingVisibleTombstones };
+
+// Preserve actual call-routing decisions in the existing authoritative snapshot.
+// Never infer language, disposition, ownership, or permission from a missing field.
+const ROUTE_TEXT=['salesQueueState','salesDisposition','salesLastRoutedCallLogId','salesLastRoutedOutcome','salesLastAttemptAt','salesNextAttemptAt','salesCallbackAssignedTo','salesCallbackRequestedAt','salesCallbackPreviousAssignedTo','salesSpanishCallbackNote','salesSpanishCallbackReviewedAt','salesSpanishCallbackReviewedBy','preferredContactLanguage'];
+const ROUTE_BOOL=['doNotContact','doNotCall','salesSuppressed','isSuppressed'];
+function callIdentity(row){
+ const v=row?.tenantId??row?.tenant_id;
+ if(!['string','number'].includes(typeof v)||!/^[1-9]\d*$/.test(String(v))||!Number.isSafeInteger(Number(v)))return null;
+ if(row.tenantId!=null&&row.tenant_id!=null&&String(row.tenantId)!==String(row.tenant_id))return null;
+ const id=typeof row.id==='string'||Number.isSafeInteger(row.id)?String(row.id):'';
+ if(!id.trim()||id.length>120)return null;
+ return {tenantId:Number(v),id};
+}
+function routeKey(identity){return JSON.stringify([identity.tenantId,identity.id]);}
+function routeFields(row){
+ const fields={};
+ for(const key of ROUTE_TEXT)if(Object.hasOwn(row,key)&&typeof row[key]==='string')fields[key]=row[key];
+ for(const key of ROUTE_BOOL)if(Object.hasOwn(row,key)&&typeof row[key]==='boolean')fields[key]=row[key];
+ return fields;
+}
+function captureCallRouting(db){
+ const customers=[],users=[],seenCustomers=new Set(),seenUsers=new Set();
+ for(const row of db.customers||[]){
+  if(!row)continue;
+  const identity=callIdentity(row),fields=routeFields(row);
+  if(!identity||!Object.keys(fields).length)continue;
+  const key=routeKey(identity);
+  if(seenCustomers.has(key))fail('CALL_ROUTING_SNAPSHOT_DUPLICATE');
+  seenCustomers.add(key);customers.push({...identity,fields});
+ }
+ for(const row of db.users||[]){
+  if(!row||!['account_manager','manager'].includes(row.role)||typeof row.spanishCallingApprovedByOwner!=='boolean')continue;
+  const identity=callIdentity(row);if(!identity)continue;
+  const key=routeKey(identity);
+  if(seenUsers.has(key))fail('CALL_ROUTING_STAFF_DUPLICATE');
+  seenUsers.add(key);users.push({...identity,role:row.role,active:row.active!==false,approved:row.spanishCallingApprovedByOwner});
+ }
+ return {version:1,customers,users};
+}
+function restoreCallRouting(db,snapshot,legacyUsers=[]){
+ const present=snapshot!==undefined&&snapshot!==null;
+ if(present&&(snapshot.version!==1||!Array.isArray(snapshot.customers)||!Array.isArray(snapshot.users)))fail('CALL_ROUTING_SNAPSHOT_INVALID');
+ const customers=new Map(),users=new Map();
+ function add(map,row,value){const identity=callIdentity(row);if(!identity)return;const key=routeKey(identity);if(map.has(key))fail('CALL_ROUTING_SNAPSHOT_DUPLICATE');map.set(key,value);}
+ for(const row of present?snapshot.customers:[]){
+  if(!row||!row.fields||typeof row.fields!=='object'||Array.isArray(row.fields))fail('CALL_ROUTING_SNAPSHOT_INVALID');
+  add(customers,row,routeFields(row.fields));
+ }
+ for(const row of present?snapshot.users:(Array.isArray(legacyUsers)?legacyUsers:[])){
+  if(!row||!['account_manager','manager'].includes(row.role))continue;
+  const approval=present?row.approved:row.spanishCallingApprovedByOwner;
+  if(typeof approval!=='boolean')continue;
+  add(users,row,{role:row.role,active:row.active!==false,approved:approval});
+ }
+ for(const row of db.customers||[]){
+  const identity=callIdentity(row),fields=identity&&customers.get(routeKey(identity));
+  if(fields)Object.assign(row,fields);
+ }
+ for(const row of db.users||[]){
+  const identity=callIdentity(row),approval=identity&&users.get(routeKey(identity));
+  if(!['account_manager','manager'].includes(row.role))continue;
+  row.spanishCallingApprovedByOwner=Boolean(approval&&approval.role===row.role&&approval.active&&row.active!==false&&approval.approved);
+ }
+ return db;
+}
+
+module.exports = { prepare, persist, pendingVisibleTombstones, captureCallRouting, restoreCallRouting };

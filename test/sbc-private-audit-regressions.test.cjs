@@ -19,15 +19,21 @@ test('HTTP journey includes researched and appointment-only CRM accounts while p
  }finally{await f.close()}
 });
 
-test('actual MySQL hydration retains the relational business address without writes',async()=>{
+test('actual MySQL hydration retains relational address, routing and staff approval without writes',async()=>{
  const start=source.indexOf('async function readRelational(){'),end=source.indexOf('async function writeRelational(',start);
  assert(start>0&&end>start);const statements=[];
- const context={seed:{settings:{}},PERSISTENCE_EPOCH_KEY:'epoch',db:{},persistenceEpoch:0,normalize:x=>x,
+ const SNAPSHOT_TENANTS=require('../enterprise/integration/sbc-snapshot-tenants.cjs');
+ const routingState=SNAPSHOT_TENANTS.captureCallRouting({customers:[{id:'lead1',tenantId:1,salesQueueState:'spanish_callback',preferredContactLanguage:'es'}],users:[{id:'rep1',tenantId:1,role:'account_manager',active:true,spanishCallingApprovedByOwner:true}]});
+ const context={SNAPSHOT_TENANTS,seed:{settings:{}},PERSISTENCE_EPOCH_KEY:'epoch',db:{},persistenceEpoch:0,normalize:x=>x,
   safeJsonParse:(s,f)=>{try{return JSON.parse(s)}catch{return f}},fromSqlDate:v=>v||'',fromSqlDateTime:v=>v||'',console,
-  mysqlPool:{query:async sql=>{statements.push(sql);return [/FROM sbc_customers/.test(sql)?[{id:'lead1',tenant_id:1,business_name:'Synthetic Garage',address:'123 Example St, Miami, FL 33101',status:'Lead'}]:[]]}}};
+  mysqlPool:{query:async sql=>{statements.push(sql);return [/FROM sbc_customers/.test(sql)?[{id:'lead1',tenant_id:1,business_name:'Synthetic Garage',address:'123 Example St, Miami, FL 33101',status:'Lead'}]:/FROM sbc_workforce_users/.test(sql)?[{id:'rep1',tenant_id:1,role:'account_manager',active:1}]:/FROM sbc_workspace/.test(sql)?[{payload:JSON.stringify({callRoutingStateV1:routingState})}]:[]]}}};
  vm.runInNewContext(source.slice(start,end)+'\nthis.hydrate=readRelational;',context);
  await context.hydrate();assert.equal(context.db.customers[0].address,'123 Example St, Miami, FL 33101');
- assert.equal(context.db.customers[0].tenantId,1);assert(statements.every(s=>/^SELECT\b/.test(s)));
+ assert.equal(context.db.customers[0].tenantId,1);
+ assert.equal(context.db.customers[0].salesQueueState,'spanish_callback');
+ assert.equal(context.db.customers[0].preferredContactLanguage,'es');
+ assert.equal(context.db.users[0].spanishCallingApprovedByOwner,true);
+ assert(statements.every(s=>/^SELECT\b/.test(s)));
 });
 
 test('actual session and bootstrap responses expose read-only Preview to client write guards',async()=>{
