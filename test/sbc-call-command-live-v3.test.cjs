@@ -44,3 +44,24 @@ test('account call credentials never leak from preflight alone',()=>{
  const r=v3.evaluate({account,user:actor,tenantId:7,cert,providerReady:true,loggingReady:true,enabled:true,now:when});
  assert.equal(r.token,undefined);assert.equal(r.callSid,undefined);
 });
+
+test('configured human-click calling is operational by default; explicit stop still wins',()=>{
+ const cfg={SBC_PUBLIC_URL:'https://sbc.example',TWILIO_ACCOUNT_SID:'AC'+'1'.repeat(32),
+ TWILIO_API_KEY_SID:'SK'+'2'.repeat(32),TWILIO_API_KEY_SECRET:'offline-test-fixture',
+ SBC_CALL_COMMAND_TWIML_APP_SID:'AP'+'3'.repeat(32),TWILIO_PHONE_NUMBER:'+13055550199',
+ TWILIO_AUTH_TOKEN:'offline-webhook-fixture'};
+ const ready=v3.settings(cfg);
+ assert.equal(ready.configured,true);
+ assert.equal(ready.enabled,true,'configured calling should not silently remain off');
+ assert.equal(ready.activationState,'CONFIGURED');
+ assert.equal(v3.settings({...cfg,SBC_CALL_COMMAND_V3_ENABLED:'0'}).enabled,false);
+ assert.equal(v3.settings({...cfg,SBC_CALL_COMMAND_V3_ENABLED:'0'}).activationState,'PAUSED_BY_OWNER');
+ assert.equal(v3.settings({...cfg,SBC_CALL_COMMAND_V3_ENABLED:'1'}).enabled,true);
+ assert.equal(v3.settings({...cfg,SBC_CALL_COMMAND_V3_ENABLED:'typo'}).enabled,false);
+ assert.equal(v3.settings({...cfg,SBC_CALL_COMMAND_V3_ENABLED:'typo'}).activationState,'INVALID_SETTING');
+ const missing=v3.settings({...cfg,SBC_CALL_COMMAND_TWIML_APP_SID:''});
+ assert.equal(missing.enabled,false);
+ assert.equal(missing.activationState,'PROVIDER_SETUP_REQUIRED');
+ assert(missing.missingSettings.includes('SBC_CALL_COMMAND_TWIML_APP_SID'));
+ assert.equal(v3.settings({...cfg,TWILIO_TWIML_APP_SID:cfg.SBC_CALL_COMMAND_TWIML_APP_SID,SBC_CALL_COMMAND_TWIML_APP_SID:''}).enabled,false,'never fall back to legacy owner TwiML app');
+});
