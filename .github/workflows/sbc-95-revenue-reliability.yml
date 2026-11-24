@@ -138,7 +138,7 @@ jobs:
         with: { node-version: '22' }
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Deterministic packaging and mirrored-browser integrity
-        run: npm run verify:v66:release && node --test test/v66-release-selection.test.cjs
+        run: npm run verify:v66:source && node --test test/v66-release-selection.test.cjs
       - name: Synthetic extracted deployment artifact adversarial proof
         run: node --test test/v66-deployment-artifact-gate.test.cjs
       - name: Session security
@@ -260,8 +260,8 @@ jobs:
         run: node scripts/v66131-deprecated-diag-cleanup.test.cjs
       - name: HTTP static asset routing regression
         run: node scripts/v6624-static-assets.test.cjs
-      - name: Current V66 flat release and verified server identity
-        run: node scripts/v6603-flat-release-contract.test.cjs
+      - name: Current V66 source contract; strict compiled identity checked by staged ZIP CI
+        run: node scripts/v6603-flat-release-contract.test.cjs --source-only
       - name: CRM recovery and writer rejection behavior
         run: node scripts/runtime-integrity-test.js
       - name: Verify npm build command (prebuilt flat release; not a new ZIP build)
