@@ -117,7 +117,7 @@
     return '<details class="mi-connect"><summary>Create daily research brief</summary><p>Choose up to five states. Targets are research candidates, not guaranteed qualified leads. Review the draft before assigning it.</p>'+
       '<form data-mi-research-form><label>Markets (select 1–5)<select data-mi-research-states multiple required size="5">'+options+'</select></label>'+
       '<label>Industry<select data-mi-research-industry>'+industries+'</select></label><label>Daily research target<select data-mi-research-target><option value="16">16 · Standard</option><option value="20">20 · Stretch</option></select></label>'+
-      '<button type="submit" class="secondary">Generate reviewable brief</button></form><label>Draft for owner review<textarea data-mi-research-brief readonly rows="12" style="width:100%"></textarea></label><p data-mi-research-status role="status">No assignment has been made.</p></details>';
+      '<button type="submit" class="secondary">Generate reviewable brief</button></form><label>Draft for owner review<textarea data-mi-research-brief readonly rows="12" style="width:100%"></textarea></label><div data-mi-assignment hidden><label>Assign researcher<select data-mi-assignee required></select></label><label>Due date and time (your local time)<input data-mi-due type="datetime-local" required></label><label><input type="checkbox" data-mi-approve> I approve this research assignment.</label><button type="button" class="secondary" data-mi-assign disabled>Assign reviewed brief</button><p data-mi-assignment-status role="status"></p></div><p data-mi-research-status role="status">No assignment has been made.</p></details>';
   }
 
   function nationalPanel(data) {
@@ -207,16 +207,57 @@
         const data=await response.json();
         if(active()){
           panel.innerHTML=nationalPanel(data);
-          panel.querySelector('[data-mi-research-form]')?.addEventListener('submit',event=>{
-            event.preventDefault();
-            if(!active())return;
-            const out=panel.querySelector('[data-mi-research-brief]'),status=panel.querySelector('[data-mi-research-status]');
-            try{
-              const states=Array.from(panel.querySelector('[data-mi-research-states]').selectedOptions,o=>o.value);
-              const result=buildResearchBrief(data,states,panel.querySelector('[data-mi-research-industry]').value,Number(panel.querySelector('[data-mi-research-target]').value));
-              out.value=result.brief;status.textContent='Draft generated. Select and copy the brief for review; no assignment has been made.';
-            }catch(error){out.value='';status.textContent=error.message;}
-          });
+          const form=panel.querySelector('[data-mi-research-form]'),assignment=panel.querySelector('[data-mi-assignment]');
+          let draft=null,pending=null,locked=false;
+          if(form&&assignment){
+            const out=panel.querySelector('[data-mi-research-brief]'),status=panel.querySelector('[data-mi-research-status]'),staff=panel.querySelector('[data-mi-assignee]'),due=panel.querySelector('[data-mi-due]'),approve=panel.querySelector('[data-mi-approve]'),assign=panel.querySelector('[data-mi-assign]'),feedback=panel.querySelector('[data-mi-assignment-status]');
+            const sync=()=>{assign.disabled=locked||!draft||!approve.checked||!staff.value||!due.value||staff.disabled;};
+            const reset=()=>{if(locked||pending)return;draft=null;assignment.hidden=true;out.value='';approve.checked=false;sync();};
+            form.addEventListener('change',reset);
+            for(const el of [staff,due,approve])el.addEventListener('change',()=>{if(!pending)sync();});
+            form.addEventListener('submit',async event=>{
+              event.preventDefault();
+              if(!active()||locked||pending)return;
+              reset();
+              try{
+                const states=Array.from(panel.querySelector('[data-mi-research-states]').selectedOptions,o=>o.value);
+                const industry=panel.querySelector('[data-mi-research-industry]').value,target=Number(panel.querySelector('[data-mi-research-target]').value);
+                const result=buildResearchBrief(data,states,industry,target);
+                draft={states,industry,target,periodStart:data.periodStart,periodEnd:data.periodEnd};
+                out.value=result.brief;assignment.hidden=false;staff.disabled=true;staff.replaceChildren();feedback.textContent='Loading active researchers…';status.textContent='Review the brief before approving. No assignment has been made.';
+                const snapshot=draft;
+                const response=await fetch('/api/owner/national-research/assignees',{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(12000)});
+                const payload=await response.json();
+                if(!active()||draft!==snapshot)return;
+                if(!response.ok||payload.ok!==true||!Array.isArray(payload.assignees))throw Error('Researcher list unavailable.');
+                const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Select an active researcher';staff.append(placeholder);
+                for(const user of payload.assignees){const option=document.createElement('option');option.value=String(user.id);option.textContent=String(user.name);staff.append(option);}
+                staff.disabled=payload.readOnly===true||!payload.assignees.length;
+                feedback.textContent=payload.readOnly?'Published writer required to assign.':payload.assignees.length?'Choose a researcher and due date, then approve.':'No active researchers available.';
+                sync();
+              }catch(error){if(active()){status.textContent=error.message;staff.disabled=true;sync();}}
+            });
+            assign.addEventListener('click',async()=>{
+              if(!active()||locked||!draft||!approve.checked)return;
+              if(!pending){
+                const date=new Date(due.value);
+                if(!Number.isFinite(date.getTime())||date<=new Date()){feedback.textContent='Choose a future due date.';return;}
+                if(!globalThis.crypto?.randomUUID){feedback.textContent='Secure request identity unavailable.';return;}
+                pending={...draft,assignedTo:staff.value,dueAt:date.toISOString(),requestId:'nr_'+crypto.randomUUID().replace(/-/g,''),approved:true};
+              }
+              locked=true;assign.disabled=true;staff.disabled=true;due.disabled=true;approve.disabled=true;button.disabled=true;for(const control of form.elements)control.disabled=true;
+              feedback.textContent='Saving approved assignment…';
+              try{
+                const response=await fetch('/api/owner/national-research/assignments',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(pending),signal:AbortSignal.timeout(18000)});
+                const receipt=await response.json();
+                if(!response.ok||receipt.ok!==true||!receipt.task?.id)throw Error(receipt.error||'Assignment not confirmed.');
+                if(!active())return;
+                feedback.textContent='Assignment saved · reference '+receipt.task.id+'. The researcher can view it in Today’s Tasks.';
+                status.textContent='Owner-approved assignment saved.';assign.textContent='Assignment saved';pending=null;draft=null;button.disabled=false;
+              }catch(error){if(active()){feedback.textContent='Assignment not confirmed. Retry the same request before changing the plan. '+error.message;assign.textContent='Retry same assignment';assign.disabled=false;}}
+              finally{locked=false;}
+            });
+          }
         }
       }catch{if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
       finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
