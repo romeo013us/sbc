@@ -217,6 +217,11 @@ jobs:
           SBC_SNAPSHOT_TENANT_CI: 'YES'
           SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
         run: node --test test/sbc-snapshot-tenants.test.cjs test/sbc-marketing-receipt-mysql.test.cjs
+      - name: Call archive revision and 10,000-attempt isolated MySQL test
+        env:
+          SBC_CALL_ARCHIVE_MYSQL_CI: 'YES'
+          SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
+        run: node --test scripts/sbc-call-archive-v1.test.cjs scripts/sbc-call-archive-mysql.test.cjs
 
   recovery-snapshot-mysql:
     runs-on: ubuntu-latest
