@@ -208,3 +208,39 @@ test('release stage wires owner access and durable website receipts, and mirrors
   }
   assert.match(read('public/index.html'), /sbc-market-intelligence\.js[\s\S]*sbc-v6567-marketing-hub\.js/);
 });
+
+const bfsStates='AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');
+function bfsFixture({omit='',duplicate=false}={}){
+ const header='sa,naics_sector,series,geo,year,jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec';
+ const rows=bfsStates.filter(s=>s!==omit).flatMap((s,i)=>[2025,2026].map(y=>['U','TOTAL','BA_BA',s,y,...Array(7).fill(100),...Array(3).fill(y===2026?(i+1)*100:100),'NA','NA'].join(',')));
+ if(duplicate)rows.push(rows[0]);
+ return [header,...rows,'U,TOTAL,BA_BA,US,2026,999999,999999,999999,999999,999999,999999,999999,999999,999999,999999,NA,NA'].join('\n');
+}
+test('national research ranks all 50 states and DC on comparable Census application volumes, never personal language or sales probability',async()=>{
+ let calls=0;await withReport({nationalFetcher:async(url,opts)=>{
+  calls++;assert.equal(url,'https://www.census.gov/econ/bfs/csv/bfs_monthly.csv');
+  assert.equal(opts.redirect,'error');assert(opts.signal);return new Response(bfsFixture());
+ }},async request=>{
+  assert.equal((await request('/national',{})).status,401);
+  assert.equal((await request('/national',{'x-test-role':'lead_researcher'})).status,403);
+  assert.equal((await request('/national',{'x-test-role':'owner','x-test-tenant':'0'})).status,403);
+  assert.equal((await request('/national?url=https://evil.invalid')).status,400);assert.equal(calls,0);
+  const responses=await Promise.all([request('/national'),request('/national')]);
+  const result=await responses[0].json();assert.equal(responses[0].headers.get('cache-control'),'no-store');
+  assert.equal(result.status,'available');assert.equal(result.periodEnd,'2026-10');assert.equal(result.coverage,51);
+  assert.equal(result.rows[0].state,'WY');assert.equal(result.rows[0].applications,15300);assert.equal(result.rows[0].priorApplications,300);
+  assert.equal(result.rows[0].yearOverYearPct,5000);assert.equal(result.rows.length,51);
+  assert(!result.rows.some(r=>r.state==='US'));assert.equal(calls,1);
+  assert.match(result.limitation,/not.*website/i);
+ });
+});
+test('national research fails explicitly on incomplete or duplicate source data and provider errors',async()=>{
+ for(const input of [bfsFixture({omit:'WY'}),bfsFixture({duplicate:true}),'invalid source']){
+  await withReport({nationalFetcher:async()=>new Response(input)},async request=>{
+   const d=await (await request('/national')).json();assert.equal(d.status,'unavailable');assert.equal(d.rows.length,0);
+  });
+ }
+ await withReport({nationalFetcher:async()=>{throw Error('private error')}},async request=>{
+  const d=await (await request('/national')).json();assert.equal(d.status,'unavailable');assert.equal(d.rows.length,0);assert.doesNotMatch(JSON.stringify(d),/private error/);
+ });
+});
