@@ -160,3 +160,16 @@ test('team task writes fail closed in Preview and restore local task state after
  assert.equal((await f.call('put','/api/tasks/:id',{id:'own',body:{status:'Completed'}})).code,503);assert.equal(f.db.tasks.find(t=>t.id==='own').status,undefined);
  assert.equal((await f.call('delete','/api/tasks/:id',{id:'own'})).code,503);assert(f.db.tasks.some(t=>t.id==='own'));
 });
+
+test('researcher assignments read only their own scoped tasks and never expose unresolved or foreign ownership',async()=>{
+ const f=taskRouteFixture(),actor={id:'r1',role:'lead_researcher'};
+ f.db.tasks.push({id:'other-assignee',tenantId:1,assignedTo:'o1',title:'Private task'},{id:'foreign-collision',tenantId:2,assignedTo:'r1',title:'Foreign collision'},{id:'own-done',tenantId:1,assignedTo:'r1',title:'Finished research',status:'Completed'});
+ const res=await f.call('get','/api/workforce/assigned-tasks',{user:actor});
+ assert.equal(res.code,200);assert.equal(res.body.ok,true);
+ assert.deepEqual(Array.from(res.body.tasks,t=>t.id).sort(),['legacy','own']);
+ assert.equal(res.body.readOnly,false);assert.equal(f.writes,0);
+ assert.equal((await f.call('get','/api/workforce/assigned-tasks',{user:{id:'o1',role:'owner'}})).code,403);
+ assert.equal((await f.call('get','/api/workforce/assigned-tasks',{user:actor,tenantId:2})).code,403);
+ f.context.SBC_RUNTIME_READ_ONLY=true;
+ const preview=await f.call('get','/api/workforce/assigned-tasks',{user:actor});assert.equal(preview.body.readOnly,true);
+});
