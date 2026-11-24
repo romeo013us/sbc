@@ -5639,6 +5639,47 @@ app.get('/api/workforce/assigned-tasks',auth,(req,res)=>{
  rows.sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity)||String(a.id).localeCompare(String(b.id)));
  return res.json({ok:true,readOnly:!sbcTaskWriterReady(),total:rows.length,tasks:rows.slice(0,100).map(t=>({id:String(t.id),title:String(t.title||''),notes:String(t.notes||''),dueAt:String(t.dueAt||''),type:String(t.type||''),priority:String(t.priority||''),status:String(t.status||'Open')}))});
 });
+// National research approvals reuse the existing durable team-task store.
+const SBC_NATIONAL_ASSIGN_STATES=new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
+const SBC_NATIONAL_ASSIGN_INDUSTRIES=Object.freeze({auto:'Auto repair, collision repair, tire and wheel shops, and window tinting',beauty:'Barbershops, beauty salons and hair salons',food:'Independent restaurants and food service',retail:'Independent local retail stores',services:'Independent home and professional service businesses'});
+const sbcResearchRole=u=>['lead_researcher','lead_generator','researcher','prospector'].includes(String(u?.role||'').toLowerCase());
+app.get('/api/owner/national-research/assignees',auth,ownerOnly,(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ const tenant=sbcTaskRequestTenant(req);
+ if(!tenant||req.user.role!=='owner')return sbcTaskError(res,403,'Owner access required.');
+ const assignees=(db.users||[]).filter(u=>sbcTaskTenant(u)===tenant&&u.active!==false&&sbcResearchRole(u)&&sbcTaskUnique(db.users,u.id)===u).map(u=>({id:String(u.id),name:String(u.name||u.username||'Researcher')}));
+ return res.json({ok:true,readOnly:!sbcTaskWriterReady(),assignees});
+});
+app.post('/api/owner/national-research/assignments',auth,ownerOnly,async(req,res)=>sbcTaskSerialize(async()=>{
+ const tenant=sbcTaskRequestTenant(req);
+ if(!tenant||req.user.role!=='owner')return sbcTaskError(res,403,'Owner access required.');
+ if(!sbcTaskWriterReady())return sbcTaskError(res,423,'Published writer required.');
+ const b=req.body||{},staff=sbcTaskAssignee(b.assignedTo,tenant);
+ const month=v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+ const monthNum=v=>Number(v.slice(0,4))*12+Number(v.slice(5));
+ if(b.approved!==true||typeof b.requestId!=='string'||!/^nr_[a-f0-9]{32}$/.test(b.requestId)||!staff||!sbcResearchRole(staff)||!Array.isArray(b.states)||b.states.length<1||b.states.length>5||new Set(b.states).size!==b.states.length||!b.states.every(v=>SBC_NATIONAL_ASSIGN_STATES.has(v))||!Object.hasOwn(SBC_NATIONAL_ASSIGN_INDUSTRIES,b.industry)||![16,20].includes(b.target)||typeof b.dueAt!=='string'||b.dueAt.length>80||!Number.isFinite(Date.parse(b.dueAt))||Date.parse(b.dueAt)<=Date.parse(now())||!month(b.periodStart)||!month(b.periodEnd)||monthNum(b.periodEnd)-monthNum(b.periodStart)!==2)return sbcTaskError(res,400,'Valid research plan, active researcher, due date and explicit approval required.');
+ const plan={assignedTo:String(staff.id),states:b.states.slice(),industry:b.industry,target:b.target,dueAt:b.dueAt,periodStart:b.periodStart,periodEnd:b.periodEnd};
+ const existing=(db.tasks||[]).filter(t=>sbcTaskOwnership(t)===tenant&&t.researchRequestId===b.requestId);
+ if(existing.length){
+  if(existing.length!==1||JSON.stringify(existing[0].researchPlan)!==JSON.stringify(plan)||String(existing[0].assignedTo)!==plan.assignedTo)return sbcTaskError(res,409,'Research request conflicts with an existing assignment.');
+  return res.json({ok:true,replayed:true,task:existing[0]});
+ }
+ const base=Math.floor(plan.target/plan.states.length),extra=plan.target%plan.states.length,stamp=now();
+ const notes=[
+  'SBC — OWNER-APPROVED NATIONAL RESEARCH ASSIGNMENT',
+  plan.target+' research candidates · '+SBC_NATIONAL_ASSIGN_INDUSTRIES[plan.industry],
+  'Owner-selected Census research window: '+plan.periodStart+' to '+plan.periodEnd+'. Geographic research signal only; not verified buyers.',
+  ...plan.states.map((state,i)=>state+': '+(base+(i<extra?1:0))+' candidates'),
+  'Prioritize a documented website gap. Record business name, verified decision maker if available, primary business phone, email, street/city/state/ZIP, Google Business Profile URL and separate GBP address, industry, website status, research source and evidence URLs.',
+  'Flag address mismatches, residential and service-area records. Check CRM for duplicates and suppression before submitting. Never overwrite existing records.',
+  'Do not infer language from names, locations, ethnicity or photos. Record language only if directly confirmed; otherwise unknown.',
+  'Flag missing or contradictory evidence for owner review. Contact data is not consent or sales readiness. No calling or messaging is authorized by this assignment.'
+ ].join('\n');
+ const t={id:id('task'),tenantId:tenant,customerId:'',customerName:'',title:'National research · '+plan.states.join(', ')+' · '+plan.target+' candidates',dueAt:plan.dueAt,type:'Research',priority:'Normal',status:'Open',notes,assignedTo:staff.id,assignedToName:staff.name||staff.username||'Researcher',createdBy:req.user.id,createdAt:stamp,updatedAt:stamp,researchRequestId:b.requestId,researchPlan:plan};
+ db.tasks.unshift(t);let activity;
+ try{activity=addActivity('task','National research assigned: '+t.title,{taskId:t.id,assignedTo:t.assignedTo},tenant);await saveData();return res.status(201).json({ok:true,replayed:false,task:t});}
+ catch{db.tasks=db.tasks.filter(x=>x!==t);if(activity)db.activities=db.activities.filter(x=>x!==activity);return sbcTaskError(res,503,'Research assignment save could not be confirmed.');}
+}));
 app.post('/api/tasks',auth,async(req,res)=>sbcTaskSerialize(async()=>{
  if(!['owner','manager'].includes(req.user.role))return sbcTaskError(res,403,'Only owner or manager can create and assign team tasks.');
  const tenant=sbcTaskRequestTenant(req);if(!tenant)return sbcTaskError(res,403,'Tenant context required.');
