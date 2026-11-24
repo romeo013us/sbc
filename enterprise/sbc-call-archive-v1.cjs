@@ -125,4 +125,21 @@ async function captureRollingSnapshot(conn,nextPayload,env=process.env){
  return {enabled:true,previous:oldResult,current:newResult};
 }
 
-module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot};
+// Recover the authenticated actor's exact session, including after rolling eviction.
+// Even an owner cannot recover another actor's session through this write-replay
+// helper. Administrative history search uses list() with its own permissions.
+async function findSession(conn,scope,input){
+ if(!scope||!validTenant(scope.tenantId)||!['owner','manager','caller'].includes(scope.role))fail('CALL_ARCHIVE_SCOPE_REQUIRED');
+ const actor=text(scope.actorId,120,true),tid=Number(scope.tenantId);
+ if(!input||typeof input!=='object'||Array.isArray(input)||typeof input.manualDial!=='boolean')fail('CALL_ARCHIVE_FIELD_INVALID');
+ const session=text(input.sessionId,120,true),customer=text(input.customerId,120);
+ if(input.manualDial&&customer)fail('CALL_ARCHIVE_IDENTITY_CONFLICT');
+ const key=hash(JSON.stringify([actor,session,customer,input.manualDial]));
+ const [rows]=await conn.query('SELECT payload_json FROM '+TABLE+' WHERE tenant_id=? AND actor_id=? AND session_key=? LIMIT 2',[tid,actor,key]);
+ if(!Array.isArray(rows)||rows.length>1)fail('CALL_ARCHIVE_IDENTITY_CONFLICT');
+ if(!rows.length)return null;
+ let saved;try{saved=prepare(JSON.parse(rows[0].payload_json));}catch{fail('CALL_ARCHIVE_IDENTITY_CONFLICT');}
+ if(saved.payload.tenantId!==tid||saved.payload.userId!==actor||saved.sessionKey!==key||saved.payload.sessionId!==session||saved.payload.customerId!==customer||saved.payload.manualDial!==input.manualDial)fail('CALL_ARCHIVE_IDENTITY_CONFLICT');
+ return saved.payload;
+}
+module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot,findSession};

@@ -42,3 +42,33 @@ test('authoritative writer passes the exact rolling snapshot to archive within e
  assert.match(writer,/await conn\.beginTransaction\(\);[\s\S]*const workspacePayload=JSON\.stringify\(extra\);[\s\S]*await SNAPSHOT_TENANTS\.persistCallArchive\(conn,workspacePayload\);[\s\S]*INSERT INTO sbc_workspace[\s\S]*\[workspacePayload\][\s\S]*await conn\.commit\(\)/);
  assert.match(writer,/callLogs:\(db\.callLogs\|\|\[\]\)\.slice\(0,1000\)/);
 });
+
+test('archive session recovery uses only the authenticated tenant and actor, not supplied overrides',async()=>{
+ const {findSession}=require('../enterprise/sbc-call-archive-v1.cjs');
+ const scope={tenantId:1,actorId:'rep',role:'caller'};
+ const input={sessionId:'one',customerId:'lead',manualDial:false,tenantId:99,userId:'other'};
+ const expected=prepare(row);
+ const conn={async query(sql,args){
+  assert.match(sql,/tenant_id=\? AND actor_id=\? AND session_key=\?/);
+  assert.deepEqual(args,[1,'rep',expected.sessionKey]);
+  return [[{payload_json:expected.json}]];
+ }};
+ assert.deepEqual(await findSession(conn,scope,input),expected.payload);
+});
+test('archive session recovery rejects invalid scope and identity before database access',async()=>{
+ const {findSession}=require('../enterprise/sbc-call-archive-v1.cjs');
+ const conn={query(){throw Error('unexpected database access')}};
+ const scope={tenantId:1,actorId:'rep',role:'caller'};
+ const input={sessionId:'one',customerId:'lead',manualDial:false};
+ await assert.rejects(findSession(conn,{...scope,role:'lead_researcher'},input),/CALL_ARCHIVE_SCOPE_REQUIRED/);
+ await assert.rejects(findSession(conn,scope,{...input,sessionId:''}),/CALL_ARCHIVE_FIELD_INVALID/);
+ await assert.rejects(findSession(conn,scope,{...input,manualDial:true}),/CALL_ARCHIVE_IDENTITY_CONFLICT/);
+ await assert.rejects(findSession(conn,scope,{...input,manualDial:'false'}),/CALL_ARCHIVE_FIELD_INVALID/);
+});
+test('archive session recovery returns null on a miss and refuses mismatched stored identity',async()=>{
+ const {findSession}=require('../enterprise/sbc-call-archive-v1.cjs');
+ const scope={tenantId:1,actorId:'rep',role:'owner'},input={sessionId:'one',customerId:'lead',manualDial:false};
+ assert.equal(await findSession({async query(){return [[]]}},scope,input),null);
+ const wrong=prepare({...row,userId:'other'});
+ await assert.rejects(findSession({async query(){return [[{payload_json:wrong.json}]]}},scope,input),/CALL_ARCHIVE_IDENTITY_CONFLICT/);
+});
