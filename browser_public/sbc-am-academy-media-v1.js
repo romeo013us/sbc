@@ -1,5 +1,5 @@
 'use strict';
-/* SBC Academy 360: genuine media only; learning pace belongs to the employee. */
+/* SBC Academy 360: label synthetic training simulations truthfully until authenticated employee screen recordings are verified. */
 (()=>{
  const allowed=new Set(['am-01','am-02','am-03','am-04','am-05','am-06','am-07','am-08','am-09','am-10','am-11','am-12']);
  const $=id=>document.getElementById(id),root='/academy-media/academy360/';
@@ -52,8 +52,8 @@
  function makePhoto(url,index,id,es){
   const figure=document.createElement('figure'),image=document.createElement('img'),caption=document.createElement('figcaption'),open=document.createElement('button');
   image.src=url;image.loading='lazy';image.decoding='async';
-  image.alt=tr(es,'Verified SBC test-workstation screenshot '+index+' for '+id,'Captura verificada de la estación de prueba SBC '+index+' para '+id);
-  caption.textContent=tr(es,'Real test-workstation screenshot '+index,'Captura real del sistema de prueba '+index);
+  image.alt=tr(es,'Simulated SBC training image '+index+' for '+id+' using fictional records','Imagen simulada de capacitación SBC '+index+' para '+id+' con datos ficticios');
+  caption.textContent=tr(es,'Simulated training scene '+index+' · fictional account','Escena simulada de capacitación '+index+' · cuenta ficticia');
   open.type='button';open.className='academy-photo-open';open.setAttribute('aria-label',tr(es,'Enlarge screenshot '+index,'Ampliar captura '+index));
   open.append(image);figure.append(open,caption);
   open.addEventListener('click',()=>{
@@ -68,9 +68,9 @@
   clearMedia(video);clearMedia(audio);available={video:false,audio:false,photos:0};
   $('academyPhotoGallery').replaceChildren();
   if(!allowed.has(id)){$('academyVideoStatus').textContent=tr(es,'Lesson media unavailable.','Medios no disponibles.');show('video');return;}
-  $('academyVideoStatus').textContent=tr(es,'Checking approved video…','Buscando video aprobado…');
+  $('academyVideoStatus').textContent=tr(es,'Checking simulated lesson video…','Buscando video simulado de la lección…');
   $('academyAudioStatus').textContent=tr(es,'Checking original instructor audio…','Buscando audio original del instructor…');
-  $('academyPhotosStatus').textContent=tr(es,'Checking actual screenshots…','Buscando capturas reales…');
+  $('academyPhotosStatus').textContent=tr(es,'Checking illustrated simulation images…','Buscando imágenes ilustradas de simulación…');
   $('academyVideoNotes').textContent=tr(es,'Use the timeline to scrub, pause, replay, rewind or fast-forward. Video and audio never replace assessed practice.','Use la línea de tiempo para avanzar, pausar, repetir y retroceder. Los videos y audios no sustituyen la práctica evaluada.');
   const videos=await findRecording(id,lang,'video',['webm','mp4'],['video/webm','video/mp4']);
   if(ticket!==generation)return;
@@ -84,7 +84,7 @@
     const t=document.createElement('track');t.kind='captions';t.label=es?'Español':'English';t.srclang=lang;t.src=vtt;t.default=true;video.append(t);
     try{t.track.mode=captionOn?'showing':'disabled';}catch(_){}
    }
-   $('academyVideoStatus').textContent=tr(es,'Automated SBC workstation-interface demonstration with fictional accounts ready.'+(captions?' Captions available.':' Captions not yet approved.'),'Demostración automática de la interfaz SBC con cuentas ficticias.'+(captions?' Subtítulos disponibles.':' Subtítulos pendientes.'));
+   $('academyVideoStatus').textContent=tr(es,'Simulated SBC training video using fictional accounts. Authentic signed-in employee screen recording is still pending.'+(captions?' Captions available.':' Captions not yet approved.'),'Video simulado de capacitación SBC con cuentas ficticias. La grabación auténtica de una sesión de empleado sigue pendiente.'+(captions?' Subtítulos disponibles.':' Subtítulos pendientes.'));
   }else $('academyVideoStatus').textContent=tr(es,'Screen recording not published yet. Use the narrated illustrated workflow below.','Aún no se ha publicado el video real. Use la guía ilustrada narrada de abajo.');
   const sound=await findRecording(id,lang,'audio',['webm','mp3','m4a'],['audio/webm','audio/mpeg','audio/mp4']);
   if(ticket!==generation)return;
@@ -105,7 +105,7 @@
   }
   if(ticket!==generation)return;
   $('academyPhotosStatus').textContent=available.photos?
-   tr(es,available.photos+' approved SBC test-workstation screenshots. Tap to enlarge.',available.photos+' capturas aprobadas del sistema SBC. Toque para ampliar.'):
+   tr(es,available.photos+' simulated training images with fictional records; not authenticated employee screenshots. Tap to enlarge.',available.photos+' imágenes simuladas de capacitación con datos ficticios; no son capturas auténticas de empleados. Toque para ampliar.'):
    tr(es,'Actual workstation screenshots are not yet published. The four illustrated step-by-step scenes remain available below.','Aún no hay capturas reales publicadas. Las cuatro escenas ilustradas paso a paso siguen disponibles abajo.');
   show(mode);
  }
