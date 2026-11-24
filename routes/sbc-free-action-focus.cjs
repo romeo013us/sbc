@@ -1,6 +1,6 @@
 'use strict';
 // Authenticated, read-only, tenant-isolated CRM next actions. Never mutates.
-const {planActions}=require('../enterprise/sbc-free-action-focus.cjs');
+const {planActions,easternToday}=require('../enterprise/sbc-free-action-focus.cjs');
 const PATH='/api/sbc/free-actions/today';
 function register(app,{auth,getContext,tenantForRead}={}){
  if(!app||typeof app.get!=='function'||typeof auth!=='function'||
@@ -30,15 +30,21 @@ function register(app,{auth,getContext,tenantForRead}={}){
    if(!Number.isSafeInteger(limit)||limit<1||limit>30)
      return res.status(400).json({ok:false,error:'ACTION_LIMIT_INVALID'});
    try{
+     const today=easternToday();
+     const windowEnd=new Date(Date.parse(today+'T12:00:00Z')+7*86400000).toISOString().slice(0,10);
+     // Prioritize older commitments and upcoming dates across the authorized portfolio.
+     // Bound the result to 500 planned rows; row 501 is only a truncation sentinel.
      // No command, credentials, phone numbers or private notes leave this route.
      const sql="SELECT id,business_name,phone,status,assigned_to,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted'"+
        (actor.role==='account_manager'?' AND assigned_to=?':'')+
-       ' ORDER BY created_at DESC,id ASC LIMIT 500';
-     const args=actor.role==='account_manager'?[tid,String(actor.id)]:[tid];
+       ' ORDER BY CASE WHEN follow_up <= ? THEN 0 ELSE 1 END, CASE WHEN follow_up <= ? THEN follow_up ELSE NULL END, created_at DESC,id ASC LIMIT 501';
+     const args=actor.role==='account_manager'?[tid,String(actor.id),windowEnd,windowEnd]:[tid,windowEnd,windowEnd];
      const [rows]=await ctx.mysqlPool.query(sql,args);
-     const result=planActions({tenantId:tid,actor,rows,limit});
-     return res.json({...result,sampledRecords:rows.length,sourceLimit:500,
-       moreRecordsPossible:rows.length===500});
+     if(!Array.isArray(rows))throw Error('ACTION_SNAPSHOT_UNAVAILABLE');
+     const sample=rows.slice(0,500);
+     const result=planActions({tenantId:tid,actor,rows:sample,today,limit});
+     return res.json({...result,sampledRecords:sample.length,sourceLimit:500,
+       samplePolicy:'DUE_FIRST_BOUNDED',moreRecordsPossible:rows.length>500});
    }catch{
      return res.status(503).json({ok:false,error:'ACTION_SNAPSHOT_UNAVAILABLE'});
    }

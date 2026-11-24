@@ -16,6 +16,7 @@ function easternToday(date=new Date()){
 }
 function parseDay(v){
  if(v===undefined||v===null||v==='')return '';
+ if(v instanceof Date&&!Number.isFinite(v.getTime()))return null;
  const raw=v instanceof Date?v.toISOString():String(v).trim();
  const day=raw.slice(0,10);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return null;
