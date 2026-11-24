@@ -61,3 +61,53 @@ test('manual contact record is idempotent and does not send',async()=>{
  const replay=await f.call('/api/owner/renewals/contact',{body:contact});assert.equal(replay.data.idempotent,true);
  assert.equal(f.calls.filter(x=>x[0].startsWith('UPDATE sbc_renewals')).length,1);
 });
+
+test('a repeated enrollment with altered provider evidence is a conflict, not idempotent success',async()=>{
+ const f=fixture();
+ assert.equal((await f.call('/api/owner/renewals/enroll',{body})).statusCode,201);
+ for(const patch of [{providerReference:'other-provider-reference'},{providerExpiresOn:'2027-12-01'},{providerAutoRenewState:'ENABLED'},{packageCode:'starter'},{customerAcknowledgementEvidence:'Different signed acknowledgement'}]){
+  const r=await f.call('/api/owner/renewals/enroll',{body:{...body,...patch}});
+  assert.equal(r.statusCode,409,JSON.stringify(r.data));
+  assert.equal(r.data.code,'RENEWAL_ENROLLMENT_CONFLICT');
+ }
+ assert.equal(f.rows.length,1);
+ assert.equal((await f.call('/api/owner/renewals/enroll',{body})).data.idempotent,true);
+});
+test('contact request IDs cannot be reused with changed notes or outcome',async()=>{
+ const f=fixture(),r=await f.call('/api/owner/renewals/enroll',{body}),renewalId=r.data.renewal.id;
+ const contact={renewalId,channel:'phone',outcome:'CONTACTED',note:'Discussed renewal terms',clientRequestId:'outreach-event-001'};
+ assert.equal((await f.call('/api/owner/renewals/contact',{body:contact})).statusCode,200);
+ for(const patch of [{note:'Different customer discussion'},{outcome:'DECLINED'},{channel:'email'}]){
+  const result=await f.call('/api/owner/renewals/contact',{body:{...contact,...patch}});
+  assert.equal(result.statusCode,409);assert.equal(result.data.code,'RENEWAL_CONTACT_REPLAY_CONFLICT');
+ }
+ assert.equal(f.calls.filter(x=>x[0].startsWith('UPDATE sbc_renewals')).length,1);
+});
+test('closed renewals cannot be reopened through follow-up and are excluded from due counts',async()=>{
+ const f=fixture(),r=await f.call('/api/owner/renewals/enroll',{body}),renewalId=r.data.renewal.id;
+ f.rows[0].due_date='2020-01-01';
+ for(const status of ['Paid','Cancelled','Canceled','Declined','Renewed','Closed']){
+  f.rows[0].status=status;
+  const result=await f.call('/api/owner/renewals/contact',{body:{renewalId,channel:'phone',outcome:'CONTACTED',note:'Discussed renewal terms',clientRequestId:'outreach-event-002'}});
+  assert.equal(result.statusCode,409);assert.equal(result.data.code,'RENEWAL_CLOSED');
+  const overview=await f.call('/api/owner/renewals/overview');
+  assert.equal(overview.data.dueCount,0);assert.equal(overview.data.renewals[0].closed,true);
+  assert.equal(f.rows[0].status,status);
+ }
+ assert.equal(f.calls.filter(x=>x[0].startsWith('UPDATE sbc_renewals')).length,0);
+});
+test('renewal evidence and quote amount remain separate; arbitrary metadata is not proof',async()=>{
+ const f=fixture(),r=await f.call('/api/owner/renewals/enroll',{body});
+ assert.equal(r.data.renewal.amount,79);
+ assert.equal(r.data.renewal.amountVerifiedForRenewal,false);
+ const show=require('../routes/sbc-renewal-center.cjs').show;
+ const row=show({id:'legacy',service:'hosting',notes:'{"sbcRenewal":{"kind":"unknown"}}',due_date:'2026-11-25'},'2026-11-24');
+ assert.equal(row.verification,'LEGACY_NEEDS_RECONCILIATION');
+ assert.equal(row.amountVerifiedForRenewal,false);
+});
+test('policy requires literal approvals and excludes all closed renewals',()=>{
+ const input={tenantId:7,customerId:'cust_001',orderId:'order_001',service:'hosting',packageCode:'basic',activatedOn:'2026-11-01',providerExpiresOn:'2027-11-01',providerReference:'ref-123',paymentProofConfirmed:true,activationProofConfirmed:true,customerAcknowledgedTerms:true,ownerApproved:true};
+ assert.throws(()=>policy.calcRenewal({...input,ownerApproved:'true'}),/APPROVAL_REQUIRED/);
+ const records=['Paid','Canceled','Renewed','Closed','Upcoming'].map((status,i)=>({id:String(i),status,tenantId:7,customerId:'c',expiresOn:'2026-12-01'}));
+ assert.deepEqual(policy.previewQueue(records,{today:'2026-11-24',tenantId:7}).map(x=>x.status),['Upcoming']);
+});
