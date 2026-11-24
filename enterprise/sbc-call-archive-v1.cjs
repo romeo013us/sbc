@@ -29,7 +29,8 @@ function prepare(row){
  if(numberDigits.length>20)fail('CALL_ARCHIVE_NUMBER_INVALID');
  const json=JSON.stringify(payload),revisionHash=hash(json),sessionKey=payload.sessionId?hash(JSON.stringify([payload.userId,payload.sessionId,payload.customerId,payload.manualDial])):null;
  const occurred=ms(payload.endedAt)??ms(payload.startedAt)??ms(payload.createdAt);
- const updated=ms(payload.updatedAt)??ms(payload.outcomeCorrectedAt)??occurred;
+ const updates=[ms(payload.updatedAt),ms(payload.outcomeCorrectedAt)].filter(v=>v!==null);
+ const updated=updates.length?Math.max(...updates):occurred;
  return {payload,json,revisionHash,sessionKey,numberDigits,occurred,updated};
 }
 const columns='tenant_id,log_id,actor_id,customer_id,manual_dial,session_key,number_digits,status,outcome,occurred_ms,source_updated_ms,latest_hash,payload_json';
@@ -102,4 +103,26 @@ async function list(conn,scope,filters={}){
  const total=Number(count.total);
  return {total,limit:p.limit,offset:p.offset,nextOffset:p.offset+p.limit<total?p.offset+p.limit:null,rows:rows.map(row=>({...JSON.parse(row.payload_json),businessName:String(row.business_name||'')}))};
 }
-module.exports={prepare,appendBatch,queryPlan,list};
+
+// The previous committed workspace contains any call that was evicted by the
+// in-memory 1,000-row cap. Capture it and the exact next workspace payload
+// within the existing writer transaction, with no independent commit or DDL.
+function workspaceCalls(payload){
+ let data;try{data=JSON.parse(payload)}catch{fail('CALL_ARCHIVE_WORKSPACE_INVALID');}
+ if(!data||typeof data!=='object'||Array.isArray(data)||!Array.isArray(data.callLogs))fail('CALL_ARCHIVE_WORKSPACE_INVALID');
+ if(data.callLogs.length>20000)fail('CALL_ARCHIVE_BATCH_INVALID');
+ return data.callLogs;
+}
+async function captureRollingSnapshot(conn,nextPayload,env=process.env){
+ if(env.SBC_CALL_ARCHIVE_CAPTURE!=='YES')return {enabled:false};
+ if(env.SBC_CALL_ARCHIVE_RETENTION_APPROVED!=='YES'||typeof env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF!=='string'||!env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.trim()||env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.length>120)fail('CALL_ARCHIVE_RETENTION_APPROVAL_REQUIRED');
+ const next=workspaceCalls(nextPayload);
+ const [previous]=await conn.query('SELECT payload FROM sbc_workspace WHERE id=1 FOR UPDATE');
+ if(!Array.isArray(previous)||previous.length>1)fail('CALL_ARCHIVE_WORKSPACE_INVALID');
+ const prior=previous.length?workspaceCalls(previous[0].payload):[];
+ const oldResult=await appendBatch(conn,prior);
+ const newResult=await appendBatch(conn,next);
+ return {enabled:true,previous:oldResult,current:newResult};
+}
+
+module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot};

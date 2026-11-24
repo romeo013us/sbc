@@ -2107,7 +2107,9 @@ async function writeRelational({includeSettings=true}={}){
       customerAccounts:(db.customerAccounts||[]),customerMessages:(db.customerMessages||[]).slice(0,5000),
       squarePayments:(db.squarePayments||[]).slice(0,5000),squareWebhookEvents:(db.squareWebhookEvents||[]).slice(0,5000),
       megaOps:db.megaOpsStore||db.settings?.megaOps||null};
-    await conn.query('INSERT INTO sbc_workspace(id,payload) VALUES (1,?) ON DUPLICATE KEY UPDATE payload=VALUES(payload)',[JSON.stringify(extra)]);
+    const workspacePayload=JSON.stringify(extra);
+    await SNAPSHOT_TENANTS.persistCallArchive(conn,workspacePayload);
+    await conn.query('INSERT INTO sbc_workspace(id,payload) VALUES (1,?) ON DUPLICATE KEY UPDATE payload=VALUES(payload)',[workspacePayload]);
     await conn.query('INSERT INTO sbc_automation_state(tenant_id,sequences_json,enrollments_json) VALUES (?,?,?) ON DUPLICATE KEY UPDATE sequences_json=VALUES(sequences_json),enrollments_json=VALUES(enrollments_json),updated_at=CURRENT_TIMESTAMP',[TENANT_DEFAULT_ID,JSON.stringify(db.sequences||[]),JSON.stringify(db.sequenceEnrollments||[])]);
 
     const [epochUpdate]=await conn.query(
