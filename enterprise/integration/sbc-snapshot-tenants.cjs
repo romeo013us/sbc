@@ -229,4 +229,8 @@ function restoreCallRouting(db,snapshot,legacyUsers=[]){
  return db;
 }
 
-module.exports = { prepare, persist, pendingVisibleTombstones, captureCallRouting, restoreCallRouting };
+async function persistCallArchive(conn,workspacePayload,env=process.env){
+ if(env.SBC_CALL_ARCHIVE_CAPTURE!=='YES')return {enabled:false};
+ return require('../sbc-call-archive-v1.cjs').captureRollingSnapshot(conn,workspacePayload,env);
+}
+module.exports = { prepare, persist, pendingVisibleTombstones, captureCallRouting, restoreCallRouting, persistCallArchive };

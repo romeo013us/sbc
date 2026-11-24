@@ -23,3 +23,22 @@ test('duplicate sessions and record IDs are refused before database access',asyn
  await assert.rejects(appendBatch(conn,[row,{...row,id:'other'}]),/CALL_ARCHIVE_SESSION_CONFLICT/);
  await assert.rejects(appendBatch(conn,[row,row]),/CALL_ARCHIVE_DUPLICATE_INPUT/);
 });
+
+test('archive capture is off by default and cannot be enabled without retention approval',async()=>{
+ const {captureRollingSnapshot}=require('../enterprise/sbc-call-archive-v1.cjs');
+ const conn={query(){throw Error('unexpected database access')}};
+ assert.deepEqual(await captureRollingSnapshot(conn,'bad payload',{}),{enabled:false});
+ await assert.rejects(captureRollingSnapshot(conn,'{"callLogs":[]}',{SBC_CALL_ARCHIVE_CAPTURE:'YES'}),/CALL_ARCHIVE_RETENTION_APPROVAL_REQUIRED/);
+ await assert.rejects(captureRollingSnapshot(conn,'invalid',{SBC_CALL_ARCHIVE_CAPTURE:'YES',SBC_CALL_ARCHIVE_RETENTION_APPROVED:'YES',SBC_CALL_ARCHIVE_RETENTION_POLICY_REF:'fixture-only'}),/CALL_ARCHIVE_WORKSPACE_INVALID/);
+});
+test('explicit correction timestamp wins over the original autosave timestamp',()=>{
+ const corrected=prepare({...row,updatedAt:'2026-11-24T14:01:00Z',outcomeCorrectedAt:'2026-11-24T14:02:00Z'});
+ assert.equal(corrected.updated,Date.parse('2026-11-24T14:02:00Z'));
+});
+test('authoritative writer passes the exact rolling snapshot to archive within existing transaction',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const s=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
+ const writer=s.slice(s.indexOf('async function writeRelational('),s.indexOf('async function mysqlKeepalive('));
+ assert.match(writer,/await conn\.beginTransaction\(\);[\s\S]*const workspacePayload=JSON\.stringify\(extra\);[\s\S]*await SNAPSHOT_TENANTS\.persistCallArchive\(conn,workspacePayload\);[\s\S]*INSERT INTO sbc_workspace[\s\S]*\[workspacePayload\][\s\S]*await conn\.commit\(\)/);
+ assert.match(writer,/callLogs:\(db\.callLogs\|\|\[\]\)\.slice\(0,1000\)/);
+});

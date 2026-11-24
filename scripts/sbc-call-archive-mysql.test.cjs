@@ -31,5 +31,36 @@ test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback
   assert.equal((await archive.list(conn,owner,{business:'Archive Business'})).total,9000);
   const corrected=await archive.list(conn,owner,{outcome:'Spanish callback needed'});assert.equal(corrected.total,1);assert.equal(corrected.rows[0].id,changed.id);
   const [[rev]]=await conn.query('SELECT COUNT(*) AS total FROM sbc_call_attempt_revision_v1');assert.equal(Number(rev.total),10001);
+  // A real prior durable snapshot contains the row about to be evicted.
+  // Both archive and workspace change must commit or roll back together.
+  const snapshot=require('../enterprise/integration/sbc-snapshot-tenants.cjs');
+  const env={SBC_CALL_ARCHIVE_CAPTURE:'YES',SBC_CALL_ARCHIVE_RETENTION_APPROVED:'YES',SBC_CALL_ARCHIVE_RETENTION_POLICY_REF:'isolated-ci-only'};
+  await conn.query('CREATE TEMPORARY TABLE sbc_workspace (id INT PRIMARY KEY,payload LONGTEXT NOT NULL) ENGINE=InnoDB');
+  const rolling=Array.from({length:1001},(_,i)=>({...base,tenantId:3,id:'rolling-'+i,sessionId:'rolling-session-'+i}));
+  const prior=JSON.stringify({callLogs:rolling.slice(0,1000)}),next=JSON.stringify({callLogs:rolling.slice(1)});
+  await conn.query('INSERT INTO sbc_workspace(id,payload) VALUES (1,?)',[prior]);
+  await conn.beginTransaction();
+  await snapshot.persistCallArchive(conn,next,env);
+  await conn.query('UPDATE sbc_workspace SET payload=? WHERE id=1',[next]);
+  await conn.rollback();
+  assert.equal((await archive.list(conn,{...owner,tenantId:3})).total,0);
+  const [[rolledBack]]=await conn.query('SELECT payload FROM sbc_workspace WHERE id=1');
+  assert.equal(rolledBack.payload,prior);
+  await conn.beginTransaction();
+  await snapshot.persistCallArchive(conn,next,env);
+  await conn.query('UPDATE sbc_workspace SET payload=? WHERE id=1',[next]);
+  await conn.commit();
+  const [[saved]]=await conn.query('SELECT payload FROM sbc_workspace WHERE id=1');
+  assert.equal(JSON.parse(saved.payload).callLogs.length,1000);
+  const historical=await archive.list(conn,{...owner,tenantId:3},{limit:250});
+  assert.equal(historical.total,1001);
+  const [[evicted]]=await conn.query("SELECT COUNT(*) AS total FROM sbc_call_attempt_archive_v1 WHERE tenant_id=3 AND log_id='rolling-0'");
+  assert.equal(Number(evicted.total),1);
+  await conn.beginTransaction();
+  await snapshot.persistCallArchive(conn,next,env);
+  await conn.commit();
+  const [[replayed]]=await conn.query('SELECT COUNT(*) AS total FROM sbc_call_attempt_revision_v1 WHERE tenant_id=3');
+  assert.equal(Number(replayed.total),1001);
+
  }finally{await conn.end().catch(()=>{});}
 });
