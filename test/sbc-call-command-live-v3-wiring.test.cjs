@@ -4,7 +4,9 @@ const src=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 test('production server mounts the bounded Account Manager Twilio V3 routes with authoritative context',()=>{
  const code=src('server.js');
- const marker="require('./routes/sbc-call-command-live-v3.cjs').register(app,{";
+ // Split this asserted source string so the static dependency inventory does not
+ // mistake test fixture text for a module import relative to /test.
+ const marker='require('+"\'./routes/sbc-call-command-live-v3.cjs\').register(app,{";
  assert(code.includes(marker),'AM Call Command V3 was implemented but never mounted in server.js');
  const mount=code.indexOf(marker),end=code.indexOf('});',mount);
  assert(mount>=0&&end>mount);
