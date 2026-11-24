@@ -8,14 +8,14 @@ const tenantOf=x=>Number(x?.tenantId??x?.tenant_id);
 function dateOnly(x){if(x instanceof Date)return x.toISOString().slice(0,10);const s=String(x||'');return /^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(0,10):''}
 function jsonNotes(x){try{const n=JSON.parse(String(x||'{}'));return n&&typeof n==='object'&&!Array.isArray(n)?n:{}}catch{return {}}}
 function show(row,today){
- const notes=jsonNotes(row.notes),meta=notes.sbcRenewal||null;
+ const notes=jsonNotes(row.notes),meta=notes.sbcRenewal?.kind==='SBC_RENEWAL_V1'&&notes.sbcRenewal?.source==='SBC_OWNER_VERIFIED_ACTIVATION'?notes.sbcRenewal:null;
  const expiry=dateOnly(row.due_date??row.dueDate);
  let due={stage:'UNKNOWN',daysUntilDue:null,ownerReviewNeeded:true};
  if(expiry)try{due=POLICY.dueStage(expiry,today)}catch{}
  const history=Array.isArray(meta?.contacts)?meta.contacts:[];
  return {id:String(row.id),customerId:String(row.customer_id??row.customerId??''),customerName:String(row.customer_name??row.customerName??''),service:String(row.service),expiresOn:expiry,amount:Number(row.amount||0),status:String(row.status||'Upcoming'),due,
  sourceOrderId:meta?.orderId||'',packageCode:meta?.packageCode||'',providerReference:meta?.providerReference||'',
- providerAutoRenewState:meta?.providerAutoRenewState||'UNKNOWN',automaticCharge:false,
+ providerAutoRenewState:meta?.providerAutoRenewState||'UNKNOWN',automaticCharge:false,closed:POLICY.isClosed(row.status),amountVerifiedForRenewal:meta?.amountVerifiedForRenewal===true,
  verification:meta?'OWNER_ATTESTED_AND_SQUARE_EVIDENCE_RECORDED':'LEGACY_NEEDS_RECONCILIATION',
  lastContactedAt:history.at(-1)?.at||'',lastOutcome:history.at(-1)?.outcome||'',contacts:history};
 }
@@ -37,7 +37,7 @@ function register(app,{auth,getContext,tenantForRead}={}){
    const {ctx,tenant}=gate(req);
    const [rows]=await ctx.mysqlPool.query('SELECT id,customer_id,customer_name,service,due_date,amount,status,notes FROM sbc_renewals WHERE tenant_id=? ORDER BY due_date ASC LIMIT 1000',[tenant]);
    const renewals=(Array.isArray(rows)?rows:[]).map(r=>show(r,today()));
-   const due=renewals.filter(r=>r.due.ownerReviewNeeded&&!['Paid','Cancelled','Declined'].includes(r.status));
+   const due=renewals.filter(r=>r.due.ownerReviewNeeded&&!r.closed);
    res.setHeader('Cache-Control','no-store');
    return res.json({ok:true,readOnly:true,ownerApprovalRequired:true,noAutomaticCharges:true,asOf:today(),renewals,dueCount:due.length,overdueCount:due.filter(r=>r.due.daysUntilDue<0).length,needsVerification:renewals.filter(r=>r.verification!=='OWNER_ATTESTED_AND_SQUARE_EVIDENCE_RECORDED').length});
   }catch(e){return error(res,e)}
@@ -63,7 +63,12 @@ function register(app,{auth,getContext,tenantForRead}={}){
    const [customers]=await conn.query('SELECT id,business_name,tenant_id FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1',[tenant,customerId]);
    if(!orders?.length||String(orders[0].customer_id??orders[0].customerId)!==customerId||!customers?.length)throw Object.assign(Error('AUTHORITATIVE_CUSTOMER_ORDER_LINK_NOT_FOUND'),{status:404});
    const [existing]=await conn.query('SELECT id,customer_id,customer_name,service,due_date,amount,status,notes FROM sbc_renewals WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,renewalId]);
-   if(existing?.length){await conn.commit();transaction=false;return res.json({ok:true,idempotent:true,renewal:show(existing[0],today())})}
+   if(existing?.length){
+    const prior=jsonNotes(existing[0].notes).sbcRenewal;
+    const same=prior?.kind==='SBC_RENEWAL_V1'&&prior.source===clean.source&&['tenantId','customerId','orderId','service','packageCode','activatedOn','expiresOn','providerReference','renewalAmountCents'].every(k=>prior[k]===clean[k])&&prior.providerAutoRenewState===b.providerAutoRenewState&&prior.customerAcknowledgementEvidence===acknowledgement;
+    if(!same)throw Object.assign(Error('RENEWAL_ENROLLMENT_CONFLICT'),{status:409});
+    await conn.commit();transaction=false;return res.json({ok:true,idempotent:true,renewal:show(existing[0],today())});
+   }
    const metadata={kind:'SBC_RENEWAL_V1',...clean,orderId,providerAutoRenewState:b.providerAutoRenewState,customerAcknowledgementEvidence:acknowledgement,ownerApprovedAt:new Date().toISOString(),contacts:[],customerRenewalAuthorized:false};
    const amount=clean.renewalAmountCents==null?0:clean.renewalAmountCents/100;
    const stamp=new Date().toISOString().slice(0,19).replace('T',' ');
@@ -89,7 +94,12 @@ function register(app,{auth,getContext,tenantForRead}={}){
    const old=rows[0],notes=jsonNotes(old.notes),meta=notes.sbcRenewal;
    if(!meta||meta.kind!=='SBC_RENEWAL_V1')throw Object.assign(Error('LEGACY_RENEWAL_NEEDS_OWNER_RECONCILIATION'),{status:409});
    const contacts=Array.isArray(meta.contacts)?meta.contacts:[];
-   if(requestId&&contacts.some(x=>x.clientRequestId===requestId)){await conn.commit();transaction=false;return res.json({ok:true,idempotent:true,renewal:show(old,today())})}
+   const replay=requestId&&contacts.find(x=>x.clientRequestId===requestId);
+   if(replay){
+    if(replay.channel!==channel||replay.outcome!==outcome||replay.note!==note)throw Object.assign(Error('RENEWAL_CONTACT_REPLAY_CONFLICT'),{status:409});
+    await conn.commit();transaction=false;return res.json({ok:true,idempotent:true,renewal:show(old,today())});
+   }
+   if(POLICY.isClosed(old.status))throw Object.assign(Error('RENEWAL_CLOSED'),{status:409});
    const event={clientRequestId:requestId||crypto.randomUUID(),at:new Date().toISOString(),channel,outcome,note,recordedBy:'owner',messageSentBySystem:false};
    const updatedNotes={...notes,sbcRenewal:{...meta,contacts:[...contacts,event].slice(-40)}};
    const status=outcome==='DECLINED'?'Cancelled':outcome==='CONTACTED'?'Contacted':String(old.status||'Upcoming');

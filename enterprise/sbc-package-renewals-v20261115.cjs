@@ -9,6 +9,7 @@ const OFFERS=Object.freeze({
  complete:Object.freeze({name:'SBC Complete Business Launch',priceCents:99900,security:'first_year_included',securityAnnualCents:null,cards:500})
 });
 const REMIND_DAYS=Object.freeze([90,60,30,14,7,1]);
+const isClosed=status=>['PAID','CANCELLED','CANCELED','DECLINED','RENEWED','CLOSED'].includes(String(status||'').trim().toUpperCase());
 const ymd=d=>new Date(d).toISOString().slice(0,10);
 function parseDay(date){
  if(typeof date!=='string'||!/^(\d{4})-(\d{2})-(\d{2})$/.test(date))throw Error('VALID_ACTIVATION_DATE_REQUIRED');
@@ -41,7 +42,7 @@ function checkoutDisclosure(code,{securitySelected=false}={}){
 function calcRenewal({tenantId,customerId,orderId,service,activatedOn,providerExpiresOn,packageCode,securitySelected=false,providerReference,paymentProofConfirmed=false,activationProofConfirmed=false,customerAcknowledgedTerms=false,ownerApproved=false}={}){
  if(!Number.isSafeInteger(Number(tenantId))||Number(tenantId)<1)throw Error('TENANT_REQUIRED');
  if(!String(customerId||'').trim()||!String(orderId||'').trim())throw Error('LINKED_CUSTOMER_ORDER_REQUIRED');
- if(!paymentProofConfirmed||!activationProofConfirmed||!customerAcknowledgedTerms||!ownerApproved)throw Error('VERIFIED_PURCHASE_ACTIVATION_APPROVAL_REQUIRED');
+ if([paymentProofConfirmed,activationProofConfirmed,customerAcknowledgedTerms,ownerApproved].some(value=>value!==true))throw Error('VERIFIED_PURCHASE_ACTIVATION_APPROVAL_REQUIRED');
  if(!String(providerReference||'').trim())throw Error('PROVIDER_REFERENCE_REQUIRED');
  const p=offer(packageCode),terms=securityTerms(packageCode,{selected:securitySelected});
  if(!p)throw Error('UNKNOWN_PACKAGE');
@@ -67,8 +68,8 @@ function reminders(expiresOn){const t=parseDay(expiresOn).getTime();return REMIN
 function previewQueue(records,{today,tenantId}={}){
  parseDay(today);
  if(!Number.isSafeInteger(Number(tenantId))||Number(tenantId)<1)throw Error('TENANT_REQUIRED');
- return (Array.isArray(records)?records:[]).filter(r=>r&&r.customerId&&Number(r.tenantId)===Number(tenantId)&&r.expiresOn&&!['CANCELLED','DECLINED','RENEWED'].includes(String(r.status||'').toUpperCase()))
+ return (Array.isArray(records)?records:[]).filter(r=>r&&r.customerId&&Number(r.tenantId)===Number(tenantId)&&r.expiresOn&&!isClosed(r.status))
  .map(r=>({...r,due:dueStage(r.expiresOn,today)}))
  .filter(r=>r.due.ownerReviewNeeded).sort((a,b)=>a.due.daysUntilDue-b.due.daysUntilDue);
 }
-module.exports=Object.freeze({OFFERS,SECURITY_COST_CENTS,REMIND_DAYS,offer,securityTerms,checkoutDisclosure,nextYear,calcRenewal,dueStage,reminders,previewQueue});
+module.exports=Object.freeze({OFFERS,SECURITY_COST_CENTS,REMIND_DAYS,offer,securityTerms,checkoutDisclosure,nextYear,calcRenewal,dueStage,reminders,previewQueue,isClosed});
