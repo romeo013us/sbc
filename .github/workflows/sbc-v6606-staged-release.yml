@@ -5,6 +5,11 @@ on:
     branches: [a-sbc-master]
   pull_request:
     branches: [a-sbc-master]
+  # Bot-generated Academy commits do not emit ordinary push-triggered CI.
+  workflow_run:
+    workflows: ['SBC Academy 360 - Automatic Video Audio Photos']
+    types: [completed]
+    branches: [a-sbc-master]
   workflow_dispatch:
 
 permissions:
@@ -12,6 +17,7 @@ permissions:
 
 jobs:
   verified-staged-zip:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'a-sbc-master' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -683,7 +689,7 @@ jobs:
   # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
   # Never update the GoDaddy-connected rollback source branch or Published app.
   github-preview-branch:
-    if: github.ref == 'refs/heads/a-sbc-master' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/a-sbc-master' && (github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'a-sbc-master' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')))
     needs: verified-staged-zip
     runs-on: ubuntu-latest
     timeout-minutes: 10
