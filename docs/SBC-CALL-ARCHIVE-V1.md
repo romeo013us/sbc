@@ -20,3 +20,7 @@ The isolated MySQL regression now exercises 1,001 distinct records across two su
 ## Scoped session recovery primitive
 
 `findSession(conn, scope, input)` uses the authenticated tenant and actor plus the exact session/customer/manual-dial identity. It returns the latest archived payload or null; mismatched stored identity fails closed. Owners cannot use this replay helper to access another actor's session. The general history list is a separate authorization surface. This helper is read-only; live autosave/correction routing and search cutover still need integration, writer coordination and hosted acceptance. No production switches or schema changes are included.
+
+## Explicit archive history API
+
+The authenticated `GET /api/sales/call-history?source=archive` path supports paginated SQL history with tenant/actor isolation and number, business, caller, customer, date, status and outcome filters. The existing rolling history remains the default. `SBC_CALL_ARCHIVE_READ=YES` is a separate owner-controlled release gate, in addition to capture and retention approval. Enable it only after backfill reconciliation, privacy/export/erasure review, query performance and hosted acceptance. A disabled or failing archive returns an explicit error, never a misleading rolling fallback. The existing UI is not switched to archive reads by this change. Live archived-session writes/corrections and deployment activation remain outstanding.
