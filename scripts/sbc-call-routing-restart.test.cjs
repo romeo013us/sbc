@@ -51,3 +51,33 @@ test('canonical writer and loader use the existing atomic workspace snapshot',()
  assert.match(writer,/await conn\.beginTransaction\(\);[\s\S]*callRoutingStateV1:SNAPSHOT_TENANTS\.captureCallRouting\(db\)[\s\S]*INSERT INTO sbc_workspace[\s\S]*await conn\.commit\(\)/);
  assert.match(writer,/callLogs:\(db\.callLogs\|\|\[\]\)\.slice\(0,1000\)/);
 });
+
+test('real relational loader restores computed lead quality before first advisory pulse without changing verification or consent',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
+ const start=source.indexOf('async function readRelational(){'),end=source.indexOf('async function writeRelational(',start);
+ const scoreStart=source.lastIndexOf('function leadQuality(c){'),scoreEnd=source.indexOf('function isActiveSalesLead(',scoreStart);
+ assert(start>=0&&end>start&&scoreStart>=0&&scoreEnd>scoreStart);
+ const customers=[
+  {id:'hot',tenant_id:1,business_name:'Synthetic A',contact_name:'Test',phone:'5550100',email:'test@example.invalid',website:'https://example.invalid',industry:'Test',source:'fixture',status:'Lead',lead_intelligence_json:'{"verificationStatus":"Needs Verification"}'},
+  {id:'warm',tenant_id:1,business_name:'Synthetic B',phone:'5550101',contact_name:'Test',status:'Lead',lead_intelligence_json:'{"verificationStatus":"Owner Review"}'},
+  {id:'cold',tenant_id:2,business_name:'Synthetic C',status:'Do Not Call',lead_intelligence_json:'{"verificationStatus":"Needs Verification"}'}
+ ];
+ const workspace=captureCallRouting({customers:[{id:'cold',tenantId:2,doNotCall:true}],users:[]});
+ const context={seed:{settings:{}},persistenceEpoch:0,PERSISTENCE_EPOCH_KEY:'epoch',db:null,normalize:x=>x,fromSqlDate:x=>x,fromSqlDateTime:x=>x,safeJsonParse:(s,f)=>s?JSON.parse(s):f,SNAPSHOT_TENANTS:{restoreCallRouting},console,mysqlPool:{async query(sql){
+  if(sql.includes('FROM sbc_customers'))return [customers];
+  if(sql.includes('FROM sbc_workspace'))return [[{payload:JSON.stringify({callRoutingStateV1:workspace})}]];
+  assert.match(sql,/^SELECT /);return [[]];
+ }}};
+ vm.createContext(context);
+ vm.runInContext(source.slice(scoreStart,scoreEnd)+'\n'+source.slice(start,end),context);
+ await context.readRelational();
+ const restored=context.db.customers;
+ assert.equal(restored.length,3);
+ assert.deepEqual(Array.from(restored,x=>x.leadTemperature),['Hot','Warm','Cold']);
+ assert.deepEqual(Array.from(restored,x=>x.leadScore),[90,55,20]);
+ assert.deepEqual(Array.from(restored,x=>x.verificationStatus),['Needs Verification','Owner Review','Needs Verification']);
+ assert.equal(restored[2].doNotCall,true);
+ assert.equal(restored[2].status,'Do Not Call');
+ assert.equal(restored[2].tenantId,2);
+ assert.equal(context.db.callLogs.length,0);
+});
