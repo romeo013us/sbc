@@ -5,6 +5,9 @@ const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 const fs=require('node:fs');
 const path=require('node:path');
+const mode=process.argv.slice(2);
+assert.ok(mode.length===0||(mode.length===1&&mode[0]==='--source-only'),'unknown release-contract argument');
+const sourceOnly=mode.length===1;
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const pkg=JSON.parse(read('package.json'));
@@ -28,7 +31,16 @@ assert.match(launcher,/persistState\(/);
 assert.match(launcher,/ephemeral customer state/);
 assert.match(launcher,/serverSha256/);
 const serverHash=crypto.createHash('sha256').update(read('server.js')).digest('hex');
-assert.equal(deployed.serverSha256,serverHash,'server.js must match pinned launch hash');
+assert.match(deployed.serverSha256||'',/^[a-f0-9]{64}$/);
+if(sourceOnly){
+  // Source-review CI is not an extracted deployment. Verify syntax and all
+  // structural invariants, but do not claim that the previous compiled pin
+  // certifies newly edited source. Strict artifact CI runs separately.
+  require('node:child_process').execFileSync(process.execPath,['--check',path.join(root,'server.js')],{stdio:'inherit'});
+  console.log('[SBC V66 SOURCE REVIEW] '+(deployed.serverSha256===serverHash?'current server matches existing pin':'source differs from previous compiled pin')+'; NOT DEPLOYABLE EVIDENCE; strict staged ZIP verification required');
+}else{
+  assert.equal(deployed.serverSha256,serverHash,'server.js must match pinned launch hash');
+}
 if(receipt){
   assert.equal(deployed.sourceCommit,receipt.sourceCommit);
   assert.equal(deployed.sourceFingerprint,receipt.sourceFingerprint);
@@ -48,5 +60,5 @@ assert.doesNotMatch(read('public/sbc-kim-ui-hardening-v6429.js'),/window\.__SBC_
 assert.match(html,/sbc-v6636-canonical-styles/);
 assert.match(html,/sbc-light-contrast-v6601\.css/);
 assert.match(html,/sbc-browser-view-repair-v6601\.js/);
-console.log('[SBC V66 FLAT RELEASE] PASS: launcher, pinned server, '+(receipt?'matching receipt':'inventory-anchored staged source')+', V66 semantic version, static browser mirror');
+console.log(sourceOnly?'[SBC V66 SOURCE REVIEW] PASS: syntax, launcher contract, metadata shape and static mirror; no artifact attestation':'[SBC V66 FLAT RELEASE] PASS: launcher, pinned server, '+(receipt?'matching receipt':'inventory-anchored staged source')+', V66 semantic version, static browser mirror');
 console.log('[SBC V66 FLAT RELEASE] NOTE: this does not verify new frontend asset hashes in a fresh GoDaddy ZIP or live Square transaction.');

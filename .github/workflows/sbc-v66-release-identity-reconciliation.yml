@@ -18,8 +18,10 @@ jobs:
         run: node scripts/secret-audit.js
       - name: Synthetic CSV/SQL reconciliation — never access customer records
         run: node scripts/reconciliation-audit-test.js
-      - name: Verified V66 badge, mirrored frontend, pinned server identity
-        run: node scripts/v6603-flat-release-contract.test.cjs
+      - name: Verify source contract (strict deployment hash is checked on staged ZIP)
+        run: |
+          node --test test/sbc-flat-release-modes.test.cjs
+          node scripts/v6603-flat-release-contract.test.cjs --source-only
       - name: Recovery, buyer demo, signed handoff regression
         run: |
           node scripts/v6510-ui-recovery-buttons-test.js

@@ -33,6 +33,7 @@ function createMetaProvider({resolveSecret,fetchImpl=globalThis.fetch,graphVersi
  }
  async function publish({tenantId,customerId,channel,post}={}){
   if(!channel||channel.tenantId!==Number(tenantId)||channel.customerId!==customerId||channel.status!=='VERIFIED'||channel.platform!==post?.platform||channel.id!==post.channelId||post.customerId!==customerId||post.tenantId!==Number(tenantId)||!post.approvedAt)err('META_CHANNEL_POST_MISMATCH');
+  if(require('./sbc-marketing-readback.cjs').ownsPublishingAccount(channel.platform,channel.providerAccountId))err('EXTERNAL_PUBLISHER_OWNS_SBC_CHANNELS');
   const token=await auth(tenantId,customerId,channel.platform,channel.secretRef);
   const platform=channel.platform,id=channel.providerAccountId;
   if(platform==='facebook'){
