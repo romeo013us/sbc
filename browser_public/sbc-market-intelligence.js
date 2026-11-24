@@ -132,13 +132,29 @@
       researchControls(data)+'<p class="mi-footnote">'+escape(data.limitation)+'</p><p><a href="https://www.census.gov/econ/bfs/data.html" target="_blank" rel="noopener noreferrer">U.S. Census Bureau — Business Formation Statistics</a></p></section>';
   }
 
+
+  function geographyPanel(report){
+    const heading='<h3 id="mi-geography-title">Geographic revenue intelligence</h3>';
+    if(report?.status!=='available'||!Array.isArray(report.rows)||!report.totals){
+      const message=report?.status==='volume_limit'?'The report exceeds its safe data limit. No partial totals are presented.':'CRM or payment records are unavailable; no totals can be confirmed.';
+      return '<section class="mi-panel" aria-labelledby="mi-geography-title">'+heading+'<p>'+escape(message)+'</p></section>';
+    }
+    const rows=report.rows.map(r=>'<tr><th scope="row">'+escape(r.state==='unknown'?'Unknown location':r.state)+'</th><td>'+count.format(r.newCrmRecords)+'</td><td>'+count.format(r.paidOrders)+'</td><td>'+money.format(r.capturedCents/100)+'</td></tr>').join('');
+    const t=report.totals;
+    return '<section class="mi-panel" aria-labelledby="mi-geography-title">'+heading+'<p class="mi-period">'+escape(report.period.startDate)+' to '+escape(report.period.endDate)+' · complete UTC days</p>'+
+      '<dl class="mi-metrics">'+card('New CRM records',t.newCrmRecords,null)+card('Orders with recorded capture',t.paidOrders,null)+card('Recorded captures',t.capturedCents,null,c=>money.format(c/100))+'</dl>'+
+      '<div style="overflow-x:auto"><table class="table"><thead><tr><th>Recorded state</th><th>New CRM records</th><th>Paid orders</th><th>Recorded captures</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      (report.conflictingPaymentIds?'<p class="mi-alert">'+count.format(report.conflictingPaymentIds)+' conflicting payment references excluded from captured totals; reconcile before acting.</p>':'')+
+      '<p class="mi-footnote">'+escape(report.methodology)+'</p></section>';
+  }
+
   function mount(content) {
     if (!isOwner() || content.querySelector('[data-sbc-market-intelligence]')) return;
     const account = ownerKey();
     content.innerHTML = `<section data-sbc-market-intelligence aria-label="Market Intelligence">
       <header class="mi-header"><div><h2>Market Intelligence</h2><p>Track how customers find SBC, where checkout records convert, and which public offers are worth studying.</p></div>
-      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button><button type="button" class="secondary" data-mi-national>National Market Research</button></div></header>
-      <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div><div data-mi-national-results aria-live="polite"></div></section>`;
+      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button><button type="button" class="secondary" data-mi-national>National Market Research</button><button type="button" class="secondary" data-mi-geography>Geographic Revenue</button></div></header>
+      <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div><div data-mi-national-results aria-live="polite"></div><div data-mi-geography-results aria-live="polite"></div></section>`;
     const root = content.firstElementChild;
     const refresh = root.querySelector('[data-mi-refresh]');
     const windowSelect = root.querySelector('select');
@@ -262,6 +278,22 @@
       }catch{if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
       finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
     });
+
+    const geoButton=root.querySelector('[data-mi-geography]'),geoPanel=root.querySelector('[data-mi-geography-results]');
+    let geoSequence=0;
+    async function loadGeography(){
+      const seq=++geoSequence,days=windowSelect.value;
+      geoButton.disabled=true;geoPanel.setAttribute('aria-busy','true');geoPanel.textContent='Loading geographic CRM and payment evidence…';
+      try{
+        const response=await fetch('/api/owner/market-intelligence/geography?days='+encodeURIComponent(days),{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(16000)});
+        if(!response.ok)throw Error('Unavailable');
+        const report=await response.json();
+        if(active()&&seq===geoSequence)geoPanel.innerHTML=geographyPanel(report);
+      }catch{if(active()&&seq===geoSequence)geoPanel.innerHTML=geographyPanel({status:'unavailable'});}
+      finally{if(active()&&seq===geoSequence){geoButton.disabled=false;geoPanel.removeAttribute('aria-busy');}}
+    }
+    geoButton.addEventListener('click',loadGeography);
+    windowSelect.addEventListener('change',()=>{if(geoPanel.textContent)void loadGeography();});
     refresh.addEventListener('click', load);
     windowSelect.addEventListener('change', load);
     root.addEventListener('submit', async event => {
