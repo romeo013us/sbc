@@ -43,7 +43,10 @@ assert(patched.includes("if(u.role==='caller')return String(c.assignedTo||'')===
 const a=patched.indexOf("const SBC_V6699_OUTBOUND_AUTH=require("),b=patched.indexOf('// SBC_V6614_VOICE_CALL_LOG_INTEGRITY',a);
 assert(a>0&&b>a);
 let handler;
+const {createTwilioVoiceHandlers}=require('../routes/sbc-twilio-voice-v1.cjs');
+const SBC_TWILIO_VOICE_HANDLERS=createTwilioVoiceHandlers(()=>({normalizeDialNumber:AUTH.normPhone,secretValue:()=>'+13055550999',xmlEsc:s=>s}));
 vm.runInNewContext(patched.slice(a,b),{
+ SBC_TWILIO_VOICE_HANDLERS,
  require:()=>AUTH,app:{post(_p,_g,fn){handler=fn}},sbcSignedTwimlV6619(){},
  db:{users:base.users,customers:leads},v9CanLiveCall:()=>true,
  normalizeDialNumber:AUTH.normPhone,secretValue:()=>'+13055550999',
