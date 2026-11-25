@@ -731,6 +731,33 @@ jobs:
             dist-stage/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip
             dist-stage/CANONICAL-RUNTIME-REPORT.json
           retention-days: 30
+      - name: Build and verify lean canonical preview (development tests separated)
+        run: |
+          set -euo pipefail
+          python3 scripts/test_v66_lean_runtime.py
+          python3 scripts/v66_lean_runtime.py dist-stage/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip dist-stage/SBC-V66-LEAN-RUNTIME-PREVIEW.zip --expected-commit "$(git rev-parse HEAD)" > dist-stage/LEAN-RUNTIME-REPORT.json
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          unzip -q dist-stage/SBC-V66-LEAN-RUNTIME-PREVIEW.zip -d "$tmp"
+          (
+            cd "$tmp"
+            test ! -e browser_public
+            node scripts/v66-deployment-artifact-gate.cjs .
+            node scripts/v66155-release-hygiene.cjs --inventory .
+            SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs
+            npm install --omit=dev --no-audit --no-fund
+            npm run build
+            SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs
+          )
+          cat dist-stage/LEAN-RUNTIME-REPORT.json
+      - name: Upload lean clean-directory preview (never publish)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: SBC-LEAN-RUNTIME-PREVIEW-CLEAN-DIRECTORY-ONLY
+          path: |
+            dist-stage/SBC-V66-LEAN-RUNTIME-PREVIEW.zip
+            dist-stage/LEAN-RUNTIME-REPORT.json
+          retention-days: 30
       - name: Upload isolated staging candidate (never publish)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
