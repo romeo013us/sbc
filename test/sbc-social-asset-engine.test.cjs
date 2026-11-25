@@ -25,6 +25,7 @@ test('rendered PNG inventory is deterministic, contains six pillars and rejects 
  const second=E.generate({startDay:'2026-11-26',logo});
  assert.equal(first.length,14);
  assert.equal(new Set(first.map(r=>r.service)).size,6);
+ assert.equal(new Set(first.map(r=>r.caption)).size,14,'no repeated marketing angle within the initial week');
  assert.deepEqual(first.map(r=>r.sha256),second.map(r=>r.sha256));
  for(let i=0;i<first.length;i++){
   const r=first[i];assert.equal(r.state,'DRAFT');assert.equal(r.png.readUInt32BE(16),r.width);assert.equal(r.png.readUInt32BE(20),r.height);
@@ -52,4 +53,11 @@ test('only provider-confirmed rejection permits retries; ambiguous sends reconci
  assert.equal(E.retry({attempt:3,outcome:'REJECTED_TRANSIENT',status:503}).action,'OWNER_REVIEW');
  assert.equal(E.retry({attempt:0,outcome:'UNKNOWN',status:503}).action,'RECONCILE');
  assert.equal(E.retry({attempt:0,outcome:'REJECTED_TRANSIENT',status:429,retryAfterMs:120000}).delayMs,120000);
+});
+
+test('replenishment renders only the requested canonical future slots',()=>{
+ const planned=E.slots('2026-11-26').slice(4,6);
+ const rows=E.generate({startDay:'2026-11-26',logo,targetSlots:planned});
+ assert.deepEqual(rows.map(r=>r.key),planned.map(r=>r.key));
+ assert.throws(()=>E.generate({startDay:'2026-11-26',logo,targetSlots:[{...planned[0],at:'2026-11-26T00:00:00Z'}]}),/INVALID_TARGET_SLOT/);
 });
