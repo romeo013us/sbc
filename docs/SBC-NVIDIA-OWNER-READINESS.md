@@ -1,0 +1,3 @@
+# Kim NVIDIA integration readiness
+
+The existing owner-only operating-plan endpoint now includes a ten-component register of historical development evidence, CI/PR references and the next required acceptance gate. It performs no provider health checks or external calls. No production provider is activated; do not interpret historical fixture tests as GPU, speech model or sandbox certification. The UI escapes text and only permits exact SBC GitHub run or PR links. The register is versioned in source and must be updated with new independently inspected evidence; it is not live health or a 9.5 rating. No new database, credentials, permissions or execution routes.

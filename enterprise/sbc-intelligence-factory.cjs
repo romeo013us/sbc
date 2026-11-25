@@ -61,6 +61,90 @@ function speechBenchmark(samples){
  for(const g of Object.values(groups))g.wordErrorRate=g.errors/g.words;
  return {status:'SYNTHETIC_EVALUATION_ONLY',languages:groups,productionCertified:false};
 }
+// Source-controlled development receipts, not live health checks.
+const NVIDIA_EVIDENCE=[
+  {
+    "id": "relay",
+    "label": "NeMo Relay",
+    "evidence": "ACTUAL_SDK_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45663690353",
+    "nextGate": "Connect redacted tracing to an isolated running agent; verify export and retention.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "guardrails",
+    "label": "NeMo Guardrails",
+    "evidence": "ACTUAL_SDK_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45661442784",
+    "nextGate": "Integrate the tested SDK with authenticated tool calls; test injection and failure paths.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "aiq",
+    "label": "AI-Q Blueprint",
+    "evidence": "FIXTURE_PROTOCOL_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45661750377",
+    "nextGate": "Deploy isolated AI-Q; evaluate citations against real source content.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "nemoclaw",
+    "label": "NemoClaw",
+    "evidence": "DOCUMENTED_ONLY",
+    "reference": "https://github.com/romeo013us/sbc/pull/496",
+    "nextGate": "Verify supported host, install a reviewed release and exercise managed sandbox lifecycle.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "openshell",
+    "label": "OpenShell",
+    "evidence": "POLICY_ONLY",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45663690353",
+    "nextGate": "Load the policy in an actual sandbox; demonstrate denied egress, writes and privilege escalation.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "nemotron",
+    "label": "Nemotron",
+    "evidence": "FIXTURE_PROTOCOL_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45659489253",
+    "nextGate": "Serve a licensed model locally; evaluate reasoning on representative business tasks.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "retriever",
+    "label": "NeMo Retriever",
+    "evidence": "FIXTURE_PROTOCOL_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45661750377",
+    "nextGate": "Serve a real embedding model; verify tenant isolation, deletion and bilingual retrieval quality.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "riva",
+    "label": "Riva / Nemotron Speech",
+    "evidence": "SDK_FIXTURE_PROTOCOL_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45663913859",
+    "nextGate": "Run actual EN/ES models on synthetic and approved representative audio; measure WER and latency.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "nim",
+    "label": "NIM",
+    "evidence": "FIXTURE_PROTOCOL_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45659489253",
+    "nextGate": "Verify a compatible local model service and actual inference readiness.",
+    "production": "NOT_VERIFIED"
+  },
+  {
+    "id": "cuda",
+    "label": "CUDA",
+    "evidence": "DRIVER_PROBE_FIXTURE_TESTED",
+    "reference": "https://github.com/romeo013us/sbc/actions/runs/45663690353",
+    "nextGate": "Discover actual compatible GPU and driver; run a bounded kernel and measure capacity.",
+    "production": "NOT_VERIFIED"
+  }
+];
+function nvidiaReadiness(){return {schema:1,scope:'RECORDED_DEVELOPMENT_EVIDENCE',productionCertified:false,activeProviders:0,components:NVIDIA_EVIDENCE.map(row=>({...row}))};}
 function buildFactory(plan,started=performance.now()){
  const agents=Object.entries(AGENTS).map(([agent,[label,tool]])=>{
   const department=plan.departments.find(d=>d.id===agent);
@@ -69,7 +153,7 @@ function buildFactory(plan,started=performance.now()){
   const reviewCount=unknown?null:decisions.reduce((n,d)=>n+d.count,0);
   return {id:agent,label,tool,reviewCount,status:unknown?'EVIDENCE_REQUIRED':reviewCount?'REVIEW_REQUIRED':'NO_ITEMS_IN_SNAPSHOT',authority:'HUMAN_REVIEW_ONLY'};
  });
- return {schema:1,mode:'DETERMINISTIC_ADVISORY',providerCalls:0,externalActions:0,agents,
+ return {schema:1,mode:'DETERMINISTIC_ADVISORY',providerCalls:0,externalActions:0,agents,nvidiaReadiness:nvidiaReadiness(),
   runtime:{provider:'local-node',externalInferenceEnabled:false,speechEnabled:false,incrementalProviderSpendCents:0},
   profile:{durationMs:Math.max(0,performance.now()-started),scope:'CURRENT_ADVISORY_COMPUTATION_ONLY'},
   limitations:'No external agent execution, verified creative inventory, actual speech inference or production certification. Department counts are current snapshot observations only.'};
