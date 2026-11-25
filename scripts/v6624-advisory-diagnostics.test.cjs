@@ -303,3 +303,22 @@ test('Kim legacy overview and cycle use the same reconciled revenue as the owner
  assert.equal(s.overview(2).state.lastCycleResult,null);
  assert.equal(s.overview(2).metrics.recognizedRevenue,999);
 });
+
+test('switching Kim cycle tenant never exposes the prior tenant cycle while a new cycle is in flight',async()=>{
+ let release;const waiting=new Promise(resolve=>{release=resolve});
+ const db={customers:[],orders:[],fulfillmentJobs:[]};
+ const service=createController({db,tenBrain:{BRAINS:[]},saveData:async()=>{},logger:{info(){}}});
+ await service.cycle({tenantId:1});
+ assert.equal(service.overview(1).state.lastCycleResult.ok,true);
+ db.orders.push({id:'other_paid',tenantId:2,price:199,status:'New',paymentStatus:'Paid',squareOrderId:'other_so',squarePaymentId:'other_sp',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-11-01T12:00:00Z'});
+ // Use an unresolved eligible mission to pause the new tenant before reporting.
+ db.customers.push(customer('other_c',2,'Hot','Sales Ready'));
+ const otherService=createController({db,tenBrain:{BRAINS:[],evaluate:async()=>{await waiting;return {action:'CONTINUE_CONVERSATION'}}},godKim:{orchestrate:async()=>({ok:true,stage:'POLICY_GATED'})},saveData:async()=>{},logger:{info(){}}});
+ await otherService.cycle({tenantId:1});
+ const pending=otherService.cycle({tenantId:2});
+ try{
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(otherService.overview(2).state.lastCycleResult,null);
+  assert.equal(otherService.overview(1).state.lastCycleResult,null);
+ }finally{release();await pending}
+});

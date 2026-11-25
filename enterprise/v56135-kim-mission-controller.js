@@ -230,7 +230,7 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
       try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage}));}catch(_){/* diagnostics never block runtime */}
       return {...screened,operatingPlan:operatingPlan(db,screened,started)};
     }
-    state.running=true;state.lastCycleTenant=null;const started=Date.now();
+    state.running=true;state.lastCycleTenant=null;state.lastCycleAt='';state.lastCycleResult=null;const started=Date.now();
     try{
       const cap=Math.min(MAX_BATCH,Math.max(1,Number(limit)||MAX_BATCH));
       const selectedTenant=Number(tenantId);if(!Number.isSafeInteger(selectedTenant)||selectedTenant<1)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED'});
