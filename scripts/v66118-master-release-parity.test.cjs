@@ -35,10 +35,19 @@ for(const name of pinned){
 }
 console.log('[SBC V66.118] PASS: 8 exact staged release assets, inventory integrity, both UI bundles, master-only publisher and idempotent rerun comparison');
 
-// Academy media is committed by the trusted Actions bot. Its completion must
-// hand off to the full staged build, never directly publish the media artifact.
-assert(source.includes("workflows: ['SBC Academy 360 - Automatic Video Audio Photos']")&&source.includes('types: [completed]'),'Academy media build must trigger release validation');
-assert(source.includes("    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'a-sbc-master' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))"),'only trusted successful canonical Academy completions may enter staging');
-assert(job.includes("    if: github.ref == 'refs/heads/a-sbc-master' && (github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'a-sbc-master' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')))"),'publisher must remain canonical and reject untrusted Academy runs');
-assert(job.includes('needs: verified-staged-zip')&&job.includes('if [ "$remote" = "$GITHUB_SHA" ]; then')&&job.includes('node scripts/v66-deployment-artifact-gate.cjs .'),'Academy handoff may not bypass artifact or stale-source protections');
-console.log('[SBC ACADEMY HANDOFF] PASS: trusted completion event, full staging, canonical publisher and unchanged strict gates');
+// Academy generation must hand off to the full staging build without changing
+// canonical master. Candidate-only dispatch cannot enter the legacy publisher.
+const media=fs.readFileSync(path.resolve(__dirname,'../.github/workflows/sbc-academy360-auto-media.yml'),'utf8');
+assert(media.includes('actions: write'),'automatic candidate dispatch requires scoped Actions permission');
+assert(media.includes('refs/heads/release/candidate/academy-')&&media.includes('--force-with-lease="$candidate_ref:"'),'media must use create-only candidate refs');
+assert(!/git push[^\n]*:a-sbc-master\b/.test(media),'raw media must never push to master');
+assert(media.includes('gh workflow run sbc-v6606-staged-release.yml --ref "$candidate_branch"'),'Academy must trigger full candidate validation');
+assert(/^\s+GH_TOKEN:\s*\$\{\{\s*github\.token\s*\}\}\s*$/m.test(media)&&media.includes("if: github.ref == 'refs/heads/a-sbc-master'"),'dispatch must use GitHub runtime authentication and originate from canonical Academy workflow');
+assert(job.includes("github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/candidate/')"),'candidate staging only on explicit dispatch');
+const verify=job.indexOf('node scripts/verify-release-sync.cjs . "$GITHUB_SHA"');
+const pin=job.indexOf('bash scripts/pin-verified-godaddy-ref.sh "$GITHUB_SHA"');
+const candidate=job.indexOf('if [[ "$GITHUB_REF" == refs/heads/release/candidate/* ]]');
+const push=job.indexOf('git push origin "HEAD:refs/heads/$BRANCH"');
+assert(verify>=0&&pin>verify&&candidate>pin&&push>candidate&&job.slice(candidate,push).includes('exit 0'),'candidate must be verified and pinned but never promote');
+assert(job.includes('needs: verified-staged-zip')&&job.includes('if [ "$remote" = "$GITHUB_SHA" ]; then')&&job.includes('node scripts/v66-deployment-artifact-gate.cjs .'),'transitional legacy publisher still requires full staging and stale-source protection');
+console.log('[SBC ACADEMY HANDOFF] PASS: automatic candidate validation, no raw master writes from media, full inventory and pin gates');

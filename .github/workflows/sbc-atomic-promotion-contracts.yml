@@ -1,0 +1,23 @@
+name: SBC atomic promotion contracts
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'scripts/promote-sealed-master.sh'
+      - 'test/sbc-atomic-promotion.test.cjs'
+      - '.github/workflows/sbc-atomic-promotion-contracts.yml'
+      - '.github/workflows/sbc-v6606-staged-release.yml'
+      - '.github/workflows/sbc-academy360-auto-media.yml'
+permissions:
+  contents: read
+jobs:
+  atomic-promotion-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: bash -n scripts/promote-sealed-master.sh
+      - run: node --test test/sbc-atomic-promotion.test.cjs test/sbc-verified-ref.test.cjs test/sbc-release-sync.test.cjs

@@ -14,6 +14,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: academy360-generated-training-media
   cancel-in-progress: true
@@ -92,23 +93,23 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 1
-      - name: Automatically bundle reviewed synthetic-only media into the source branch
+      - name: Preserve generated media as a reviewable source candidate (never master)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/academy-media/academy360 browser_public/academy-media/academy360
           if git diff --cached --quiet; then
             echo "Automatic Academy media is already identical"
-          else
-            git commit -m "build(academy360): automated fictional-data English Spanish video audio and photos"
-            for attempt in 1 2 3; do
-              git fetch origin a-sbc-master
-              git rebase origin/a-sbc-master
-              if git push origin HEAD:a-sbc-master; then
-                echo "All generated SBC multimedia lessons integrated into the latest branch"
-                exit 0
-              fi
-            done
-            echo "Another release moved the branch; validated artifact remains available" >&2
-            exit 1
+            exit 0
           fi
+          git commit -m "build(academy360): candidate fictional-data English Spanish video audio and photos"
+          candidate_ref="refs/heads/release/candidate/academy-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          # Unique create-only ref: no rewrite, rebase, or raw master update.
+          git push --porcelain --force-with-lease="$candidate_ref:" origin "HEAD:$candidate_ref"
+          echo "Review source candidate: $candidate_ref" >> "$GITHUB_STEP_SUMMARY"
+          candidate_branch="${candidate_ref#refs/heads/}"
+          gh workflow run sbc-v6606-staged-release.yml --ref "$candidate_branch"
+          echo "Full candidate staging dispatched; no master advancement or GoDaddy deployment occurred." >> "$GITHUB_STEP_SUMMARY"
