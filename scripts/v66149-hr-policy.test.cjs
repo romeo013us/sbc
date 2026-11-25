@@ -48,7 +48,30 @@ const input={workerId:'lorna',periodStart:'2026-11-01',periodEnd:'2026-11-10',
 const draft=p.makeDraft({input,worker:users[0],actor:hr,tenantId:1});
 assert.equal(draft.status,'Pending Owner Review');assert.equal(draft.externalPaymentInitiated,false);
 assert.equal(draft.paymentVerified,false);assert.equal(draft.proposedUsd,80);
-assert(!JSON.stringify(draft).includes('1234'));
+// Opaque random IDs may coincidentally contain the same digits as the fake bank suffix.
+// Check the ID contract separately and inspect every remaining serialized field.
+function assertPrivateDraft(candidate){
+ const {id,...payload}=candidate;
+ assert.match(id,/^hrdraft_[a-f0-9]{18}$/);
+ assert.deepEqual(Object.keys(payload).sort(),[
+  'tenantId','workerId','workerName','periodStart','periodEnd','hours','proposedUsd',
+  'estimatedSystemGrossUsd','provider','note','reason','status','createdBy','createdAt',
+  'decidedAt','decidedBy','externalPaymentInitiated','paymentVerified'
+ ].sort(),'draft must expose only the approved fields');
+ for(const secret of ['1234','CONFIDENTIAL','private@example.invalid','NEVER_EXPOSE'])
+  assert(!JSON.stringify(payload).includes(secret),'draft must not expose private worker data');
+}
+assertPrivateDraft(draft);
+// Reproduce the false positive deterministically and inject forbidden input fields.
+const crypto=require('node:crypto'),originalRandomBytes=crypto.randomBytes;
+try{
+ crypto.randomBytes=(size)=>{assert.equal(size,9);return Buffer.from('1234abcdef01234567','hex');};
+ const collision=p.makeDraft({input:{...input,paymentAccountLast4:'1234',legalName:'CONFIDENTIAL'},
+  worker:{...users[0],paymentAccountLast4:'1234',legalName:'CONFIDENTIAL'},actor:hr,tenantId:1});
+ assert.equal(collision.id,'hrdraft_1234abcdef01234567');
+ assert(JSON.stringify(collision).includes('1234'),'regression reproduces the old false-positive condition');
+ assertPrivateDraft(collision);
+}finally{crypto.randomBytes=originalRandomBytes;}
 assert.throws(()=>p.makeDraft({input,worker:users[3],actor:hr,tenantId:1}),/HR_WORKER_NOT_FOUND/);
 assert.throws(()=>p.makeDraft({input:{...input,provider:'Wise'},worker:users[0],actor:hr,tenantId:1}),/HR_INVALID_PAYOUT_PROVIDER/);
 assert.throws(()=>p.makeDraft({input:{...input,proposedUsd:20000},worker:users[0],actor:hr,tenantId:1}),/HR_INVALID_DRAFT_AMOUNT/);
