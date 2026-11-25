@@ -73,3 +73,39 @@ test('control tower paid counter matches canonical Square proof and ignores prot
  assert.equal(tower.funnel.paidRevenue,299);
  assert.equal(tower.funnel.qualifiedEstimateOnly,true);
 });
+
+test('shared revenue model quarantines duplicate payment identities and isolates tenant customers',()=>{
+ const c=customer('same',1,'Direct'),foreign=customer('same',2,'Owner Launch QA');
+ const good=paid('good','same',1,199.01),dup=paid('dup','same',1,499),conflict={...paid('conflict','same',1,799),squarePaymentId:dup.squarePaymentId};
+ const rows=[good,dup,conflict,paid('other','same',2,999)];
+ const result=TRUTH.paidSummary(rows,[c,foreign],{tenantId:1});
+ assert.equal(result.orderCount,1);assert.equal(result.revenueCents,19901);assert.equal(result.revenue,199.01);
+ assert.equal(result.reconciliation.ambiguousOrders,2);assert.equal(result.reconciliation.paymentIdentityConflicts,1);
+ assert.deepEqual(result.orders.map(o=>o.id),['good']);
+ assert.equal(TRUTH.paidSummary(rows,[c,foreign],{tenantId:2}).orderCount,0);
+});
+test('conflicting or refunded copies of a payment cannot be counted by capture date filtering',()=>{
+ const c=customer('real'),a=paid('a','real'),b={...a,id:'b',paymentStatus:'Refunded',squarePaymentCompletedAt:'2020-01-01T12:00:00Z'};
+ const r=TRUTH.paidSummary([a,b],[c],{tenantId:1,start:new Date(Date.now()-86400000),end:new Date(Date.now()+86400000)});
+ assert.equal(r.orderCount,0);assert.equal(r.reconciliation.ambiguousOrders,2);
+});
+test('growth and control tower share tenant-scoped receipt reconciliation and safe source grouping',async()=>{
+ const c=customer('real',1,'__proto__'),other=customer('other',2,'Direct');
+ const good=paid('g','real',1,199.01),a=paid('a','real',1,499),b={...a,id:'b'};
+ const db={customers:[c,other],orders:[good,a,b,paid('foreign','other',2,999)]};
+ const growth=await GROWTH.live({db,pool:null,tenantId:1,days:30});
+ AUTOPILOT.configure({db,mysqlPool:null,config:{autoDemo:false,autoOutbound:false}});
+ const tower=await AUTOPILOT.controlTower();
+ assert.equal(growth.revenue,199.01);assert.equal(growth.orders,1);
+ assert.equal(growth.sourceBreakdown[0].source,'__proto__');
+ assert.equal(growth.revenueReconciliation.ambiguousOrders,2);
+ assert.equal(tower.funnel.paidRevenue,growth.revenue);assert.equal(tower.funnel.paidOrders,growth.orders);
+ assert.equal(tower.funnel.leads,1);assert.equal(tower.funnel.revenueReconciliation.ambiguousOrders,2);
+});
+test('canonical read model is deterministic under input reordering and preserves exact cent totals',()=>{
+ const c=customer('real');const rows=Array.from({length:10000},(_,i)=>paid('p'+i,'real',1,.01));
+ const r=TRUTH.paidSummary(rows,[c],{tenantId:1});
+ assert.equal(r.revenueCents,10000);assert.equal(r.revenue,100);
+ assert.equal(TRUTH.paidSummary(rows.slice().reverse(),[c],{tenantId:1}).revenueCents,r.revenueCents);
+ assert.throws(()=>TRUTH.paidSummary(rows,[c],{tenantId:0}),/TENANT_CONTEXT_REQUIRED/);
+});
