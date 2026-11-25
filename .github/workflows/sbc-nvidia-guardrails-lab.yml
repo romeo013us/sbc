@@ -1,0 +1,34 @@
+name: SBC NVIDIA real Guardrails SDK lab
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'scripts/nvidia_guardrails/**'
+      - 'enterprise/sbc-intelligence-factory.cjs'
+      - '.github/workflows/sbc-nvidia-guardrails-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NEMO_GUARDRAILS_NO_USAGE_STATS: '1'
+      DO_NOT_TRACK: '1'
+      OTEL_SDK_DISABLED: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check Python and install isolated SDK
+        run: |
+          python3 --version
+          python3 -m venv "$RUNNER_TEMP/sbc-guardrails"
+          "$RUNNER_TEMP/sbc-guardrails/bin/python" -m pip install --disable-pip-version-check 'nemoguardrails==0.25.0'
+          "$RUNNER_TEMP/sbc-guardrails/bin/python" -m pip check
+      - name: Test actual NVIDIA tool rails with no network namespace
+        run: |
+          sudo unshare --net -- "$RUNNER_TEMP/sbc-guardrails/bin/python" -m unittest discover -s scripts/nvidia_guardrails -p 'test_*.py' -v
