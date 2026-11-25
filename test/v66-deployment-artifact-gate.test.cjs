@@ -110,3 +110,10 @@ test('canonical layout rejects stale physical mirror and mixed inventory without
  sealLayout(root,identity,'canonical-public-v1','canonical-public-v1',{[name]:sha('old')});
  assert.throws(()=>verifyDeploymentArtifact(root),/mixed frontend layout/i);
 }));
+
+test('canonical identity may not fall back to legacy unanchored startup',()=>using(({root,identity})=>{
+ const {verifyStagedInventory}=require('../scripts/v6611-verify-stage-inventory.cjs');
+ fs.unlinkSync(path.join(root,'SBC-STAGED-INVENTORY.json'));
+ const {stagedInventorySha256,...unanchored}=identity;
+ assert.throws(()=>verifyStagedInventory(root,{...unanchored,frontendLayout:'canonical-public-v1'}),/canonical frontend requires anchored inventory/i);
+}));
