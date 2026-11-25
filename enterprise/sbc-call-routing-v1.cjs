@@ -37,7 +37,16 @@ function routingUpdate(customer,log,stamp=new Date()){
  if(!customer||!isTerminalLog(log)||!OUTCOMES.has(String(log.outcome||'')))return {changed:false,reason:'not-final-or-invalid'};
  const now=+new Date(stamp);if(!Number.isFinite(now))throw Error('CALL_ROUTING_INVALID_DATE');
  const outcome=String(log.outcome||'Pending'),logId=String(log.id||'');
- if(logId&&String(customer.salesLastRoutedCallLogId||'')===logId&&customer.salesLastRoutedOutcome===outcome)return {changed:false,reason:'already-routed'};
+ if(logId&&String(customer.salesLastRoutedCallLogId||'')===logId&&customer.salesLastRoutedOutcome===outcome){
+  // A caller can add the requested date after saving the initial disposition.
+  // Do not overwrite a later manual schedule, another queue or suppression.
+  const due=ts(log.followUpAt);
+  if(outcome==='Follow-up requested'&&customer.salesQueueState==='followup_unscheduled'&&!customer.salesNextAttemptAt&&due>0&&!hasDnc(customer)&&!isTerminalAccount(customer)){
+   customer.salesQueueState='callback';customer.salesNextAttemptAt=new Date(due).toISOString();customer.updatedAt=new Date(now).toISOString();
+   return {changed:true,queueState:customer.salesQueueState,outcome};
+  }
+  return {changed:false,reason:'already-routed'};
+ }
  if(hasDnc(customer)&&outcome!=='Do Not Call')return {changed:false,reason:'suppressed'};
  customer.salesLastRoutedCallLogId=logId;customer.salesLastRoutedOutcome=outcome;
  customer.salesLastAttemptAt=log.endedAt||new Date(now).toISOString();
