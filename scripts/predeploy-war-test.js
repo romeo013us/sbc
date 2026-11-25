@@ -84,10 +84,35 @@ function auditRelease(root=ROOT){
    serverSha256:checksum,sourceCommit:id.sourceCommit,sameSource};
  }catch(e){return {ok:false,error:String(e.message).slice(0,180)};}
 }
+// Source-shape gate for the shipped dependency-injected handler; runtime domain tests
+// separately exercise rejection, durable persistence and duplicate receipts.
+function auditSquareContract(server,square){
+ const verifier=server.match(/^function squareSignatureValid\(rawBody,signature\)\s*\{[\s\S]*?^\}/m)?.[0]||'';
+ const wiring=/^const SBC_SQUARE_WEBHOOK\s*=\s*require\(['"]\.\/routes\/sbc-square-webhook-v1\.cjs['"]\)\.createSquareWebhook\(\(\)=>\(\{squareSignatureValid,/m;
+ const route=/^app\.post\(['"]\/api\/webhooks\/square['"],async\(req,res\)=>\{return SBC_SQUARE_WEBHOOK\(req,res\)\}\);/m;
+ const routes=server.match(/\bapp\.post\(\s*['"]\/api\/webhooks\/square['"]/g)||[];
+ const guard=square.indexOf("if(!squareSignatureValid(raw,sig))return res.status(403)");
+ const replay=square.indexOf('const existing=events.find(x=>x.eventId===eventId);');
+ const duplicate=square.indexOf("return res.status(200).json({ok:true,duplicate:true,");
+ const persist=square.indexOf('try{await saveData()}catch(e){');
+ const reject=square.indexOf('return res.status(503)');
+ const ack=square.indexOf('res.status(200).json({ok:true,received:true,queued:true})');
+ const enqueue=square.indexOf('MONETIZATION_QUEUE.enqueue(');
+ return wiring.test(server)&&route.test(server)&&routes.length===1
+  &&verifier.includes('if(!key||!url||!signature)return false;')
+  &&verifier.includes("crypto.createHmac('sha256',key).update(url).update(raw).digest('base64')")
+  &&verifier.includes('supplied.length===wanted.length && supplied.length>0 && crypto.timingSafeEqual(supplied,wanted)')
+  &&/^module\.exports=\{createSquareWebhook\};/m.test(square)
+  &&square.includes("req.headers['x-square-hmacsha256-signature']")
+  &&guard>=0&&guard<replay&&replay<duplicate&&duplicate<persist
+  &&square.includes('if(existing){')&&persist<reject&&reject<ack&&ack<enqueue
+  &&square.includes('events.splice(events.indexOf(rec),1)')
+  &&square.includes('idempotencyKey:`square:${eventId}`');
+}
 function auditContracts(root=ROOT){
  const read=n=>fs.readFileSync(path.join(root,n),'utf8');
  const checks=[
-  ['Square signed webhook',()=>read('server.js').includes("'/api/webhooks/square'")&&read('server.js').includes('squareSignatureValid(raw,sig)')],
+  ['Square signed webhook',()=>auditSquareContract(read('server.js'),read('routes/sbc-square-webhook-v1.cjs'))],
   ['Square provider settlement',()=>read('server.js').includes('verifyReadback(payment,provider?.payment)')],
   ['Office Box fail-closed V2 handoff',()=>read('enterprise/v6674-officebox-v2-handoff.cjs').includes('COMMITTED_MYSQL')],
   ['Lead-research role scope',()=>read('public/lead-research.js').includes('researchDisplayable')],
