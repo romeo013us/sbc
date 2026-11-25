@@ -289,3 +289,17 @@ test('Kim owner shows integration evidence without implying live models or addin
  plan.intelligenceFactory.nvidiaReadiness.components[0].reference='javascript:alert(1)';
  const invalid=await win.sbcKimOperationsView();assert(!invalid.includes('javascript:'));assert.match(invalid,/Integration evidence unavailable/);
 });
+
+test('Kim legacy overview and cycle use the same reconciled revenue as the owner operating plan',async()=>{
+ const capture=(id,price,extra={})=>({id,tenantId:1,customerId:'c1',price,status:'Delivered',paymentStatus:'Paid',squareOrderId:'so_'+id,squarePaymentId:'sp_'+id,squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-11-01T12:00:00Z',...extra});
+ const db={customers:[customer('c1',1,'Cold','Needs Verification')],orders:[capture('valid',199),capture('dup_a',499),capture('dup_b',499,{squarePaymentId:'sp_dup_a'}),capture('qaorder_123',1),capture('fraction',1.001),capture('foreign',999,{tenantId:2}),{id:'label',tenantId:1,price:100,status:'Paid',paymentStatus:'Paid'}],fulfillmentJobs:[]};
+ const s=createController({db,tenBrain:{BRAINS:[]},saveData:async()=>{},logger:{info(){}}});
+ const plan=(await s.cycle({tenantId:1,advisoryOnly:true})).operatingPlan;
+ assert.equal(plan.commercial.recognizedRevenueCents,19900);
+ assert.equal(s.overview(1).metrics.recognizedRevenue,199);
+ assert.equal(s.overview(1).metrics.paidOrders,1);
+ const run=await s.cycle({tenantId:1});
+ assert.equal(run.metrics.recognizedRevenue,199);assert.equal(run.metrics.paidOrders,1);
+ assert.equal(s.overview(2).state.lastCycleResult,null);
+ assert.equal(s.overview(2).metrics.recognizedRevenue,999);
+});
