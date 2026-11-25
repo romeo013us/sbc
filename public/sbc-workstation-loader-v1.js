@@ -24,7 +24,7 @@
  }
  if(typeof module==='object'&&module.exports){module.exports={createLoader};return;}
  if(!root||root.sbcLoadWorkstation)return;
- const manifest=Object.freeze({marketing:Object.freeze(['/sbc-market-intelligence.js?v=20261116-prospect-offline-v3','/sbc-v6567-marketing-hub.js?v=20261125-lazy-pilot'])});
+ const manifest=Object.freeze({marketing:Object.freeze(['/sbc-market-intelligence.js?v=20261116-prospect-offline-v3','/sbc-v6567-marketing-hub.js?v=20261125-lazy-pilot']), 'academy-read-aloud':Object.freeze(['/sbc-training-read-aloud.js?v=20261125-lazy-academy'])});
  root.SBC_LAZY_MODULES=manifest;
  const load=root.sbcLoadWorkstation=createLoader(manifest,url=>new Promise((resolve,reject)=>{
   const tag=document.createElement('script');tag.src=url;tag.async=false;
@@ -58,7 +58,16 @@
   if(!/^#marketing(?:-hub)?$/i.test(root.location.hash)||!root.state?.me)return false;
   if(!mount())return false;const b=document.getElementById('sbcMarketingHubNav');if(b)void activate(b);return Boolean(b);
  }
+ let academyRequested=false,academyFailed=false;
+ function scanAcademy(){
+  const mounted=Boolean(root.state?.me&&document.querySelector('.academy9-lessonview'));
+  if(!mounted){academyFailed=false;return;}
+  if(academyRequested||academyFailed)return;
+  academyRequested=true;
+  load('academy-read-aloud').catch(()=>{academyRequested=false;academyFailed=true;});
+ }
  function boot(){
+  if(typeof MutationObserver==='function'&&document.body){new MutationObserver(scanAcademy).observe(document.body,{childList:true,subtree:true});scanAcademy();}
   mount();if(deepLink())return;
   let tries=0;const timer=setInterval(()=>{
    const ready=mount(),requested=/^#marketing(?:-hub)?$/i.test(root.location.hash);

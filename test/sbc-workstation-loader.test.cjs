@@ -28,7 +28,7 @@ test('both HTML mirrors load only the lightweight bootstrap at startup',()=>{
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
   assert.equal(tags.filter(t=>t.startsWith('/sbc-workstation-loader-v1.js?')).length,1);
   assert.ok(!tags.some(t=>/\/sbc-(?:market-intelligence|v6567-marketing-hub)\.js/.test(t)));
-  assert.equal(tags.length,83);
+  assert.equal(tags.length,82);
  }
 });
 
@@ -50,4 +50,20 @@ test('browser bootstrap shows navigation without loading marketing, then opens a
  assert.equal(opens,1);assert.equal(assets.length,2);assert.match(assets[0],/market-intelligence/);assert.match(assets[1],/marketing-hub/);
  button.click();await new Promise(r=>setImmediate(r));assert.equal(opens,2);assert.equal(assets.length,2);
  root.location.hash='#marketing-hub';listeners.hashchange();await new Promise(r=>setImmediate(r));assert.equal(opens,3);assert.equal(assets.length,2);
+});
+
+test('Academy lesson enhancement is activated only for an authenticated mounted lesson',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const assets=[],buttons=new Map();let lesson=false,observer;
+ const root={state:{me:null},location:{hash:''},addEventListener(){}};
+ const nav={appendChild(b){buttons.set(b.id,b)}};
+ const doc={readyState:'complete',body:{},getElementById:id=>buttons.get(id),
+ querySelector:s=>s==='.academy9-lessonview'?(lesson?{}:null):nav,
+ createElement:()=>({addEventListener(){},setAttribute(){},removeAttribute(){},focus(){},remove(){}}),
+ head:{appendChild(tag){assets.push(tag.src);queueMicrotask(()=>tag.onload())}}};
+ vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../public/sbc-workstation-loader-v1.js'),'utf8'),{window:root,document:doc,setInterval:()=>1,clearInterval(){},MutationObserver:class{constructor(fn){observer=fn}observe(){}}});
+ assert.deepEqual(assets,[]);lesson=true;observer();await new Promise(r=>setImmediate(r));assert.deepEqual(assets,[]);
+ lesson=false;root.state.me={id:'owner'};observer();await new Promise(r=>setImmediate(r));assert.deepEqual(assets,[]);
+ lesson=true;observer();observer();await new Promise(r=>setImmediate(r));assert.deepEqual(assets,['/sbc-training-read-aloud.js?v=20261125-lazy-academy']);
+ lesson=false;observer();lesson=true;observer();await new Promise(r=>setImmediate(r));assert.equal(assets.length,1);
 });
