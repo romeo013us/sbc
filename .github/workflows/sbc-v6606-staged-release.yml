@@ -791,7 +791,20 @@ jobs:
           artifact=portable-input/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip
           # The candidate report is produced by the preceding trusted staging job.
           # Bind the release to this exact workflow source and the independent report pin.
-          inventory=$(node -e 'const r=require("./portable-input/CANONICAL-RUNTIME-REPORT.json");const v=r.stagedInventorySha256||r.inventorySha256||r.candidateInventorySha256;if(!/^[a-f0-9]{64}$/.test(v||""))throw Error("Independent inventory pin missing");console.log(v)')
+          inventory=$(python3 - "$artifact" "$(git rev-parse HEAD)" <<'PY'
+          import hashlib,json,pathlib,sys,zipfile
+          artifact=pathlib.Path(sys.argv[1])
+          report=json.loads(artifact.with_name('CANONICAL-RUNTIME-REPORT.json').read_text())
+          assert report['sourceCommit']==sys.argv[2]
+          assert report['candidateOnly'] is True and report['productionCertified'] is False
+          assert hashlib.sha256(artifact.read_bytes()).hexdigest()==report['candidateZipSha256']
+          with zipfile.ZipFile(artifact) as z:
+              identity=json.loads(z.read('SBC-FLAT-RELEASE-IDENTITY.json'))
+              pin=hashlib.sha256(z.read('SBC-STAGED-INVENTORY.json')).hexdigest()
+              assert identity['stagedInventorySha256']==pin
+              print(pin)
+          PY
+          )
           bash scripts/sbc-portable-isolated-boot.sh "$artifact" "$(git rev-parse HEAD)" "$inventory"
 
   # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
