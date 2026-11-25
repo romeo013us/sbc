@@ -19,7 +19,7 @@ const rows=[
 ];
 const data={...planActions({tenantId:7,actor:{id:'owner_001',role:'owner'},rows,today:'2026-11-25'}),sampledRecords:rows.length,moreRecordsPossible:false};
 const shell='<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SBC workspace visual proof — synthetic</title><style>body{margin:0;padding:20px;background:#080e18;color:#edf3fa;font:14px system-ui}main{max-width:1160px;margin:auto}header{font-weight:700;letter-spacing:.04em;font-size:13px;color:#a8b9cc}'+css+'</style><body><main><header>SUCCESSFUL BY CHOICE / SYNTHETIC WORKSPACE PREVIEW</header><div id="view-accounts"></div></main>';
-const bootstrap='<script>window.fetch=async()=>({ok:true,json:async()=>'+JSON.stringify(data).replace(/</g,'\\u003c')+'});</script>';
+const bootstrap='<script>window.fetch=async()=>({ok:true,json:async()=>('+JSON.stringify(data).replace(/</g,'\\u003c')+')});</script>';
 const script='<script>'+js.replace(/<\/script/gi,'<\\/script')+'</script>';
 const checks='<script>setTimeout(()=>{try{const q=s=>document.querySelector(s);if(document.querySelectorAll(".sbc-actions-lane").length!==4)throw Error("lane count");if(!q(".sbc-actions-items").textContent.includes("Sample Auto Studio"))throw Error("initial priority");q("[data-lane=upcoming]").click();if(!q(".sbc-actions-items").textContent.includes("Sample Barber Shop"))throw Error("upcoming");q("[data-lane=pipeline]").click();if(!q(".sbc-actions-items").textContent.includes("25 CRM records"))throw Error("pipeline");if(document.documentElement.scrollWidth>innerWidth+1)throw Error("overflow");q("[data-lane=commitments]").click();document.body.dataset.acceptance="pass";}catch(e){document.body.dataset.acceptance="fail";document.body.dataset.error=e.message;}},200);</script>';
 fs.writeFileSync(path.join(tmp,'preview.html'),shell+bootstrap+script+checks+'</body></html>');
@@ -30,7 +30,7 @@ function run(width,height,extra){
 }
 try{
  for(const [w,h,label] of [[1440,1000,'desktop'],[500,940,'narrow']]){
-  const html=run(w,h,['--dump-dom']);assert.match(html,/<body[^>]*data-acceptance="pass"/,'Real Chrome acceptance failed: '+label);
+  const html=run(w,h,['--dump-dom']);assert(/<body[^>]*data-acceptance="pass"/.test(html),'Real Chrome acceptance failed: '+label+' '+(html.match(/data-error="[^"]*"/)||['no diagnostic'])[0]);
   const output=path.join(proof,label+'.png');run(w,h,['--screenshot='+output]);assert(fs.statSync(output).size>10000);
  }
  console.log('Chrome desktop and narrow viewport: four lanes, working selection and no horizontal overflow. Synthetic records only.');
