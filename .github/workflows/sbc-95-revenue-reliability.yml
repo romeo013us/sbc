@@ -43,6 +43,8 @@ jobs:
         run: npm run audit:ui
       - name: Block high severity production dependency advisories
         run: npm audit --omit=dev --audit-level=high
+      - name: Bounded rolling SLO and million-request measurement contract
+        run: node --test scripts/sbc-slo-bounded.test.cjs
       - name: Durable checkout fulfillment identity and state transitions
         run: node --test scripts/fulfillment-v2-blueprints.test.cjs scripts/fulfillment-v2-durable-plan.test.cjs scripts/fulfillment-v2-checkout-integration.test.cjs
       - name: Recent quote-save and light-mode regression
