@@ -186,7 +186,11 @@ async function replayArchivedSession(conn,scope,identity,body,number,env=process
   !Object.hasOwn(body,key)||String(body[key]??'')===log[key]);
  const sameProvider=!body.callSid||String(body.callSid)===log.callSid;
  const sameStart=!body.startedAt||ms(body.startedAt)!==null&&ms(body.startedAt)===ms(log.startedAt);
- if(!sameFields||!sameProvider||!sameStart)return {code:409,body:{ok:false,durable:false,error:'CALL_ARCHIVE_REPLAY_CONFLICT',message:'This call is archived. Review the saved entry in Dialed Number History.'}};
+ const rawDuration=body.durationSec;
+ const suppliedDuration=typeof rawDuration==='number'||(typeof rawDuration==='string'&&/^\d+(?:\.\d+)?$/.test(rawDuration));
+ const duration=Number(rawDuration);
+ const sameDuration=!Object.hasOwn(body,'durationSec')||(suppliedDuration&&Number.isFinite(duration)&&duration>=0&&duration<=86400&&Math.round(duration)===log.durationSec);
+ if(!sameFields||!sameProvider||!sameStart||!sameDuration)return {code:409,body:{ok:false,durable:false,error:'CALL_ARCHIVE_REPLAY_CONFLICT',message:'This call is archived. Review the saved entry in Dialed Number History.'}};
  return {code:200,body:{ok:true,durable:true,replayed:true,source:'sql_archive',id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt}};
 }
 

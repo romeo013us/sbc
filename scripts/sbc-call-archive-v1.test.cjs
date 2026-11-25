@@ -184,6 +184,9 @@ test('the voice save route recovers evicted sessions before allocating or routin
  assert.equal((await call({notes:'Different draft'})).code,409);
  assert.equal((await call({outcome:'Pending'})).code,409);
  assert.equal((await call({status:'connecting'})).code,409);
+ assert.equal((await call({durationSec:0})).code,200);
+ assert.equal((await call({durationSec:99})).code,409);
+ assert.equal((await call({durationSec:'not-a-duration'})).code,409);
  assert.equal(customer.salesQueueState,'callback_assigned');
  assert.equal(db.callLogs.length+db.activities.length+db.auditLog.length,0);
  customer.doNotContact=true;
