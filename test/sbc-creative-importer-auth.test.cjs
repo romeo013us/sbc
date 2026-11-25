@@ -26,3 +26,27 @@ test('Eastern schedule respects both summer and winter offsets',()=>{
  assert.equal(A.isRefillWindow(Date.parse('2026-07-01T11:15:00Z')),false);
  assert.equal(A.isRefillWindow(Date.parse('2026-11-25T10:15:00Z')),false);
 });
+
+test('machine routes expose only plan and draft import; writer gate blocks Preview',async()=>{
+ const {registerCreativeMachine}=require('../routes/sbc-creative-machine.cjs');
+ const routes=new Map(),app={post:(p,...h)=>routes.set(p,h.at(-1))};
+ let writer=false,staged=0,consumed=0;
+ const pool={query:async()=>{consumed++;return [[]]}};
+ const ledgerFactory=()=>({snapshot:async()=>({approved:2,drafts:1,missing:[],assets:[{sha256:'a'.repeat(64),dhash:'b'.repeat(16),caption:'private copy',approved_by:'owner'}]}),stage:async()=>{staged++;return {staged:1}}});
+ registerCreativeMachine(app,{corporateTenant:1,getPool:()=>pool,canWrite:()=>writer,getKey:()=>key,clock:()=>now,ledgerFactory,parse:(_q,_s,n)=>n(),limit:(_q,_s,n)=>n()});
+ assert.deepEqual([...routes.keys()].sort(),[A.IMPORT,A.PLAN].sort());
+ async function invoke(r){
+  const req={method:r.method,path:r.path,originalUrl:r.path,body:r.body,headers:{'x-sbc-creative-time':r.timestamp,'x-sbc-creative-nonce':r.nonce,'x-sbc-creative-signature':r.signature}};
+  const res={code:200,setHeader(){},status(n){this.code=n;return this},json(v){this.body=v;return this}};
+  await routes.get(r.path)(req,res);return res;
+ }
+ assert.equal((await invoke(fixture())).code,423);assert.equal(consumed,0);
+ writer=true;
+ const result=await invoke(fixture());
+ assert.equal(result.code,200);assert.equal(result.body.tenantId,1);assert.equal(result.body.approved,2);
+ assert.deepEqual(result.body.assets,[{sha256:'a'.repeat(64),dhash:'b'.repeat(16)}]);
+ assert.equal(staged,0);
+ assert.equal((await invoke(fixture({body:{tenantId:2}}))).code,400);
+ assert.equal((await invoke(fixture({path:A.IMPORT,body:{}}))).code,503);
+ assert.equal(staged,0);
+});
