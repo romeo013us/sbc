@@ -143,3 +143,69 @@ test('call history UI is mirrored for compiled deployment',()=>{
  const root=path.join(__dirname,'..');
  assert.equal(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),fs.readFileSync(path.join(root,'browser_public/app.js'),'utf8'));
 });
+
+test('the voice save route recovers evicted sessions before allocating or routing another attempt', async () => {
+ const fs = require('node:fs'), vm = require('node:vm');
+ const archive = require('../enterprise/sbc-call-archive-v1.cjs');
+ const source = fs.readFileSync(require('node:path').join(__dirname, '../server.js'), 'utf8');
+ const start = source.indexOf('let sbcVoiceLogCommitTailV6615=');
+ const end = source.indexOf('\n', source.indexOf("app.post('/api/voice/log',", start));
+ assert(start >= 0 && end > start);
+ const saved = archive.prepare({...row, status:'completed', notes:'Original notes', outcome:'Spanish callback needed'});
+ const customer = {id:'lead', tenantId:1, assignedTo:'rep', salesQueueState:'callback_assigned'};
+ const db = {customers:[customer], callLogs:[], activities:[], auditLog:[]};
+ const env = {SBC_CALL_ARCHIVE_CAPTURE:'YES',SBC_CALL_ARCHIVE_RETENTION_APPROVED:'YES',SBC_CALL_ARCHIVE_RETENTION_POLICY_REF:'isolated-test'};
+ let queries = 0, newIds = 0, handler, failLookup = false;
+ const pool = {async query(sql, args) {
+   queries++;
+   if (failLookup) throw Error('isolated database failure');
+   assert.match(sql, /tenant_id=\? AND actor_id=\? AND session_key=\?/);
+   assert.deepEqual(Array.from(args), [1, 'rep', saved.sessionKey]);
+   return [[{payload_json:saved.json}]];
+ }};
+ const ctx = {
+   app:{post(route, auth, fn){handler=fn;}}, auth(){}, db, requireRequestTenant:req=>req.tenantId,
+   process:{env}, mysqlPool:pool, SBC_CALL_ARCHIVE:archive, require:()=>archive,
+   SBC_V66101_CALLER_POLICY:{suppressed:c=>c.doNotContact===true}, SBC_PHONE_RECOVERY:{isHeld:()=>false},
+   SBC_CALL_ROUTING:require('../enterprise/sbc-call-routing-v1.cjs'), normalizeDialNumber:v=>String(v||''),
+   id(){newIds++;throw Error('new identity allocated');}, now:()=>new Date().toISOString()
+ };
+ vm.runInNewContext(source.slice(start,end),ctx);
+ async function call(change={}) {
+   const res={code:200,status(n){this.code=n;return this;},json(body){this.body=body;return this;}};
+   await handler({tenantId:1,user:{role:'caller',id:'rep'},body:{customerId:'lead',sessionId:'one',status:'completed',outcome:'Spanish callback needed',notes:'Original notes',...change}},res);
+   return res;
+ }
+ const receipt = await call();
+ assert.equal(receipt.code,200);
+ assert.equal(receipt.body.id,'a');
+ assert.equal(receipt.body.durable,true);
+ assert.equal(receipt.body.replayed,true);
+ assert.equal((await call({notes:'Different draft'})).code,409);
+ assert.equal((await call({outcome:'Pending'})).code,409);
+ assert.equal((await call({status:'connecting'})).code,409);
+ assert.equal(customer.salesQueueState,'callback_assigned');
+ assert.equal(db.callLogs.length+db.activities.length+db.auditLog.length,0);
+ customer.doNotContact=true;
+ const before=queries;
+ assert.equal((await call()).code,403);
+ assert.equal(queries,before);
+ customer.doNotContact=false;
+ failLookup=true;
+ assert.equal((await call()).code,503);
+ assert.equal(newIds,0);
+});
+
+test('archive correction validates owner, expected revision, notes and reason before opening a transaction', async () => {
+ const archive=require('../enterprise/sbc-call-archive-v1.cjs');
+ const env={SBC_CALL_ARCHIVE_READ:'YES',SBC_CALL_ARCHIVE_CAPTURE:'YES',SBC_CALL_ARCHIVE_RETENTION_APPROVED:'YES',SBC_CALL_ARCHIVE_RETENTION_POLICY_REF:'isolated-test'};
+ const scope={tenantId:1,actorId:'owner',role:'owner'};
+ const input={id:'a',revision:prepare(row).revisionHash,notes:'Corrected note',reason:'Clarified the appointment time'};
+ const pool={getConnection(){throw Error('unexpected connection');}};
+ const lease=()=>{throw Error('unexpected writer check');};
+ await assert.rejects(archive.correctArchivedNotes(pool,{...scope,role:'caller'},input,lease,env),/CALL_ARCHIVE_SCOPE_REQUIRED/);
+ for(const change of [{notes:42},{notes:'x'.repeat(12001)},{reason:' '},{revision:'none'},{notes:null}]){
+  await assert.rejects(archive.correctArchivedNotes(pool,scope,{...input,...change},lease,env),/CALL_ARCHIVE_FIELD_INVALID/);
+ }
+ await assert.rejects(archive.correctArchivedNotes(pool,scope,input,lease,{}),/CALL_ARCHIVE_READ_DISABLED/);
+});

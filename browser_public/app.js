@@ -532,10 +532,27 @@ async function loadSbcCallLedger(offset=0){
     (next!==null?'<button type="button" class="btn small" onclick="loadSbcCallLedger('+next+')">Next</button>':'')+'</div>';
   host.innerHTML='<div class="card-head"><h2>☎️ Dialed Number History</h2><span class="badge blue">'+total+' SAVED ATTEMPTS</span></div><div class="card-body">'+hint+controls+
    '<p class="mini">'+esc(d.retentionNote||'Recent saved call history only.')+'</p>'+navigation+
-   (rows.length?rows.map(x=>'<div class="list-card"><div><strong>'+esc(x.number||'Unknown number')+'</strong> · '+esc(x.businessName||(x.manualDial?'Manual dial':'CRM lead'))+
+   (rows.length?rows.map((x,index)=>'<div class="list-card"><div><strong>'+esc(x.number||'Unknown number')+'</strong> · '+esc(x.businessName||(x.manualDial?'Manual dial':'CRM lead'))+
     '<div class="mini">'+esc(x.endedAt||x.startedAt||x.createdAt||'')+' · '+esc(x.userName||'')+' · '+esc(x.status||'')+' · '+esc(x.outcome||'Pending')+' · '+esc(Number(x.durationSec||0))+' sec</div>'+
     (x.notes?'<div class="mini" style="white-space:pre-wrap">'+esc(x.notes)+'</div>':'')+'</div>'+
+    (archive&&/^[a-f0-9]{64}$/.test(x.notesRevision||'')?'<details><summary>Correct archived notes</summary><form data-archive-note="'+index+'"><label>Call notes<textarea name="notes" rows="4" maxlength="12000">'+esc(x.notes||'')+'</textarea></label><label>Reason for correction<input name="reason" maxlength="1200" required></label><button class="btn small" type="submit">Save correction</button><p class="mini" role="status"></p></form></details>':'')+
     (!archive&&x.customerId&&state.data.customers?.some(c=>String(c.id)===String(x.customerId))?'<button type="button" class="btn small" data-sbc-history-handoff="'+esc(x.customerId)+'">🇪🇸 Move to Spanish Queue</button>':'')+'</div>').join(''):'<div class="empty">No saved calls match this search.</div>')+navigation+'</div>';
+  if(typeof host.querySelectorAll==='function')for(const form of host.querySelectorAll('form[data-archive-note]')){
+   const original=rows[Number(form.dataset.archiveNote)];
+   form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const button=form.querySelector('button'),feedback=form.querySelector('[role="status"]');
+    if(button.disabled||host.sbcHistoryRequest!==request)return;
+    button.disabled=true;feedback.textContent='Saving correction…';
+    try{
+     const result=await api('/api/sales/call-history/'+encodeURIComponent(original.id)+'/notes',{method:'POST',body:JSON.stringify({
+      revision:original.notesRevision,notes:form.elements.notes.value,reason:form.elements.reason.value.trim()
+     })});
+     if(result?.ok!==true||result.durable!==true||result.id!==original.id||!/^[a-f0-9]{64}$/.test(result.revision))throw Error('Save unconfirmed');
+     if(host.isConnected&&host.sbcHistoryRequest===request)await loadSbcCallLedger(actualOffset);
+    }catch(e){button.disabled=false;feedback.textContent='Correction unconfirmed. '+String(e.message||e)+'. Review the current entry before retrying.';}
+   });
+  }
   if(typeof host.querySelectorAll==='function')for(const btn of host.querySelectorAll('[data-sbc-history-handoff]'))btn.addEventListener('click',()=>moveSbcLeadToSpanishQueue(btn.dataset.sbcHistoryHandoff));
  }catch(e){if(host.isConnected&&host.sbcHistoryRequest===request)host.innerHTML=head+'<div class="card-body">'+hint+controls+'<p role="alert">Dialed Number History unavailable: '+esc(String(e.message||e))+'</p></div>'}
 }

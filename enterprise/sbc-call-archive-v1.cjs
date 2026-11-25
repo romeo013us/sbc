@@ -25,6 +25,12 @@ function prepare(row){
   outcomeCorrectedAt:text(row.outcomeCorrectedAt,80),durationSec:Number(row.durationSec??0)};
  if(!Number.isFinite(payload.durationSec)||payload.durationSec<0||payload.durationSec>86400)fail('CALL_ARCHIVE_DURATION_INVALID');
  if(payload.manualDial&&payload.customerId)fail('CALL_ARCHIVE_IDENTITY_CONFLICT');
+ // Keep the canonical JSON (and hash) of every pre-correction record unchanged.
+ if(row.noteCorrection!=null){
+  const {actorId,at,reason,previousRevision}=row.noteCorrection;
+  if(ms(at)===null||!isRevision(previousRevision))fail('CALL_ARCHIVE_FIELD_INVALID');
+  payload.noteCorrection={actorId:text(actorId,120,true),at,reason:text(reason,1200,true),previousRevision};
+ }
  const numberDigits=payload.to.replace(/\D/g,'');
  if(numberDigits.length>20)fail('CALL_ARCHIVE_NUMBER_INVALID');
  const json=JSON.stringify(payload),revisionHash=hash(json),sessionKey=payload.sessionId?hash(JSON.stringify([payload.userId,payload.sessionId,payload.customerId,payload.manualDial])):null;
@@ -99,10 +105,19 @@ function queryPlan(scope,filters={}){
 async function list(conn,scope,filters={}){
  const p=queryPlan(scope,filters);
  const [[count]]=await conn.query('SELECT COUNT(*) AS total FROM '+TABLE+' a WHERE '+p.where,p.args);
- const [rows]=await conn.query('SELECT a.payload_json,(SELECT c.business_name FROM sbc_customers c WHERE c.tenant_id=a.tenant_id AND c.id=a.customer_id LIMIT 1) AS business_name FROM '+TABLE+' a WHERE '+p.where+' ORDER BY a.occurred_ms DESC,a.log_id ASC LIMIT ? OFFSET ?',[...p.args,p.limit,p.offset]);
+ const [rows]=await conn.query('SELECT a.payload_json,a.latest_hash,(SELECT c.business_name FROM sbc_customers c WHERE c.tenant_id=a.tenant_id AND c.id=a.customer_id LIMIT 1) AS business_name FROM '+TABLE+' a WHERE '+p.where+' ORDER BY a.occurred_ms DESC,a.log_id ASC LIMIT ? OFFSET ?',[...p.args,p.limit,p.offset]);
  const total=Number(count.total);
- return {total,limit:p.limit,offset:p.offset,nextOffset:p.offset+p.limit<total?p.offset+p.limit:null,rows:rows.map(row=>({...JSON.parse(row.payload_json),businessName:String(row.business_name||'')}))};
+ return {total,limit:p.limit,offset:p.offset,nextOffset:p.offset+p.limit<total?p.offset+p.limit:null,rows:rows.map(row=>({...JSON.parse(row.payload_json),archiveRevision:row.latest_hash,businessName:String(row.business_name||'')}))};
 }
+
+function retentionApproved(env){
+ const ref=env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF;
+ return env.SBC_CALL_ARCHIVE_RETENTION_APPROVED==='YES'&&typeof ref==='string'&&ref.trim().length>0&&ref.length<=120;
+}
+function requireHistoryAccess(env){
+ if(env.SBC_CALL_ARCHIVE_READ!=='YES'||env.SBC_CALL_ARCHIVE_CAPTURE!=='YES'||!retentionApproved(env))fail('CALL_ARCHIVE_READ_DISABLED');
+}
+function isRevision(value){return typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);}
 
 // The previous committed workspace contains any call that was evicted by the
 // in-memory 1,000-row cap. Capture it and the exact next workspace payload
@@ -115,7 +130,7 @@ function workspaceCalls(payload){
 }
 async function captureRollingSnapshot(conn,nextPayload,env=process.env){
  if(env.SBC_CALL_ARCHIVE_CAPTURE!=='YES')return {enabled:false};
- if(env.SBC_CALL_ARCHIVE_RETENTION_APPROVED!=='YES'||typeof env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF!=='string'||!env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.trim()||env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.length>120)fail('CALL_ARCHIVE_RETENTION_APPROVAL_REQUIRED');
+ if(!retentionApproved(env))fail('CALL_ARCHIVE_RETENTION_APPROVAL_REQUIRED');
  const next=workspaceCalls(nextPayload);
  const [previous]=await conn.query('SELECT payload FROM sbc_workspace WHERE id=1 FOR UPDATE');
  if(!Array.isArray(previous)||previous.length>1)fail('CALL_ARCHIVE_WORKSPACE_INVALID');
@@ -145,7 +160,7 @@ async function findSession(conn,scope,input){
 // Explicit, owner-gated read path. A disabled or failed archive never presents
 // the rolling cache as a complete historical result.
 async function readHistory(conn,scope,filters={},env=process.env){
- if(env.SBC_CALL_ARCHIVE_READ!=='YES'||env.SBC_CALL_ARCHIVE_CAPTURE!=='YES'||env.SBC_CALL_ARCHIVE_RETENTION_APPROVED!=='YES'||typeof env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF!=='string'||!env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.trim()||env.SBC_CALL_ARCHIVE_RETENTION_POLICY_REF.length>120)fail('CALL_ARCHIVE_READ_DISABLED');
+ requireHistoryAccess(env);
  queryPlan(scope,filters);
  if(!conn||typeof conn.query!=='function')fail('CALL_ARCHIVE_READ_UNAVAILABLE');
  const page=await list(conn,scope,filters);
@@ -154,7 +169,64 @@ async function readHistory(conn,scope,filters={},env=process.env){
   userId:log.userId||'',userName:log.userName||'',number:log.to||'',manualDial:log.manualDial===true,
   status:log.status||'',outcome:log.outcome||'Pending',notes:log.notes||'',nextAction:log.nextAction||'',
   followUpAt:log.followUpAt||'',durationSec:Number(log.durationSec||0),startedAt:log.startedAt||'',
-  endedAt:log.endedAt||'',createdAt:log.createdAt||'',callSid:log.callSid||''
+  endedAt:log.endedAt||'',createdAt:log.createdAt||'',callSid:log.callSid||'',
+  ...(scope.role==='owner'&&isRevision(log.archiveRevision)?{notesRevision:log.archiveRevision}:{})
  })),retentionNote:'Shows retained SQL archive records only; coverage is limited to captured and reconciled history under the approved retention policy.'};
 }
-module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot,findSession,readHistory};
+// Identity lookup belongs to the write path even when the searchable history UI is off.
+// Browser retry timestamps describe the retry. The original call times stay authoritative.
+async function replayArchivedSession(conn,scope,identity,body,number,env=process.env){
+ if(env.SBC_CALL_ARCHIVE_CAPTURE!=='YES')return null;
+ if(!retentionApproved(env))fail('CALL_ARCHIVE_RETENTION_APPROVAL_REQUIRED');
+ if(!conn)fail('CALL_ARCHIVE_READ_UNAVAILABLE');
+ const log=await findSession(conn,scope,identity);
+ if(!log)return null;
+ if((identity.manualDial||number)&&number!==log.to)return {code:409,body:{ok:false,durable:false,error:'CALL_ARCHIVE_NUMBER_CONFLICT'}};
+ const sameFields=['status','outcome','notes','nextAction','followUpAt'].every(key=>
+  !Object.hasOwn(body,key)||String(body[key]??'')===log[key]);
+ const sameProvider=!body.callSid||String(body.callSid)===log.callSid;
+ const sameStart=!body.startedAt||ms(body.startedAt)!==null&&ms(body.startedAt)===ms(log.startedAt);
+ if(!sameFields||!sameProvider||!sameStart)return {code:409,body:{ok:false,durable:false,error:'CALL_ARCHIVE_REPLAY_CONFLICT',message:'This call is archived. Review the saved entry in Dialed Number History.'}};
+ return {code:200,body:{ok:true,durable:true,replayed:true,source:'sql_archive',id:log.id,sessionId:log.sessionId,status:log.status,updatedAt:log.updatedAt}};
+}
+
+// Edit only historical notes. The workspace lock follows the capture writer's lock
+// order and prevents a rolling record being edited in two different stores.
+async function correctArchivedNotes(pool,scope,input,verifyWriter,env=process.env){
+ requireHistoryAccess(env);
+ if(scope?.role!=='owner'||!validTenant(scope.tenantId))fail('CALL_ARCHIVE_SCOPE_REQUIRED');
+ const tenant=Number(scope.tenantId),actor=text(scope.actorId,120,true),id=text(input.id,120,true);
+ if(!isRevision(input.revision)||typeof input.notes!=='string'||input.notes.length>12000||typeof input.reason!=='string')fail('CALL_ARCHIVE_FIELD_INVALID');
+ const reason=text(input.reason.trim(),1200,true);
+ if(!pool||typeof verifyWriter!=='function')fail('CALL_ARCHIVE_WRITER_UNAVAILABLE');
+ const conn=await pool.getConnection();
+ try{
+  await verifyWriter(conn);
+  await conn.beginTransaction();
+  const [workspaces]=await conn.query('SELECT payload FROM sbc_workspace WHERE id=1 FOR UPDATE');
+  if(workspaces.length!==1)fail('CALL_ARCHIVE_WORKSPACE_INVALID');
+  if(workspaceCalls(workspaces[0].payload).some(log=>String(log.id)===id&&(!validTenant(log.tenantId??log.tenant_id)||Number(log.tenantId??log.tenant_id)===tenant)))fail('CALL_ARCHIVE_STILL_RECENT');
+  const [rows]=await conn.query('SELECT latest_hash,payload_json FROM '+TABLE+' WHERE tenant_id=? AND log_id=? FOR UPDATE',[tenant,id]);
+  if(!rows.length)fail('CALL_ARCHIVE_NOT_FOUND');
+  const saved=prepare(JSON.parse(rows[0].payload_json)),log=saved.payload;
+  if(rows.length!==1||log.tenantId!==tenant||log.id!==id||saved.revisionHash!==rows[0].latest_hash)fail('CALL_ARCHIVE_IDENTITY_CONFLICT');
+  const previous=log.noteCorrection;
+  let revision=saved.revisionHash;
+  if(input.revision!==revision){
+   if(previous?.previousRevision!==input.revision||previous.actorId!==actor||previous.reason!==reason||input.notes!==log.notes)fail('CALL_ARCHIVE_STALE_REVISION');
+  }else if(input.notes!==log.notes){
+   const at=new Date().toISOString();
+   const changed={...log,notes:input.notes,updatedAt:at,noteCorrection:{actorId:actor,at,reason,previousRevision:revision}};
+   const result=await appendBatch(conn,[changed]);
+   if(result.advanced!==1)fail('CALL_ARCHIVE_WRITE_CONFLICT');
+   revision=prepare(changed).revisionHash;
+  }
+  await verifyWriter(conn);
+  await conn.commit();
+  return {ok:true,durable:true,id,revision};
+ }catch(error){
+  try{await conn.rollback();}catch{}
+  throw error;
+ }finally{conn.release();}
+}
+module.exports={prepare,appendBatch,queryPlan,list,captureRollingSnapshot,findSession,readHistory,replayArchivedSession,correctArchivedNotes};
