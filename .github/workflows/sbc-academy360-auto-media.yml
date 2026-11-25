@@ -14,6 +14,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: academy360-generated-training-media
   cancel-in-progress: true
@@ -93,6 +94,8 @@ jobs:
           retention-days: 30
           compression-level: 1
       - name: Preserve generated media as a reviewable source candidate (never master)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -107,4 +110,6 @@ jobs:
           # Unique create-only ref: no rewrite, rebase, or raw master update.
           git push --porcelain --force-with-lease="$candidate_ref:" origin "HEAD:$candidate_ref"
           echo "Review source candidate: $candidate_ref" >> "$GITHUB_STEP_SUMMARY"
-          echo "Dispatch the staged-release workflow on this reviewed candidate to prepare a sealed recovery ref; no GoDaddy deployment occurred." >> "$GITHUB_STEP_SUMMARY"
+          candidate_branch="${candidate_ref#refs/heads/}"
+          gh workflow run sbc-v6606-staged-release.yml --ref "$candidate_branch"
+          echo "Full candidate staging dispatched; no master advancement or GoDaddy deployment occurred." >> "$GITHUB_STEP_SUMMARY"

@@ -30,6 +30,7 @@ test('Academy generation never pushes raw media to the GoDaddy branch; candidate
  assert.doesNotMatch(media,/git push[^\n]*:a-sbc-master\b/);
  assert.match(media,/refs\/heads\/release\/candidate\/academy-/);
  assert.match(media,/--force-with-lease="\$candidate_ref:"/);
+ assert.match(media,/gh workflow run sbc-v6606-staged-release\.yml --ref "\$candidate_branch"/);
  assert.match(staged,/startsWith\(github\.ref, 'refs\/heads\/release\/candidate\/'\)/);
  const pin=staged.indexOf('bash scripts/pin-verified-godaddy-ref.sh "$GITHUB_SHA"');
  const candidate=staged.indexOf('if [[ "$GITHUB_REF" == refs/heads/release/candidate/* ]]',pin);
