@@ -1,6 +1,6 @@
 'use strict';
 /* V66 build-time CSS compactor.
-   Merge ONLY six consecutive leaf stylesheets after the existing owner inline
+   Merge ONLY seven consecutive leaf stylesheets after the existing owner inline
    style blocks. Preserve byte order, selectors, @media and specificity. No minify,
    no CSSOM mutation, no runtime transformer, no customer data or network access.
    Compiled artifacts are committed under BOTH public and browser_public to
@@ -10,6 +10,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const COMPONENTS=Object.freeze([
+ 'sbc-command-center-focus-v1.css',
  'sbc-global-contrast-rescue-20261106.css',
  'sbc-manual-dialer-v6696.css',
  'sbc-owner-employee-switch-v6697.css',
@@ -41,9 +42,7 @@ function verify(root=path.join(__dirname,'..'),opts={}){
   if(opts.checkIndex===false)continue;
   const page=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
   const links=[...page.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/gi)].map(m=>m[0]);
-  const ownerFocusCss='/sbc-command-center-focus-v1.css';
-  if(links.length!==6)throw Error('[SBC V66 CSS] Expected six stylesheet requests including focused workspace styling, got '+links.length+' in '+dir);
-  if(links.filter(x=>x.includes('href="'+ownerFocusCss+'?')).length!==1)throw Error('[SBC V66 CSS] Owner focus stylesheet not present exactly once in '+dir);
+  if(links.length!==5)throw Error('[SBC V66 CSS] Expected five stylesheet requests, got '+links.length+' in '+dir);
   const last=links.at(-1)||'';
   if(!last.includes('/'+expected.filename))throw Error('[SBC V66 CSS] owner UI bundle missing from '+dir+' index');
   for(const original of COMPONENTS)if(page.includes('href="/'+original))
