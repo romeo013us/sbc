@@ -92,7 +92,7 @@ test('adding a requested callback date to the same saved call schedules the prev
  const c=customer(),l=call('Follow-up requested');
  flow.routingUpdate(c,l,at);
  assert.equal(c.salesQueueState,'followup_unscheduled');
- l.followUpAt='2026-11-25T14:00:00.000Z';
+ l.followUpAt=new Date(Date.UTC(2026,10,25,14)).toISOString();
  assert.equal(flow.routingUpdate(c,l,'2026-11-23T15:00Z').changed,true);
  assert.equal(c.salesQueueState,'callback');
  assert.equal(c.salesNextAttemptAt,l.followUpAt);
@@ -103,11 +103,11 @@ test('adding a requested callback date to the same saved call schedules the prev
 test('old callback retry cannot replace an existing schedule, suppression or other queue state',()=>{
  for(const state of ['callback','retired','spanish_callback','pipeline']){
   const c=customer(),l=call('Follow-up requested');flow.routingUpdate(c,l,at);
-  c.salesQueueState=state;c.salesNextAttemptAt='2026-11-26T14:00:00.000Z';l.followUpAt='2026-11-25T14:00:00.000Z';
+  c.salesQueueState=state;c.salesNextAttemptAt='2026-11-26T14:00:00.000Z';l.followUpAt=new Date(Date.UTC(2026,10,25,14)).toISOString();
   assert.equal(flow.routingUpdate(c,l,at).changed,false);assert.equal(c.salesNextAttemptAt,'2026-11-26T14:00:00.000Z');
  }
  const c=customer(),l=call('Follow-up requested');flow.routingUpdate(c,l,at);
  l.followUpAt='not-a-date';assert.equal(flow.routingUpdate(c,l,at).changed,false);
- c.doNotContact=true;l.followUpAt='2026-11-25T14:00:00.000Z';
+ c.doNotContact=true;l.followUpAt=new Date(Date.UTC(2026,10,25,14)).toISOString();
  assert.equal(flow.routingUpdate(c,l,at).changed,false);assert.equal(c.salesQueueState,'followup_unscheduled');
 });
