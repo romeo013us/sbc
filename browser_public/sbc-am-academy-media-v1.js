@@ -24,6 +24,12 @@
   for(const node of [video,audio])if(node!==mediaNow())try{node.pause();}catch(_){}
  }
  function refreshControls(){
+  const fallback=!available.video&&!available.audio;
+  $('clearNarration').hidden=!fallback;
+  for(const id of ['playScene','pauseVoice'])$(id).hidden=!fallback;
+  $('voiceRate').closest('label').hidden=!fallback;
+  $('academyModeVideo').disabled=!available.video;
+  $('academyModeAudio').disabled=!available.audio;
   const active=mediaNow(),ok=mode==='video'?available.video:mode==='audio'?available.audio:false;
   $('academyAvControls').hidden=!ok;
   $('academyVideoCaptions').hidden=mode!=='video'||!video.querySelector('track');
@@ -65,7 +71,7 @@
  }
  async function render(id,language){
   const ticket=++generation,es=language==='es',lang=es?'es':'en';
-  clearMedia(video);clearMedia(audio);available={video:false,audio:false,photos:0};
+  clearMedia(video);clearMedia(audio);available={video:false,audio:false,photos:0};refreshControls();
   $('academyPhotoGallery').replaceChildren();
   if(!allowed.has(id)){$('academyVideoStatus').textContent=tr(es,'Lesson media unavailable.','Medios no disponibles.');show('video');return;}
   $('academyVideoStatus').textContent=tr(es,'Checking simulated lesson video…','Buscando video simulado de la lección…');
@@ -107,7 +113,7 @@
   $('academyPhotosStatus').textContent=available.photos?
    tr(es,available.photos+' simulated training images with fictional records; not authenticated employee screenshots. Tap to enlarge.',available.photos+' imágenes simuladas de capacitación con datos ficticios; no son capturas auténticas de empleados. Toque para ampliar.'):
    tr(es,'Actual workstation screenshots are not yet published. The four illustrated step-by-step scenes remain available below.','Aún no hay capturas reales publicadas. Las cuatro escenas ilustradas paso a paso siguen disponibles abajo.');
-  show(mode);
+  show(available.video?'video':available.audio?'audio':'photos');
  }
  for(const [name,id] of [['video','academyModeVideo'],['audio','academyModeAudio'],['photos','academyModePhotos']]){
   $(id).addEventListener('click',()=>show(name));
@@ -148,7 +154,7 @@
    const selected=node===video?'video':'audio';
    if(selected==='video'){available.video=false;$('academyVideoStatus').textContent='The video failed to play; continue with the illustrated lesson.';}
    else{available.audio=false;$('academyAudioStatus').textContent='Audio unavailable; use narrated illustration below.';}
-   clearMedia(node);refreshControls();
+   clearMedia(node);show(available.video?'video':available.audio?'audio':'photos');
   });
  }
  window.SBC_ACADEMY_VIDEO=Object.freeze({render,show,lessonIds:[...allowed]});
