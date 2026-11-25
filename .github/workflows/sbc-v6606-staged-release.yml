@@ -677,6 +677,25 @@ jobs:
           node scripts/v6603-flat-release-contract.test.cjs
           node scripts/v66108-war-gate.test.cjs
           echo '[SBC GODADDY HOST PREFLIGHT] npm production install, build, artifact gate and stage integrity PASS'
+      - name: Verify canonical frontend projection (not a deployment package)
+        run: |
+          set -euo pipefail
+          python3 scripts/test_v66_canonical_frontend.py
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          python3 scripts/v66_canonical_frontend.py dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip "$tmp/frontend-proof.zip"
+          python3 - "$tmp/frontend-proof.zip" <<'PY'
+          import pathlib,sys,zipfile
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              assert z.testzip() is None
+              pathlib.Path('dist-stage/CANONICAL-FRONTEND-PROOF.json').write_bytes(z.read('CANONICAL-FRONTEND-PROOF.json'))
+          PY
+      - name: Upload canonical frontend evidence (not deployable)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SBC-CANONICAL-FRONTEND-VERIFICATION-ONLY
+          path: dist-stage/CANONICAL-FRONTEND-PROOF.json
+          retention-days: 30
       - name: Upload isolated staging candidate (never publish)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
