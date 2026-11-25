@@ -134,3 +134,17 @@ test('accessibility and mirrored asset parity are preserved',()=>{
   cp.execFileSync(process.execPath,['--check',path.join(root,'public/sbc-v6567-marketing-hub.js')]);
   cp.execFileSync(process.execPath,['--check',path.join(root,'browser_public/sbc-v6567-marketing-hub.js')]);
 });
+
+test('creative inventory is owner-only and missing storage never appears as approved artwork',()=>{
+ const hub=load(async()=>reply({}));
+ const content={innerHTML:'',querySelectorAll(){return []}},tabs={innerHTML:''},notice={textContent:''};
+ hub.setRoot({hidden:false,querySelector(s){return {'.mh-content':content,'.mh-tabs':tabs,'.mh-notice':notice}[s]}});
+ hub.window.state={me:{role:'account_manager'}};
+ hub.state.activeTab='creatives';hub.render();
+ assert.doesNotMatch(tabs.innerHTML,/data-tab="creatives"/);
+ hub.window.state.me.role='owner';hub.state.activeTab='creatives';hub.render();
+ assert.match(tabs.innerHTML,/data-tab="creatives"/);
+ assert.match(content.innerHTML,/Creative inventory/);
+ assert.match(content.innerHTML,/not loaded|unavailable/i);
+ assert.doesNotMatch(content.innerHTML,/14 approved/i);
+});

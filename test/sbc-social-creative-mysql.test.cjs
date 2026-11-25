@@ -1,0 +1,43 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const mysql=require('mysql2/promise');
+const {createLedger}=require('../enterprise/sbc-social-creative-ledger.cjs');
+const {slots}=require('../enterprise/sbc-social-asset-engine.cjs');
+const {recordSlot,reconcileSlots}=require('../routes/sbc-marketing-receipts.cjs');
+test('isolated MySQL8 preserves creative approvals, serializes claims and joins verified receipt evidence',async t=>{
+ if(process.env.SBC_CREATIVE_MYSQL_CI!=='YES')throw Error('Disposable MySQL acceptance environment required');
+ const pool=mysql.createPool({host:'127.0.0.1',user:'root',database:'sbc_v6682_ci',password:process.env.SBC_V6682_CI_MYSQL_PASSWORD});
+ t.after(()=>pool.end());
+ const migration=fs.readFileSync(path.join(__dirname,'../migrations/20261125_001_sbc_creative_inventory.sql'),'utf8');
+ for(const sql of migration.split(';').map(x=>x.trim()).filter(Boolean))await pool.query(sql);
+ const tenant=98101,owner={tenantId:tenant,id:'owner',role:'owner'},system={tenantId:tenant,id:'publisher',role:'system'};
+ let now=Date.parse('2026-11-25T17:00:00Z'),writer=true;
+ const slot=slots('2026-11-25')[1];
+ // DB contract fixture, not a claim of a rendered PNG; rendering and signature
+ // acceptance use separate tests with the real renderer.
+ const png=Buffer.from('isolated-test-artwork'),sha256=crypto.createHash('sha256').update(png).digest('hex');
+ const row={...slot,png,sha256,dhash:'1234567890abcdef',width:1200,height:630,service:'Hosting',caption:'Test-only creative'};
+ const ledger=createLedger({pool,corporateTenant:tenant,writerReady:()=>writer,clock:()=>now,verifyPng:async()=>({width:1200,height:630,dhash:row.dhash})});
+ const staged=await Promise.allSettled([ledger.stage(owner,[row]),ledger.stage(owner,[row])]);
+ assert.equal(staged.filter(x=>x.status==='fulfilled').length,1);
+ assert.equal((await ledger.snapshot(owner)).drafts,1);
+ await assert.rejects(ledger.artwork(system,sha256),/ARTWORK_UNAVAILABLE/);
+ await assert.rejects(ledger.approve({...owner,tenantId:tenant+1},sha256),/CREATIVE_ACCESS_DENIED/);
+ writer=false;await assert.rejects(ledger.approve(owner,sha256),/CREATIVE_WRITER_UNAVAILABLE/);
+ writer=true;await ledger.approve(owner,sha256);
+ assert.equal((await ledger.snapshot(owner)).approved,1);
+ assert.deepEqual(await ledger.artwork(system,sha256),png);
+ await assert.rejects(ledger.claim(system,{day:slot.day,platform:'instagram',slot:'PM'}),/SLOT_NOT_DUE/);
+ now=Date.parse(slot.at);
+ const claims=await Promise.allSettled([1,2].map(()=>ledger.claim(system,{day:slot.day,platform:'instagram',slot:'PM'})));
+ assert.equal(claims.filter(x=>x.status==='fulfilled').length,1);
+ assert.match(claims.find(x=>x.status==='rejected').reason.message,/SLOT_ALREADY_CLAIMED/);
+ const postId='9810100001';
+ await recordSlot(pool,tenant,slot.day,{platform:'instagram',slot:'PM',postId});
+ assert.equal((await ledger.receipts(owner,slot.day))[0].status,'UNVERIFIED');
+ await reconcileSlots(pool,tenant,{day:slot.day,channels:[{platform:'instagram',receipts:[{id:postId,link:'https://www.instagram.com/p/test/',publishedAt:slot.at}]}]});
+ const fresh=createLedger({pool,corporateTenant:tenant,writerReady:()=>writer,clock:()=>now});
+ const [proof]=await fresh.receipts(owner,slot.day);
+ assert.equal(proof.provider_id,postId);
+ assert.equal(proof.status,'POST_VERIFIED_ARTWORK_UNVERIFIED');
+});
