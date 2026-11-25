@@ -1,6 +1,30 @@
 'use strict';
 /* V66.155 - GoDaddy extraction overlays old files; deny stale diagnostics at HTTP level. */
 const BANNED_DIRS=new Set(['.git','.github','node_modules','data','backups','starter-leads','dist','dist-stage','releases','__pycache__','.pytest_cache','runtime-spool']);
+// Reviewed root-only source history. Preserve active and guardian-referenced attestations.
+const HISTORICAL_ROOT_ARTIFACTS=new Set([
+ "BUILD-MANIFEST-V60.4.1.txt",
+ "BUILD-VERIFICATION-V65.1.10-SESSION-OVERLAY-HOTFIX.json",
+ "BUILD-VERIFICATION-V65.1.10.json",
+ "BUILD-VERIFICATION-V65.1.6.json",
+ "BUILD-VERIFICATION-V65.1.8.json",
+ "RELEASE-MANIFEST-V64.0.0.json",
+ "RELEASE-MANIFEST-V64.2.16.json",
+ "RELEASE-MANIFEST-V64.2.17.json",
+ "RELEASE-MANIFEST-V65.0.3.json",
+ "RELEASE-MANIFEST-V65.0.4.json",
+ "LEAD-WORKSPACE-TEST-REPORT.txt",
+ "all-tests.txt",
+ "browser-war-file-results.json",
+ "browser-war-results.json",
+ "SHA256-V65.0.9-OWNER-LEADS.txt",
+ "V56.25.0-FILE-SHA256.txt",
+ "V56.6-COMPONENT-HASHES.txt",
+ "V60.3.0-FILE-HASHES.txt",
+ "V65.0.7-RELEASE-MANIFEST.txt",
+ "component-sha256-v56.23.0.txt",
+ "component-sha256.txt"
+]);
 const DANGEROUS=/\.(?:zip|tgz|tar|gz|csv|sqlite|db|pem|p12|pfx|key|log|bak|orig|swp)$/i;
 function excludedReleasePath(name){
  if(typeof name!=='string'||!name||name.startsWith('/')||name.includes('\\')||name.includes('\0'))return true;
@@ -9,6 +33,7 @@ function excludedReleasePath(name){
  // Repository-root Markdown is source history, never a GoDaddy runtime dependency.
  // Keep README.md for platform/operator orientation; preserve all docs in GitHub.
  if(bits.length===1&&/\.md$/i.test(file)&&file!=='README.md')return true;
+ if(bits.length===1&&HISTORICAL_ROOT_ARTIFACTS.has(file))return true;
  if(file==='.env'||file.startsWith('.env.')||DANGEROUS.test(file))return true;
  if(/^(public|browser_public)\//.test(name)&&/\.sql$/i.test(file))return true;
  if(/^(?:id_rsa|id_ed25519|credentials\.json|service-account(?:-key)?\.json)$/i.test(file))return true;
