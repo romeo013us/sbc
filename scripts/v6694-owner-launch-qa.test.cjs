@@ -103,22 +103,16 @@ function setup({locked=false,tenant=7,saveFails=false,costFails=false}={}){
  assert.equal(save.db.orders.length,1);
  // Stored MySQL payment status must be visible after readRelational() drops
  // the in-memory paymentStatus property; otherwise a paid order looks Pending.
- const getStart=src.indexOf("app.get('/api/payments/square/order/:orderId',auth,async(req,res)=>{");
- const getEnd=src.indexOf("\napp.post('/api/payments/square/refresh/:orderId'",getStart);
- assert(getStart>=0&&getEnd>getStart,'compiled Square owner status route present');
- const getSource=src.slice(getStart,getEnd);
+ const mount="app.get('/api/payments/square/order/:orderId',auth,SBC_SQUARE_ORDER_HANDLERS.order);";
+ assert.equal(src.split(mount).length-1,1,'compiled Square readback retains auth and single mount');
+ assert.ok(src.includes("require("+ "'./routes/sbc-square-order-handlers-v1.cjs').createSquareOrderHandlers("),'compiled route factory present');
  const paymentOrder={
   id:'QA_SQL_ORDER_1',tenantId:7,price:1,customerId:'QA_SQL_CUSTOMER_1',
   fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',
   notes:JSON.stringify({squarePaymentStatus:'PAID',squarePaymentId:'sq_payment_1',squareOrderId:'sq_order_1'})
  };
- const statusApp={get:(route,auth,handler)=>{
-  assert.equal(route,'/api/payments/square/order/:orderId');
-  statusApp.handler=handler;
- }};
- vm.runInNewContext(getSource,{app:statusApp,auth:'AUTH',db:{orders:[paymentOrder]},
-  requireRequestTenant:()=>7,orderParsed:o=>JSON.parse(o.notes),
-  squarePaymentRecords:()=>[],Number,String},{timeout:4000});
+ const {createSquareOrderHandlers}=require(path.join(root,'routes/sbc-square-order-handlers-v1.cjs'));
+ const statusApp={handler:createSquareOrderHandlers(()=>({db:{orders:[paymentOrder]},requireRequestTenant:()=>7,orderParsed:o=>JSON.parse(o.notes),squarePaymentRecords:()=>[]})).order};
  const response={payload:null,statusCode:200,json(j){this.payload=j;return this},
   status(n){this.statusCode=n;return this}};
  await statusApp.handler({params:{orderId:'QA_SQL_ORDER_1'}},response);
