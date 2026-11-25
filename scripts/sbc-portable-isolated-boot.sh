@@ -61,12 +61,13 @@ docker exec -e MYSQL_PWD="$readonlypass" "$name-db" mysql -usbc_reader -h127.0.0
 if docker exec -e MYSQL_PWD="$readonlypass" "$name-db" mysql -usbc_reader -h127.0.0.1 sbc_portable_ci -e 'CREATE TABLE forbidden_write(id INT)' >/dev/null 2>&1; then
  echo 'Readonly MySQL account unexpectedly has DDL access' >&2;exit 1
 fi
+export SBC_SESSION_SECRET=$sessionsecret DB_PASSWORD=$readonlypass
 docker run -d --name "$name-app" --network "$name-net" \
  --mount "type=volume,source=$name-state,target=/private-state" \
  -e NODE_ENV=production -e PORT=3000 -e SBC_RUNTIME_ROLE=readonly -e ENABLE_DDL=false \
  -e SBC_PERSIST_DIR=/private-state -e SBC_AUTOMATION_ENABLED=false -e SBC_REVENUE_AUTOPILOT_ENABLED=false \
- -e SBC_SESSION_SECRET="$sessionsecret" -e DB_HOST=db -e DB_PORT=3306 \
- -e DB_USER=sbc_reader -e DB_PASSWORD="$readonlypass" -e DB_NAME=sbc_portable_ci "$name-app" >/dev/null
+ -e SBC_SESSION_SECRET -e DB_HOST=db -e DB_PORT=3306 \
+ -e DB_USER=sbc_reader -e DB_PASSWORD -e DB_NAME=sbc_portable_ci "$name-app" >/dev/null
 # Do not confuse an early HTTP listener with evaluated recovery state.
 passed=0
 for ((i=0;i<90;i++)); do
