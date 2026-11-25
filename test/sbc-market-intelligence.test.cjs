@@ -206,7 +206,12 @@ test('release stage wires owner access and durable website receipts, and mirrors
   for (const file of ['index.html', 'sbc-v6567-marketing-hub.js', 'sbc-market-intelligence.js', 'sbc-market-intelligence.css']) {
     assert.equal(read(`public/${file}`), read(`browser_public/${file}`));
   }
-  assert.match(read('public/index.html'), /sbc-market-intelligence\.js[\s\S]*sbc-v6567-marketing-hub\.js/);
+  const html=read('public/index.html');
+  const loader=read('public/sbc-workstation-loader-v1.js');
+  assert.equal(loader,read('browser_public/sbc-workstation-loader-v1.js'),'lazy loader mirror parity');
+  assert.match(html,/src="\/sbc-workstation-loader-v1\.js\?v=/);
+  assert.doesNotMatch(html,/<script\b[^>]*src="\/sbc-(?:market-intelligence|v6567-marketing-hub)\.js/,'marketing modules must not load at startup');
+  assert.match(loader,/marketing:Object\.freeze\(\['\/sbc-market-intelligence\.js\?v=[^']+','\/sbc-v6567-marketing-hub\.js\?v=[^']+'\]\)/,'market dependency precedes hub on activation');
 });
 
 const bfsStates='AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');

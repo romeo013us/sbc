@@ -75,7 +75,7 @@ function verify(root=path.resolve(__dirname,'..')){
  for(const dir of ['public','browser_public']){
   const html=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
-  const expectedTags=78+ACCOUNT_SCRIPTS.length;
+  const expectedTags=77+ACCOUNT_SCRIPTS.length;
   if(tags.length!==expectedTags)throw Error('[SBC V66 JS] Expected '+expectedTags+' external script tags, got '+tags.length+' in '+dir);
   for(const name of ACCOUNT_SCRIPTS)if(tags.filter(t=>t.split('?')[0]===name).length!==1)throw Error('[SBC V66 JS] Account workspace script not loaded exactly once: '+name);
   for(const value of values){
