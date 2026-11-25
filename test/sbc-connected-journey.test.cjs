@@ -112,3 +112,25 @@ test('rollback preserves a concurrent microtask and only reverts its own fields 
  await assert.rejects(s.transaction(()=>{db.orders[0].notes=JSON.stringify({release:true});queueMicrotask(()=>db.customers.push({id:'unrelated',tenantId:1}));return {ok:true}},['customers','orders']),/NOT_COMMITTED/);
  assert.equal(db.customers[0].id,'unrelated');assert.deepEqual(JSON.parse(db.orders[0].notes),{release:false,provider:'concurrent provider event'});
 });
+
+test('duplicate capture quarantines both paid journey records and prevents approval, delivery and task creation',async()=>{
+ const f=fixture();await f.service.intake(1,lead());const c=f.db.customers[0];const o=paidOrder(c.id);f.db.orders.push(o);
+ await f.service.reconcile(owner,1);const req={portalCustomer:c,portalAccount:{id:'portal1',customerId:c.id,tenantId:1,active:true}};
+ const act=(step,extra={})=>f.service.progress(o.id,owner,1,{step,expectedRevision:f.service.detail(c.id,owner,1).orders[0].revision,...extra});
+ await act('intake');await act('build');await act('preview',{previewUrl:'https://example.invalid/private-preview'});await act('qa');
+ f.db.orders.push(paidOrder(c.id,{id:'duplicate_capture'}));
+ assert.equal((await f.service.reconcile(owner,1)).created,0);
+ const detail=f.service.detail(c.id,owner,1);assert(detail.orders.every(x=>!x.paymentVerified&&!x.canApprove));
+ assert.equal(f.service.queue(owner,1).rows[0].paidOrders,0);
+ assert.equal(f.service.portalSummary(req).orders[0].previewUrl,'');assert.match(f.service.portalSummary(req).orders[0].customerMessage,/on hold/);
+ await assert.rejects(f.service.approve(req,o.id,{expectedRevision:2,decision:'approve'}),/PAYMENT_VERIFICATION_REQUIRED/);
+ await assert.rejects(act('release'),/PAYMENT_VERIFICATION_REQUIRED/);
+ assert.equal(f.db.tasks.filter(t=>t.journeyTaskKey==='delivery:duplicate_capture').length,0);
+});
+test('synthetic and fractional-cent orders do not create customer work; valid unique order in another tenant does not suppress local capture',async()=>{
+ const f=fixture();await f.service.intake(1,lead());const c=f.db.customers[0];
+ f.db.orders.push(paidOrder(c.id),paidOrder(c.id,{id:'foreign',tenantId:2}),paidOrder(c.id,{id:'qaorder_example',notes:JSON.stringify({squareOrderId:'sq2',squarePaymentId:'pay2',squarePaymentStatus:'PAID',squarePaymentCompletedAt:stamp})}),paidOrder(c.id,{id:'fraction',price:1.001,notes:JSON.stringify({squareOrderId:'sq3',squarePaymentId:'pay3',squarePaymentStatus:'PAID',squarePaymentCompletedAt:stamp})}));
+ assert.equal((await f.service.reconcile(owner,1)).created,1);
+ assert.equal(f.service.queue(owner,1).rows[0].paidOrders,1);
+ assert.equal(f.db.tasks.filter(t=>t.journeyTaskKey?.startsWith('delivery:')).length,1);
+});

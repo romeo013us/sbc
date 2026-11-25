@@ -1,0 +1,33 @@
+name: SBC God Tier connected delivery and portable preflight
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/sbc-connected-journey.cjs'
+      - 'enterprise/sbc-revenue-reporting-truth-v66142.cjs'
+      - 'public/sbc-customer-journey*'
+      - 'browser_public/sbc-customer-journey*'
+      - 'test/sbc-connected-journey.test.cjs'
+      - 'test/sbc-customer-journey-ui.test.cjs'
+      - 'scripts/sbc-portable-runtime-proof.cjs'
+      - '.github/workflows/sbc-god-tier-connected-delivery.yml'
+  push:
+    branches: [a-sbc-master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  connected-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Synthetic connected delivery and UI regression
+        run: |
+          node --test test/sbc-connected-journey.test.cjs test/sbc-customer-journey-ui.test.cjs test/sbc-appointment-recovery.test.cjs
+          cmp public/sbc-customer-journey-v1.js browser_public/sbc-customer-journey-v1.js
+          cmp public/sbc-customer-journey-v1.css browser_public/sbc-customer-journey-v1.css
+          cmp public/sbc-customer-journey.html browser_public/sbc-customer-journey.html
