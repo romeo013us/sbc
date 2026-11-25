@@ -255,3 +255,37 @@ test('Retriever lab requests passage and query embeddings separately and measure
  assert.equal(r.productionCertified,false);assert(!Object.hasOwn(r,'vectors'));
  await assert.rejects(retrieverLab(env,async(u,o)=>new URL(u).pathname==='/v1/embeddings'?Response.json({model:'nvidia/test-embed',data:[{index:0,embedding:[1]}]}):fake(u,o)),/INVALID_EMBEDDING_BATCH/);
 });
+
+test('NVIDIA owner readiness distinguishes actual SDK checks, fixture protocols and unverified runtime',()=>{
+ const {buildFactory}=require('../enterprise/sbc-intelligence-factory.cjs');
+ const n=buildFactory({departments:[]}).nvidiaReadiness;
+ assert.equal(n.schema,1);assert.equal(n.scope,'RECORDED_DEVELOPMENT_EVIDENCE');
+ assert.equal(n.productionCertified,false);assert.equal(n.activeProviders,0);
+ assert.equal(n.components.length,10);assert.equal(new Set(n.components.map(c=>c.id)).size,10);
+ const by=Object.fromEntries(n.components.map(c=>[c.id,c]));
+ assert.equal(by.guardrails.evidence,'ACTUAL_SDK_TESTED');
+ assert.equal(by.relay.evidence,'ACTUAL_SDK_TESTED');
+ assert.equal(by.riva.evidence,'SDK_FIXTURE_PROTOCOL_TESTED');
+ assert.equal(by.aiq.evidence,'FIXTURE_PROTOCOL_TESTED');
+ assert.equal(by.openshell.evidence,'POLICY_ONLY');
+ assert.equal(by.nemoclaw.evidence,'DOCUMENTED_ONLY');
+ assert.equal(by.cuda.evidence,'DRIVER_PROBE_FIXTURE_TESTED');
+ assert(n.components.every(c=>c.production==='NOT_VERIFIED'&&c.nextGate.length>0));
+ assert(n.components.every(c=>/^https:\/\/github\.com\/romeo013us\/sbc\/(actions\/runs|pull)\/[0-9]+$/.test(c.reference)));
+ n.components[0].production='ACTIVE';
+ assert.equal(buildFactory({departments:[]}).nvidiaReadiness.components[0].production,'NOT_VERIFIED');
+});
+test('Kim owner shows integration evidence without implying live models or adding execution controls',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const {buildFactory}=require('../enterprise/sbc-intelligence-factory.cjs');
+ const plan={schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',commercial:{recognizedRevenueCents:0,recognizedPaidOrders:0},departments:[]};
+ plan.intelligenceFactory=buildFactory(plan);
+ const win={},requests=[];
+ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/kim-operations-os.js'),'utf8'),{window:win,document:{querySelector:()=>null},addEventListener(){},fetch:async(url,o)=>{requests.push({url,o});return {ok:true,json:async()=>url.endsWith('operating-plan')?{ok:true,operatingPlan:plan}:{production:{}}}}});
+ const html=await win.sbcKimOperationsView();
+ assert.match(html,/NVIDIA integration readiness/);assert.match(html,/NeMo Guardrails/);assert.match(html,/NemoClaw/);assert.match(html,/No active NVIDIA providers/);assert.match(html,/Production not verified/);
+ assert.match(html,/github\.com\/romeo013us\/sbc\/actions\/runs\/45661442784/);
+ assert.equal(requests.length,2);assert(requests.every(r=>!r.o.method||r.o.method==='GET'));
+ plan.intelligenceFactory.nvidiaReadiness.components[0].reference='javascript:alert(1)';
+ const invalid=await win.sbcKimOperationsView();assert(!invalid.includes('javascript:'));assert.match(invalid,/Integration evidence unavailable/);
+});
