@@ -768,6 +768,45 @@ jobs:
           retention-days: 30
 
 
+  portable-readonly-boot:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'rebuild/god-tier-portable-runtime')
+    needs: verified-staged-zip
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --test test/sbc-portable-health-contract.test.cjs
+      - run: bash -n scripts/sbc-portable-isolated-boot.sh
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: SBC-CANONICAL-RUNTIME-CANDIDATE-CLEAN-DIRECTORY-ONLY
+          path: portable-input
+      - name: Off-provider empty-database boot with isolated network
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact=portable-input/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip
+          # The candidate report is produced by the preceding trusted staging job.
+          # Bind the release to this exact workflow source and the independent report pin.
+          inventory=$(python3 - "$artifact" "$(git rev-parse HEAD)" <<'PY'
+          import hashlib,json,pathlib,sys,zipfile
+          artifact=pathlib.Path(sys.argv[1])
+          report=json.loads(artifact.with_name('CANONICAL-RUNTIME-REPORT.json').read_text())
+          assert report['sourceCommit']==sys.argv[2]
+          assert report['candidateOnly'] is True and report['productionCertified'] is False
+          assert hashlib.sha256(artifact.read_bytes()).hexdigest()==report['candidateZipSha256']
+          with zipfile.ZipFile(artifact) as z:
+              identity=json.loads(z.read('SBC-FLAT-RELEASE-IDENTITY.json'))
+              pin=hashlib.sha256(z.read('SBC-STAGED-INVENTORY.json')).hexdigest()
+              assert identity['stagedInventorySha256']==pin
+              print(pin)
+          PY
+          )
+          bash scripts/sbc-portable-isolated-boot.sh "$artifact" "$(git rev-parse HEAD)" "$inventory"
+
   # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
   # Never update the GoDaddy-connected rollback source branch or Published app.
   github-preview-branch:
