@@ -48,6 +48,7 @@ test('real scripts expose identical browser globals and event registrations when
   const events=[],logs=[];
   const env={console:{log:()=>{},warn:()=>{},error:(...a)=>logs.push(a)},
    document:{
+    readyState:'loading',
     body:{dataset:{},classList:{contains:()=>false}},
     documentElement:{},
     addEventListener:(...a)=>events.push('document:'+a[0]),
