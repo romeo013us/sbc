@@ -10,6 +10,7 @@ on:
       - 'scripts/sbc-free-actions-triage.test.cjs'
       - 'scripts/sbc-free-actions-coverage.test.cjs'
       - 'scripts/sbc-action-workspace-ui.test.cjs'
+      - 'scripts/sbc-action-workspace-browser.cjs'
       - 'public/sbc-free-actions-v1.js'
       - 'public/sbc-free-actions-v1.css'
       - 'public/index.html'
@@ -45,6 +46,14 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           node --test scripts/sbc-action-workspace-ui.test.cjs
+      - name: Render operational workspace in Chrome at desktop and narrow widths
+        run: node scripts/sbc-action-workspace-browser.cjs
+      - name: Upload operational workspace visual evidence (synthetic data)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: SBC-OPERATIONAL-WORKSPACE-VISUAL-PROOF
+          path: ${{ runner.temp }}/sbc-workspace-proof/*.png
+          retention-days: 14
       - name: No send, paid AI, or implicit charge in new workflow
         run: |
           if grep -En 'openai|anthropic|api\.openai|sendEmail\(|sendSms\(|charge\(|fetch\(' enterprise/sbc-free-action-focus.cjs routes/sbc-free-action-focus.cjs; then
