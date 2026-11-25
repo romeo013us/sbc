@@ -95,4 +95,4 @@ async function reconcilePaidOrders({db, godKim, createFulfillmentJobsForOrder, p
   return {ok:true,version:VERSION,processed:results.length,heldForOwner:held.length,candidates:candidates.length,results,generatedAt:new Date().toISOString()};
 }
 
-module.exports={VERSION,isPaid,isTerminal,isProtectedLaunchQaOrder,needsReconciliation,orderRisk,snapshot,reconcilePaidOrders};
+module.exports={VERSION,isSystemTestOrder,isPaid,isTerminal,isProtectedLaunchQaOrder,needsReconciliation,orderRisk,snapshot,reconcilePaidOrders};
