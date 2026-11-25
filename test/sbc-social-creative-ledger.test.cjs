@@ -26,3 +26,20 @@ test('readback confirms post, not artwork unless independently verified hash mat
  assert.equal(receiptStatus(claim,proof,'b'.repeat(64)),'ARTWORK_MISMATCH');
  assert.equal(receiptStatus(claim,proof,claim.asset_sha256),'PUBLISHED_VERIFIED');
 });
+
+test('owner inventory routes fail closed for other tenants and read-only mutations',async()=>{
+ const {registerCreativeInventory}=require('../routes/sbc-creative-inventory.cjs');
+ const routes=new Map(),app={get:(p,...h)=>routes.set('GET '+p,h.at(-1)),post:(p,...h)=>routes.set('POST '+p,h.at(-1))};
+ let writes=0;
+ const ledger={snapshot:async()=>({approved:1,assets:[]}),approve:async()=>{writes++;return {approved:true}},artwork:async()=>Buffer.from('test')};
+ registerCreativeInventory(app,{auth:()=>{},ownerOnly:()=>{},tenantOf:req=>req.tenantId,corporateTenant:1,getPool:()=>({}),canWrite:()=>false,ledgerFactory:()=>ledger});
+ async function invoke(method,url,req){
+  const res={code:200,headers:{},setHeader(k,v){this.headers[k]=v},status(n){this.code=n;return this},json(v){this.body=v;return this},send(v){this.body=v;return this}};
+  await routes.get(method+' '+url)(req,res);return res;
+ }
+ const request={tenantId:1,user:{id:'owner',role:'owner'},params:{sha:'a'.repeat(64)}};
+ assert.equal((await invoke('GET','/api/marketing/creative-inventory',request)).body.approved,1);
+ assert.equal((await invoke('GET','/api/marketing/creative-inventory',{...request,tenantId:2})).code,403);
+ assert.equal((await invoke('POST','/api/marketing/creative-inventory/:sha/approve',request)).code,423);
+ assert.equal(writes,0);
+});
