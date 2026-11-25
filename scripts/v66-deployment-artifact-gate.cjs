@@ -53,7 +53,7 @@ function verifyDeploymentArtifact(base){
  const pkg=load(root,'package.json');
  if(pkg.main!=='sbc-godaddy-flat-entrypoint.cjs'||!/\bsbc-godaddy-flat-entrypoint\.cjs\b/.test(String(pkg.scripts?.start||'')))
   throw Error('[SBC ARTIFACT GATE] unexpected runtime entrypoint');
- return {checked:proof.checked,sourceCommit:identity.sourceCommit,receipt:'VERIFIED',staging:true,academy};
+ return {checked:proof.checked,sourceCommit:identity.sourceCommit,receipt:'VERIFIED',staging:true,frontendLayout:proof.frontendLayout,academy};
 }
 if(require.main===module){
  try{
