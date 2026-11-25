@@ -25,6 +25,7 @@ const HISTORICAL_ROOT_ARTIFACTS=new Set([
  "component-sha256-v56.23.0.txt",
  "component-sha256.txt"
 ]);
+const RECOVERY_FILE=/(?:\.sql\.enc$|^sbc-backup-.*\.sql$|^\.sbc-backup-.*\.partial$)/i;
 const DANGEROUS=/\.(?:zip|tgz|tar|gz|csv|sqlite|db|pem|p12|pfx|key|log|bak|orig|swp)$/i;
 function excludedReleasePath(name){
  if(typeof name!=='string'||!name||name.startsWith('/')||name.includes('\\')||name.includes('\0'))return true;
@@ -34,7 +35,7 @@ function excludedReleasePath(name){
  // Keep README.md for platform/operator orientation; preserve all docs in GitHub.
  if(bits.length===1&&/\.md$/i.test(file)&&file!=='README.md')return true;
  if(bits.length===1&&HISTORICAL_ROOT_ARTIFACTS.has(file))return true;
- if(file==='.env'||file.startsWith('.env.')||DANGEROUS.test(file))return true;
+ if(file==='.env'||file.startsWith('.env.')||DANGEROUS.test(file)||RECOVERY_FILE.test(file))return true;
  if(/^(public|browser_public)\//.test(name)&&/\.sql$/i.test(file))return true;
  if(/^(?:id_rsa|id_ed25519|credentials\.json|service-account(?:-key)?\.json)$/i.test(file))return true;
  if(/^(?:public|browser_public)\/(?:diag[0-9]*\.html|index\.html\.pre-commercial)$/i.test(name))return true;
@@ -45,6 +46,6 @@ function denyPublicRequest(raw){
  if(p.includes('\0')||p.includes('\\'))return true;p=p.replace(/\/+/g,'/');
  const f=p.split('/').pop();
  return /^(?:diag[0-9]*\.html|index\.html\.pre-commercial|credentials\.json|service-account(?:-key)?\.json)$/i.test(f)||
-  f==='.env'||f.startsWith('.env.')||DANGEROUS.test(f)||/\.sql$/i.test(f)||/(?:^|\/)(?:starter-leads|backups|data|\.git)(?:\/|$)/i.test(p);
+  f==='.env'||f.startsWith('.env.')||DANGEROUS.test(f)||RECOVERY_FILE.test(f)||/\.sql$/i.test(f)||/(?:^|\/)(?:starter-leads|backups|data|\.git)(?:\/|$)/i.test(p);
 }
 module.exports={excludedReleasePath,denyPublicRequest};

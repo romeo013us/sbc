@@ -117,3 +117,10 @@ test('canonical identity may not fall back to legacy unanchored startup',()=>usi
  const {stagedInventorySha256,...unanchored}=identity;
  assert.throws(()=>verifyStagedInventory(root,{...unanchored,frontendLayout:'canonical-public-v1'}),/canonical frontend requires anchored inventory/i);
 }));
+
+test('anchored inventory rejects symlinked parent directories even when contents match',()=>using(({root,identity})=>{
+ const {verifyStagedInventory}=require('../scripts/v6611-verify-stage-inventory.cjs');
+ const moved=path.join(root,'test-real');fs.renameSync(path.join(root,'test'),moved);
+ fs.symlinkSync(moved,path.join(root,'test'),'dir');
+ assert.throws(()=>verifyStagedInventory(root,identity),/symlink|not a regular directory/i);
+}));

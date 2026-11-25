@@ -13,7 +13,9 @@ function inspectExisting({tenantId,clientRequestId,packageId,email,businessName,
  if(matches.length>1)return reconciliation();
  const existing=matches[0];
  if(!existing)return {found:false};
- const customer=(customers||[]).find(c=>String(c.id)===String(existing.customerId)&&Number(c.tenantId)===Number(tenantId));
+ const linked=(customers||[]).filter(c=>c&&String(c.id)===String(existing.customerId)&&Number(c.tenantId)===Number(tenantId));
+ if(linked.length>1)return reconciliation();
+ const customer=linked[0];
  const n=notes(existing),buyer=n.websiteCheckoutBuyer||customer||{};
  if(!customer||clean(buyer.email).toLowerCase()!==clean(email).toLowerCase()||
    clean(buyer.businessName).toLowerCase()!==clean(businessName).toLowerCase()||
@@ -23,7 +25,9 @@ function inspectExisting({tenantId,clientRequestId,packageId,email,businessName,
     ['PAID','COMPLETED'].includes(clean(existing.status).toUpperCase()))
   return {found:true,ok:false,status:409,code:'WEBSITE_CHECKOUT_ALREADY_PAID'};
  if(blockedState(existing.status)||blockedState(existing.paymentStatus))return reconciliation();
- const url=clean(existing.paymentUrl||n.squarePaymentLinkUrl);
+ const orderUrl=clean(existing.paymentUrl),notesUrl=clean(n.squarePaymentLinkUrl);
+ if(orderUrl&&notesUrl&&orderUrl!==notesUrl)return reconciliation();
+ const url=orderUrl||notesUrl;
  if(!url||!n.squareOrderId)
   return {found:true,ok:false,status:409,code:'WEBSITE_CHECKOUT_RECONCILIATION_REQUIRED',
     orderId:existing.id,automaticRetry:false};

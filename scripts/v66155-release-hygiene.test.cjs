@@ -45,3 +45,11 @@ try{
  assert(active.includes('v32-2-upgrade.js'),'legacy file is actively loaded; preserve');
  console.log('PASS release hygiene: deny diagnostics, preserve active operations, parity, versioning, exposed secrets, browser assets');
 }finally{fs.rmSync(root,{recursive:true,force:true})}
+
+for(const name of ['sbc-backup-2026-11-25.sql','public/recovery.sql.enc','browser_public/recovery.sql.enc','docs/.sbc-backup-fixture.partial']){
+ assert.equal(P.excludedReleasePath(name),true,name);
+}
+for(const name of ['/recovery.sql.enc','/.sbc-backup-fixture.partial','/Backups/recovery.sql.enc']){
+ assert.equal(P.denyPublicRequest(name),true,name);
+}
+assert.equal(P.excludedReleasePath('migrations/001_init.sql'),false);
