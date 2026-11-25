@@ -1,0 +1,14 @@
+'use strict';
+// Request-time dependencies preserve the live production state and existing policy gates.
+function createKimOrchestrator(getContext){
+function snapshot(){const {v24ProductionStore,v24EnsurePipelineForPaidOrders,v24SyncPipelineWithJobs,kimProductionExceptions,KIM_OPS,now,V24_PIPELINE_STAGES,kimProductionChecklist,kimRouteRecommendation,kimLeadOpsSnapshot,getDb,kimControlHealth}=getContext();const db=getDb();const m=v24ProductionStore();v24EnsurePipelineForPaidOrders(m);v24SyncPipelineWithJobs(m);const exceptions=kimProductionExceptions(m);return {version:KIM_OPS.version,generatedAt:now(),kim:{mode:'autonomous-operations-orchestrator',humanEscalation:'Romeo'},production:{counts:Object.fromEntries(V24_PIPELINE_STAGES.map(st=>[st,m.productionPipeline.filter(x=>x.stage===st).length])),checklists:m.productionPipeline.slice(0,100).map(p=>({productionId:p.id,orderId:p.orderId,stage:p.stage,checklist:kimProductionChecklist(p),route:kimRouteRecommendation(p)})),exceptions},leadEngine:kimLeadOpsSnapshot(),workforce:{team:(db.users||[]).map(u=>({id:u.id,name:u.name||u.username,role:u.role,enabled:u.active!==false,kimAssist:true}))},telemetry:kimControlHealth(),policies:{autoApprove:KIM_OPS.autoApprove,productionSlaHours:KIM_OPS.slaHours,protectedActions:['pricing','refunds','credential changes','owner security','permanent deletion','destructive infrastructure']}};}
+async function run(reason='scheduled'){const {v24ProductionStore,v24EnsurePipelineForPaidOrders,v24SyncPipelineWithJobs,kimProductionExceptions,KIM_OPS,now,kimProductionChecklist,megaSave,audit,KIM_SYSTEM_ACTOR}=getContext();const m=v24ProductionStore();v24EnsurePipelineForPaidOrders(m);v24SyncPipelineWithJobs(m);const actions=[];
+  for(const p of m.productionPipeline){
+    if(p.stage==='Staged'&&KIM_OPS.autoApprove&&!p.blockedReason){const checklist=kimProductionChecklist(p);if(checklist.every(x=>x.done)){p.stage='Approved';p.approvedAt=p.approvedAt||now();p.approvedBy='kim_system';actions.push(`Approved ${p.orderNumber||p.orderId}.`);}}
+    if(p.stage==='Approved'&&!p.blockedReason){p.stage='Processing';p.processingStartedAt=p.processingStartedAt||now();p.assignedTo=p.assignedTo||'kim_system';p.assignedToName=p.assignedToName||'Kim';actions.push(`Started production for ${p.orderNumber||p.orderId}.`);}
+    p.kimLastReviewedAt=now();p.updatedAt=p.updatedAt||now();
+  }
+  const exceptions=kimProductionExceptions(m);const routeCount=(m.productionPipeline||[]).filter(p=>p.stage==='Processing').length;actions.push(`Reviewed ${m.productionPipeline.length} production records; ${routeCount} processing.`);await megaSave(m);audit(KIM_SYSTEM_ACTOR,'kim_autonomous_operations',`Kim operations cycle completed (${reason})`,{actions,exceptions:exceptions.length});return {ok:true,version:KIM_OPS.version,reason,actions,exceptions,summary:snapshot()};}
+ return {snapshot,run};
+}
+module.exports={createKimOrchestrator};
