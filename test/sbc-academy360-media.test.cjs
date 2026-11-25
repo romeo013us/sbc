@@ -120,3 +120,23 @@ test('synthetic Academy lesson media never masquerades as authentic employee scr
  }
  assert.equal(read('public/sbc-am-academy-media-v1.js'),read('browser_public/sbc-am-academy-media-v1.js'));
 });
+
+test('Spanish playback errors are localized and inactive media failure does not interrupt photo review',async()=>{
+ const dom=new JSDOM(read('public/sbc-am-academy.html'),{url:'https://academy.test/sbc-am-academy.html',runScripts:'outside-only'});
+ const w=dom.window,d=w.document;
+ try{
+  w.HTMLMediaElement.prototype.pause=()=>{};w.HTMLMediaElement.prototype.load=()=>{};
+  w.fetch=async url=>{const mime=url.endsWith('.webm')?(url.includes('-audio.')?'audio/webm':'video/webm'):'text/html';return {ok:mime!=='text/html',headers:{get:()=>mime}};};
+  w.eval(read('public/sbc-am-academy-media-v1.js'));
+  await w.SBC_ACADEMY_VIDEO.render('am-01','es');
+  d.getElementById('academyModePhotos').click();
+  d.getElementById('academyAudioRecording').dispatchEvent(new w.Event('error'));
+  assert.equal(d.getElementById('academyPhotosPane').hidden,false);
+  assert.match(d.getElementById('academyAudioStatus').textContent,/audio no disponible/i);
+  d.getElementById('academyModeVideo').click();
+  d.getElementById('academyRecording').dispatchEvent(new w.Event('error'));
+  assert.match(d.getElementById('academyVideoStatus').textContent,/no se pudo reproducir/i);
+  assert.equal(d.getElementById('academyPhotosPane').hidden,false);
+  assert.equal(d.getElementById('clearNarration').hidden,false);
+ }finally{dom.window.close();}
+});
