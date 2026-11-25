@@ -49,9 +49,15 @@ function verifyStagedInventory(root,identity){
   for(const name of required)if(!manifest.files[name])throw Error('[SBC STAGED INVENTORY] required asset omitted: '+name);
   let checked=0;
   for(const [name,expected] of Object.entries(manifest.files)){
-    if(!name||name.startsWith('/')||name.includes('\\')||name.split('/').some(x=>x==='..'||x==='.')||
+    if(!name||name.startsWith('/')||name.includes('\\')||name.includes('\0')||name.split('/').some(x=>!x||x==='..'||x==='.')||
        !shaPattern.test(String(expected)))
       throw Error('[SBC STAGED INVENTORY] invalid path or checksum');
+    const parts=name.split('/');let parent=root;
+    for(const directory of parts.slice(0,-1)){
+      parent=path.join(parent,directory);
+      const dirStat=fs.lstatSync(parent);
+      if(!dirStat.isDirectory()||dirStat.isSymbolicLink())throw Error('[SBC STAGED INVENTORY] symlink or not a regular directory: '+name);
+    }
     const full=path.join(root,name);
     const stat=fs.lstatSync(full);
     if(!stat.isFile())throw Error('[SBC STAGED INVENTORY] not a regular file: '+name);
