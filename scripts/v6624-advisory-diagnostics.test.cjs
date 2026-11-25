@@ -135,3 +135,45 @@ test('Kim dispatch cannot turn missing or unscoped job evidence into new fulfill
  }
  assert.equal(calls,0);assert.equal(writes,0);assert.equal(order.metadata,undefined);
 });
+
+test('Intelligence Factory extends the existing owner plan with bounded measured departmental evidence',async()=>{
+ const db={customers:[customer('private_name',1,'Hot','Needs Verification'),customer('foreign_name',2,'Hot','Sales Ready')],orders:[],fulfillmentJobs:[]};
+ const service=createController({db,tenBrain:{BRAINS:[]},saveData(){throw Error('unexpected write')},logger:{info(){}}});
+ const out=await service.cycle({tenantId:1,advisoryOnly:true});
+ const factory=out.operatingPlan.intelligenceFactory;
+ assert.equal(factory.schema,1);assert.equal(factory.mode,'DETERMINISTIC_ADVISORY');assert.equal(factory.providerCalls,0);
+ assert.equal(factory.agents.length,9);assert.equal(factory.agents.find(a=>a.id==='research').reviewCount,1);
+ assert.equal(factory.agents.find(a=>a.id==='marketing').status,'EVIDENCE_REQUIRED');
+ assert.equal(factory.agents.find(a=>a.id==='academy').status,'EVIDENCE_REQUIRED');
+ assert.equal(factory.runtime.externalInferenceEnabled,false);assert.equal(factory.runtime.speechEnabled,false);
+ assert(Number.isFinite(factory.profile.durationMs));assert(factory.profile.durationMs>=0);
+ assert(!JSON.stringify(factory).includes('private_name'));assert(!JSON.stringify(factory).includes('foreign_name'));
+});
+test('Factory tool proposals cannot grant execution authority or cross tenant scope',()=>{
+ const F=require('../enterprise/sbc-intelligence-factory.cjs');
+ for(const tool of ['send_message','charge_payment','publish_post','shell','__proto__','read_snapshot']){
+  const r=F.reviewProposal({agent:'marketing',tool,tenantId:2},{tenantId:1});assert.equal(r.allowed,false);
+ }
+ assert.equal(F.reviewProposal({agent:'finance',tool:'charge_payment',tenantId:1},{tenantId:1}).allowed,false);
+ assert.equal(F.reviewProposal({agent:'research',tool:'review_research',tenantId:1},{tenantId:1}).allowed,true);
+ assert.equal(F.reviewProposal({agent:'sales',tool:'review_research',tenantId:1},{tenantId:1}).allowed,false);
+});
+test('Factory creative readiness distinguishes missing evidence, reused art and complete approved slots',()=>{
+ const F=require('../enterprise/sbc-intelligence-factory.cjs'),date='2026-11-25';
+ assert.equal(F.creativeReadiness(undefined,date).status,'EVIDENCE_REQUIRED');
+ const slot=(date,slot,hash)=>({date,slot,sha256:hash,approved:true,mediaVerified:true,channels:['facebook','instagram','linkedin','google_business']});
+ const dates=Array.from({length:7},(_,i)=>new Date(Date.UTC(2026,10,25+i)).toISOString().slice(0,10));
+ const rows=dates.flatMap((d,i)=>[slot(d,'AM',(i*2+1).toString(16).padStart(64,'0')),slot(d,'PM',(i*2+2).toString(16).padStart(64,'0'))]);
+ assert.equal(F.creativeReadiness({rows,history:[],historyComplete:true},date).readySlots,14);
+ const r=F.creativeReadiness({rows,history:[{date:'2026-11-24',sha256:rows[0].sha256}],historyComplete:true},date);
+ assert.equal(r.readySlots,13);assert.equal(r.blockedSlots,1);
+ assert.equal(F.creativeReadiness({rows,history:[],historyComplete:false},date).status,'EVIDENCE_REQUIRED');
+});
+test('Factory research and speech evaluation require source evidence and synthetic EN/ES samples',()=>{
+ const F=require('../enterprise/sbc-intelligence-factory.cjs');
+ assert.equal(F.researchEvidence([{url:'https://example.invalid',verifiedAt:'2026-11-25T10:00:00Z',observed:true}],Date.parse('2026-11-25T12:00:00Z')).usableSources,1);
+ assert.equal(F.researchEvidence([{url:'file:///private',verifiedAt:'2026-11-25T10:00:00Z',observed:true}],Date.parse('2026-11-25T12:00:00Z')).usableSources,0);
+ assert.equal(F.speechBenchmark([{language:'en',synthetic:false,reference:'hello',hypothesis:'hello'}]).status,'EVIDENCE_REQUIRED');
+ const r=F.speechBenchmark([{language:'en',synthetic:true,reference:'hello world',hypothesis:'hello world'},{language:'es',synthetic:true,reference:'buenos días',hypothesis:'buenos'}]);
+ assert.equal(r.languages.en.wordErrorRate,0);assert.equal(r.languages.es.wordErrorRate,0.5);assert.equal(r.productionCertified,false);
+});
