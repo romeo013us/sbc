@@ -42,7 +42,7 @@ assert(media.includes('actions: write'),'automatic candidate dispatch requires s
 assert(media.includes('refs/heads/release/candidate/academy-')&&media.includes('--force-with-lease="$candidate_ref:"'),'media must use create-only candidate refs');
 assert(!/git push[^\n]*:a-sbc-master\b/.test(media),'raw media must never push to master');
 assert(media.includes('gh workflow run sbc-v6606-staged-release.yml --ref "$candidate_branch"'),'Academy must trigger full candidate validation');
-assert(media.includes('GH_TOKEN:')&&media.includes("if: github.ref == 'refs/heads/a-sbc-master'"),'dispatch originates from canonical Academy workflow');
+assert(/^\s+GH_TOKEN:\s*\$\{\{\s*github\.token\s*\}\}\s*$/m.test(media)&&media.includes("if: github.ref == 'refs/heads/a-sbc-master'"),'dispatch must use GitHub runtime authentication and originate from canonical Academy workflow');
 assert(job.includes("github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/candidate/')"),'candidate staging only on explicit dispatch');
 const verify=job.indexOf('node scripts/verify-release-sync.cjs . "$GITHUB_SHA"');
 const pin=job.indexOf('bash scripts/pin-verified-godaddy-ref.sh "$GITHUB_SHA"');
