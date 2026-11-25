@@ -13,8 +13,20 @@ from v66_canonical_frontend import digest
 from v66_canonical_candidate import EXTRAS, encode
 
 TEST_NAME=re.compile(r"(?:[.-]test|_test)\.(?:js|cjs|mjs|py)$|^test_.*\.py$")
-TEXT_TYPES={".js",".cjs",".mjs",".py",".json",".html",".css",".sh",".yaml",".yml",".php",".ps1",".sql"}
+TEXT_TYPES={".js",".cjs",".mjs",".py",".json",".html",".css",".sh",".yaml",".yml",".php",".ps1",".sql",".md"}
+SOURCE_ONLY_PY={
+    "scripts/add_v4341.py","scripts/build-sbc-sales-p0p1.py","scripts/build_v64228_patch.py",
+    "scripts/patch-sbc-am-ui.py","scripts/sbc-offline-interaction-audit.py","scripts/sbc-offline-visual-audit.py",
+    "scripts/sbc-website-studio-browser.py"
+}
+# Retain operator guides and machine-readable contracts. Historical design specs
+# and old source transformations are removable only if not literally referenced.
+OPERATOR_DOC=re.compile(r"recovery|install|deploy|restore|runbook|release|nvidia|acceptance|read.first|recordings|lean.runtime|architecture",re.I)
 def candidate(name):
+    if name.startswith("docs/") and name.endswith(".md") and not OPERATOR_DOC.search(name):
+        return True
+    if name in SOURCE_ONLY_PY or re.fullmatch(r"hotfix-assets/apply-v65[0-9]+-[a-z0-9-]+\.js",name):
+        return True
     return name.startswith("test/") or (
         name.startswith(("scripts/","hotfix-assets/")) and TEST_NAME.search(name.rsplit("/",1)[-1]) is not None)
 def is_test_command(name):
@@ -38,7 +50,7 @@ def select(files):
     pending={name for name in files if candidate(name)}
     retained=set(files)-pending
     def readable(n):
-        return n!="package.json" and not n.startswith("docs/") and pathlib.PurePosixPath(n).suffix.lower() in TEXT_TYPES
+        return n!="package.json" and pathlib.PurePosixPath(n).suffix.lower() in TEXT_TYPES
     text={n:files[n] for n in files if readable(n)}
     keep_commands={k for k in commands if not is_test_command(k)}
     # Keep a test alias referenced by retained runtime source or operational aliases.

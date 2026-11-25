@@ -10,7 +10,6 @@ function __sbcRequireTenantId(value){const n=Number(value);if(!Number.isSafeInte
  * This module deliberately does NOT create a second payment or fulfillment rail.
  */
 const VERSION='56.13.5-KIM-MISSION';
-const PAYMENT_EVIDENCE=require('./v6640-payment-evidence.cjs');
 const FACTORY=require('./sbc-intelligence-factory.cjs');
 const {performance}=require('node:perf_hooks');
 const REVENUE_TRUTH=require('./sbc-revenue-reporting-truth-v66142.cjs');
@@ -39,19 +38,19 @@ function recentMission(c,windowMs=6*60*60*1000){
   const t=new Date(c?.sbcKimMission?.updatedAt||0).getTime();
   return Number.isFinite(t)&&t>0&&(Date.now()-t)<windowMs;
 }
-function isSystemTestOrder(o){
- if(!o||typeof o!=='object')return false;
- if(o.testMode===true||o.sbcTest===true)return true;
- const n=String(o.customerName||o.customer_name||'').trim().toLowerCase();
- const p=String(o.product||o.productName||'').trim().toLowerCase();
- const notes=String(o.notes||'').trim().toLowerCase();
- return n==='sbc system test — do not service'||n==='sbc system test - do not service'||/system test|do not service/.test(p+' '+notes);
+// All Kim views use the same read-side payment evidence projection.
+function reconciledRevenue(db,tenant){
+ const belongs=row=>Number(row?.tenantId??row?.tenant_id)===tenant;
+ const customers=(Array.isArray(db?.customers)?db.customers:[]).filter(belongs);
+ const orders=(Array.isArray(db?.orders)?db.orders:[]).filter(belongs);
+ const summary=REVENUE_TRUTH.paidSummary(orders.map(o=>REVENUE_GATE.isSystemTestOrder(o)||REVENUE_GATE.isProtectedLaunchQaOrder(o)?{...o,testOnly:true}:o),customers,{tenantId:tenant});
+ return {orders,summary};
 }
-function safeMetric(db){
-  const orders=Array.isArray(db?.orders)?db.orders:[];
-  const paid=orders.filter(o=>!isSystemTestOrder(o)&&PAYMENT_EVIDENCE.confirmedPaid(o));
-  const revenue=paid.reduce((n,o)=>n+Number(o?.price||o?.total||0),0);
-  return {paidOrders:paid.length,recognizedRevenue:Number(revenue.toFixed(2)),revenuePer1000:Number((revenue/Math.max(1,Number(process.env.SBC_REVENUE_PROSPECT_DENOMINATOR||1000))).toFixed(2))};
+function safeMetric(db,tenant){
+ const {summary}=reconciledRevenue(db,tenant);
+ const raw=Number(process.env.SBC_REVENUE_PROSPECT_DENOMINATOR||1000);
+ const denominator=Number.isFinite(raw)&&raw>0?raw:1000;
+ return {paidOrders:summary.orderCount,recognizedRevenue:summary.revenue,revenuePer1000:Number((summary.revenue/Math.max(1,denominator)).toFixed(2))};
 }
 function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
   const scopedId=Number(tenantId);
@@ -94,8 +93,7 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
 // cycle. No second workflow engine, no authorization or provider side effects.
 function fulfillmentDecision(db,tenant){
  const belongs=row=>Number(row?.tenantId??row?.tenant_id)===tenant;
- const customers=db.customers.filter(belongs),orders=db.orders.filter(belongs);
- const summary=REVENUE_TRUTH.paidSummary(orders.map(o=>isSystemTestOrder(o)||REVENUE_GATE.isProtectedLaunchQaOrder(o)?{...o,testOnly:true}:o),customers,{tenantId:tenant});
+ const {orders,summary}=reconciledRevenue(db,tenant);
  const jobRows=Array.isArray(db.fulfillmentJobs)?db.fulfillmentJobs:null;
  const validTenant=row=>{const value=row?.tenantId??row?.tenant_id;return (typeof value==='number'||typeof value==='string'&&/^\d+$/.test(value))&&Number.isSafeInteger(Number(value))&&Number(value)>0;};
  const coverage=!jobRows?'UNAVAILABLE':jobRows.some(j=>!validTenant(j)||!String(j.orderId??j.order_id??'').trim())?'UNSCOPED_RECORDS':'SCOPED_SNAPSHOT';
@@ -147,7 +145,7 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
     db=current;
     return current;
   }
-  const state={version:VERSION,lastCycleAt:'',lastCycleResult:null,running:false,missions:[],events:[]};
+  const state={version:VERSION,lastCycleAt:'',lastCycleResult:null,lastCycleTenant:null,running:false,missions:[],events:[]};
   const emit=(type,message,meta={})=>{
     const event={id:`kim-mission-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,type,message,meta,createdAt:now()};
     state.events.unshift(event);state.events=state.events.slice(0,200);global.__SBC_RECENT_RUNTIME_EVENTS=Array.isArray(global.__SBC_RECENT_RUNTIME_EVENTS)?global.__SBC_RECENT_RUNTIME_EVENTS:[];global.__SBC_RECENT_RUNTIME_EVENTS.push({id:event.id,timestamp:Date.now(),event:type,level:'INFO',version:VERSION,context:meta});global.__SBC_RECENT_RUNTIME_EVENTS=global.__SBC_RECENT_RUNTIME_EVENTS.slice(-500);return event;
@@ -232,10 +230,11 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
       try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage}));}catch(_){/* diagnostics never block runtime */}
       return {...screened,operatingPlan:operatingPlan(db,screened,started)};
     }
-    state.running=true;const started=Date.now();
+    state.running=true;state.lastCycleTenant=null;state.lastCycleAt='';state.lastCycleResult=null;const started=Date.now();
     try{
       const cap=Math.min(MAX_BATCH,Math.max(1,Number(limit)||MAX_BATCH));
       const selectedTenant=Number(tenantId);if(!Number.isSafeInteger(selectedTenant)||selectedTenant<1)throw Object.assign(new Error('TENANT_CONTEXT_REQUIRED'),{code:'TENANT_CONTEXT_REQUIRED'});
+      state.lastCycleTenant=selectedTenant;
       const candidates=(db?.customers||[]).filter(c=>Number(c?.tenantId)===selectedTenant).filter(eligible).filter(c=>!recentMission(c)).slice(0,cap);
       const autonomousOutbound=!advisoryOnly && String(process.env.SBC_KIM_MISSION_AUTONOMOUS_OUTBOUND||'false').toLowerCase()==='true';
       const results=[];
@@ -251,13 +250,13 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
         catch(e){results.push({ok:false,customerId:customer.id,error:clean(e.message,500)});}
       }
       const fulfillment=advisoryOnly?{processed:0,results:[]}:await reconcilePaidOrders(cap,selectedTenant);
-      state.lastCycleAt=now();state.lastCycleResult={ok:true,reason,prospects:candidates.length,missions:results.length,humanSalesReview,fulfillment,metrics:safeMetric(db),durationMs:Date.now()-started};
+      state.lastCycleAt=now();state.lastCycleResult={ok:true,reason,prospects:candidates.length,missions:results.length,humanSalesReview,fulfillment,metrics:safeMetric(db,selectedTenant),durationMs:Date.now()-started};
       await persist();
       return state.lastCycleResult;
     }catch(e){state.lastCycleAt=now();state.lastCycleResult={ok:false,reason,error:clean(e.message,500),durationMs:Date.now()-started};return state.lastCycleResult;}
     finally{state.running=false;}
   }
-  function overview(tenantId){const tenant=__sbcRequireTenantId(tenantId);try{refreshCanonicalDb()}catch(_){/* read-only boot may hydrate later */}const scopedCustomers=(db?.customers||[]).filter(c=>Number(c?.tenantId)===tenant);const scopedOrders=(db?.orders||[]).filter(o=>Number(o?.tenantId)===tenant);const visibleCustomerIds=new Set(scopedCustomers.map(c=>String(c.id)));const visibleOrderIds=new Set(scopedOrders.map(o=>String(o.id)));return {version:VERSION,brains:tenBrain.BRAINS,stages:MISSION_STAGES,maxBatch:MAX_BATCH,ownerThreshold,autonomousRoutine:String(process.env.SBC_KIM_AUTONOMOUS_ROUTINE||'true').toLowerCase()!=='false',autonomousOutbound:String(process.env.SBC_KIM_MISSION_AUTONOMOUS_OUTBOUND||'false').toLowerCase()==='true',state:{lastCycleAt:state.lastCycleAt,lastCycleResult:state.lastCycleResult,running:state.running},metrics:safeMetric({orders:scopedOrders}),recentEvents:state.events.filter(e=>Number(e.meta?.tenantId)===tenant||(e.meta?.customerId&&visibleCustomerIds.has(String(e.meta.customerId)))||(e.meta?.orderId&&visibleOrderIds.has(String(e.meta.orderId)))).slice(0,20),missions:scopedCustomers.filter(c=>c?.sbcKimMission).slice(0,20).map(missionSummary),truth:'Observed runtime state only. No synthetic revenue, payment, fulfillment, or 100M-record claims.'};}
+  function overview(tenantId){const tenant=__sbcRequireTenantId(tenantId);try{refreshCanonicalDb()}catch(_){/* read-only boot may hydrate later */}const scopedCustomers=(db?.customers||[]).filter(c=>Number(c?.tenantId)===tenant);const scopedOrders=(db?.orders||[]).filter(o=>Number(o?.tenantId)===tenant);const visibleCustomerIds=new Set(scopedCustomers.map(c=>String(c.id)));const visibleOrderIds=new Set(scopedOrders.map(o=>String(o.id)));return {version:VERSION,brains:tenBrain.BRAINS,stages:MISSION_STAGES,maxBatch:MAX_BATCH,ownerThreshold,autonomousRoutine:String(process.env.SBC_KIM_AUTONOMOUS_ROUTINE||'true').toLowerCase()!=='false',autonomousOutbound:String(process.env.SBC_KIM_MISSION_AUTONOMOUS_OUTBOUND||'false').toLowerCase()==='true',state:{lastCycleAt:state.lastCycleTenant===tenant?state.lastCycleAt:'',lastCycleResult:state.lastCycleTenant===tenant?state.lastCycleResult:null,running:state.lastCycleTenant===tenant&&state.running},metrics:safeMetric(db,tenant),recentEvents:state.events.filter(e=>Number(e.meta?.tenantId)===tenant||(e.meta?.customerId&&visibleCustomerIds.has(String(e.meta.customerId)))||(e.meta?.orderId&&visibleOrderIds.has(String(e.meta.orderId)))).slice(0,20),missions:scopedCustomers.filter(c=>c?.sbcKimMission).slice(0,20).map(missionSummary),truth:'Observed runtime state only. No synthetic revenue, payment, fulfillment, or 100M-record claims.'};}
   return {VERSION,MAX_BATCH,MISSION_STAGES,runMission,cycle,reconcilePaidOrders,overview,eligible,suppressed};
 }
 module.exports={VERSION,MAX_BATCH,MISSION_STAGES,createController};

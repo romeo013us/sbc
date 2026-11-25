@@ -24,12 +24,21 @@ assert.doesNotMatch(guard,/localStorage\.(?:clear|removeItem)|sessionStorage\.(?
 assert.match(index,/\/app\.js\?v=66\.164-owner-csv-1000/);
 assert.match(index,/\/sbc-browser-view-repair-v6601\.js\?v=66\.0\.13-profile-stability/);
 assert.match(index,/SBC_V6613_PROFILE_STABILITY/);
-const legacyVersioned=(index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length;
-assert.ok(legacyVersioned>=60,'remaining unbundled scripts must still have scoped versioned URLs');
-for(const group of ['growth-rail','experience-rail','legacy-growth-controls','legacy-enterprise-controls']){
- const compiled=require('./v66-safe-js-bundles.cjs').compile(path.resolve(__dirname,'..'),group);
- assert(index.includes('/'+compiled.filename),'content-addressed JS bundle replaces old cache-busted requests');
+const bundler=require('./v66-safe-js-bundles.cjs');
+const bundles=Object.keys(bundler.GROUPS).map(group=>bundler.compile(path.resolve(__dirname,'..'),group));
+const tags=[...index.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
+const hashed=new Set(bundles.map(x=>'/'+x.filename));
+for(const tag of tags){
+ assert.ok(hashed.has(tag)||/^\/[^?]+\.js\?v=[A-Za-z0-9._-]+$/.test(tag)||tag==='/sbc-v6574-draggable-nav-rail.js','unversioned or unexpected script URL: '+tag);
 }
+for(const compiled of bundles){
+ assert.equal(tags.filter(t=>t==='/'+compiled.filename).length,1,'content-addressed JS bundle loads exactly once');
+ assert.equal(read('public/'+compiled.filename),compiled.content,'bundle matches canonical source');
+ for(const original of compiled.files)assert(!tags.some(t=>t.split('?')[0]==='/'+original),'bundled controller cannot load twice');
+}
+const legacyVersioned=(index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length;
+// The previous 64 version-query URLs lost six explicitly reviewed bundle members.
+assert.ok(legacyVersioned>=58,'remaining legacy version-query URLs retain their cache scope');
 assert.ok(!index.includes('?v=66.34-asset-cache-reset'),'no old versioned script URLs');
 for(const pathName of ['public/sbc-v6559-ui.js','browser_public/sbc-v6559-ui.js']){
   const code=read(pathName);

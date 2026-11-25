@@ -11,11 +11,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const htmlScripts=html=>[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
 const jsTag=name=>'<script src="/'+name+'?v=66.0.13-profile-stability"></script>';
 
-test('index replaces 19 synchronous controllers with 4 version-hashed bundles and keeps Office Box configuration position',()=>{
+test('index replaces 26 synchronous controllers with 6 version-hashed bundles and keeps Office Box configuration position',()=>{
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const tags=htmlScripts(page);
-  assert.equal(tags.length,98,'92 verified V66 scripts plus six integrity-checked account and sales controllers');
+  assert.equal(tags.length,93,'five additional requests removed without changing execution order');
   for(const script of ['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js','/sbc-account-portfolios-v1.js','/sbc-appointment-workflow-v1.js','/sbc-customer-design-requests-v1.js'])assert.equal(tags.filter(x=>x.split('?')[0]===script).length,1,'New isolated controller loads exactly once: '+script);
   const bundles=Object.keys(GROUPS).map(group=>compile(root,group).filename);
   for(const file of bundles)assert(tags.some(t=>t.startsWith('/'+file)),file+' must load');
@@ -39,8 +39,8 @@ test('bundles preserve exact source ordering, source integrity and browser mirro
   for(const file of GROUPS[group])assert(content.includes(read('public/'+file).trimEnd()));
  }
  const result=verify(root);
- assert.equal(result.scriptRequestsSaved,15);
- assert.equal(result.originalFiles,19);
+ assert.equal(result.scriptRequestsSaved,20);
+ assert.equal(result.originalFiles,26);
 });
 
 test('real scripts expose identical browser globals and event registrations when loaded separately or bundled',()=>{
@@ -114,4 +114,9 @@ test('revenue, lead, fulfillment, telephony and navigation-critical controllers 
   'v43-edge-suite.js','v43-4-resilience-brand.js','v43-7-sales-velocity.js',
   'kim-deep-ops.js','kim-founder-fortress.js'
  ]);
+});
+
+test('additional grouped controllers preserve adjacency and remain isolated from high-risk operations',()=>{
+ assert.deepEqual(GROUPS['owner-operations-rail'],['sbc-policies.js','next-operations.js','v32-3-expansion.js','v56-13-3-owner-workspace-fix.js','architecture-cockpit.js']);
+ assert.deepEqual(GROUPS['marketing-review-rail'],['v33-5-marketing.js','v48-9-growth.js']);
 });

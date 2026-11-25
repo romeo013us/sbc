@@ -55,4 +55,18 @@ class LeanTest(unittest.TestCase):
             with zipfile.ZipFile(src,'a') as z:z.writestr('unexpected.txt','tampered')
             with self.assertRaises(ValueError):build(src,out,'a'*40)
             self.assertFalse(out.exists())
+    def test_source_only_docs_build_tools_and_hotfixes_are_excluded_unless_referenced(self):
+        files={'package.json':b'{"scripts":{"start":"node server.js"}}',
+               'server.js':b"require('./hotfix-assets/apply-v6550-runtime.js'); const doc='docs/required.md';",
+               'docs/design-spec.md':b'old design',
+               'docs/required.md':b'used by runtime',
+               'docs/SBC-PORTABLE-ENCRYPTED-RECOVERY.md':b'recovery guide',
+               'scripts/build_v64228_patch.py':b'old build',
+               'scripts/mysql-backup.js':b'operational',
+               'scripts/nvidia_runtime/sbc_runtime_lab.py':b'operator lab',
+               'hotfix-assets/apply-v6544-ask-kim-drag.js':b'old transform',
+               'hotfix-assets/apply-v6550-runtime.js':b'required'}
+        removed,aliases,pkg=select(files)
+        self.assertEqual(removed,['docs/design-spec.md','hotfix-assets/apply-v6544-ask-kim-drag.js','scripts/build_v64228_patch.py'])
+        self.assertEqual(aliases,[])
 if __name__=='__main__':unittest.main()
