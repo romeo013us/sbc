@@ -28,9 +28,26 @@ async function stagePaidCheckoutPlan(connection,input){
   const hash=fingerprint(plan);
   // Called only inside existing checkout worker transaction with checkout ledger FOR UPDATE.
   const [existing]=await connection.query(
-    'SELECT plan_hash,order_id,sku FROM sbc_fulfillment_plan_steps WHERE tenant_id=? AND checkout_ledger_id=? FOR UPDATE',
+    'SELECT plan_hash,order_id,sku,step_key,service_code,line_number,quantity,lane,description,depends_on_json FROM sbc_fulfillment_plan_steps WHERE tenant_id=? AND checkout_ledger_id=? FOR UPDATE',
     [plan.tenantId,Number(input.checkoutLedgerId)]);
-  if(existing.some(x=>x.plan_hash!==hash||String(x.order_id)!==plan.orderId||String(x.sku)!==plan.sku))fail('FULFILLMENT_PLAN_DRIFT_RECONCILIATION_REQUIRED');
+  // Existing work must match the entire immutable recipe. A partial plan is
+  // evidence of drift, not permission to recreate steps with possible side effects.
+  if(existing.length){
+    const expected=new Map(plan.steps.map(step=>[step.id,step]));
+    const seen=new Set();
+    const matches=existing.length===plan.steps.length&&existing.every(row=>{
+      const step=expected.get(row.step_key);
+      if(!step||seen.has(row.step_key))return false;
+      seen.add(row.step_key);
+      let prerequisites;
+      try{prerequisites=dependencies(row.depends_on_json);}catch{return false;}
+      return row.plan_hash===hash&&String(row.order_id)===plan.orderId&&String(row.sku)===plan.sku&&
+        row.service_code===step.serviceCode&&Number(row.line_number)===step.line&&Number(row.quantity)===step.quantity&&
+        row.lane===step.lane&&row.description===step.description&&isDeepStrictEqual(prerequisites,step.dependsOn);
+    });
+    if(!matches)fail('FULFILLMENT_PLAN_DRIFT_RECONCILIATION_REQUIRED');
+    return {status:'STAGED',stepsPlanned:plan.steps.length,planHash:hash,autoExecutableCount:plan.steps.filter(x=>x.lane==='automation').length,aiCalls:0};
+  }
   for(const step of plan.steps){
     await connection.query('INSERT INTO sbc_fulfillment_plan_steps (tenant_id,checkout_ledger_id,order_id,sku,step_key,plan_hash,service_code,line_number,quantity,lane,description,depends_on_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW()) ON DUPLICATE KEY UPDATE step_key=step_key',
       [plan.tenantId,Number(input.checkoutLedgerId),plan.orderId,plan.sku,step.id,hash,step.serviceCode,step.line,step.quantity,step.lane,step.description,JSON.stringify(step.dependsOn),statusFor(step)]);

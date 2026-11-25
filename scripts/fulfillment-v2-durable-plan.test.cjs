@@ -7,7 +7,7 @@ class FakeConnection {
  constructor(){this.rows=[];this.writes=0;}
  async query(sql,args){
    const q=sql.replace(/\s+/g,' ').trim();
-   if(q.startsWith('SELECT plan_hash'))return [this.rows.filter(x=>x.tenant_id===args[0]&&x.checkout_ledger_id===args[1]).map(x=>({plan_hash:x.plan_hash,order_id:x.order_id,sku:x.sku}))];
+   if(q.startsWith('SELECT plan_hash'))return [this.rows.filter(x=>x.tenant_id===args[0]&&x.checkout_ledger_id===args[1]).map(x=>({...x}))];
    if(q.startsWith('INSERT INTO sbc_fulfillment_plan_steps')){
      const [tenant_id,checkout_ledger_id,order_id,sku,step_key,plan_hash,service_code,line_number,quantity,lane,description,depends_on_json,status]=args;
      if(!this.rows.some(x=>x.tenant_id===tenant_id&&x.checkout_ledger_id===checkout_ledger_id&&x.step_key===step_key))this.rows.push({tenant_id,checkout_ledger_id,order_id,sku,step_key,plan_hash,service_code,line_number,quantity,lane,description,depends_on_json,status});
@@ -110,4 +110,30 @@ test('completed fulfillment step acknowledges only the original actor and equiva
  assert.deepEqual(db.rows,saved);
  const row=db.rows.find(x=>x.step_key===req.stepKey);row.evidence_json=null;
  await assert.rejects(completeStep(db,req),{code:'FULFILLMENT_COMPLETION_REPLAY_CONFLICT'});
+});
+
+test('paid checkout replay validates every stored service step, not just the plan hash',async()=>{
+ for(const corrupt of [
+  rows=>rows.pop(),
+  rows=>rows.push({...rows[0],step_key:'unexpected_step'}),
+  rows=>{rows[1].depends_on_json='[]'},
+  rows=>{rows[1].lane='automation'},
+  rows=>{rows[1].quantity=10000},
+  rows=>{rows[1].service_code='office_box'},
+  rows=>{rows[1].description='Changed task description'},
+  rows=>{rows[1].line_number=0}
+ ]){
+  const db=new FakeConnection();await stagePaidCheckoutPlan(db,input());corrupt(db.rows);
+  const snapshot=structuredClone(db.rows),writes=db.writes;
+  await assert.rejects(stagePaidCheckoutPlan(db,input()),{code:'FULFILLMENT_PLAN_DRIFT_RECONCILIATION_REQUIRED'});
+  assert.equal(db.writes,writes);assert.deepEqual(db.rows,snapshot);
+ }
+});
+test('exact checkout replay preserves completed work without additional writes',async()=>{
+ const db=new FakeConnection();await stagePaidCheckoutPlan(db,input());
+ await completeStep(db,{tenantId:1,checkoutLedgerId:25,stepKey:'shared_customer_intake',actorId:'employee_123',evidence:{reference:'crm:customer-123'}});
+ const snapshot=structuredClone(db.rows),writes=db.writes;
+ const replay=await stagePaidCheckoutPlan(db,input());
+ assert.equal(replay.status,'STAGED');assert.equal(replay.stepsPlanned,snapshot.length);
+ assert.deepEqual(db.rows,snapshot);assert.equal(db.writes,writes);
 });
