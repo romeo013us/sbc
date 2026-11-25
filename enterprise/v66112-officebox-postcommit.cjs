@@ -1,5 +1,6 @@
 'use strict';
 const {isIP}=require('node:net');
+const crypto=require('node:crypto');
 /* SBC V66.112: owner-invoked, post-commit Office Box V2 reconciliation.
  * Never charges a card, calls Twilio, creates a new order, or provisions
  * a tenant without an existing paid, MySQL-committed Office Box SKU.
@@ -25,6 +26,30 @@ function skuFor(notes){
  if(PLANS[x])return x;
  for(const line of Array.isArray(notes.items)?notes.items:[]){const k=String(line?.sku||'').toUpperCase();if(PLANS[k])return k}
  return '';
+}
+// Before recovering an old invitation, verify its current receiver state.
+// This signed POST is a read-only lookup, never token generation or billing.
+async function requirePendingInvitation(event,dep,target){
+ const payload={schema:'sbc.office-box.activation-lookup.v1',correlationId:event.correlationId,
+  customerId:event.customerId,orderId:event.payload.orderId,plan:event.payload.plan};
+ const raw=JSON.stringify(payload),ts=String(Math.floor(Date.now()/1000));
+ const signature=crypto.createHmac('sha256',dep.secret).update(ts+'.').update(raw).digest('hex');
+ let response,reply;
+ try{
+  response=await dep.fetch(target+'/api/sbc/activation-status',{method:'POST',redirect:'error',cache:'no-store',
+   headers:{'content-type':'application/json','x-sbc-timestamp':ts,'x-sbc-signature-v2':'sha256='+signature},
+   body:raw,signal:AbortSignal.timeout(10000)});
+  reply=await response.json();
+ }catch{fail('OFFICEBOX_INVITATION_STATUS_UNVERIFIED',502)}
+ const d=reply?.data;
+ if(response?.ok!==true||response.status!==200||reply?.ok!==true||d?.schema!=='sbc.office-box.activation-status.v1'||
+    d.correlationId!==payload.correlationId||d.customerId!==payload.customerId||d.orderId!==payload.orderId||d.plan!==payload.plan)
+  fail('OFFICEBOX_INVITATION_STATUS_UNVERIFIED',502);
+ if(d.status==='ACTIVATED'&&/^tenant_[0-9a-f]{16}$/.test(String(d.tenantId||'')))fail('OFFICEBOX_INVITATION_ALREADY_ACTIVATED');
+ const expiry=Date.parse(String(d.expiresAt||''));
+ if(!Number.isFinite(expiry)||d.tenantId!==undefined)fail('OFFICEBOX_INVITATION_STATUS_UNVERIFIED',502);
+ if(d.status==='INVITATION_EXPIRED'&&expiry<=Date.now())fail('OFFICEBOX_INVITATION_EXPIRED');
+ if(d.status!=='INVITATION_PENDING'||expiry<=Date.now())fail('OFFICEBOX_INVITATION_STATUS_UNVERIFIED',502);
 }
 async function reconcile(input,dep){
  const tenantId=Number(input?.tenantId),orderId=String(input?.orderId||'');
@@ -71,6 +96,7 @@ async function reconcile(input,dep){
  const reply={ok:Boolean(response.ok)&&body?.ok===true,data:body?.data||body};
  const ack=interpretAck(reply,{correlationId:event.correlationId,origin:target});
  if(!ack.accepted)fail('OFFICEBOX_HANDOFF_NOT_ACKNOWLEDGED',502);
+ if(ack.duplicate===true)await requirePendingInvitation(event,dep,target);
  return {ok:true,accepted:true,duplicate:ack.duplicate===true,
    status:ack.duplicate?'INVITATION_RECONCILIATION_REQUIRED':ack.activationUrl?'INVITATION_PENDING':'ACTIVATION_URL_UNCONFIRMED',
    correlationId:event.correlationId,customerId:String(c.id),orderId:String(r.id),

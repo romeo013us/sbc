@@ -19,12 +19,12 @@ const secret=Buffer.alloc(40,0x63).toString('hex'); // synthetic HMAC fixture, n
 const signedCorrelation='sbc_officebox_'+crypto.createHash('sha256').update(order.id+'|'+payment.id).digest('hex').slice(0,24);
 const validActivationUrl='https://office.example.test/activate?token='+('A'.repeat(43));
 const clone=x=>JSON.parse(JSON.stringify(x));
-function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:true,correlationId:signedCorrelation,activation_url:validActivationUrl}},commitOrder=true}={}){
+function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:true,correlationId:signedCorrelation,activation_url:validActivationUrl}},commitOrder=true,lookupReply,lookupStatus=200}={}){
  const calls={mysql:[],square:[],fetch:[]};
  const pool={query:async(sql,params)=>{calls.mysql.push({sql,params});if(sql.includes('FROM sbc_orders'))return [commitOrder?[clone(o)]:[]];if(sql.includes('FROM sbc_customers'))return [[clone(c)]];throw Error('UNEXPECTED_SQL')}};
  const deps={pool,baseUrl:'https://office.example.test',secret,locationId:'sq_location_abc123',
   squareApi:async url=>{calls.square.push(url);return {payment:clone(p)}},
-  fetch:async(url,opts)=>{calls.fetch.push({url,opts});return {ok:true,json:async()=>clone(response)}}};
+  fetch:async(url,opts)=>{calls.fetch.push({url,opts});return url.endsWith('/api/sbc/activation-status')?{ok:lookupStatus>=200&&lookupStatus<300,status:lookupStatus,json:async()=>clone(lookupReply||{ok:false,error:'NOT_VERIFIED'})}:{ok:true,status:200,json:async()=>clone(response)}}};
  return {deps,calls};
 }
 (async()=>{
@@ -59,8 +59,29 @@ function fixture({o=order,c=customer,p=payment,response={ok:true,data:{accepted:
  ]){
    const f=fixture({p:{...payment,...changes}});await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},f.deps),new RegExp(reason),name);assert.equal(f.calls.fetch.length,0,name);
  }
- const duplicate=fixture({response:{ok:true,data:{accepted:true,duplicate:true,correlationId:signedCorrelation}}});
- const d=await api.reconcile({tenantId:1,orderId:order.id},duplicate.deps);assert.equal(d.status,'INVITATION_RECONCILIATION_REQUIRED');assert.equal(d.activationUrl,null);
+ const duplicateAck={ok:true,data:{accepted:true,duplicate:true,correlationId:signedCorrelation}};
+ const pending={schema:'sbc.office-box.activation-status.v1',status:'INVITATION_PENDING',correlationId:signedCorrelation,customerId:customer.id,orderId:order.id,plan:'business',expiresAt:new Date(Date.now()+3600000).toISOString()};
+ const duplicate=fixture({response:duplicateAck,lookupReply:{ok:true,data:pending}});
+ const d=await api.reconcile({tenantId:1,orderId:order.id},duplicate.deps);assert.equal(d.status,'INVITATION_RECONCILIATION_REQUIRED');assert.equal(d.activationUrl,null);assert.equal(d.duplicate,true);assert.equal(duplicate.calls.fetch.length,2);
+ const lookup=duplicate.calls.fetch[1];assert.equal(lookup.url,'https://office.example.test/api/sbc/activation-status');assert.equal(lookup.opts.redirect,'error');
+ const request=JSON.parse(lookup.opts.body);assert.deepEqual(request,{schema:'sbc.office-box.activation-lookup.v1',correlationId:signedCorrelation,customerId:customer.id,orderId:order.id,plan:'business'});
+ assert.equal(lookup.opts.headers['x-sbc-signature-v2'],'sha256='+crypto.createHmac('sha256',secret).update(lookup.opts.headers['x-sbc-timestamp']+'.'+lookup.opts.body).digest('hex'));
+ for(const [changes,reason] of [
+  [{status:'INVITATION_EXPIRED',expiresAt:new Date(Date.now()-1000).toISOString()},'INVITATION_EXPIRED'],
+  [{status:'ACTIVATED',tenantId:'tenant_1234567890abcdef'},'INVITATION_ALREADY_ACTIVATED'],
+  [{expiresAt:new Date(Date.now()-1000).toISOString()},'INVITATION_STATUS_UNVERIFIED'],
+  [{expiresAt:undefined},'INVITATION_STATUS_UNVERIFIED'],
+  [{customerId:'other_customer'},'INVITATION_STATUS_UNVERIFIED'],
+  [{orderId:'other_order'},'INVITATION_STATUS_UNVERIFIED'],
+  [{plan:'team'},'INVITATION_STATUS_UNVERIFIED'],
+  [{correlationId:'other_correlation'},'INVITATION_STATUS_UNVERIFIED']
+ ]){
+  const f=fixture({response:duplicateAck,lookupReply:{ok:true,data:{...pending,...changes}}});
+  await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},f.deps),new RegExp(reason));
+  assert.equal(f.calls.fetch.length,2);
+ }
+ const unavailable=fixture({response:duplicateAck,lookupStatus:503});
+ await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},unavailable.deps),/INVITATION_STATUS_UNVERIFIED/);
  const foreignAck=fixture({response:{ok:true,data:{accepted:true,correlationId:'sbc_officebox_'+('b'.repeat(24)),activation_url:validActivationUrl}}});
  await assert.rejects(()=>api.reconcile({tenantId:1,orderId:order.id},foreignAck.deps),/HANDOFF_NOT_ACKNOWLEDGED/);
  const foreignOrigin=fixture({response:{ok:true,data:{accepted:true,correlationId:signedCorrelation,activation_url:'https://wrong.example.test/activate?token='+('A'.repeat(43))}}});

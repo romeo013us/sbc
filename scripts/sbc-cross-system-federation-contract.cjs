@@ -33,7 +33,12 @@ async function signedEntitlement(body){const raw=Buffer.from(JSON.stringify(body
  const altered=signHandoffV2({...wire,payload:{...wire.payload,plan:'team'}},secret);const conflict=await call('POST',altered.path,Buffer.from(altered.body),altered.headers);assert.equal(conflict.status,409);
  const tampered=await call('POST',altered.path,Buffer.from(altered.body+' '),altered.headers);assert.equal(tampered.status,401);
  const token=new URL(first.activationUrl).searchParams.get('token'),fixturePassword=crypto.randomBytes(16).toString('hex');
+ const tokenRecord=state.activations.get(crypto.createHash('sha256').update(token).digest('hex'));
+ const expiry=tokenRecord.expiresAt;tokenRecord.expiresAt=new Date(Date.now()-1000).toISOString();
+ await assert.rejects(()=>sender.reconcile({tenantId:7,orderId:order.id},deps),/INVITATION_EXPIRED/);
+ tokenRecord.expiresAt=expiry;
  const activated=await call('POST','/api/integrations/sbc/activate',{token,password:fixturePassword,owner_name:'Fixture'});assert.equal(activated.status,200);assert.equal(sessions,1);assert.equal(writeAccess(state.rental.get(tid)).allowed,false);
+ await assert.rejects(()=>sender.reconcile({tenantId:7,orderId:order.id},deps),/INVITATION_ALREADY_ACTIVATED/);
  const replay=await call('POST','/api/integrations/sbc/activate',{token,password:fixturePassword});assert.equal(replay.status,404);assert.equal(sessions,1);
  const base={schema:'sbc.office-box.entitlement.v1',eventId:'sbc_evt_fixture0001',tenantId:tid,customerId:customer.id,plan:'business',status:'ACTIVE',orderId:order.id,paymentReference:payment.id,verifiedAt:now()};
  const denied=await signedEntitlement(base);assert.equal(denied.status,422);assert.equal(writeAccess(state.rental.get(tid)).allowed,false);
