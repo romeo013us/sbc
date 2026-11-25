@@ -17,6 +17,7 @@ function verifyStagedInventory(root,identity){
   const inventoryPath=path.join(root,filename);
   const hasFile=fs.existsSync(inventoryPath);
   const hasAnchor=Object.prototype.hasOwnProperty.call(identity||{},'stagedInventorySha256');
+  if(identity?.frontendLayout==='canonical-public-v1'&&(!hasFile||!hasAnchor))throw Error('[SBC STAGED INVENTORY] canonical frontend requires anchored inventory');
   if(!hasFile&&!hasAnchor)return {legacy:true,checked:0};
   if(!hasFile||!hasAnchor||!shaPattern.test(String(identity.stagedInventorySha256||'')))
     throw Error('[SBC STAGED INVENTORY] missing inventory or release identity anchor '+
