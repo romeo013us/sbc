@@ -9,6 +9,8 @@ on:
       - 'routes/sbc-square-order-handlers-v1.cjs'
       - 'test/sbc-square-order-handlers.test.cjs'
       - 'routes/sbc-twilio-webhooks-v1.cjs'
+      - 'routes/sbc-twilio-voice-v1.cjs'
+      - 'test/sbc-twilio-voice-handlers.test.cjs'
       - 'scripts/sbc-domain-extraction.test.cjs'
       - '.github/workflows/sbc-domain-extraction.yml'
   workflow_dispatch:
@@ -24,4 +26,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --check server.js
-      - run: node --test scripts/sbc-domain-extraction.test.cjs test/sbc-square-order-handlers.test.cjs
+      - run: node --test scripts/sbc-domain-extraction.test.cjs test/sbc-square-order-handlers.test.cjs test/sbc-twilio-voice-handlers.test.cjs
