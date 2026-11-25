@@ -41,3 +41,19 @@ test('isolated MySQL8 preserves creative approvals, serializes claims and joins 
  assert.equal(proof.provider_id,postId);
  assert.equal(proof.status,'POST_VERIFIED_ARTWORK_UNVERIFIED');
 });
+
+test('MySQL nonce consumption is atomic across independent importer instances and survives restart',async t=>{
+ if(process.env.SBC_CREATIVE_MYSQL_CI!=='YES')throw Error('Disposable MySQL acceptance environment required');
+ const pool=mysql.createPool({host:'127.0.0.1',user:'root',database:'sbc_v6682_ci',password:process.env.SBC_V6682_CI_MYSQL_PASSWORD});
+ t.after(()=>pool.end());
+ const migration=fs.readFileSync(path.join(__dirname,'../migrations/20261125_002_sbc_creative_importer_nonce.sql'),'utf8');
+ for(const sql of migration.split(';').map(x=>x.trim()).filter(Boolean))await pool.query(sql);
+ const {mysqlNonceConsumer}=require('../enterprise/sbc-creative-importer-auth.cjs');
+ const tenant=98102,now=Date.now(),nonce=crypto.randomBytes(16).toString('hex');
+ const consume=()=>mysqlNonceConsumer(pool,tenant,()=>true);
+ const result=await Promise.all([consume()(nonce,now+360000,now),consume()(nonce,now+360000,now)]);
+ assert.deepEqual(result.sort(),[false,true]);
+ assert.equal(await consume()(nonce,now+360000,now),false);
+ assert.equal(await mysqlNonceConsumer(pool,tenant+1,()=>true)(nonce,now+360000,now),true);
+ await assert.rejects(mysqlNonceConsumer(pool,tenant,()=>false)(crypto.randomBytes(16).toString('hex'),now+360000,now),/WRITER/);
+});
