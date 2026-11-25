@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   verified-staged-zip:
+    if: github.event_name != 'push' || vars.SBC_ATOMIC_PROMOTION_ENABLED != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -805,7 +806,7 @@ jobs:
   # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
   # Never update the GoDaddy-connected rollback source branch or Published app.
   github-preview-branch:
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/a-sbc-master') || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/candidate/'))
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/a-sbc-master' && vars.SBC_ATOMIC_PROMOTION_ENABLED != 'true') || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/candidate/'))
     needs: verified-staged-zip
     runs-on: ubuntu-latest
     timeout-minutes: 10

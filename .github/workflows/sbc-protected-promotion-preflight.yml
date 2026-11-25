@@ -14,12 +14,29 @@ on:
         description: Exact successful candidate staging run ID
         required: true
         type: string
+      expected_sealed_sha:
+        description: Independently reviewed sealed recovery commit SHA
+        required: true
+        type: string
+      review_pr:
+        description: Exact candidate pull request number
+        required: true
+        type: string
+      promote:
+        description: Request protected promotion (disabled unless cutover enabled)
+        required: true
+        default: false
+        type: boolean
   pull_request:
     branches: [a-sbc-master]
     paths:
       - '.github/workflows/sbc-protected-promotion-preflight.yml'
       - 'scripts/verify-staging-evidence.cjs'
       - 'test/sbc-staging-evidence.test.cjs'
+      - 'scripts/verify-promotion-ci.cjs'
+      - 'scripts/verify-protected-promotion.sh'
+      - 'test/sbc-promotion-ci.test.cjs'
+      - 'scripts/promote-sealed-master.sh'
 permissions:
   contents: read
   actions: read
@@ -31,7 +48,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: node --test test/sbc-staging-evidence.test.cjs
+      - run: node --test test/sbc-staging-evidence.test.cjs test/sbc-promotion-ci.test.cjs test/sbc-atomic-promotion.test.cjs
+      - run: bash -n scripts/verify-protected-promotion.sh
   preflight:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/a-sbc-master'
     needs: evidence-contracts
@@ -49,24 +67,68 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_BASE: ${{ inputs.expected_base_sha }}
           TESTED_SOURCE: ${{ inputs.tested_source_sha }}
+          EXPECTED_SEAL: ${{ inputs.expected_sealed_sha }}
           STAGING_RUN: ${{ inputs.staging_run_id }}
+          REVIEW_PR: ${{ inputs.review_pr }}
+        run: bash scripts/verify-protected-promotion.sh
+  promote:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/a-sbc-master' && inputs.promote && vars.SBC_ATOMIC_PROMOTION_ENABLED == 'true'
+    needs: preflight
+    environment: sbc-release-promoter
+    concurrency:
+      group: sbc-protected-master-promotion
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Recheck evidence after protected approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_BASE: ${{ inputs.expected_base_sha }}
+          TESTED_SOURCE: ${{ inputs.tested_source_sha }}
+          EXPECTED_SEAL: ${{ inputs.expected_sealed_sha }}
+          STAGING_RUN: ${{ inputs.staging_run_id }}
+          REVIEW_PR: ${{ inputs.review_pr }}
+        run: bash scripts/verify-protected-promotion.sh
+      - name: Promote only the reviewed sealed ref using dedicated release actor
+        env:
+          PROMOTER_CREDENTIAL: ${{ secrets.SBC_RELEASE_PROMOTER_CREDENTIAL }}
+          EXPECTED_BASE: ${{ inputs.expected_base_sha }}
+          TESTED_SOURCE: ${{ inputs.tested_source_sha }}
+          EXPECTED_SEAL: ${{ inputs.expected_sealed_sha }}
         run: |
           set -euo pipefail
-          [[ "$EXPECTED_BASE" =~ ^[0-9a-f]{40}$ && "$TESTED_SOURCE" =~ ^[0-9a-f]{40}$ && "$STAGING_RUN" =~ ^[1-9][0-9]*$ ]]
+          test -n "$PROMOTER_CREDENTIAL"
+          [[ "$EXPECTED_BASE" =~ ^[0-9a-f]{40}$ && "$TESTED_SOURCE" =~ ^[0-9a-f]{40}$ && "$EXPECTED_SEAL" =~ ^[0-9a-f]{40}$ ]]
+          trusted="$PWD"
           test "$(git rev-parse HEAD)" = "$EXPECTED_BASE"
-          test "$(git ls-remote origin refs/heads/a-sbc-master | cut -f1)" = "$EXPECTED_BASE"
-          temp=$(mktemp -d)
-          trap 'git worktree remove --force "$temp/tree" 2>/dev/null || true; rm -rf "$temp"' EXIT
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN" > "$temp/run.json"
-          attempt=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).run_attempt' "$temp/run.json")
-          [[ "$attempt" =~ ^[1-9][0-9]*$ ]]
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN/attempts/$attempt/jobs?per_page=100" > "$temp/jobs.json"
-          node scripts/verify-staging-evidence.cjs "$TESTED_SOURCE" "$STAGING_RUN" "$temp/run.json" "$temp/jobs.json"
           git fetch --no-tags origin "refs/heads/release/verified-godaddy-$TESTED_SOURCE"
-          sealed=$(git rev-parse FETCH_HEAD)
-          test "$(git show -s --format=%P "$sealed")" = "$TESTED_SOURCE"
-          git merge-base --is-ancestor "$EXPECTED_BASE" "$TESTED_SOURCE"
-          git worktree add --detach "$temp/tree" "$sealed"
+          test "$(git rev-parse FETCH_HEAD)" = "$EXPECTED_SEAL"
+          temp=$(mktemp -d)
+          trap 'git -C "$trusted" worktree remove --force "$temp/tree" 2>/dev/null || true; rm -rf "$temp"' EXIT
+          git worktree add --detach "$temp/tree" "$EXPECTED_SEAL"
           node scripts/verify-release-sync.cjs "$temp/tree" "$TESTED_SOURCE"
-          test "$(git ls-remote origin refs/heads/a-sbc-master | cut -f1)" = "$EXPECTED_BASE"
-          echo "Staging evidence verified for $sealed. No promotion, branch update or deployment authorized." >> "$GITHUB_STEP_SUMMARY"
+          header=$(printf 'x-access-token:%s' "$PROMOTER_CREDENTIAL" | base64 -w0)
+          echo "::add-mask::$header"
+          unset PROMOTER_CREDENTIAL
+          export GIT_CONFIG_COUNT=2
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_0=
+          export GIT_CONFIG_KEY_1=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_1="AUTHORIZATION: basic $header"
+          export SBC_TRUSTED_RELEASE_VERIFIER="$trusted/scripts/verify-release-sync.cjs"
+          cd "$temp/tree"
+          bash "$trusted/scripts/promote-sealed-master.sh" "$EXPECTED_BASE" "$TESTED_SOURCE"
+          test "$(git ls-remote origin refs/heads/a-sbc-master | cut -f1)" = "$EXPECTED_SEAL"
+          bash "$trusted/scripts/advance-verified-preview.sh" "$TESTED_SOURCE"
+          test "$(git ls-remote origin refs/heads/deploy/godaddy-verified-preview | cut -f1)" = "$EXPECTED_SEAL"
+          echo "Sealed Git refs verified: $EXPECTED_SEAL. No GoDaddy deployment occurred." >> "$GITHUB_STEP_SUMMARY"
