@@ -1,0 +1,5 @@
+# SBC domain extraction checkpoint V1
+
+14 legacy training handler bodies and three provider webhook handlers are moved into dependency-injected route modules. Express route names, ordering, middleware, existing shared write lock, Academy assessment/certification guards, HMAC/authentication and idempotency operations remain unchanged. Each request reads current dependencies, not a startup database snapshot. The provider handlers use live pool getters after awaits. The legacy training handlers use a per-request database reference. This is a behavior-preserving extraction, not a comprehensive correction of existing legacy tenant authorization, receipt concurrency or provider callback semantics. No live calls or payments. CI tests synthetic fixtures; hosted acceptance still required.
+
+Actual server source bytes before: 1391140 (characters; byte count may differ). After: 1376885 characters. Remaining Square checkout, voice token/TwiML and Kim orchestration need separate extraction. No claim of full decomposition.

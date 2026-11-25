@@ -7175,112 +7175,21 @@ app.use('/api/training',(req,res,next)=>{
   try{next()}catch(e){res.removeListener('finish',done);res.removeListener('close',done);reject(e)}
  })).catch(e=>{if(!res.headersSent)res.status(e.status||500).json({ok:false,error:'TRAINING_WRITE_NOT_CONFIRMED'})});
 });
-app.get('/api/training',auth,async(req,res)=>{
-  // Recovery-safe catalog reads use a detached snapshot. Catalog repair and assignment
-  // generation must not mutate the live in-memory DB or call saveData while MySQL is locked.
-  const recoveryReadOnly=Boolean(MYSQL_RECOVERY_REQUIRED);
-  const sourceDb=recoveryReadOnly?{...db,settings:{...(db.settings||{}),trainingCenterV2:db.settings?.trainingCenterV2?JSON.parse(JSON.stringify(db.settings.trainingCenterV2)):undefined},users:Array.isArray(db.users)?db.users:[]}:db;
-  const repairedTraining=TRAINING_SYSTEM.repairCourseCatalog(sourceDb), s=repairedTraining.state; const before=s.assignments.length; const beforeCourses=s.courses.length;
-  TRAINING_SYSTEM.ensureAssignmentsForWorkforce(sourceDb,s);
-  if(!recoveryReadOnly && (repairedTraining.changed || s.assignments.length!==before || s.courses.length!==beforeCourses)) await TRAINING_SYSTEM.saveState(db,s,()=>saveData());
-  const userTraining=TRAINING_SYSTEM.getForUser(sourceDb,req.user);
-  res.setHeader('Cache-Control','no-store');
-  const recoveryMeta=recoveryReadOnly?{recoveryRequired:true,readOnly:true,message:'Recovery lock active. Training content is available for viewing; progress, assignments and certification writes are paused until authoritative MySQL recovery is verified.'}:{};
-  if(trainingAdmin(req.user.role)) return res.json({ok:true,mode:'admin',...userTraining,...recoveryMeta,dashboard:TRAINING_SYSTEM.dashboard(sourceDb,s),library:TRAINING_SYSTEM.overview(sourceDb,s,{includeArchived:String(req.query?.includeArchived||'true')!=='false'})});
-  return res.json({ok:true,mode:'employee',...userTraining,...recoveryMeta});
-});
-app.post('/api/training/telemetry',auth,async(req,res)=>{try{const b=req.body||{},s=TRAINING_SYSTEM.ensureState(db),verb=String(b.verb||'experienced').slice(0,80),courseId=String(b.courseId||'').slice(0,160),moduleId=String(b.moduleId||'').slice(0,160);if(!courseId)return res.status(400).json({error:'courseId is required.'});const allowed=['opened','started','completed','assessed','reviewed','lab_started','lab_submitted','experienced'];if(!allowed.includes(verb))return res.status(400).json({error:'Unsupported training telemetry verb.'});const statement={actor:{id:String(req.user.id),name:String(req.user.name||req.user.username||'')},verb:{id:`https://sbc.local/xapi/verbs/${verb}`,display:verb},object:{id:`https://sbc.local/training/${encodeURIComponent(courseId)}${moduleId?`/${encodeURIComponent(moduleId)}`:''}`,definition:{type:String(b.objectType||'training')}},context:{tenantId:requireRequestTenant(req),surface:String(b.context?.surface||'sbc-academy'),architecture:String(b.context?.architecture||'telemetry-first')},result:b.result||null,timestamp:now()};TRAINING_SYSTEM.recordEvent(s,{type:'learning_telemetry',userId:req.user.id,courseId,moduleId,verb,statement});await TRAINING_SYSTEM.saveState(db,s,()=>saveData());res.status(201).json({ok:true,statement});}catch(e){res.status(400).json({error:e.message||'Training telemetry failed.'})}});
-app.get('/api/training/history/:userId',auth,async(req,res)=>{
-  if(!trainingAdmin(req.user.role)&&req.user.id!==String(req.params.userId))return res.status(403).json({error:'Training history access denied.'});
-  const s=TRAINING_SYSTEM.ensureState(db); res.json({ok:true,...TRAINING_SYSTEM.history(db,s,String(req.params.userId))});
-});
-app.get('/api/training/courses/:courseId',auth,async(req,res)=>{
-  const recoveryReadOnly=Boolean(MYSQL_RECOVERY_REQUIRED);
-  const sourceDb=recoveryReadOnly?{...db,settings:{...(db.settings||{}),trainingCenterV2:db.settings?.trainingCenterV2?JSON.parse(JSON.stringify(db.settings.trainingCenterV2)):undefined},users:Array.isArray(db.users)?db.users:[]}:db;
-  const s=recoveryReadOnly?TRAINING_SYSTEM.repairCourseCatalog(sourceDb).state:TRAINING_SYSTEM.ensureState(sourceDb),c=TRAINING_SYSTEM.findCourse(s,req.params.courseId);
-  if(!c)return res.status(404).json({error:'Training course not found.'});
-  if(!TRAINING_SYSTEM.userCanSeeCourse(req.user,c))return res.status(403).json({error:'This training course is not available to your role.'});
-  res.setHeader('Cache-Control','no-store');
-  res.json({ok:true,course:c,summary:TRAINING_SYSTEM.courseSummary(s,req.user.id,c),recoveryRequired:recoveryReadOnly,readOnly:recoveryReadOnly,message:recoveryReadOnly?'Recovery lock active. Course content is view-only; progress and assessments cannot be saved.':''});
-});
-app.post('/api/training/progress',auth,async(req,res)=>{
-  const b=req.body||{},s=TRAINING_SYSTEM.ensureState(db),uid=req.user.id,c=TRAINING_SYSTEM.findCourse(s,b.courseId),m=TRAINING_SYSTEM.findModule(s,b.courseId,b.moduleId);
-  if(!c||!m)return res.status(404).json({error:'Training course or module not found.'});
-  if(!TRAINING_SYSTEM.userCanSeeCourse(req.user,c))return res.status(403).json({error:'This training is not available to your role.'});
-  const allowed=TRAINING_SYSTEM.PROGRESS_STATUSES||['not_started','in_progress','completed','passed','failed','retraining_required'];
-  const status=allowed.includes(String(b.status))?String(b.status):'in_progress';
-  if(c.id===SBC_AM_ACADEMY_360.COURSE_ID){
-    if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED)return res.status(423).json({ok:false,error:'ACADEMY_RECOVERY_READ_ONLY'});
-    try{SBC_V6649_REQUIRE_WRITER()}catch(e){return res.status(423).json({ok:false,error:'ACADEMY_WRITER_LEASE_REQUIRED'})}
-    if(req.user.role!=='account_manager'||!SBC_AM_ACADEMY_GATES.canEnter(s,uid,m.id))return res.status(423).json({ok:false,error:'ACADEMY_STAGE_LOCKED'});
-    if(['completed','passed'].includes(status)){
-      if(status==='passed')return res.status(403).json({ok:false,error:'ACADEMY_OWNER_REVIEW_REQUIRED'});
-      if(!SBC_AM_ACADEMY_GATES.objectivePassed(s,uid,m.id)||!SBC_AM_ACADEMY_GATES.practiced(s,uid,m.id)||!SBC_AM_ACADEMY_GATES.labPassed(s,uid,m.id)||String(b.evidence||'').trim().length<80)return res.status(422).json({ok:false,error:'ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED'});
-      try{SBC_AM_TRAINING_BUDGET.permit(s,db,uid)}catch(e){return res.status(e.status||423).json({ok:false,error:String(e.message)})}
-    }
-  }
-  const prior=TRAINING_SYSTEM.progressFor(s,uid,c.id,m.id)||{};
-  const p=TRAINING_SYSTEM.upsertProgress(s,{userId:uid,courseId:c.id,moduleId:m.id,status,score:b.score==null?(prior.score??null):Math.max(0,Math.min(100,Number(b.score))),studySeconds:Math.max(Number(prior.studySeconds||0),Number(b.studySeconds||0)),startedAt:prior.startedAt||now(),completedAt:['completed','passed'].includes(status)?(prior.completedAt||now()):prior.completedAt||null,evidence:String(b.evidence||prior.evidence||'').slice(0,5000),notes:String(b.notes||prior.notes||'').slice(0,3000)});
-  TRAINING_SYSTEM.recordEvent(s,{type:'progress',userId:uid,courseId:c.id,moduleId:m.id,status,actorId:req.user.id}); await TRAINING_SYSTEM.saveState(db,s,()=>saveData()); audit(req.user,'training_progress_v2',`Training ${status}: ${c.title} / ${m.title}`,{userId:uid,courseId:c.id,moduleId:m.id});
-  res.json({ok:true,progress:p,summary:TRAINING_SYSTEM.courseSummary(s,uid,c)});
-});
-app.post('/api/training/attempts',auth,async(req,res)=>{
-  const b=req.body||{},s=TRAINING_SYSTEM.ensureState(db),uid=req.user.id,c=TRAINING_SYSTEM.findCourse(s,b.courseId),m=TRAINING_SYSTEM.findModule(s,b.courseId,b.moduleId);
-  if(!c||!m)return res.status(404).json({error:'Training course or module not found.'});
-  if(!TRAINING_SYSTEM.userCanSeeCourse(req.user,c))return res.status(403).json({error:'This training is not available to your role.'});
-  if(c.id===SBC_AM_ACADEMY_360.COURSE_ID)return res.status(403).json({ok:false,error:'ACADEMY_SERVER_GRADED_ASSESSMENT_ONLY'});
-  const attempt=new TRAINING_SYSTEM.TrainingSessionController(db,()=>{}).submitAttempt(uid,c.id,m.id,{type:b.type,answers:b.answers,response:b.response,score:b.score,passed:b.passed});
-  // submitAttempt writes the state; persist through the normal application save path as well.
-  await TRAINING_SYSTEM.saveState(db,s,()=>saveData()); audit(req.user,'training_attempt_submitted_v2',`Submitted assessment: ${m.title}`,{attemptId:attempt.id,userId:uid}); res.json({ok:true,attempt});
-});
-app.post('/api/training/assign',auth,async(req,res)=>{
-  if(!trainingAdmin(req.user.role))return res.status(403).json({error:'Owner or manager access required.'});
-  try{const a=TRAINING_SYSTEM.assignCourse(db,()=>saveData(),req.user,String(req.body?.userId||''),String(req.body?.courseId||''),req.body?.required!==false); audit(req.user,'training_assignment_v2','Assigned training course',{userId:a.userId,courseId:a.courseId}); res.json({ok:true,assignment:a});}catch(e){res.status(400).json({error:e.message})}
-});
-app.post('/api/training/review/:attemptId',auth,async(req,res)=>{
-  if(!trainingAdmin(req.user.role))return res.status(403).json({error:'Owner or manager access required.'});
-  const academyAttempt=(TRAINING_SYSTEM.ensureState(db).attempts||[]).find(x=>String(x.id)===String(req.params.attemptId));
-  // SBC_V66166_ACADEMY_PRACTICE · Dedicated owner rubric and certification APIs are authoritative.
-  if(academyAttempt?.courseId===SBC_AM_ACADEMY_360.COURSE_ID)return res.status(403).json({ok:false,error:'ACADEMY_DEDICATED_OWNER_REVIEW_REQUIRED'});
-  if(academyAttempt?.courseId===SBC_AM_ACADEMY_360.COURSE_ID){
-   if(req.user.role!=='owner')return res.status(403).json({ok:false,error:'ACADEMY_OWNER_REVIEW_ONLY'});
-   if(academyAttempt.type==='sbc_am_objective')return res.status(403).json({ok:false,error:'ACADEMY_OBJECTIVE_GRADES_IMMUTABLE'});
-  }
-  try{const r=TRAINING_SYSTEM.reviewAttempt(db,()=>saveData(),req.user,String(req.params.attemptId),req.body?.score,req.body?.passed,req.body?.notes); audit(req.user,'training_assessment_review_v2','Reviewed training assessment',{attemptId:req.params.attemptId,score:r.attempt.score,passed:r.attempt.passed}); res.json({ok:true,...r});}catch(e){res.status(400).json({error:e.message})}
-});
-app.post('/api/training/certification/:userId',auth,async(req,res)=>{
-  if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner approval required.'});
-  const certUser=(db.users||[]).find(x=>String(x.id)===String(req.params.userId));
-  if(certUser?.role==='account_manager')return res.status(403).json({ok:false,error:'ACADEMY_DEDICATED_CERTIFICATION_REQUIRED'});
-  if(certUser?.role==='account_manager'&&req.body?.status==='Certified'){
-   if(req.body?.courseId!==SBC_AM_ACADEMY_360.COURSE_ID)return res.status(422).json({ok:false,error:'ACADEMY_CURRENT_COURSE_REQUIRED'});
-   const decision=SBC_AM_ACADEMY_GATES.readiness(TRAINING_SYSTEM.ensureState(db),db,certUser.id);
-   if(!decision.ready)return res.status(409).json({ok:false,error:'ACADEMY_READINESS_INCOMPLETE',...decision});
-   if(SBC_RUNTIME_READ_ONLY||MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED)return res.status(423).json({ok:false,error:'ACADEMY_RECOVERY_READ_ONLY'});
-   try{SBC_V6649_REQUIRE_WRITER()}catch(e){return res.status(423).json({ok:false,error:'ACADEMY_WRITER_LEASE_REQUIRED'})}
-  }
-  try{const c=TRAINING_SYSTEM.certify(db,()=>saveData(),req.user,String(req.params.userId),req.body||{}); audit(req.user,'training_certification_v2',`Training certification ${c.status}`,{userId:c.userId,certificationId:c.id}); res.json({ok:true,certification:c});}catch(e){res.status(400).json({error:e.message})}
-});
-app.post('/api/training/courses',auth,async(req,res)=>{
-  if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner access required to create training.'});
-  try{const c=TRAINING_SYSTEM.createCourse(db,()=>saveData(),req.user,req.body||{}); res.status(201).json({ok:true,course:c});}catch(e){res.status(400).json({error:e.message})}
-});
-app.post('/api/training/courses/:courseId/new-version',auth,async(req,res)=>{
-  if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner access required to create a new training version.'});
-  try{const c=TRAINING_SYSTEM.cloneCourseVersion(db,()=>saveData(),req.user,String(req.params.courseId),String(req.body?.version||''));res.status(201).json({ok:true,course:c});}catch(e){res.status(400).json({error:e.message})}
-});
-app.post('/api/training/courses/:courseId/modules',auth,async(req,res)=>{
-  if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner access required to edit training content.'});
-  try{const m=TRAINING_SYSTEM.addModule(db,()=>saveData(),req.user,String(req.params.courseId),req.body||{}); res.status(201).json({ok:true,module:m});}catch(e){res.status(400).json({error:e.message})}
-});
-app.patch('/api/training/courses/:courseId',auth,async(req,res)=>{
-  if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner access required.'});
-  try{const c=TRAINING_SYSTEM.patchCourse(db,()=>saveData(),req.user,String(req.params.courseId),req.body||{}); res.json({ok:true,course:c});}catch(e){res.status(400).json({error:e.message})}
-});
-app.post('/api/training/courses/:courseId/archive',auth,async(req,res)=>{
-  if(!trainingOwner(req.user.role))return res.status(403).json({error:'Owner access required.'});
-  try{const c=TRAINING_SYSTEM.patchCourse(db,()=>saveData(),req.user,String(req.params.courseId),{status:'archived'}); res.json({ok:true,course:c});}catch(e){res.status(400).json({error:e.message})}
-});
+const SBC_LEGACY_TRAINING=require('./routes/sbc-legacy-training-v2.cjs').createTrainingHandlers(()=>({db,MYSQL_RECOVERY_REQUIRED,TRAINING_SYSTEM,trainingAdmin,trainingOwner,saveData,requireRequestTenant,now,audit,SBC_AM_ACADEMY_360,SBC_AM_ACADEMY_GATES,SBC_AM_TRAINING_BUDGET,SBC_RUNTIME_READ_ONLY,MYSQL_RECOVERY_EVALUATED,SBC_V6649_REQUIRE_WRITER}));
+app.get('/api/training',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.catalog(req,res)});
+app.post('/api/training/telemetry',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.telemetry(req,res)});
+app.get('/api/training/history/:userId',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.history(req,res)});
+app.get('/api/training/courses/:courseId',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.course(req,res)});
+app.post('/api/training/progress',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.progress(req,res)});
+app.post('/api/training/attempts',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.attempts(req,res)});
+app.post('/api/training/assign',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.assign(req,res)});
+app.post('/api/training/review/:attemptId',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.review(req,res)});
+app.post('/api/training/certification/:userId',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.certification(req,res)});
+app.post('/api/training/courses',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.createCourse(req,res)});
+app.post('/api/training/courses/:courseId/new-version',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.newVersion(req,res)});
+app.post('/api/training/courses/:courseId/modules',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.addModule(req,res)});
+app.patch('/api/training/courses/:courseId',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.patchCourse(req,res)});
+app.post('/api/training/courses/:courseId/archive',auth,async(req,res)=>{return SBC_LEGACY_TRAINING.archiveCourse(req,res)});
 
 // Legacy V15/V1 training routes are intentionally removed. The Training Center now uses /api/training/*.
 
@@ -9595,75 +9504,15 @@ app.post('/api/webhooks/inbound/email',async(req,res)=>{
   if(!inboundWebhookAuthorized(req)) return res.status(401).json({ok:false,error:'Inbound webhook authentication failed.'});
   try{const b=req.body||{};const out=await REVENUE_SUPERVISOR.handleInbound({leadId:b.leadId||b.customerId,message:b.text||b.body||b.message,email:b.fromEmail||b.from||b.email,phone:b.phone,channel:'email',externalId:b.messageId||b.id||req.get('x-idempotency-key')||'',metadata:{provider:b.provider||'generic'}});res.status(out.ok===false?202:200).json(out);}catch(e){res.status(400).json({ok:false,error:e.message});}
 });
-app.post('/api/webhooks/inbound/sms',async(req,res)=>{
-  if(!inboundWebhookAuthorized(req)) return res.status(401).json({ok:false,error:'Inbound webhook authentication failed.'});
-  try{
-    const b=req.body||{};
-    const externalId=b.MessageSid||b.messageSid||b.id||req.get('x-idempotency-key')||'';
-    const out=await REVENUE_SUPERVISOR.handleInbound({
-      leadId:b.leadId||b.customerId,
-      message:b.Body||b.body||b.message,
-      email:b.Email||b.email,
-      phone:b.From||b.from||b.phone,
-      channel:'sms',
-      externalId,
-      metadata:{provider:b.provider||'twilio'}
-    });
-    res.status(out.ok===false?202:200).type('application/json').json(out);
-  }catch(e){res.status(400).json({ok:false,error:e.message});}
-});
-
-app.post('/api/webhooks/twilio/status',async(req,res)=>{
-  if(!inboundWebhookAuthorized(req)) return res.status(401).json({ok:false,error:'Inbound webhook authentication failed.'});
-  try{
-    const b=req.body||{};
-    const sid=String(b.MessageSid||b.CallSid||b.SmsSid||b.id||'');
-    if(!sid) return res.status(400).json({ok:false,error:'Twilio event id is required.'});
-    await ensureRevenueOSSchema();
-    const state=String(b.MessageStatus||b.CallStatus||b.SmsStatus||'').toLowerCase();
-    const idem=crypto.createHash('sha256').update(`twilio-status:${sid}:${state}`).digest('hex');
-    if(mysqlPool) await mysqlPool.query(
-      `INSERT INTO sbc_agent_event_bus
-       (event_type,aggregate_type,aggregate_id,source_agent,payload,idempotency_key,status,priority,created_at)
-       VALUES(?,?,?,?,?,?,?,?,UTC_TIMESTAMP())
-       ON DUPLICATE KEY UPDATE id=id`,
-      ['twilio.status','communication',sid,'twilio_webhook_listener',JSON.stringify(b),idem,'pending',2]
-    );
-    if(/^SM[a-f0-9]{32}$/i.test(sid))await SBC_APPOINTMENT_RECOVERY.delivery(sid,state);
-    res.json({ok:true,queued:true,idempotencyKey:idem});
-  }catch(e){res.status(503).json({ok:false,error:e.message});}
-});
+const SBC_TWILIO_WEBHOOKS=require('./routes/sbc-twilio-webhooks-v1.cjs').createTwilioWebhooks(()=>({inboundWebhookAuthorized,REVENUE_SUPERVISOR,ensureRevenueOSSchema,crypto,SBC_APPOINTMENT_RECOVERY,get mysqlPool(){return mysqlPool}}));
+app.post('/api/webhooks/inbound/sms',async(req,res)=>{return SBC_TWILIO_WEBHOOKS.inbound(req,res)});
+app.post('/api/webhooks/twilio/status',async(req,res)=>{return SBC_TWILIO_WEBHOOKS.status(req,res)});
 
 // Public Square webhook endpoint. HMAC is checked first. A verified receipt is
 // durably persisted before the 200 response; payment processing is then retried
 // from the stored queue so a restart cannot silently erase a payment event.
-app.post('/api/webhooks/square',async(req,res)=>{
-  const raw=req.rawBody?.toString('utf8')||JSON.stringify(req.body||{});
-  const sig=req.headers['x-square-hmacsha256-signature'];
-  if(!squareSignatureValid(raw,sig))return res.status(403).json({error:'Invalid Square webhook signature.'});
-  let event=req.body;
-  try{if(!event||typeof event!=='object')event=safeJsonParse(raw,{})}catch{return res.status(400).json({error:'Invalid webhook JSON.'})}
-  const eventId=String(event.event_id||'');
-  if(!eventId)return res.status(400).json({error:'Square event_id is required.'});
-  const events=squareWebhookRecords();
-  const existing=events.find(x=>x.eventId===eventId);
-  if(existing){
-    if(existing.status==='RETRY')processPendingSquareWebhooks().catch(e=>console.error('[SBC] Square retry worker:',e.message));
-    return res.status(200).json({ok:true,duplicate:true,queued:existing.status!=='PROCESSED'});
-  }
-  const rec={eventId,type:String(event.type||''),status:'RECEIVED',createdAt:now(),receivedAt:now(),attempts:0,payload:event};
-  events.unshift(rec);events.splice(5000);
-  try{await saveData()}catch(e){
-    events.splice(events.indexOf(rec),1);
-    console.error('[SBC] Square receipt persistence failed:',e.message);
-    return res.status(503).json({error:'Webhook receipt could not be durably recorded; please retry.'});
-  }
-  // Acknowledge only after durable persistence. Processing is deliberately decoupled.
-  res.status(200).json({ok:true,received:true,queued:true});
-  MONETIZATION_QUEUE.enqueue({pool:mysqlPool,tenantId:1,eventType:'square.webhook',payload:{event},idempotencyKey:`square:${eventId}`}).catch(e=>processPendingSquareWebhooks().catch(err=>console.error('[SBC] Square fallback worker:',err.message)));
-});
-
-
+const SBC_SQUARE_WEBHOOK=require('./routes/sbc-square-webhook-v1.cjs').createSquareWebhook(()=>({squareSignatureValid,safeJsonParse,squareWebhookRecords,processPendingSquareWebhooks,now,saveData,MONETIZATION_QUEUE,get mysqlPool(){return mysqlPool}}));
+app.post('/api/webhooks/square',async(req,res)=>{return SBC_SQUARE_WEBHOOK(req,res)});
 
 async function runEnterpriseSandbox(){
   const results=[]; const test=(name,ok,detail)=>results.push({name,ok:Boolean(ok),detail:String(detail||'')});

@@ -10,7 +10,8 @@ function fixture(){
  const save=async()=>{durable=JSON.parse(JSON.stringify(db));};
  R.register(app,{auth(){},getDb:()=>db,tenantForRead:()=>1,writer(){},isReadOnly:()=>false,save});
  const source=fs.readFileSync(path.join(root,'server.js'),'utf8'),start=source.indexOf("app.post('/api/training/progress'"),end=source.indexOf("app.post('/api/training/attempts'",start+1);
- new vm.Script(source.slice(start,end)).runInNewContext({app,auth(){},db,TRAINING_SYSTEM:T,SBC_AM_ACADEMY_360:A,SBC_AM_ACADEMY_GATES:G,SBC_AM_TRAINING_BUDGET:B,SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_REQUIRED:false,MYSQL_RECOVERY_EVALUATED:true,SBC_V6649_REQUIRE_WRITER(){},saveData:save,audit(){},now:()=>new Date().toISOString()});
+ const SBC_LEGACY_TRAINING=require('../routes/sbc-legacy-training-v2.cjs').createTrainingHandlers(()=>({db,TRAINING_SYSTEM:T,SBC_AM_ACADEMY_360:A,SBC_AM_ACADEMY_GATES:G,SBC_AM_TRAINING_BUDGET:B,SBC_RUNTIME_READ_ONLY:false,MYSQL_RECOVERY_REQUIRED:false,MYSQL_RECOVERY_EVALUATED:true,SBC_V6649_REQUIRE_WRITER(){},saveData:save,audit(){},now:()=>new Date().toISOString()}));
+ new vm.Script(source.slice(start,end)).runInNewContext({app,auth(){},SBC_LEGACY_TRAINING});
  async function fetch(url,opt={}){
   const u=new URL(url,'https://academy.test'),method=opt.method||'GET',body=opt.body?JSON.parse(opt.body):{};let code=200,data;
   if(u.pathname==='/api/training')data={ok:true,...T.getForUser(db,actor)};
