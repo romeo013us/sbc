@@ -20,13 +20,17 @@ function verify(root,files,zipName){
  for(const name of files){if(excludedReleasePath(name))throw Error('SBC_RELEASE_FORBIDDEN_MEMBER: '+name);
   const stat=fs.lstatSync(path.join(root,name));
   if(!stat.isFile()||stat.isSymbolicLink())throw Error('SBC_RELEASE_BAD_FILE: '+name)}
- for(const f of required)if(!selected.has(f))throw Error('SBC_RELEASE_REQUIRED_MISSING: '+f);
+ for(const f of required.filter(n=>!n.startsWith('browser_public/')))if(!selected.has(f))throw Error('SBC_RELEASE_REQUIRED_MISSING: '+f);
  const ver=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
  const ident=JSON.parse(fs.readFileSync(path.join(root,'SBC-FLAT-RELEASE-IDENTITY.json'),'utf8'));
+ const layout=ident.frontendLayout??'mirrored-v1';
+ if(!['mirrored-v1','canonical-public-v1'].includes(layout))throw Error('SBC_RELEASE_FRONTEND_LAYOUT_INVALID');
+ if(layout==='canonical-public-v1'&&files.some(n=>n.startsWith('browser_public/')))throw Error('SBC_RELEASE_MIXED_FRONTEND_LAYOUT');
+ if(layout==='mirrored-v1')for(const f of required)if(!selected.has(f))throw Error('SBC_RELEASE_REQUIRED_MISSING: '+f);
  if(!/^\d+\.\d+\.\d+$/.test(ver)||ver!==pkg.version||ver!==ident.version)throw Error('SBC_RELEASE_VERSION_DRIFT');
  if(zipName!=='SBC-V'+ver.split('.')[0]+'-QUOTE-SAFETY-STAGING.zip')throw Error('SBC_RELEASE_ZIP_VERSION_DRIFT');
- for(const file of parity){const a=fs.readFileSync(path.join(root,'public',file));
+ if(layout==='mirrored-v1')for(const file of parity){const a=fs.readFileSync(path.join(root,'public',file));
   const b=fs.readFileSync(path.join(root,'browser_public',file));
   if(!a.equals(b))throw Error('SBC_RELEASE_MIRROR_DRIFT: '+file)}
  const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');

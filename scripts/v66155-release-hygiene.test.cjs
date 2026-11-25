@@ -29,6 +29,16 @@ try{
  put('public/app.js','safe');put('browser_public/app.js','safe');
  assert.throws(()=>H.verify(root,[...files,'public/diag2.html'],'SBC-V66-QUOTE-SAFETY-STAGING.zip'),/FORBIDDEN_MEMBER/);
  assert.throws(()=>H.verify(root,files,'SBC-V64-QUOTE-SAFETY-STAGING.zip'),/ZIP_VERSION_DRIFT/);
+ // A canonical selection is explicit. Keep the legacy source mirror on disk for CI.
+ const canonical=files.filter(n=>!n.startsWith('browser_public/'));
+ while(canonical.length<101){const n='docs/canonical-'+canonical.length+'.txt';put(n,'safe');canonical.push(n);}
+ assert.throws(()=>H.verify(root,canonical,'SBC-V66-QUOTE-SAFETY-STAGING.zip'),/REQUIRED_MISSING/);
+ put('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify({version:'66.0.0',frontendLayout:'canonical-public-v1'}));
+ assert.equal(H.verify(root,canonical,'SBC-V66-QUOTE-SAFETY-STAGING.zip').ok,true);
+ assert.throws(()=>H.verify(root,[...canonical,'browser_public/app.js'],'SBC-V66-QUOTE-SAFETY-STAGING.zip'),/MIXED_FRONTEND_LAYOUT/);
+ assert.throws(()=>H.verify(root,canonical.filter(n=>n!=='public/asset.css'),'SBC-V66-QUOTE-SAFETY-STAGING.zip'),/BROKEN_ASSET/);
+ put('SBC-FLAT-RELEASE-IDENTITY.json',JSON.stringify({version:'66.0.0',frontendLayout:'unknown'}));
+ assert.throws(()=>H.verify(root,canonical,'SBC-V66-QUOTE-SAFETY-STAGING.zip'),/FRONTEND_LAYOUT_INVALID/);
  const src=fs.readFileSync(path.resolve(__dirname,'../enterprise/sbc-runtime-hardening-v56130.js'),'utf8');
  assert(src.includes('ASSET_POLICY.denyPublicRequest'),'HTTP deny gate missing');
  const active=fs.readFileSync(path.resolve(__dirname,'../public/index.html'),'utf8');

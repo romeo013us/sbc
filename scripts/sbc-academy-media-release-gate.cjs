@@ -4,7 +4,12 @@
  */
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const MANIFEST='academy-media/academy360/AUTO_GENERATED_MANIFEST.json';
-const dirs=['public/','browser_public/'];
+function layoutDirs(identity={}){
+ const layout=identity.frontendLayout??'mirrored-v1';
+ if(layout==='mirrored-v1')return ['public/','browser_public/'];
+ if(layout==='canonical-public-v1')return ['public/'];
+ throw Error('ACADEMY_MEDIA_LAYOUT_INVALID');
+}
 const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const full=(root,name)=>path.join(root,name);
 function expectedNames(){
@@ -15,10 +20,10 @@ function expectedNames(){
  }
  return all.sort();
 }
-function manifest(root){
- const f=full(root,dirs[0]+MANIFEST),other=full(root,dirs[1]+MANIFEST);
- if(!fs.existsSync(f)||!fs.existsSync(other))throw Error('ACADEMY_MEDIA_MANIFEST_MISSING');
- if(sha(f)!==sha(other))throw Error('ACADEMY_MEDIA_MANIFEST_MIRROR_MISMATCH');
+function manifest(root,identity={}){
+ const dirs=layoutDirs(identity),f=full(root,dirs[0]+MANIFEST);
+ if(dirs.some(dir=>!fs.existsSync(full(root,dir+MANIFEST))))throw Error('ACADEMY_MEDIA_MANIFEST_MISSING');
+ if(dirs.length===2&&sha(f)!==sha(full(root,dirs[1]+MANIFEST)))throw Error('ACADEMY_MEDIA_MANIFEST_MIRROR_MISMATCH');
  let data;try{data=JSON.parse(fs.readFileSync(f,'utf8'));}catch{throw Error('ACADEMY_MEDIA_MANIFEST_INVALID_JSON');}
  if(!/^\d+\.\d+$/.test(String(data.version||''))||data.authenticatedEmployeeRecording!==false||data.syntheticOnly!==true)
   throw Error('ACADEMY_MEDIA_DECLARATION_INVALID');
@@ -32,11 +37,13 @@ function manifest(root){
  return {data,digest:sha(f)};
 }
 function stamp(root,identity){
- const info=manifest(root);
+ const info=manifest(root,identity);
  return {...identity,academyRelease:info.data.version,academyMediaManifestSha256:info.digest};
 }
 function verify(root,identity,inventory){
- const info=manifest(root);
+ const dirs=layoutDirs(identity);
+ if(dirs.length===1&&Object.keys(inventory||{}).some(n=>n.startsWith('browser_public/')))throw Error('ACADEMY_MEDIA_LAYOUT_MIXED');
+ const info=manifest(root,identity);
  if(identity?.academyRelease!==info.data.version||identity?.academyMediaManifestSha256!==info.digest)
   throw Error('ACADEMY_MEDIA_RELEASE_IDENTITY_MISMATCH');
  if(!inventory||typeof inventory!=='object')throw Error('ACADEMY_MEDIA_STAGED_INVENTORY_MISSING');
@@ -49,12 +56,12 @@ function verify(root,identity,inventory){
    const digest=sha(disk);
    if(inventory[relative]!==digest)throw Error('ACADEMY_MEDIA_STAGED_HASH_INVALID_'+relative);
   }
-  if(name!=='AUTO_GENERATED_MANIFEST.json'){
+  if(dirs.length===2&&name!=='AUTO_GENERATED_MANIFEST.json'){
    const a=sha(full(root,dirs[0]+'academy-media/academy360/'+name));
    const b=sha(full(root,dirs[1]+'academy-media/academy360/'+name));
    if(a!==b)throw Error('ACADEMY_MEDIA_BINARY_MIRROR_MISMATCH_'+name);
   }
  }
- return {version:info.data.version,lessons:24,mediaFiles:168,mirrors:2,syntheticOnly:true};
+ return {version:info.data.version,lessons:24,mediaFiles:168,mirrors:dirs.length,syntheticOnly:true};
 }
 module.exports={manifest,stamp,verify,expectedNames,MANIFEST};

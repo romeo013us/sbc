@@ -17,6 +17,7 @@ function verifyStagedInventory(root,identity){
   const inventoryPath=path.join(root,filename);
   const hasFile=fs.existsSync(inventoryPath);
   const hasAnchor=Object.prototype.hasOwnProperty.call(identity||{},'stagedInventorySha256');
+  if(identity?.frontendLayout==='canonical-public-v1'&&(!hasFile||!hasAnchor))throw Error('[SBC STAGED INVENTORY] canonical frontend requires anchored inventory');
   if(!hasFile&&!hasAnchor)return {legacy:true,checked:0};
   if(!hasFile||!hasAnchor||!shaPattern.test(String(identity.stagedInventorySha256||'')))
     throw Error('[SBC STAGED INVENTORY] missing inventory or release identity anchor '+
@@ -30,6 +31,18 @@ function verifyStagedInventory(root,identity){
   if(manifest.schema!==1||manifest.sourceCommit!==identity.sourceCommit||
      !manifest.files||typeof manifest.files!=='object'||Array.isArray(manifest.files))
     throw Error('[SBC STAGED INVENTORY] incompatible manifest');
+  const layout=identity.frontendLayout??'mirrored-v1';
+  const manifestLayout=manifest.frontendLayout??'mirrored-v1';
+  if(!['mirrored-v1','canonical-public-v1'].includes(layout)||!['mirrored-v1','canonical-public-v1'].includes(manifestLayout))
+    throw Error('[SBC STAGED INVENTORY] frontend layout invalid');
+  if(layout!==manifestLayout)throw Error('[SBC STAGED INVENTORY] frontend layout mismatch');
+  if(layout==='canonical-public-v1'){
+    if(Object.keys(manifest.files).some(n=>n==='browser_public'||n.startsWith('browser_public/')))
+      throw Error('[SBC STAGED INVENTORY] mixed frontend layout');
+    // An overlay can leave old files behind. Fail closed, never delete them here.
+    try{fs.lstatSync(path.join(root,'browser_public'));throw Error('[SBC STAGED INVENTORY] stale frontend mirror; clean staged directory required');}
+    catch(error){if(error.code!=='ENOENT')throw error;}
+  }
   const required=['server.js','package.json','public/app.js','public/index.html',
     'enterprise/financial-governor-v56-25-3.js','enterprise/sbc-margin-policy.cjs',
     'sbc-godaddy-flat-entrypoint.cjs','scripts/v6611-verify-stage-inventory.cjs'];
@@ -57,7 +70,7 @@ function verifyStagedInventory(root,identity){
     checked++;
   }
   if(checked<100)throw Error('[SBC STAGED INVENTORY] suspiciously incomplete release: '+checked);
-  return {legacy:false,checked,sourceCommit:manifest.sourceCommit};
+  return {legacy:false,checked,sourceCommit:manifest.sourceCommit,frontendLayout:layout};
 }
 if(require.main===module){
   const root=path.resolve(process.argv[2]||path.join(__dirname,'..'));
