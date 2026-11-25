@@ -1,0 +1,72 @@
+name: SBC protected promotion preflight
+on:
+  workflow_dispatch:
+    inputs:
+      expected_base_sha:
+        description: Current sealed a-sbc-master SHA
+        required: true
+        type: string
+      tested_source_sha:
+        description: Reviewed candidate source SHA
+        required: true
+        type: string
+      staging_run_id:
+        description: Exact successful candidate staging run ID
+        required: true
+        type: string
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - '.github/workflows/sbc-protected-promotion-preflight.yml'
+      - 'scripts/verify-staging-evidence.cjs'
+      - 'test/sbc-staging-evidence.test.cjs'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  evidence-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --test test/sbc-staging-evidence.test.cjs
+  preflight:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/a-sbc-master'
+    needs: evidence-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify exact run and sealed recovery tree (read only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_BASE: ${{ inputs.expected_base_sha }}
+          TESTED_SOURCE: ${{ inputs.tested_source_sha }}
+          STAGING_RUN: ${{ inputs.staging_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_BASE" =~ ^[0-9a-f]{40}$ && "$TESTED_SOURCE" =~ ^[0-9a-f]{40}$ && "$STAGING_RUN" =~ ^[1-9][0-9]*$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_BASE"
+          test "$(git ls-remote origin refs/heads/a-sbc-master | cut -f1)" = "$EXPECTED_BASE"
+          temp=$(mktemp -d)
+          trap 'git worktree remove --force "$temp/tree" 2>/dev/null || true; rm -rf "$temp"' EXIT
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN" > "$temp/run.json"
+          attempt=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).run_attempt' "$temp/run.json")
+          [[ "$attempt" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN/attempts/$attempt/jobs?per_page=100" > "$temp/jobs.json"
+          node scripts/verify-staging-evidence.cjs "$TESTED_SOURCE" "$STAGING_RUN" "$temp/run.json" "$temp/jobs.json"
+          git fetch --no-tags origin "refs/heads/release/verified-godaddy-$TESTED_SOURCE"
+          sealed=$(git rev-parse FETCH_HEAD)
+          test "$(git show -s --format=%P "$sealed")" = "$TESTED_SOURCE"
+          git merge-base --is-ancestor "$EXPECTED_BASE" "$TESTED_SOURCE"
+          git worktree add --detach "$temp/tree" "$sealed"
+          node scripts/verify-release-sync.cjs "$temp/tree" "$TESTED_SOURCE"
+          test "$(git ls-remote origin refs/heads/a-sbc-master | cut -f1)" = "$EXPECTED_BASE"
+          echo "Staging evidence verified for $sealed. No promotion, branch update or deployment authorized." >> "$GITHUB_STEP_SUMMARY"
