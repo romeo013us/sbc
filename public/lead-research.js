@@ -468,7 +468,25 @@ async function loadAssignedTasks(){
    body.append(element('strong',null,task.title||'Assigned task'),element('p',null,[task.type,task.priority,task.status].filter(Boolean).join(' · ')));
    body.append(element('small',null,Number.isFinite(due.getTime())?'Due '+due.toLocaleString():'Due date unavailable'));
    if(task.notes){var notes=element('p',null,task.notes);notes.style.whiteSpace='pre-wrap';notes.style.overflowWrap='anywhere';body.append(notes);}
-   row.append(body);list.append(row);
+   if(!result.readOnly&&['open','pending','in progress','blocked','overdue'].includes(String(task.status||'Open').toLowerCase())){
+    var actions=element('div','daily-task-body'),inProgress=String(task.status).toLowerCase()==='in progress';
+    var start=element('button','outline','Start work'),done=element('button','outline','Report completed');
+    start.type=done.type='button';start.hidden=inProgress;
+    async function updateTask(nextStatus){
+     if(!user||seq!==assignedTaskSequence||start.disabled||done.disabled)return;
+     if(nextStatus==='Completed'&&!window.confirm('Report this assigned work as completed? This does not verify leads or change your research submission count.'))return;
+     start.disabled=done.disabled=button.disabled=true;status.textContent='Saving assignment status…';
+     try{
+      var receipt=await api('/api/workforce/assigned-tasks/'+encodeURIComponent(task.id)+'/status',{method:'POST',body:JSON.stringify({status:nextStatus})});
+      if(receipt.ok!==true||receipt.task?.id!==task.id||receipt.task?.status!==nextStatus)throw Error('Unconfirmed assignment status.');
+      if(seq!==assignedTaskSequence)return;
+      await loadAssignedTasks();
+     }catch(e){if(seq===assignedTaskSequence){status.textContent='Status not confirmed. Refresh or retry the same action. '+errorMessage(e);start.disabled=done.disabled=button.disabled=false;}}
+    }
+    start.onclick=function(){void updateTask('In Progress');};done.onclick=function(){void updateTask('Completed');};
+    actions.append(start,done);row.append(body,actions);
+   }else row.append(body);
+   list.append(row);
   });
  }catch(e){if(seq===assignedTaskSequence){list.replaceChildren();status.textContent='Assignments unavailable. Refresh to retry; absence of assignments cannot be confirmed.';}}
  finally{if(seq===assignedTaskSequence)button.disabled=false;}
