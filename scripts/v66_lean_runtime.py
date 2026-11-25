@@ -45,9 +45,10 @@ def select(files):
     while True:
         before=(len(retained),len(keep_commands))
         bodies=[text[n] for n in retained if n in text]+[commands[k].encode() for k in keep_commands]
-        for k in commands.keys()-keep_commands:
-            pattern=re.compile(rb"\bnpm\s+(?:run(?:-script)?\s+)?"+re.escape(k.encode())+rb"(?![a-zA-Z0-9:_-])")
-            if any(pattern.search(b) for b in bodies):keep_commands.add(k)
+        # One scan, not one full source pass per npm alias.
+        alias_pattern=re.compile(rb"\bnpm\s+(?:run(?:-script)?\s+)?([a-zA-Z0-9:_-]+)")
+        observed={m.group(1).decode('ascii') for b in bodies for m in alias_pattern.finditer(b)}
+        keep_commands.update(observed.intersection(commands))
         bodies += [commands[k].encode() for k in keep_commands]
         joined=b"\n".join(bodies)
         needed={n for n in pending if literal_ref(n,joined)}
