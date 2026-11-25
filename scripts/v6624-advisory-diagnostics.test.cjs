@@ -76,3 +76,35 @@ test('Kim treats unavailable or unscoped fulfillment job evidence as unknown, no
  assert.equal(b.operatingPlan.coverage.fulfillment,'UNSCOPED_RECORDS');
  assert.equal(b.operatingPlan.departments.find(d=>d.id==='fulfillment').decisions[0].count,null);
 });
+
+test('owner-only GET plan uses authenticated tenant, never an execution cycle',async()=>{
+ const register=require('../routes/v56135-kim-mission');
+ const handlers=new Map(),auth=()=>{},ownerOnly=()=>{};
+ const prior=global.__SBC_REQUIRE_TENANT;
+ global.__SBC_REQUIRE_TENANT=req=>req.tenant;
+ let observed;
+ const controller={cycle:async opts=>{observed=opts;return {ok:true,advisoryOnly:true,operatingPlan:{schema:1,execution:'ADVISORY_ONLY',scope:'TENANT_CANONICAL_SNAPSHOT',departments:[]}}}};
+ register({get:(p,...h)=>handlers.set(p,h),post(){}},{auth,ownerOnly,getController:()=>controller});
+ const route=handlers.get('/api/v56135/kim-mission/operating-plan');
+ assert.equal(route[0],auth);assert.equal(route[1],ownerOnly);
+ const response=()=>({code:200,headers:{},setHeader(k,v){this.headers[k]=v},status(n){this.code=n;return this},json(x){this.body=x;return this}});
+ try{
+  let res=response();await route[2]({tenant:7,user:{role:'owner'},query:{tenantId:99,advisoryOnly:false}},res);
+  assert.equal(res.code,200);assert.equal(observed.tenantId,7);assert.equal(observed.advisoryOnly,true);assert.equal(res.headers['Cache-Control'],'no-store');assert.equal(res.body.operatingPlan.execution,'ADVISORY_ONLY');
+  controller.cycle=async()=>({ok:true,skipped:true});
+  res=response();await route[2]({tenant:7,user:{role:'owner'}},res);assert.equal(res.code,503);assert.equal(res.body.ok,false);
+ }finally{global.__SBC_REQUIRE_TENANT=prior;}
+});
+test('Kim owner interface presents departmental evidence and isolates legacy controls',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const js=fs.readFileSync(path.join(__dirname,'../public/kim-operations-os.js'),'utf8');
+ const win={},calls=[];let unavailable=false;
+ const plan={schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',coverage:{fulfillment:'UNAVAILABLE'},commercial:{recognizedRevenueCents:19901,recognizedPaidOrders:1,proof:'Recorded capture only'},departments:[{id:'finance',decisions:[{code:'PAYMENT_RECONCILIATION',count:2,priority:0,status:'REVIEW_REQUIRED',action:'Review <unsafe> receipts'}]},{id:'fulfillment',decisions:[{code:'PAID_WITHOUT_JOB',count:null,priority:1,status:'EVIDENCE_REQUIRED',action:'Review job evidence'}]}]};
+ const ctx={window:win,document:{querySelector:()=>null},addEventListener(){},fetch:async(url,opts)=>{calls.push({url,opts});return {ok:!unavailable||url!=='/api/v56135/kim-mission/operating-plan',json:async()=>url==='/api/v56135/kim-mission/operating-plan'?{ok:true,operatingPlan:plan}:{ok:true,production:{counts:{Staged:3},checklists:[],exceptions:[]}}}}};
+ vm.runInNewContext(js,ctx);
+ const html=await win.sbcKimOperationsView();
+ assert.match(html,/Department operating plan/i);assert.match(html,/199\.01/);assert.match(html,/Payment reconciliation/i);assert.match(html,/Evidence required/i);assert.match(html,/Review &lt;unsafe&gt; receipts/);assert(!html.includes('<unsafe>'));
+ assert.match(html,/<details[^>]*>.*Existing production controls/s);
+ assert(calls.every(c=>!c.opts.method||c.opts.method==='GET'));
+ unavailable=true;const failed=await win.sbcKimOperationsView();assert.match(failed,/Operating plan unavailable/i);assert(!failed.includes('199.01'));
+});
