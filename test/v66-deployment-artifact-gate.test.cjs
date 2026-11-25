@@ -84,3 +84,29 @@ test('fail closed when obsolete release notes are injected into an otherwise val
   JSON.stringify({...identity,stagedInventorySha256:sha(raw)}));
  assert.throws(()=>verifyDeploymentArtifact(root),/forbidden release member/i);
 }));
+
+function sealLayout(root,identity,layout,inventoryLayout=layout,extra={}){
+ const p=path.join(root,'SBC-STAGED-INVENTORY.json'),inv=JSON.parse(fs.readFileSync(p,'utf8'));
+ inv.frontendLayout=inventoryLayout;
+ Object.assign(inv.files,extra);
+ const raw=JSON.stringify(inv,null,2)+'\n';fs.writeFileSync(p,raw);
+ fs.writeFileSync(path.join(root,'SBC-FLAT-RELEASE-IDENTITY.json'),JSON.stringify({...identity,frontendLayout:layout,stagedInventorySha256:sha(raw)}));
+}
+test('canonical layout is explicit and bound to the anchored inventory',()=>using(({root,identity})=>{
+ sealLayout(root,identity,'canonical-public-v1');
+ assert.equal(verifyDeploymentArtifact(root).frontendLayout,'canonical-public-v1');
+ sealLayout(root,identity,'canonical-public-v1','mirrored-v1');
+ assert.throws(()=>verifyDeploymentArtifact(root),/frontend layout mismatch/i);
+ sealLayout(root,identity,'unknown');
+ assert.throws(()=>verifyDeploymentArtifact(root),/frontend layout invalid/i);
+}));
+test('canonical layout rejects stale physical mirror and mixed inventory without deleting either',()=>using(({root,identity})=>{
+ sealLayout(root,identity,'canonical-public-v1');
+ const name='browser_public/old.js',p=path.join(root,name);
+ fs.mkdirSync(path.dirname(p));fs.writeFileSync(p,'old');
+ assert.throws(()=>verifyDeploymentArtifact(root),/stale frontend mirror/i);
+ assert.equal(fs.readFileSync(p,'utf8'),'old');
+ fs.rmSync(path.dirname(p),{recursive:true});
+ sealLayout(root,identity,'canonical-public-v1','canonical-public-v1',{[name]:sha('old')});
+ assert.throws(()=>verifyDeploymentArtifact(root),/mixed frontend layout/i);
+}));
