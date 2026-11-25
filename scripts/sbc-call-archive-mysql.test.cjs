@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const archive=require('../enterprise/sbc-call-archive-v1.cjs');
-test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback and scoped history after reconnect',{skip:process.env.SBC_CALL_ARCHIVE_MYSQL_CI!=='YES'},async()=>{
+test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback and scoped history after reconnect',{skip:process.env.SBC_CALL_ARCHIVE_MYSQL_CI!=='YES'},async t=>{
  assert.equal(process.env.CI,'true');
  const mysql=require('mysql2/promise');
  const config={host:'127.0.0.1',port:3306,user:'root',password:process.env.SBC_V6682_CI_MYSQL_PASSWORD,database:'sbc_v6682_ci'};
@@ -83,6 +83,37 @@ test('isolated MySQL: 10,000 call attempts, revision retention, replay, rollback
   const current=await archive.findSession(conn,staff,{sessionId:changed.sessionId,customerId:changed.customerId,manualDial:false});
   assert.equal(current.outcome,'Spanish callback needed');
   assert.equal(current.notes,'Synthetic corrected outcome');
+  const historicalOwner={tenantId:3,actorId:'review-owner',role:'owner'};
+  // A temporary workspace is connection-scoped. Keep this fixture on its own connection.
+  const testPool={async getConnection(){return {query:conn.query.bind(conn),beginTransaction:conn.beginTransaction.bind(conn),
+   commit:conn.commit.bind(conn),rollback:conn.rollback.bind(conn),release(){}};}};
+  const verifyWriter=async cx=>{const [[db]]=await cx.query('SELECT DATABASE() AS name');assert.equal(db.name,'sbc_v6682_ci');};
+  const correction={id:recovered.id,revision:archive.prepare(recovered).revisionHash,notes:'Owner clarified appointment time',
+   reason:'Synthetic appointment review'};
+  const correct=(input,scope=historicalOwner,verify=verifyWriter)=>archive.correctArchivedNotes(testPool,scope,input,verify,historyEnv);
+  await assert.rejects(correct({...correction,id:'rolling-1'}),/CALL_ARCHIVE_STILL_RECENT/);
+  await assert.rejects(correct(correction,{...historicalOwner,tenantId:22}),/CALL_ARCHIVE_NOT_FOUND/);
+  let leaseChecks=0;
+  await assert.rejects(correct(correction,historicalOwner,async()=>{if(++leaseChecks===2)throw Error('lost writer lease');}),/lost writer lease/);
+  assert.equal((await archive.findSession(conn,actor,session)).notes,recovered.notes);
+  const receipt=await correct(correction);
+  assert.equal(receipt.durable,true);assert.notEqual(receipt.revision,correction.revision);
+  assert.deepEqual(await correct(correction),receipt);
+  await assert.rejects(correct({...correction,notes:'A stale conflicting draft'}),/CALL_ARCHIVE_STALE_REVISION/);
+  const edited=await archive.findSession(conn,actor,session);
+  assert.equal(edited.outcome,recovered.outcome);
+  assert.equal(edited.status,recovered.status);
+  assert.equal(edited.endedAt,recovered.endedAt);
+  assert.equal(edited.notes,correction.notes);
+  assert.equal(edited.noteCorrection.actorId,historicalOwner.actorId);
+  assert.equal(edited.noteCorrection.previousRevision,correction.revision);
+  const [versions]=await conn.query('SELECT payload_json FROM sbc_call_attempt_revision_v1 WHERE tenant_id=3 AND log_id=?',[recovered.id]);
+  assert.equal(versions.length,2);
+  assert(versions.some(v=>JSON.parse(v.payload_json).notes===recovered.notes));
+  const [[workspace]]=await conn.query('SELECT payload FROM sbc_workspace WHERE id=1');
+  assert.equal(workspace.payload,next);
+  await t.test('restore a real archive dump to a clean schema and verify every row',require('./sbc-call-archive-restore.cjs'));
+
 
 
  }finally{await conn.end().catch(()=>{});}
