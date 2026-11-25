@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install free offline rendering tools
-        run: sudo apt-get update && sudo apt-get install -y imagemagick fonts-dejavu-core
+        run: sudo apt-get update && sudo apt-get install -y imagemagick librsvg2-bin fonts-dejavu-core
       - name: Run creative inventory and security regression tests
         run: node --test test/sbc-social-asset-engine.test.cjs
       - name: Produce private review inventory (no publishing)
