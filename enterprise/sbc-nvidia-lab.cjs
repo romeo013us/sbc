@@ -37,7 +37,7 @@ async function runLab(env={},transport=fetch){
  let embedding=null;
  if(embed){
   await ready(transport,embed.origin,embed.name);
-  const result=await request(transport,embed.origin,'/v1/embeddings',{model:embed.name,input:['Synthetic public business training example.'],encoding_format:'float'});
+  const result=await request(transport,embed.origin,'/v1/embeddings',{model:embed.name,input:['Synthetic public business training example.'],input_type:'passage',modality:'text',embedding_type:'float',encoding_format:'float'});
   const item=result?.data?.[0],vector=item?.embedding;
   if(result?.data?.length!==1||item?.index!==0||!Array.isArray(vector)||vector.length<1||vector.length>16384||!vector.every(Number.isFinite)||!vector.some(x=>x!==0))throw Error('INVALID_EMBEDDING');
   embedding={passed:true,model:embed.name,dimensions:vector.length};
@@ -45,4 +45,4 @@ async function runLab(env={},transport=fetch){
  return {status:'SYNTHETIC_PROBE_PASSED',syntheticOnly:true,productionCertified:false,reasoning,embedding,durationMs:Math.max(0,performance.now()-started),providerIdentityAttested:false};
 }
 if(require.main===module)runLab(process.env).then(r=>console.log(JSON.stringify(r,null,2))).catch(e=>{console.error('NVIDIA lab failed: '+(typeof e?.message==='string'&&/^[A-Z_]+$/.test(e.message)?e.message:'LOCAL_TRANSPORT_ERROR'));process.exitCode=1;});
-module.exports={runLab};
+module.exports={runLab,localProtocol:Object.freeze({endpoint,model,request,ready})};
