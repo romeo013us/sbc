@@ -40,6 +40,11 @@ function harness(route,{existing,failAt}={}){
   requireRequestTenant:()=>1,mysqlPool:pool,now:()=>new Date('2026-11-22T12:00:00Z').toISOString(),
   id:x=>x+'-'+(inserts+1),sqlDateTime:x=>x,db:data,console:{error(){}},
  };
+ // Execute the actual extracted production handler with the same fake SQL boundary.
+ context.SBC_CRM_LEAD_HANDLERS=require('../routes/sbc-crm-leads-v1.cjs').createCrmLeadHandlers(()=>({
+  requireRequestTenant:context.requireRequestTenant,mysqlPool:context.mysqlPool,getDb:()=>data,
+  id:context.id,now:context.now,sqlDateTime:context.sqlDateTime,
+ }));
  vm.runInNewContext(route,context,{timeout:5000});
  async function call(rows,dryRun){let status=200,payload;
   const res={setHeader(){},status(n){status=n;return this},json(o){payload=o;return this}};
