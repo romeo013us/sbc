@@ -48,3 +48,21 @@ assert.equal(am.actions[0].batchCount,300);
 const suppressed=planActions({tenantId,actor,rows:[row(1500,{status:'Do Not Contact',follow_up:'2026-11-17'})],today});
 assert.equal(suppressed.actions[0].code,'CONTACT_RESTRICTION_REVIEW');
 console.log('SUPER SBC TRIAGE PASS: 500 backlog -> one queue; corrupt source names flagged; urgent items and tenant safety preserved');
+
+const desk=planActions({tenantId,actor,today,limit:2,rows:[
+ ...Array.from({length:20},(_,i)=>row(i,{assigned_to:'manager_001',follow_up:'2026-11-20'})),
+ row(100,{assigned_to:'manager_001',follow_up:'2026-11-24'}),
+ row(101,{status:'Do Not Call'}),row(102,{business_name:''}),
+ ...Array.from({length:25},(_,i)=>row(200+i))
+]});
+assert.equal(desk.actions.length,2,'legacy prioritized list preserved');
+assert.deepEqual(desk.lanes.map(x=>x.id),['commitments','review','upcoming','pipeline']);
+assert.equal(desk.lanes[0].decisionCount,20);
+assert.equal(desk.lanes[0].actions.length,2);
+assert.equal(desk.lanes[1].decisionCount,2);
+assert.equal(desk.lanes[2].actions[0].code,'FOLLOW_UP_UPCOMING');
+assert.equal(desk.lanes[3].recordCount,25);
+assert.equal(desk.lanes[3].decisionCount,1);
+assert.equal(desk.lanes.reduce((n,x)=>n+x.decisionCount,0),desk.total);
+assert.equal(desk.lanes.reduce((n,x)=>n+x.recordCount,0),48);
+assert(!JSON.stringify(desk.lanes).includes('305555'));
