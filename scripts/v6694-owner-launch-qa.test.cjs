@@ -105,7 +105,7 @@ function setup({locked=false,tenant=7,saveFails=false,costFails=false}={}){
  // the in-memory paymentStatus property; otherwise a paid order looks Pending.
  const mount="app.get('/api/payments/square/order/:orderId',auth,SBC_SQUARE_ORDER_HANDLERS.order);";
  assert.equal(src.split(mount).length-1,1,'compiled Square readback retains auth and single mount');
- assert.ok(src.includes("require('./routes/sbc-square-order-handlers-v1.cjs').createSquareOrderHandlers("),'compiled route factory present');
+ assert.ok(src.includes("require("+ "'./routes/sbc-square-order-handlers-v1.cjs').createSquareOrderHandlers("),'compiled route factory present');
  const paymentOrder={
   id:'QA_SQL_ORDER_1',tenantId:7,price:1,customerId:'QA_SQL_CUSTOMER_1',
   fulfillmentStatus:'QA VERIFIED - NO FULFILLMENT',
