@@ -199,7 +199,68 @@ function createNationalReader(fetcher,clock){
  };
 }
 
+
+const GEO_METHOD='CRM records use their current researcher-documented street-address state, not independent location verification or historic customer location. Revenue is SBC-recorded Square capture metadata, not independent provider or bank settlement. Records without location evidence stay unknown; no causal conversion or profit claim. Excludes known QA, reversed payments, status-only payments and duplicate capture references. Complete UTC days only.';
+function geographicState(row){
+ let info;
+ try{info=typeof row.lead_intelligence_json==='string'?JSON.parse(row.lead_intelligence_json):row.lead_intelligence_json;}catch{return 'unknown';}
+ const b=info?.researchBrief,state=String(b?.streetState||'').trim().toUpperCase();
+ if(!BFS_STATES.includes(state)||b?.streetAddressVerification!=='verified'||!String(row.address||'').trim())return 'unknown';
+ try{const url=new URL(b.streetAddressEvidenceUrl);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)return 'unknown';}catch{return 'unknown';}
+ if(b.googleAddressVerification==='conflict'||b.addressMismatch===true||b.serviceAreaOnly===true)return 'unknown';
+ return state;
+}
+async function readGeography(pool,tenantId,days,time){
+ const args=[tenantId,ROW_LIMIT+1];
+ const [leadResult,orderResult]=await Promise.all([
+  pool.query({timeout:4000,sql:"SELECT id,tenant_id,business_name,contact_name,source,status,address,lead_intelligence_json,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS created_at FROM sbc_customers WHERE tenant_id=? LIMIT ?"},args),
+  pool.query({timeout:4000,sql:"SELECT id,tenant_id,customer_id,customer_name,status,price,notes,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS created_at FROM sbc_orders WHERE tenant_id=? LIMIT ?"},args)
+ ]);
+ const [leads]=leadResult,[orders]=orderResult;
+ if(!Array.isArray(leads)||!Array.isArray(orders))throw Error('GEO_INVALID_ROWS');
+ if(leads.length>ROW_LIMIT||orders.length>ROW_LIMIT)return {status:'volume_limit',rows:[],methodology:GEO_METHOD};
+ if([...leads,...orders].some(r=>Number(r.tenant_id)!==tenantId||!r.id)||new Set(leads.map(r=>String(r.id))).size!==leads.length||new Set(orders.map(r=>String(r.id))).size!==orders.length)throw Error('GEO_SCOPE');
+ const range=windows(days,time),within=v=>{const n=Date.parse(v);return Number.isFinite(n)&&n>=range.current&&n<range.end;};
+ const groups=new Map(),customerIndex=new Map();
+ const group=state=>{if(!groups.has(state))groups.set(state,{state,newCrmRecords:0,paidOrders:0,capturedCents:0});return groups.get(state);};
+ for(const row of leads){
+  const customer={businessName:row.business_name,contactName:row.contact_name,source:row.source};
+  const qa=Revenue.isQaCustomer(customer),deleted=/^deleted$/i.test(String(row.status||'').trim());
+  const state=deleted?'unknown':geographicState(row);
+  customerIndex.set(String(row.id),{customer,qa,state});
+  if(!qa&&!deleted&&within(row.created_at))group(state).newCrmRecords++;
+ }
+ // Detect reused payment IDs across the entire bounded tenant snapshot, including records outside the date window.
+ const seen=new Set(),conflicts=new Set(),candidates=[];
+ for(const row of orders){
+  const c=customerIndex.get(String(row.customer_id||'')),notes=Revenue.parseNotes(row);
+  const order={id:row.id,customerName:row.customer_name,price:row.price,notes,parsed:notes,paymentStatus:notes.paymentStatus};
+  const proof=proofFields(order);
+  if(proof.id){if(seen.has(proof.id))conflicts.add(proof.id);seen.add(proof.id);}
+  if(c?.qa||Revenue.isQaOrder(order,c?.customer)||/^deleted$/i.test(String(row.status||'').trim())||MONEY_REVERSAL.test(String(row.status||'').trim())||!Revenue.providerPaid(order,c?.customer))continue;
+  const captured=Date.parse(proof.completedAt),started=Date.parse(row.created_at),cents=Math.round(Number(row.price)*100);
+  if(!Number.isFinite(started)||captured<started||!within(proof.completedAt)||!Number.isSafeInteger(cents)||cents<=0)continue;
+  candidates.push({state:c?.state||'unknown',paymentId:proof.id,cents});
+ }
+ for(const c of candidates){if(conflicts.has(c.paymentId))continue;const g=group(c.state);g.paidOrders++;g.capturedCents+=c.cents;}
+ const rows=Array.from(groups.values()).sort((a,b)=>a.state==='unknown'?1:b.state==='unknown'?-1:b.capturedCents-a.capturedCents||b.newCrmRecords-a.newCrmRecords||a.state.localeCompare(b.state));
+ const totals=rows.reduce((a,r)=>({newCrmRecords:a.newCrmRecords+r.newCrmRecords,paidOrders:a.paidOrders+r.paidOrders,capturedCents:a.capturedCents+r.capturedCents}),{newCrmRecords:0,paidOrders:0,capturedCents:0});
+ if(!Number.isSafeInteger(totals.capturedCents))throw Error('GEO_RANGE');
+ return {status:'available',rows,totals,currency:'USD',period:{startDate:date(range.current),endDate:date(range.end-DAY)},conflictingPaymentIds:conflicts.size,methodology:GEO_METHOD};
+}
+
 function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, clock = Date.now }) {
+  app.get('/api/owner/market-intelligence/geography',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    let tenantId;try{tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    const days=req.query.days??'30';
+    if(!['30','90'].includes(days)||Object.keys(req.query||{}).some(k=>k!=='days'))return res.status(400).json({ok:false,code:'GEOGRAPHY_WINDOW_INVALID'});
+    const time=clock(),pool=getPool();
+    const unavailable={status:'unavailable',rows:[],methodology:GEO_METHOD};
+    const result=pool?await readGeography(pool,tenantId,Number(days),time).catch(()=>unavailable):unavailable;
+    return res.json({ok:true,generatedAt:new Date(time).toISOString(),days:Number(days),...result});
+  });
+
   const readNational=createNationalReader(nationalFetcher,clock);
   app.get('/api/owner/market-intelligence/national',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
