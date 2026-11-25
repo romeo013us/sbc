@@ -96,7 +96,7 @@ function operatingPlan(db,screened){
  const customers=db.customers.filter(belongs);
  const orders=db.orders.filter(belongs);
  // Keep all receipt identities in reconciliation, including refund or QA copies.
- const summary=REVENUE_TRUTH.paidSummary(orders,customers,{tenantId:tenant});
+ const summary=REVENUE_TRUTH.paidSummary(orders.map(o=>isSystemTestOrder(o)||REVENUE_GATE.isProtectedLaunchQaOrder(o)?{...o,testOnly:true}:o),customers,{tenantId:tenant});
  const jobRows=Array.isArray(db.fulfillmentJobs)?db.fulfillmentJobs:null;
  const validTenant=row=>Number.isSafeInteger(Number(row?.tenantId??row?.tenant_id))&&Number(row?.tenantId??row?.tenant_id)>0;
  const coverage=!jobRows?'UNAVAILABLE':jobRows.some(j=>!validTenant(j))?'UNSCOPED_RECORDS':'SCOPED_SNAPSHOT';
