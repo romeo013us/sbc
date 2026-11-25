@@ -1,0 +1,27 @@
+name: SBC workstation lazy-loading acceptance
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'public/sbc-workstation-loader-v1.js'
+      - 'browser_public/sbc-workstation-loader-v1.js'
+      - 'public/index.html'
+      - 'browser_public/index.html'
+      - 'public/sbc-v6567-marketing-hub.js'
+      - 'browser_public/sbc-v6567-marketing-hub.js'
+      - 'test/sbc-workstation-loader.test.cjs'
+      - '.github/workflows/sbc-workstation-lazy-loading.yml'
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check public/sbc-workstation-loader-v1.js
+      - run: cmp public/sbc-workstation-loader-v1.js browser_public/sbc-workstation-loader-v1.js
+      - run: node --test test/sbc-workstation-loader.test.cjs
