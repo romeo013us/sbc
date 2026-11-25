@@ -62,6 +62,7 @@ async function reconcileSlots(pool, tenant, report) {
   }
 }
 function registerMarketingReceipts(app, {auth,ownerOnly,tenantOf,corporateTenant,getPool,canWrite,getKey,clock=Date.now,request=fetch}) {
+  require('./sbc-creative-inventory.cjs').registerCreativeInventory(app,{auth,ownerOnly,tenantOf,corporateTenant,getPool,canWrite,clock});
   const read = createReadback({getKey,clock,request});
   const base = '/api/marketing/publication-receipts';
   function mount(method,path,handler) {
