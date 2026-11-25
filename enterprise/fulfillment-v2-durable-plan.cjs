@@ -2,6 +2,7 @@
 // SBC Fulfillment 2.0: transactional, idempotent paid-checkout work planning.
 // Does not execute steps, make purchases, send emails, or call AI.
 const crypto = require('node:crypto');
+const {isDeepStrictEqual} = require('node:util');
 const {compile} = require('./fulfillment-v2-blueprints.cjs');
 const LANES = Object.freeze({customer:'WAITING_CUSTOMER', owner:'WAITING_OWNER', specialist:'READY_SPECIALIST', adapter_or_specialist:'READY_SPECIALIST', automation:'READY_AUTOMATION'});
 const DONE='COMPLETED';
@@ -55,10 +56,18 @@ async function completeStep(connection,{tenantId,checkoutLedgerId,stepKey,eviden
   if(!/^[A-Za-z0-9._:-]{1,120}$/.test(String(actorId||'')))fail('FULFILLMENT_ACTOR_REQUIRED');
   // Evidence must be provided by trusted caller and verified for external side effects.
   if(!evidence||typeof evidence!=='object'||Array.isArray(evidence)||!String(evidence.reference||'').trim()||JSON.stringify(evidence).length>4096)fail('FULFILLMENT_EVIDENCE_REQUIRED');
-  const [rows]=await connection.query('SELECT step_key,status,lane,depends_on_json FROM sbc_fulfillment_plan_steps WHERE tenant_id=? AND checkout_ledger_id=? FOR UPDATE',[t,ledger]);
+  const [rows]=await connection.query('SELECT step_key,status,lane,depends_on_json,evidence_json,completed_by FROM sbc_fulfillment_plan_steps WHERE tenant_id=? AND checkout_ledger_id=? FOR UPDATE',[t,ledger]);
   const step=rows.find(x=>x.step_key===stepKey);
   if(!step)fail('FULFILLMENT_STEP_NOT_FOUND');
-  if(step.status===DONE)return {status:'ALREADY_COMPLETED',unblocked:[]};
+  if(step.status===DONE){
+    let savedEvidence,requestedEvidence;
+    try{
+      savedEvidence=typeof step.evidence_json==='string'?JSON.parse(step.evidence_json):step.evidence_json;
+      requestedEvidence=JSON.parse(JSON.stringify(evidence));
+    }catch{fail('FULFILLMENT_COMPLETION_REPLAY_CONFLICT');}
+    if(!savedEvidence||String(step.completed_by||'')!==String(actorId)||!isDeepStrictEqual(savedEvidence,requestedEvidence))fail('FULFILLMENT_COMPLETION_REPLAY_CONFLICT');
+    return {status:'ALREADY_COMPLETED',unblocked:[]};
+  }
   if(!Object.hasOwn(LANES,step.lane))fail('FULFILLMENT_STEP_LANE_INVALID');
   const allowed=LANES[step.lane];
   if(step.status!==allowed)fail('FULFILLMENT_STEP_NOT_READY');

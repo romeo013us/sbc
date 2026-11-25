@@ -98,3 +98,16 @@ test('a ready-looking step cannot bypass a known lane or a missing prerequisite'
  ];
  assert.deepEqual(actionable(rows).map(x=>x.step_key),['ready']);
 });
+
+test('completed fulfillment step acknowledges only the original actor and equivalent evidence',async()=>{
+ const db=new FakeConnection();await stagePaidCheckoutPlan(db,input());
+ const req={tenantId:1,checkoutLedgerId:25,stepKey:'shared_customer_intake',actorId:'employee_123',evidence:{reference:'crm:customer-123',details:{confirmed:true,items:['intake']}}};
+ await completeStep(db,req);
+ const saved=structuredClone(db.rows);
+ assert.equal((await completeStep(db,{...req,evidence:{details:{items:['intake'],confirmed:true},reference:'crm:customer-123'}})).status,'ALREADY_COMPLETED');
+ await assert.rejects(completeStep(db,{...req,evidence:{...req.evidence,reference:'crm:customer-other'}}),{code:'FULFILLMENT_COMPLETION_REPLAY_CONFLICT'});
+ await assert.rejects(completeStep(db,{...req,actorId:'employee_other'}),{code:'FULFILLMENT_COMPLETION_REPLAY_CONFLICT'});
+ assert.deepEqual(db.rows,saved);
+ const row=db.rows.find(x=>x.step_key===req.stepKey);row.evidence_json=null;
+ await assert.rejects(completeStep(db,req),{code:'FULFILLMENT_COMPLETION_REPLAY_CONFLICT'});
+});
