@@ -3,7 +3,7 @@
 This module stages branded PNG candidates only. It never publishes, modifies MySQL, launches timers, or changes the externally owned SBC channel guard. Existing social automations retain 10 AM and 10 PM Eastern.
 
 ## Local review
-Node 22, free ImageMagick CLI (convert; set SBC_IMAGE_RENDERER to a compatible executable), and DejaVu Sans fonts are required. No paid API, image stock, or new production npm dependency. Do not install on GoDaddy or enable a new publisher without hosted acceptance.
+Node 22, free librsvg CLI (rsvg-convert; override with SBC_SVG_RENDERER), ImageMagick CLI (convert; override with SBC_IMAGE_RENDERER), and DejaVu Sans fonts are required. No paid API, image stock, or new production npm dependency. Do not install on GoDaddy or enable a new publisher without hosted acceptance.
 
 ```sh
 node --test test/sbc-social-asset-engine.test.cjs
