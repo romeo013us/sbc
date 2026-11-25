@@ -193,3 +193,31 @@ test('national assignment cannot write in Preview or retain a failed task save',
  f.context.SBC_RUNTIME_READ_ONLY=false;f.fail=true;assert.equal((await f.call('post',route,{body})).code,503);
  assert.equal(f.db.tasks.length,4);assert.equal(f.db.activities.length,0);
 });
+
+test('researcher task status is scoped, replay safe, and cannot overwrite owner instructions',async()=>{
+ const f=taskRouteFixture(),route='/api/workforce/assigned-tasks/:id/status',actor={id:'r1',role:'lead_researcher'};
+ const call=(id,body,user=actor,tenantId=1)=>f.call('post',route,{id,user,tenantId,body});
+ f.db.tasks.find(t=>t.id==='own').notes='Owner research instructions';
+ f.db.tasks.push({id:'foreign-collision',tenantId:2,assignedTo:'r1'},{id:'other-assignee',tenantId:1,assignedTo:'o1'});
+ assert.equal((await call('own',{status:'Completed'}, {id:'o1',role:'owner'})).code,403);
+ assert.equal((await call('foreign-collision',{status:'Completed'})).code,404);
+ assert.equal((await call('other-assignee',{status:'Completed'})).code,404);
+ assert.equal((await call('own',{status:'Completed'},actor,2)).code,403);
+ assert.equal((await call('own',{status:'Completed',notes:'Changed instructions'})).code,400);
+ assert.equal((await call('own',{status:'Cancelled'})).code,400);
+ assert.equal(f.writes,0);
+ const started=await call('own',{status:'In Progress'});assert.equal(started.code,200);
+ const done=await call('own',{status:'Completed'});assert.equal(done.code,200);assert.equal(done.body.task.status,'Completed');assert.equal(done.body.task.completionBasis,'researcher_self_report');
+ assert.equal(f.db.tasks.find(t=>t.id==='own').notes,'Owner research instructions');assert.equal(f.db.tasks.find(t=>t.id==='own').completedBy,'r1');
+ assert.equal((await call('own',{status:'Completed'})).code,200);assert.equal(f.writes,2);
+ assert.equal((await call('own',{status:'In Progress'})).code,409);
+ const feed=await f.call('get','/api/workforce/assigned-tasks',{user:actor});assert(!feed.body.tasks.some(t=>t.id==='own'));assert.equal(f.db.customers.length,2);
+});
+test('researcher task status blocks Preview and rolls back failed saves',async()=>{
+ const f=taskRouteFixture(),args={id:'own',user:{id:'r1',role:'lead_researcher'},body:{status:'Completed'}};
+ f.context.SBC_RUNTIME_READ_ONLY=true;
+ assert.equal((await f.call('post','/api/workforce/assigned-tasks/:id/status',args)).code,423);assert.equal(f.writes,0);
+ f.context.SBC_RUNTIME_READ_ONLY=false;f.fail=true;
+ assert.equal((await f.call('post','/api/workforce/assigned-tasks/:id/status',args)).code,503);
+ const task=f.db.tasks.find(t=>t.id==='own');assert.equal(task.status,undefined);assert.equal(task.completedBy,undefined);assert.equal(task.completionBasis,undefined);
+});
