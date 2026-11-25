@@ -19,3 +19,15 @@ test('unknown keys and off-origin assets fail closed; retry resumes failed depen
  assert.deepEqual(requested,['/market.js?v=1','/hub.js?v=1','/hub.js?v=1']);
  for(const url of ['https://example.invalid/a.js','//evil.invalid/a.js','/../x.js','/x.js?redirect=https://other.invalid','/x.js#x'])assert.throws(()=>createLoader({bad:[url]},async()=>{}),/WORKSTATION_ASSET_INVALID/);
 });
+
+test('both HTML mirrors load only the lightweight bootstrap at startup',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.resolve(__dirname,'..');
+ for(const dir of ['public','browser_public']){
+  const html=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
+  const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
+  assert.equal(tags.filter(t=>t.startsWith('/sbc-workstation-loader-v1.js?')).length,1);
+  assert.ok(!tags.some(t=>/\/sbc-(?:market-intelligence|v6567-marketing-hub)\.js/.test(t)));
+  assert.equal(tags.length,83);
+ }
+});
