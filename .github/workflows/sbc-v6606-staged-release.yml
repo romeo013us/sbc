@@ -5,11 +5,6 @@ on:
     branches: [a-sbc-master]
   pull_request:
     branches: [a-sbc-master]
-  # Bot-generated Academy commits do not emit ordinary push-triggered CI.
-  workflow_run:
-    workflows: ['SBC Academy 360 - Automatic Video Audio Photos']
-    types: [completed]
-    branches: [a-sbc-master]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +12,6 @@ permissions:
 
 jobs:
   verified-staged-zip:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'a-sbc-master' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -811,7 +805,7 @@ jobs:
   # Publish only the immutable, triple-tested package to a DISTINCT GitHub branch.
   # Never update the GoDaddy-connected rollback source branch or Published app.
   github-preview-branch:
-    if: github.ref == 'refs/heads/a-sbc-master' && (github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'a-sbc-master' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')))
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/a-sbc-master') || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/candidate/'))
     needs: verified-staged-zip
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -888,6 +882,13 @@ jobs:
           node scripts/v66-deployment-artifact-gate.cjs .
           node scripts/verify-release-sync.cjs . "$GITHUB_SHA"
           bash scripts/pin-verified-godaddy-ref.sh "$GITHUB_SHA"
+          # Candidate preparation is deliberately non-promoting until the dedicated
+          # approved release actor and exact-source CI gate are configured.
+          if [[ "$GITHUB_REF" == refs/heads/release/candidate/* ]]; then
+            echo "Sealed recovery candidate: release/verified-godaddy-$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+            echo "Master and GoDaddy were not advanced by candidate preparation." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           # Fast-forward ONLY if this exact source commit is still at branch HEAD.
           # On an Actions rerun, a prior successful job may have ALREADY pushed
           # the exact verified compiled release. Accept only an identical direct
