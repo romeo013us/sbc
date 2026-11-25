@@ -312,6 +312,7 @@ function sbcLornaAllowedRequest(req,user){
  if(p==='/api/workforce/lorna')return m==='GET';
  if(p==='/api/workforce/research-progress')return m==='GET';
  if(p==='/api/workforce/assigned-tasks')return m==='GET';
+ if(/^\/api\/workforce\/assigned-tasks\/[^/]+\/status$/.test(p))return m==='POST';
  // Legacy employee draft service is not exposed here.
  if(p==='/api/workforce/leads')return ['GET','POST'].includes(m);
  // Individual lead data is accessed through the scoped research queue.
@@ -5639,6 +5640,27 @@ app.get('/api/workforce/assigned-tasks',auth,(req,res)=>{
  rows.sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity)||String(a.id).localeCompare(String(b.id)));
  return res.json({ok:true,readOnly:!sbcTaskWriterReady(),total:rows.length,tasks:rows.slice(0,100).map(t=>({id:String(t.id),title:String(t.title||''),notes:String(t.notes||''),dueAt:String(t.dueAt||''),type:String(t.type||''),priority:String(t.priority||''),status:String(t.status||'Open')}))});
 });
+// Narrow researcher status action: preserve instructions and never credit lead or payroll metrics.
+app.post('/api/workforce/assigned-tasks/:id/status',auth,async(req,res)=>sbcTaskSerialize(async()=>{
+ res.setHeader('Cache-Control','no-store');
+ const roles=['lead_researcher','lead_generator','researcher','prospector'];
+ const tenant=sbcTaskRequestTenant(req),actor=sbcTaskUnique(db.users,req.user.id);
+ if(!tenant||!roles.includes(String(req.user.role||'').toLowerCase())||!actor||sbcTaskTenant(actor)!==tenant||actor.active===false||!roles.includes(String(actor.role||'').toLowerCase()))return sbcTaskError(res,403,'Researcher access required.');
+ if(!sbcTaskWriterReady())return sbcTaskError(res,423,'Published writer required.');
+ const t=sbcTaskUnique(db.tasks,req.params.id);
+ if(!t||sbcTaskOwnership(t)!==tenant||String(t.assignedTo||'')!==String(actor.id))return sbcTaskError(res,404,'Assignment not found.');
+ const b=req.body||{};
+ if(Object.keys(b).length!==1||!['In Progress','Completed'].includes(b.status))return sbcTaskError(res,400,'Only In Progress or Completed status may be reported.');
+ const current=String(t.status||'Open').toLowerCase(),next=b.status.toLowerCase();
+ const receipt=()=>({id:String(t.id),status:t.status,completedAt:t.completedAt||null,completionBasis:t.completionBasis||null});
+ if(current===next)return res.json({ok:true,replayed:true,task:receipt()});
+ if(!['open','pending','in progress','blocked','overdue'].includes(current))return sbcTaskError(res,409,'This assignment is closed. Ask the owner to review it.');
+ const previous={...t},stamp=now();
+ Object.assign(t,{tenantId:tenant,status:b.status,updatedAt:stamp});
+ if(b.status==='Completed')Object.assign(t,{completedAt:stamp,completedBy:String(actor.id),completionBasis:'researcher_self_report'});
+ try{await saveData();return res.json({ok:true,replayed:false,task:receipt()});}
+ catch{for(const k of Object.keys(t))if(!Object.hasOwn(previous,k))delete t[k];Object.assign(t,previous);return sbcTaskError(res,503,'Assignment status save could not be confirmed.');}
+}));
 // National research approvals reuse the existing durable team-task store.
 const SBC_NATIONAL_ASSIGN_STATES=new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
 const SBC_NATIONAL_ASSIGN_INDUSTRIES=Object.freeze({auto:'Auto repair, collision repair, tire and wheel shops, and window tinting',beauty:'Barbershops, beauty salons and hair salons',food:'Independent restaurants and food service',retail:'Independent local retail stores',services:'Independent home and professional service businesses'});
