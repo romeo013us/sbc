@@ -37,8 +37,8 @@ for(const compiled of bundles){
  for(const original of compiled.files)assert(!tags.some(t=>t.split('?')[0]==='/'+original),'bundled controller cannot load twice');
 }
 const legacyVersioned=(index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length;
-// The previous 64 version-query URLs lost six explicitly reviewed bundle members.
-assert.ok(legacyVersioned>=58,'remaining legacy version-query URLs retain their cache scope');
+// The 12 newly bundled versioned controllers are now covered by exact bundle bytes and hashes.
+assert.ok(legacyVersioned>=46,'remaining legacy version-query URLs retain their cache scope');
 assert.ok(!index.includes('?v=66.34-asset-cache-reset'),'no old versioned script URLs');
 for(const pathName of ['public/sbc-v6559-ui.js','browser_public/sbc-v6559-ui.js']){
   const code=read(pathName);
