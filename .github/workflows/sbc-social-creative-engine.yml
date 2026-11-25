@@ -5,6 +5,12 @@ on:
       - 'enterprise/sbc-social-asset-engine.cjs'
       - 'scripts/sbc-social-assets.cjs'
       - 'enterprise/sbc-social-creative-ledger.cjs'
+      - 'enterprise/sbc-creative-importer-auth.cjs'
+      - 'routes/sbc-creative-machine.cjs'
+      - 'scripts/sbc-autonomous-refill-sync.cjs'
+      - 'test/sbc-creative-importer-auth.test.cjs'
+      - 'migrations/20261125_002_sbc_creative_importer_nonce.sql'
+      - '.github/workflows/sbc-daily-creative-replenish.yml'
       - 'enterprise/sbc-social-creative-bundle.cjs'
       - 'test/sbc-social-creative-bundle.test.cjs'
       - 'routes/sbc-creative-inventory.cjs'
@@ -28,8 +34,9 @@ jobs:
           node-version: '22'
       - name: Install free offline rendering tools
         run: sudo apt-get update && sudo apt-get install -y imagemagick librsvg2-bin fonts-dejavu-core
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run creative inventory and security regression tests
-        run: node --test test/sbc-social-asset-engine.test.cjs test/sbc-social-creative-ledger.test.cjs test/sbc-social-creative-bundle.test.cjs
+        run: node --test test/sbc-social-asset-engine.test.cjs test/sbc-social-creative-ledger.test.cjs test/sbc-social-creative-bundle.test.cjs test/sbc-creative-importer-auth.test.cjs
       - name: Produce private review inventory (no publishing)
         run: node scripts/sbc-social-assets.cjs generate "$RUNNER_TEMP/sbc-creatives" 2026-11-26
       - uses: actions/upload-artifact@v4
