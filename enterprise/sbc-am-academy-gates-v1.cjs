@@ -28,7 +28,7 @@ function objectivePassed(s,userId,id){
  const a=latestAttempt(s,userId,id,'sbc_am_objective');return a?.passed===true&&Number(a.score)>=90;
 }
 function practiced(s,userId,id){
- const a=latestAttempt(s,userId,id,'sbc_am_roleplay_for_owner_review');return Boolean(a&&String(a.response||'').length>=80&&a.passed!==false);
+ const a=latestAttempt(s,userId,id,'sbc_am_roleplay_for_owner_review');return Boolean(a&&String(a.response||'').trim().length>=20&&a.passed!==false);
 }
 function labPassed(s,userId,id){
  const a=latestAttempt(s,userId,id,'sbc_am_work_sample');
