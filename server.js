@@ -2402,14 +2402,10 @@ function kimProductionChecklist(p){const r=kimProductionRequirements(p);return [
 function kimProductionExceptions(m){const out=[],cut=Date.now()-KIM_OPS.slaHours*3600000;for(const p of m.productionPipeline||[]){const age=new Date(p.updatedAt||p.createdAt||0).getTime();if(p.blockedReason)out.push({type:'BLOCKED',severity:'HIGH',productionId:p.id,orderId:p.orderId,message:p.blockedReason});if(p.stage==='Processing'&&age<cut)out.push({type:'SLA',severity:'MEDIUM',productionId:p.id,orderId:p.orderId,message:`Processing exceeds ${KIM_OPS.slaHours}h SLA.`});if(p.stage==='Staged'&&kimProductionChecklist(p).some(x=>!x.done))out.push({type:'MISSING_REQUIREMENT',severity:'MEDIUM',productionId:p.id,orderId:p.orderId,message:'Production checklist is incomplete.'});}return out;}
 function kimRouteRecommendation(p){const name=String((p.items||[]).map(x=>x.name).join(' ')||'').toLowerCase();const routes=[];if(/card|business card|flyer|print/.test(name))routes.push('4over4');if(/shirt|apparel|dtf|hoodie/.test(name))routes.push('vistaprint');routes.push('internal');return {recommended:routes[0],candidates:routes,reason:'Rule-based product routing; vendor execution remains gated until official provider integration is configured.'};}
 function kimLeadOpsSnapshot(){const cs=db.customers||[],leads=cs.filter(c=>c.status==='Lead'||c.type==='Lead');return {total:leads.length,verified:leads.filter(c=>['Verified','verified'].includes(String(c.verificationStatus||''))).length,needsReview:leads.filter(c=>['Review','Needs Review','Pending'].includes(String(c.verificationStatus||''))).length,missingContact:leads.filter(c=>!c.email&&!c.phone).length};}
-function kimOperationsSnapshot(){const m=v24ProductionStore();v24EnsurePipelineForPaidOrders(m);v24SyncPipelineWithJobs(m);const exceptions=kimProductionExceptions(m);return {version:KIM_OPS.version,generatedAt:now(),kim:{mode:'autonomous-operations-orchestrator',humanEscalation:'Romeo'},production:{counts:Object.fromEntries(V24_PIPELINE_STAGES.map(st=>[st,m.productionPipeline.filter(x=>x.stage===st).length])),checklists:m.productionPipeline.slice(0,100).map(p=>({productionId:p.id,orderId:p.orderId,stage:p.stage,checklist:kimProductionChecklist(p),route:kimRouteRecommendation(p)})),exceptions},leadEngine:kimLeadOpsSnapshot(),workforce:{team:(db.users||[]).map(u=>({id:u.id,name:u.name||u.username,role:u.role,enabled:u.active!==false,kimAssist:true}))},telemetry:kimControlHealth(),policies:{autoApprove:KIM_OPS.autoApprove,productionSlaHours:KIM_OPS.slaHours,protectedActions:['pricing','refunds','credential changes','owner security','permanent deletion','destructive infrastructure']}};}
-async function kimRunAutonomousOperations(reason='scheduled'){const m=v24ProductionStore();v24EnsurePipelineForPaidOrders(m);v24SyncPipelineWithJobs(m);const actions=[];
-  for(const p of m.productionPipeline){
-    if(p.stage==='Staged'&&KIM_OPS.autoApprove&&!p.blockedReason){const checklist=kimProductionChecklist(p);if(checklist.every(x=>x.done)){p.stage='Approved';p.approvedAt=p.approvedAt||now();p.approvedBy='kim_system';actions.push(`Approved ${p.orderNumber||p.orderId}.`);}}
-    if(p.stage==='Approved'&&!p.blockedReason){p.stage='Processing';p.processingStartedAt=p.processingStartedAt||now();p.assignedTo=p.assignedTo||'kim_system';p.assignedToName=p.assignedToName||'Kim';actions.push(`Started production for ${p.orderNumber||p.orderId}.`);}
-    p.kimLastReviewedAt=now();p.updatedAt=p.updatedAt||now();
-  }
-  const exceptions=kimProductionExceptions(m);const routeCount=(m.productionPipeline||[]).filter(p=>p.stage==='Processing').length;actions.push(`Reviewed ${m.productionPipeline.length} production records; ${routeCount} processing.`);await megaSave(m);audit(KIM_SYSTEM_ACTOR,'kim_autonomous_operations',`Kim operations cycle completed (${reason})`,{actions,exceptions:exceptions.length});return {ok:true,version:KIM_OPS.version,reason,actions,exceptions,summary:kimOperationsSnapshot()};}
+const SBC_KIM_ORCHESTRATOR=require('./routes/sbc-kim-orchestrator-v1.cjs').createKimOrchestrator(()=>({v24ProductionStore,v24EnsurePipelineForPaidOrders,v24SyncPipelineWithJobs,kimProductionExceptions,KIM_OPS,now,V24_PIPELINE_STAGES,kimProductionChecklist,kimRouteRecommendation,kimLeadOpsSnapshot,getDb:()=>db,kimControlHealth,megaSave,audit,KIM_SYSTEM_ACTOR}));
+function kimOperationsSnapshot(){return SBC_KIM_ORCHESTRATOR.snapshot();}
+async function kimRunAutonomousOperations(reason='scheduled'){return SBC_KIM_ORCHESTRATOR.run(reason);}
+
 app.get('/api/kim/operations',auth,(req,res)=>res.json({ok:true,...kimOperationsSnapshot()}));
 app.post('/api/kim/operations/run',auth,async(req,res)=>{if(!hasCapability(req,'automation.execute'))return res.status(403).json({error:'Kim operations control is restricted.'});res.json(await kimRunAutonomousOperations(`manual:${req.user.role}`));});
 app.get('/api/kim/production/:id',auth,(req,res)=>{const m=v24ProductionStore(),p=m.productionPipeline.find(x=>x.id===req.params.id);if(!p)return res.status(404).json({error:'Production record not found.'});res.json({ok:true,production:p,checklist:kimProductionChecklist(p),route:kimRouteRecommendation(p),exceptions:kimProductionExceptions(m).filter(x=>x.productionId===p.id)});});
@@ -10578,6 +10574,7 @@ const startOperationalRuntime=async()=>{if(SBC_RUNTIME_READ_ONLY){console.log('[
 // SBC_V66_IMPORT_ROUTING_HOTFIX: mount owner-only import routes for readonly Preview and Published writer independently of autonomous-worker initialization.
 // SBC_V6541_LEAD_IMPORT: authenticated CSV lead import with preview, tenant scoping, duplicate checks, and recovery-safe writes.
 // SBC_V66164_OWNER_CSV_1000 — existing guarded owner CRM route, maximum 1000 rows
+const SBC_CRM_LEAD_HANDLERS=require('./routes/sbc-crm-leads-v1.cjs').createCrmLeadHandlers(()=>({requireRequestTenant,mysqlPool,getDb:()=>db,id,now,sqlDateTime}));
 app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{/* SBC_V66140_CORRUPT_CRM_TEXT_GATE */const SBC_CRM_TEXT=require('./enterprise/crm-text-integrity-v66140.cjs');
  const requestedDryRun=req.body?.dryRun;const dryRun=!(requestedDryRun===false||String(requestedDryRun).toLowerCase()==='false'||req.body?.mode==='import');const rows=Array.isArray(req.body?.rows)?req.body.rows:[];
  if(!rows.length||rows.length>1000)return res.status(400).json({ok:false,error:'Provide between 1 and 1000 lead rows.'});
@@ -10586,35 +10583,7 @@ app.post('/api/crm/leads/import',auth,ownerOnly,async(req,res)=>{/* SBC_V66140_C
  const textGate=SBC_CRM_TEXT.inspectBatch(normalized);if(!textGate.ok)return res.status(400).json({ok:false,code:'CORRUPT_CRM_TEXT_REJECTED',invalidRows:textGate.invalid,error:'Binary-looking or malformed lead text rejected. No rows imported.'});
  if(normalized.some(r=>!r.businessName))return res.status(400).json({ok:false,error:'Every row must include a business name.',invalidRows:normalized.filter(r=>!r.businessName).map(r=>r.row)});
  if(!dryRun&&(SBC_RUNTIME_READ_ONLY||!MYSQL_RECOVERY_EVALUATED||MYSQL_RECOVERY_REQUIRED||!sbcWriterLeaseReady))return res.status(423).json({ok:false,code:'SBC_IMPORT_WRITE_LOCKED',error:'Preview is available, but saving is blocked while SBC is read-only, recovery is unevaluated/required, or the exclusive writer lease is unavailable. No records were written.'});
- let conn;
- try{
-  const tenantId=Number(requireRequestTenant(req));
-  if(!Number.isSafeInteger(tenantId)||tenantId<=0)return res.status(403).json({ok:false,error:'A valid authenticated tenant context is required.'});
-  if(!mysqlPool)return res.status(503).json({ok:false,error:'MySQL is unavailable; no records were changed.'});
-  conn=await mysqlPool.getConnection();
-  const [tenantCols]=await conn.query("SHOW COLUMNS FROM sbc_customers LIKE 'tenant_id'");
-  if(!tenantCols.length)return res.status(503).json({ok:false,code:'TENANT_SCHEMA_NOT_READY',error:'The customer table is missing tenant_id. Import is disabled to protect tenant isolation; no records were changed.'});
-  if(!dryRun)await conn.beginTransaction();
-  const seen=new Set(),results=[],created=[];
-  for(const r of normalized){
-   const p=normPhone(r.phone),e=normEmail(r.email),b=normName(r.businessName),keys=[p?'p:'+p:'',e?'e:'+e:'',b?'b:'+b:''].filter(Boolean);
-   const localKey=keys.find(k=>seen.has(k));let duplicate=null;
-   if(localKey)duplicate={business_name:r.businessName,match:'duplicate within uploaded file'};
-   else{
-    const [matches]=await conn.query("SELECT id,business_name,phone,email FROM sbc_customers WHERE tenant_id=? AND ((? <> '' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'(',''),')',''),'+','')=?) OR (? <> '' AND LOWER(email)=LOWER(?)) OR (? <> '' AND LOWER(business_name)=LOWER(?))) LIMIT 1",[tenantId,p,p,e,e,b,b]);
-    if(matches.length)duplicate={id:matches[0].id,business_name:matches[0].business_name,match:'existing CRM record'};
-   }
-   if(duplicate){results.push({row:r.row,businessName:r.businessName,status:'duplicate',match:duplicate.match,existingBusinessName:duplicate.business_name});continue;}
-   keys.forEach(k=>seen.add(k));results.push({row:r.row,businessName:r.businessName,status:dryRun?'ready':'imported'});if(dryRun)continue;
-   const createdAt=now(),c={id:id('cust'),tenantId,businessName:r.businessName,contactName:r.contactName,phone:r.phone,email:r.email,status:'Lead',source:r.source,followUp:'',notes:r.notes,website:r.website,websiteStatus:r.websiteStatus||(!r.website?'No Website':''),industry:r.industry,dealValue:0,assignedTo:'',researcherId:req.user.id,researcherName:req.user.name||req.user.username||'Lead Import',createdAt,updatedAt:createdAt};
-   await conn.query("INSERT INTO sbc_customers (id,tenant_id,business_name,contact_name,phone,email,status,source,follow_up,notes,website,industry,website_status,assigned_to,account_notes_json,lead_intelligence_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",[c.id,c.tenantId,c.businessName,c.contactName,c.phone,c.email,c.status,c.source,null,c.notes,c.website,c.industry,c.websiteStatus,c.assignedTo,'[]','{}',sqlDateTime(c.createdAt),sqlDateTime(c.updatedAt)]);
-   created.push(c);
-  }
-  if(!dryRun){await conn.commit();if(typeof db!=='undefined'&&Array.isArray(db.customers))created.forEach(c=>db.customers.push(c));}
-  res.setHeader('Cache-Control','no-store');
-  res.setHeader('Cache-Control','no-store');const importedCount=dryRun?0:created.length;const duplicateCount=results.filter(r=>r.status==='duplicate').length;res.json({ok:true,dryRun,tenantId,total:normalized.length,imported:importedCount,ready:results.filter(r=>r.status==='ready').length,duplicates:duplicateCount,results,message:dryRun?'Preview complete. No records were written.':(importedCount===0?'No new records were written; '+duplicateCount+' duplicate(s) were skipped.':'Import complete: '+importedCount+' added; '+duplicateCount+' duplicates skipped.')});
- }catch(e){if(conn&&!dryRun){try{await conn.rollback();}catch{}}console.error('[SBC_V6541_LEAD_IMPORT] import failed:',e&&e.message?e.message:e);res.status(e&&e.code==='TENANT_CONTEXT_REQUIRED'?403:500).json({ok:false,error:'Lead import failed safely. No partial import was committed.',detail:String(e&&e.message||'Unexpected import error').slice(0,300)});}
- finally{if(conn)conn.release();}
+ return SBC_CRM_LEAD_HANDLERS.importRows(req,res,{dryRun,normalized,normPhone,normEmail,normName});
 });
 
 app.get('/api/owner/lead-import/packaged-batch',auth,ownerOnly,(req,res)=>{
