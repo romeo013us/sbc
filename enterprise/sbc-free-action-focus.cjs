@@ -122,9 +122,22 @@ function planActions({tenantId,actor,rows,today=easternToday(),limit=12}={}){
    String(a.dueDate||'9999').localeCompare(String(b.dueDate||'9999'))||
    a.businessName.localeCompare(b.businessName)||String(a.accountId||'').localeCompare(String(b.accountId||'')));
  const counts={};for(const a of result)counts[a.code]=(counts[a.code]||0)+1;
+ // Project distinct working queues from the same authorized sample. A large
+ // backlog in one lane must never hide the remaining lanes.
+ const groups=[
+  {id:'commitments',match:a=>a.priority===0},
+  {id:'review',match:a=>[1,2,5].includes(a.priority)},
+  {id:'upcoming',match:a=>a.priority===4},
+  {id:'pipeline',match:a=>[3,6,7].includes(a.priority)}
+ ];
+ const lanes=groups.map(g=>{
+  const list=result.filter(g.match);
+  return {id:g.id,decisionCount:list.length,recordCount:list.reduce((n,a)=>n+(a.batchCount||1),0),
+    actions:list.slice(0,max),moreDecisions:list.length>max};
+ });
  return {ok:true,readOnly:true,requiresAi:false,messagesSent:0,actionsExecuted:0,
    billingOrPaymentsChanged:false,source:'AUTHORITATIVE_CRM_MYSQL',
    generatedFor:actor.role,businessDay:todayDay,total:result.length,counts,queueCounts,dataQualityCount,
-   actions:result.slice(0,max)};
+   actions:result.slice(0,max),lanes};
 }
 module.exports={planActions,easternToday,parseDay};
