@@ -105,6 +105,7 @@
  function render(data){
   // Fail closed on a stale or incompatible server response. Do not invent counts.
   if(!Array.isArray(data.lanes)||data.lanes.length!==laneMeta.length||!laneMeta.every(function(m){return data.lanes.filter(function(l){return l.id===m.id&&Number.isSafeInteger(l.decisionCount)&&l.decisionCount>=0&&Number.isSafeInteger(l.recordCount)&&l.recordCount>=l.decisionCount&&Array.isArray(l.actions)&&l.actions.length<=l.decisionCount;}).length===1;}))throw Error('WORKSPACE_LANES_UNAVAILABLE');
+  if(!Number.isSafeInteger(data.sampledRecords)||data.sampledRecords<0||!Number.isSafeInteger(data.total)||data.total!==data.lanes.reduce(function(n,l){return n+l.decisionCount;},0))throw Error('WORKSPACE_COUNTS_UNAVAILABLE');
   current=data;
   if(!activeLane||!data.lanes.some(function(l){return l.id===activeLane;}))activeLane=(data.lanes.find(function(l){return l.decisionCount>0;})||data.lanes[0]).id;
   summary.replaceChildren();
@@ -136,7 +137,7 @@
  });
  async function load(){
   if(!board||loading){if(loading)refreshPending=true;return;}
-  loading=true;status.textContent='Checking live authorized CRM records…';
+  loading=true;current=null;board.setAttribute('aria-busy','true');summary.replaceChildren();laneBar.replaceChildren();coverage.textContent='';status.textContent='Checking live authorized CRM records…';
   clear();count.textContent='';
   try{
    var response=await fetch(PATH,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
@@ -148,7 +149,7 @@
    render(data);
   }catch(_){showError();}
   finally{
-   loading=false;lastFetchAt=Date.now();
+   loading=false;board.setAttribute('aria-busy','false');lastFetchAt=Date.now();
    // A durable CRM commit during an in-flight read must not be lost.
    if(refreshPending){refreshPending=false;refreshAfterCommit(true);}
   }
