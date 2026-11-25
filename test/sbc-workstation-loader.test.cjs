@@ -31,3 +31,23 @@ test('both HTML mirrors load only the lightweight bootstrap at startup',()=>{
   assert.equal(tags.length,83);
  }
 });
+
+test('browser bootstrap shows navigation without loading marketing, then opens after explicit activation',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const buttons=new Map(),assets=[],listeners={};let opens=0;
+ const root={state:{me:{id:'owner',role:'owner'}},location:{hash:''},addEventListener:(name,fn)=>listeners[name]=fn};
+ const nav={appendChild(b){buttons.set(b.id,b)}};
+ const doc={readyState:'complete',getElementById:id=>buttons.get(id),querySelector:()=>nav,
+  createElement:tag=>({tag,addEventListener(name,fn){this[name]=fn},setAttribute(){},removeAttribute(){},focus(){},remove(){}}),
+  head:{appendChild(tag){assets.push(tag.src);if(tag.src.includes('marketing-hub'))root.SBCMarketingHub={open:()=>opens++};queueMicrotask(()=>tag.onload())}}
+ };
+ const timers=new Map();let seq=0;
+ vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../public/sbc-workstation-loader-v1.js'),'utf8'),{window:root,document:doc,setInterval:fn=>{timers.set(++seq,fn);return seq},clearInterval:id=>timers.delete(id)});
+ assert.deepEqual(assets,[]);assert.equal(opens,0);
+ const button=buttons.get('sbcMarketingHubNav');assert.ok(button);
+ root.state.me=null;button.click();await new Promise(r=>setImmediate(r));assert.deepEqual(assets,[]);
+ root.state.me={id:'owner',role:'owner'};button.click();await new Promise(r=>setImmediate(r));
+ assert.equal(opens,1);assert.equal(assets.length,2);assert.match(assets[0],/market-intelligence/);assert.match(assets[1],/marketing-hub/);
+ button.click();await new Promise(r=>setImmediate(r));assert.equal(opens,2);assert.equal(assets.length,2);
+ root.location.hash='#marketing-hub';listeners.hashchange();await new Promise(r=>setImmediate(r));assert.equal(opens,3);assert.equal(assets.length,2);
+});
