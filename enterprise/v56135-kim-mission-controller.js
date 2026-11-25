@@ -11,6 +11,7 @@ function __sbcRequireTenantId(value){const n=Number(value);if(!Number.isSafeInte
  */
 const VERSION='56.13.5-KIM-MISSION';
 const PAYMENT_EVIDENCE=require('./v6640-payment-evidence.cjs');
+const REVENUE_TRUTH=require('./sbc-revenue-reporting-truth-v66142.cjs');
 const REVENUE_GATE=require('./v56134-god-tier-revenue.js');
 // SBC_V6642_KIM_MISSION_FINANCIAL_GOVERNANCE: share verified payment and durable fulfillment rules.
 const MAX_BATCH=20;
@@ -86,6 +87,48 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
   return {ok:true,advisoryOnly:true,tenantId:scopedId,tenantCustomers:all.length,tenantWarmHot:warmHot.length,unresolvedTenantRecords,
     qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,qualificationReasons,temperatureCoverage,
     prospects:Math.min(cap,ready.length),missions:0,externalActions:0,writeAttempts:0};
+}
+// Read-only operating plan over the same canonical snapshot as Kim's advisory
+// cycle. No second workflow engine, no authorization or provider side effects.
+function operatingPlan(db,screened){
+ const tenant=screened.tenantId;
+ const belongs=row=>Number(row?.tenantId??row?.tenant_id)===tenant;
+ const customers=db.customers.filter(belongs);
+ const orders=db.orders.filter(belongs);
+ // Keep all receipt identities in reconciliation, including refund or QA copies.
+ const summary=REVENUE_TRUTH.paidSummary(orders,customers,{tenantId:tenant});
+ const jobRows=Array.isArray(db.fulfillmentJobs)?db.fulfillmentJobs:null;
+ const validTenant=row=>Number.isSafeInteger(Number(row?.tenantId??row?.tenant_id))&&Number(row?.tenantId??row?.tenant_id)>0;
+ const coverage=!jobRows?'UNAVAILABLE':jobRows.some(j=>!validTenant(j))?'UNSCOPED_RECORDS':'SCOPED_SNAPSHOT';
+ const jobs=coverage==='SCOPED_SNAPSHOT'?jobRows.filter(belongs):null;
+ const jobOrders=new Set((jobs||[]).map(j=>String(j.orderId??j.order_id??'')));
+ let ready=null,held=null;
+ if(jobs){
+  ready=0;held=0;
+  for(const o of summary.orders){
+   if(isSystemTestOrder(o)||REVENUE_GATE.isProtectedLaunchQaOrder(o)||REVENUE_GATE.isTerminal(o)||jobOrders.has(String(o.id)))continue;
+   if(!REVENUE_GATE.needsReconciliation(o,[]))continue;
+   if(REVENUE_GATE.orderRisk(o).ownerClearanceRequired)held++;else ready++;
+  }
+ }
+ const q=screened.qualificationReasons;
+ const finance=summary.reconciliation.ambiguousOrders+summary.reconciliation.invalidAmountOrders;
+ function decision(code,count,action,priority){
+  return {code,count,action,priority,status:count===null?'EVIDENCE_REQUIRED':count>0?'REVIEW_REQUIRED':'NO_ITEMS_IN_SNAPSHOT',execution:'HUMAN_REVIEW'};
+ }
+ return {schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',
+  coverage:{customers:'SCOPED_SNAPSHOT',orders:'SCOPED_SNAPSHOT',fulfillment:coverage},
+  commercial:{recognizedRevenueCents:summary.revenueCents,recognizedPaidOrders:summary.orderCount,
+   paymentIdentityConflicts:summary.reconciliation.paymentIdentityConflicts,reconciliationOrders:finance,proof:summary.proof},
+  departments:[
+   {id:'research',decisions:[decision('VERIFY_WARM_HOT',q.warmHotNeedsVerification,'Review source research and verify qualification.',2)]},
+   {id:'sales',decisions:[decision('HUMAN_SALES_REVIEW',q.warmHotQualified,'Review qualified prospects, assignment and consent before contact.',2),decision('CONTACT_RESTRICTION',q.warmHotSuppressed,'Preserve contact restrictions; do not initiate outreach.',1)]},
+   {id:'finance',decisions:[decision('PAYMENT_RECONCILIATION',finance,'Reconcile ambiguous receipt identities and amounts before recognizing revenue.',0)]},
+   {id:'fulfillment',decisions:[decision('PAID_WITHOUT_JOB',ready,'Review recorded captured payments and existing jobs before approved fulfillment.',1)]},
+   {id:'owner',decisions:[decision('OWNER_CLEARANCE',held,'Review owner-controlled financial clearance; no supplier execution.',0)]}
+  ],
+  limitations:'Canonical in-process snapshot only; not independent provider verification or an execution authorization.'
+ };
 }
 function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain,closer,consultative,revenueSupervisor,globalBIOS,superbrain,dispatchCall,godKim,createConsultativeCheckout,createFulfillmentJobsForOrder,processReadyFulfillmentJobs,vendorCapabilities,catalog,sendCustomerStatus,ownerThreshold=10000,logger=console}={}){
   // SBC_V6628_KIM_CANONICAL_DB_REBIND: refresh the CRM object after async MySQL hydration.
@@ -184,7 +227,7 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
       // Plain production logs should explain zero qualified prospects without
       // weakening outreach rules or exposing any customer-identifying data.
       try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage}));}catch(_){/* diagnostics never block runtime */}
-      return screened;
+      return {...screened,operatingPlan:operatingPlan(db,screened)};
     }
     state.running=true;const started=Date.now();
     try{
