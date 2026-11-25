@@ -56,12 +56,17 @@ const SERVICE_STEPS = Object.freeze({
 });
 function error(code){return Object.assign(new Error(code),{code})}
 function cleanId(v){const s=String(v??'');return /^[A-Za-z0-9._:-]{1,120}$/.test(s)?s:null}
+function validQuantity(value){
+  if(value===undefined)return true;
+  if(typeof value!=='number'&&(typeof value!=='string'||!/^\d{1,5}$/.test(value)))return false;
+  const n=Number(value);return Number.isSafeInteger(n)&&n>=1&&n<=10000;
+}
 function compile({tenantId,orderId,sku,services}={}){
   const t=Number(tenantId),oid=cleanId(orderId),product=cleanId(sku);
   if(!Number.isSafeInteger(t)||t<1||!oid||!product)throw error('FULFILLMENT_IDENTITY_REQUIRED');
   if(!Array.isArray(services)||services.length===0)return {version:VERSION,tenantId:t,orderId:oid,sku:product,status:'NEEDS_CATALOG_MAPPING',steps:[],executionAllowed:false};
   if(services.length>30)throw error('FULFILLMENT_TOO_MANY_LINES');
-  const invalid=services.filter(s=>!s||typeof s!=='object'||!Object.hasOwn(SERVICE_STEPS,s.code)||!Number.isSafeInteger(Number(s.quantity??1))||Number(s.quantity??1)<1||Number(s.quantity??1)>10000);
+  const invalid=services.filter(s=>!s||typeof s!=='object'||Array.isArray(s)||typeof s.code!=='string'||!Object.hasOwn(SERVICE_STEPS,s.code)||!validQuantity(s.quantity));
   if(invalid.length)return {version:VERSION,tenantId:t,orderId:oid,sku:product,status:'NEEDS_CATALOG_MAPPING',unmappedCodes:invalid.map(s=>String(s?.code??'').slice(0,80)),steps:[],executionAllowed:false};
   const steps=[];
   const sharedIntake=services.length>1;
