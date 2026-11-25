@@ -31,4 +31,4 @@ jobs:
           "$RUNNER_TEMP/sbc-guardrails/bin/python" -m pip check
       - name: Test actual NVIDIA tool rails with no network namespace
         run: |
-          sudo unshare --net -- "$RUNNER_TEMP/sbc-guardrails/bin/python" -m unittest discover -s scripts/nvidia_guardrails -p 'test_*.py' -v
+          sudo unshare --net -- env NEMO_GUARDRAILS_NO_USAGE_STATS=1 DO_NOT_TRACK=1 OTEL_SDK_DISABLED=true PYTHONDONTWRITEBYTECODE=1 SBC_NODE_BIN="$(command -v node)" "$RUNNER_TEMP/sbc-guardrails/bin/python" -m unittest discover -s scripts/nvidia_guardrails -p 'test_*.py' -v

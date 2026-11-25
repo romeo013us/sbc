@@ -16,6 +16,8 @@ class RealNemoTest(unittest.IsolatedAsyncioTestCase):
                         result=await check_proposal(rails,policy,role,name,args,7)
                         self.assertEqual(result["status"],"BLOCKED")
                         self.assertFalse(result["executionAllowed"])
+                        if name in ("charge_payment","publish_post","shell") or args in ('{"tenantId":8}','{"tenantId":7,"execute":true}'):
+                            self.assertEqual(result["reason"],"NVIDIA_TOOL_POLICY")
             other=next(t for r,t in policy.items() if r!="research")
             self.assertEqual((await check_proposal(rails,policy,"research",other,'{"tenantId":7}',7))["status"],"BLOCKED")
         finally:
