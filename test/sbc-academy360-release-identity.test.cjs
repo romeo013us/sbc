@@ -50,3 +50,24 @@ test('no release can claim complete multimedia if the manifest loses even one fi
   assert.throws(()=>gate.stamp(root,identity),/ACADEMY_MEDIA_MANIFEST_MIRROR_MISMATCH|ACADEMY_MEDIA_INVENTORY_INCOMPLETE/);
  });
 });
+
+test('explicit canonical Academy release verifies every canonical media hash without a mirror',()=>{
+ use(({root,inventory,identity})=>{
+  fs.rmSync(path.join(root,'browser_public'),{recursive:true});
+  for(const k of Object.keys(inventory))if(k.startsWith('browser_public/'))delete inventory[k];
+  assert.throws(()=>gate.verify(root,identity,inventory),/ACADEMY_MEDIA_MANIFEST_MISSING/);
+  const canonical=gate.stamp(root,{...identity,frontendLayout:'canonical-public-v1'});
+  const proof=gate.verify(root,canonical,inventory);
+  assert.equal(proof.mirrors,1);assert.equal(proof.mediaFiles,168);assert.equal(proof.syntheticOnly,true);
+  const f='public/academy-media/academy360/am-01-en.vtt';
+  fs.appendFileSync(path.join(root,f),'tampered');
+  assert.throws(()=>gate.verify(root,canonical,inventory),/ACADEMY_MEDIA_STAGED_HASH_INVALID/);
+ });
+});
+test('canonical Academy mode rejects mixed inventories and unsupported layouts',()=>{
+ use(({root,inventory,identity})=>{
+  const canonical={...identity,frontendLayout:'canonical-public-v1'};
+  assert.throws(()=>gate.verify(root,canonical,inventory),/ACADEMY_MEDIA_LAYOUT_MIXED/);
+  assert.throws(()=>gate.verify(root,{...identity,frontendLayout:'unknown'},inventory),/ACADEMY_MEDIA_LAYOUT_INVALID/);
+ });
+});
