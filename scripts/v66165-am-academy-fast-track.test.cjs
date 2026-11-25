@@ -174,10 +174,11 @@ test('isolated staging injects owner-certification and legacy bypass gates witho
  if(baseline.includes('// '+STAGE.MARK))assert.equal(patched,baseline,'already compiled release remains unchanged');
  else assert.notEqual(patched,baseline);
  assert.equal(STAGE.patchServer(patched),patched,'idempotent staging');
- assert.match(patched,/ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED/);
- assert.match(patched,/ACADEMY_SERVER_GRADED_ASSESSMENT_ONLY/);
- assert.match(patched,/ACADEMY_READINESS_INCOMPLETE/);
- assert.match(patched,/SBC_AM_TRAINING_BUDGET\.permit/);
+ const guards=patched.includes('createTrainingHandlers')?read('routes/sbc-legacy-training-v2.cjs'):patched;
+ assert.match(guards,/ACADEMY_QUIZ_AND_ROLEPLAY_REQUIRED/);
+ assert.match(guards,/ACADEMY_SERVER_GRADED_ASSESSMENT_ONLY/);
+ assert.match(guards,/ACADEMY_READINESS_INCOMPLETE/);
+ assert.match(guards,/SBC_AM_TRAINING_BUDGET\.permit/);
  assert.match(patched,/ACCOUNT_MANAGER_ACADEMY_CERTIFICATION_REQUIRED/);
  new vm.Script(patched,{filename:'sbc-am-staged-server.js'});
  assert.throws(()=>STAGE.patchServer('generic router code'),/AM_ACADEMY_FULL_SERVER_REQUIRED/);
