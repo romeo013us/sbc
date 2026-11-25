@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "STAGING CANDIDATE ONLY \u2014 NOT LIVE CERTIFIED",
-  "sourceCommit": "1af4e5cf62f0dd468b381042f2050ee2829b2d4a",
+  "sourceCommit": "ed016a97515c151a29e81b2033b40456ce5a6acf",
   "files": {
     ".gitignore": "386b125f247ba4d984a9a56677db0dc162c5baa9f1a6607cb6dd895df8b36636",
     ".guardian/release-gate.json": "9670d15e402b5f554b8d1e0c891287aa9a5b1a325e01a16e755b692860f6abfb",
@@ -19,7 +19,7 @@
     "RELEASE-MANIFEST-V56.25.0.json": "545ca496a3b956c7c9023fc368138a878b6c6afffd0c72cf9406b4b22c4286eb",
     "SBC-COMPLETE-APP-PACKAGE-INFO.json": "72153f8eeb41689c12e4a97c891ad07b2289ebee0a6160b164069b364222ae47",
     "SBC-CONNECTED-JOURNEY-QA.json": "1384e8cc5f8e2118620b76d6379926938f4258ee6c2a24952c3eecc9994060c0",
-    "SBC-DEPLOY-RECEIPT.json": "4b9508491d5c4462f461e94dee2a435b381b8a0cf867948ff28343480cd8b923",
+    "SBC-DEPLOY-RECEIPT.json": "43171fa0155616d78724ab155c84a1946fb0ff4690adeb764152c7fa3310ec7c",
     "SBC-P0P1-PREVIEW-QA.json": "cd5c017c6403715df30f5d916ce01f502731bdf72d9ffb39a89c5f7b0ab4b2c5",
     "START-HERE-SBC-COMMAND-CENTER-V66.txt": "ade97e1c1fb37e4398759ffb22dc47bdd25df0be196bc2002417418db36847c8",
     "V56.1.0-BUILD-MANIFEST.json": "6df195078d9702def09174072355f43a54e6d81d9ef7a1b4f9bc39e232a47749",
@@ -1785,6 +1785,7 @@
     "scripts/super-sbc-inquiry-form.test.cjs": "bd2e90101570cb274b456e02595dab89db0742b656b5a6cea8f010f5b88c98d3",
     "scripts/super-sbc-marketing-hub-safety.test.cjs": "bd419849f94210d2c10ef31248968ba6f307162599bd8e6d048645382d447db8",
     "scripts/tenant-repository-isolation-test.js": "6816bb83f8ae1c6627c6798b03e3bd35078240fc59b51e5fb982244c78b3b598",
+    "scripts/test_v66_canonical_candidate.py": "49fd458442be7b261eed740ac3035db66f679b7e336ff9e2e2be43e5946b0baf",
     "scripts/test_v66_canonical_frontend.py": "1b0f792171ab58e472d362293a1724c0a7ef8d1653cd76a8b5955fce0b1bf8ac",
     "scripts/ui-static-audit.js": "56d6ee478fc4e8a98b0d82cd3e508a23012f59c11a6f989deec170ef9694d3e9",
     "scripts/unified-lead-profile.test.cjs": "f561be4facfe84655d97daea26bd2230e79cf37fac5bb7ce7491aac9d5a2b886",
@@ -2031,6 +2032,7 @@
     "scripts/v6697-stage-sales-workspace.cjs": "8561299fbfdc034d543018e57eae991a98f4f90e3e4eeea81723093d6bcfa615",
     "scripts/v6699-outbound-suppression.test.cjs": "cffd93b3ec8daec0246bd7577be339275b4ea1296288bbcb46f5d24850e2f92f",
     "scripts/v6699-stage-outbound-suppression.cjs": "905ec089227a29b6134815fd2050bc33ccc165cc0618e5a9e849579b491d5f48",
+    "scripts/v66_canonical_candidate.py": "abb181dd841790f49f62b2c9f80efbcade76a113c86cb3b5aec81ccd84b5a85a",
     "scripts/v66_canonical_frontend.py": "4780cac04012408c5f3060eee49cc44410abb58b759270b653ce8d65d4e1cace",
     "scripts/v66_deterministic_zip.py": "2788e43c72213084d309e7fb107b4c86c367b3482c674c1bc19975165331cd74",
     "scripts/validate-federation.js": "106d5708848f4f7da1e07e1cfa7564537207902c892b4a9315efc706ede86511",
