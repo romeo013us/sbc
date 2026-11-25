@@ -11,7 +11,7 @@ function insertBefore(source, anchor, addition) {
 }
 
 function patchServer(source) {
-  if (source.includes(MARK)) return source;
+  if (source.includes(MARK)) return source.replace("app.use(['/healthz','/readyz','/api/health'], SBC_DEPLOYED_BUILD.healthHeaders);", "app.use(['/healthz','/readyz','/api/health'], SBC_DEPLOYED_BUILD.healthHeaders);");
   const withHealth = insertBefore(source, "app.get('/healthz',async(req,res)=>{",
     "/* " + MARK + " */\nconst SBC_DEPLOYED_BUILD = re" + "quire('./config/deployed-build.cjs');\n" +
     "app.use(['/healthz','/readyz'], SBC_DEPLOYED_BUILD.healthHeaders);");
