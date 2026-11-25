@@ -208,3 +208,50 @@ test('NVIDIA lab stops at failed readiness or unserved model and validates bound
  let calls=0;await assert.rejects(runLab(env,async()=>{calls++;return new Response('offline',{status:503})}),/NVIDIA_HTTP_FAILURE/);assert.equal(calls,1);
  calls=0;await assert.rejects(runLab(env,async()=>{calls++;return Response.json({data:[]})}),/MODEL_NOT_SERVED/);assert.equal(calls,2);
 });
+
+test('AI-Q standalone lab uses bounded exact local API calls and reconciles the same synthetic job',async()=>{
+ const {aiqLab}=require('../enterprise/sbc-nvidia-research-lab.cjs');
+ const {createServer}=require('node:http');const requests=[];let status='SUBMITTED',mismatch=false;
+ const job='sbc-lab-1234567890abcdef1234567890abcdef';
+ const server=createServer(async(req,res)=>{const chunks=[];for await(const c of req)chunks.push(c);const body=chunks.length?JSON.parse(Buffer.concat(chunks).toString()):null;requests.push({path:req.url,method:req.method,body});
+  let result;
+  if(req.url==='/health')result={status:'healthy',dask_available:true,db:'ok',encryption:{ready:true}};
+  else if(req.url==='/v1/jobs/async/agents')result={agents:[{agent_type:'deep_researcher'}]};
+  else if(req.url==='/v1/data_sources')result=[{id:'knowledge_layer'}];
+  else if(req.url==='/v1/jobs/async/submit'&&req.method==='POST')result={job_id:job,status:'SUBMITTED',agent_type:'deep_researcher'};
+  else if(req.url==='/v1/jobs/async/job/'+job)result={job_id:mismatch?'other':job,status,agent_type:'deep_researcher'};
+  else if(req.url==='/v1/jobs/async/job/'+job+'/report')result={job_id:job,has_report:true,report:'# Synthetic report'};
+  else if(req.url==='/v1/jobs/async/job/'+job+'/state')result={job_id:job,has_state:true,artifacts:{sources:{found_urls:['https://example.invalid/a'],cited_urls:['https://example.invalid/a']}}};
+  else {res.writeHead(404);return res.end();}
+  res.setHeader('content-type','application/json');res.end(JSON.stringify(result));
+ });
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ try{
+  assert.equal((await aiqLab({})).status,'DISABLED');
+  const env={SBC_AIQ_LAB_ENABLED:'1',SBC_AIQ_URL:'http://127.0.0.1:'+server.address().port};
+  assert.equal((await aiqLab(env)).status,'DISCOVERED');assert.equal(requests.length,3);
+  const e={...env,SBC_AIQ_JOB_ID:job,SBC_AIQ_MODE:'submit'};
+  await assert.rejects(aiqLab(e),/ISOLATED_LAB_ACK_REQUIRED/);assert.equal(requests.length,3);
+  assert.equal((await aiqLab({...e,SBC_AIQ_ISOLATED_ACK:'1'})).status,'SUBMITTED');
+  const post=requests.filter(x=>x.method==='POST');assert.equal(post.length,1);assert.deepEqual(post[0].body.data_sources,['knowledge_layer']);assert.equal(post[0].body.job_id,job);
+  assert.equal((await aiqLab({...e,SBC_AIQ_MODE:'status'})).status,'SUBMITTED');
+  status='SUCCESS';const out=await aiqLab({...e,SBC_AIQ_MODE:'status'});assert.equal(out.status,'REPORT_REVIEW_REQUIRED');assert.equal(out.citedSourceCount,1);assert.equal(out.productionCertified,false);assert(!JSON.stringify(out).includes('Synthetic report'));
+  mismatch=true;await assert.rejects(aiqLab({...e,SBC_AIQ_MODE:'status'}),/AIQ_JOB_IDENTITY_MISMATCH/);
+  assert.equal(requests.filter(x=>x.method==='POST').length,1);
+ }finally{await new Promise(r=>server.close(r));}
+});
+test('Retriever lab requests passage and query embeddings separately and measures bilingual ranking',async()=>{
+ const {retrieverLab}=require('../enterprise/sbc-nvidia-research-lab.cjs');const bodies=[];
+ const env={SBC_RETRIEVER_LAB_ENABLED:'1',SBC_NVIDIA_EMBED_URL:'http://127.0.0.1:18001',SBC_NVIDIA_EMBED_MODEL:'nvidia/test-embed'};
+ const fake=async(url,opts)=>{const p=new URL(url).pathname;
+  if(p==='/v1/health/ready')return new Response('{}');
+  if(p==='/v1/models')return Response.json({data:[{id:'nvidia/test-embed'}]});
+  const b=JSON.parse(opts.body);bodies.push(b);
+  assert.equal(b.modality,'text');assert.equal(b.input.length,4);
+  return Response.json({model:b.model,data:b.input.map((_,i)=>({index:i,embedding:Array.from({length:4},(_,j)=>Number(i===j))})).reverse()});
+ };
+ assert.equal((await retrieverLab({},fake)).status,'DISABLED');
+ const r=await retrieverLab(env,fake);assert.equal(r.status,'SYNTHETIC_RANKING_MEASURED');assert.equal(r.accuracy,1);assert.equal(r.english.correct,2);assert.equal(r.spanish.correct,2);assert.deepEqual(bodies.map(b=>b.input_type),['passage','query']);
+ assert.equal(r.productionCertified,false);assert(!Object.hasOwn(r,'vectors'));
+ await assert.rejects(retrieverLab(env,async(u,o)=>new URL(u).pathname==='/v1/embeddings'?Response.json({model:'nvidia/test-embed',data:[{index:0,embedding:[1]}]}):fake(u,o)),/INVALID_EMBEDDING_BATCH/);
+});
