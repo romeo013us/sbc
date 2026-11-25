@@ -40,7 +40,7 @@ function publicLab(id,lang='en'){
   fields:lab.fields.map(f=>({id:f.id,label:f.label[l],options:f.options.map(v=>v[l])})),
   artifactPrompt:l==='es'?'Escriba una nota ficticia: necesidad confirmada, evidencia, duda pendiente, límite de aprobación y siguiente paso con responsable y fecha.':'Write a fictional case note: confirmed need, evidence, open question, approval boundary and next step with an owner and date.'};
 }
-function validateText(text,min=80,max=3500){
+function validateText(text,min=20,max=3500){
  if(typeof text!=='string'||text.trim().length<min||text.length>max)throw Object.assign(Error('ACADEMY_CASE_NOTE_LENGTH_INVALID'),{status:422});
  if(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text)||/(?:\+?1[\s-]?)?\(?[2-9]\d{2}\)?[\s.-]?[2-9]\d{2}[\s.-]?\d{4}/.test(text)||/\b(?:password|contrase[nñ]a|api[_ -]?key)\s*[:=]/i.test(text))throw Object.assign(Error('ACADEMY_POSSIBLE_REAL_CONTACT_OR_SECRET'),{status:422});
  return text.trim();
