@@ -1,6 +1,6 @@
 'use strict';
 // Offline SBC-owned creative staging. Never sends a post or obtains provider credentials.
-// ImageMagick is a local, free renderer; no runtime npm dependency or paid service.
+// librsvg and ImageMagick are free local tools; no runtime npm dependency or paid service.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const PALETTE=['#0A192F','#0066CC','#FF6B00','#FFFFFF'];
@@ -117,7 +117,10 @@ function imageCommand(args,input,renderer){
  return r.stdout;
 }
 function render(svg,w,h,renderer){
- const png=imageCommand(['-font','DejaVu-Sans','-background','white','svg:-','-strip','-define','png:exclude-chunks=all','PNG24:-'],Buffer.from(svg),renderer);
+ // librsvg handles embedded JPEG data URIs directly; ImageMagick's internal SVG
+ // decoder can treat them as filenames. No remote references or shell commands.
+ const raster=imageCommand(['--format=png'],Buffer.from(svg),process.env.SBC_SVG_RENDERER||'rsvg-convert');
+ const png=imageCommand(['png:-','-background','white','-alpha','remove','-alpha','off','-strip','-define','png:exclude-chunks=all','PNG24:-'],raster,renderer);
  if(png.length<100||png.subarray(0,8).toString('hex')!=='89504e470d0a1a0a'||png.readUInt32BE(16)!==w||png.readUInt32BE(20)!==h)fail('INVALID_RENDERED_PNG');
  const grid=imageCommand(['png:-','-resize','9x8!','-colorspace','Gray','-depth','8','gray:-'],png,renderer);
  return {png,sha256:hash(png),dhash:dhash(grid)};
