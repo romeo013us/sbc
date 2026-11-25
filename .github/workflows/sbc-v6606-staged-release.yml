@@ -39,6 +39,7 @@ jobs:
           node --test test/v66-release-selection.test.cjs
           node --test test/v66-deployment-artifact-gate.test.cjs test/sbc-verified-ref.test.cjs test/sbc-provider-evidence.test.cjs test/sbc-marketing-readback.test.cjs
           node --test test/sbc-academy360-release-identity.test.cjs
+          node --test test/sbc-release-sync.test.cjs
           node scripts/v66-static-mirror-gate.cjs
           node scripts/secret-audit.js
           node --check hotfix-assets/apply-v6693-quarantine-legacy-officebox.js
@@ -836,6 +837,7 @@ jobs:
           trap 'rm -rf "$temp"' EXIT
           unzip -q verified-runtime/SBC-V66-QUOTE-SAFETY-STAGING.zip -d "$temp"
           node scripts/v6611-verify-stage-inventory.cjs "$temp"
+          node scripts/verify-release-sync.cjs "$temp" "$GITHUB_SHA"
           node - "$temp" <<'NODE'
           const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
           const temp=process.argv[2];
@@ -884,6 +886,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "release(godaddy): tested QA runtime from $GITHUB_SHA"
           node scripts/v66-deployment-artifact-gate.cjs .
+          node scripts/verify-release-sync.cjs . "$GITHUB_SHA"
           bash scripts/pin-verified-godaddy-ref.sh "$GITHUB_SHA"
           # Fast-forward ONLY if this exact source commit is still at branch HEAD.
           # On an Actions rerun, a prior successful job may have ALREADY pushed
