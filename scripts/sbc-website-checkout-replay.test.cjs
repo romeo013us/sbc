@@ -9,3 +9,11 @@ test('terminal and failed checkout states never return old links',()=>{for(const
 test('duplicate checkout correlation requires reconciliation rather than selecting first match',()=>{const r=inspectExisting({...input,orders:[order,{...order,id:'order-b'}]});assert.equal(r.code,'WEBSITE_CHECKOUT_RECONCILIATION_REQUIRED');assert.equal(r.automaticRetry,false);assert.equal(r.paymentUrl,undefined);});
 test('valid pending replay remains idempotent, paid state is blocked, foreign tenant ignored',()=>{assert.equal(inspectExisting(input).noNewPaymentLink,true);assert.equal(inspectExisting({...input,orders:[{...order,paymentStatus:'Paid'}]}).code,'WEBSITE_CHECKOUT_ALREADY_PAID');assert.deepEqual(inspectExisting({...input,tenantId:8}),{found:false});});
 test('malformed null metadata on unrelated orders does not block a valid replay',()=>{assert.equal(inspectExisting({...input,orders:[{...order,id:'other',notes:'null'},order]}).noNewPaymentLink,true);});
+
+test('checkout replay rejects ambiguous customer identity and conflicting saved provider links',()=>{
+ assert.equal(inspectExisting({...input,customers:[customer,{...customer}]}).code,'WEBSITE_CHECKOUT_RECONCILIATION_REQUIRED');
+ const mismatched={...order,notes:JSON.stringify({...JSON.parse(order.notes),squarePaymentLinkUrl:'https://square.link/u/other'})};
+ assert.equal(inspectExisting({...input,orders:[mismatched]}).code,'WEBSITE_CHECKOUT_RECONCILIATION_REQUIRED');
+ const same={...order,notes:JSON.stringify({...JSON.parse(order.notes),squarePaymentLinkUrl:order.paymentUrl})};
+ assert.equal(inspectExisting({...input,orders:[same]}).noNewPaymentLink,true);
+});
