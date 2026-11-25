@@ -1,0 +1,31 @@
+name: SBC Creative Engine offline acceptance
+on:
+  pull_request:
+    paths:
+      - 'enterprise/sbc-social-asset-engine.cjs'
+      - 'scripts/sbc-social-assets.cjs'
+      - 'test/sbc-social-asset-engine.test.cjs'
+      - 'public/assets/sbc-logo.jpg'
+      - '.github/workflows/sbc-social-creative-engine.yml'
+permissions:
+  contents: read
+jobs:
+  creative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install free offline rendering tools
+        run: sudo apt-get update && sudo apt-get install -y imagemagick fonts-dejavu-core
+      - name: Run creative inventory and security regression tests
+        run: node --test test/sbc-social-asset-engine.test.cjs
+      - name: Produce private review inventory (no publishing)
+        run: node scripts/sbc-social-assets.cjs generate "$RUNNER_TEMP/sbc-creatives" 2026-11-26
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbc-creative-review-only
+          path: ${{ runner.temp }}/sbc-creatives
+          retention-days: 7
