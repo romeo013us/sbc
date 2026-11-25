@@ -49,3 +49,14 @@ test('CI must use the same source-of-truth release selector before manifest hash
  assert(selection>0&&hashing>selection);
  assert.match(workflow,/test\/v66-release-selection\.test\.cjs/);
 });
+
+test('superseded root reports and manifests stay in source but never enter the deployment inventory',()=>{
+ const obsolete=['BUILD-MANIFEST-V60.4.1.txt','BUILD-VERIFICATION-V65.1.10-SESSION-OVERLAY-HOTFIX.json','BUILD-VERIFICATION-V65.1.10.json','BUILD-VERIFICATION-V65.1.6.json','BUILD-VERIFICATION-V65.1.8.json','RELEASE-MANIFEST-V64.0.0.json','RELEASE-MANIFEST-V64.2.16.json','RELEASE-MANIFEST-V64.2.17.json','RELEASE-MANIFEST-V65.0.3.json','RELEASE-MANIFEST-V65.0.4.json','LEAD-WORKSPACE-TEST-REPORT.txt','all-tests.txt','browser-war-file-results.json','browser-war-results.json','SHA256-V65.0.9-OWNER-LEADS.txt','V56.25.0-FILE-SHA256.txt','V56.6-COMPONENT-HASHES.txt','V60.3.0-FILE-HASHES.txt','V65.0.7-RELEASE-MANIFEST.txt','component-sha256-v56.23.0.txt','component-sha256.txt'];
+ const required=['SBC-STAGED-INVENTORY.json','SBC-FLAT-RELEASE-IDENTITY.json','SBC-DEPLOY-RECEIPT.json','CLEAN-DISTRIBUTION-MANIFEST.sha256','.guardian/release-gate.json','BIOS-MIGRATION-SHA256.txt','public/v32-2-upgrade.js','browser_public/app.js','scripts/v6611-verify-stage-inventory.cjs','migrations/20261109_001_fulfillment_v2_plan_steps.sql'];
+ for(const file of obsolete){
+  assert(fs.existsSync(path.join(root,file)),'Historical source remains available: '+file);
+  assert.equal(excludedReleasePath(file),true,'Historical artifact cannot ship: '+file);
+ }
+ assert.deepEqual(selectReleaseFiles([...obsolete,...required]),required.slice().sort());
+ assert.equal(excludedReleasePath('docs/all-tests.txt'),false,'Scope is root-only');
+});
