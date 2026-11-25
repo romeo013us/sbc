@@ -219,6 +219,11 @@ jobs:
           SBC_SNAPSHOT_TENANT_CI: 'YES'
           SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
         run: node --test test/sbc-snapshot-tenants.test.cjs test/sbc-marketing-receipt-mysql.test.cjs
+      - name: Creative inventory and receipt concurrency on disposable MySQL 8
+        env:
+          SBC_CREATIVE_MYSQL_CI: 'YES'
+          SBC_V6682_CI_MYSQL_PASSWORD: local_ci_only_sbc_6682
+        run: node --test test/sbc-social-creative-mysql.test.cjs
       - name: Call archive revision and 10,000-attempt isolated MySQL test
         env:
           SBC_CALL_ARCHIVE_MYSQL_CI: 'YES'
