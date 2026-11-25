@@ -21,3 +21,10 @@ test('vendor submission always depends on approval',()=>{const p=compile({...bas
 test('all declared recipes are dependency-consistent',()=>{for(const code of Object.keys(SERVICE_STEPS)){const p=compile({...base,services:[{code}]});assert(p.steps.every(x=>x.dependsOn.every(y=>p.steps.some(z=>z.id===y))))}});
 
 test('one shared customer intake for multi-service bundles',()=>{const p=compile({...base,services:[{code:'starter_website'},{code:'business_cards'}]});assert.equal(p.steps.filter(x=>x.id==='shared_customer_intake').length,1);assert(p.steps.filter(x=>x.line>0&&!x.id.endsWith('approval')).some(x=>x.dependsOn.includes('shared_customer_intake')))});
+
+test('malformed catalog quantities and non-string codes cannot produce work',()=>{
+ for(const item of [{code:'office_box',quantity:true},{code:'office_box',quantity:[]},{code:'office_box',quantity:[1]},{code:'office_box',quantity:'1e2'},{code:'office_box',quantity:null},{code:['office_box']}]){
+  const result=compile({...base,services:[item]});assert.equal(result.status,'NEEDS_CATALOG_MAPPING');assert.equal(result.steps.length,0);
+ }
+ assert.equal(compile({...base,services:[{code:'business_cards',quantity:'100'}]}).status,'PLANNED');
+});
