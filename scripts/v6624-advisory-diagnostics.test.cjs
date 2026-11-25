@@ -177,3 +177,34 @@ test('Factory research and speech evaluation require source evidence and synthet
  const r=F.speechBenchmark([{language:'en',synthetic:true,reference:'hello world',hypothesis:'hello world'},{language:'es',synthetic:true,reference:'buenos días',hypothesis:'buenos'}]);
  assert.equal(r.languages.en.wordErrorRate,0);assert.equal(r.languages.es.wordErrorRate,0.5);assert.equal(r.productionCertified,false);
 });
+
+test('NVIDIA lab defaults to disabled and refuses remote, credentialed and redirecting endpoints',async()=>{
+ const {runLab}=require('../enterprise/sbc-nvidia-lab.cjs');
+ let calls=0;const transport=async()=>{calls++;throw Error('unexpected network')};
+ assert.equal((await runLab({},transport)).status,'DISABLED');
+ for(const url of ['https://integrate.api.nvidia.com','http://user:secret@127.0.0.1:8000','http://127.0.0.1:8000/v1','http://localhost:8000','http://127.0.0.1.example.invalid:8000']){
+  await assert.rejects(runLab({SBC_NVIDIA_LAB_ENABLED:'1',SBC_NVIDIA_NIM_URL:url,SBC_NVIDIA_NIM_MODEL:'nvidia/test-model'},transport),/LOCAL_ENDPOINT_REQUIRED/);
+ }
+ assert.equal(calls,0);
+});
+test('NVIDIA lab calls only exact documented NIM endpoints with fixed synthetic input and rejects tool proposals',async()=>{
+ const {runLab}=require('../enterprise/sbc-nvidia-lab.cjs');const calls=[];
+ const env={SBC_NVIDIA_LAB_ENABLED:'1',SBC_NVIDIA_NIM_URL:'http://127.0.0.1:18000',SBC_NVIDIA_NIM_MODEL:'nvidia/test-model',SBC_NVIDIA_EMBED_URL:'http://127.0.0.1:18001',SBC_NVIDIA_EMBED_MODEL:'nvidia/test-embed'};
+ const fake=async(url,options)=>{calls.push({url,options});const p=new URL(url).pathname;
+  if(p==='/v1/health/ready')return new Response('{}');
+  if(p==='/v1/models')return Response.json({data:[{id:new URL(url).port==='18000'?'nvidia/test-model':'nvidia/test-embed'}]});
+  if(p==='/v1/chat/completions')return Response.json({choices:[{message:{content:'REVIEW'}}]});
+  if(p==='/v1/embeddings')return Response.json({data:[{index:0,embedding:[0.1,0.2]}]});
+  throw Error('unexpected path');
+ };
+ const r=await runLab(env,fake);assert.equal(r.status,'SYNTHETIC_PROBE_PASSED');assert.equal(r.reasoning.passed,true);assert.equal(r.embedding.dimensions,2);assert.equal(r.productionCertified,false);
+ assert.equal(calls.length,6);assert(calls.every(c=>c.options.redirect==='error'&&!c.options.headers.authorization));
+ assert.equal(JSON.parse(calls[2].options.body).max_tokens,32);
+ assert(!JSON.stringify(r).includes('0.1,0.2'));
+ await assert.rejects(runLab(env,async(u,o)=>new URL(u).pathname==='/v1/chat/completions'?Response.json({choices:[{message:{content:'REVIEW',tool_calls:[{id:'unsafe'}]}}]}):fake(u,o)),/UNEXPECTED_MODEL_OUTPUT/);
+});
+test('NVIDIA lab stops at failed readiness or unserved model and validates bounded vector output',async()=>{
+ const {runLab}=require('../enterprise/sbc-nvidia-lab.cjs');const env={SBC_NVIDIA_LAB_ENABLED:'1',SBC_NVIDIA_NIM_URL:'http://127.0.0.1:18000',SBC_NVIDIA_NIM_MODEL:'nvidia/test-model'};
+ let calls=0;await assert.rejects(runLab(env,async()=>{calls++;return new Response('offline',{status:503})}),/NVIDIA_HTTP_FAILURE/);assert.equal(calls,1);
+ calls=0;await assert.rejects(runLab(env,async()=>{calls++;return Response.json({data:[]})}),/MODEL_NOT_SERVED/);assert.equal(calls,2);
+});
