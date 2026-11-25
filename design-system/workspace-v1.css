@@ -1,0 +1,58 @@
+/* SBC DESIGN CONTRACT V1 BEGIN */
+/* Shared workspace primitives. Product adapters preserve independent branding.
+   No global resets or dependencies. Keep this block identical in both products. */
+:is(.sbc-actions-board,#officeBoxDailyFocus){
+ --sbc-ds-space-1:4px;--sbc-ds-space-2:8px;--sbc-ds-space-3:12px;--sbc-ds-space-4:16px;--sbc-ds-space-5:20px;--sbc-ds-space-6:24px;
+ --sbc-ds-touch:44px;--sbc-ds-radius-panel:18px;--sbc-ds-radius-control:12px;
+ --sbc-ds-type-title:clamp(24px,3vw,32px);--sbc-ds-type-count:24px;--sbc-ds-type-body:14px;--sbc-ds-type-meta:12px;
+ --sbc-ds-focus-ring:3px;--sbc-ds-motion:140ms;
+ box-sizing:border-box;max-width:100%;min-width:0;border-radius:var(--sbc-ds-radius-panel);
+ padding:var(--sbc-ds-space-6);font-size:var(--sbc-ds-type-body);line-height:1.5;
+}
+.sbc-actions-board{
+ --sbc-ds-ink:var(--ink,#edf3fa);--sbc-ds-muted:var(--muted,#a8b9cc);--sbc-ds-border:var(--line,#31435a);
+ --sbc-ds-accent:var(--accent,#f5b86b);--sbc-ds-control:var(--surface,#121e30);--sbc-ds-selected:#27313d;--sbc-ds-focus:#f5b86b;
+}
+#officeBoxDailyFocus{
+ --sbc-ds-ink:var(--text,#edf3fa);--sbc-ds-muted:var(--muted,#a8b9cc);--sbc-ds-border:var(--stroke,#31435a);
+ --sbc-ds-accent:var(--brand,#218bff);--sbc-ds-control:var(--surface2,#152138);--sbc-ds-selected:var(--surface3,#192843);--sbc-ds-focus:var(--text,#edf3fa);
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-title,#officeBoxDailyFocusTitle){
+ color:var(--sbc-ds-ink);font-size:var(--sbc-ds-type-title);font-weight:750;line-height:1.15;letter-spacing:-.035em;
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-lanes,.ob-focus-stats){gap:var(--sbc-ds-space-2)}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-lane,[data-focus-lane]){
+ color:var(--sbc-ds-ink);background:var(--sbc-ds-control);border:1px solid var(--sbc-ds-border);
+ border-radius:var(--sbc-ds-radius-control);min-height:96px;padding:var(--sbc-ds-space-3);
+ transition:background-color var(--sbc-ds-motion),border-color var(--sbc-ds-motion);overflow-wrap:anywhere;
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-lane,[data-focus-lane])[aria-pressed=true]{
+ background:var(--sbc-ds-selected);border-color:var(--sbc-ds-accent);box-shadow:inset 0 3px var(--sbc-ds-accent);
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-lane-count,.ob-focus-stats strong){
+ font-size:var(--sbc-ds-type-count);font-weight:750;line-height:1.1;letter-spacing:-.025em;color:var(--sbc-ds-ink);font-variant-numeric:tabular-nums;
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-coverage,.ob-focus-coverage,.ob-focus-source,.sbc-actions-detail,.sbc-actions-safety){
+ font-size:var(--sbc-ds-type-meta);color:var(--sbc-ds-muted);
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-item,.ob-focus-list li){
+ gap:var(--sbc-ds-space-4);padding-block:var(--sbc-ds-space-4);border-bottom:1px solid var(--sbc-ds-border);
+}
+:is(.sbc-actions-board,#officeBoxDailyFocus) button{min-height:var(--sbc-ds-touch);min-width:var(--sbc-ds-touch)}
+:is(.sbc-actions-board,#officeBoxDailyFocus) button:focus-visible{
+ outline:var(--sbc-ds-focus-ring) solid var(--sbc-ds-focus);outline-offset:3px;
+}
+@media(max-width:740px){
+ :is(.sbc-actions-board,#officeBoxDailyFocus){padding:var(--sbc-ds-space-4)}
+}
+@media(max-width:480px){
+ :is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-item,.ob-focus-list li){gap:var(--sbc-ds-space-2)}
+}
+@media(prefers-reduced-motion:reduce){
+ :is(.sbc-actions-board,#officeBoxDailyFocus) *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+@media(forced-colors:active){
+ :is(.sbc-actions-board,#officeBoxDailyFocus) :is(.sbc-actions-lane,[data-focus-lane])[aria-pressed=true]{outline:2px solid Highlight;outline-offset:-4px}
+ :is(.sbc-actions-board,#officeBoxDailyFocus) button:focus-visible{outline:3px solid Highlight;outline-offset:3px}
+}
+/* SBC DESIGN CONTRACT V1 END */
