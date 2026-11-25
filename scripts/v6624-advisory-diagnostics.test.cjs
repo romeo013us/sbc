@@ -108,3 +108,30 @@ test('Kim owner interface presents departmental evidence and isolates legacy con
  assert(calls.every(c=>!c.opts.method||c.opts.method==='GET'));
  unavailable=true;const failed=await win.sbcKimOperationsView();assert.match(failed,/Operating plan unavailable/i);assert(!failed.includes('199.01'));
 });
+
+test('Kim advisory and dispatch share reconciled paid-order eligibility and tenant job scope',async()=>{
+ const capture=(id,price=199,extra={})=>({id,tenantId:1,customerId:'customer_one',price,status:'New',paymentStatus:'Paid',squareOrderId:'square_order_'+id,squarePaymentId:'square_receipt_'+id,squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-11-01T12:00:00Z',...extra});
+ const orders=[capture('ready'),capture('held',10000),capture('dup_a'),capture('dup_b',199,{squarePaymentId:'square_receipt_dup_a'}),capture('qaorder_synthetic'),capture('invalid_cents',1.001),capture('has_job'),capture('foreign',199,{tenantId:2}),capture('started',199,{metadata:{kimMissionFulfillmentStarted:'true'}})];
+ const db={customers:[customer('customer_one',1,'Warm','Sales Ready')],orders,fulfillmentJobs:[{tenantId:1,orderId:'has_job'},{tenantId:2,orderId:'ready'}]};
+ const calls=[];let writes=0;
+ const service=createController({db,tenBrain:{BRAINS:[]},godKim:{orchestrate:async({order})=>{calls.push(order.id);return {ok:true,stage:'POLICY_GATED'}}},saveData:async()=>{writes++},logger:{info(){}}});
+ const plan=(await service.cycle({tenantId:1,advisoryOnly:true})).operatingPlan;
+ assert.equal(plan.departments.find(d=>d.id==='fulfillment').decisions[0].count,1);
+ assert.equal(plan.departments.find(d=>d.id==='owner').decisions[0].count,1);
+ assert.equal(calls.length,0);assert.equal(writes,0);
+ const run=await service.reconcilePaidOrders(20,1);
+ assert.deepEqual(calls,['ready']);assert.equal(run.heldForOwner,1);assert.equal(run.dispatchCandidates,1);
+ assert.equal(run.coverage,'SCOPED_SNAPSHOT');assert.equal(writes,1);
+});
+test('Kim dispatch cannot turn missing or unscoped job evidence into new fulfillment',async()=>{
+ const order={id:'paid',tenantId:1,price:199,status:'New',paymentStatus:'Paid',squareOrderId:'so',squarePaymentId:'sp',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:'2026-11-01T12:00:00Z'};
+ const db={customers:[],orders:[order]};
+ let calls=0,writes=0;
+ const service=createController({db,tenBrain:{BRAINS:[]},godKim:{orchestrate:async()=>{calls++}},saveData:async()=>{writes++},logger:{info(){}}});
+ for(const [jobs,coverage] of [[undefined,'UNAVAILABLE'],[[{orderId:'legacy'}],'UNSCOPED_RECORDS']]){
+  db.fulfillmentJobs=jobs;
+  const r=await service.reconcilePaidOrders(20,1);
+  assert.equal(r.coverage,coverage);assert.equal(r.attempted,0);assert.equal(r.dispatchCandidates,0);
+ }
+ assert.equal(calls,0);assert.equal(writes,0);assert.equal(order.metadata,undefined);
+});

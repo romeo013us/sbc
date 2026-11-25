@@ -90,27 +90,30 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
 }
 // Read-only operating plan over the same canonical snapshot as Kim's advisory
 // cycle. No second workflow engine, no authorization or provider side effects.
-function operatingPlan(db,screened){
- const tenant=screened.tenantId;
+function fulfillmentDecision(db,tenant){
  const belongs=row=>Number(row?.tenantId??row?.tenant_id)===tenant;
- const customers=db.customers.filter(belongs);
- const orders=db.orders.filter(belongs);
- // Keep all receipt identities in reconciliation, including refund or QA copies.
+ const customers=db.customers.filter(belongs),orders=db.orders.filter(belongs);
  const summary=REVENUE_TRUTH.paidSummary(orders.map(o=>isSystemTestOrder(o)||REVENUE_GATE.isProtectedLaunchQaOrder(o)?{...o,testOnly:true}:o),customers,{tenantId:tenant});
  const jobRows=Array.isArray(db.fulfillmentJobs)?db.fulfillmentJobs:null;
- const validTenant=row=>Number.isSafeInteger(Number(row?.tenantId??row?.tenant_id))&&Number(row?.tenantId??row?.tenant_id)>0;
- const coverage=!jobRows?'UNAVAILABLE':jobRows.some(j=>!validTenant(j))?'UNSCOPED_RECORDS':'SCOPED_SNAPSHOT';
- const jobs=coverage==='SCOPED_SNAPSHOT'?jobRows.filter(belongs):null;
- const jobOrders=new Set((jobs||[]).map(j=>String(j.orderId??j.order_id??'')));
- let ready=null,held=null;
- if(jobs){
-  ready=0;held=0;
-  for(const o of summary.orders){
-   if(isSystemTestOrder(o)||REVENUE_GATE.isProtectedLaunchQaOrder(o)||REVENUE_GATE.isTerminal(o)||jobOrders.has(String(o.id)))continue;
-   if(!REVENUE_GATE.needsReconciliation(o,[]))continue;
-   if(REVENUE_GATE.orderRisk(o).ownerClearanceRequired)held++;else ready++;
+ const validTenant=row=>{const value=row?.tenantId??row?.tenant_id;return (typeof value==='number'||typeof value==='string'&&/^\d+$/.test(value))&&Number.isSafeInteger(Number(value))&&Number(value)>0;};
+ const coverage=!jobRows?'UNAVAILABLE':jobRows.some(j=>!validTenant(j)||!String(j.orderId??j.order_id??'').trim())?'UNSCOPED_RECORDS':'SCOPED_SNAPSHOT';
+ const ready=[],held=[];
+ if(coverage==='SCOPED_SNAPSHOT'){
+  const jobOrders=new Set(jobRows.filter(belongs).map(j=>String(j.orderId??j.order_id)));
+  const canonicalOrders=new Map(orders.map(o=>[String(o.id),o]));
+  for(const evidence of summary.orders){
+   const id=String(evidence.id??'').trim();
+   if(!id||jobOrders.has(id)||String(evidence.metadata?.kimMissionFulfillmentStarted||'')==='true'||!REVENUE_GATE.needsReconciliation(evidence,[]))continue;
+   const order=canonicalOrders.get(id);
+   if(!order)continue;
+   if(REVENUE_GATE.orderRisk(order).ownerClearanceRequired)held.push(order);else ready.push(order);
   }
  }
+ return {summary,coverage,ready,held};
+}
+function operatingPlan(db,screened){
+ const {summary,coverage,ready:dispatch,held:clearance}=fulfillmentDecision(db,screened.tenantId);
+ const ready=coverage==='SCOPED_SNAPSHOT'?dispatch.length:null,held=coverage==='SCOPED_SNAPSHOT'?clearance.length:null;
  const q=screened.qualificationReasons;
  const finance=summary.reconciliation.ambiguousOrders+summary.reconciliation.invalidAmountOrders;
  function decision(code,count,action,priority){
@@ -187,19 +190,14 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
   async function reconcilePaidOrders(limit=MAX_BATCH,tenantId=null){
     const scopedTenant=__sbcRequireTenantId(tenantId);
     refreshCanonicalDb();
-    const durableJobs=Array.isArray(db.fulfillmentJobs)?db.fulfillmentJobs:[];
-    // SBC_V6644_FAIR_OWNER_HOLD_BATCH: partition BEFORE the slice; large owner holds must not starve small paid orders.
-    const cap=Math.min(MAX_BATCH,Math.max(1,Number(limit)||MAX_BATCH));
-    const eligible=(db?.orders||[]).filter(o=>Number(o?.tenantId)===scopedTenant)
-      .filter(o=>!isSystemTestOrder(o)&&PAYMENT_EVIDENCE.confirmedPaid(o))
-      .filter(o=>REVENUE_GATE.needsReconciliation(o,durableJobs))
-      .filter(o=>String(o?.metadata?.kimMissionFulfillmentStarted||'')!=='true');
-    const held=eligible.filter(o=>REVENUE_GATE.orderRisk(o).ownerClearanceRequired);
-    const paid=eligible.filter(o=>!REVENUE_GATE.orderRisk(o).ownerClearanceRequired)
-      .filter(o=>!fulfillmentInFlight.has(String(o.id))).slice(0,cap);
+    const decision=fulfillmentDecision(db,scopedTenant);
+    const {coverage,held}=decision;
+    const cap=Math.min(MAX_BATCH,Math.max(1,Math.floor(Number(limit)||MAX_BATCH)));
+    // The owner and dispatch see the same eligibility. Held work cannot starve ready work.
+    const paid=decision.ready.filter(o=>!fulfillmentInFlight.has(JSON.stringify([scopedTenant,String(o.id)]))).slice(0,cap);
     const results=held.slice(0,cap).map(o=>({orderId:o.id,status:'OWNER_CLEARANCE_REQUIRED',amount:REVENUE_GATE.orderRisk(o).amount}));
     for(const order of paid){
-      const oid=String(order.id);
+      const oid=JSON.stringify([scopedTenant,String(order.id)]);
       if(fulfillmentInFlight.has(oid))continue;
       fulfillmentInFlight.add(oid);
       try{
@@ -217,7 +215,7 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
     // Holds are advisory and must not cause repeated MySQL writes every cycle.
     const attempted=results.filter(r=>r.status==='FULFILLMENT_ORCHESTRATED'||r.status==='RECOVERY').length;
     if(attempted)await persist();
-    return {processed:results.length,attempted,heldForOwner:held.length,dispatchCandidates:paid.length,results};
+    return {processed:results.length,attempted,heldForOwner:held.length,dispatchCandidates:paid.length,coverage,results};
   }
   async function cycle({limit=MAX_BATCH,reason='scheduled',tenantId=null,advisoryOnly=false}={}){
     if(state.running)return {ok:true,skipped:true,reason:'cycle_already_running'};
