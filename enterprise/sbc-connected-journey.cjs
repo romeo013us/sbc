@@ -3,7 +3,8 @@
 // Public inquiries are requests, never proof of identity, consent, booking or payment.
 const {createHash}=require('node:crypto');
 const {accessible,sameTenant,suppressed}=require('./sbc-sales-p0p1.cjs');
-const {providerCapturedSquare}=require('./v6640-payment-evidence.cjs');
+const REVENUE_TRUTH=require('./sbc-revenue-reporting-truth-v66142.cjs');
+const REVENUE_GATE=require('./v56134-god-tier-revenue.js');
 const SERVICES=new Set(['website-design','domains-hosting','business-email','google-business-visibility','social-media-setup','business-cards','flyers-marketing','led-neon-signs','ongoing-business-support','office-box','individual-web-products','florida-notary','business-launch']);
 const PACKAGES={starter:'Business Starter',custom:'Business Custom',advanced:'Business Advanced',growth:'Business Growth',visibility:'Business Visibility',platform:'Custom Business Platform'};
 const PLAYS={
@@ -107,31 +108,39 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
   // so a retry/restart can find the same durable inquiry instead of duplicating it.
   if(confirmInquiry&&!await confirmInquiry(tid,proof.customerId,proof.activityId))fail('WEBSITE_INQUIRY_UNCONFIRMED',503);
  })}
- function row(c){
+ // Reuse the same tenant-scoped receipt reconciliation as Kim and revenue reporting.
+ // Snapshot only: not a new payment rail or independent provider attestation.
+ function paidForTenant(tid){
+  const scoped=(db.orders||[]).filter(o=>sameTenant(o,tid));
+  const records=scoped.map(o=>o.testMode===true||o.sbcTest===true||parsed(o).sbcLaunchQa||REVENUE_GATE.isProtectedLaunchQaOrder(o)?{...o,testOnly:true}:o);
+  return new Set(REVENUE_TRUTH.paidSummary(records,db.customers||[],{tenantId:tid}).orders);
+ }
+ function row(c,paid=paidForTenant(c.tenantId)){
   const s=getState(c),latest=(s.inquiries||[]).at(-1),assigned=ownerFor(c);
   const pending=(s.inquiries||[]).filter(i=>i.status==='Needs review').length;
   const orders=(db.orders||[]).filter(o=>sameTenant(o,c.tenantId)&&String(o.customerId)===String(c.id));
   const customerOrders=orders.filter(o=>!parsed(o).sbcLaunchQa);
-  const activeOrders=customerOrders.filter(o=>parsed(o).customerJourney?.status!=='Delivered'&&providerCapturedSquare(o));
+  const activeOrders=customerOrders.filter(o=>parsed(o).customerJourney?.status!=='Delivered'&&paid.has(o));
   const upcoming=(db.appointments||[]).filter(a=>sameTenant(a,c.tenantId)&&String(a.customerId)===String(c.id)&&a.status==='Scheduled'&&Date.parse(a.endAt)>Date.parse(now()));
   return {customerId:c.id,businessName:c.businessName||c.contactName||'Account',assignedTo:assigned?.id||'',assignedToName:assigned?.name||assigned?.role||'Owner assignment required',
    ownerFallback:!!assigned&&String(assigned.id)!==String(c.assignedTo||''),serviceSlug:latest?.serviceSlug||'',packageId:latest?.packageId||'',intent:latest?.intent||'',
-   sourcePage:s.lastSource||'',pendingInquiries:pending,paidOrders:customerOrders.filter(providerCapturedSquare).length,openOrders:activeOrders.length,
+   sourcePage:s.lastSource||'',pendingInquiries:pending,paidOrders:customerOrders.filter(o=>paid.has(o)).length,openOrders:activeOrders.length,
    nextAction:pending?'Verify inquiry and respond':activeOrders.length?'Continue paid order checklist':upcoming.length?'Prepare confirmed appointment':'Review next follow-up',
    contactSuppressed:suppressed(c),updatedAt:c.updatedAt||c.createdAt||''};
  }
  function queue(actor,tid){if(!active(actor,tid)||!['owner','account_manager'].includes(actor.role))fail('NOT_AUTHORIZED',403);
+  const paid=paidForTenant(tid);
   const rows=(db.customers||[]).filter(c=>accessible(c,actor,tid)&&!c._recoveryProjection&&!['Deleted','Duplicate','Archived'].includes(String(c.status||'')))
-   .map(row).sort((a,b)=>b.pendingInquiries-a.pendingInquiries||b.openOrders-a.openOrders||b.updatedAt.localeCompare(a.updatedAt));
+   .map(c=>row(c,paid)).sort((a,b)=>b.pendingInquiries-a.pendingInquiries||b.openOrders-a.openOrders||b.updatedAt.localeCompare(a.updatedAt));
   return {ok:true,readOnly:!writerReady(),rows,counts:{accounts:rows.length,inquiries:rows.reduce((n,r)=>n+r.pendingInquiries,0),openOrders:rows.reduce((n,r)=>n+r.openOrders,0)}};
  }
  function ordersFor(c){return (db.orders||[]).filter(o=>sameTenant(o,c.tenantId)&&String(o.customerId)===String(c.id))}
- function orderView(o){const p=parsed(o).customerJourney,qa=!!parsed(o).sbcLaunchQa;return {id:o.id,product:o.product,price:Number(o.price)||0,paymentVerified:providerCapturedSquare(o),protectedQa:qa,
-  status:qa?'Protected QA — not customer fulfillment':providerCapturedSquare(o)?p?.status||'Paid — checklist pending':'Payment verification required',revision:p?.revision||0,
-  steps:qa?[]:p?.steps||[],previewUrl:qa?'':safeUrl(p?.previewUrl),deliveryUrl:!qa&&providerCapturedSquare(o)&&p?.status==='Delivered'?safeUrl(p?.deliveryUrl):'',customerMessage:qa?'Internal QA payment; excluded from customer revenue and delivery.':p?.customerMessage||'',
-  canApprove:!qa&&providerCapturedSquare(o)&&!!safeUrl(p?.previewUrl)&&p?.steps?.some(s=>s.key==='qa'&&s.completed)&&!p?.steps?.some(s=>s.key==='approval'&&s.completed)};}
- function detail(cid,actor,tid){const c=account(cid,actor,tid),s=getState(c);return {ok:true,readOnly:!writerReady(),account:row(c),inquiries:s.inquiries||[],events:s.events||[],
-  orders:ordersFor(c).map(orderView),appointments:(db.appointments||[]).filter(a=>sameTenant(a,tid)&&String(a.customerId)===String(c.id)),consents:s.consents||{},reminders:s.reminders||[]}}
+ function orderView(o,paid=paidForTenant(o.tenantId)){const p=parsed(o).customerJourney,qa=!!parsed(o).sbcLaunchQa;return {id:o.id,product:o.product,price:Number(o.price)||0,paymentVerified:paid.has(o),protectedQa:qa,
+  status:qa?'Protected QA — not customer fulfillment':paid.has(o)?p?.status||'Paid — checklist pending':'Payment verification required',revision:p?.revision||0,
+  steps:qa?[]:p?.steps||[],previewUrl:qa||!paid.has(o)?'':safeUrl(p?.previewUrl),deliveryUrl:!qa&&paid.has(o)&&p?.status==='Delivered'?safeUrl(p?.deliveryUrl):'',customerMessage:qa?'Internal QA payment; excluded from customer revenue and delivery.':!paid.has(o)?'Payment evidence requires reconciliation. Customer delivery is on hold.':p?.customerMessage||'',
+  canApprove:!qa&&paid.has(o)&&!!safeUrl(p?.previewUrl)&&p?.steps?.some(s=>s.key==='qa'&&s.completed)&&!p?.steps?.some(s=>s.key==='approval'&&s.completed)};}
+ function detail(cid,actor,tid){const c=account(cid,actor,tid),s=getState(c),paid=paidForTenant(tid);return {ok:true,readOnly:!writerReady(),account:row(c,paid),inquiries:s.inquiries||[],events:s.events||[],
+  orders:ordersFor(c).map(o=>orderView(o,paid)),appointments:(db.appointments||[]).filter(a=>sameTenant(a,tid)&&String(a.customerId)===String(c.id)),consents:s.consents||{},reminders:s.reminders||[]}}
  function review(cid,actor,tid,body){return transaction(()=>{const c=account(cid,actor,tid),s=editState(c),i=(s.inquiries||[]).find(i=>i.id===body.inquiryId);
   if(!i)fail('INQUIRY_NOT_FOUND',404);if(body.verified!==true)fail('CONTACT_VERIFICATION_REQUIRED');
   i.status='Reviewed';i.contactVerified=true;i.reviewedBy=actor.id;i.reviewedAt=now();c.webLeadPendingReview=s.inquiries.some(i=>i.status==='Needs review');
@@ -139,8 +148,8 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
   if(i.intent==='callback')task(c,'Confirm requested call and schedule appointment','callback:'+c.id,'Requested window: '+i.preferredWindow+' ('+i.timeZone+'). Use Account 360 booking after confirming availability.');
   event(c,'inquiry_reviewed',{inquiryId:i.id,actor:actor.id});return {ok:true,durable:true};
  })}
- function syncPaidOrder(o){
-  const c=(db.customers||[]).find(c=>sameTenant(c,o.tenantId)&&String(c.id)===String(o.customerId));if(!c||!providerCapturedSquare(o)||parsed(o).sbcLaunchQa)return false;
+ function syncPaidOrder(o,paid=paidForTenant(o.tenantId)){
+  const c=(db.customers||[]).find(c=>sameTenant(c,o.tenantId)&&String(c.id)===String(o.customerId));if(!c||!paid.has(o)||parsed(o).sbcLaunchQa)return false;
   if(parsed(o).customerJourney)return false;
   const last=(getState(c).inquiries||[]).at(-1),play=/website|starter|custom|advanced|growth/i.test(String(o.product))?'website':/card|flyer|print|sign/i.test(String(o.product))?'print':'service';
   const labels=play==='website'?{intake:'Confirm business details, services and content rights',build:'Build the private website preview',qa:'Check mobile layout, links and agreed scope'}:
@@ -150,12 +159,12 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
    steps:PLAYS[play].map(key=>({key,label:labels[key]||LABELS[key],completed:false})),previewUrl:'',deliveryUrl:'',customerMessage:'Your payment is recorded. SBC is reviewing the information needed to begin.'};
   writePlan(o,plan,now());c.status='Customer';task(c,'Start paid order: '+o.product,'delivery:'+o.id,'Complete the requirements, proof, quality, approval and delivery checklist.');event(c,'payment_confirmed',{orderId:o.id});return true;
  }
- const reconcile=(actor,tid)=>transaction(()=>{if(actor?.role!=='owner'||!active(actor,tid))fail('OWNER_REQUIRED',403);let created=0;
-  for(const o of db.orders||[])if(sameTenant(o,tid)&&syncPaidOrder(o))created++;return {ok:true,durable:true,created};});
+ const reconcile=(actor,tid)=>transaction(()=>{if(actor?.role!=='owner'||!active(actor,tid))fail('OWNER_REQUIRED',403);let created=0;const paid=paidForTenant(tid);
+  for(const o of db.orders||[])if(sameTenant(o,tid)&&syncPaidOrder(o,paid))created++;return {ok:true,durable:true,created};});
  function progress(oid,actor,tid,b){return transaction(()=>{
   const o=(db.orders||[]).find(o=>String(o.id)===String(oid)&&sameTenant(o,tid));if(!o)fail('ORDER_NOT_FOUND',404);const c=account(o.customerId,actor,tid);
   if(parsed(o).sbcLaunchQa)fail('PROTECTED_QA_ORDER',409);
-  if(!providerCapturedSquare(o))fail('PAYMENT_VERIFICATION_REQUIRED',423);syncPaidOrder(o);const p=clone(parsed(o).customerJourney);
+  const paid=paidForTenant(tid);if(!paid.has(o))fail('PAYMENT_VERIFICATION_REQUIRED',423);syncPaidOrder(o,paid);const p=clone(parsed(o).customerJourney);
   if(Number(b.expectedRevision)!==p.revision)fail('ORDER_REVISION_CONFLICT',409);
   if(b.step==='preview'){
    if(p.steps.find(s=>s.key==='release')?.completed)fail('ORDER_ALREADY_RELEASED',409);
@@ -181,10 +190,10 @@ function createService({db,id,now=()=>new Date().toISOString(),save,writerReady=
   if(!c||!a||a.active===false||String(a.customerId)!==String(c.id)||!Number.isSafeInteger(Number(c.tenantId))||Number(c.tenantId)<=0||(a.tenantId!==undefined&&!sameTenant(a,c.tenantId)))fail('CUSTOMER_LOGIN_REQUIRED',401);
   const live=(db.customers||[]).find(row=>String(row.id)===String(c.id)&&sameTenant(row,c.tenantId));if(!live)fail('CUSTOMER_LOGIN_REQUIRED',401);return live;
  }
- function portalSummary(req){const c=portalCustomer(req);return {ok:true,orders:ordersFor(c).map(o=>{const view=orderView(o);return {...view,steps:view.steps.map(s=>({key:s.key,label:s.label,completed:s.completed}))}}),appointments:(db.appointments||[]).filter(a=>sameTenant(a,c.tenantId)&&String(a.customerId)===String(c.id)).map(a=>({id:a.id,title:a.title,startAt:a.startAt,endAt:a.endAt,status:a.status,location:a.location||'',rescheduleRequest:a.rescheduleRequest?{status:a.rescheduleRequest.status,preferredWindow:a.rescheduleRequest.preferredWindow}:null}))}}
+ function portalSummary(req){const c=portalCustomer(req),paid=paidForTenant(c.tenantId);return {ok:true,orders:ordersFor(c).map(o=>{const view=orderView(o,paid);return {...view,steps:view.steps.map(s=>({key:s.key,label:s.label,completed:s.completed}))}}),appointments:(db.appointments||[]).filter(a=>sameTenant(a,c.tenantId)&&String(a.customerId)===String(c.id)).map(a=>({id:a.id,title:a.title,startAt:a.startAt,endAt:a.endAt,status:a.status,location:a.location||'',rescheduleRequest:a.rescheduleRequest?{status:a.rescheduleRequest.status,preferredWindow:a.rescheduleRequest.preferredWindow}:null}))}}
  function approve(req,oid,b){return transaction(()=>{const c=portalCustomer(req),o=ordersFor(c).find(o=>o.id===oid);if(!o)fail('ORDER_NOT_FOUND',404);
   if(parsed(o).sbcLaunchQa)fail('PROTECTED_QA_ORDER',409);
-  const stored=parsed(o).customerJourney;if(!providerCapturedSquare(o)||!stored)fail('PAYMENT_VERIFICATION_REQUIRED',423);const p=clone(stored);
+  const stored=parsed(o).customerJourney;if(!paidForTenant(c.tenantId).has(o)||!stored)fail('PAYMENT_VERIFICATION_REQUIRED',423);const p=clone(stored);
   if(Number(b.expectedRevision)!==p.revision)fail('PROOF_CHANGED_REFRESH_REQUIRED',409);
   if(!safeUrl(p.previewUrl)||!p.steps.find(s=>s.key==='qa')?.completed)fail('PROOF_NOT_READY',409);
   if(!['approve','changes_requested'].includes(b.decision))fail('INVALID_APPROVAL');
