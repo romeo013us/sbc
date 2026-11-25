@@ -1497,6 +1497,7 @@ async function sbcCommercialReadinessRefresh(){
 window.sbcCommercialReadinessRefresh=sbcCommercialReadinessRefresh;
 
 function render(){
+  document.body.classList.toggle('sbcAcademyTrainingOnly',state.view==='training');
   if(String(state.view||'').startsWith('v23-')){if(window.sbcV23View){window.sbcV23View(String(state.view).slice(4));return;}return;}
   if(window.renderMega && ['ownerpulse','approvals','automation','clienthub','commissions','fulfillment'].includes(state.view)){window.renderMega();return;}
   document.body.classList.toggle('customer-mode',state.view==='presentation');
