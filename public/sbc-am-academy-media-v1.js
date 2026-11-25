@@ -3,7 +3,7 @@
 (()=>{
  const allowed=new Set(['am-01','am-02','am-03','am-04','am-05','am-06','am-07','am-08','am-09','am-10','am-11','am-12']);
  const $=id=>document.getElementById(id),root='/academy-media/academy360/';
- let generation=0,mode='video',captionOn=true,available={video:false,audio:false,photos:0};
+ let generation=0,mode='video',captionOn=true,spanish=false,available={video:false,audio:false,photos:0};
  const tr=(es,en,spanish)=>es?spanish:en;
  const video=$('academyRecording'),audio=$('academyAudioRecording');
  function clearMedia(node){
@@ -71,6 +71,7 @@
  }
  async function render(id,language){
   const ticket=++generation,es=language==='es',lang=es?'es':'en';
+  spanish=es;
   clearMedia(video);clearMedia(audio);available={video:false,audio:false,photos:0};refreshControls();
   $('academyPhotoGallery').replaceChildren();
   if(!allowed.has(id)){$('academyVideoStatus').textContent=tr(es,'Lesson media unavailable.','Medios no disponibles.');show('video');return;}
@@ -152,9 +153,13 @@
   node.addEventListener('ended',refreshControls);
   node.addEventListener('error',()=>{
    const selected=node===video?'video':'audio';
-   if(selected==='video'){available.video=false;$('academyVideoStatus').textContent='The video failed to play; continue with the illustrated lesson.';}
-   else{available.audio=false;$('academyAudioStatus').textContent='Audio unavailable; use narrated illustration below.';}
-   clearMedia(node);show(available.video?'video':available.audio?'audio':'photos');
+   if(!available[selected]||!node.getAttribute('src'))return;
+   available[selected]=false;
+   if(selected==='video')$('academyVideoStatus').textContent=tr(spanish,'The video failed to play. Choose available audio or the illustrated lesson.','No se pudo reproducir el video. Elija el audio disponible o la lección ilustrada.');
+   else $('academyAudioStatus').textContent=tr(spanish,'Audio unavailable. Choose available video or the narrated illustration.','Audio no disponible. Elija el video disponible o la guía ilustrada con narración.');
+   clearMedia(node);
+   if(mode===selected)show(available.video?'video':available.audio?'audio':'photos');
+   else refreshControls();
   });
  }
  window.SBC_ACADEMY_VIDEO=Object.freeze({render,show,lessonIds:[...allowed]});
