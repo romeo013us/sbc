@@ -9,12 +9,12 @@ const root=path.join(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const cssLinks=html=>[...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map(m=>m[0]);
 const cssHref=link=>/href="([^"]+)"/.exec(link)?.[1]||'';
-test('the owner dashboard uses ONE content-addressed CSS bundle instead of SIX late stylesheets',()=>{
+test('the owner dashboard uses ONE content-addressed CSS bundle for SEVEN adjacent owner stylesheets',()=>{
  for(const base of ['public','browser_public']){
   const html=read(base+'/index.html');
   const links=cssLinks(html);
-  assert.equal(links.length,6,'Expected the five verified owner stylesheets plus one focused-workspace stylesheet');
-  assert.equal(links.filter(x=>x.includes('/sbc-command-center-focus-v1.css?')).length,1,'Focused workspace CSS must load once');
+  assert.equal(links.length,5,'Expected five total stylesheets after adjacent owner merge');
+  assert.equal(links.filter(x=>x.includes('/sbc-command-center-focus-v1.css?')).length,0,'Focused workspace CSS must be in the bundle, not loaded twice');
   const last=links.at(-1);
   assert.match(last,/sbc-v66-owner-ui-core\.[a-f0-9]{16}\.css/);
   assert.match(last,/data-sbc-contrast-rescue="global"/);
@@ -36,8 +36,9 @@ test('owner CSS bundle is an exact, ordered, deterministic copy of source rules 
   assert(html.includes('/'+filename));
  }
  const result=verify(root);
- assert.equal(result.components,6);
- assert.equal(result.stylesheetRequestsSaved,5);
+ assert.equal(result.components,7);
+ assert.equal(result.stylesheetRequestsSaved,6);
+ assert.equal(COMPONENTS[0],'sbc-command-center-focus-v1.css');
  assert.equal(result.bundleSha256,hash);
  const positions=COMPONENTS.map(x=>content.indexOf('/* '+x+' */'));
  assert(positions.every(x=>x>=0),'Source filenames must annotate bundle boundaries');
