@@ -25,3 +25,9 @@ Thumbs.db
 /hotfix-assets/**/*.csv
 *.sqlite
 *.db
+
+# Local database recovery artifacts must not enter source control
+sbc-backup-*.sql
+sbc-backup-*.sql.enc
+.sbc-backup-*.partial
+*.sql.enc

@@ -37,3 +37,28 @@ test('unsafe table names are refused without creating a backup',async t=>{
  await assert.rejects(writeBackup(f.db,f.out,{escape:String}),/BACKUP_TABLE_NAME_INVALID/);
  assert.deepEqual(fs.readdirSync(f.dir),[]);
 });
+
+test('encrypted backup authenticates before publishing a private recovery file',async t=>{
+ const {decryptBackup}=require('./mysql-backup.js'),crypto=require('node:crypto');
+ const f=fixture(t),key=crypto.randomBytes(32),encrypted=f.out+'.enc',recovered=path.join(f.dir,'restored.sql');
+ await writeBackup(f.db,encrypted,{escape:String,encryptionKey:key});
+ const bytes=fs.readFileSync(encrypted);
+ assert(!bytes.includes(Buffer.from('INSERT INTO')));
+ assert.equal(fs.statSync(encrypted).mode&0o777,0o600);
+ assert.throws(()=>decryptBackup(encrypted,recovered,crypto.randomBytes(32)),/BACKUP_AUTHENTICATION_FAILED/);
+ assert(!fs.existsSync(recovered));
+ decryptBackup(encrypted,recovered,key);
+ assert.match(fs.readFileSync(recovered,'utf8'),/INSERT INTO/);
+ assert.equal(fs.statSync(recovered).mode&0o777,0o600);
+ assert.throws(()=>decryptBackup(encrypted,recovered,key),/EEXIST/);
+ const corrupted=Buffer.from(bytes);corrupted[corrupted.length-1]^=1;
+ const damaged=path.join(f.dir,'damaged.enc'),output=path.join(f.dir,'damaged.sql');fs.writeFileSync(damaged,corrupted);
+ assert.throws(()=>decryptBackup(damaged,output,key),/BACKUP_AUTHENTICATION_FAILED/);
+ assert(!fs.existsSync(output));
+ assert(!fs.readdirSync(f.dir).some(n=>n.endsWith('.partial')));
+});
+test('invalid encryption key is rejected before opening a database snapshot or output',async t=>{
+ const f=fixture(t);
+ await assert.rejects(writeBackup(f.db,f.out,{escape:String,encryptionKey:Buffer.alloc(31)}),/BACKUP_ENCRYPTION_KEY_INVALID/);
+ assert.deepEqual(f.events,[]);assert.deepEqual(fs.readdirSync(f.dir),[]);
+});

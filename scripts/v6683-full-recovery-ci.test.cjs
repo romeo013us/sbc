@@ -89,7 +89,16 @@ async function main(){
     const unsafe=path.join(dir,'unsafe.sql');
     fs.writeFileSync(unsafe,fs.readFileSync(out,'utf8')+'\nUSE production;\n');
     assertDenied(processNode('mysql-restore-drill.js',[unsafe],restoredEnv),/RESTORE_REFUSE_CROSS_SCHEMA_SQL/);
-    const restored=processNode('mysql-restore-drill.js',[out],restoredEnv);
+    const encrypted=path.join(dir,'synthetic.sql.enc'),recovered=path.join(dir,'recovered.sql');
+    const encryptionEnv={SBC_BACKUP_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64')};
+    const encryptedExport=processNode('mysql-backup.js',[encrypted],{...sourceEnv,...encryptionEnv});
+    assert.equal(encryptedExport.status,0,encryptedExport.stderr);
+    assert.equal(fs.statSync(encrypted).mode&0o777,0o600);
+    assert(!fs.readFileSync(encrypted).includes(Buffer.from('INSERT INTO')));
+    const decrypted=processNode('mysql-backup.js',['--decrypt',encrypted,recovered],encryptionEnv);
+    assert.equal(decrypted.status,0,decrypted.stderr);
+    assert.equal(fs.statSync(recovered).mode&0o777,0o600);
+    const restored=processNode('mysql-restore-drill.js',[recovered],restoredEnv);
     assert.equal(restored.status,0,restored.stderr);
     const report=JSON.parse(restored.stdout);
     assert.equal(report.status,'PASS_DISPOSABLE_SQL_IMPORT');
@@ -112,6 +121,7 @@ async function main(){
       status:'PASS_SYNTHETIC_FULL_LOGICAL_RESTORE',
       tables:TABLES.length,rowsCompared:compared,tenantCount:2,
       digestEquality:'PASS_ALL_TABLES',
+      encryptedExportAndAuthenticatedRecovery:'PASS',
       badDestinations:'REFUSED',
       unsafeSql:'REFUSED',
       repeatRestore:'REFUSED',
