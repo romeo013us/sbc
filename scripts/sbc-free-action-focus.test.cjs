@@ -106,3 +106,19 @@ function res(){return {code:200,headers:{},setHeader(k,v){this.headers[k]=v;retu
  assert.equal(reply.body.ok,false);
  console.log('[SUPER SBC NO-PAID-AI] PASS: owner/manager scoped rules, no contact, no writes, predictable next actions, fail closed');
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1});
+
+;(()=>{
+ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+ const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,"public/sbc-free-actions-v1.css"),'utf8');
+ const start='/* SBC DESIGN CONTRACT V1 BEGIN */',end='/* SBC DESIGN CONTRACT V1 END */';
+ assert.equal(css.split(start).length,2,'exactly one shared workspace design contract');
+ assert.equal(css.split(end).length,2,'exactly one end marker');
+ const shared=css.slice(css.indexOf(start),css.indexOf(end)+end.length);
+ const canonical=fs.readFileSync(path.join(root,'design-system/workspace-v1.css'),'utf8').trim();
+ assert.equal(shared,canonical,'the delivered styles must contain the exact checked-in shared contract');
+ for(const token of ['--sbc-ds-space-4','--sbc-ds-touch','--sbc-ds-radius-panel','--sbc-ds-type-title','--sbc-ds-focus-ring','--sbc-ds-motion'])assert(shared.includes(token),token);
+ assert(shared.includes('prefers-reduced-motion:reduce'));assert(shared.includes('forced-colors:active'));assert(shared.includes('aria-pressed=true'));
+ assert(shared.includes('.sbc-actions-board'));assert(shared.includes('#officeBoxDailyFocus'));
+ assert.equal(css,fs.readFileSync(path.join(root,'browser_public/sbc-free-actions-v1.css'),'utf8'),'deployed mirrors must match');
+ console.log('SBC SHARED DESIGN V1 PASS',crypto.createHash('sha256').update(shared).digest('hex'));
+})();
