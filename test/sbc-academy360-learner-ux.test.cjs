@@ -40,3 +40,15 @@ test('all classroom and staff navigation changes are mirrored into both release 
  const names=['sbc-am-academy.html','sbc-am-academy-v1.js','sbc-am-academy-v1.css','sbc-account-manager-v1.html','app.js'];
  for(const name of names)if(fs.existsSync(path.join(root,'browser_public',name)))assert.equal(src('public/'+name),src('browser_public/'+name),name);
 });
+
+test('focused Academy exposes twenty-character notes, visible next action and owner lesson navigation',()=>{
+ const html=src('public/sbc-am-academy.html'),js=src('public/sbc-am-academy-v1.js'),app=src('public/app.js');
+ assert.equal((html.match(/minlength="20"/g)||[]).length,2);
+ assert(!html.includes('minlength="80"'));
+ for(const id of ['previewNext','clearNarration','proofNext','caseCount','practiceCount'])assert(html.includes('id="'+id+'"'),id);
+ assert(html.indexOf('id="academyStepGuide"')<html.indexOf('id="academyMore"'));
+ assert(js.includes('if(owner())')&&js.includes("$('previewNext').onclick=nextLesson"));
+ assert.match(js,/trim\(\)\.length<20/);
+ assert(app.includes('sbcAcademyTrainingOnly'));
+ assert(src('public/sbc-am-academy-v1.css').includes('.proof-step'));
+});
