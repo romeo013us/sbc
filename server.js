@@ -450,7 +450,7 @@ const V56_AUTONOMY = require('./enterprise/v56-autonomous-operations');
 const BUILD_VERSION = RELEASE_VERSION;
 /* SBC_DEPLOYED_BUILD_PROOF */
 const SBC_DEPLOYED_BUILD = require('./config/deployed-build.cjs');
-app.use(['/healthz','/readyz'], SBC_DEPLOYED_BUILD.healthHeaders);
+app.use(['/healthz','/readyz','/api/health'], SBC_DEPLOYED_BUILD.healthHeaders);
 app.get('/healthz',async(req,res)=>{
   try{
     const dbReady=Boolean(mysqlPool);
