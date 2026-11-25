@@ -97,3 +97,18 @@ test('English and Spanish assessments retain the same server grading and complet
 test('branching objection outcomes are graded from the actual path and critical violations override the score',()=>{
  const D=require('../enterprise/sbc-am-dialogue-v2.cjs');assert.equal(D.grade([0,0,0]).passed,true);assert.equal(D.grade([2,0]).passed,false);assert.deepEqual(D.grade([2,0]).critical,['truthfulness']);assert.throws(()=>D.grade([0,0]),/INCOMPLETE/);assert.throws(()=>D.grade([0,0,0,0]),/INCOMPLETE/);
 });
+
+test('twenty trimmed characters accepted for lesson notes; shorter notes and real contacts rejected',async()=>{
+ const P=require('../enterprise/sbc-am-practice-v2.cjs'),short='a'.repeat(19),valid='Fictional owner asks for details.';
+ assert.throws(()=>P.validateText(short+'   '),/CASE_NOTE_LENGTH/);
+ assert.equal(P.validateText('a'.repeat(20)),'a'.repeat(20));
+ assert.throws(()=>P.validateText('Contact person@example.com for details.'),/REAL_CONTACT_OR_SECRET/);
+ const h=harness();await h.request('POST','/window/start');
+ const params={moduleId:'am-01'};
+ assert.equal((await h.request('POST','/roleplay/:moduleId',{params,body:{response:short}})).status,422);
+ const saved=await h.request('POST','/roleplay/:moduleId',{params,body:{response:valid}});
+ assert.equal(saved.status,200);
+ assert.equal(G.practiced(T.ensureState(h.db),'am','am-01'),true);
+ const lab=await h.request('POST','/lab/:moduleId',{params,body:{lang:'en',decisions:{truth:0,approval:2,next:0},artifact:valid}});
+ assert.equal(lab.status,200);assert.equal(lab.data.passed,false);
+});
