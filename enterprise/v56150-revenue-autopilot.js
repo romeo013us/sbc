@@ -151,9 +151,9 @@ async function dunningSnapshot(){
   return {configured:true,states:rows};
 }
 async function controlTower(){
-  const customers=Array.isArray(ctx?.db?.customers)?ctx.db.customers:[];const orders=Array.isArray(ctx?.db?.orders)?ctx.db.orders:[];
-  const paid=REVENUE_TRUTH.paidSummary(orders.filter(o=>Number(o.tenantId??o.tenant_id)===1),customers);
-  const base={version:VERSION,generatedAt:now(),automation:status(),funnel:{leads:customers.length,qualified:customers.filter(eligible).length,demos:customers.filter(c=>c.autopilotDemoId).length,paidOrders:paid.orderCount,paidRevenue:paid.revenue,paidEvidence:paid.proof,qualifiedEstimateOnly:true}};
+  const customers=(Array.isArray(ctx?.db?.customers)?ctx.db.customers:[]).filter(c=>Number(c?.tenantId??c?.tenant_id)===1&&!REVENUE_TRUTH.isQaCustomer(c));const orders=Array.isArray(ctx?.db?.orders)?ctx.db.orders:[];
+  const paid=REVENUE_TRUTH.paidSummary(orders,Array.isArray(ctx?.db?.customers)?ctx.db.customers:[],{tenantId:1});
+  const base={version:VERSION,generatedAt:now(),automation:status(),funnel:{leads:customers.length,qualified:customers.filter(eligible).length,demos:customers.filter(c=>c.autopilotDemoId).length,paidOrders:paid.orderCount,paidRevenue:paid.revenue,paidEvidence:paid.proof,revenueReconciliation:paid.reconciliation,qualifiedEstimateOnly:true}};
   if(!ctx?.mysqlPool)return {...base,durable:false};
   const [funnel]=await ctx.mysqlPool.query(`SELECT event_type,COUNT(*) count FROM sbc_revenue_funnel_events WHERE tenant_id=1 GROUP BY event_type ORDER BY count DESC`);
   const [aff]=await ctx.mysqlPool.query(`SELECT COALESCE(SUM(amount_cents),0) cents,COUNT(*) entries FROM sbc_affiliate_ledger WHERE tenant_id=1`);
