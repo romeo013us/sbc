@@ -696,6 +696,41 @@ jobs:
           name: SBC-CANONICAL-FRONTEND-VERIFICATION-ONLY
           path: dist-stage/CANONICAL-FRONTEND-PROOF.json
           retention-days: 30
+      - name: Build and verify clean-directory canonical runtime candidate
+        run: |
+          set -euo pipefail
+          python3 scripts/test_v66_canonical_candidate.py
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          python3 scripts/v66_canonical_candidate.py dist-stage/SBC-V66-QUOTE-SAFETY-STAGING.zip dist-stage/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip --expected-commit "$(git rev-parse HEAD)" > dist-stage/CANONICAL-RUNTIME-REPORT.json
+          mkdir "$tmp/clean"
+          unzip -q dist-stage/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip -d "$tmp/clean"
+          (
+            cd "$tmp/clean"
+            test ! -e browser_public
+            node scripts/v66-deployment-artifact-gate.cjs .
+            node scripts/v66155-release-hygiene.cjs --inventory .
+            SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs
+            npm install --omit=dev --no-audit --no-fund
+            npm run build
+            SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs
+            mkdir browser_public
+            if SBC_RELEASE_PREFLIGHT_ONLY=1 node sbc-godaddy-flat-entrypoint.cjs; then
+              echo 'Canonical candidate accepted an unsafe overlay' >&2
+              exit 1
+            fi
+            rmdir browser_public
+          )
+          (cd dist-stage && sha256sum -c SBC-V66-QUOTE-SAFETY-STAGING.zip.sha256)
+          cat dist-stage/CANONICAL-RUNTIME-REPORT.json
+      - name: Upload canonical runtime candidate (clean directory only; never publish)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SBC-CANONICAL-RUNTIME-CANDIDATE-CLEAN-DIRECTORY-ONLY
+          path: |
+            dist-stage/SBC-V66-CANONICAL-RUNTIME-CANDIDATE.zip
+            dist-stage/CANONICAL-RUNTIME-REPORT.json
+          retention-days: 30
       - name: Upload isolated staging candidate (never publish)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
