@@ -11,6 +11,8 @@ function __sbcRequireTenantId(value){const n=Number(value);if(!Number.isSafeInte
  */
 const VERSION='56.13.5-KIM-MISSION';
 const PAYMENT_EVIDENCE=require('./v6640-payment-evidence.cjs');
+const FACTORY=require('./sbc-intelligence-factory.cjs');
+const {performance}=require('node:perf_hooks');
 const REVENUE_TRUTH=require('./sbc-revenue-reporting-truth-v66142.cjs');
 const REVENUE_GATE=require('./v56134-god-tier-revenue.js');
 // SBC_V6642_KIM_MISSION_FINANCIAL_GOVERNANCE: share verified payment and durable fulfillment rules.
@@ -111,7 +113,7 @@ function fulfillmentDecision(db,tenant){
  }
  return {summary,coverage,ready,held};
 }
-function operatingPlan(db,screened){
+function operatingPlan(db,screened,started){
  const {summary,coverage,ready:dispatch,held:clearance}=fulfillmentDecision(db,screened.tenantId);
  const ready=coverage==='SCOPED_SNAPSHOT'?dispatch.length:null,held=coverage==='SCOPED_SNAPSHOT'?clearance.length:null;
  const q=screened.qualificationReasons;
@@ -119,7 +121,7 @@ function operatingPlan(db,screened){
  function decision(code,count,action,priority){
   return {code,count,action,priority,status:count===null?'EVIDENCE_REQUIRED':count>0?'REVIEW_REQUIRED':'NO_ITEMS_IN_SNAPSHOT',execution:'HUMAN_REVIEW'};
  }
- return {schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',
+ const plan={schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',
   coverage:{customers:'SCOPED_SNAPSHOT',orders:'SCOPED_SNAPSHOT',fulfillment:coverage},
   commercial:{recognizedRevenueCents:summary.revenueCents,recognizedPaidOrders:summary.orderCount,
    paymentIdentityConflicts:summary.reconciliation.paymentIdentityConflicts,reconciliationOrders:finance,proof:summary.proof},
@@ -132,6 +134,8 @@ function operatingPlan(db,screened){
   ],
   limitations:'Canonical in-process snapshot only; not independent provider verification or an execution authorization.'
  };
+ plan.intelligenceFactory=FACTORY.buildFactory(plan,started);
+ return plan;
 }
 function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain,closer,consultative,revenueSupervisor,globalBIOS,superbrain,dispatchCall,godKim,createConsultativeCheckout,createFulfillmentJobsForOrder,processReadyFulfillmentJobs,vendorCapabilities,catalog,sendCustomerStatus,ownerThreshold=10000,logger=console}={}){
   // SBC_V6628_KIM_CANONICAL_DB_REBIND: refresh the CRM object after async MySQL hydration.
@@ -221,11 +225,12 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
     if(state.running)return {ok:true,skipped:true,reason:'cycle_already_running'};
     refreshCanonicalDb();
     if(advisoryOnly){
+      const started=performance.now();
       const screened=sbcAdvisoryScreen(db,tenantId,limit,eligible,recentMission);
       // Plain production logs should explain zero qualified prospects without
       // weakening outreach rules or exposing any customer-identifying data.
       try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage}));}catch(_){/* diagnostics never block runtime */}
-      return {...screened,operatingPlan:operatingPlan(db,screened)};
+      return {...screened,operatingPlan:operatingPlan(db,screened,started)};
     }
     state.running=true;const started=Date.now();
     try{
