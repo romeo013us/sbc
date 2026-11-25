@@ -5,12 +5,12 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {spawnSync}=require('node:child_process');
 const PALETTE=['#0A192F','#0066CC','#FF6B00','#FFFFFF'];
 const COPY=[
- ['Websites','Build your online presence','A professional website for your business','Explore website design','Make your first impression count','A mobile-friendly home for your brand'],
- ['Hosting','Give your website a home','Domains and hosting for your next step','Explore hosting','Start with the right domain','Build your digital foundation'],
- ['Printing','Make your brand tangible','Business cards, flyers and more','Explore printing','Bring your brand into the real world','Professional materials for your next meeting'],
- ['Office Box','Organize your business','Manage leads and follow-ups in one place','Explore Office Box','Keep your next steps organized','Give your customer workflow a home'],
- ['SEO','Help customers find you','Improve your online business visibility','Explore SEO','Be easier to discover','Build a stronger online presence'],
- ['Notary','Get your documents ready','Ask about Florida notary services','Explore notary services','Professional notary assistance','Contact us about your documents']
+ ['Websites','Build your online presence','A professional website for your business','Explore website design','Make your first impression count','A mobile-friendly home for your brand','Turn visits into inquiries','Give customers a clear way to contact you'],
+ ['Hosting','Give your website a home','Domains and hosting for your next step','Explore hosting','Start with the right domain','Build your digital foundation','Start your business online','Ask about domains and website hosting'],
+ ['Printing','Make your brand tangible','Business cards, flyers and more','Explore printing','Bring your brand into the real world','Professional materials for your next meeting','Make every introduction count','Ask about printed materials for your brand'],
+ ['Office Box','Organize your business','Manage leads and follow-ups in one place','Explore Office Box','Keep your next steps organized','Give your customer workflow a home','Plan your next follow-up','Keep track of business opportunities'],
+ ['SEO','Help customers find you','Improve your online business visibility','Explore SEO','Be easier to discover','Build a stronger online presence','Improve your local visibility','Ask about search and business profile services'],
+ ['Notary','Get your documents ready','Ask about Florida notary services','Explore notary services','Professional notary assistance','Contact us about your documents','Plan your notary appointment','Ask about document and ID requirements']
 ];
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const fail=code=>{throw Error(code)};
@@ -54,15 +54,15 @@ function wrap(text,limit){
 }
 function svgCard({logo,slot,index,variant,width,height}){
  if(!Buffer.isBuffer(logo)||logo.length<100||logo[0]!==255||logo[1]!==216)fail('SBC_LOGO_JPEG_REQUIRED');
- const service=COPY[index%COPY.length],alt=(Math.floor(index/6)+variant)%2;
- const headline=service[alt?4:1],value=service[alt?5:2],cta=service[3];
+ const service=COPY[index%COPY.length],alt=Math.floor(index/6)%3;
+ const headline=service[[1,4,6][alt]],value=service[[2,5,7][alt]],cta=service[3];
  // Distinct compositions use clean graphic motifs, not random noise or pixel tweaks.
  const seed=crypto.createHash('sha256').update(slot.key+':'+variant).digest();
  const style=(index+variant)%8,white=style===2||style===5||style===7;
  const bg=white?PALETTE[3]:PALETTE[0],ink=white?PALETTE[0]:PALETTE[3];
  const accent=PALETTE[1+seed[0]%2],secondary=accent===PALETTE[1]?PALETTE[2]:PALETTE[1];
  const w=width,h=height,pad=Math.round(w*.065),compact=h<w*.75;
- const top=Math.round(h*(compact?.23:.30)),font=Math.round(w*(compact?.052:.064));
+ const top=Math.round(h*(compact?.30:.30)),font=Math.round(w*(compact?.052:.064));
  const side=style%2===0,visualX=side?Math.round(w*.75):Math.round(w*.28),visualY=Math.round(h*(compact?.55:.73));
  const radius=Math.round(Math.min(w,h)*.18);
  const textX=pad,textY=top+font;
@@ -125,11 +125,17 @@ function render(svg,w,h,renderer){
  const grid=imageCommand(['png:-','-resize','9x8!','-colorspace','Gray','-depth','8','gray:-'],png,renderer);
  return {png,sha256:hash(png),dhash:dhash(grid)};
 }
-function generate({startDay,logo,history=[],renderer}={}){
+function generate({startDay,logo,history=[],renderer,targetSlots}={}){
  if(!Array.isArray(history))fail('INVALID_ASSET_HISTORY');for(const row of history)validateFingerprint(row);
  const accepted=[];
- for(const [index,slot] of slots(startDay).entries()){
-  const [width,height]=index%2?[1200,630]:[1080,1080];let row;
+ const requested=targetSlots===undefined?slots(startDay):targetSlots;
+ if(!Array.isArray(requested)||requested.length<1||requested.length>14||new Set(requested.map(s=>s?.key)).size!==requested.length)fail('INVALID_TARGET_SLOT');
+ for(const slot of requested){
+  const exact=slots(slot?.day).find(s=>s.key===slot.key&&s.at===slot.at&&s.hour===slot.hour);
+  if(!exact)fail('INVALID_TARGET_SLOT');
+  // Calendar-derived identity keeps copy consistent when filling a partial queue.
+  const index=Math.floor(Date.parse(slot.day+'T00:00:00Z')/86400000)*2+(slot.hour===22?1:0);
+  const [width,height]=slot.hour===22?[1200,630]:[1080,1080];let row;
   for(let variant=0;variant<48;variant++){
    const card=svgCard({logo,slot,index,variant,width,height});
    const pixels=render(card.svg,width,height,renderer);
