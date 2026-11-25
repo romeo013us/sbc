@@ -6,6 +6,7 @@ const assert=require('assert');
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const server=read('server.js');
+const legacyTraining=read('routes/sbc-legacy-training-v2.cjs');
 const growthRoute=read('routes/v56240-autonomous-growth-hardening.js');
 const app=read('public/app.js');
 const browserApp=read('browser_public/app.js');
@@ -47,9 +48,9 @@ check('release identity and visible shell match current V66.0.0',()=>{
   assert.match(growthUi,/SBC OS V65\.1\.\d+/);
 });
 check('recovery-mode Training GET uses detached read-only catalog and never saves',()=>{
-  assert.match(server,/const recoveryReadOnly=Boolean\(MYSQL_RECOVERY_REQUIRED\);[\s\S]*const sourceDb=recoveryReadOnly\?\{\.\.\.db,settings:\{\.\.\.\(db\.settings\|\|\{\}\),trainingCenterV2:/);
-  assert.match(server,/if\(!recoveryReadOnly && \(repairedTraining\.changed \|\| s\.assignments\.length!==before \|\| s\.courses\.length!==beforeCourses\)\) await TRAINING_SYSTEM\.saveState/);
-  assert.match(server,/recoveryRequired:true,readOnly:true,message:'Recovery lock active\. Training content is available for viewing/);
+  assert.match(legacyTraining,/const recoveryReadOnly=Boolean\(MYSQL_RECOVERY_REQUIRED\);[\s\S]*const sourceDb=recoveryReadOnly\?\{\.\.\.db,settings:\{\.\.\.\(db\.settings\|\|\{\}\),trainingCenterV2:/);
+  assert.match(legacyTraining,/if\(!recoveryReadOnly && \(repairedTraining\.changed \|\| s\.assignments\.length!==before \|\| s\.courses\.length!==beforeCourses\)\) await TRAINING_SYSTEM\.saveState/);
+  assert.match(legacyTraining,/recoveryRequired:true,readOnly:true,message:'Recovery lock active\. Training content is available for viewing/);
   assert.match(training,/const LEGACY_IMPORTED_COURSES = \[/);
 });
 check('built-in Academy catalog is visible from an isolated recovery snapshot without changing source DB',()=>{
