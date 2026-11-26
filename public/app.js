@@ -764,7 +764,7 @@ function sbcOwnerDailyModel(data, now=new Date(), capture=window.sbcRecordedSqua
  const today=day(now),orders=rows('orders'),quotes=rows('quotes'),customers=rows('customers'),tasks=rows('tasks'),appointments=rows('appointments'),calls=rows('callReports'),users=rows('users'),renewals=rows('renewals');
  const eligible=customers?.filter(x=>x&&!x._recoveryProjection&&!['Customer','Lost','Do Not Call','Closed','Duplicate','Not Qualified'].includes(String(x.status||''))&&!/sbc system test|full-cycle test|do not service/i.test([x.businessName,x.business_name,x.name,x.source,x.notes].join(' ')));
  let revenueCents=null;
- if(orders&&typeof capture==='function'&&today){const seen=new Map();let conflict=false;for(const o of orders){const e=capture(o);if(!e)continue;const prior=seen.get(e.paymentId);if(prior&&(prior.cents!==e.cents||prior.capturedAt!==e.capturedAt)){conflict=true;break;}seen.set(e.paymentId,e);}if(!conflict)revenueCents=[...seen.values()].filter(e=>day(e.capturedAt)===today).reduce((n,e)=>n+e.cents,0);}
+ if(orders&&typeof capture==='function'&&today){const seen=new Map(),reversed=new Set();let conflict=false;for(const o of orders){const e=capture(o,true);if(!e)continue;if(e.reversed){reversed.add(e.paymentId);continue;}const prior=seen.get(e.paymentId);if(prior&&(prior.cents!==e.cents||prior.capturedAt!==e.capturedAt)){conflict=true;break;}seen.set(e.paymentId,e);}if(!conflict)revenueCents=[...seen.values()].filter(e=>!reversed.has(e.paymentId)&&day(e.capturedAt)===today).reduce((n,e)=>n+e.cents,0);}
  const openQuotes=quotes?.filter(q=>q&&!q.sbcTest&&!q.testMode&&!['Won','Paid','Lost'].includes(q.status));
  const count=(a,fn)=>a===null||a===undefined?null:a.filter(fn).length;
  const digital=d.ecosystem?.orderPipelines?.digital?.orders;

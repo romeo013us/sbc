@@ -10,7 +10,7 @@
   const today2=()=>new Date().toISOString().slice(0,10);
   // Revenue-classification parity with v6640-payment-evidence (SBC-recorded provider
   // metadata, NOT independent settlement). Status-only and QA orders never count.
-  function recordedSquareCapture(o){
+  function recordedSquareCapture(o, includeReversal=false){
     if(!o||o.sbcTest===true||o.testMode===true)return false;
     let notes={};try{if(typeof o.notes==='string'&&o.notes.trim().startsWith('{'))notes=JSON.parse(o.notes)}catch(_){notes={};}
     if(/sbc system test|full-cycle test|do not service/i.test(String(o.notes||'')+' '+String(o.product||'')+' '+String(o.customerName||'')))return false;
@@ -19,9 +19,9 @@
     const field=k=>o[k]||parsed[k]||metadata[k]||notes[k]||'';
     const state=String(field('squarePaymentStatus')).trim().toUpperCase();
     const payment=String(o.paymentStatus||'').trim().toUpperCase();
-    if(['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED'].includes(state)||
-       ['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED'].includes(payment))return false;
     const sqOrder=String(field('squareOrderId')).trim(),sqPayment=String(field('squarePaymentId')).trim();
+    if(['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED'].includes(state)||
+       ['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED'].includes(payment))return includeReversal&&sqPayment?{paymentId:sqPayment,reversed:true}:false;
     const capturedAt=String(field('squarePaymentCompletedAt')).trim();
     const capturedUsd=Number(o.price??o.total);
     return sqOrder&&sqPayment&&['PAID','COMPLETED'].includes(state)&&capturedAt&&Number.isFinite(Date.parse(capturedAt))&&

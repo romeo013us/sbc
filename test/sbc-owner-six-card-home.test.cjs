@@ -21,6 +21,10 @@ test('daily revenue counts only unique recorded Square captures for the Eastern 
  const conflicting={...fixture,orders:[paid,{...paid,id:'different',price:499}]};
  assert.equal(w.dailyModel(conflicting,now,w.sbcRecordedSquareCapture).revenueCents,null);
 });
+test('reversal evidence excludes a duplicate captured payment, regardless of row order',()=>{
+ const w=load(), reversal={...paid,id:'refund-row',paymentStatus:'REFUNDED'};
+ for(const orders of [[paid,reversal],[reversal,paid]])assert.equal(w.dailyModel({...fixture,orders},now,w.sbcRecordedSquareCapture).revenueCents,0);
+});
 test('missing source data is unavailable rather than fabricated zero revenue',()=>{
  const w=load();
  assert.equal(w.dailyModel({},now,w.sbcRecordedSquareCapture).revenueCents,null);
