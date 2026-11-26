@@ -1,7 +1,7 @@
 /* SBC Account Portfolios — owner workflows, no extra CRM or subscriptions. */
 (function(){
 'use strict';
-if(window.SBC_ACCOUNT_PORTFOLIOS)return;
+if(window.SBC_ACCOUNT_PORTFOLIOS&&window.SBC_ACCOUNT_PORTFOLIOS!==window.__SBC_ACCOUNT_PORTFOLIOS_LAZY__)return;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function owner(){return window.state?.me?.role==='owner'}
 const root='/api/v6606/crm/account-portfolios';
@@ -157,4 +157,5 @@ function open(accountId){
  refreshSummary();
 }
 window.SBC_ACCOUNT_PORTFOLIOS=Object.freeze({open});
+delete window.__SBC_ACCOUNT_PORTFOLIOS_LAZY__;
 })();

@@ -24,7 +24,7 @@
  }
  if(typeof module==='object'&&module.exports){module.exports={createLoader};return;}
  if(!root||root.sbcLoadWorkstation)return;
- const manifest=Object.freeze({marketing:Object.freeze(['/sbc-market-intelligence.js?v=20261116-prospect-offline-v3','/sbc-v6567-marketing-hub.js?v=20261125-lazy-pilot']), 'academy-read-aloud':Object.freeze(['/sbc-training-read-aloud.js?v=20261125-lazy-academy']), 'website-studio':Object.freeze(['/sbc-website-production-v1.js?v=20261116-zip-proposals'])});
+ const manifest=Object.freeze({marketing:Object.freeze(['/sbc-market-intelligence.js?v=20261116-prospect-offline-v3','/sbc-v6567-marketing-hub.js?v=20261125-lazy-pilot']), 'academy-read-aloud':Object.freeze(['/sbc-training-read-aloud.js?v=20261125-lazy-academy']), 'website-studio':Object.freeze(['/sbc-website-production-v1.js?v=20261116-zip-proposals']), 'account-portfolios':Object.freeze(['/sbc-account-portfolios-v1.js?v=20261126-lazy-owner'])});
  root.SBC_LAZY_MODULES=manifest;
  const load=root.sbcLoadWorkstation=createLoader(manifest,url=>new Promise((resolve,reject)=>{
   const tag=document.createElement('script');tag.src=url;tag.async=false;
