@@ -85,7 +85,11 @@ test('Website Production replaces small-demo UI and preserves CRM action compati
  assert.doesNotMatch(source,/SBC Demo Studio|small demo|Generate Demo/);
  for(const name of ['public/index.html','browser_public/index.html']){
   const html=read(name);
-  assert.match(html,/sbc-website-production-v1\.js/);
+  const dir=name.split('/')[0],loader=read(dir+'/sbc-workstation-loader-v1.js');
+  assert.doesNotMatch(html,/<script\b[^>]*\bsrc="\/sbc-website-production-v1\.js/);
+  assert.match(html,/id="sbc-lazy-website-studio"/);
+  assert.match(html,/w\.generateWebsiteDemo=proxy\.build/);
+  assert.match(loader,/'website-studio':Object\.freeze\(\['\/sbc-website-production-v1\.js\?v=[^']+'\]\)/);
   assert.doesNotMatch(html,/src="\/sbc-demo-studio-v6526\.js/);
  }
  for(const name of ['public/sbc-customer360-workspace-v6525.js','browser_public/sbc-customer360-workspace-v6525.js']){
