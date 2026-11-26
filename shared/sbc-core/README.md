@@ -1,0 +1,5 @@
+# SBC Core v1 — coordinated contract
+
+The identical vendored module and tests in Command Center and Office Box define a dependency-free compatibility baseline. The workspace CSS is SHA-256 pinned. The CI gate pins the exact contract source, using its Git blob identity. This is a coordinated vendored contract, not a published package or a live cross-repository compatibility service. Change the contract, version, pin, tests and both product revisions together, with paired acceptance before deployment.
+
+Payment evidence is a normalized advisory record only. Provider signature verification, provider account identity, canonical tenant mapping, provider readback, persistent deduplication, out-of-order state handling, reconciliation and entitlement decisions remain separate responsibilities. A matching event key with a differing evidence hash is a conflict, not a new payment. Capture/refund/dispute are evidence categories, not permission to issue money or grant access. No financial runtime or schema changes are introduced by this contract.
