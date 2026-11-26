@@ -11,7 +11,7 @@ const VERSION='56.9.2';
 // Historical engine VERSION is preserved for rollback/test compatibility.
 // The active package release is validated explicitly here rather than forcing
 // every newer additive release to masquerade as V56.9.2/V56.10.
-const ACTIVE_PACKAGE_RELEASE='66.0.0'; /* Historical compatibility marker: ACTIVE_PACKAGE_RELEASE='60.4.5'. */
+const ACTIVE_PACKAGE_RELEASE=require('../config/release-identity').RELEASE_VERSION; /* Historical compatibility marker: ACTIVE_PACKAGE_RELEASE='60.4.5'. */
 // V56.25.3 is the active consolidated production release. Older releases remain rollback-compatible.
 // Older V56.13.1 remains a supported rollback release.
 const COMPATIBLE_PACKAGE_RELEASES=Object.freeze(new Set(['66.0.0','65.1.66','65.1.64',VERSION,ACTIVE_PACKAGE_RELEASE,'60.1.2','60.3.0','60.1.1','60.1.0','60.0.0','58.3.0','56.25.0','56.24.2','56.22.0','56.23.0','56.21.0','56.20.0','56.18.0','56.17.0','56.16.0','56.15.0','56.14.0','56.13.3','56.13.1']));
