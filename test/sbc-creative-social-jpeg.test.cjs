@@ -1,0 +1,20 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+const {createHash}=require('node:crypto');
+const {createLocalMediaRenderer}=require('../enterprise/creative-intelligence/local-media.cjs');
+const {stageSocialJpeg}=require('../enterprise/creative-intelligence/social-jpeg.cjs');
+const ffmpeg='/usr/bin/ffmpeg',ffprobe='/usr/bin/ffprobe',hash=b=>createHash('sha256').update(b).digest('hex');
+test('approved marketing PNG becomes a verified 1080-square JPEG with pinned logo; never publishes',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'sbc-social-test-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const render=createLocalMediaRenderer({ffmpeg,ffprobe});const input=await render.renderImage({format:'landscape',palette:'midnight',brand:'SBC',headline:'Better websites',detail:'Make your business visible',cta:'Contact us'});
+ const logo=await render.renderImage({format:'square',palette:'ink',brand:'Fixture',headline:'Test logo',detail:'Test only',cta:'Test'});
+ const logoPath=path.join(root,'logo.png');await fs.writeFile(logoPath,logo.bytes);
+ let state='approved';const item={asset:{id:'a'.repeat(64),tenantId:7,projectId:'sbc-marketing',mime:'image/png',sha256:hash(input.bytes),alt:'Website graphic'},bytes:input.bytes};
+ const reviews={get:()=>({state,version:1,assetId:item.asset.id}),exportApproved:async()=>{if(state!=='approved')throw Error('REVIEW_REQUIRED');return item;}};
+ const options={reviews,tenantId:7,jobId:'job-1',ffmpeg,ffprobe,logoPath,logoSha256:hash(logo.bytes),outputRoot:root};
+ await assert.rejects(stageSocialJpeg({...options,logoSha256:'0'.repeat(64)}),/LOGO_INTEGRITY/);
+ state='rejected';await assert.rejects(stageSocialJpeg(options),/REVIEW_REQUIRED/);state='approved';
+ const result=await stageSocialJpeg(options);assert.equal(result.width,1080);assert.equal(result.height,1080);assert.equal(result.publicationReady,false);assert.equal(result.mime,'image/jpeg');assert.equal(hash(await fs.readFile(path.join(root,result.file))),result.sha256);assert(result.bytes>=10000&&result.bytes<=4*1024*1024);assert.deepEqual(await stageSocialJpeg(options),result);
+ item.asset.projectId='site-private';await assert.rejects(stageSocialJpeg(options),/INVALID_MARKETING_ASSET/);
+});
