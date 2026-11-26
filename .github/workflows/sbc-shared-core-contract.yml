@@ -15,6 +15,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test scripts/sbc-core-contract.test.cjs
+      - run: node --test scripts/sbc-core-contract.test.cjs shared/sbc-core/migrate.test.cjs
       - run: |
           echo '603fac3aec0da181cd325d7a53188ece76958cbe  shared/sbc-core/index.cjs' | while read expected file; do test "$(git hash-object "$file")" = "$expected" || exit 1; done
