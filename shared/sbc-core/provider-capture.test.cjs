@@ -1,0 +1,16 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),{createHash}=require('node:crypto');
+const {createCaptureAdapter}=require('./provider-capture.cjs');
+function fixture(provider,change={}){
+ const square=provider==='square',accountId=square?'merchant1':'acct_1',environment='sandbox',paymentId=square?'payment1':'pi_1';
+ const payment=square?{id:paymentId,status:'COMPLETED',order_id:'order1',location_id:'location1',amount_money:{amount:19900,currency:'USD'}}:{id:paymentId,object:'payment_intent',status:'succeeded',customer:'cus_1',amount_received:19900,currency:'usd',livemode:false};
+ const event=square?{type:'payment.updated',merchant_id:accountId,event_id:'event1',created_at:'2026-11-26T12:00:00Z',data:{id:paymentId,object:{payment}}}:{id:'evt_1',type:'payment_intent.succeeded',account:accountId,livemode:false,created:1795694400,data:{object:payment}};
+ const binding={tenantRef:'sbc:1',provider,accountId,environment,paymentId,amountMinor:19900,currency:'USD',...(square?{orderId:'order1',locationId:'location1'}:{customerId:'cus_1'})};
+ const calls=[];const raw=Buffer.from(JSON.stringify({...event,...change.event}));
+ const adapter=createCaptureAdapter({provider,accountId,environment,verifySignature:(b,s)=>b.equals(raw)&&s==='valid',resolveBinding:async()=>({...binding,...change.binding}),readPayment:async()=>({accountId,environment,payment:{...payment,...change.payment},...change.scope}),ingest:async(e,o)=>{calls.push({e,o});return {status:'COMMITTED',effect:'none'};}});
+ return {raw,adapter,calls};
+}
+test('both providers ingest capture evidence from signed bytes and trusted matching readback',async()=>{for(const p of ['square','stripe']){const f=fixture(p);assert.equal((await f.adapter(f.raw,'valid')).status,'COMMITTED');const e=f.calls[0].e;assert.equal(e.provider,p);assert.equal(e.tenantRef,'sbc:1');assert.equal(e.payloadSha256,createHash('sha256').update(f.raw).digest('hex'));assert.equal(e.kind,'capture');assert.equal(e.amountMinor,19900);}});
+test('signature failure and unsupported lifecycle events never ingest',async()=>{const f=fixture('square');await assert.rejects(f.adapter(f.raw,'invalid'),{code:'SBC_CAPTURE_SIGNATURE_INVALID'});assert.equal(f.calls.length,0);const g=fixture('stripe',{event:{type:'customer.subscription.updated'}});assert.equal((await g.adapter(g.raw,'valid')).status,'IGNORED');assert.equal(g.calls.length,0);});
+test('wrong merchant, environment, or trusted mapping refuses evidence',async()=>{for(const [p,change] of [['square',{event:{merchant_id:'other'}}],['stripe',{event:{livemode:true}}],['stripe',{scope:{accountId:'other'}}],['square',{binding:{tenantRef:''}}],['square',{binding:{paymentId:'other'}}]]){const f=fixture(p,change);await assert.rejects(f.adapter(f.raw,'valid'));assert.equal(f.calls.length,0);}});
+test('provider readback must match capture status, money and order or customer',async()=>{for(const [p,change] of [['square',{payment:{status:'FAILED'}}],['square',{payment:{location_id:'wrong'}}],['stripe',{payment:{amount_received:1}}],['stripe',{payment:{customer:'cus_wrong'}}]]){const f=fixture(p,change);await assert.rejects(f.adapter(f.raw,'valid'),{code:'SBC_CAPTURE_READBACK_MISMATCH'});assert.equal(f.calls.length,0);}});
