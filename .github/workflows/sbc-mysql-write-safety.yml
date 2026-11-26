@@ -1,0 +1,18 @@
+name: SBC MySQL Write Retry Safety
+on:
+  pull_request:
+  push:
+    branches: [a-sbc-master]
+permissions:
+  contents: read
+jobs:
+  mysql-write-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/mysql-write-retry.test.cjs
+      - run: node scripts/mysql-lifecycle-test.js
+      - run: node scripts/query-guard-cleanup-regression.test.js
