@@ -41,6 +41,12 @@
    '<small style="font-size:10px">'+esc(x.websiteTier==='starter'?'$199 one-page site':x.websiteTier==='essentials'?'Multi-page concept':'No website created yet')+'</small></button>'
   ).join('')||'<p>No visible assigned leads. Research, verification or assignment may still be needed.</p>';
  }
+ function evidencePanel(x){
+  const d=x.salesDossier;if(!d)return '<p style="font-size:12px">Website evidence: not loaded or unavailable.</p>';
+  const points=d.contactReview==='blocked'?[]:(d.talkingPoints?.proofPoints||[]).slice(0,3);
+  if(!points.length)return '<p style="font-size:12px">Website evidence: '+esc(d.contactReview==='blocked'?'contact blocked; no sales pitch':'no current reviewed findings')+'.</p>';
+  return '<details style="border:1px solid #d7e5df;border-radius:9px;padding:12px;margin:12px 0"><summary style="font-weight:700">Website evidence · review before calling</summary><p style="font-size:12px">Source HTML observations only. Confirm actual website behavior before discussing. This does not authorize a call or prove a preview exists.</p>'+points.map(p=>'<p style="font-size:13px">'+esc(p.findingEn)+'<br><span lang="es">'+esc(p.findingEs)+'</span><br><small>Captured '+esc(fmt(p.source?.checkedAt))+'</small></p>').join('')+'</details>';
+ }
  function detail(){
   const x=current();
   if(!x)return '<div style="padding:20px">Select a researched business to see its Smart Calling script and meeting plan.</div>';
@@ -75,7 +81,7 @@
     '<div style="padding:13px;background:#f6f8fb;border-radius:10px"><strong>Manual call</strong><p style="font-size:12px">'+phone+'</p><p style="font-size:11px;color:#64748b">The salesperson initiates any permitted call manually.</p></div>'+
     '<div style="padding:13px;background:#f6f8fb;border-radius:10px"><strong>Next action</strong><p style="font-size:12px">'+esc(x.nextAction)+'</p><p style="font-size:11px">'+(x.appointmentAt?'Booked: '+esc(fmt(x.appointmentAt)):(x.cooldownUntil?'Hold until: '+esc(fmt(x.cooldownUntil)):'No appointment on this record'))+'</p></div>'+
    '</div>'+
-   '<h4 style="margin:20px 0 8px">John’s owner-approved Smart Calling script</h4>'+script+
+   evidencePanel(x)+'<h4 style="margin:20px 0 8px">John’s owner-approved Smart Calling script</h4>'+script+
    '<button type="button" class="btn" id="sbcWebcallCopyScript">Copy Calling Script</button>'+
    '<h4 style="margin:22px 0 5px">AI call coach · objection playbook</h4><p style="font-size:12px;color:#64748b">Uses existing SBC knowledge without paid AI calls or voice generation.</p>'+coach+
    outcomes+'<p style="font-size:12px;color:#586679;line-height:1.6;margin:20px 0 5px"><strong>AI voice outbound:</strong> disabled. Separate written consent, do-not-call screening, disclosure requirements and legal review are mandatory before considering any autonomous AI calling.</p></div>';
@@ -99,6 +105,7 @@
   document.getElementById('sbcWebcallRefresh')?.addEventListener('click',open);
   document.querySelectorAll('[data-sbc-webcall-lead]').forEach(el=>el.addEventListener('click',()=>{
    selectedId=el.dataset.sbcWebcallLead;if(typeof openModal==='function'){openModal('SBC Website Call Desk',panel());wire();}
+   void loadSelectedDossier();
   }));
   document.getElementById('sbcWebcallCopyPhone')?.addEventListener('click',()=>copyText(current()?.phone));
   document.getElementById('sbcWebcallCopyScript')?.addEventListener('click',()=>copyText(current()?.script));
@@ -130,12 +137,24 @@
    notice('Call result saved. No outbound call, email, or text was triggered.');
   }catch(e){notice(e.message||'Could not save call result',true);if(btn)btn.disabled=false}
  }
+ let dossierRequest=0;
+ async function loadSelectedDossier(){
+  const id=selectedId,original=desk,seq=++dossierRequest;if(!id||!original)return;
+  try{const r=await api('/api/website-production/call-desk?customerId='+encodeURIComponent(id)+'&limit=1');
+   if(seq!==dossierRequest||desk!==original||selectedId!==id)return;
+   if(!r?.ok||!Array.isArray(r.rows))return;
+   const row=r.rows.find(x=>x.customerId===id);const index=desk.rows.findIndex(x=>x.customerId===id);if(index<0)return;
+   if(row)desk.rows[index]=row;else{desk.rows.splice(index,1);selectedId='';}
+   if(typeof openModal==='function'){openModal('SBC Website Call Desk',panel());wire();}
+  }catch{/* The list stays usable; no audit result is inferred. */}
+ }
  async function load(preferId=''){
   if(typeof api!=='function')throw Error('Command Center API unavailable');
   const d=await api('/api/website-production/call-desk?limit=200');
   if(!d?.ok||!Array.isArray(d.rows))throw Error(d?.code||'Website Call Desk could not load');
   desk=d;selectedId=d.rows.some(x=>x.customerId===(preferId||selectedId))?(preferId||selectedId):(d.rows[0]?.customerId||'');
   if(typeof openModal==='function'){openModal('SBC Website Call Desk',panel());wire()}
+  await loadSelectedDossier();
  }
  async function open(){
   if(!allowed()||loading)return;

@@ -3,6 +3,7 @@
 // full website production and sales follow-up. No dial, text, email, voice AI,
 // calendar invite, payment, or vendor side effects occur in this module.
 const {randomUUID}=require('node:crypto');
+const {scopedLead,shouldRead,buildCachedDossier,configuredSnapshotReader}=require('./creative-intelligence/live-dossier-hydrator.cjs');
 const POLICY=require('./sbc-preview-sales-policy.cjs');
 const WEBSITE_PITCH=require('../public/sbc-website-sales-script-v1.js');
 const OUTCOMES=new Set(['NO_ANSWER','INTERESTED','CALLBACK_REQUESTED','NOT_INTERESTED','BAD_NUMBER','DO_NOT_CALL','ALREADY_HAS_WEBSITE','APPOINTMENT_REQUESTED']);
@@ -141,19 +142,30 @@ function recordOutcome({customer,site,actor,tenantId:tid,kind,now=new Date().toI
   actorId:String(actor.id),kind:type,createdAt:at.toISOString(),outboundTriggered:false,channel:'manual_outcome_only'};
  return {kind:type,record,customerPatch:patch};
 }
-function register(app,{auth,requireTenant,db,getStore,saveStore,writerReady,now=()=>new Date().toISOString()}){
+function register(app,{auth,requireTenant,db,getStore,saveStore,writerReady,now=()=>new Date().toISOString(),readSnapshot=configuredSnapshotReader}){
  const scope=(req,res)=>{
   let tid;try{tid=int(requireTenant(req))}catch{}
   if(!tid||!sameTenant(req.user,tid)||!['owner','manager','caller','account_manager'].includes(String(req.user?.role||''))){
    res.status(403).json({ok:false,code:'NOT_AUTHORIZED'});return 0;
   }return tid;
  };
- app.get('/api/website-production/call-desk',auth,(req,res)=>{
+ app.get('/api/website-production/call-desk',auth,async(req,res)=>{
   const tid=scope(req,res);if(!tid)return;
-  const m=getStore();
   res.setHeader('Cache-Control','private, no-store');
-  try{return res.json(project({actor:req.user,tenantId:tid,customers:db.customers||[],sites:m.websiteDemos||[],
-    appointments:db.appointments||[],calls:m.websiteSalesCalls||[],now:now(),limit:req.query.limit||100,customerId:String(req.query.customerId||'').slice(0,120)}));}
+  try{
+   const selected=typeof req.query.customerId==='string'?req.query.customerId.slice(0,120):'';
+   const view=()=>project({actor:req.user,tenantId:tid,customers:db.customers||[],sites:getStore().websiteDemos||[],appointments:db.appointments||[],calls:getStore().websiteSalesCalls||[],now:now(),limit:req.query.limit||100,customerId:selected});
+   let result=view();
+   if(selected&&result.rows.length===1){
+    const find=()=> (db.customers||[]).find(c=>String(c.id)===selected&&accessible(c,req.user,tid));
+    const customer=find();let snapshot=null;
+    if(customer&&shouldRead(scopedLead(customer,tid),result.rows[0])){try{snapshot=await readSnapshot('sbc:'+tid,selected);}catch{}}
+    // Reproject after asynchronous cache access; never expose a reassigned lead or stale suppression state.
+    result=view();const current=find();
+    if(current&&result.rows.length===1){try{result.rows[0].salesDossier=buildCachedDossier(current,tid,result.rows[0],snapshot,Date.parse(now()));}catch{}}
+   }
+   return res.json(result);
+  }
   catch{return res.status(503).json({ok:false,code:'CALL_DESK_UNAVAILABLE'})}
  });
  app.post('/api/website-production/call-desk/:customerId/outcome',auth,async(req,res)=>{
