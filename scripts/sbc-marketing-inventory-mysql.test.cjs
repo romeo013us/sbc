@@ -31,7 +31,7 @@ test('disposable MySQL 8 inventory revisions, same-session lock, CAS, constraint
   const bank={holiday:[{slug:'fixture'}],campaigns:[]};const load=(tenantId=7)=>loadInventoryInputs(other,{tenantId,bank,logoSha256:logo,reviews,now});
   assert.equal(projectInventory(await load()).states.media_verified,1);assert.equal(projectInventory(await load(8)).states.missing,3);
   review={state:'rejected',version:2,assetId:source};assert.equal(projectInventory(await load()).states.review_required,1);review={state:'approved',version:1,assetId:source};
-  for(const [tenant,digest] of [[8,sha],[7,logo]])await assert.rejects(cx.execute('INSERT INTO sbc_core_marketing_readbacks VALUES (?,?,?,?,?,?,?)',[tenant,'fixture','square',2,digest,stamp,manifest]),{code:'ER_NO_REFERENCED_ROW_2'});
+  for(const [tenant,digest] of [[8,sha],[7,logo]])await assert.rejects(cx.execute('INSERT INTO sbc_core_marketing_readbacks VALUES (?,?,?,?,?,?,?)',[tenant,'fixture','square',2,digest,new Date(now+1).toISOString().replace('T',' ').replace('Z',''),manifest]),{code:'ER_NO_REFERENCED_ROW_2'});
   await assert.rejects(cx.execute('INSERT INTO sbc_core_marketing_inventory (tenant_id,slug,format,revision,job_id,sha256,source_asset_id,logo_sha256,review_version,final_approved_sha256,final_approved_actor,final_approved_at,recorded_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[7,'bad','square',1,'job1',sha,source,logo,1,logo,'owner',stamp,stamp]),{code:'ER_CHECK_CONSTRAINT_VIOLATED'});
   await cx.execute('SELECT RELEASE_LOCK(?)',[lock]);
   const [[next]]=await other.execute('SELECT GET_LOCK(?,0) AS acquired',[lock]);assert.equal(next.acquired,1);
