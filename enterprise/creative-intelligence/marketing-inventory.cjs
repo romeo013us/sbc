@@ -20,4 +20,23 @@ function projectInventory({campaigns,assets,usedSourceIds,logoSha256,now=Date.no
  }
  return {schemaVersion:1,planned:rows.length,states,rows,publicationReady:false,requiresTrustedEvidence:true};
 }
-module.exports={projectInventory};
+// Eastern civil-date scheduling; no publish, reservation, or catch-up authority.
+function planReplenishment({bank,assets,usedSourceIds,logoSha256,now=Date.now(),days=3}={}){
+ const invalid=()=>{throw Error('INVALID_CAMPAIGN_SCHEDULE');};
+ const validDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
+ if(!bank||!Array.isArray(bank.holiday)||!Array.isArray(bank.campaigns)||bank.holiday.length>3||bank.campaigns.length>60||!validDate(bank.firstEvergreenDate)||!Number.isInteger(days)||days<1||days>7||!Number.isSafeInteger(now)||now<0)invalid();
+ const addDay=(date,n)=>new Date(Date.parse(date)+n*86400000).toISOString().slice(0,10);
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(now)).map(p=>[p.type,p.value]));
+ const today=parts.year+'-'+parts.month+'-'+parts.day,localNow=today+'T'+parts.hour+':'+parts.minute,end=addDay(today,days);
+ const slots=[...bank.holiday.map(c=>({slug:c?.slug,date:c?.date,slot:c?.slot})),...bank.campaigns.map(c=>{if(!Number.isInteger(c?.day)||c.day<1||c.day>30)invalid();return {slug:c.slug,date:addDay(bank.firstEvergreenDate,c.day-1),slot:c.slot};})];
+ const seen=new Set();for(const c of slots){if(!slug(c.slug)||!validDate(c.date)||!['10:00','22:00'].includes(c.slot)||seen.has(c.date+'T'+c.slot))invalid();seen.add(c.date+'T'+c.slot);}
+ const projected=projectInventory({campaigns:slots,assets,usedSourceIds,logoSha256,now});
+ const rows=new Map(projected.rows.map(r=>[r.slug+':'+r.format,r]));
+ const actions={missing:'produce',previously_used:'replace_used_creative',logo_mismatch:'correct_logo',review_required:'review_source',final_review_required:'review_final_bytes',readback_required:'verify_public_bytes',media_verified:'verify_before_publish'};
+ const feedTasks=[],optionalTasks=[];
+ for(const c of slots.sort((a,b)=>(a.date+'T'+a.slot).localeCompare(b.date+'T'+b.slot))){const dueLocal=c.date+'T'+c.slot;if(dueLocal<localNow||c.date>=end)continue;
+  for(const format of FORMATS){const r=rows.get(c.slug+':'+format);(format==='portrait'?optionalTasks:feedTasks).push({...r,dueLocal,action:actions[r.state]});}
+ }
+ return {schemaVersion:1,timezone:'America/New_York',throughExclusive:end,feedTasks,optionalTasks,publicationReady:false};
+}
+module.exports={projectInventory,planReplenishment};

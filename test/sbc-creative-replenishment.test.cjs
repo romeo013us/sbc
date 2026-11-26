@@ -1,0 +1,11 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {planReplenishment}=require('../enterprise/creative-intelligence/marketing-inventory.cjs');
+const now=Date.parse('2026-11-26T18:47:00.000Z'),logo='a'.repeat(64);
+const bank={firstEvergreenDate:'2026-11-28',holiday:[{slug:'past',date:'2026-11-26',slot:'10:00'},{slug:'tonight',date:'2026-11-26',slot:'22:00'},{slug:'tomorrow',date:'2026-11-27',slot:'10:00'}],campaigns:[{slug:'evergreen',day:1,slot:'10:00'}]};
+const row={slug:'tonight',format:'square',sha256:'b'.repeat(64),sourceAssetId:'c'.repeat(64),logoSha256:logo,reviewVersion:1,currentReviewVersion:1,reviewState:'approved',finalApprovedSha256:'b'.repeat(64),verifiedAt:'2026-11-26T18:40:00.000Z'};
+const plan=(assets=[],opts={})=>planReplenishment({bank,assets,usedSourceIds:[],logoSha256:logo,now,...opts});
+test('upcoming Eastern slots only, feed work before optional vertical formats',()=>{const p=plan();assert.deepEqual(p.feedTasks.map(x=>[x.slug,x.format]),[['tonight','square'],['tonight','landscape'],['tomorrow','square'],['tomorrow','landscape'],['evergreen','square'],['evergreen','landscape']]);assert.equal(p.optionalTasks.length,3);assert.equal(p.feedTasks[0].action,'produce');assert.equal(p.publicationReady,false);});
+test('currently verified media still requires fresh preflight at its scheduled time',()=>{const p=plan([row]);assert.equal(p.feedTasks[0].state,'media_verified');assert.equal(p.feedTasks[0].action,'verify_before_publish');assert.equal(p.feedTasks[0].dueLocal,'2026-11-26T22:00');});
+test('used source is replacement work, not new supply; review gates remain distinct',()=>{assert.equal(plan([row],{usedSourceIds:[row.sourceAssetId]}).feedTasks[0].action,'replace_used_creative');assert.equal(plan([{...row,finalApprovedSha256:null}]).feedTasks[0].action,'review_final_bytes');});
+test('reject duplicate scheduled slots and invalid date or horizon',()=>{assert.throws(()=>plan([],{bank:{...bank,holiday:[...bank.holiday,{slug:'clash',date:'2026-11-26',slot:'22:00'}]}}),/INVALID_CAMPAIGN_SCHEDULE/);assert.throws(()=>plan([],{bank:{...bank,firstEvergreenDate:'2026-02-30'}}),/INVALID_CAMPAIGN_SCHEDULE/);assert.throws(()=>plan([],{days:8}),/INVALID_CAMPAIGN_SCHEDULE/);});
