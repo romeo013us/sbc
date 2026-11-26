@@ -79,7 +79,13 @@ test('white Website Production panels explicitly define accessible dark text wit
   const page=read(html);
   assert.match(page,/sbc-v66-owner-ui-core\.[a-f0-9]{16}\.css/);
   assert.match(page,/sbc-website-sales-script-v1\.js/);
-  assert(page.indexOf('/sbc-website-sales-script-v1.js')<page.indexOf('/sbc-website-production-v1.js'));
+  const dir=html.split('/')[0],loader=read(dir+'/sbc-workstation-loader-v1.js');
+  assert.match(loader,/'website-studio':Object\.freeze\(\['\/sbc-website-production-v1\.js\?v=[^']+'\]\)/);
+  const script=page.indexOf('/sbc-website-sales-script-v1.js');
+  const stub=page.indexOf('id="sbc-lazy-website-studio"');
+  const boot=page.indexOf('/sbc-workstation-loader-v1.js');
+  assert(script>=0&&stub>script&&boot>stub,'Sales script must initialize before any lazy Studio request');
+  assert.doesNotMatch(page,/<script\b[^>]*\bsrc="\/sbc-website-production-v1\.js/);
  }
 });
 

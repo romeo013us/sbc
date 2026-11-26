@@ -88,3 +88,27 @@ test('Website Studio compatibility entry points load only on authenticated deman
   assert(page.includes('id="sbc-lazy-website-studio"'));
  }
 });
+
+test('real browser loader manifest requests Studio once only after compatibility invocation',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const root=path.resolve(__dirname,'..');
+ const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+ const stub=html.match(/<script id="sbc-lazy-website-studio">([\s\S]*?)<\/script>/)[1];
+ const requests=[],calls=[],buttons=new Map();
+ const state={me:null},window={state,location:{hash:''},addEventListener(){},toast:m=>assert.fail(m)};
+ const nav={appendChild(b){buttons.set(b.id,b)}};
+ const document={readyState:'complete',getElementById:id=>buttons.get(id),querySelector:()=>nav,
+  createElement:()=>({addEventListener(){},setAttribute(){},removeAttribute(){},focus(){},remove(){}}),
+  head:{appendChild(tag){requests.push(tag.src);window.SBC_WEBSITE_PRODUCTION={build:(...args)=>calls.push(args),openExisting:(...args)=>calls.push(args)};queueMicrotask(()=>tag.onload());}}};
+ const context=vm.createContext({window,state,document,console,setInterval:()=>1,clearInterval(){}});
+ vm.runInContext(stub,context);
+ vm.runInContext(fs.readFileSync(path.join(root,'public/sbc-workstation-loader-v1.js'),'utf8'),context);
+ assert.deepEqual(requests,[]);
+ const build=window.generateWebsiteDemo,open=window.SBC_WEBSITE_PRODUCTION.openExisting;
+ await build('unauth');assert.deepEqual(requests,[]);
+ state.me={id:'owner'};
+ await Promise.all([build('one','starter'),open('two',{hint:true})]);
+ assert.deepEqual(requests,['/sbc-website-production-v1.js?v=20261116-zip-proposals']);
+ assert.equal(calls.length,2);
+ await build('three');assert.equal(requests.length,1);assert.equal(calls.length,3);
+});
