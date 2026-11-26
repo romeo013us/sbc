@@ -10,7 +10,7 @@
   const today2=()=>new Date().toISOString().slice(0,10);
   // Revenue-classification parity with v6640-payment-evidence (SBC-recorded provider
   // metadata, NOT independent settlement). Status-only and QA orders never count.
-  function capturedSquare(o){
+  function recordedSquareCapture(o){
     if(!o||o.sbcTest===true||o.testMode===true)return false;
     let notes={};try{if(typeof o.notes==='string'&&o.notes.trim().startsWith('{'))notes=JSON.parse(o.notes)}catch(_){notes={};}
     if(/sbc system test|full-cycle test|do not service/i.test(String(o.notes||'')+' '+String(o.product||'')+' '+String(o.customerName||'')))return false;
@@ -24,10 +24,12 @@
     const sqOrder=String(field('squareOrderId')).trim(),sqPayment=String(field('squarePaymentId')).trim();
     const capturedAt=String(field('squarePaymentCompletedAt')).trim();
     const capturedUsd=Number(o.price??o.total);
-    return Boolean(sqOrder&&sqPayment&&['PAID','COMPLETED'].includes(state)&&capturedAt&&Number.isFinite(Date.parse(capturedAt))&&
+    return sqOrder&&sqPayment&&['PAID','COMPLETED'].includes(state)&&capturedAt&&Number.isFinite(Date.parse(capturedAt))&&
       Number.isFinite(capturedUsd)&&capturedUsd>0&&capturedUsd<=1000000&&
-      Math.abs(Math.round(capturedUsd*100)-capturedUsd*100)<=0.001);
+      Math.abs(Math.round(capturedUsd*100)-capturedUsd*100)<=0.001 ? {paymentId:sqPayment,capturedAt:new Date(capturedAt).toISOString(),cents:Math.round(capturedUsd*100)} : null;
   }
+  function capturedSquare(o){return Boolean(recordedSquareCapture(o));}
+  window.sbcRecordedSquareCapture=recordedSquareCapture;
   function metrics(){
     const d=D(), customers=d.customers||[], quotes=d.quotes||[], orders=d.orders||[], tasks=d.tasks||[], renewals=d.renewals||[];
     // SBC_V6652_MANUAL_PAYMENT_PROOF: paid ≠ fulfilled or owner-entered receipt.
