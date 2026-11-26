@@ -322,3 +322,26 @@ test('switching Kim cycle tenant never exposes the prior tenant cycle while a ne
   assert.equal(otherService.overview(1).state.lastCycleResult,null);
  }finally{release();await pending}
 });
+
+test('verification bottleneck breaks down 560 records without promotion, disclosure or side effects',async()=>{
+ const groups=[
+  ...Array.from({length:200},(_,i)=>customer('private-missing-'+i,1,'Warm','Needs Verification')),
+  ...Array.from({length:100},(_,i)=>customer('private-review-'+i,1,'Hot','Owner Review',{phone:'3055550100'})),
+  ...Array.from({length:100},(_,i)=>customer('private-conflict-'+i,1,'Hot','Unverified',{leadIntelligence:{verificationStatus:'Verified'},email:'private@example.test'})),
+  ...Array.from({length:100},(_,i)=>customer('private-status-'+i,1,'Warm','')),
+  ...Array.from({length:60},(_,i)=>customer('private-other-'+i,1,'Warm','Research incomplete',{email:'private@example.test'})),
+  customer('foreign-secret',2,'Hot','Needs Verification'),
+  customer('suppressed-secret',1,'Hot','Needs Verification',{doNotCall:true})
+ ];
+ const db={customers:groups,orders:[],fulfillmentJobs:[]},before=JSON.stringify(db),logs=[];
+ const controller=createController({db,saveData(){assert.fail('unexpected write')},tenBrain:{BRAINS:[]},logger:{info:(...args)=>logs.push(args)}});
+ const result=await controller.cycle({tenantId:1,advisoryOnly:true});
+ const expected={total:560,needsVerification:200,ownerReview:100,explicitlyUnverified:100,missingStatus:100,otherStatus:60,nestedVerifiedConflict:100,missingContactMethod:300};
+ assert.deepEqual(result.verificationReviewEvidence,expected);
+ assert.deepEqual(result.operatingPlan.leadVerificationReview,expected);
+ assert.equal(result.qualificationReasons.warmHotNeedsVerification,560);
+ assert.equal(result.qualifiedWarmHot,0);assert.equal(result.externalActions,0);assert.equal(result.writeAttempts,0);
+ assert.equal(JSON.stringify(db),before);
+ const output=JSON.stringify([logs,result.operatingPlan]);
+ assert(!output.includes('private-'));assert(!output.includes('private@example.test'));assert(!output.includes('foreign-secret'));
+});
