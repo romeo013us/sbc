@@ -28,7 +28,7 @@ test('both HTML mirrors load only the lightweight bootstrap at startup',()=>{
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
   assert.equal(tags.filter(t=>t.startsWith('/sbc-workstation-loader-v1.js?')).length,1);
   assert.ok(!tags.some(t=>/\/sbc-(?:market-intelligence|v6567-marketing-hub)\.js/.test(t)));
-  assert.equal(tags.length,81);
+  assert.equal(tags.length,77);
  }
 });
 

@@ -36,7 +36,9 @@ const GROUPS=Object.freeze({
  'marketing-review-rail':Object.freeze(['v33-5-marketing.js','v48-9-growth.js']),
  'gateway-control-rail':Object.freeze(["gateway-hub.js","kim-operations-os.js","v32-5-control-plane.js","v32-9-enterprise.js","v33-0-launch-acquisition.js"]),
  'architecture-rail':Object.freeze(["adaptive-business-builder.js","supernova.js","kim-control-center.js","platform-architecture.js"]),
- 'kim-advisory-rail':Object.freeze(["sbc-kim-ui-hardening-v6429.js","sbc-autonomy-control-v6430.js","sbc-unattended-v6431.js"])
+ 'kim-advisory-rail':Object.freeze(["sbc-kim-ui-hardening-v6429.js","sbc-autonomy-control-v6430.js","sbc-unattended-v6431.js"]),
+ 'flow-presentation-rail':Object.freeze(['v56-flow.js','v569-cinematic.js','v562-marketing-controls.js']),
+ 'deferred-revenue-rail':Object.freeze(['god-tier-broadcast-v56-13-4.js','consultative-revenue-v56-13-5.js','v56140-90day-revenue-command.js'])
 });
 const digest=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 // Modern isolated account/profile scripts added to the existing checked-in V66 bundle set.
@@ -75,7 +77,7 @@ function verify(root=path.resolve(__dirname,'..')){
  for(const dir of ['public','browser_public']){
   const html=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
-  const expectedTags=75+ACCOUNT_SCRIPTS.length;
+  const expectedTags=71+ACCOUNT_SCRIPTS.length;
   if(tags.length!==expectedTags)throw Error('[SBC V66 JS] Expected '+expectedTags+' external script tags, got '+tags.length+' in '+dir);
   for(const name of ACCOUNT_SCRIPTS)if(tags.filter(t=>t.split('?')[0]===name).length!==1)throw Error('[SBC V66 JS] Account workspace script not loaded exactly once: '+name);
   for(const value of values){
