@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 JS=ROOT/'public/sbc-command-center-focus-v1.js'
 HTML=(ROOT/'public/index.html').read_text()
 STYLE=re.search(r'<style id="sbc-owner-clean-display-v2">([\s\S]*?)</style>',HTML).group(1)
-FIXTURE="""<!doctype html><html><head></head><body>
+FIXTURE="""<!doctype html><html><head><meta charset="utf-8"></head><body>
 <div id="app"><aside class="sidebar"><nav class="v56-primary-nav">
 <button class="nav-item" data-view="dashboard"><span>H</span>Home</button>
 <button id="sbc-website-production-nav">Website production</button>
@@ -44,7 +44,7 @@ def run(browser,viewport):
     page=browser.new_page(viewport=viewport)
     def route_handler(route):
         if route.request.url=='https://sbc-cleanup.fixture.test/':
-            route.fulfill(status=200,content_type='text/html',body=FIXTURE)
+            route.fulfill(status=200,content_type='text/html; charset=utf-8',body=FIXTURE)
         else:
             route.abort()
     page.route('**/*',route_handler)
@@ -55,6 +55,10 @@ def run(browser,viewport):
     assert page.locator('#sbcFocusNav > button').count()==8
     assert page.locator('#sbcProductionControlDashboard').is_visible()
     assert page.locator('#daily3').is_visible(), 'checkout must not be hidden by arbitrary action folding'
+    assert page.evaluate('document.characterSet')=='UTF-8'
+    assert page.locator('h2', has_text='Internal package catalog · includes legacy offers').count()==1
+    assert page.locator('details[data-sbc-owner-dashboard-detail="briefing"]').count()==1
+    assert page.locator('details[data-sbc-owner-dashboard-detail="reference"]').count()==1
     assert page.locator('details[data-sbc-owner-dashboard-detail]').count()==2
     assert not page.locator('#activity').is_visible()
     assert not page.locator('#sbcV329Panel').is_visible()
