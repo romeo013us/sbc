@@ -37,8 +37,15 @@ for(const compiled of bundles){
  for(const original of compiled.files)assert(!tags.some(t=>t.split('?')[0]==='/'+original),'bundled controller cannot load twice');
 }
 const legacyVersioned=(index.match(/\?v=66\.0\.13-profile-stability/g)||[]).length;
-// The 12 newly bundled versioned controllers are now covered by exact bundle bytes and hashes.
-assert.ok(legacyVersioned>=46,'remaining legacy version-query URLs retain their cache scope');
+// Exactly five additional profile-stability URLs are replaced by these verified bundle components.
+const profileReplacements=['v56-flow.js','v569-cinematic.js','v562-marketing-controls.js','god-tier-broadcast-v56-13-4.js','v56140-90day-revenue-command.js'];
+for(const file of profileReplacements){
+ const owners=bundles.filter(b=>b.files.includes(file));
+ assert.equal(owners.length,1,'cache scope replacement must be unique: '+file);
+ assert(hashed.has('/'+owners[0].filename));
+ assert(tags.includes('/'+owners[0].filename));
+}
+assert.ok(legacyVersioned+profileReplacements.length>=46,'remaining and hash-replaced legacy version-query URLs retain their cache scope');
 assert.ok(!index.includes('?v=66.34-asset-cache-reset'),'no old versioned script URLs');
 for(const pathName of ['public/sbc-v6559-ui.js','browser_public/sbc-v6559-ui.js']){
   const code=read(pathName);
