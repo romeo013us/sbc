@@ -22,7 +22,10 @@ function fixture(){
   sbcV6606QuoteWriterReady:()=>true,requireRequestTenant:req=>req.tenantId,
   orderParsed:o=>{try{return JSON.parse(o.notes||'{}')}catch{return {}}},
   addActivity:()=>{},now:()=>new Date().toISOString(),id:()=> 'synthetic_new_order',saveData:async()=>{events.push('save')}};
- const start=patched.indexOf('/* '+MARK),end=patched.indexOf("\napp.post('/api/renewals'",start);
+ const start=patched.indexOf('/* '+MARK);
+ // The legacy renewal factory is a separate domain, not part of the order guard fixture.
+ const boundaries=[patched.indexOf("\nconst SBC_LEGACY_RENEWALS=",start),patched.indexOf("\napp.post('/api/renewals'",start)].filter(n=>n>start);
+ const end=boundaries.length?Math.min(...boundaries):-1;
  assert.ok(start>=0&&end>start,'compiled master order routes must be found');
  vm.runInNewContext(patched.slice(start,end),ctx,{timeout:3000});
  const invoke=async(method,path,tenantId,body={},id=null)=>{
