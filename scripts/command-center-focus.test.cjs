@@ -27,3 +27,29 @@ assert.match(owner,/SBC_LEAD_PROFILE/,'sales links must use shared account profi
 for(const file of ['sbc-command-center-focus-v1.js','sbc-command-center-focus-v1.css','index.html'])assert.equal(read('public/'+file),read('browser_public/'+file),'release mirror mismatch: '+file);
 new(require('node:vm').Script)(js,{filename:'sbc-command-center-focus-v1.js'});
 console.log('PASS focused Command Center UX: 8 daily routes, more tools, reversible full mode, no deletion, preserved links and mirrored assets');
+
+assert.match(js,/OWNER_KEY='sbc-owner-clean-workspace-v2'/,'owner preference is independent of employee view');
+assert.match(js,/window\.state\?\.me\?\.role==='owner'/);
+assert.match(js,/owner\(\)\&\&compact\(\)\&\&window\.state\?\.view==='dashboard'/);
+assert.match(js,/if\(!compact\(\)\|\|owner\(\)\)/,'do not indiscriminately fold owner business actions');
+assert.match(js,/Internal package catalog · includes legacy offers/);
+assert.match(js,/Recent activity and reference pricing/);
+assert.match(js,/parent\.insertBefore\(node,group\)/,'full mode restores original controls');
+const cleanStyle=html.match(/<style id="sbc-owner-clean-display-v2">([\s\S]*?)<\/style>/)?.[1];
+assert(cleanStyle,'owner-scoped duplicate shortcut styling is present');
+for(const id of ['sbc-website-call-desk-topbar','sbc-website-sales-pipeline-topbar','sbc-connected-journey-owner'])assert(js.includes("'"+id+"'"));
+assert.match(js,/function watchLateNavigation/);assert.match(js,/observe\(nav,\{childList:true\}\)/);
+assert.match(js,/window\.state\?\.data\?\.recovery\?\.required===false/);
+assert.match(cleanStyle,/data-sbc-owner-routine="true"/);assert.match(cleanStyle,/#sbcV329Panel/);assert.match(cleanStyle,/#sbcV330Panel/);
+assert.match(cleanStyle,/html\[data-sbc-owner-clean="true"\]/);
+assert(!/sbc-revenue-today-owner|sbcProductionControlDashboard|sbc-quick-checkout|sbcThemeToggle|mobileMenu/.test(cleanStyle),'critical controls cannot be hidden by cleanup');
+assert.match(html,/sbc-command-center-focus-v1\.js\?v=20261126-owner-clean/);
+// Exercise the real preference and role boundary using a minimal DOM.
+const store=new Map([['sbc-focus-workspace-v1','all']]),dataset={},tog={setAttribute(){},textContent:''},adv={open:false};
+const content={querySelectorAll:()=>[],querySelector:()=>null};
+const context={window:{state:{me:{role:'owner'},view:'dashboard'}},document:{readyState:'loading',addEventListener(){},querySelector:()=>null,documentElement:{dataset},getElementById(id){return id==='content'?content:id==='sbcFocusToggle'?tog:id==='sbcAdvancedNav'?adv:null;}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)},console};
+require('node:vm').runInNewContext(js,context);
+context.window.SBC_COMMAND_FOCUS.enable();assert.equal(dataset.sbcOwnerClean,'true');assert.equal(dataset.sbcOwnerRoutine,'false');context.window.state.data={recovery:{required:false}};context.window.SBC_COMMAND_FOCUS.enable();assert.equal(dataset.sbcOwnerRoutine,'true');context.window.state.data.recovery.required=true;context.window.SBC_COMMAND_FOCUS.enable();assert.equal(dataset.sbcOwnerRoutine,'false');assert.equal(store.get('sbc-owner-clean-workspace-v2'),'focus');assert.equal(store.get('sbc-focus-workspace-v1'),'all');
+context.window.SBC_COMMAND_FOCUS.showAll();assert.equal(dataset.sbcOwnerClean,'false');assert.equal(adv.open,true);
+context.window.state.me={role:'account_manager'};context.window.SBC_COMMAND_FOCUS.enable();assert.equal(dataset.sbcOwnerClean,'false');assert.equal(store.get('sbc-owner-clean-workspace-v2'),'all');
+console.log('PASS owner cleanup: exact dashboard scope, reversible disclosures, duplicate shortcuts, independent owner preference, employee role isolation');

@@ -2,21 +2,91 @@
 (function(){
 'use strict';
 if(window.SBC_COMMAND_FOCUS)return;
-var KEY='sbc-focus-workspace-v1',initialized=false;
-function compact(){try{return localStorage.getItem(KEY)!=='all';}catch(_){return true;}}
-function setCompact(on){
- try{localStorage.setItem(KEY,on?'focus':'all');}catch(_){}
+var KEY='sbc-focus-workspace-v1',OWNER_KEY='sbc-owner-clean-workspace-v2',initialized=false,settleLateNav=null;
+function owner(){return window.state?.me?.role==='owner';}
+function preferenceKey(){return owner()?OWNER_KEY:KEY;}
+function compact(){try{return localStorage.getItem(preferenceKey())!=='all';}catch(_){return true;}}
+function syncDisplay(){
+ var on=compact(),isOwner=owner();
+ document.documentElement.dataset.sbcOwnerClean=isOwner&&on?'true':'false';
+ document.documentElement.dataset.sbcOwnerRoutine=isOwner&&on&&window.state?.data?.recovery?.required===false?'true':'false';
  document.documentElement.dataset.sbcFocusMode=on?'focus':'all';
  var toggle=document.getElementById('sbcFocusToggle');
  if(toggle){toggle.textContent=on?'◫ Show all tools':'✦ Focus view';toggle.setAttribute('aria-pressed',String(on));}
+}
+var topSlots=new Map();
+function reconcileTopShortcuts(){
+ var top=document.querySelector('#app .top-actions');if(!top)return;
+ var group=document.getElementById('sbcOwnerExtraShortcuts');
+ if(!owner()||!compact()){
+  topSlots.forEach(function(anchor,node){
+   if(anchor.parentNode){if(node.isConnected)anchor.parentNode.insertBefore(node,anchor);anchor.remove();}
+  });
+  topSlots.clear();if(group)group.remove();return;
+ }
+ topSlots.forEach(function(anchor,node){if(!node.isConnected){anchor.remove();topSlots.delete(node);}});
+ var ids=['sbc-website-call-desk-topbar','sbc-website-sales-pipeline-topbar','sbc-connected-journey-owner'];
+ ids.forEach(function(id){
+  var node=document.getElementById(id);
+  if(!node||node.parentElement!==top)return;
+  if(!group){
+   group=document.createElement('details');group.id='sbcOwnerExtraShortcuts';
+   var title=document.createElement('summary');title.textContent='More shortcuts';
+   var items=document.createElement('div');items.className='sbc-owner-shortcut-items';
+   group.append(title,items);top.appendChild(group);
+  }
+  var anchor=document.createComment('SBC original shortcut position '+id);
+  top.insertBefore(anchor,node);topSlots.set(node,anchor);
+  group.querySelector('.sbc-owner-shortcut-items').appendChild(node);
+ });
+}
+function wrapDashboardDetails(root){
+ // Only exact, reviewed dashboard cards. Do not fold alerts, sales actions,
+ // recovery notices, production work, statistics, or employee workstations.
+ var active=owner()&&compact()&&window.state?.view==='dashboard'&&window.state?.data?.recovery?.required!==true;
+ if(!active){
+  root.querySelectorAll('details[data-sbc-owner-dashboard-detail]').forEach(function(group){
+   var parent=group.parentElement,body=group.querySelector('.sbc-owner-detail-body');
+   if(parent&&body)Array.from(body.children).forEach(function(node){parent.insertBefore(node,group);});
+   group.remove();
+  });
+  return;
+ }
+ function wrap(node,key,label){
+  if(!node||node.closest('details[data-sbc-owner-dashboard-detail]')||!node.parentElement)return;
+  var group=document.createElement('details');group.className='card section sbc-owner-dashboard-detail';group.dataset.sbcOwnerDashboardDetail=key;
+  var summary=document.createElement('summary');summary.textContent=label;
+  var body=document.createElement('div');body.className='sbc-owner-detail-body';
+  group.append(summary,body);node.parentElement.insertBefore(group,node);body.appendChild(node);
+ }
+ var briefing=root.querySelector('.ai-role-briefing');
+ wrap(briefing,'briefing','AI briefing');
+ var cards=Array.from(root.querySelectorAll('.card'));
+ var named=function(title){return cards.find(function(card){return card.querySelector('.card-head h2')?.textContent.trim()===title;});};
+ var catalog=named('Internal package catalog · includes legacy offers'),recent=named('Recent activity');
+ // Their original shared grid remains intact; the full view restores the exact same nodes.
+ if(catalog&&recent&&catalog.parentElement===recent.parentElement&&catalog.parentElement.classList.contains('grid')){
+  wrap(catalog.parentElement,'reference','Recent activity and reference pricing');
+ }
+}
+
+function setCompact(on){
+ try{localStorage.setItem(preferenceKey(),on?'focus':'all');}catch(_){}
+ syncDisplay();
  var advanced=document.getElementById('sbcAdvancedNav');
  if(advanced&&on)advanced.open=false;
  if(advanced&&!on)advanced.open=true;
+ if(settleLateNav)settleLateNav();
  simplifyPageActions();
 }
 function simplifyPageActions(){
  var root=document.getElementById('content');if(!root)return;
- if(!compact()){
+ syncDisplay();
+ reconcileTopShortcuts();
+ wrapDashboardDetails(root);
+ // Owner actions have a curated existing primary/secondary split. Do not
+ // arbitrarily bury the third action (e.g. checkout or a call control).
+ if(!compact()||owner()){
   root.querySelectorAll('details.sbc-page-more-actions').forEach(function(group){
    var parent=group.parentElement,extras=group.querySelector('.sbc-page-extra-buttons');
    if(parent&&extras){Array.from(extras.children).forEach(function(node){parent.insertBefore(node,group);});delete parent.dataset.sbcFocusFolded;}
@@ -35,6 +105,21 @@ function simplifyPageActions(){
   actions.slice(2).forEach(function(action){items.appendChild(action);});
   more.append(title,items);row.appendChild(more);
  });
+}
+function watchLateNavigation(nav,main,advanced,groups){
+ var pending=false;
+ function settle(){
+  pending=false;
+  // Late-injected legacy controls must not escape the existing More tools group.
+  // Keep the original DOM nodes and event listeners, including role-hidden nodes.
+  if(!owner()||!compact())return;
+  Array.from(nav.children).forEach(function(child){if(child!==main&&child!==advanced)groups.appendChild(child);});
+ }
+ settleLateNav=settle;
+ new MutationObserver(function(){if(!pending){pending=true;queueMicrotask(settle);}}).observe(nav,{childList:true});
+ window.addEventListener('sbc:authenticated',settle);
+ window.addEventListener('sbc:view-rendered',settle);
+ settle();
 }
 function watchPage(){
  var root=document.getElementById('content');
@@ -86,7 +171,7 @@ function install(){
  // Keep all existing modules and event handlers. Reorganize navigation; never delete a tool.
  Array.from(nav.children).forEach(function(child){if(child!==main&&child!==advanced)groups.appendChild(child);});
  var legacy=advanced.querySelector('.v56-legacy-tools');
- if(legacy)legacy.insertBefore(groups,legacy.firstChild);
+ if(legacy){legacy.insertBefore(groups,legacy.firstChild);if(typeof MutationObserver==='function')watchLateNavigation(nav,main,advanced,groups);}
  var summary=advanced.querySelector('summary');if(summary)summary.textContent='＋ More tools';
  advanced.classList.add('sbc-focus-more');
  var bottom=document.querySelector('#app .sidebar-bottom');
@@ -95,8 +180,16 @@ function install(){
   toggle.addEventListener('click',function(){setCompact(!compact());});
   bottom.insertBefore(toggle,bottom.firstChild);
  }
- setCompact(compact());
+ syncDisplay();
+ if(compact())advanced.open=false;
  watchPage();
+ var top=document.querySelector('#app .top-actions');
+ if(top&&typeof MutationObserver==='function'){
+  var topPending=false;
+  new MutationObserver(function(){if(topPending)return;topPending=true;queueMicrotask(function(){topPending=false;reconcileTopShortcuts();});}).observe(top,{childList:true});
+ }
+ window.addEventListener('sbc:authenticated',simplifyPageActions);
+ window.addEventListener('sbc:view-rendered',simplifyPageActions);
  // Additive owner assistant bootstrap: reuse the existing JS/CSS bundle count of
  // index.html. The assistant has its own server-side owner and tenant guards.
  if(!document.getElementById('sbc-chatgpt-os-script-loader')){
