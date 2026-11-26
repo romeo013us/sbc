@@ -1,0 +1,36 @@
+name: SBC Creative Intelligence integration
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'enterprise/creative-intelligence/**'
+      - 'enterprise/website-studio/studio-owner-routes.cjs'
+      - 'public/sbc-website-production-v1.js'
+      - 'public/sbc-v6567-marketing-hub.js'
+      - 'browser_public/sbc-website-production-v1.js'
+      - 'browser_public/sbc-v6567-marketing-hub.js'
+      - 'test/sbc-creative-*.test.cjs'
+      - '.github/workflows/sbc-creative-intelligence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  creative-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local media tooling
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Validate JavaScript and browser parity
+        run: |
+          node --check enterprise/website-studio/studio-owner-routes.cjs
+          node --check public/sbc-website-production-v1.js
+          node --check public/sbc-v6567-marketing-hub.js
+          cmp public/sbc-website-production-v1.js browser_public/sbc-website-production-v1.js
+          cmp public/sbc-v6567-marketing-hub.js browser_public/sbc-v6567-marketing-hub.js
+      - name: Run real creative media and security integration tests
+        run: node --test test/sbc-creative-*.test.cjs
