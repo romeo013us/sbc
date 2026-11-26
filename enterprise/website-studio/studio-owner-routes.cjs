@@ -63,6 +63,8 @@ function register(app,{auth,ownerOnly,requireTenant,getStore,saveStore,writerRea
   const store=getStore();
   return (Array.isArray(store?.websiteDemos)?store.websiteDemos:[]).find(s=>String(s.id)===id&&Number(s.tenantId)===tid)||null;
  };
+ // Shared creative workspace uses the existing owner, tenant and writer gates.
+ require('../creative-intelligence/workspace.cjs').registerCreativeWorkspace(app,{auth,ownerOnly,requireTenant,locate,writerReady});
  const responseError=(res,e)=>{
   const code=String(e?.message||'STUDIO_ERROR');
   if(code==='TENANT_CONTEXT_REQUIRED')return respond(res,code,403);
