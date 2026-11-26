@@ -15,7 +15,7 @@ const checks = {
   recovery_locked_write_falls_back_to_staging: ui.includes('staged: []') && ui.includes('/api/v65110/crm/leads') && ui.includes('browser staging only'),
   new_write_route_is_separate_and_guarded: !route.includes("app.post('/api/v6519/crm/leads") && route.includes("app.post('/api/v65110/crm/leads', auth") && route.includes('MYSQL_RECOVERY_REQUIRED'),
   csv_export_available: ui.includes('Export Staged CSV') && ui.includes('text/csv;charset=utf-8'),
-  script_loaded_by_dashboard: html.includes('/sbc-lead-workspace-v6519.js?v=65.1.26-demo-studio'),
+  script_loaded_by_dashboard: [...html.matchAll(/<script\b[^>]*\bsrc="(\/sbc-lead-workspace-v6519\.js(?:\?[^" ]*)?)"[^>]*>/g)].map(m=>m[1]).join(',') === '/sbc-lead-workspace-v6519.js?v=66.0.13-profile-stability',
   safe_errors_do_not_echo_exception: route.includes('Lead records are temporarily unavailable; no data was changed.') && !route.includes('error: error.message')
 };
 for (const [name, ok] of Object.entries(checks)) { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`); assert.ok(ok, name); }
