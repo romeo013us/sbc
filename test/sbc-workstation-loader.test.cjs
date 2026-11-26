@@ -28,7 +28,7 @@ test('both HTML mirrors load only the lightweight bootstrap at startup',()=>{
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
   assert.equal(tags.filter(t=>t.startsWith('/sbc-workstation-loader-v1.js?')).length,1);
   assert.ok(!tags.some(t=>/\/sbc-(?:market-intelligence|v6567-marketing-hub)\.js/.test(t)));
-  assert.equal(tags.length,82);
+  assert.equal(tags.length,81);
  }
 });
 
@@ -66,4 +66,25 @@ test('Academy lesson enhancement is activated only for an authenticated mounted 
  lesson=false;root.state.me={id:'owner'};observer();await new Promise(r=>setImmediate(r));assert.deepEqual(assets,[]);
  lesson=true;observer();observer();await new Promise(r=>setImmediate(r));assert.deepEqual(assets,['/sbc-training-read-aloud.js?v=20261125-lazy-academy']);
  lesson=false;observer();lesson=true;observer();await new Promise(r=>setImmediate(r));assert.equal(assets.length,1);
+});
+
+test('Website Studio compatibility entry points load only on authenticated demand and forward original arguments',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+ const body=html.match(/<script id="sbc-lazy-website-studio">([\s\S]*?)<\/script>/)[1];
+ const requests=[],calls=[],notices=[];
+ const state={me:null},window={toast:m=>notices.push(m)};
+ vm.runInNewContext(body,{window,state,console});
+ assert.equal(typeof window.generateWebsiteDemo,'function');
+ assert.deepEqual(requests,[]);
+ await window.generateWebsiteDemo('unauth');assert.deepEqual(requests,[]);
+ state.me={id:'owner'};
+ window.sbcLoadWorkstation=async key=>{requests.push(key);window.SBC_WEBSITE_PRODUCTION={build:(...args)=>calls.push(args)};};
+ await window.generateWebsiteDemo('customer','starter',{hint:true});
+ assert.deepEqual(requests,['website-studio']);assert.deepEqual(calls,[['customer','starter',{hint:true}]]);assert.deepEqual(notices,[]);
+ for(const dir of ['public','browser_public']){
+  const page=fs.readFileSync(path.join(root,dir,'index.html'),'utf8');
+  assert(!/<script\b[^>]*\bsrc="\/sbc-website-production-v1\.js/.test(page));
+  assert(page.includes('id="sbc-lazy-website-studio"'));
+ }
 });
