@@ -1,0 +1,21 @@
+name: SBC workforce payroll boundary contracts
+on:
+  pull_request:
+    branches: [a-sbc-master]
+    paths:
+      - 'server.js'
+      - 'routes/sbc-workforce-payroll-v1.cjs'
+      - 'test/sbc-workforce-payroll-boundary.test.cjs'
+      - '.github/workflows/sbc-workforce-payroll-boundaries.yml'
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check server.js
+      - run: node --test test/sbc-workforce-payroll-boundary.test.cjs

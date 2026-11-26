@@ -7003,8 +7003,9 @@ app.post('/api/hr/payout-preferences/:userId/decision',auth,ownerOnly,async(req,
  }catch(e){res.status(Number(e.status)||400).json({ok:false,error:String(e.message||'HR_METHOD_APPROVAL_FAILED')});}
 });
 
-app.get('/api/v9/compensation',auth,ownerOnly,(req,res)=>{const users=(db.users||[]).filter(u=>isWorkforceRole(u.role));res.json(users.map(u=>({user:v9User(u),compensation:compFor(u.id),payroll:payrollFor(u.id)})))})
-app.put('/api/v9/compensation/:userId',auth,ownerOnly,async(req,res)=>{const u=(db.users||[]).find(x=>x.id===req.params.userId&&isWorkforceRole(x.role));if(!u)return res.status(404).json({error:'Workforce member not found.'});const v=v9data();v.compensation=v.compensation||{};const old=compFor(u.id), b=req.body||{};v.compensation[u.id]={...old,payRate:Math.max(0,Number(b.payRate??old.payRate)),currency:String(b.currency||old.currency),bonusPerQualifiedAppointment:Math.max(0,Number(b.bonusPerQualifiedAppointment ?? (old.bonusPerQualifiedAppointment || 0))),bonusPerSale:Math.max(0,Number(b.bonusPerSale ?? (old.bonusPerSale || 0))),payPeriod:['Weekly','Biweekly','Monthly'].includes(b.payPeriod)?b.payPeriod:old.payPeriod,commissionRates:{...old.commissionRates,...Object.fromEntries(Object.entries(b.commissionRates||{}).map(([k,v])=>[k,Math.max(0,Math.min(0.25,Number(v)))]))},highValueBonus699:0,monthlyBonuses:{...old.monthlyBonuses,...(b.monthlyBonuses||{})},commissionPayCycleDays:Math.max(1,Number(b.commissionPayCycleDays ?? (old.commissionPayCycleDays || 30))),returnWindowDays:Math.max(0,Math.min(60,Number(b.returnWindowDays ?? (old.returnWindowDays || 14)))),effectiveFrom:String(b.effectiveFrom||old.effectiveFrom)};await v9save(v);audit(req.user,'compensation_updated',`Updated compensation for ${u.name}`,{userId:u.id});res.json({compensation:v.compensation[u.id],payroll:payrollFor(u.id)})})
+const SBC_WORKFORCE_PAYROLL=require('./routes/sbc-workforce-payroll-v1.cjs').createWorkforcePayrollHandlers(()=>({db,isWorkforceRole,v9User,compFor,payrollFor,v9data,v9save,audit,id,now}));
+app.get('/api/v9/compensation',auth,ownerOnly,SBC_WORKFORCE_PAYROLL.listCompensation)
+app.put('/api/v9/compensation/:userId',auth,ownerOnly,SBC_WORKFORCE_PAYROLL.updateCompensation)
 // SBC_V66149_HR_DEPARTMENT_OWNER_ROUTE; workforce-only read model; no provider, money, account or HR writes.
 // SBC_V66160_SALES_COMMAND_OWNER_LEDGER; owner-approved monthly commissions, read-only manager progress.
 require('./routes/sbc-sales-command-v1.cjs').register(app,{
@@ -7022,9 +7023,9 @@ app.get('/api/hr/workspace',auth,ownerOnly,(req,res)=>{
   res.json(data);
  }catch(e){res.status(Number(e?.status)||503).json({ok:false,error:String(e?.code||'HR_WORKSPACE_READ_UNAVAILABLE')});}
 });
-app.get('/api/v9/payroll',auth,ownerOnly,(req,res)=>res.json((db.users||[]).filter(u=>isWorkforceRole(u.role)).map(u=>({user:v9User(u),compensation:compFor(u.id),payroll:payrollFor(u.id)}))))
-app.post('/api/v9/payroll/run',auth,ownerOnly,async(req,res)=>{const uid=String(req.body?.userId||''),u=(db.users||[]).find(x=>x.id===uid&&isWorkforceRole(x.role));if(!u)return res.status(404).json({error:'Caller not found.'});const p=payrollFor(uid),v=v9data();const run={id:id('pay'),userId:uid,userName:u.name,period:p.period,periodStart:p.periodStart,periodEnd:now().slice(0,10),hours:p.hours,trainingHours:p.trainingHours,callingHours:p.callingHours,qualifiedAppointments:p.qualifiedAppointments,sales:p.sales,basePay:p.basePay,bonuses:p.bonuses,total:p.estimatedGrossPay,currency:p.currency,status:'Draft',paymentReference:'',createdAt:now(),paidAt:null};v.payrollRuns.unshift(run);await v9save(v);audit(req.user,'payroll_run_created',`Created payroll run for ${u.name}`,{userId:uid,runId:run.id,total:run.total});res.status(201).json(run)})
-app.post('/api/v9/payroll/run/:id/status',auth,ownerOnly,async(req,res)=>{const v=v9data(),r=v.payrollRuns.find(x=>x.id===req.params.id);if(!r)return res.status(404).json({error:'Payroll run not found.'});const status=['Draft','Approved','Paid','Void'].includes(req.body?.status)?req.body.status:'Draft';r.status=status;r.paymentReference=String(req.body?.paymentReference||r.paymentReference||'');r.paidAt=status==='Paid'?now():r.paidAt;await v9save(v);audit(req.user,'payroll_run_status',`Set payroll ${r.id} to ${status}`,{runId:r.id});res.json(r)})
+app.get('/api/v9/payroll',auth,ownerOnly,SBC_WORKFORCE_PAYROLL.listPayroll)
+app.post('/api/v9/payroll/run',auth,ownerOnly,SBC_WORKFORCE_PAYROLL.createPayrollDraft)
+app.post('/api/v9/payroll/run/:id/status',auth,ownerOnly,SBC_WORKFORCE_PAYROLL.updatePayrollStatus)
 
 
 // V55.7.1: Training V2 remains the active training runtime; revenue sleep loop added. Content is migrated by TRAINING_SYSTEM.
