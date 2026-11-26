@@ -34,6 +34,21 @@ function eligible(c){
   const temp=String(c.leadTemperature||'').toLowerCase();
   return strictVerified(c) && (temp==='warm'||temp==='hot'); // SBC_V6627_KIM_ELIGIBILITY_TENANT_EVIDENCE: 'unverified' must never count as verified
 }
+// Aggregate reasons for the review queue only; never infer verification from a nested field.
+function verificationReviewEvidence(rows){
+ const result={total:rows.length,needsVerification:0,ownerReview:0,explicitlyUnverified:0,missingStatus:0,otherStatus:0,nestedVerifiedConflict:0,missingContactMethod:0};
+ for(const c of rows){
+  const status=String(c?.verificationStatus||'').trim().toLowerCase().replace(/[-_]+/g,' ').replace(/\s+/g,' ');
+  if(!status)result.missingStatus++;
+  else if(status==='needs verification')result.needsVerification++;
+  else if(status==='owner review'||status==='needs review'||status==='review'||status==='pending')result.ownerReview++;
+  else if(status==='unverified'||status==='not verified'||status==='failed')result.explicitlyUnverified++;
+  else result.otherStatus++;
+  if(strictVerified({verificationStatus:c?.leadIntelligence?.verificationStatus}))result.nestedVerifiedConflict++;
+  if(!String(c?.phone||'').trim()&&!String(c?.email||'').trim())result.missingContactMethod++;
+ }
+ return result;
+}
 function recentMission(c,windowMs=6*60*60*1000){
   const t=new Date(c?.sbcKimMission?.updatedAt||0).getTime();
   return Number.isFinite(t)&&t>0&&(Date.now()-t)<windowMs;
@@ -77,16 +92,17 @@ function sbcAdvisoryScreen(db, tenantId, limit, eligible, recentMission) {
   // Deliberately return counts only; no names, phones, IDs or notes in logs.
   const qualificationReasons={warmHotTotal:warmHot.length,warmHotQualified:0,warmHotNeedsVerification:0,
     warmHotSuppressed:0,warmHotExistingCustomer:0,warmHotOther:0};
+  const verificationReviewRows=[];
   for(const c of warmHot){
     const status=String(c?.status||'').trim().toLowerCase();
     if(suppressed(c))qualificationReasons.warmHotSuppressed++;
     else if(['active_customer','fulfilled','active'].includes(status))qualificationReasons.warmHotExistingCustomer++;
-    else if(!strictVerified(c))qualificationReasons.warmHotNeedsVerification++;
+    else if(!strictVerified(c)){qualificationReasons.warmHotNeedsVerification++;verificationReviewRows.push(c);}
     else if(eligible(c))qualificationReasons.warmHotQualified++;
     else qualificationReasons.warmHotOther++;
   }
   return {ok:true,advisoryOnly:true,tenantId:scopedId,tenantCustomers:all.length,tenantWarmHot:warmHot.length,unresolvedTenantRecords,
-    qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,qualificationReasons,temperatureCoverage,
+    qualifiedWarmHot:verified.length,notQualified:all.length-verified.length,qualificationReasons,temperatureCoverage,verificationReviewEvidence:verificationReviewEvidence(verificationReviewRows),
     prospects:Math.min(cap,ready.length),missions:0,externalActions:0,writeAttempts:0};
 }
 // Read-only operating plan over the same canonical snapshot as Kim's advisory
@@ -114,13 +130,14 @@ function fulfillmentDecision(db,tenant){
 function operatingPlan(db,screened,started){
  const {summary,coverage,ready:dispatch,held:clearance}=fulfillmentDecision(db,screened.tenantId);
  const ready=coverage==='SCOPED_SNAPSHOT'?dispatch.length:null,held=coverage==='SCOPED_SNAPSHOT'?clearance.length:null;
- const q=screened.qualificationReasons;
+ const q=screened.qualificationReasons,review=screened.verificationReviewEvidence;
  const finance=summary.reconciliation.ambiguousOrders+summary.reconciliation.invalidAmountOrders;
  function decision(code,count,action,priority){
   return {code,count,action,priority,status:count===null?'EVIDENCE_REQUIRED':count>0?'REVIEW_REQUIRED':'NO_ITEMS_IN_SNAPSHOT',execution:'HUMAN_REVIEW'};
  }
  const plan={schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',
   coverage:{customers:'SCOPED_SNAPSHOT',orders:'SCOPED_SNAPSHOT',fulfillment:coverage},
+  leadVerificationReview:review,
   commercial:{recognizedRevenueCents:summary.revenueCents,recognizedPaidOrders:summary.orderCount,
    paymentIdentityConflicts:summary.reconciliation.paymentIdentityConflicts,reconciliationOrders:finance,proof:summary.proof},
   departments:[
@@ -227,7 +244,7 @@ function createController({db,getCanonicalDb,saveData,audit,addActivity,tenBrain
       const screened=sbcAdvisoryScreen(db,tenantId,limit,eligible,recentMission);
       // Plain production logs should explain zero qualified prospects without
       // weakening outreach rules or exposing any customer-identifying data.
-      try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage}));}catch(_){/* diagnostics never block runtime */}
+      try{logger.info('[SBC_V6624] Kim advisory eligibility reasons',JSON.stringify({tenantId:screened.tenantId,...screened.qualificationReasons,temperatureCoverage:screened.temperatureCoverage,verificationReviewEvidence:screened.verificationReviewEvidence}));}catch(_){/* diagnostics never block runtime */}
       return {...screened,operatingPlan:operatingPlan(db,screened,started)};
     }
     state.running=true;state.lastCycleTenant=null;state.lastCycleAt='';state.lastCycleResult=null;const started=Date.now();
