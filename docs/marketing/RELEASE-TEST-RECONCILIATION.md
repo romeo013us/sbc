@@ -1,0 +1,7 @@
+# Release-test reference reconciliation
+
+Four direct test paths in the consolidated release gate were missing after earlier source consolidation. Both the historical package-script aliases and test:all now call current suites. Readiness uses v66131-operational-readiness.test.cjs; pricing uses a new canonical public checkout amount contract plus the existing V66.77 service offers and V66.79 monthly-care checks; lead import uses the V66.164 1000-row atomic owner-import suite; circuit breaker uses a new VM behavior regression against the actual canonical browser script with mirror parity. The older writer-lease reference was already replaced in 44d288b.
+
+Local checks: 16 tests passed across the readiness, service-offer and CSV suites; four further tests passed for price contract, circuit breaker and monthly-care. The tests and principal runtime dependencies were matched to current Git blob identities from the repository tree using the prior extracted candidate and verified duplicate browser files. The CSV suite stages the route before testing and uses fake SQL, the readiness suite uses fixture evidence, and circuit breaker uses a simulated browser and clock; these do not establish live readiness or full equivalence to the unavailable historical tests. No runtime logic was changed. The new source gate must run in GitHub before any promotion.
+
+No production changes, payments, data mutations or marketing publication are included.
