@@ -15,8 +15,8 @@ test('index replaces 26 synchronous controllers with 6 version-hashed bundles an
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const tags=htmlScripts(page);
-  assert.equal(tags.length,77,'nine further script requests removed without changing execution order');
-  for(const script of ['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js','/sbc-account-portfolios-v1.js','/sbc-appointment-workflow-v1.js','/sbc-customer-design-requests-v1.js'])assert.equal(tags.filter(x=>x.split('?')[0]===script).length,1,'New isolated controller loads exactly once: '+script);
+  assert.equal(tags.length,76,'nine further script requests removed without changing execution order');
+  for(const script of ['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js','/sbc-appointment-workflow-v1.js','/sbc-customer-design-requests-v1.js'])assert.equal(tags.filter(x=>x.split('?')[0]===script).length,1,'New isolated controller loads exactly once: '+script);
   const bundles=Object.keys(GROUPS).map(group=>compile(root,group).filename);
   for(const file of bundles)assert(tags.some(t=>t.startsWith('/'+file)),file+' must load');
   for(const files of Object.values(GROUPS)){
@@ -123,13 +123,13 @@ test('additional grouped controllers preserve adjacency and remain isolated from
  assert.deepEqual(GROUPS['marketing-review-rail'],['v33-5-marketing.js','v48-9-growth.js']);
 });
 
-test('God Tier request ratchet preserves startup barriers and never exceeds 82 initial external JS/CSS tags',()=>{
+test('God Tier request ratchet preserves startup barriers and never exceeds 81 initial external JS/CSS tags',()=>{
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const scripts=htmlScripts(page);
   const styles=[...page.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)];
-  assert.equal(scripts.length,77);
-  assert.ok(scripts.length+styles.length<=82,'initial external JS/CSS request budget');
+  assert.equal(scripts.length,76);
+  assert.ok(scripts.length+styles.length<=81,'initial external JS/CSS request budget');
   for(const group of ['gateway-control-rail','architecture-rail','kim-advisory-rail']){
    const b=compile(root,group);
    assert.ok(scripts.includes('/'+b.filename));

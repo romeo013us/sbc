@@ -171,7 +171,25 @@ body.sbcAcademyTrainingOnly .sbc-v56240-hardening{display:none!important}
 })(window);
 </script>
 <script defer src="/sbc-account-success-v1.js?v=20261113-account-success"></script>
-<script defer src="/sbc-account-portfolios-v1.js?v=20261113-portfolio-v1"></script>
+<script id="sbc-lazy-account-portfolios">
+(function(w){
+ 'use strict';
+ const proxy=Object.freeze({open:async function(...args){
+  const actor=w.state?.me;
+  if(actor?.role!=='owner')return;
+  try{
+   if(typeof w.sbcLoadWorkstation!=='function')throw Error('WORKSTATION_STARTING');
+   await w.sbcLoadWorkstation('account-portfolios');
+   if(w.state?.me!==actor||actor.role!=='owner')return;
+   const api=w.SBC_ACCOUNT_PORTFOLIOS;
+   if(!api||api===proxy||typeof api.open!=='function')throw Error('WORKSTATION_ENTRY_MISSING');
+   return await api.open(...args);
+  }catch(e){if(typeof w.toast==='function')w.toast('Account Manager Portfolios unavailable. Please retry.');else console.error('Account Manager Portfolios unavailable',e);}
+ }});
+ w.__SBC_ACCOUNT_PORTFOLIOS_LAZY__=proxy;
+ w.SBC_ACCOUNT_PORTFOLIOS=proxy;
+})(window);
+</script>
 <script defer src="/sbc-lead-profile-v1.js?v=20261113-account360"></script>
 <script defer src="/sbc-appointment-workflow-v1.js?v=20261119-customer-calendar"></script>
 
@@ -270,7 +288,7 @@ if(app)new MutationObserver(schedule).observe(app,{attributes:true,attributeFilt
 <script src="/sbc-v6559-ui.js?v=66.0.13-profile-stability" defer></script>
 <!-- SBC_V6559_LAUNCH_PHONE_THEME_LAYOUT -->
 <script defer src="/sbc-v6563-sales-operating-model.js?v=66.0.13-profile-stability"></script>
-<script defer src="/sbc-workstation-loader-v1.js?v=20261125-lazy-academy"></script>
+<script defer src="/sbc-workstation-loader-v1.js?v=20261126-lazy-portfolios"></script>
 <script defer src="/sbc-v6571-bilingual-sales-ops.js?v=66.0.13-profile-stability"></script>
 <script id="sbc-v6600-form-field-identity" data-sbc-v6600-form-field-identity="true">(function(){
 "use strict";

@@ -28,7 +28,7 @@ test('both HTML mirrors load only the lightweight bootstrap at startup',()=>{
   const tags=[...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)].map(m=>m[1]);
   assert.equal(tags.filter(t=>t.startsWith('/sbc-workstation-loader-v1.js?')).length,1);
   assert.ok(!tags.some(t=>/\/sbc-(?:market-intelligence|v6567-marketing-hub)\.js/.test(t)));
-  assert.equal(tags.length,77);
+  assert.equal(tags.length,76);
  }
 });
 
@@ -111,4 +111,32 @@ test('real browser loader manifest requests Studio once only after compatibility
  assert.deepEqual(requests,['/sbc-website-production-v1.js?v=20261116-zip-proposals']);
  assert.equal(calls.length,2);
  await build('three');assert.equal(requests.length,1);assert.equal(calls.length,3);
+});
+
+test('owner portfolio launcher loads actual module once, denies nonowners and rechecks session after load',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const stub=read('public/index.html').match(/<script id="sbc-lazy-account-portfolios">([\s\S]*?)<\/script>/);
+ assert(stub,'owner portfolio compatibility launcher must exist');
+ const requests=[],modals=[],buttons=new Map(),notices=[];let pending;
+ const state={me:null,data:{users:[],customers:[{id:'fixture',businessName:'Fixture Co'}]}};
+ const window={state,location:{hash:''},addEventListener(){},toast:m=>notices.push(m),openModal:(...args)=>modals.push(args)};
+ const nav={appendChild(b){buttons.set(b.id,b)}};
+ const document={readyState:'complete',getElementById:id=>buttons.get(id),querySelector:()=>nav,
+  createElement:()=>({addEventListener(){},setAttribute(){},removeAttribute(){},focus(){},remove(){}}),
+  head:{appendChild(tag){requests.push(tag.src);pending=tag;}}};
+ const context=vm.createContext({window,document,console,setInterval:()=>1,clearInterval(){},fetch:()=>assert.fail('unexpected request')});
+ vm.runInContext(stub[1],context);
+ vm.runInContext(read('public/sbc-workstation-loader-v1.js'),context);
+ const open=window.SBC_ACCOUNT_PORTFOLIOS.open;
+ await open('fixture');state.me={id:'am',role:'account_manager'};await open('fixture');assert.deepEqual(requests,[]);
+ state.me={id:'owner',role:'owner'};const a=open('fixture'),b=open('fixture');await new Promise(r=>setImmediate(r));
+ assert.deepEqual(requests,['/sbc-account-portfolios-v1.js?v=20261126-lazy-owner']);
+ state.me={id:'other',role:'owner'};vm.runInContext(read('public/sbc-account-portfolios-v1.js'),context);pending.onload();await Promise.all([a,b]);
+ assert.equal(modals.length,0,'do not replay previous session intent');
+ assert.notEqual(window.SBC_ACCOUNT_PORTFOLIOS.open,open);
+ await open('fixture');assert.equal(modals.length,1);assert.match(modals[0][1],/Fixture Co/);assert.equal(requests.length,1);assert.deepEqual(notices,[]);
+ for(const dir of ['public','browser_public']){
+  const html=read(dir+'/index.html');assert(!/<script\b[^>]*\bsrc="\/sbc-account-portfolios-v1\.js/.test(html));assert(html.includes('id="sbc-lazy-account-portfolios"'));
+ }
 });
