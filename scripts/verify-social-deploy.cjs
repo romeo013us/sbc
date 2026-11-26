@@ -6,7 +6,7 @@ const exact=(o,keys)=>o&&typeof o==='object'&&!Array.isArray(o)&&Object.keys(o).
 const destination='https://sbcmia.com/assets/social/campaigns/';
 function validate(manifest){
  if(!exact(manifest,['schemaVersion','publicationReady','entries'])||manifest.schemaVersion!==1||manifest.publicationReady!==false||!Array.isArray(manifest.entries)||manifest.entries.length<1||manifest.entries.length>3)throw Error('INVALID_SOCIAL_MANIFEST');
- const seen=new Set();for(const e of manifest.entries){if(!exact(e,['sha256','url','alt','mime','width','height','bytes'])||!isHash(e.sha256)||e.url!==destination+e.sha256+'.jpg'||e.mime!=='image/jpeg'||e.width!==1080||e.height!==1080||!Number.isSafeInteger(e.bytes)||e.bytes<10000||e.bytes>4*1024*1024||typeof e.alt!=='string'||!e.alt.trim()||e.alt.length>180||/[\x00-\x1f\x7f]/.test(e.alt)||seen.has(e.sha256))throw Error('INVALID_SOCIAL_ENTRY');seen.add(e.sha256);}
+ const seen=new Set();for(const e of manifest.entries){if(!exact(e,['sha256','url','alt','mime','width','height','bytes'])||!isHash(e.sha256)||e.url!==destination+e.sha256+'.jpg'||e.mime!=='image/jpeg'||![[1080,1080],[1200,628],[1080,1920]].some(([w,h])=>e.width===w&&e.height===h)||!Number.isSafeInteger(e.bytes)||e.bytes<10000||e.bytes>4*1024*1024||typeof e.alt!=='string'||!e.alt.trim()||e.alt.length>180||/[\x00-\x1f\x7f]/.test(e.alt)||seen.has(e.sha256))throw Error('INVALID_SOCIAL_ENTRY');seen.add(e.sha256);}
  return JSON.parse(JSON.stringify(manifest));
 }
 async function readback(e,transport){
