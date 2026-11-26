@@ -1,0 +1,7 @@
+# Account dossier and campaign attribution foundation
+
+The dossier uses bounded prospect audit evidence and existing suppression/synthetic-lead rules. Research basis is not external verification or consent. Missing URL is not proof of website absence. All previews are unconfirmed until separately verified. Suppressed records have no sales offer or talking points. No outreach or CRM mutation. Digest is a content identifier, not a signature.
+
+Campaign matching requires trusted tenant-scoped published campaign, checkout binding, ledger capture and independently verified provider payment identity. Strict full-hash UTM hints are not payment evidence. Chronology is validated and amount/currency are derived from ledger records. Gross capture attribution candidates are not proof of causality, settlement or net revenue. The existing V1 ledger lacks payment-object identity. Do not use client-supplied objects as trusted records.
+
+Schema proposal is deliberately outside the active migration directory. Coordinate with Office Box before activating shared migration history. Future transactional writer must enforce verified payment-object binding, current campaign evidence, capture kind, exact provider/account scope, tenant isolation, duplicate/ambiguous-write recovery, refund and dispute reconciliation. No provider-binding migration, live checkout, UI route, database mutation or automated outreach in this change. Tests are included by the existing release gate creative test glob.
