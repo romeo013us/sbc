@@ -9,7 +9,8 @@ const ev={provider:'square',environment:'sandbox',accountId:'merchant-ci',eventI
 test('isolated MySQL 8: migration, concurrent replay, tamper, ambiguous commit, atomic rollback, tenant FK',async()=>{
  assert.equal(process.env.SBC_LEDGER_DISPOSABLE_CI,'1','explicit disposable database required');
  // Fixed loopback address, fixed isolated database and test-only credentials. Never read application DB config.
- const pool=createPool({host:'127.0.0.1',port:3306,user:'root',password:'sbc_ledger_disposable_ci_password',database:'sbc_ledger_ci',connectionLimit:4,timezone:'Z'});
+ assert.ok(process.env.SBC_LEDGER_CI_PASSWORD,'disposable CI credential required');
+ const pool=createPool({host:'127.0.0.1',port:3306,user:'root',password:process.env.SBC_LEDGER_CI_PASSWORD,database:'sbc_ledger_ci',connectionLimit:4,timezone:'Z'});
  try{
   assert.deepEqual(await runMigrations(pool,{mode:'writer',assertWriter:()=>true}),{verified:4,applied:4});
   assert.deepEqual(await runMigrations(pool,{mode:'reader'}),{verified:4,applied:0});

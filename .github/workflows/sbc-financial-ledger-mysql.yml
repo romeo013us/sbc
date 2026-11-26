@@ -32,3 +32,4 @@ jobs:
       - run: node --test shared/sbc-core/ledger.mysql.test.cjs
         env:
           SBC_LEDGER_DISPOSABLE_CI: '1'
+          SBC_LEDGER_CI_PASSWORD: sbc_ledger_disposable_ci_password

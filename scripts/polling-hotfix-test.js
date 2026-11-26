@@ -4,6 +4,9 @@ const root=path.resolve(__dirname,'..');
 const cinematic=fs.readFileSync(path.join(root,'public/v569-cinematic.js'),'utf8');
 const notifications=fs.readFileSync(path.join(root,'public/sbc-unattended-notifications-v6504.js'),'utf8');
 const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+const bundle=require('./v66-safe-js-bundles.cjs').compile(root,'flow-presentation-rail');
+const mount=notifications.slice(notifications.indexOf(' function mount(){'),notifications.indexOf(' function render(){'));
+const history=notifications.slice(notifications.indexOf(' async function loadHistory('),notifications.indexOf(' function host(){'));
 const checks={
  cinematic_inflight_guard:/if\(state\.inFlight\|\|state\.stopped\)return/.test(cinematic)&&/state\.inFlight=true/.test(cinematic),
  cinematic_429_backoff:/r\.status===429/.test(cinematic)&&/Retry-After/.test(cinematic)&&/MAX_BACKOFF_MS=300000/.test(cinematic),
@@ -11,10 +14,10 @@ const checks={
  cinematic_slower_polling:/NORMAL_POLL_MS=30000/.test(cinematic)&&!/setInterval\(\(\)=>\{poll\(\)/.test(cinematic),
  notification_inflight_dedup:/if\(statusInFlight\)return statusInFlight/.test(notifications),
  notification_backoff:/r\.status===429/.test(notifications)&&/Retry-After/.test(notifications)&&/MAX_BACKOFF_MS=300000/.test(notifications),
- mount_does_not_fetch:/function mount\(\)\{[\s\S]*?render\(\);\}/.test(notifications)&&!/function mount\(\)[\s\S]*?render\(\);loadStatus\(\)/.test(notifications),
+ mount_does_not_fetch:mount.includes('render();')&&!/\b(?:loadStatus|fetch|api)\s*\(/.test(mount)&&mount.includes("if(window.state?.view==='notifications'&&!lastHistory&&!historyError)loadHistory();")&&history.includes("if(window.state?.view!=='notifications'||historyInFlight||!force&&(lastHistory||historyError))return;")&&history.includes('historyInFlight=true;'),
  notification_poll_reduced:/setInterval\(\(\)=>\{if\(document\.visibilityState==='visible'&&shouldShow\(\)\)loadStatus\(\);\},60000\)/.test(notifications),
- cinematic_cache_busted:html.includes('/v569-cinematic.js?v=65.1.26'),
- notification_cache_busted:html.includes('/sbc-unattended-notifications-v6504.js?v=65.1.26'),
+ cinematic_cache_busted:bundle.files.includes('v569-cinematic.js')&&html.split('/'+bundle.filename).length===2&&fs.readFileSync(path.join(root,'public',bundle.filename),'utf8')===bundle.content&&!html.includes('src="/v569-cinematic.js'),
+ notification_cache_busted:html.split('/sbc-unattended-notifications-v6504.js?v=66.0.87-durable-destinations').length===2,
  recovery_guard_ui_preserved:notifications.includes("api('/api/owner/recovery/status')")&&notifications.includes('No data changed.'),
  owner_authorization_preserved:cinematic.includes('/api/v5691/financial/approve/')&&cinematic.includes('if(!c.lockId)return')
 };
