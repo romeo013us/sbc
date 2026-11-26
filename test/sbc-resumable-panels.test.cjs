@@ -41,7 +41,7 @@ test('main and standalone workspaces cache-bust resume code and styles',()=>{
  const home=read('public/index.html');
  assert.match(focus,/sbc-chatgpt-os-v1\.js\?v=66\.0\.132-resume/);
  assert.match(focus,/sbc-chatgpt-os-v1\.css\?v=66\.0\.132-resume/);
- assert.match(home,/sbc-command-center-focus-v1\.js\?v=20261116-panel-resume/);
+ assert.match(home,/sbc-command-center-focus-v1\.js\?v=20261126-owner-clean/);
  for(const file of ['lead-research.html','sales-caller.html','hr-workstation.html','hr-department.html','renewals-center.html','sbc-account-manager-v1.html','kevin-cockpit.html']){
   const html=read('public/'+file);
   assert.match(html,/sbc-chatgpt-os-v1\.js\?v=66\.0\.132-resume/,file);
