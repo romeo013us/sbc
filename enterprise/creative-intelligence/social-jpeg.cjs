@@ -27,5 +27,9 @@ async function stageSocialJpeg({reviews,tenantId,jobId,ffmpeg,ffprobe,logoPath,l
   return {file,sha256,sourceAssetId:a.id,reviewVersion:prior.version,logoSha256,alt:a.alt,width,height,mime:'image/jpeg',bytes:bytes.length,publicationReady:false};
  }finally{if(temp)await fs.rm(temp,{force:true});await fs.rm(dir,{recursive:true,force:true});}
 }
-if(require.main===module){(async()=>{const {environmentRuntime}=require('./workspace.cjs'),rt=environmentRuntime();if(!rt)throw Error('CREATIVE_LOCAL_RENDERER_NOT_CONFIGURED');try{console.log(JSON.stringify(await stageSocialJpeg({reviews:rt.reviews,tenantId:rt.tenantId,jobId:process.argv[2],ffmpeg:process.env.SBC_CREATIVE_FFMPEG,ffprobe:process.env.SBC_CREATIVE_FFPROBE,logoPath:process.env.SBC_SOCIAL_LOGO_PATH,logoSha256:process.env.SBC_SOCIAL_LOGO_SHA256,outputRoot:process.env.SBC_SOCIAL_PRIVATE_STAGE})));}finally{rt.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});}
-module.exports={stageSocialJpeg};
+function parseSocialArgs(args){
+ if(!Array.isArray(args)||![1,3].includes(args.length)||typeof args[0]!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(args[0])||(args.length===3&&(args[1]!=='--format'||!['square','landscape','portrait'].includes(args[2]))))throw Error('INVALID_SOCIAL_ARGS');
+ return {jobId:args[0],format:args[2]||'square'};
+}
+if(require.main===module){(async()=>{const cli=parseSocialArgs(process.argv.slice(2));const {environmentRuntime}=require('./workspace.cjs'),rt=environmentRuntime();if(!rt)throw Error('CREATIVE_LOCAL_RENDERER_NOT_CONFIGURED');try{console.log(JSON.stringify(await stageSocialJpeg({reviews:rt.reviews,tenantId:rt.tenantId,...cli,ffmpeg:process.env.SBC_CREATIVE_FFMPEG,ffprobe:process.env.SBC_CREATIVE_FFPROBE,logoPath:process.env.SBC_SOCIAL_LOGO_PATH,logoSha256:process.env.SBC_SOCIAL_LOGO_SHA256,outputRoot:process.env.SBC_SOCIAL_PRIVATE_STAGE})));}finally{rt.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});}
+module.exports={stageSocialJpeg,parseSocialArgs};
