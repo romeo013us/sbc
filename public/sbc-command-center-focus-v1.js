@@ -11,6 +11,7 @@ function syncDisplay(){
  document.documentElement.dataset.sbcOwnerClean=isOwner&&on?'true':'false';
  document.documentElement.dataset.sbcOwnerRoutine=isOwner&&on&&window.state?.data?.recovery?.required===false?'true':'false';
  document.documentElement.dataset.sbcFocusMode=on?'focus':'all';
+ var advancedSummary=document.querySelector('#sbcAdvancedNav > summary');if(advancedSummary)advancedSummary.textContent=isOwner?'＋ Administration & System Tools':'＋ More tools';
  var toggle=document.getElementById('sbcFocusToggle');
  if(toggle){toggle.textContent=on?'◫ Show all tools':'✦ Focus view';toggle.setAttribute('aria-pressed',String(on));}
 }
@@ -172,7 +173,7 @@ function install(){
  Array.from(nav.children).forEach(function(child){if(child!==main&&child!==advanced)groups.appendChild(child);});
  var legacy=advanced.querySelector('.v56-legacy-tools');
  if(legacy){legacy.insertBefore(groups,legacy.firstChild);if(typeof MutationObserver==='function')watchLateNavigation(nav,main,advanced,groups);}
- var summary=advanced.querySelector('summary');if(summary)summary.textContent='＋ More tools';
+ var summary=advanced.querySelector('summary');if(summary)summary.textContent=owner()?'＋ Administration & System Tools':'＋ More tools';
  advanced.classList.add('sbc-focus-more');
  var bottom=document.querySelector('#app .sidebar-bottom');
  if(bottom){
