@@ -15,7 +15,7 @@ test('index replaces 26 synchronous controllers with 6 version-hashed bundles an
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const tags=htmlScripts(page);
-  assert.equal(tags.length,81,'nine further script requests removed without changing execution order');
+  assert.equal(tags.length,77,'nine further script requests removed without changing execution order');
   for(const script of ['/sbc-lead-profile-v1.js','/sbc-command-center-focus-v1.js','/sbc-account-success-v1.js','/sbc-account-portfolios-v1.js','/sbc-appointment-workflow-v1.js','/sbc-customer-design-requests-v1.js'])assert.equal(tags.filter(x=>x.split('?')[0]===script).length,1,'New isolated controller loads exactly once: '+script);
   const bundles=Object.keys(GROUPS).map(group=>compile(root,group).filename);
   for(const file of bundles)assert(tags.some(t=>t.startsWith('/'+file)),file+' must load');
@@ -39,8 +39,8 @@ test('bundles preserve exact source ordering, source integrity and browser mirro
   for(const file of GROUPS[group])assert(content.includes(read('public/'+file).trimEnd()));
  }
  const result=verify(root);
- assert.equal(result.scriptRequestsSaved,29);
- assert.equal(result.originalFiles,38);
+ assert.equal(result.scriptRequestsSaved,33);
+ assert.equal(result.originalFiles,44);
 });
 
 test('real scripts expose identical browser globals and event registrations when loaded separately or bundled',()=>{
@@ -123,17 +123,31 @@ test('additional grouped controllers preserve adjacency and remain isolated from
  assert.deepEqual(GROUPS['marketing-review-rail'],['v33-5-marketing.js','v48-9-growth.js']);
 });
 
-test('God Tier request ratchet preserves startup barriers and never exceeds 86 initial external JS/CSS tags',()=>{
+test('God Tier request ratchet preserves startup barriers and never exceeds 82 initial external JS/CSS tags',()=>{
  for(const dir of ['public','browser_public']){
   const page=read(dir+'/index.html');
   const scripts=htmlScripts(page);
   const styles=[...page.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)];
-  assert.equal(scripts.length,81);
-  assert.ok(scripts.length+styles.length<=86,'initial external JS/CSS request budget');
+  assert.equal(scripts.length,77);
+  assert.ok(scripts.length+styles.length<=82,'initial external JS/CSS request budget');
   for(const group of ['gateway-control-rail','architecture-rail','kim-advisory-rail']){
    const b=compile(root,group);
    assert.ok(scripts.includes('/'+b.filename));
    for(const f of b.files)assert.ok(!scripts.some(t=>t.split('?')[0]==='/'+f));
   }
  }
+});
+
+test('boot flow and deferred revenue presentation packs keep their original barrier and execution mode',()=>{
+ const page=read('public/index.html');
+ const flow=compile(root,'flow-presentation-rail'),revenue=compile(root,'deferred-revenue-rail');
+ assert.deepEqual(flow.files,['v56-flow.js','v569-cinematic.js','v562-marketing-controls.js']);
+ assert.deepEqual(revenue.files,['god-tier-broadcast-v56-13-4.js','consultative-revenue-v56-13-5.js','v56140-90day-revenue-command.js']);
+ const flowTag='<script src="/'+flow.filename+'"></script>';
+ const revenueTag='<script defer src="/'+revenue.filename+'"></script>';
+ assert(page.includes(flowTag));assert(page.includes(revenueTag));
+ assert(page.indexOf(flowTag)>page.indexOf('/sbc-commercial-os-v602.js'));
+ assert(page.indexOf(flowTag)<page.indexOf("window.__SBC_OFFICE_BOX_URL='/office-box'"));
+ assert(page.indexOf(revenueTag)>page.indexOf('/sbc-mobile-final.js'));
+ assert(page.indexOf(revenueTag)<page.indexOf('/v56150-revenue-autopilot.js'));
 });
