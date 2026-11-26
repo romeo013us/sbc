@@ -16,7 +16,7 @@ function validateWave(bytes){
  if(![1,2].includes(channels)||rate<8000||rate>48000||bytes.readUInt16LE(34)!==16||align!==channels*2||bytes.readUInt32LE(28)!==rate*align||(bytes.length-44)%align||(bytes.length-44)/(rate*align)>24)throw Error('INVALID_LOCAL_AUDIO');
  return Buffer.from(bytes);
 }
-const stamp=s=>'00:'+String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')+'.000';
+const {sceneCaptions}=require('./scene-captions.cjs');
 function createLocalMediaRenderer({ffmpeg,ffprobe}){
  if(![ffmpeg,ffprobe].every(v=>typeof v==='string'&&path.isAbsolute(v)&&!v.includes('\0')))throw Error('INVALID_LOCAL_BINARY');
  let busy=false;
@@ -59,8 +59,7 @@ function createLocalMediaRenderer({ffmpeg,ffprobe}){
   const duration=slides.reduce((n,s)=>n+s.seconds,0),{width,height}=slides[0].design;
   if(duration>24||slides.some(s=>s.design.width!==width||s.design.height!==height))throw Error('INVALID_LOCAL_VIDEO');
   const audio=input.audio===undefined?null:validateWave(input.audio);
-  let offset=0,captions='WEBVTT\n\n';
-  for(const s of slides){captions+=stamp(offset)+' --> '+stamp(offset+s.seconds)+'\n'+s.headline.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'\n\n';offset+=s.seconds;}
+  const captions=sceneCaptions(slides);
   return work(async dir=>{
    const args=['-filter_complex_threads','1'],filters=[];
    for(let i=0;i<slides.length;i++){

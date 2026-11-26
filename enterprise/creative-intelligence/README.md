@@ -5,7 +5,7 @@ This branch implements one private creative workspace inside Website Studio and 
 ## Local deployment contract (not production approval)
 
 - Node.js 22.16+ with node:sqlite available, FFmpeg and FFprobe with the codecs/filters exercised by the test suite.
-- Use a dedicated host or local volume with a durable, private, writable absolute directory; never a public document root or network-mounted SQLite database. The worker and API must see the same local filesystem.
+- Use a dedicated host or local volume with a durable, private, writable absolute directory; never a public document root or network-mounted SQLite database. The worker and API must see the same local filesystem, including jobs.db, reviews.db, their SQLite WAL files, and the private media directory. Backup and restore must be consistent across these components.
 - The existing server must enforce its owner, tenant and writer gates. Do not enable on a preview read-only process, public/shared workstation, or an unverified production host.
 - Configure the following values through the deployment environment, not source control:
 
@@ -25,7 +25,7 @@ Run `node --test test/sbc-creative-*.test.cjs` before release. The dedicated CI 
 
 ## Owner workflow
 
-Open an editable Website Studio draft or Marketing > Content Studio, then expand Create media. Submit the headline, supporting copy, call to action, palette, aspect ratio, and descriptive alt text. Video uses one or two template scenes. A completed job is private: review the rendered output, copy, licensing and accessibility before manually using it in a delivery workflow. No automatic posting, public URL, domain change, external AI call, or purchase is authorized by this feature. Closing the drawer stops its browser polling; queued work remains durable.
+Open an editable Website Studio draft or Marketing > Content Studio, then expand Create media. Submit the headline, supporting copy, call to action, palette, aspect ratio, and descriptive alt text. Video uses one or two template scenes. A completed job is private. Preview the rendered output, then confirm commercial rights and review its copy, logo, claims and accessibility in the owner review drawer. Approval is versioned per job and bound to its immutable asset; rejection/revocation prevents subsequent approved-delivery downloads. The owner can download approved PNG or MP4 files, and approved videos include a WebVTT scene-text caption track. Scene text is not speech transcription. This does not automatically insert media into a website or publish a social post, and it cannot recall previously downloaded files. No automatic posting, public URL, domain change, external AI call, or purchase is authorized by this feature. Closing the drawer stops its browser polling; queued work remains durable.
 
 ## Remaining production release gates
 

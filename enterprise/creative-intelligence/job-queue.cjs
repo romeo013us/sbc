@@ -6,6 +6,7 @@ const {DatabaseSync}=require('node:sqlite');
 const {randomUUID,randomBytes,createHash}=require('node:crypto');
 const path=require('node:path');
 const {renderVector}=require('./vector-design.cjs');
+const {sceneCaptions}=require('./scene-captions.cjs');
 const idOK=s=>typeof s==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(s);
 const hashOK=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 const only=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
@@ -50,6 +51,7 @@ function openJobQueue({filename,clock=Date.now,leaseMs=300000,maxAttempts=3}={})
  function fail(s,id,token,code){if(!['RENDER_FAILED','RENDER_UNAVAILABLE','ASSET_NOT_VERIFIED'].includes(code))throw Error('INVALID_JOB_ERROR');return tx(()=>{const n=now(),r=active(s,id,token,n),status=r.attempts>=maxAttempts?'failed':'queued';run('UPDATE creative_jobs SET status=?,worker=NULL,token=NULL,expires=NULL,available=?,error=? WHERE id=?',status,n+1000*2**(r.attempts-1),code,id);return view(row(s,id));});}
  async function complete(s,id,token,assetId,service){if(!hashOK(assetId)||typeof service?.get!=='function')throw Error('ASSET_NOT_VERIFIED');const [t,p]=scopeOf(s),scope={tenantId:t,projectId:p},r=active(scope,id,token,now());const asset=(await service.get(scope,assetId))?.asset;const mime=JSON.parse(r.request).kind==='template-image'?'image/png':'video/mp4';if(!asset||asset.id!==assetId||asset.tenantId!==t||asset.projectId!==p||asset.mime!==mime||asset.reviewState!=='draft')throw Error('ASSET_NOT_VERIFIED');return tx(()=>{active(scope,id,token,now());run("UPDATE creative_jobs SET status='completed',asset=?,worker=NULL,token=NULL,expires=NULL,error=NULL WHERE id=?",assetId,id);return view(row(scope,id));});}
  function list(s){const [t,p]=scopeOf(s);return db.prepare('SELECT * FROM creative_jobs WHERE tenant=? AND project=? ORDER BY created DESC,id DESC LIMIT 30').all(t,p).map(view);}
- return Object.freeze({submit,claim,renew,fail,complete,list,get:(s,id)=>view(row(s,id)),close:()=>db.close()});
+ function captions(s,id){const r=row(s,id);if(!r||r.status!=='completed')return null;const req=JSON.parse(r.request);return req.kind==='template-video'?sceneCaptions(req.slides.map(slide=>({headline:slide.design.headline,seconds:slide.seconds}))):null;}
+ return Object.freeze({submit,claim,renew,fail,complete,list,captions,get:(s,id)=>view(row(s,id)),close:()=>db.close()});
 }
 module.exports={openJobQueue};
