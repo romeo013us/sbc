@@ -2,8 +2,8 @@
  * Browser stores no customer details. All writes are server-authorized.
  */
 (()=>{'use strict';
- const $=id=>document.getElementById(id),state={view:'accounts',accounts:[],handoffs:[],channels:[],posts:[],accountAppointments:[],selected:new URLSearchParams(location.search).get('account')||null,lang:'en',role:'',busy:false};
- const dict={es:{siteValue:"¿Por qué una página web?",siteValueTitle:"3 razones para tener una página web",siteValueHelp:"Respuestas breves y precisas; sin prometer ventas ni posiciones en Google.",findTitle:"1 · Que le encuentren",findText:"Una página ofrece un lugar claro donde conocer su negocio cuando buscan o escuchan de usted.",trustTitle:"2 · Inspirar confianza",trustText:"Una página profesional ayuda a evaluar servicios y datos comerciales comprobados.",contactTitle:"3 · Facilitar el contacto",contactText:"Un lugar para teléfono, cotizaciones y citas cuando esas funciones estén activadas.",siteNeed:"“¿Por qué necesito una página web?”",siteNeedAnswer:"Ayuda a que le encuentren, genera confianza y facilita el contacto. ¿Cuál de esas ventajas le serviría más?",socialQuestion:"“Pero ya tengo Facebook.”",socialAnswer:"¡Excelente! Mantenga Facebook. Su página lo complementa con servicios y datos de contacto en un solo lugar.",careTitle:"Configuración y gestión mensual",careText:"El paquete inicial figura a $199. Una gestión opcional de $79 al mes está en revisión del propietario; no se debe presentar como disponible. Confirme alcance y facturación antes de ofrecerla.",accounts:'Mis cuentas',handoffs:'Transferencias de investigación',social:'Estudio de redes',controls:'Seguridad y controles',connected:'Conectado al CRM de SBC',back:'Centro de mando',refresh:'Actualizar',portfolio:'Cartera de clientes asignados',portfolioHelp:'Cada contacto pertenece a una empresa con un administrador responsable.',researchQueue:'Investigación → Gestión de cuentas',researchHelp:'Los clientes potenciales verificados se revisan antes de asignarse.',contentStudio:'Estudio de redes sociales',contentHelp:'Prepare publicaciones para Facebook e Instagram. El dueño autoriza cada publicación.',safety:'Controles operativos',customer:'Cliente',channel:'Cuenta social autorizada',caption:'Texto de la publicación',media:'URL pública HTTPS de la imagen (requerida para Instagram)',link:'URL de destino',createDraft:'Crear borrador',contentQueue:'Publicaciones y aprobaciones',note:'Nota de cuenta',saveNote:'Guardar nota',timeline:'Historial de relaciones',quickTitle:'Una acción · Guardar resultado',quickHelp:'Registre lo ocurrido, conserve el historial y programe el siguiente paso. Esto no realiza llamadas ni envía mensajes.',quickOutcome:'¿Qué sucedió?',quickPick:'Seleccione resultado…',quickConnected:'Hablé con el negocio',quickNoAnswer:'Sin respuesta',quickFollowUp:'Solicitó seguimiento',quickBadNumber:'Número incorrecto · requiere investigación',quickDnc:'No contactar · bloquear ahora',quickDate:'Fecha del próximo seguimiento',quickNote:'¿Qué se aprendió o solicitó?',quickGuard:'Verifique la identidad, el número, el consentimiento y las restricciones antes de llamar. Aquí no se inicia ninguna llamada.',quickSave:'Guardar resultado y siguiente paso',accountSearch:'Buscar cuenta'}};
+ const $=id=>document.getElementById(id),state={view:'accounts',accounts:[],handoffs:[],handoffStatus:'pending',channels:[],posts:[],accountAppointments:[],selected:new URLSearchParams(location.search).get('account')||null,lang:'en',role:'',busy:false};
+ const dict={es:{siteValue:"¿Por qué una página web?",siteValueTitle:"3 razones para tener una página web",siteValueHelp:"Respuestas breves y precisas; sin prometer ventas ni posiciones en Google.",findTitle:"1 · Que le encuentren",findText:"Una página ofrece un lugar claro donde conocer su negocio cuando buscan o escuchan de usted.",trustTitle:"2 · Inspirar confianza",trustText:"Una página profesional ayuda a evaluar servicios y datos comerciales comprobados.",contactTitle:"3 · Facilitar el contacto",contactText:"Un lugar para teléfono, cotizaciones y citas cuando esas funciones estén activadas.",siteNeed:"“¿Por qué necesito una página web?”",siteNeedAnswer:"Ayuda a que le encuentren, genera confianza y facilita el contacto. ¿Cuál de esas ventajas le serviría más?",socialQuestion:"“Pero ya tengo Facebook.”",socialAnswer:"¡Excelente! Mantenga Facebook. Su página lo complementa con servicios y datos de contacto en un solo lugar.",careTitle:"Configuración y gestión mensual",careText:"El paquete inicial figura a $199. Una gestión opcional de $79 al mes está en revisión del propietario; no se debe presentar como disponible. Confirme alcance y facturación antes de ofrecerla.",accounts:'Mis cuentas',handoffs:'Transferencias de investigación',social:'Estudio de redes',controls:'Seguridad y controles',connected:'Conectado al CRM de SBC',back:'Centro de mando',signOut:'Cerrar sesión',refresh:'Actualizar',portfolio:'Cartera de clientes asignados',portfolioHelp:'Cada contacto pertenece a una empresa con un administrador responsable.',researchQueue:'Investigación → Gestión de cuentas',researchHelp:'Los clientes potenciales verificados se revisan antes de asignarse.',contentStudio:'Estudio de redes sociales',contentHelp:'Prepare publicaciones para Facebook e Instagram. El dueño autoriza cada publicación.',safety:'Controles operativos',customer:'Cliente',channel:'Cuenta social autorizada',caption:'Texto de la publicación',media:'URL pública HTTPS de la imagen (requerida para Instagram)',link:'URL de destino',createDraft:'Crear borrador',contentQueue:'Publicaciones y aprobaciones',note:'Nota de cuenta',saveNote:'Guardar nota',timeline:'Historial de relaciones',quickTitle:'Una acción · Guardar resultado',quickHelp:'Registre lo ocurrido, conserve el historial y programe el siguiente paso. Esto no realiza llamadas ni envía mensajes.',quickOutcome:'¿Qué sucedió?',quickPick:'Seleccione resultado…',quickConnected:'Hablé con el negocio',quickNoAnswer:'Sin respuesta',quickFollowUp:'Solicitó seguimiento',quickBadNumber:'Número incorrecto · requiere investigación',quickDnc:'No contactar · bloquear ahora',quickDate:'Fecha del próximo seguimiento',quickNote:'¿Qué se aprendió o solicitó?',quickGuard:'Verifique la identidad, el número, el consentimiento y las restricciones antes de llamar. Aquí no se inicia ninguna llamada.',quickSave:'Guardar resultado y siguiente paso',accountSearch:'Buscar cuenta'}};
  const t=k=>dict[state.lang]?.[k]||document.querySelector(`[data-t="${k}"]`)?.dataset.en||k;
  const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
  const blockedAccount=a=>a?.doNotContact===true||a?.doNotCall===true||a?.salesSuppressed===true||
@@ -119,7 +119,7 @@
  }
  function page(view){state.view=view;document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-current',b.dataset.view===view?'page':'false')});
   document.querySelectorAll('main .view').forEach(el=>el.hidden=el.id!==`view-${view}`);$('pageTitle').textContent=document.querySelector(`[data-view="${view}"] span`)?.textContent||view;
-  if(view==='social')socialLoad().catch(e=>message(e.message,true));if(view==='handoffs')loadHandoffs().catch(e=>message(e.message,true));
+  if(view==='social')socialLoad().catch(showSocialUnavailable);if(view==='handoffs')void loadHandoffs();
  }
  function accountOptions(){return state.accounts.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.businessName)}</option>`).join('');}
  async function salesJson(path,options={}){
@@ -246,6 +246,21 @@
    '<button class="button secondary" data-action="open-account" data-id="'+escapeHtml(a.id)+'">Open account</button></article>'
   ).join('');
  }
+ async function signOut(){
+  const button=$('amSignOut');
+  if(button.disabled)return;
+  if(window.SBCCallCommandLiveV3?.isBusy()){message(state.lang==='es'?'Termine la llamada antes de cerrar sesión.':'End the active call before signing out.',true);return;}
+  button.disabled=true;
+  try{
+   const response=await fetch('/api/logout',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok||result.ok!==true||result.signedOut!==true)throw Error('SIGN_OUT_NOT_CONFIRMED');
+   state.accounts=[];state.handoffs=[];state.channels=[];state.posts=[];state.accountAppointments=[];state.selected=null;state.role='';pendingQuick=null;
+   window.SBCCallCommand?.clear();
+   document.getElementById('workspace').hidden=true;
+   location.replace('/');
+  }catch(error){button.disabled=false;message(state.lang==='es'?'No se confirmó el cierre de sesión. Inténtelo de nuevo.':'Sign-out not confirmed. Please retry.',true);}
+ }
  async function load(){message('');try{
   const me=await fetch('/api/me',{credentials:'same-origin',headers:{Accept:'application/json'}});
   const identity=await me.json().catch(()=>({}));
@@ -256,12 +271,11 @@
    await api('/api/account-social/v1/portfolio');
   state.accounts=p.accounts||[];
   // Social Studio maintains separate permissions; its queue cannot hide valid CRM accounts.
-  const q=await api('/api/account-social/v1/research/queue').catch(()=>[]);
-  state.handoffs=q||[];
+  state.handoffs=[];state.handoffStatus='pending';
   $('rolePill').textContent=(state.role==='owner'?'OWNER':'ACCOUNT MANAGER')+' · TENANT '+p.tenantId;
-  $('metrics').innerHTML=[['Managed accounts',state.accounts.length],['Research handoffs',state.handoffs.length],['DNC / suppressions',state.accounts.filter(x=>x.doNotContact).length],['Connected channels','Verify in Social Studio']].map(([label,v])=>`<div class="metric"><strong>${escapeHtml(v)}</strong><small>${escapeHtml(label)}</small></div>`).join('');
+  $('metrics').innerHTML=[['Managed accounts',state.accounts.length],['Research handoffs','Check handoffs tab'],['DNC / suppressions',state.accounts.filter(x=>x.doNotContact).length],['Connected channels','Verify in Social Studio']].map(([label,v])=>`<div class="metric"><strong>${escapeHtml(v)}</strong><small>${escapeHtml(label)}</small></div>`).join('');
   renderAccountGrid();void loadRevenueActions();
-  $('socialCustomer').innerHTML=accountOptions();renderHandoffs();if(state.selected)openAccount(state.selected);if(state.view==='social')await socialLoad();
+  $('socialCustomer').innerHTML=accountOptions();renderHandoffs();if(state.selected)openAccount(state.selected);void loadHandoffs();if(state.view==='social')void socialLoad().catch(showSocialUnavailable);
  }catch(e){
   // Access may have expired while this page was open. Clear *every* previously
   // authorized customer view (not just the primary account cards).
@@ -410,8 +424,15 @@
    });
   }catch(error){if(state.selected===id)host.textContent='V5 account plan unavailable or access denied: '+String(error.message||error)}
  }
- async function loadHandoffs(){state.handoffs=await api('/api/account-social/v1/research/queue');renderHandoffs();}
- function renderHandoffs(){const list=$('handoffList');list.innerHTML=state.handoffs.length?state.handoffs.map(h=>`<article class="handoff-row"><div><h3>${escapeHtml(h.customerId)}</h3><span class="tag">${escapeHtml(h.status)}</span><p class="muted">${escapeHtml(h.summary||'')}</p><p class="muted">Researcher: ${escapeHtml(h.researcherId)} · Manager: ${escapeHtml(h.managerId||'Awaiting assignment')}</p>${h.retryNotBefore?`<p class="muted">No phone retry before ${escapeHtml(h.retryNotBefore)}</p>`:''}</div><div class="controls">${h.status==='READY_FOR_REVIEW'&&state.role==='owner'?`<button class="button secondary" data-action="assign" data-id="${escapeHtml(h.id)}">Assign manager</button>`:''}${h.status==='ASSIGNED'?`<button class="button secondary" data-action="return" data-id="${escapeHtml(h.id)}">Return for research</button>`:''}</div></article>`).join(''):'<p class="empty">No handoff records for this account. Research remains in Lorna’s own workstation.</p>';}
+ async function loadHandoffs(){
+  if(!state.role)return;
+  const role=state.role;
+  try{const rows=await api('/api/account-social/v1/research/queue');if(state.role!==role)return;if(!Array.isArray(rows))throw Error('HANDOFF_RESPONSE_INVALID');state.handoffs=rows;state.handoffStatus='ready';}
+  catch(error){if(state.role!==role)return;state.handoffs=[];state.handoffStatus='unavailable';}
+  renderHandoffs();
+ }
+ function showSocialUnavailable(){state.channels=[];state.posts=[];$('socialChannel').replaceChildren();$('socialList').textContent='Social Studio unavailable. Owner must configure the authorized integration.';}
+ function renderHandoffs(){const list=$('handoffList');if(state.handoffStatus==='unavailable'){list.textContent='Research handoffs unavailable. The optional integration is not connected or accessible. Your CRM portfolio remains separate.';return;}if(state.handoffStatus==='pending'){list.textContent='Checking research handoffs…';return;}list.innerHTML=state.handoffs.length?state.handoffs.map(h=>`<article class="handoff-row"><div><h3>${escapeHtml(h.customerId)}</h3><span class="tag">${escapeHtml(h.status)}</span><p class="muted">${escapeHtml(h.summary||'')}</p><p class="muted">Researcher: ${escapeHtml(h.researcherId)} · Manager: ${escapeHtml(h.managerId||'Awaiting assignment')}</p>${h.retryNotBefore?`<p class="muted">No phone retry before ${escapeHtml(h.retryNotBefore)}</p>`:''}</div><div class="controls">${h.status==='READY_FOR_REVIEW'&&state.role==='owner'?`<button class="button secondary" data-action="assign" data-id="${escapeHtml(h.id)}">Assign manager</button>`:''}${h.status==='ASSIGNED'?`<button class="button secondary" data-action="return" data-id="${escapeHtml(h.id)}">Return for research</button>`:''}</div></article>`).join(''):'<p class="empty">No handoff records for this account. Research remains in Lorna’s own workstation.</p>';}
  async function socialLoad(){const select=$('socialCustomer');if(!select.value&&state.accounts.length)select.value=state.accounts[0].id;
   const id=select.value;if(!id){$('socialList').innerHTML='<p class="empty">Assign a customer account first.</p>';return;}
   const [channels,posts]=await Promise.all([api(`/api/account-social/v1/accounts/${encodeURIComponent(id)}/channels`),api(`/api/account-social/v1/accounts/${encodeURIComponent(id)}/posts`)]);
@@ -433,6 +454,7 @@
  document.querySelectorAll('[data-t]').forEach(x=>x.dataset.en=x.textContent);
  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>page(b.dataset.view)));
  document.querySelectorAll('.top-actions [data-view="academy"]').forEach(b=>b.addEventListener('click',()=>page('academy')));
+ $('amSignOut').addEventListener('click',signOut);
  $('refresh').addEventListener('click',load);$('sbcAccountSearch').addEventListener('input',renderAccountGrid);$('closeDetail').addEventListener('click',()=>{if(window.SBCCallCommandLiveV3?.isBusy()){message('End the active call first.',true);return;}$('accountDetail').hidden=true;window.SBCCallCommandLiveV3?.close();window.SBCCallCommand?.clear();});
  $('noteForm').addEventListener('submit',async e=>{e.preventDefault();if(!state.selected)return;
   try{const form=e.target,summary=form.elements.summary.value.trim(),id=state.selected;
