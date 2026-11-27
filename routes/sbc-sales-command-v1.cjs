@@ -247,6 +247,7 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
    staff(ctx,t,m);
    if(!Object.hasOwn(CALC.TIERS,tier)||b.confirm!=='SIGNED_AGREEMENT_CONFIRMED'||ref.length<12)
     throw Error('SIGNED_COMPENSATION_AGREEMENT_REQUIRED');
+   if(tier.endsWith('_v2')&&(b.confirmMonthlyQuotaCents!==CALC.TIERS[tier].quotaCents||b.confirmCommissionBps!==CALC.TIERS[tier].commissionBps))throw Error('SIGNED_V2_RATE_AND_QUOTA_CONFIRMATION_REQUIRED');
    const result=await inTx(ctx,async conn=>{
     const [existing]=await conn.query('SELECT tier,agreement_reference FROM sbc_commission_terms_v1 WHERE tenant_id=? AND manager_id=? AND month_key=? FOR UPDATE',[t,m,month]);
     if(existing.length){
@@ -254,7 +255,7 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
      return {existing:true};
     }
     await conn.query('INSERT INTO sbc_commission_terms_v1 (tenant_id,manager_id,month_key,tier,agreement_reference,confirmed_by) VALUES (?,?,?,?,?,?)',[t,m,month,tier,ref,actor]);
-    await audit(conn,t,m,month,'TERMS_CONFIRMED',actor,{tier,agreementReferenceHash:HASH(ref)});
+    await audit(conn,t,m,month,'TERMS_CONFIRMED',actor,{tier,quotaCents:CALC.TIERS[tier].quotaCents,commissionBps:CALC.TIERS[tier].commissionBps,agreementReferenceHash:HASH(ref)});
     return {existing:false};
    });
    return res.status(result.existing?200:201).json({ok:true,...result,month,managerId:m,tier});
