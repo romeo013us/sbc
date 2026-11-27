@@ -309,3 +309,40 @@ test('trial payroll preview derives worker and tier from enrolled record, not br
  assert.equal((await env.call('POST',uri,owner,{...b,managerId:'m2'})).code,422);
  assert.equal((await env.call('POST',uri,owner,{...b,hoursReviewed:false})).code,422);
 });
+
+test('trial base payroll persists reviewed accrual once and records only an already-sent exact external base payment',async()=>{
+ const handlers=new Map(),state={runs:[],audit:[]};let tx;
+ const db={users:[{id:'m1',tenantId:1,role:'account_manager',active:false},{id:'m2',tenantId:2,role:'account_manager',active:true}]};
+ function query(target,sql,args){
+  if(sql.startsWith('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2'))return [[{tier:'standard',start_day:'2020-11-02',end_day:'2020-12-01'}]];
+  if(sql.startsWith('SELECT * FROM sbc_am_base_payroll_v2'))return [target.runs.filter(r=>r.tenant_id===args[0]&&r.manager_id===args[1]&&(args.length<3||r.period_index===args[2]))];
+  if(sql.startsWith('INSERT INTO sbc_am_base_payroll_v2')){
+   const [tenant_id,manager_id,period_index,tier,period_start,period_end,training_minutes,other_paid_minutes,hourly_cents,base_pay_cents,evidence_hash,approved_by]=args;
+   if(target.runs.some(r=>r.tenant_id===tenant_id&&r.manager_id===manager_id&&r.period_index===period_index))throw Object.assign(Error('duplicate'),{code:'ER_DUP_ENTRY'});
+   target.runs.push({tenant_id,manager_id,period_index,tier,period_start,period_end,training_minutes,other_paid_minutes,hourly_cents,base_pay_cents,evidence_hash,approved_by,status:'APPROVED',payment_hash:null});return [{affectedRows:1}];
+  }
+  if(sql.startsWith('UPDATE sbc_am_base_payroll_v2 SET')){
+   const [payment_hash,paid_by,t,m,i]=args,r=target.runs.find(r=>r.tenant_id===t&&r.manager_id===m&&r.period_index===i&&r.status==='APPROVED');
+   if(!r)return [{affectedRows:0}];Object.assign(r,{status:'EXTERNAL_BASE_PAY_RECORDED',payment_hash,paid_by});return [{affectedRows:1}];
+  }
+  if(sql.startsWith('INSERT INTO sbc_commission_audit_v1')){target.audit.push(args);return [{affectedRows:1}];}
+  throw Error('Unexpected SQL '+sql);
+ }
+ const conn={async beginTransaction(){tx=structuredClone(state)},async commit(){Object.assign(state,tx);tx=null},async rollback(){tx=null},release(){},async query(sql,args){return query(tx,sql,args);}};
+ ROUTE.register({get:(p,a,f)=>handlers.set('GET '+p,f),post:(p,a,f)=>handlers.set('POST '+p,f)},{auth:()=>{},getContext:()=>({db,mysqlPool:{query:async(s,a)=>query(state,s,a),getConnection:async()=>conn},recoveryRequired:()=>false}),tenantForRead:()=>1,writer:()=>{}});
+ const owner={id:'owner',role:'owner',tenantId:1};
+ const root='/api/owner/sales-command/workforce/base-payroll';
+ async function call(method,path,b={},user=owner,q={}){let code=200,json;await handlers.get(method+' '+path)({user,body:b,query:q},{setHeader(){},status(n){code=n;return this},json(x){json=x;return this}});return {code,json};}
+ const b={managerId:'m1',periodIndex:0,trainingMinutes:480,otherPaidMinutes:3120,hoursReviewed:true,signedRateConfirmed:true,otherObligationsReviewed:true,legacyPayrollChecked:true,evidenceReference:'clock-review-record-01',confirm:'OWNER_APPROVED_STRAIGHT_TIME_BASE'};
+ assert.equal((await call('POST',root+'/approve',{...b,legacyPayrollChecked:false})).code,422);
+ assert.equal((await call('POST',root+'/approve',b)).code,201);
+ assert.equal(state.runs[0].base_pay_cents,30000);assert.equal(state.runs[0].status,'APPROVED');
+ assert.equal((await call('POST',root+'/approve',b)).code,409);
+ const paid={managerId:'m1',periodIndex:0,amountCents:30000,paymentReference:'external-payment-0001',confirm:'OWNER_RECORD_ALREADY_SENT_BASE_PAY'};
+ assert.equal((await call('POST',root+'/record-paid',{...paid,amountCents:29999})).code,422);
+ assert.equal((await call('POST',root+'/record-paid',paid)).code,200);
+ assert.equal((await call('POST',root+'/record-paid',paid)).code,409);
+ assert.equal(state.runs[0].status,'EXTERNAL_BASE_PAY_RECORDED');assert.equal(state.audit.length,2);
+ const view=await call('GET',root,{},owner,{managerId:'m1'});assert.equal(view.code,200);assert.equal(view.json.records[0].basePayCents,30000);assert.equal(view.json.records[0].paymentInitiated,false);assert.equal(view.json.records[0].paymentHash,undefined);
+ assert.equal((await call('GET',root,{},owner,{managerId:'m2'})).code,422);
+});
