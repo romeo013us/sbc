@@ -39,3 +39,21 @@ test('new employee accounts explicitly choose one of the four retained roles; no
   assert.doesNotMatch(form,/value="(?:caller|manager|sales_manager)"/);
  }
 });
+
+test('production workstation reveals only same-tenant owner-assigned open work',()=>{
+ const vm=require('node:vm'),server=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8');
+ const start=server.indexOf("app.get('/api/production-workstation/tasks'"),end=server.indexOf('// Narrow researcher status action',start);
+ assert.ok(start>=0&&end>start);let handler;
+ const actor={id:'p1',role:'fulfillment',tenantId:1,active:true},db={users:[actor],tasks:[
+ {id:'mine',tenantId:1,assignedTo:'p1',title:'Prepare proof',status:'Open',privateSecret:'not returned'},
+ {id:'other',tenantId:1,assignedTo:'p2',status:'Open'},
+ {id:'foreign',tenantId:2,assignedTo:'p1',status:'Open'},
+ {id:'closed',tenantId:1,assignedTo:'p1',status:'Completed'}]};
+ const sandbox={app:{get:(_url,_auth,h)=>handler=h},auth:()=>{},db,sbcTaskRequestTenant:()=>1,sbcTaskUnique:(rows,id)=>rows.find(x=>x.id===id),sbcTaskTenant:x=>x.tenantId,sbcTaskOwnership:x=>x.tenantId,sbcTaskError:(r,n,e)=>r.status(n).json({error:e}),MYSQL_RECOVERY_EVALUATED:true,MYSQL_RECOVERY_REQUIRED:false,mysqlPool:{}};
+ vm.runInNewContext(server.slice(start,end),sandbox);
+ let code=200,body;const res={setHeader(){},status(n){code=n;return this},json(x){body=x;return this}};
+ handler({user:actor},res);assert.equal(body.total,1);assert.equal(body.tasks[0].id,'mine');assert.equal(body.tasks[0].privateSecret,undefined);
+ handler({user:{id:'p1',role:'lead_researcher'}},res);assert.equal(code,403);
+ for(const name of ['sbc-production-workstation.html','sbc-production-workstation.js'])assert.equal(fs.readFileSync(path.resolve(__dirname,'../public/'+name),'utf8'),fs.readFileSync(path.resolve(__dirname,'../browser_public/'+name),'utf8'));
+ assert.match(server,/PRODUCTION_WORKSTATION_ONLY/);assert.match(server,/redirect\(302,'\/sbc-production-workstation\.html'\)/);
+});
