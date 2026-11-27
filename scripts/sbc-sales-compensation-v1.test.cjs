@@ -58,3 +58,13 @@ test('daily sales objective remains a team target separate from individual quota
  assert.equal(POLICY.TIERS.standard.hourlyCents,500);
  assert.equal(POLICY.TIERS.senior.hourlyCents,600);
 });
+
+test('explicit V2 terms use new rates while all legacy terms remain unchanged',()=>{
+ const standard=POLICY.statement({tenantId:1,managerId:'mgr1',month:'2026-11',tier:'standard_v2',credits:[paid('v2','mgr1',216700,100000)]});
+ assert.equal(standard.quotaCents,216700);assert.equal(standard.commissionBps,900);assert.equal(standard.commissionCents,10503);
+ const senior=POLICY.statement({tenantId:1,managerId:'mgr1',month:'2026-11',tier:'senior_v2',credits:[paid('s2','mgr1',433300,200000)]});
+ assert.equal(senior.commissionBps,1200);assert.equal(senior.commissionCents,27996);
+ const below=POLICY.statement({tenantId:1,managerId:'mgr1',month:'2026-11',tier:'standard_v2',credits:[paid('below','mgr1',216699,0)]});
+ assert.equal(below.eligible,false);assert.equal(below.commissionCents,0);
+ assert.equal(POLICY.TIERS.standard.commissionBps,1000);assert.equal(POLICY.TIERS.senior.commissionBps,1500);
+});
