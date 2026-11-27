@@ -3,13 +3,14 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const ROUTE=require('../routes/sbc-sales-command-v1.cjs');
 const STAGE=require('./v66160-stage-sales-command.cjs');
 const ROLE=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
-function setup(recovery=false,locked=null,profiles=[],trials=[],termsTier='standard'){
+function setup(recovery=false,locked=null,profiles=[],trials=[],termsTier='standard',awards=[]){
  const handlers=new Map(),calls=[];
  const db={users:[{id:'m1',tenantId:1,role:'account_manager',name:'Manager One',active:true},
                   {id:'m2',tenantId:2,role:'account_manager',name:'Foreign Worker',active:true}]};
  const pool={async query(sql,args){
   calls.push({sql,args});
   if(sql.startsWith('SELECT * FROM sbc_sales_credit_v1'))return [[]];
+  if(sql.startsWith('SELECT award_code,period_key,month_key,week_start,awarded_at FROM sbc_am_award_v2'))return [awards.filter(a=>a.tenant_id===args[0]&&a.manager_id===args[1])];
   if(sql.startsWith('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2'))return [trials.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
   if(sql.startsWith('SELECT tier, revision FROM sbc_am_workstation_profile_v2'))return [profiles.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
   if(sql.startsWith('SELECT tier FROM sbc_commission_terms_v1'))return [[{tier:termsTier}]];
@@ -268,4 +269,15 @@ test('recognition ignores browser-submitted revenue and is owner-only and read-o
  assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},input)).code,403);
  assert.equal((await env.call('POST',uri,owner,{...input,managerId:'m2'})).code,422);
  assert.equal((await env.call('POST',uri,owner,{...input,weekStart:'2020-11-03'})).code,422);
+});
+
+test('employee award history is self-scoped, read-only and excludes private owner evidence',async()=>{
+ const rows=[{tenant_id:1,manager_id:'m1',award_code:'CERTIFIED_CLOSER',period_key:'2020-11-02',month_key:'2020-11',week_start:'2020-11-02',awarded_at:'2020-12-01',private_note:'private'},{tenant_id:2,manager_id:'m2',award_code:'ELITE',period_key:'2020-11-02'}];
+ const env=setup(true,null,[],[],'standard_v2',rows),user={id:'m1',role:'account_manager',tenantId:1},uri='/api/sbc/sales/workforce/awards/me';
+ const r=await env.call('GET',uri,user,{}, {managerId:'m2'});
+ assert.equal(r.code,200);assert.equal(r.json.awards.length,1);assert.equal(r.json.awards[0].code,'CERTIFIED_CLOSER');assert.equal(r.json.awards[0].private_note,undefined);assert.equal(env.writes,0);
+ assert.equal((await env.call('GET',uri,{...user,tenantId:2})).code,403);
+ assert.equal(ROLE.allowed('GET',uri),true);assert.equal(ROLE.allowed('POST',uri),false);
+ assert.equal((await env.call('POST','/api/owner/sales-command/workforce/awards',user)).code,403);
+ assert.equal((await env.call('POST','/api/owner/sales-command/workforce/awards',{id:'owner',role:'owner',tenantId:1})).code,423);
 });
