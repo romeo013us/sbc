@@ -33,6 +33,13 @@ assert.equal(truth.validDelivery({type:'confirmed_by_ai',reference:'USPS-2026-07
     saveData:c.saveData,pool:c.pool}),undefined,c.name);
   assert.equal(JSON.stringify(customer),before,'no false in-memory status on '+c.name);
  }
+ // An existing matching SQL row cannot turn an explicitly rejected write into a durable acknowledgment.
+ for(const rejection of [false,{ok:false},{persisted:false}]){
+  customer=base();const before=JSON.stringify(customer);let readbacks=0;
+  await assert.rejects(truth.commitStage({order:customer,stage:'VENDOR_SUBMITTED',paid:()=>true,
+   saveData:async()=>rejection,pool:{query:async()=>{readbacks++;return row('In Progress','Submitted to Vendor')}}}),/FULFILLMENT_COMMIT_NOT_ACKNOWLEDGED/);
+  assert.equal(readbacks,0);assert.equal(JSON.stringify(customer),before);
+ }
  customer=base();
  await assert.rejects(truth.commitStage({order:customer,stage:'DELIVERED',paid:()=>false,
   saveData:async()=>{},pool:{query:async()=>row()}}),/PAYMENT_EVIDENCE_REQUIRED/);
