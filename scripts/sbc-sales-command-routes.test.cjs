@@ -106,3 +106,22 @@ test('isolated staging is idempotent and refuses unexpected source',()=>{
  assert.equal(STAGE.patchServer(staged),staged);
  assert.throws(()=>STAGE.patchServer('test'),/SALES_COMMAND_REQUIRES_FULL_SECURE_SERVER/);
 });
+
+test('workforce policy and trial review are owner-only, tenant-scoped and read-only',async()=>{
+ const env=setup(true),owner={id:'owner',role:'owner',tenantId:1};
+ const policy=await env.call('GET','/api/owner/sales-command/workforce/policy',owner);
+ assert.equal(policy.code,200);assert.equal(policy.json.policy.standard.spanish,'preferred');
+ assert.equal(policy.json.policy.senior.commissionBps,1200);assert.equal(policy.json.activeCompensationTermsUnchanged,true);
+ const q={managerId:'m1',tier:'senior',startDate:'2020-11-02',throughDate:'2020-11-20'};
+ const review=await env.call('GET','/api/owner/sales-command/workforce/review',owner,{},q);
+ assert.equal(review.code,200);assert.equal(review.json.review.targetCents,300000);
+ assert.equal(review.json.ledgerCompletenessVerified,false);assert.equal(review.json.automaticPersonnelAction,false);
+ assert.equal(env.writes,0);assert.equal(review.cache,'no-store');
+ assert(env.calls.every(c=>c.args[0]===1&&c.args[1]==='m1'));
+ const foreign=await env.call('GET','/api/owner/sales-command/workforce/review',owner,{}, {...q,managerId:'m2'});
+ assert.equal(foreign.code,422);
+ for(const path of ['/api/owner/sales-command/workforce/policy','/api/owner/sales-command/workforce/review']){
+  const denied=await env.call('GET',path,{id:'m1',role:'account_manager',tenantId:1},{},q);
+  assert.equal(denied.code,403);
+ }
+});
