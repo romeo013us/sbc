@@ -346,3 +346,10 @@ test('trial base payroll persists reviewed accrual once and records only an alre
  const view=await call('GET',root,{},owner,{managerId:'m1'});assert.equal(view.code,200);assert.equal(view.json.records[0].basePayCents,30000);assert.equal(view.json.records[0].paymentInitiated,false);assert.equal(view.json.records[0].paymentHash,undefined);
  assert.equal((await call('GET',root,{},owner,{managerId:'m2'})).code,422);
 });
+
+test('owner coaching uses persisted Academy and trial data, not submitted performance or automatic employment actions',async()=>{
+ const env=setup(false),owner={id:'owner',role:'owner',tenantId:1},uri='/api/owner/sales-command/workforce/coaching-review';
+ const r=await env.call('POST',uri,owner,{managerId:'m1',academy:{certified:true},trial:{stage:'IN_PROGRESS'},revenueCents:99999999});
+ assert.equal(r.code,200);assert.deepEqual(r.json.coaching.actions,['COMPLETE_ACADEMY_AND_PRACTICE','CONFIRM_TRIAL_ENROLLMENT']);assert.equal(r.json.coaching.automaticPersonnelAction,false);assert.equal(env.writes,0);
+ assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},{managerId:'m1'})).code,403);
+});

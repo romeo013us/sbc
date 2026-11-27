@@ -92,6 +92,9 @@
     :'RESOLVE_MYSQL_RECOVERY_HOLD: staging writer unavailable; no commission actions are enabled.';
    throw Error(reason);
   }
+  try{const s=await api('/api/owner/sales-command/workforce/readiness');
+   $('workforceLaunchSchema').textContent=(s.schemaReady&&s.writeReady?'Workforce schema and writer available.':'Workforce readiness blocked: '+(s.missingTables||[]).join(', ')+(s.writeReady?'':' · writer unavailable'))+' · Live acceptance unverified.';
+  }catch(e){$('workforceLaunchSchema').textContent='Workforce schema check unavailable: '+e.message;}
   notice('Loading tenant-scoped financial records…');
   const [summary,paid]=await Promise.all([
    api('/api/owner/sales-command/overview?month='+encodeURIComponent(month)),
@@ -127,7 +130,7 @@
  };
  const ask=message=>window.confirm(message);
  let profileSnapshot=null,profileRequest=0;
- function resetProfile(){profileRequest++;profileSnapshot=null;$('workstationSave').disabled=true;$('promotionReview').disabled=true;for(const id of ['workstationBilingual','promotionLedger','promotionTrial','promotionQuality','promotionReliability'])$(id).checked=false;$('promotionAgreement').value='';$('promotionStatus').textContent='Load and review employee evidence.';$('workstationAcademy').textContent='Academy readiness not loaded.';}
+ function resetProfile(){profileRequest++;profileSnapshot=null;$('workstationSave').disabled=true;$('promotionReview').disabled=true;$('coachingReview').disabled=true;$('coachingLedger').checked=false;$('coachingResult').textContent='Load an employee for coaching review.';for(const id of ['workstationBilingual','promotionLedger','promotionTrial','promotionQuality','promotionReliability'])$(id).checked=false;$('promotionAgreement').value='';$('promotionStatus').textContent='Load and review employee evidence.';$('workstationAcademy').textContent='Academy readiness not loaded.';}
  async function loadProfile(){
   resetProfile();const seq=profileRequest,managerId=$('workstationManager').value,status=$('workstationStatus');
   if(!managerId){status.textContent='Choose an active Account Manager first.';return;}
@@ -137,7 +140,7 @@
    profileSnapshot={managerId,revision:data.profile.revision};$('workstationTier').value=data.profile.tier||'standard';
    status.textContent=data.profile.tier?'Current profile: '+data.profile.tier+' · revision '+data.profile.revision:'No profile configured. Select a tier and confirm.';
    $('workstationSave').disabled=false;
-   $('promotionReview').disabled=false;
+   $('promotionReview').disabled=false;$('coachingReview').disabled=false;
    try{
     const a=await api('/api/owner/sales-command/workforce/academy?managerId='+encodeURIComponent(managerId));
     if(seq===profileRequest){const r=a.academy;$('workstationAcademy').textContent='Academy: '+r.completedModules+'/'+r.totalModules+' modules · '+(r.certified?'Certified':'Not certified')+' · '+r.trainingMinutes+' training minutes'+(r.ownerReviewRequired?' · Owner review required':'');}
@@ -147,6 +150,16 @@
  }
  $('workstationManager').addEventListener('change',loadProfile);
  $('workstationLoad').addEventListener('click',loadProfile);
+ $('coachingReview').addEventListener('click',async()=>{
+  const snap=profileSnapshot,seq=profileRequest,out=$('coachingResult');if(!snap)return;
+  const btn=$('coachingReview');btn.disabled=true;
+  try{const d=await api('/api/owner/sales-command/workforce/coaching-review','POST',{managerId:snap.managerId,ledgerReviewed:$('coachingLedger').checked});
+   if(seq!==profileRequest)return;
+   const labels={REVIEW_PAID_TRAINING:'Review paid training allowance and support',COMPLETE_ACADEMY_AND_PRACTICE:'Complete Academy and practice',CONFIRM_TRIAL_ENROLLMENT:'Confirm trial enrollment',PREPARE_ASSIGNED_LEADS_AND_TOOLS:'Prepare assigned leads and tools',WAIT_FOR_COMPLETED_REPORTING_DAY:'Wait for a completed reporting day',RECONCILE_SALES_EVIDENCE:'Reconcile sales evidence',REVIEW_LEAD_AND_TOOL_ACCESS:'Check lead quality, assignment and tool access',PRACTICE_DISCOVERY_AND_CLOSING:'Coach discovery and closing skills',REVIEW_RETENTION_AND_FOLLOW_UP_QUALITY:'Review retention and follow-up quality',OWNER_TRIAL_REVIEW:'Complete owner trial review'};
+   out.textContent=(d.coaching.actions.map(x=>labels[x]||x).join(' · ')||'No current coaching action suggested.')+'. Rule-based suggestions; owner review required.';
+  }catch(err){if(seq===profileRequest)out.textContent='Coaching review unavailable: '+err.message;}
+  finally{if(seq===profileRequest)btn.disabled=false;}
+ });
  function promotionInputs(){
   return {ledgerReviewed:$('promotionLedger').checked,trialAccepted:$('promotionTrial').checked,qualityPassed:$('promotionQuality').checked,reliabilityPassed:$('promotionReliability').checked,bilingualEvidenceConfirmed:$('workstationBilingual').checked,agreementReference:$('promotionAgreement').value.trim(),promotionConfirm:'OWNER_APPROVED_EARNED_SENIOR'};
  }

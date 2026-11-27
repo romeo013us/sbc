@@ -340,6 +340,13 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,readOnly:true,academy:academySnapshot(ctx,m)});}
   catch(e){return error(res,e)}
  });
+ app.post('/api/owner/sales-command/workforce/coaching-review',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+   const academy=academySnapshot(ctx,m),trial=await enrolledTrial(ctx,t,m);
+   return res.json({ok:true,readOnly:true,coaching:WORKFORCE.coaching({academy,trial,ledgerReviewed:b.ledgerReviewed===true})});
+  }catch(e){return error(res,e)}
+ });
  // Four complete Monday-Sunday weeks, all after the employee's trial start.
  async function seniorEvidence(ctx,t,m,b,pool=ctx.mysqlPool,lock=false){
   const [trial]=await pool.query('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2 m JOIN sbc_am_trial_cohort_v2 c ON c.tenant_id=m.tenant_id AND c.cohort_id=m.cohort_id WHERE m.tenant_id=? AND m.manager_id=? LIMIT 1',[t,m]);

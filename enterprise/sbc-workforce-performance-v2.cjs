@@ -126,4 +126,25 @@ function trialPayroll(input={}){
   basePayCents:Math.round(total*hourlyCents/60),paymentInitiated:false,earnedPayNeverPerformanceGated:true,
   complianceCertified:false,limitations:'Straight-time USD base-pay reconciliation only; overtime, adjustments, statutory amounts, commissions, holidays and final-pay obligations must be reviewed separately. Reviewed actual minutes are not automatically verified against the time clock.'};
 }
-module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition,seniorReview,trialPayroll};
+// Deterministic owner coaching: never an AI employment decision or automatic outreach.
+function coaching({academy,trial,ledgerReviewed=false}={}){
+ if(!academy||typeof academy.certified!=='boolean')throw Error('ACADEMY_EVIDENCE_REQUIRED');
+ const actions=[];
+ if(!academy.certified)actions.push(academy.ownerReviewRequired?'REVIEW_PAID_TRAINING':'COMPLETE_ACADEMY_AND_PRACTICE');
+ if(!trial)actions.push('CONFIRM_TRIAL_ENROLLMENT');
+ else if(trial.stage==='UPCOMING')actions.push('PREPARE_ASSIGNED_LEADS_AND_TOOLS');
+ else{
+  const r=trial.review;
+  if(!r)actions.push('WAIT_FOR_COMPLETED_REPORTING_DAY');
+  else{
+   if(!ledgerReviewed)actions.push('RECONCILE_SALES_EVIDENCE');
+   if(r.revenueCents<r.targetCents||r.twoCustomerMilestone==='not_met'){
+    actions.push('REVIEW_LEAD_AND_TOOL_ACCESS');
+    if(ledgerReviewed&&academy.certified)actions.push('PRACTICE_DISCOVERY_AND_CLOSING');
+   }else if(ledgerReviewed&&academy.certified)actions.push('REVIEW_RETENTION_AND_FOLLOW_UP_QUALITY');
+  }
+  if(trial.stage==='OWNER_REVIEW_DUE')actions.push('OWNER_TRIAL_REVIEW');
+ }
+ return {actions,ledgerOwnerReviewed:ledgerReviewed===true,automaticPersonnelAction:false,automaticOutreach:false,earnedPayUnaffected:true,ownerReviewRequired:true,source:'DETERMINISTIC_RULES_NOT_AI_GENERATED'};
+}
+module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition,seniorReview,trialPayroll,coaching};
