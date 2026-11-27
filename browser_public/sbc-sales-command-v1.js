@@ -145,10 +145,18 @@
   }catch(err){if(seq===profileRequest)status.textContent='Profile not saved: '+err.message+'. Reload before retrying.';}
  });
 
+ $('trialPlanForm').addEventListener('submit',async event=>{
+  event.preventDefault();const result=$('trialPlanResult');result.textContent='Calculating scheduled trial costs…';
+  try{const tiers=[$('trialPlanFirst').value,$('trialPlanSecond').value].filter(Boolean);
+   const r=await api('/api/owner/sales-command/workforce/trial-plan','POST',{startDate:$('trialPlanStart').value,tiers,reserveCents:cents('trialPlanReserve')});
+   const p=r.plan;
+   result.textContent=p.workdays+' scheduled working days · planned base pay '+money(p.plannedBaseCents)+' · reserve shortfall '+money(p.reserveShortfallCents)+' · Day 5: '+p.checkpoints.day5+' · Day 10: '+p.checkpoints.day10+' · Day 15: '+p.checkpoints.day15+' · Final: '+p.endDate+'. '+p.limitations;
+  }catch(e){result.textContent='Trial plan unavailable: '+e.message;}
+ });
  async function workforcePolicy(){
   const r=await api('/api/owner/sales-command/workforce/policy'),p=r.policy;
   const line=t=>money(t.hourlyCents)+'/hr · '+money(t.weeklyQuotaCents)+'/week · '+(t.commissionBps/100)+'% eligible gross profit · Spanish '+t.spanish;
-  $('workforcePolicy').textContent='Proposed new agreements: Standard '+line(p.standard)+'; Senior '+line(p.senior)+'. Biweekly base pay; payout lag pending compliance review. Legacy signed terms unchanged.';
+  $('workforcePolicy').textContent='Proposed new agreements: Standard '+line(p.standard)+'; Senior '+line(p.senior)+'. Biweekly base pay; payout lag pending compliance review. Existing signed terms unchanged; new V2 terms require exact monthly quota and rate confirmation.';
  }
  $('workforceReview').addEventListener('submit',async e=>{
   e.preventDefault();const result=$('workforceResult');result.textContent='Reading reconciled sales ledger…';
