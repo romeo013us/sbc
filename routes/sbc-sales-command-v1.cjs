@@ -145,29 +145,68 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{gate(req);return res.json({ok:true,readOnly:true,schedule:WORKFORCE.paySchedule(req.body||{})});}
   catch(e){return error(res,e)}
  });
- // Owner-only recognition review based on closed calendar periods and reconciled credits.
- app.post('/api/owner/sales-command/workforce/recognition',auth,async(req,res)=>{
-  res.setHeader('Cache-Control','no-store');
-  try{
-   const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+ // Recognition review is evidence-based; recording an award additionally rechecks a closed statement.
+ async function recognitionEvidence(ctx,t,m,b,pool=ctx.mysqlPool){
    const month=CALC.monthKey(b.month),weekStart=String(b.weekStart||'');
-   if(!/^20\\d{2}-\\d{2}-\\d{2}$/.test(weekStart))throw Error('INVALID_RECOGNITION_WEEK');
+   if(!/^20\d{2}-\d{2}-\d{2}$/.test(weekStart))throw Error('INVALID_RECOGNITION_WEEK');
    const d=new Date(weekStart+'T00:00:00Z');
    if(!Number.isFinite(+d)||d.toISOString().slice(0,10)!==weekStart||d.getUTCDay()!==1)throw Error('INVALID_RECOGNITION_WEEK');
    const weekEnd=new Date(+d+6*86400000).toISOString().slice(0,10);
    const today=WORKFORCE.miamiDay(new Date());
    if(weekEnd>=today||month>=today.slice(0,7)||weekStart.slice(0,7)!==month||weekEnd.slice(0,7)!==month)throw Error('INVALID_RECOGNITION_PERIOD');
-   const [terms]=await ctx.mysqlPool.query('SELECT tier FROM sbc_commission_terms_v1 WHERE tenant_id=? AND manager_id=? AND month_key=? LIMIT 1',[t,m,month]);
+   const [terms]=await pool.query('SELECT tier FROM sbc_commission_terms_v1 WHERE tenant_id=? AND manager_id=? AND month_key=? LIMIT 1',[t,m,month]);
    const tier=terms[0]?.tier==='standard_v2'?'standard':terms[0]?.tier==='senior_v2'?'senior':null;
    if(!tier)throw Error('SIGNED_V2_TERMS_REQUIRED');
-   const [rows]=await ctx.mysqlPool.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? AND manager_id=? ORDER BY captured_at DESC LIMIT 10001',[t,m]);
+   const [rows]=await pool.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? AND manager_id=? ORDER BY captured_at DESC LIMIT 10001',[t,m]);
    if(rows.length>10000)throw Error('SALES_LEDGER_QUERY_TRUNCATED');
    const credits=rows.map(row=>{const c=creditRow(row);CALC.credit(c,{tenantId:t,managerId:m});return {...c,customerId:CALC.id(row.customer_id)};});
    const week=WORKFORCE.review({tier,startDate:weekStart,throughDate:weekEnd,credits});
    const monthly=CALC.statement({tenantId:t,managerId:m,month,tier:terms[0].tier,credits});
    const result=WORKFORCE.recognition({tier,newPayingCustomers:week.newPayingCustomers,weeklyRevenueCents:week.revenueCents,monthlyRevenueCents:monthly.revenueCents,monthlyQuotaCents:monthly.quotaCents,ledgerComplete:b.ledgerComplete===true,qualityReviewed:b.qualityReviewed===true,qualityPassed:b.qualityPassed===true});
-   return res.json({ok:true,readOnly:true,result,weekStart,weekEnd,month,weeklyRevenueCents:week.revenueCents,monthlyRevenueCents:monthly.revenueCents,ledgerCompletenessOwnerAttested:b.ledgerComplete===true,independentlyVerified:false});
+
+   return {result,weekStart,weekEnd,month,weeklyRevenueCents:week.revenueCents,monthlyRevenueCents:monthly.revenueCents,ledgerCompletenessOwnerAttested:b.ledgerComplete===true,independentlyVerified:false};
+ }
+ app.post('/api/owner/sales-command/workforce/recognition',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+   return res.json({ok:true,readOnly:true,...await recognitionEvidence(ctx,t,m,b)});
   }catch(e){return error(res,e)}
+ });
+ const awardCodes=new Set(['RISING_STAR','CERTIFIED_CLOSER','REVENUE_CHAMPION','ELITE','PRESIDENTS_CLUB']);
+ app.post('/api/owner/sales-command/workforce/awards',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t,actor}=gate(req,'owner',true),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+   if(b.confirm!=='OWNER_CONFIRMED_NONFINANCIAL_AWARD'||!awardCodes.has(b.awardCode)||b.ledgerComplete!==true||b.qualityReviewed!==true||b.qualityPassed!==true)throw Error('AWARD_CONFIRMATION_REQUIRED');
+   const month=CALC.monthKey(b.month);
+   const award=await inTx(ctx,async conn=>{
+    const [locked]=await conn.query('SELECT * FROM sbc_commission_statement_v1 WHERE tenant_id=? AND manager_id=? AND month_key=? LIMIT 1 FOR UPDATE',[t,m,month]);
+    if(locked.length!==1||!['DRAFT','APPROVED','PAID'].includes(locked[0].status))throw Error('CLOSED_STATEMENT_REQUIRED');
+    await validateClosedStatement(conn,ctx,t,m,month,locked[0]);
+    const ev=await recognitionEvidence(ctx,t,m,b,conn);
+    if(!ev.result.eligibleForOwnerReview.includes(b.awardCode))throw Error('AWARD_EVIDENCE_REQUIRED');
+    const period=b.awardCode==='RISING_STAR'?'LIFETIME':b.awardCode==='PRESIDENTS_CLUB'?month:ev.weekStart;
+    await conn.query('INSERT INTO sbc_am_award_v2 (tenant_id,manager_id,award_code,period_key,month_key,week_start,awarded_by) VALUES (?,?,?,?,?,?,?)',[t,m,b.awardCode,period,month,ev.weekStart,actor]);
+    await audit(conn,t,m,month,'NONFINANCIAL_AWARD_RECORDED',actor,{awardCode:b.awardCode,period,weekStart:ev.weekStart,weeklyRevenueCents:ev.weeklyRevenueCents,monthlyRevenueCents:ev.monthlyRevenueCents,qualityOwnerAttested:true,compensationChanged:false});
+    return {code:b.awardCode,periodKey:period,month,weekStart:ev.weekStart};
+   });
+   return res.status(201).json({ok:true,award,compensationChanged:false,automaticPromotion:false});
+  }catch(e){if(e?.code==='ER_DUP_ENTRY')return fail(res,409,'AWARD_ALREADY_RECORDED');return error(res,e)}
+ });
+ async function awardHistory(ctx,t,m){
+  const [rows]=await ctx.mysqlPool.query('SELECT award_code,period_key,month_key,week_start,awarded_at FROM sbc_am_award_v2 WHERE tenant_id=? AND manager_id=? ORDER BY awarded_at DESC,award_code LIMIT 1001',[t,m]);
+  if(rows.length>1000)throw Error('AWARD_HISTORY_LIMIT_REQUIRED');
+  return rows.map(row=>({code:String(row.award_code),periodKey:String(row.period_key),month:String(row.month_key),weekStart:String(row.week_start),awardedAt:row.awarded_at}));
+ }
+ app.get('/api/sbc/sales/workforce/awards/me',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t,actor}=gate(req,'account_manager');staff(ctx,t,actor);return res.json({ok:true,readOnly:true,awards:await awardHistory(ctx,t,actor)});}
+  catch(e){return error(res,e)}
+ });
+ app.get('/api/owner/sales-command/workforce/awards',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,readOnly:true,awards:await awardHistory(ctx,t,m)});}
+  catch(e){return error(res,e)}
  });
  // Enrollment records a previously signed paid trial, never hires or moves money.
  app.post('/api/owner/sales-command/workforce/enroll',auth,async(req,res)=>{
