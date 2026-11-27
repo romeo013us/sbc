@@ -80,7 +80,7 @@
   const month=$('month').value;
   if(!/^\d{4}-\d{2}$/.test(month))throw Error('SELECT_A_REPORTING_MONTH');
   setActionButtons(false);
-  resetProfile();$('trialEnrollSave').disabled=true;$('trialEnrollReview').disabled=true;
+  resetProfile();$('trialEnrollSave').disabled=true;$('trialEnrollReview').disabled=true;$('recognitionRun').disabled=true;resetRecognition();
   notice('Checking Sales Command database readiness…');
   const readiness=await api('/api/owner/sales-command/readiness');
   if(!readiness.ready){
@@ -110,6 +110,8 @@
   options('workstationManager',managers.filter(r=>r.active),r=>r.name+' · '+r.managerId);
   void loadProfile();
   const active=managers.filter(r=>r.active);
+  options('recognitionManager',active,r=>r.name+' · '+r.managerId);
+  $('recognitionRun').disabled=!active.length;
   options('trialEnrollFirst',active,r=>r.name+' · '+r.managerId);
   options('trialEnrollSecond',[{managerId:'',name:'None'},...active],r=>r.name);
   $('trialEnrollSave').disabled=!active.length;$('trialEnrollReview').disabled=!active.length;
@@ -182,6 +184,36 @@
    const t=d.trial,r=t?.review;
    status.textContent=!t?'No enrolled trial for this manager.':t.tier+' · '+t.stage+' · '+t.startDate+' to '+t.endDate+(r?' · Recorded collected sales '+money(r.revenueCents)+' / '+money(r.targetCents)+' · '+r.newPayingCustomers+' new customers. Ledger completeness not verified; grade withheld.':' · No completed trial days yet.');
   }catch(err){if(id===$('trialEnrollFirst').value)status.textContent='Enrollment review unavailable: '+err.message;}
+ });
+ $('payScheduleForm').addEventListener('submit',async e=>{
+  e.preventDefault();const out=$('payScheduleResult'),button=e.submitter;
+  if(button?.disabled)return;if(button)button.disabled=true;out.textContent='Checking reviewed schedule…';
+  try{
+   const d=await api('/api/owner/sales-command/workforce/pay-schedule','POST',{startDate:$('payScheduleStart').value,firstPayday:$('payScheduleFirst').value,agreementReference:$('payScheduleAgreement').value.trim(),scheduleReviewed:$('payScheduleReviewed').checked});
+   out.replaceChildren();
+   for(const p of d.schedule.periods){out.append(make('p',p.startDate+' – '+p.endDate+' · planned payday '+p.payday+(p.finalPartialPeriod?' · final partial period; check final-pay rules':'')));}
+   out.append(make('p','No payment initiated. '+d.schedule.limitations));
+  }catch(err){out.textContent='Calendar unavailable: '+err.message;}
+  finally{if(button)button.disabled=false;}
+ });
+ let recognitionEpoch=0;
+ function resetRecognition(){
+  recognitionEpoch++;for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).checked=false;
+  $('recognitionResult').textContent='Review the selected periods and manager before attesting evidence.';
+ }
+ for(const id of ['recognitionManager','recognitionWeek','month'])$(id).addEventListener('change',resetRecognition);
+ $('recognitionForm').addEventListener('submit',async e=>{
+  e.preventDefault();const out=$('recognitionResult'),button=$('recognitionRun');if(button.disabled)return;
+  const seq=++recognitionEpoch,managerId=$('recognitionManager').value,month=$('month').value,weekStart=$('recognitionWeek').value;
+  button.disabled=true;out.textContent='Reading reconciled sales and signed terms…';
+  try{
+   const d=await api('/api/owner/sales-command/workforce/recognition','POST',{managerId,month,weekStart,ledgerComplete:$('recognitionLedger').checked,qualityReviewed:$('recognitionQualityReviewed').checked,qualityPassed:$('recognitionQualityPassed').checked});
+   if(seq!==recognitionEpoch)return;
+   const names={RISING_STAR:'Rising Star',CERTIFIED_CLOSER:'Certified Closer',REVENUE_CHAMPION:'Revenue Champion',ELITE:'Elite Account Manager',PRESIDENTS_CLUB:"President’s Club"};
+   const awards=d.result.eligibleForOwnerReview.map(x=>names[x]||x);
+   out.replaceChildren(make('p','Recorded sales: week '+money(d.weeklyRevenueCents)+' · month '+money(d.monthlyRevenueCents)),make('p',awards.length?'Eligible for owner review: '+awards.join(' · '):'No eligible achievements on the submitted evidence.'),make('p','No award granted. Owner attestations are not independent verification. No compensation or promotion change.'));
+  }catch(err){if(seq===recognitionEpoch)out.textContent='Recognition review unavailable: '+err.message;}
+  finally{if(seq===recognitionEpoch)button.disabled=!managers.some(r=>r.active);else if(button.disabled&&managers.some(r=>r.active))button.disabled=false;}
  });
  async function workforcePolicy(){
   const r=await api('/api/owner/sales-command/workforce/policy'),p=r.policy;
