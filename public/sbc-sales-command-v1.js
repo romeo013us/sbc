@@ -80,7 +80,7 @@
   const month=$('month').value;
   if(!/^\d{4}-\d{2}$/.test(month))throw Error('SELECT_A_REPORTING_MONTH');
   setActionButtons(false);
-  resetProfile();
+  resetProfile();$('trialEnrollSave').disabled=true;$('trialEnrollReview').disabled=true;
   notice('Checking Sales Command database readiness…');
   const readiness=await api('/api/owner/sales-command/readiness');
   if(!readiness.ready){
@@ -109,6 +109,10 @@
    options(id,managers,r=>r.name+' · '+r.managerId);
   options('workstationManager',managers.filter(r=>r.active),r=>r.name+' · '+r.managerId);
   void loadProfile();
+  const active=managers.filter(r=>r.active);
+  options('trialEnrollFirst',active,r=>r.name+' · '+r.managerId);
+  options('trialEnrollSecond',[{managerId:'',name:'None'},...active],r=>r.name);
+  $('trialEnrollSave').disabled=!active.length;$('trialEnrollReview').disabled=!active.length;
   options('creditOrder',candidates,r=>r.orderId+' · '+money(r.grossCents));
   setActionButtons(true);
   notice('Loaded '+managers.length+' manager(s), '+candidates.length+
@@ -152,6 +156,32 @@
    const p=r.plan;
    result.textContent=p.workdays+' scheduled working days · planned base pay '+money(p.plannedBaseCents)+' · reserve shortfall '+money(p.reserveShortfallCents)+' · Day 5: '+p.checkpoints.day5+' · Day 10: '+p.checkpoints.day10+' · Day 15: '+p.checkpoints.day15+' · Final: '+p.endDate+'. '+p.limitations;
   }catch(e){result.textContent='Trial plan unavailable: '+e.message;}
+ });
+ function enrollmentInputs(){
+  const second=$('trialEnrollSecond').value,secondTier=$('trialPlanSecond').value;
+  if(Boolean(second)!==Boolean(secondTier))throw Error('Select matching second candidate and tier in the planner.');
+  const members=[{managerId:$('trialEnrollFirst').value,tier:$('trialPlanFirst').value,agreementReference:$('trialAgreementFirst').value.trim()}];
+  if(second)members.push({managerId:second,tier:secondTier,agreementReference:$('trialAgreementSecond').value.trim()});
+  return {startDate:$('trialPlanStart').value,reserveCents:cents('trialPlanReserve'),members,signedTermsConfirmed:$('trialSigned').checked,payScheduleReviewed:$('trialPay').checked,fairOpportunityConfirmed:$('trialFair').checked,confirm:'OWNER_CONFIRMED_PAID_TRIAL'};
+ }
+ $('trialEnrollForm').addEventListener('submit',async e=>{
+  e.preventDefault();const button=$('trialEnrollSave'),status=$('trialEnrollStatus');if(button.disabled)return;
+  try{
+   const body=enrollmentInputs();
+   if(!ask('Record the signed paid trial for '+body.members.length+' manager(s)? All earned pay remains due; no funds move.'))return;
+   button.disabled=true;
+   const r=await api('/api/owner/sales-command/workforce/enroll','POST',body);
+   status.textContent='Enrollment recorded · '+r.startDate+' to '+r.endDate+' · '+r.memberCount+' manager(s). No payment initiated.';
+   $('trialAgreementFirst').value='';$('trialAgreementSecond').value='';$('trialSigned').checked=false;$('trialPay').checked=false;$('trialFair').checked=false;
+  }catch(err){status.textContent='Enrollment not recorded: '+err.message;}
+  finally{button.disabled=false;}
+ });
+ $('trialEnrollReview').addEventListener('click',async()=>{
+  const id=$('trialEnrollFirst').value,status=$('trialEnrollStatus');
+  try{const d=await api('/api/owner/sales-command/workforce/enrollment?managerId='+encodeURIComponent(id));if(id!==$('trialEnrollFirst').value)return;
+   const t=d.trial,r=t?.review;
+   status.textContent=!t?'No enrolled trial for this manager.':t.tier+' · '+t.stage+' · '+t.startDate+' to '+t.endDate+(r?' · Recorded collected sales '+money(r.revenueCents)+' / '+money(r.targetCents)+' · '+r.newPayingCustomers+' new customers. Ledger completeness not verified; grade withheld.':' · No completed trial days yet.');
+  }catch(err){if(id===$('trialEnrollFirst').value)status.textContent='Enrollment review unavailable: '+err.message;}
  });
  async function workforcePolicy(){
   const r=await api('/api/owner/sales-command/workforce/policy'),p=r.policy;
