@@ -160,3 +160,22 @@ test('late chargeback prevents stale monthly statement closure',async()=>{
  const closed=await h.close();assert.notEqual(closed.code,200);
  assert.equal(h.fake.state().statements.size,0);
 });
+
+test('V2 signed terms are explicit, immutable, and survive close and approval using the original version',async()=>{
+ const h=appFixture(),path='/api/owner/sales-command/terms';
+ const terms={managerId:'alice',month:'2026-10',tier:'standard_v2',agreementReference:'SIGNED_NEW_V2_AGREEMENT',confirm:'SIGNED_AGREEMENT_CONFIRMED'};
+ assert.equal((await h.request('POST',path,terms)).code,422);
+ const signed={...terms,confirmMonthlyQuotaCents:216700,confirmCommissionBps:900};
+ assert.equal((await h.request('POST',path,signed)).code,201);
+ assert.equal((await h.request('POST',path,signed)).code,200);
+ assert.equal((await h.terms()).code,422);
+ for(let i=0;i<6;i++)assert.equal((await h.credit(h.addPaid('v2sale'+i))).code,201);
+ const v=await h.request('GET','/api/sbc/sales/compensation/me',{},h.alice,{}, {month:'2026-10'});
+ assert.equal(v.payload.commissionCents,12960);
+ assert.equal(v.payload.quotaCents,216700);assert.equal(v.payload.tier,'standard_v2');
+ const draft=await h.close();assert.equal(draft.code,200);
+ assert.equal(draft.payload.statement.commissionCents,12960);
+ assert.equal((await h.transition('approve')).code,200);
+ assert.equal((await h.transition('paid','EXT_V2_001')).code,200);
+ assert.equal(h.fake.state().statements.get(key(1,'alice','2026-10')).tier,'standard_v2');
+});
