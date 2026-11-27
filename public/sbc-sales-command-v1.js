@@ -104,7 +104,7 @@
    ['Calculated commission liability',summary.commissionLiabilityCents,'Not a payment confirmation']
   ]);
   table(managers);
-  for(const id of ['termsManager','creditManager','actionManager'])
+  for(const id of ['termsManager','creditManager','actionManager','workforceManager'])
    options(id,managers,r=>r.name+' · '+r.managerId);
   options('creditOrder',candidates,r=>r.orderId+' · '+money(r.grossCents));
   setActionButtons(true);
@@ -115,6 +115,20 @@
   try{await action();notice(message);await refresh()}catch(e){notice('Action not completed: '+e.message,true)}
  };
  const ask=message=>window.confirm(message);
+ async function workforcePolicy(){
+  const r=await api('/api/owner/sales-command/workforce/policy'),p=r.policy;
+  const line=t=>money(t.hourlyCents)+'/hr · '+money(t.weeklyQuotaCents)+'/week · '+(t.commissionBps/100)+'% eligible gross profit · Spanish '+t.spanish;
+  $('workforcePolicy').textContent='Proposed new agreements: Standard '+line(p.standard)+'; Senior '+line(p.senior)+'. Biweekly base pay; payout lag pending compliance review. Legacy signed terms unchanged.';
+ }
+ $('workforceReview').addEventListener('submit',async e=>{
+  e.preventDefault();const result=$('workforceResult');result.textContent='Reading reconciled sales ledger…';
+  try{
+   const params=new URLSearchParams({managerId:$('workforceManager').value,tier:$('workforceTier').value,startDate:$('workforceStart').value,throughDate:$('workforceThrough').value});
+   const data=await api('/api/owner/sales-command/workforce/review?'+params),r=data.review;
+   result.textContent='Collected '+money(r.revenueCents)+' / '+money(r.targetCents)+' · Grade '+(r.grade??'not graded')+' · '+r.newPayingCustomers+' new paying customers · Day 10 milestone: '+r.twoCustomerMilestone+'. Ledger completeness not verified; review lead quality and signed terms. No payroll or personnel action.';
+  }catch(err){result.textContent='Review unavailable: '+err.message;}
+ });
+ workforcePolicy().catch(e=>{$('workforcePolicy').textContent='Proposed policy unavailable: '+e.message;});
  $('month').value=monthNow();
  setActionButtons(false);
  $('refresh').addEventListener('click',()=>safeRun(refresh,'Report loaded.'));
