@@ -66,3 +66,21 @@ test('configured human-click calling is operational by default; explicit stop st
  assert(missing.missingSettings.includes('SBC_CALL_COMMAND_TWIML_APP_SID'));
  assert.equal(v3.settings({...cfg,TWILIO_TWIML_APP_SID:cfg.SBC_CALL_COMMAND_TWIML_APP_SID,SBC_CALL_COMMAND_TWIML_APP_SID:''}).enabled,false,'never fall back to legacy owner TwiML app');
 });
+
+test('call console translates backend gates into staff actions',()=>{
+ const ui=require('../public/sbc-call-command-live-v3.js');
+ assert.equal(ui.readableReason('ACADEMY_CERTIFICATION_REQUIRED'),'Complete Academy 360 certification before calling.');
+ assert.equal(ui.readableReason('SPANISH_CALLBACK_NOT_DUE'),'This Spanish callback is scheduled for a later time.');
+ assert.match(ui.statusText({ok:true,liveCallAvailable:false,reasons:['PHONE_INVALID']}),/Add and verify a valid business phone number/);
+});
+
+test('call console is a focused four-step workflow with safe shortcuts',()=>{
+ const ui=require('../public/sbc-call-command-live-v3.js');
+ const html=ui.render({account:{id:'cust-1',businessName:'Miami Test Shop',phone:'+13055550147'},role:'account_manager',lang:'en'});
+ assert.match(html,/FOCUS MODE/);
+ assert.match(html,/Miami Test Shop/);
+ assert.match(html,/1 · Verify/);
+ assert.match(html,/4 · Save outcome/);
+ assert.match(html,/Alt\+C/);
+ assert.match(html,/Live call in progress/);
+});
