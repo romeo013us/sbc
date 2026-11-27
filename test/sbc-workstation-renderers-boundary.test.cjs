@@ -57,3 +57,17 @@ test('production workstation reveals only same-tenant owner-assigned open work',
  for(const name of ['sbc-production-workstation.html','sbc-production-workstation.js'])assert.equal(fs.readFileSync(path.resolve(__dirname,'../public/'+name),'utf8'),fs.readFileSync(path.resolve(__dirname,'../browser_public/'+name),'utf8'));
  assert.match(server,/PRODUCTION_WORKSTATION_ONLY/);assert.match(server,/redirect\(302,'\/sbc-production-workstation\.html'\)/);
 });
+
+test('both account administration surfaces offer the same four staff roles and let the owner migrate an existing legacy account',()=>{
+ for(const dir of ['public','browser_public']){
+  const team=fs.readFileSync(path.resolve(__dirname,'../'+dir+'/v10.js'),'utf8');
+  const ui=fs.readFileSync(path.resolve(__dirname,'../'+dir+'/app.js'),'utf8');
+  const teamForm=team.slice(team.indexOf('function addWorker11(existing)'),team.indexOf('function editWorker11('));
+  const editForm=ui.slice(ui.indexOf('function editCallerUser('),ui.indexOf('async function loadV22_0Executive'));
+  for(const form of [teamForm,editForm]){
+   for(const role of ['account_manager','lead_researcher','fulfillment','hr_manager'])assert.ok(form.includes('value="'+role+'"'),role);
+   assert.doesNotMatch(form,/value="(?:caller|manager|sales_manager|demo)"/);
+   assert.match(form,/name="role" required/);
+  }
+ }
+});
