@@ -226,3 +226,25 @@ test('trial enrollment writes are owner-only and blocked on recovery hold',async
  assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1})).code,403);
  assert.equal((await env.call('POST',uri,{id:'owner',role:'owner',tenantId:1})).code,423);assert.equal(env.writes,0);
 });
+
+test('two paid trial members are committed together; a mismatched profile or duplicate rolls back the cohort',async()=>{
+ const handlers=new Map(),state={cohorts:[],members:[],audits:[]};let staged;
+ const db={users:[{id:'a',role:'account_manager',tenantId:1,active:true},{id:'b',role:'account_manager',tenantId:1,active:true}]};
+ const conn={async beginTransaction(){staged=structuredClone(state)},async commit(){Object.assign(state,staged);staged=null},async rollback(){staged=null},release(){},async query(sql,args){
+  if(sql.startsWith('SELECT tier, revision FROM sbc_am_workstation_profile_v2')){assert.equal(args[0],1);return [[{tier:args[1]==='a'?'standard':'senior',revision:1}]];}
+  if(sql.startsWith('INSERT INTO sbc_am_trial_cohort_v2')){staged.cohorts.push(args);return [{affectedRows:1}];}
+  if(sql.startsWith('INSERT INTO sbc_am_trial_member_v2')){if(staged.members.some(m=>m[0]===args[0]&&m[1]===args[1]))throw Object.assign(Error('duplicate'),{code:'ER_DUP_ENTRY'});staged.members.push(args);return [{affectedRows:1}];}
+  if(sql.startsWith('INSERT INTO sbc_commission_audit_v1')){staged.audits.push(args);return [{affectedRows:1}];}
+  throw Error('Unexpected SQL '+sql);
+ }};
+ ROUTE.register({get:(p,a,f)=>handlers.set('GET '+p,f),post:(p,a,f)=>handlers.set('POST '+p,f)},{auth:()=>{},getContext:()=>({db,mysqlPool:{getConnection:async()=>conn},recoveryRequired:()=>false}),tenantForRead:()=>1,writer:()=>{}});
+ const start=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+ const body={startDate:start,reserveCents:200000,members:[{managerId:'a',tier:'standard',agreementReference:'signed-agreement-a'},{managerId:'b',tier:'senior',agreementReference:'signed-agreement-b'}],confirm:'OWNER_CONFIRMED_PAID_TRIAL',signedTermsConfirmed:true,payScheduleReviewed:true,fairOpportunityConfirmed:true};
+ async function call(input){let code=200,json;await handlers.get('POST /api/owner/sales-command/workforce/enroll')({user:{id:'owner',role:'owner',tenantId:1},body:input},{setHeader(){},status(n){code=n;return this},json(x){json=x;return this}});return {code,json};}
+ assert.equal((await call({...body,members:[body.members[0],{...body.members[1],tier:'standard'}]})).code,422);
+ assert.equal(state.cohorts.length,0);
+ const enrolled=await call(body);assert.equal(enrolled.code,201);assert.equal(enrolled.json.memberCount,2);
+ assert.equal(state.cohorts.length,1);assert.equal(state.members.length,2);assert.equal(state.audits.length,2);
+ assert(state.members.every(m=>/^[a-f0-9]{64}$/.test(m[4])));
+ assert.equal((await call(body)).code,409);assert.equal(state.cohorts.length,1);assert.equal(state.members.length,2);
+});
