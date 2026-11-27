@@ -197,3 +197,13 @@ test('owner can provision and promote the same employee with revision checks and
  assert.equal(transactions.filter(x=>x==='commit').length,2);
  assert.equal(transactions.filter(x=>x==='rollback').length,1);
 });
+
+test('trial planning is owner-only, does not enroll workers, and does not initiate payroll',async()=>{
+ const env=setup(true),owner={id:'owner',role:'owner',tenantId:1};
+ const uri='/api/owner/sales-command/workforce/trial-plan',body={startDate:'2026-11-30',tiers:['standard','standard'],reserveCents:120000};
+ const r=await env.call('POST',uri,owner,body);
+ assert.equal(r.code,200);assert.equal(r.json.plan.reserveShortfallCents,12000);
+ assert.equal(r.json.plan.enrollmentAuthorized,false);assert.equal(r.json.plan.firstPayday,null);
+ assert.equal(r.json.plan.payrollInitiated,false);assert.equal(env.writes,0);
+ assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},body)).code,403);
+});
