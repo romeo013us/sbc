@@ -75,4 +75,23 @@ function forecast({monthlyRevenueCents,productGrossMarginBps,standardManagers=0,
   estimatedOperatingContributionCents:contribution,
   isForecast:true,assumptions:'Equal revenue split; no taxes, owner labor, refunds or other unlisted costs; not actual financial results.'};
 }
-module.exports={RUBRIC,EVIDENCE,evaluate,probation,forecast};
+
+const TIER_RUBRIC=Object.freeze({independentClosing:25,coldCalling:20,objectionHandling:15,spokenCommunication:10,customerDiscovery:10,accountOwnership:5,technicalAptitude:5,professionalism:5,reliability:5});
+function evaluateTier(tier,scores={},evidence={}){
+ if(!['standard','senior'].includes(tier))throw Error('INVALID_TIER');
+ if(!scores||typeof scores!=='object'||!evidence||typeof evidence!=='object')throw Error('INVALID_SCORE');
+ const criteria={};let score=0;
+ for(const [key,max] of Object.entries(TIER_RUBRIC)){
+  const points=integer(scores[key]);if(points>max)throw Error('INVALID_SCORE');
+  criteria[key]={score:points,max};score+=points;
+ }
+ const requirements={englishLive:'LIVE_ENGLISH_REQUIRED',closingSimulationPassed:'CLOSING_SIMULATION_REQUIRED'};
+ if(tier==='senior')Object.assign(requirements,{spanishLive:'LIVE_SPANISH_REQUIRED',salesEvidenceVerified:'VERIFIED_SALES_RESULTS_REQUIRED',referenceVerified:'REFERENCES_REQUIRED'});
+ const missing=Object.entries(requirements).filter(([key])=>evidence[key]!==true).map(([,value])=>value);
+ const minimumScore=tier==='senior'?90:80;
+ return {tier,score,maxScore:100,criteria,minimumScore,scoreThresholdMet:score>=minimumScore,missing,
+  spanishRequirement:tier==='senior'?'required':'preferred',priorSalesRequirement:tier==='senior'?'required':'preferred',
+  ownerReviewRequired:true,automaticHiring:false,notice:'Owner-entered interview observations only; no automated selection, rejection, or employment decision.'};
+}
+
+module.exports={RUBRIC,EVIDENCE,TIER_RUBRIC,evaluate,evaluateTier,probation,forecast};
