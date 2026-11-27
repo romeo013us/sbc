@@ -14,7 +14,7 @@ const schema=[
  UNIQUE KEY receipt(tenant,platform,provider_id), KEY pending(tenant,state,retry_ms)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 ];
 function unpack(r){
- return {...JSON.parse(r.spec),state:r.state,providerId:r.provider_id,acceptedAt:Number(r.accepted_ms)||null,verifiedAt:Number(r.verified_ms)||null,attempts:r.attempts,visits:Number(r.visit_count),code:r.code};
+ return {...JSON.parse(r.spec),state:r.state,providerId:r.provider_id,acceptedAt:r.provider_id?(Number(r.accepted_ms)||null):null,verifiedAt:Number(r.verified_ms)||null,attempts:r.attempts,visits:Number(r.visit_count),code:r.code};
 }
 function createStore(pool,tenant){
  const query=(sql,values)=>pool.query(sql,values).then(([r])=>r);
@@ -47,10 +47,13 @@ function createStore(pool,tenant){
     return r.affectedRows===1?token:null;
   },
   async fence(s,token,now){
-    return (await query("UPDATE "+jobs+" SET state='DISPATCHING',retry_ms=?"+where+" AND state='PREPARING' AND lease=? AND retry_ms>? AND at_ms>?",[now+180000,...key(s),token,now,now-C.INTERVAL])).affectedRows===1;
+    return (await query("UPDATE "+jobs+" SET state='DISPATCHING',retry_ms=?,accepted_ms=?"+where+" AND state='PREPARING' AND lease=? AND retry_ms>? AND at_ms>?",[now+180000,now,...key(s),token,now,now-C.INTERVAL])).affectedRows===1;
   },
+  // Record the dispatch boundary before sending. It is a lower bound on
+  // delivery time, exposed only after a provider receipt is found. Explicit
+  // rejection clears it; ambiguous responses and crash recovery retain it.
   async settle(s,token,state,code,retry,id,now){
-    return (await query("UPDATE "+jobs+" SET state=?,code=?,retry_ms=?,provider_id=?,accepted_ms=?,lease=NULL"+where+" AND lease=? AND state IN ('PREPARING','DISPATCHING')",[state,code,retry,id,id?now:null,...key(s),token])).affectedRows===1;
+    return (await query("UPDATE "+jobs+" SET state=?,code=?,retry_ms=?,provider_id=?,accepted_ms=CASE WHEN ? THEN COALESCE(accepted_ms,?) ELSE NULL END,lease=NULL"+where+" AND lease=? AND state IN ('PREPARING','DISPATCHING')",[state,code,retry,id,Boolean(id)||state==='UNKNOWN',id?now:null,...key(s),token])).affectedRows===1;
   },
   async due(now){
     const rows=await query("SELECT * FROM "+jobs+" WHERE tenant=? AND at_ms<=? AND retry_ms<=? AND state IN ('READY','PREPARING') ORDER BY at_ms DESC,platform LIMIT 8",[tenant,now,now]);
