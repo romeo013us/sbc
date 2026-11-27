@@ -35,7 +35,7 @@ function register(app,{auth,getContext,tenantForRead}={}){
      // Prioritize older commitments and upcoming dates across the authorized portfolio.
      // Bound the result to 500 planned rows; row 501 is only a truncation sentinel.
      // No command, credentials, phone numbers or private notes leave this route.
-     const sql="SELECT id,business_name,phone,status,assigned_to,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND COALESCE(status,'') <> 'Deleted'"+
+     const sql="SELECT id,business_name,phone,status,assigned_to,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? AND LOWER(TRIM(COALESCE(status,''))) NOT IN ('deleted','archived','duplicate')"+
        (actor.role==='account_manager'?' AND assigned_to=?':'')+
        ' ORDER BY CASE WHEN follow_up <= ? THEN 0 ELSE 1 END, CASE WHEN follow_up <= ? THEN follow_up ELSE NULL END, created_at DESC,id ASC LIMIT 501';
      const args=actor.role==='account_manager'?[tid,String(actor.id),windowEnd,windowEnd]:[tid,windowEnd,windowEnd];
