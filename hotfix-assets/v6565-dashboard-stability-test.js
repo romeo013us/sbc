@@ -20,7 +20,16 @@ try{
  put('VERSION','65.1.63');
  put('browser_public/app.js','// V65.1.63');
  put('enterprise/v567-nine-nine.js',"const ACTIVE_PACKAGE_RELEASE='65.1.63'; const COMPATIBLE_PACKAGE_RELEASES=Object.freeze(new Set(['65.1.63']));");
- const r=require('./apply-v6565-dashboard-stability.js').apply(root);
+ // Historical installer runs only in a disposable fixture; canonical assets remain single-source.
+ const fixtureAssets=path.join(root,'fixture-assets');fs.mkdirSync(fixtureAssets);
+ for(const name of ["apply-v6565-dashboard-stability.js","v6565-dashboard-stability-test.js"])fs.copyFileSync(path.join(__dirname,name),path.join(fixtureAssets,name));
+ for(const name of ["v6565-dashboard-stability.css"]){
+  const canonical=fs.readFileSync(path.join(__dirname,'../public','sbc-'+name));
+  assert.deepEqual(canonical,fs.readFileSync(path.join(__dirname,'../browser_public','sbc-'+name)));
+  fs.writeFileSync(path.join(fixtureAssets,name),canonical);
+ }
+ const r=require(path.join(fixtureAssets,'apply-v6565-dashboard-stability.js')).apply(root);
+ for(const name of ["v6565-dashboard-stability.css"])for(const mirror of ['public','browser_public'])assert.deepEqual(fs.readFileSync(path.join(root,mirror,'sbc-'+name)),fs.readFileSync(path.join(fixtureAssets,name)));
  assert.equal(r.version,'65.1.64');assert.equal(r.globalDashboardReorderingDisabled,true);assert.equal(r.brittleNthChildRulesRemoved,true);assert.equal(r.recoveryAndWriterGuardsPreserved,true);
  assert.doesNotMatch(get('public/sbc-v6559-ui.js'),/var roots=\[\]/);assert.doesNotMatch(get('public/sbc-v6559-ui.js'),/new MutationObserver/);assert.match(get('public/sbc-v6559-ui.js'),/SBC_V6565_DASHBOARD_LAYOUT_STABILITY/);
  assert.doesNotMatch(get('public/sbc-v6562-executive-dashboard.css'),/#content:has\(> #sbcProductionControlDashboard\)>:nth-child\((?:6|7|8)\)/);
