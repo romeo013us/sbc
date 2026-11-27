@@ -109,4 +109,21 @@ function seniorReview(input={}){
  if(weeks.filter(v=>v>=POLICY.senior.weeklyQuotaCents).length<2)missing.push('twoSeniorTargetWeeks');
  return {eligible:missing.length===0,missing,weeklyRevenueCents:weeks,criteriaVersion:'SBC_SENIOR_ADVANCEMENT_PROPOSED_V1',ownerApprovalRequired:true,automaticPromotion:false,compensationChanged:false,earnedPayUnaffected:true};
 }
-module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition,seniorReview};
+// Owner-reviewed actual payable minutes; no automatic deduction, wage cap or payout.
+function trialPayroll(input={}){
+ if(input.hoursReviewed!==true||input.signedRateConfirmed!==true)throw Error('PAYROLL_REVIEW_REQUIRED');
+ if(!['standard','senior'].includes(input.tier))throw Error('INVALID_TIER');
+ const start=day(input.startDate);
+ if(!Number.isInteger(input.periodIndex)||input.periodIndex<0||input.periodIndex>2)throw Error('INVALID_PAY_PERIOD');
+ const minutes=[input.trainingMinutes,input.otherPaidMinutes];
+ if(minutes.some(v=>!Number.isSafeInteger(v)||v<0)||minutes[0]+minutes[1]>14*24*60)throw Error('INVALID_PAID_MINUTES');
+ const offset=input.periodIndex*14,periodDays=Math.min(14,30-offset),total=minutes[0]+minutes[1];
+ if(total>periodDays*24*60)throw Error('INVALID_PAID_MINUTES');
+ const date=i=>new Date(+start+i*86400000).toISOString().slice(0,10);
+ const hourlyCents=POLICY[input.tier].hourlyCents;
+ return {tier:input.tier,periodIndex:input.periodIndex,periodStart:date(offset),periodEnd:date(offset+periodDays-1),
+  trainingMinutes:minutes[0],otherPaidMinutes:minutes[1],totalPaidMinutes:total,hourlyCents,
+  basePayCents:Math.round(total*hourlyCents/60),paymentInitiated:false,earnedPayNeverPerformanceGated:true,
+  complianceCertified:false,limitations:'Straight-time USD base-pay reconciliation only; overtime, adjustments, statutory amounts, commissions, holidays and final-pay obligations must be reviewed separately. Reviewed actual minutes are not automatically verified against the time clock.'};
+}
+module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition,seniorReview,trialPayroll};
