@@ -17,11 +17,11 @@ const getDb=()=>({users:[
  {id:'lorna',role:'lead_researcher',active:true,tenantId:1,name:'Lorna'}
 ],settings:{v9:{timeEntries:[shift('day1','2026-11-23T14:00:00Z')]}}});
 const first='2026-11-23T14:00:00Z';
-test('experienced hire gets 12 substantial original AM lessons in eight skill stages with 36 server-private questions',()=>{
+test('experienced hire gets 12 substantial original AM lessons in eight skill stages with 60 server-private questions',()=>{
  assert.equal(A.COURSE.modules.length,12);
  assert.equal(new Set(A.COURSE.modules.map(m=>m.id)).size,12);
  assert(A.COURSE.estimatedMinutes>=480,'academy material is substantial, not a 30-minute checklist');
- assert.equal(Object.values(A.QUESTIONS).flat().length,36);
+ assert.equal(Object.values(A.QUESTIONS).flat().length,60);
  assert.equal(G.STAGES.length,8);assert.equal(G.MODULES.length,12);
  for(const m of A.COURSE.modules){
   assert(m.lesson.learn.length>=5);
@@ -29,7 +29,7 @@ test('experienced hire gets 12 substantial original AM lessons in eight skill st
   assert(m.academyMedia.script.length>=70);
   assert(m.assessment.passingScore>=90);
   const publicQ=A.publicQuestions(m.id);
-  assert.equal(publicQ.length,3);
+  assert.equal(publicQ.length,5);
   assert(publicQ.every(q=>!Object.hasOwn(q,'correct')&&!Object.hasOwn(q,'rationale')));
  }
  assert(A.COURSE.modules.some(m=>m.title.includes('Square')));
@@ -94,8 +94,8 @@ test('an owner may explicitly approve one bounded additional paid-training shift
 test('server assessment never trusts client-provided scores; 2/3 is below 90%',()=>{
  const questions=A.QUESTIONS['am-05'],right=questions.map(q=>q.correct);
  const pass=A.grade('am-05',right);assert.equal(pass.score,100);assert.equal(pass.passed,true);
- const notYet=A.grade('am-05',[right[0],(right[1]+1)%3,right[2]]);
- assert.equal(notYet.score,67);assert.equal(notYet.passed,false);
+ const wrong=[...right];wrong[1]=(wrong[1]+1)%3;const notYet=A.grade('am-05',wrong);
+ assert.equal(notYet.score,80);assert.equal(notYet.passed,false);
  assert.throws(()=>A.grade('am-05',['0',1,1]),/INVALID_ASSESSMENT/);
 });
 test('stage gate cannot be defeated by a perfect late-stage quiz',()=>{
@@ -199,3 +199,5 @@ test('visual training studio has a real SVG/CSS visual story, browser narration,
  assert.equal(read('public/sbc-am-academy-v1.js'),read('browser_public/sbc-am-academy-v1.js'));
  assert.equal(read('public/sbc-am-academy-v1.css'),read('browser_public/sbc-am-academy-v1.css'));
 });
+
+require('../test/sbc-owner-clockin-deep-academy.test.cjs');
