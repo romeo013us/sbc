@@ -101,6 +101,25 @@ def run(browser,viewport):
     assert page.evaluate('window.calls')==1
     page.evaluate("""() => {const b=document.createElement('button');b.id='lateLegacyNav';b.textContent='Legacy report';document.querySelector('nav.v56-primary-nav').appendChild(b);}""")
     page.wait_for_function("document.querySelector('#sbcAdvancedNav #lateLegacyNav')!==null")
+
+    # Lazy-mounted primary navigation remains primary; original handlers and
+    # explicit role-hidden state survive relocation, unlike a new duplicate button.
+    page.evaluate("""() => {
+        const p=document.getElementById('sbc-website-production-nav');
+        p.hidden=true;p.onclick=()=>window.productionClicks=(window.productionClicks||0)+1;
+        document.querySelector('nav.v56-primary-nav').appendChild(p);
+    }""")
+    page.wait_for_function("document.querySelector('#sbcFocusNav > #sbc-website-production-nav')!==null")
+    assert not page.locator('#sbc-website-production-nav').is_visible()
+    page.evaluate("""() => {
+        const p=document.getElementById('sbc-website-production-nav');
+        p.hidden=false;document.querySelector('.sbc-focus-secondary').appendChild(p);
+    }""")
+    page.wait_for_function("document.querySelector('#sbcFocusNav > #sbc-website-production-nav')!==null")
+    assert page.locator('#sbc-website-production-nav').count()==1
+    page.locator('#sbc-website-production-nav').click()
+    assert page.evaluate('window.productionClicks')==1
+
     page.evaluate("""() => {window.state.data.recovery.required=true;window.dispatchEvent(new Event('sbc:view-rendered'));}""")
     for panel in legacy:
         assert page.locator(panel).is_visible(), panel+' during recovery'
