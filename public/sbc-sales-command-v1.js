@@ -165,9 +165,10 @@
  $('termsForm').addEventListener('submit',event=>{
   event.preventDefault();
   safeRun(async()=>{
-   if(!ask('Confirm you have a signed compensation agreement for this contractor and month?'))return;
+   const tier=$('tier').value,terms={standard_v2:{confirmMonthlyQuotaCents:216700,confirmCommissionBps:900},senior_v2:{confirmMonthlyQuotaCents:433300,confirmCommissionBps:1200}}[tier];
+   if(!ask('Confirm the signed compensation agreement for this contractor and month: '+$('tier').selectedOptions[0].textContent+'?'))return;
    await api('/api/owner/sales-command/terms','POST',{
-    managerId:$('termsManager').value,month:$('month').value,tier:$('tier').value,
+    managerId:$('termsManager').value,month:$('month').value,tier,...(terms||{}),
     agreementReference:$('agreementRef').value.trim(),confirm:'SIGNED_AGREEMENT_CONFIRMED'
    });
   },'Monthly terms recorded for owner review.');
