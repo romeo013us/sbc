@@ -85,3 +85,26 @@ test('optional research and social errors remain local to their panels, not the 
   assert.match(js,/Research handoffs unavailable/);
  }
 });
+
+test('sign-out sends one POST and returns to login only after confirmed success',async()=>{
+ const vm=require('node:vm');
+ const js=read('public/sbc-account-manager-v1.js');
+ const fn=js.slice(js.indexOf('async function signOut(){'),js.indexOf('async function load(){'));
+ assert(fn.startsWith('async function signOut(){'));
+ for(const scenario of ['success','unconfirmed','network','activeCall']){
+  const button={disabled:false},workspace={hidden:false},requests=[],locations=[],messages=[];
+  const state={role:'account_manager',accounts:[{id:'account1'}],handoffs:[],channels:[],posts:[],accountAppointments:[],lang:'en'};
+  const sandbox={state,pendingQuick:null,$:()=>button,document:{getElementById:()=>workspace},
+   window:{SBCCallCommandLiveV3:{isBusy:()=>scenario==='activeCall'},SBCCallCommand:{clear(){}}},
+   location:{replace:url=>locations.push(url)},message:msg=>messages.push(msg),
+   fetch:async(url,options)=>{requests.push([url,options]);if(scenario==='network')throw Error('offline');
+    return {ok:true,json:async()=>({ok:true,signedOut:scenario==='success'})};}};
+  await vm.runInNewContext(fn+';signOut()',sandbox);
+  assert.equal(requests.length,scenario==='activeCall'?0:1);
+  if(requests.length){assert.equal(requests[0][0],'/api/logout');assert.equal(requests[0][1].method,'POST');}
+  assert.equal(workspace.hidden,scenario==='success');
+  assert.deepEqual(locations,scenario==='success'?['/']:[]);
+  assert.equal(state.role,scenario==='success'?'':'account_manager');
+  if(scenario!=='success'){assert.equal(button.disabled,false);assert.equal(messages.length,1);}
+ }
+});
