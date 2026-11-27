@@ -24,3 +24,18 @@ test('executive page uses request-time release context and owner route remains p
  const server=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8');
  assert(server.includes("app.get('/executive-command',auth,ownerOnly,(req,res)=>res.send(SBC_WORKSTATION_RENDERERS.executiveCommandHtml()));"));
 });
+
+test('new employee accounts explicitly choose one of the four retained roles; no legacy caller default',()=>{
+ const server=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8');
+ const begin=server.indexOf("app.post('/api/users',auth,ownerOnly"),end=server.indexOf("app.put('/api/users/:id'",begin);
+ const route=server.slice(begin,end);assert.match(route,/WORKFORCE_ROLE_REQUIRED/);
+ assert.match(route,/\['account_manager','lead_researcher','fulfillment','hr_manager'\]/);
+ assert.doesNotMatch(route,/\?'caller'|:'caller'/);
+ for(const dir of ['public','browser_public']){
+  const js=fs.readFileSync(path.resolve(__dirname,'../'+dir+'/app.js'),'utf8');
+  const form=js.slice(js.indexOf('function newCallerUser(){'),js.indexOf('function editCallerUser('));
+  assert.match(form,/name="role"/);
+  for(const role of ['account_manager','lead_researcher','fulfillment','hr_manager'])assert.ok(form.includes('value="'+role+'"'),role);
+  assert.doesNotMatch(form,/value="(?:caller|manager|sales_manager)"/);
+ }
+});
