@@ -24,16 +24,16 @@
 <form id="creditForm"><label>Paid order<select id="creditOrder" required><option value="">Select eligible captured order</option></select></label><label>Credited account manager<select id="creditManager" required></select></label><label>Sale category<select id="saleSource"><option value="NEW_CUSTOMER">New customer</option><option value="ACTIVE_UPSELL">Active upsell</option><option value="MANUALLY_SOLD_RENEWAL">Manager-sold renewal</option></select></label><label>Direct vendor costs ($)<input id="directCost" type="number" min="0" max="1000000" step=".01" required></label><label>Delivery labor costs ($)<input id="laborCost" type="number" min="0" step=".01" value="0" required></label><label>Processing fees ($)<input id="processingCost" type="number" min="0" step=".01" value="0" required></label><label class="wide">Cost evidence / source<input id="costEvidence" maxlength="500" minlength="12" required placeholder="Vendor quote or invoice + labor calculation"></label><button type="submit">Review and record paid sale</button></form></section>
 </div>
 <section class="panel"><h2>3 · Monthly commission approval</h2><p class="help">Closing is available after the month ends. Approval does not send money; Paid records a transfer you already made.</p><div class="actions"><label>Manager<select id="actionManager"></select></label><button id="closeMonth">Close month → Draft</button><button id="approveMonth" class="accent">Approve statement</button><label>External payment reference<input id="paymentRef" maxlength="180" placeholder="Enter after making payment"></label><button id="paidMonth">Record payment already sent</button></div></section>
-<section class="panel" aria-label="Bilingual sales hiring and ROI planning"><h2>4 · Hire proven bilingual closers</h2><p class="help">Evidence-first hiring. No applicant records are stored by this calculator, and no automatic hiring decisions are made.</p>
+<section class="panel" aria-label="Bilingual sales hiring and ROI planning"><h2>4 · Account Manager interview certification</h2><p class="help">Owner-led evaluation. Standard: English required, Spanish preferred. Senior: English and Spanish required, with verified closing experience. No automatic hiring decisions or stored applicant records.</p>
 <div class="columns">
-<div><h3>Live candidate evaluation · 100 points</h3><form id="hiringForm"><div class="wide" id="hiringScores" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px"></div>
+<div><h3>Live candidate evaluation · 100 points</h3><form id="hiringForm"><label class="wide">Interview tier<select id="hiringTier"><option value="standard">Standard · 80/100 target</option><option value="senior">Senior · 90/100 target</option></select></label><div class="wide" id="hiringScores" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px"></div>
 <label class="wide"><input type="checkbox" id="evidence_referenceVerified"> References independently verified</label>
 <label class="wide"><input type="checkbox" id="evidence_salesEvidenceVerified"> Previous B2B closing results verified</label>
 <label class="wide"><input type="checkbox" id="evidence_englishLive"> Live English demonstration completed</label>
-<label class="wide"><input type="checkbox" id="evidence_spanishLive"> Live Spanish demonstration completed</label>
+<label class="wide"><input type="checkbox" id="evidence_spanishLive"> Live Spanish demonstration completed (required for Senior only)</label>
 <label class="wide"><input type="checkbox" id="evidence_closingSimulationPassed"> Closing simulation completed</label>
-<button type="submit">Evaluate candidate evidence</button></form><p class="message" id="hiringResult" role="status" aria-live="polite">Complete live evaluations and verify references before making any offer.</p></div>
-<div><h3>Hiring economics · monthly scenario</h3><form id="forecastForm">
+<button type="submit">Evaluate candidate evidence</button></form><p class="message" id="hiringResult" role="status" aria-live="polite">Complete live English and closing demonstrations; verify prior sales and Spanish for Senior. Owner review required.</p></div>
+<div><h3>Hiring economics · legacy monthly scenario</h3><form id="forecastForm">
 <label>Team sales ($)<input id="forecastRevenue" type="number" min="0" step=".01" value="13000" required></label>
 <label>Product gross margin (%)<input id="forecastMargin" type="number" min="0" max="100" step=".01" value="40" required></label>
 <label>Standard managers ($5/hr)<input id="forecastStandard" type="number" min="0" max="100" step="1" value="1" required></label>
@@ -41,7 +41,7 @@
 <label>Hours per manager per week<input id="forecastHours" type="number" min="0" max="168" step=".5" value="30" required></label>
 <label>Other monthly overhead ($)<input id="forecastOverhead" type="number" min="0" step=".01" value="1000" required></label>
 <button type="submit">Calculate operating contribution</button></form>
-<p class="message" id="forecastResult" role="status" aria-live="polite">A forecast is not verified revenue or take-home profit.</p></div></div></section>
+<p class="message" id="forecastResult" role="status" aria-live="polite">Legacy 10%/15% commission assumptions; new agreements are not yet activated. A forecast is not verified revenue or take-home profit.</p></div></div></section>
 <footer>SBC · Because Why Not? · Source: owner-reconciled Square capture metadata. Not a bank settlement or legal worker-classification report. Contractor transfers, vendor purchases and customer fulfillment remain owner-controlled.</footer>
 </main></div>
 </body></html>
