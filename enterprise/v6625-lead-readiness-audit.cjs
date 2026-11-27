@@ -1,22 +1,22 @@
 'use strict';
 // SBC V66.25: read-only lead eligibility classification for human review.
 // This module never verifies a person, records consent, authorizes contact, or writes CRM data.
-const NO_CONTACT=new Set(['customer','lost','do not call','do not contact','closed','duplicate','not qualified','unsubscribe','opt out']);
+const NO_CONTACT=new Set(['customer','active_customer','active','fulfilled','lost','dnc','do not call','do not contact','closed','duplicate','not qualified','unsubscribe','opt out','opt-out']);
 const digits=s=>String(s||'').replace(/\D/g,'');
 function phoneOk(v){const x=digits(v);return x.length===10||(x.length===11&&x.startsWith('1'));}
 function emailOk(v){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v||'').trim());}
 function liveLead(c){const status=String(c?.status||'lead').trim().toLowerCase();return !NO_CONTACT.has(status);}
 function suppressed(c){
  const status=String(c?.status||'').trim().toLowerCase();
- if(NO_CONTACT.has(status)||c?.salesSuppressed===true||c?.doNotContact===true||c?.isSuppressed===true)return true;
+ if(NO_CONTACT.has(status)||c?.salesSuppressed===true||c?.doNotContact===true||c?.doNotCall===true||c?.optedOut===true||c?.isSuppressed===true)return true;
  const info=[c?.notes,c?.followUp].map(v=>String(v||'')).join(' ').toLowerCase();
  return /(?:\bdo not contact\b|\bdo not call\b|\bunsubscribe\b|\bopt[ -]?out\b|\bstop messages\b)/.test(info);
 }
 function verified(c){
- const direct=String(c?.verificationStatus||'').trim().toLowerCase().replace(/[-_]+/g,' ');
- if(['verified','sales ready'].includes(direct))return true;
- const note=String(c?.notes||'');
- return /(?:^|\n)\s*verification\s*:\s*(verified|sales ready)\s*(?:$|\n)/i.test(note);
+ // Match Kim's strict canonical verification contract. Historic notes and
+ // nested positive status never override a newer explicit review decision.
+ const direct=String(c?.verificationStatus||'').trim().toLowerCase().replace(/[-_]+/g,' ').replace(/\s+/g,' ');
+ return ['verified','passed','sales ready'].includes(direct)||(direct===''&&c?.verified===true);
 }
 function synthetic(c){
  return c?.sbcTest===true||c?.testMode===true||c?.testPayment?.realCharge===false||
