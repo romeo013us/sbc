@@ -6,7 +6,7 @@
 <title>SBC — Account Manager / Sales Caller Workspace</title>
 <link rel="icon" href="/assets/sbc-logo.jpg" type="image/jpeg">
 <link rel="stylesheet" href="/lead-research.css?v=7">
-<link rel="stylesheet" href="/sales-caller.css?v=4">
+<link rel="stylesheet" href="/sales-caller.css?v=5">
 <link rel="stylesheet" href="/sbc-workforce-audio-v66109.css?v=1">
 <link rel="stylesheet" href="/sbc-workforce-theme-v6698.css?v=1">
 <script defer src="/sbc-role-shift-plan.js?v=1"></script>
@@ -18,7 +18,7 @@
 <script defer src="/sbc-sales-workspace-locale-v66104.js?v=1"></script>
 <script defer src="/sbc-sales-playbook-v66106.js?v=2"></script>
 <script defer src="/sbc-account-success-v1.js?v=20261113-account-success"></script>
-<script defer src="/sales-caller.js?v=3"></script>
+<script defer src="/sales-caller.js?v=4"></script>
 <link rel="stylesheet" href="/sbc-chatgpt-os-v1.css?v=66.0.132-resume">
 
 </head>
@@ -68,25 +68,25 @@
    <div id="sbcSalesWebsiteLibrary" class="sbc-sales-website-library" aria-live="polite"><p>Open this tab to load approved websites.</p></div>
   </section>
   <section id="call" data-page hidden>
-   <h2>Customer Conversations & Call Reports</h2>
+   <div class="sbc-call-focus-head"><div><div class="eyebrow">SBC CALL CENTER · FOCUS MODE</div><h2>One account. One conversation. One next step.</h2><p>Everything needed to prepare, call, document and advance—without jumping between CRM pages.</p></div><div class="sbc-call-shortcuts"><span><kbd>Alt+C</kbd> Call</span><span><kbd>Alt+E</kbd> End</span><span><kbd>Alt+S</kbd> Save & next</span></div></div>
    <div class="columns"><div class="card">
     <label for="call-target">Assigned prospect</label><select id="call-target"><option value="">Select an assigned lead</option></select>
     <p id="lead-detail">Choose a prospect to view its verified contact number.</p>
     <p id="sbc-caller-demo-link" class="muted" aria-live="polite"></p>
     <details id="sbc-caller-research-details"><summary>Full business research & sales preparation</summary><pre id="sbc-caller-research-content" style="white-space:pre-wrap;font:inherit;font-size:13px;overflow-wrap:anywhere"></pre><p id="sbc-caller-research-source"></p></details>
     <label for="dial-number">Business number</label><input id="dial-number" type="tel" autocomplete="off" readonly placeholder="Select an assigned prospect">
-    <div class="keys" id="dtmf-keypad"></div>
-    <p id="dtmf-hint" class="muted">Keypad digits send tones during connected calls.</p>
+    <details class="sbc-dialpad"><summary>Open during-call keypad</summary><div class="keys" id="dtmf-keypad"></div><p id="dtmf-hint" class="muted">Keypad digits send tones during connected calls.</p></details>
     <div class="actions"><button type="button" id="call-button" class="primary" disabled>☎ Call with Twilio</button><button type="button" id="end-button" class="danger" disabled>■ End Call</button></div>
     <p class="muted">Live calling requires completed onboarding, certification, an active employee clock-in and a configured Twilio browser connection. No automatic calls.</p>
    </div><div class="card">
     <h3>Call Notes / Report</h3><p id="call-status" role="status">Select an assigned lead first.</p>
-    <form id="report-form"><label for="contact">Person contacted</label><input id="contact" maxlength="140">
-    <label for="outcome">Result</label><select id="outcome">
+    <form id="report-form"><label for="contact">Person contacted</label><input id="contact" maxlength="140" placeholder="Name or role, if confirmed">
+    <fieldset class="sbc-quick-outcomes"><legend>Quick outcome</legend><button type="button" data-outcome="No Answer">No answer</button><button type="button" data-outcome="Conversation">Conversation</button><button type="button" data-outcome="Interested">Interested</button><button type="button" data-outcome="Appointment Requested">Appointment</button><button type="button" data-outcome="Follow-up Requested">Follow-up</button><button type="button" data-outcome="Do Not Call" class="danger">Do not call</button></fieldset>
+    <label for="outcome">Detailed result</label><select id="outcome">
      <option value="No Answer">No answer</option><option value="Left Voicemail">Left voicemail</option><option value="Conversation">Conversation</option><option value="Interested">Interested</option><option value="Appointment Requested">Appointment requested</option><option value="Follow-up Requested">Follow-up requested</option><option value="Not Interested">Not interested</option><option value="Do Not Call">Do not call — suppress immediately</option><option value="Bad Number">Bad number — hold for phone recovery</option>
     </select><label for="callback">Callback time (if requested)</label><input id="callback" type="datetime-local">
     <label for="notes">Conversation / objection notes</label><textarea id="notes" maxlength="3000" rows="5" placeholder="No private payment card details; document actual conversation only."></textarea>
-    <button type="submit" id="report-button" class="primary" disabled>Save Report for Owner Review</button></form>
+    <div class="sbc-wrapup-actions"><button type="submit" id="report-button" class="primary" disabled>Save & Open Next Account</button><span>CRM save must succeed before the queue advances.</span></div></form>
     <p class="muted">A call report is not a payment, verified sale, or approval. Pricing and fulfillment decisions remain owner-controlled.</p>
    </div></div>
   </section>

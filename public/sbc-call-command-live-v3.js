@@ -24,31 +24,55 @@
   const active=$('sbcCcV3Active');if(active)active.hidden=!busy;
   const mute=$('sbcCcV3Mute');if(mute)mute.textContent=muted?'Unmute microphone':'Mute microphone';
   const keypad=$('sbcCcV3Digits');if(keypad)keypad.hidden=!call;
-  const clock=$('sbcCcV3Timer');if(clock){clock.textContent='00:00'}
+  const clock=$('sbcCcV3Timer');if(clock&&!busy){clock.textContent='00:00'}
+  const shell=host?.querySelector('.sbc-cc-v3');if(shell){shell.dataset.callState=call?'connected':connecting?'connecting':busy?'active':'idle'}
  }
+ const reasonHelp=Object.freeze({
+  CALL_COMMAND_PAUSED_BY_OWNER:'Calling is paused by the SBC owner.',
+  CALL_COMMAND_NOT_CONFIGURED:'Twilio calling still needs provider setup.',
+  CALL_COMMAND_INVALID_SETTING:'The calling configuration needs owner review.',
+  CALL_COMMAND_MYSQL_REQUIRED:'The customer record system is temporarily unavailable.',
+  CALL_COMMAND_RECOVERY_LOCKED:'Calling is paused while SBC verifies database recovery.',
+  ACCOUNT_MANAGER_NOT_ACTIVE:'Your Account Manager access is not active.',
+  ACADEMY_CERTIFICATION_REQUIRED:'Complete Academy 360 certification before calling.',
+  ACCOUNT_ROUTING_CONTEXT_UNAVAILABLE:'Refresh this account before calling.',
+  BILINGUAL_ACCOUNT_MANAGER_APPROVAL_REQUIRED:'This Spanish callback needs an owner-approved bilingual Account Manager.',
+  SPANISH_CALLBACK_NOT_DUE:'This Spanish callback is scheduled for a later time.',
+  CONTACT_SUPPRESSED:'This account is suppressed and must not be called.',
+  CALL_AUTHORIZATION_REQUIRED:'Owner calling verification is required.',
+  CALL_AUTHORIZATION_EXPIRED:'Owner calling verification has expired.',
+  OUTSIDE_CALLING_HOURS:'Wait until the approved local calling window.',
+  PHONE_INVALID:'Add and verify a valid business phone number.',
+  ACCOUNT_NOT_ASSIGNED:'This account must be assigned to you first.'
+ });
+ function readableReason(value){const key=String(value||'').trim();return reasonHelp[key]||key.toLowerCase().replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());}
  function statusText(payload){
   if(!payload?.ok)return 'Calling readiness could not be verified.';
   if(payload.liveCallAvailable)return 'Ready for an approved manual call. Press Call Now when you are ready.';
-  const reasons=(payload.reasons||[]).join(' · ');
+  const reasons=(payload.reasons||[]).map(readableReason).join(' ');
   return 'Calling is unavailable: '+(reasons||'owner verification or provider setup required')+'.';
  }
  function render({account,role,lang}){
   const es=lang==='es';
+  const name=escapeHtml(account.businessName||account.business_name||account.name||'Selected business');
+  const phone=escapeHtml(account.phone||'Phone pending verification');
   return '<section class="sbc-cc-v3" aria-label="SBC verified live calling">'+
-   '<div class="sbc-cc-v3-head"><div><p class="sbc-cc-v3-kicker">SBC CALL COMMAND / TWILIO</p>'+
-   '<h4>'+(es?'Llamar desde la cuenta':'Live account calling')+'</h4>'+
-   '<p>'+(es?'Verificación del servidor antes de cada llamada.':'One deliberate click. Server-verified permission before every call.')+'</p></div>'+
+   '<div class="sbc-cc-v3-focus"><span>FOCUS MODE</span><strong>'+name+'</strong><small>'+phone+'</small></div>'+
+   '<div class="sbc-cc-v3-head"><div><p class="sbc-cc-v3-kicker">SBC CALL COMMAND / VERIFIED MANUAL DIALER</p>'+
+   '<h4>'+(es?'Consola de llamada':'Call Console')+'</h4>'+
+   '<p>'+(es?'Una cuenta, una conversación y un próximo paso claro.':'One account, one conversation, one clear next step.')+'</p></div>'+
    '<span class="sbc-cc-v3-pill" id="sbcCcV3Pill">CHECKING</span></div>'+
-   '<div class="sbc-cc-v3-control"><button type="button" id="sbcCcV3Call" disabled class="sbc-cc-v3-start">'+(es?'Llamar ahora':'Call Now')+'</button>'+
-   '<button type="button" id="sbcCcV3Mute" disabled>Mute microphone</button>'+
-   '<button type="button" id="sbcCcV3End" disabled class="sbc-cc-v3-end">'+(es?'Finalizar llamada':'End Call')+'</button>'+
-   '<span id="sbcCcV3Timer" aria-live="off">00:00</span></div>'+
+   '<div class="sbc-cc-v3-stage" aria-label="Call workflow"><span class="active">1 · Verify</span><span>2 · Connect</span><span>3 · Listen</span><span>4 · Save outcome</span></div>'+
+   '<div class="sbc-cc-v3-control"><button type="button" id="sbcCcV3Call" disabled class="sbc-cc-v3-start">☎ '+(es?'Llamar ahora':'Call Now')+' <kbd>Alt+C</kbd></button>'+
+   '<button type="button" id="sbcCcV3Mute" disabled>Mute microphone <kbd>Alt+M</kbd></button>'+
+   '<button type="button" id="sbcCcV3End" disabled class="sbc-cc-v3-end">■ '+(es?'Finalizar':'End Call')+' <kbd>Alt+E</kbd></button>'+
+   '<span id="sbcCcV3Timer" aria-label="Call duration" aria-live="off">00:00</span></div>'+
    '<div id="sbcCcV3Digits" hidden><p>During-call keypad</p><div class="sbc-cc-v3-keys">'+
     ['1','2','3','4','5','6','7','8','9','*','0','#'].map(n=>'<button type="button" data-sbc-v3-digit="'+n+'" aria-label="Send '+n+' tone">'+n+'</button>').join('')+
    '</div></div>'+
-   '<p id="sbcCcV3Status" role="status" aria-live="polite">Checking the authenticated CRM record…</p>'+
+   '<div class="sbc-cc-v3-guidance"><span aria-hidden="true">✓</span><p id="sbcCcV3Status" role="status" aria-live="polite">Checking the authenticated CRM record…</p></div>'+
    '<p class="sbc-cc-v3-disclaimer">No automated dialing or recording. Twilio charges apply only if a permitted call is placed. Follow applicable calling, DNC and recording rules.</p>'+
-   '<div id="sbcCcV3Active" hidden><strong>Live call in progress</strong><p>Finish this call before switching accounts.</p></div>'+
+   '<div id="sbcCcV3Active" hidden><span class="sbc-cc-v3-live-dot"></span><div><strong>Live call in progress</strong><p>Stay on this account. Listen first, take factual notes, then save one clear outcome below.</p></div></div>'+
    (role==='owner'?'<details class="sbc-cc-v3-owner"><summary>Owner: verify or revoke calling permission</summary>'+
     '<p>Only record verification after independently checking the phone, applicable Do Not Call rules and lawful outreach basis. This is a seven-day, phone-specific owner attestation—not automated legal verification.</p>'+
     '<form id="sbcCcV3OwnerForm"><label>Prospect time zone<input name="prospectTimeZone" value="America/New_York" required></label>'+
@@ -128,7 +152,7 @@
     const s=Math.floor((Date.now()-startedAt)/1000);
     el.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
    },1000);
-   call.on?.('accept',()=>note('Connected. You may speak now. Notes and outcomes are saved separately below.'));
+   call.on?.('accept',()=>{connecting=false;controls();note('Connected. Listen first, confirm the need, and agree on one next step. Save the outcome below when finished.');});
    call.on?.('disconnect',()=>{cleanupCall();requestId='';note('Call ended locally. Refresh provider history to confirm the final status.');history().catch(()=>{})});
    call.on?.('error',e=>{cleanupCall();note('Twilio call error: '+String(e?.message||'Unknown error'),true);history().catch(()=>{})});
   }catch(e){cleanupCall();note('Call was not established: '+String(e?.message||e)+'. The server may hold this attempt briefly to prevent duplicate calling.',true);refresh().catch(()=>{})}
@@ -170,6 +194,14 @@
   const digit=el.dataset.sbcV3Digit;
   if(digit&&call){try{call.sendDigits(digit);note('Keypad tone sent.')}catch{note('Keypad tone unavailable.',true)}}
  }
+ function onShortcut(e){
+  if(!host||!e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(String(e.target?.tagName||'')))return;
+  const key=String(e.key||'').toLowerCase();
+  if(key==='c'&&!$('sbcCcV3Call')?.disabled){e.preventDefault();start();}
+  if(key==='m'&&!$('sbcCcV3Mute')?.disabled){e.preventDefault();mute();}
+  if(key==='e'&&!$('sbcCcV3End')?.disabled){e.preventDefault();end();}
+ }
  function open({account,role,lang='en'}={}){
   if(!account||!['owner','account_manager'].includes(role)||typeof window==='undefined')return;
   if(busy&&String(current?.account?.id)!==String(account.id))return;
@@ -178,12 +210,13 @@
   host=$('sbcCallCommandLiveV3');
   if(!host){host=W.document.createElement('div');host.id='sbcCallCommandLiveV3';target.appendChild(host);
    host.addEventListener('click',onClick);
+   W.document.addEventListener('keydown',onShortcut);
   }
   host.innerHTML=render(current);
   host.querySelector('#sbcCcV3OwnerForm')?.addEventListener('submit',saveVerification);
   controls();refresh().catch(()=>{});
  }
- function close(){if(busy)end();current=null;readiness=null;requestId='';if(host)host.replaceChildren();host=null}
+ function close(){if(busy)end();W?.document?.removeEventListener('keydown',onShortcut);current=null;readiness=null;requestId='';if(host)host.replaceChildren();host=null}
  const isBusy=()=>busy;
- return Object.freeze({open,close,isBusy,render,statusText});
+ return Object.freeze({open,close,isBusy,render,statusText,readableReason});
 });

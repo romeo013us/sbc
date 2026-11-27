@@ -595,6 +595,8 @@ async function saveReport(event){
  event.preventDefault();if(!canWrite())return;
  const lead=data?.leads.find(c=>c.id===$('call-target').value);if(!lead)return;
  const outcome=$('outcome').value,notes=$('notes').value.trim();
+ const needsTime=['Appointment Requested','Follow-up Requested'].includes(outcome);
+ if(needsTime&&!$('callback').value){notice('Choose the customer-agreed callback or appointment time before saving.');$('callback').focus();return;}
  const button=$('report-button');button.disabled=true;
  try{
   const body={customerId:lead.id,contactName:$('contact').value.trim(),outcome,
@@ -609,6 +611,21 @@ async function saveReport(event){
   await load();
  }catch(e){notice('Report not saved: '+error(e));}
  finally{button.disabled=false;updateCallButtons();}
+}
+function syncOutcome(value){
+ const select=$('outcome');if(!select)return;
+ if(value&&[...select.options].some(x=>x.value===value))select.value=value;
+ const needsTime=['Appointment Requested','Follow-up Requested'].includes(select.value);
+ $('callback').required=needsTime;
+ document.querySelectorAll('[data-outcome]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.outcome===select.value)));
+}
+function callDeskShortcut(event){
+ if(!event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||current!=='call')return;
+ if(/^(INPUT|TEXTAREA|SELECT)$/.test(String(event.target?.tagName||'')))return;
+ const key=String(event.key||'').toLowerCase();
+ if(key==='c'&&!$('call-button').disabled){event.preventDefault();dial();}
+ if(key==='e'&&!$('end-button').disabled){event.preventDefault();finish('ended');}
+ if(key==='s'&&!$('report-button').disabled){event.preventDefault();$('report-form').requestSubmit();}
 }
 async function clockAction(action){
  if(!canWrite())return;
@@ -631,6 +648,9 @@ function bind(){
  $('call-target').onchange=renderCallSelection;
  $('call-button').onclick=dial;$('end-button').onclick=()=>finish('ended');
  $('report-form').onsubmit=saveReport;
+ $('outcome').onchange=()=>syncOutcome();
+ document.querySelectorAll('[data-outcome]').forEach(button=>button.onclick=()=>syncOutcome(button.dataset.outcome));
+ document.addEventListener('keydown',callDeskShortcut);
  $('clock-in').onclick=()=>clockAction('in');$('clock-out').onclick=()=>clockAction('out');
  $('break-start').onclick=()=>clockAction('break_start');$('break-end').onclick=()=>clockAction('break_end');
  $('lang-es').onclick=()=>switchLanguage('es');$('lang-en').onclick=()=>switchLanguage('en');
@@ -639,6 +659,7 @@ function bind(){
   const b=el('button',n);b.type='button';b.setAttribute('aria-label','Send tone '+n);b.onclick=()=>{if(!activeCall?.conn){notice('Keypad tones work during a connected call.');return;}try{activeCall.conn.sendDigits(n);}catch(e){notice('Cannot send keypad tone: '+error(e));}};keys.append(b);
  }
  $('signout').onclick=async()=>{if(activeCall){notice('End the active call before signing out.');return;}try{await api('/api/logout',{method:'POST'});}catch{}location.replace('/');};
+ syncOutcome();
 }
 (async()=>{
  try{
