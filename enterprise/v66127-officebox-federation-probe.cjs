@@ -9,7 +9,10 @@ const {baseUrl}=require('./v66112-officebox-postcommit.cjs');
 const fail=(code,status=503)=>Object.assign(new Error(code),{code,status});
 async function probe({origin,secret,transport=fetch,at=Date.now(),nonce=crypto.randomBytes(12).toString('hex')}={}){
  if(typeof transport!=='function')throw fail('OFFICEBOX_PROBE_TRANSPORT_UNAVAILABLE');
- if(typeof secret!=='string'||secret.length<32)throw fail('OFFICEBOX_PROBE_SIGNING_NOT_CONFIGURED');
+ // Match the established Office Box execution bridge: deployments may keep a
+ // dedicated federation secret separate from the general SBC webhook key.
+ const signingSecret=String(process.env.OFFICE_BOX_WEBHOOK_SECRET||secret||'');
+ if(signingSecret.length<32)throw fail('OFFICEBOX_PROBE_SIGNING_NOT_CONFIGURED');
  if(!/^[a-f0-9]{24}$/.test(String(nonce||'')))throw fail('OFFICEBOX_PROBE_NONCE_INVALID');
  // Inherits Command Center's restricted HTTPS origin policy, preventing SSRF.
  // Production exposes a dedicated public Office Box origin. Prefer it when
@@ -23,7 +26,7 @@ async function probe({origin,secret,transport=fetch,at=Date.now(),nonce=crypto.r
   correlationId:'sbc_probe_'+nonce,customerId:'sbc_probe_customer_'+nonce,
   orderId:'sbc_probe_order_'+nonce,plan:'business'};
  const raw=JSON.stringify(payload);
- const signature=crypto.createHmac('sha256',secret)
+ const signature=crypto.createHmac('sha256',signingSecret)
   .update(timestamp+'.').update(raw).digest('hex');
  let response,reply;
  try{
