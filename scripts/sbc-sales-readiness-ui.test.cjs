@@ -42,3 +42,19 @@ test('paid trial enrollment requires explicit owner attestations and employee re
  assert(read('public/sbc-account-manager-v1.html').includes('id="sbcMyTrialProgress"'));
  new (require('node:vm').Script)(js);new (require('node:vm').Script)(employee);
 });
+
+test('owner payroll and recognition previews are wired without payment or automatic awards',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js');
+ for(const id of ['payScheduleForm','payScheduleReviewed','payScheduleFirst','payScheduleAgreement','recognitionForm','recognitionManager','recognitionWeek','recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])assert(html.includes('id="'+id+'"'),id);
+ assert(js.includes('/api/owner/sales-command/workforce/pay-schedule'));
+ assert(js.includes('/api/owner/sales-command/workforce/recognition'));
+ assert(js.includes('scheduleReviewed:'));
+ assert(js.includes('qualityReviewed:'));
+ assert(js.includes('ledgerComplete:'));
+ assert(js.includes('No payment initiated'));
+ assert(js.includes('No award granted'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));
+ assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));
+ new (require('node:vm').Script)(js);
+});
