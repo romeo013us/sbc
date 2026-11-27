@@ -34,7 +34,7 @@ function checkPrivateBundle(bundle){
  const names=Object.keys(files);
  record('Safe relative bundle paths',names.every(safePath),'UNSAFE_BUNDLE_PATH');
  const htmlNames=names.filter(n=>/\.html$/i.test(n));
- const size=names.reduce((n,k)=>n+(typeof files[k]==='string'?Buffer.byteLength(files[k],'utf8'):0),0);
+ const size=names.reduce((n,k)=>n+(typeof files[k]==='string'?Buffer.byteLength(files[k],'utf8'):Buffer.isBuffer(files[k])?files[k].length:MAX_TOTAL+1),0);
  const bounded=names.length<=MAX_FILES&&size<=MAX_TOTAL&&htmlNames.every(n=>typeof files[n]==='string'&&Buffer.byteLength(files[n],'utf8')<=MAX_HTML);
  record('Bounded static inspection',bounded,'BUNDLE_INSPECTION_LIMIT');
  const css=typeof files['styles.css']==='string'?files['styles.css']:'';
@@ -85,6 +85,11 @@ function checkPrivateBundle(bundle){
     if(href.startsWith('#')){if(!dest||!dest.fragment||!ids.has(dest.fragment))anchorsOK=false;}
     else if(!dest||!parsed.has(dest.file)||(dest.fragment!==undefined&&(!dest.fragment||!parsed.get(dest.file).ids.has(dest.fragment))))pageLinksOK=false;
    }
+   if(['video','track','source','audio'].includes(t.name)&&own(a,'src')){
+    const dest=localTarget(name,a.src);
+    if(!dest||dest.fragment!==undefined||!own(files,dest.file)||!files[dest.file]||!/^assets\/sbc-creative-[a-f0-9]{64}\.(?:mp4|vtt)$/.test(dest.file))assetsOK=false;
+   }
+   if(t.name==='video'&&(!own(a,'controls')||own(a,'autoplay')))assetsOK=false;
    if(t.name==='img'&&own(a,'src')){
     if(/^https:\/\//i.test(a.src)){result.externalImages++;continue;} // existing owner-confirmed photo contract, not license proof
     const dest=localTarget(name,a.src);

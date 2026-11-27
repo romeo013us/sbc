@@ -1,0 +1,1421 @@
+{
+  "schemaVersion": 1,
+  "brand": "Successful By Choice",
+  "signature": "Because Why Not?",
+  "timezone": "America/New_York",
+  "status": "draft_content_only",
+  "firstEvergreenDate": "2026-11-28",
+  "requiredReview": "Original logo identity, exact final bytes, current pricing, art direction, rights, and platform publication approval",
+  "priceDisclaimer": {
+    "en": "Starting setup prices. Confirm scope, recurring charges and add-ons before purchase.",
+    "es": "Precios iniciales de configuración. Confirma alcance, cargos recurrentes y extras antes de comprar."
+  },
+  "formats": {
+    "square": {
+      "width": 1080,
+      "height": 1080,
+      "feedCandidate": true
+    },
+    "landscape": {
+      "width": 1200,
+      "height": 628,
+      "requiresSeparateLayoutAndExport": true
+    },
+    "portrait": {
+      "width": 1080,
+      "height": 1920,
+      "storyCandidate": true,
+      "requiresSeparateLayoutAndExport": true
+    }
+  },
+  "holiday": [
+    {
+      "slug": "thanksgiving-2026-engagement",
+      "category": "engagement",
+      "date": "2026-11-26",
+      "slot": "22:00",
+      "artDirection": "Gratitude and goal card; navy with orange accent; original logo",
+      "copy": {
+        "en": {
+          "headline": "What is your #1 business goal before 2027?",
+          "detail": "Grateful for every entrepreneur building their own future.",
+          "cta": "Share your goal"
+        },
+        "es": {
+          "headline": "¿Cuál es tu meta empresarial antes de 2027?",
+          "detail": "Gracias a cada emprendedor que construye su propio futuro.",
+          "cta": "Comparte tu meta"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true
+    },
+    {
+      "slug": "black-friday-2026-invest",
+      "category": "sales",
+      "date": "2026-11-27",
+      "slot": "10:00",
+      "artDirection": "Bold price typography and three clearly separated offer tiles; original logo",
+      "copy": {
+        "en": {
+          "headline": "Black Friday for business owners",
+          "detail": "Google Business Visibility from $99. Starter Website from $199. Custom Website from $499.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Black Friday para emprendedores",
+          "detail": "Visibilidad en Google desde $99. Web inicial desde $199. Web personalizada desde $499.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true
+    },
+    {
+      "slug": "black-friday-2026-growth",
+      "category": "sales",
+      "date": "2026-11-27",
+      "slot": "22:00",
+      "artDirection": "Distinct bilingual layout; English and Spanish panels; original logo",
+      "copy": {
+        "en": {
+          "headline": "Invest in your future",
+          "detail": "Starter Website from $199. Business Visibility from $99. Build bold. Get visible.",
+          "cta": "Because Why Not?"
+        },
+        "es": {
+          "headline": "Invierte en tu negocio",
+          "detail": "Web inicial desde $199. Visibilidad desde $99. Hazte visible y crece.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true
+    }
+  ],
+  "campaigns": [
+    {
+      "slug": "business-start",
+      "category": "engagement",
+      "artDirection": "Blueprint and empty storefront",
+      "copy": {
+        "en": {
+          "headline": "What business would you start?",
+          "detail": "Imagine a fresh start. What would you build and who would you serve?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué negocio iniciarías?",
+          "detail": "Imagina un nuevo comienzo. ¿Qué crearías y a quién ayudarías?",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 1,
+      "slot": "10:00"
+    },
+    {
+      "slug": "domain-basics",
+      "category": "education",
+      "artDirection": "Domain address diagram",
+      "copy": {
+        "en": {
+          "headline": "Your domain is your address.",
+          "detail": "Choose a memorable web address that fits your business.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Tu dominio es tu dirección.",
+          "detail": "Elige una dirección web fácil de recordar y adecuada a tu negocio.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 1,
+      "slot": "22:00"
+    },
+    {
+      "slug": "starter-website",
+      "category": "sales",
+      "artDirection": "One-page website concept",
+      "copy": {
+        "en": {
+          "headline": "Your first website starts here.",
+          "detail": "Starter Website from $199. One-page setup; confirm scope and recurring terms.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Tu primera web comienza aquí.",
+          "detail": "Sitio web inicial desde $199. Confirma alcance y cargos recurrentes.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 2,
+      "slot": "10:00"
+    },
+    {
+      "slug": "start-small",
+      "category": "motivation",
+      "artDirection": "Single step on geometric stairs",
+      "copy": {
+        "en": {
+          "headline": "Start before everything is perfect.",
+          "detail": "Choose one practical step and make it happen today.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Empieza antes de que todo sea perfecto.",
+          "detail": "Elige un paso práctico y hazlo realidad hoy.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 2,
+      "slot": "22:00"
+    },
+    {
+      "slug": "business-goal",
+      "category": "engagement",
+      "artDirection": "Goal board with one highlighted milestone",
+      "copy": {
+        "en": {
+          "headline": "What is your next business goal?",
+          "detail": "Choose one goal you can act on this month.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Cuál es tu próxima meta?",
+          "detail": "Elige una meta que puedas iniciar este mes.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 3,
+      "slot": "10:00"
+    },
+    {
+      "slug": "barber-concept",
+      "category": "showcase",
+      "artDirection": "Original barber website concept, no customer claims",
+      "copy": {
+        "en": {
+          "headline": "A sharper digital first impression.",
+          "detail": "Explore SBC's barbershop design concept. Concept only, not a client project.",
+          "cta": "Explore the concept"
+        },
+        "es": {
+          "headline": "Una primera impresión digital más definida.",
+          "detail": "Explora el concepto de barbería de SBC. Es una propuesta, no un proyecto de cliente.",
+          "cta": "Explora el concepto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 3,
+      "slot": "22:00"
+    },
+    {
+      "slug": "hosting-basics",
+      "category": "education",
+      "artDirection": "Server-to-browser diagram",
+      "copy": {
+        "en": {
+          "headline": "What does hosting actually do?",
+          "detail": "Hosting stores and serves your website files so visitors can access them.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "¿Qué hace el alojamiento web?",
+          "detail": "El alojamiento guarda y sirve los archivos de tu web para que puedan visitarla.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 4,
+      "slot": "10:00"
+    },
+    {
+      "slug": "first-customer",
+      "category": "engagement",
+      "artDirection": "First receipt and conversation bubbles",
+      "copy": {
+        "en": {
+          "headline": "How did you find your first customer?",
+          "detail": "Share the lesson you wish you knew earlier.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Cómo encontraste tu primer cliente?",
+          "detail": "Comparte la lección que te habría gustado conocer antes.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 4,
+      "slot": "22:00"
+    },
+    {
+      "slug": "custom-website",
+      "category": "sales",
+      "artDirection": "Multi-page concept montage",
+      "copy": {
+        "en": {
+          "headline": "Build a website around your brand.",
+          "detail": "Custom Website from $499. Confirm project scope and add-ons before purchase.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Crea una web para tu marca.",
+          "detail": "Web personalizada desde $499. Confirma alcance y extras antes de comprar.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 5,
+      "slot": "10:00"
+    },
+    {
+      "slug": "business-choice",
+      "category": "motivation",
+      "artDirection": "Choice fork and forward path",
+      "copy": {
+        "en": {
+          "headline": "Success begins with a choice.",
+          "detail": "A clear goal and consistent action are a strong place to start.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "El éxito empieza con una decisión.",
+          "detail": "Una meta clara y acción constante son un buen comienzo.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 5,
+      "slot": "22:00"
+    },
+    {
+      "slug": "website-choice",
+      "category": "engagement",
+      "artDirection": "Four illustrated choice tiles",
+      "copy": {
+        "en": {
+          "headline": "What matters most on a website?",
+          "detail": "Design, speed, clear services or an easy way to contact you?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué importa más en una web?",
+          "detail": "Diseño, velocidad, servicios claros o contacto fácil.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 6,
+      "slot": "10:00"
+    },
+    {
+      "slug": "local-owners",
+      "category": "community",
+      "artDirection": "Miami neighborhood silhouettes",
+      "copy": {
+        "en": {
+          "headline": "Miami businesses, we see you.",
+          "detail": "Celebrate the work local owners put into serving their communities.",
+          "cta": "Celebrate local business"
+        },
+        "es": {
+          "headline": "Negocios de Miami, los vemos.",
+          "detail": "Celebremos el trabajo de quienes sirven a sus comunidades.",
+          "cta": "Celebra el comercio local"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 6,
+      "slot": "22:00"
+    },
+    {
+      "slug": "google-visibility",
+      "category": "sales",
+      "artDirection": "Local map and profile illustration",
+      "copy": {
+        "en": {
+          "headline": "Make your business easier to discover.",
+          "detail": "Business Visibility from $99. Ask about Google Business Profile setup help.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Haz que encuentren tu negocio.",
+          "detail": "Visibilidad empresarial desde $99. Consulta la ayuda con el perfil de Google.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 7,
+      "slot": "10:00"
+    },
+    {
+      "slug": "mobile-check",
+      "category": "education",
+      "artDirection": "Responsive screen comparison",
+      "copy": {
+        "en": {
+          "headline": "Check your website on a phone.",
+          "detail": "Can customers read your services and reach you without zooming?",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Revisa tu web en un teléfono.",
+          "detail": "¿Pueden leer tus servicios y contactarte sin ampliar la pantalla?",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 7,
+      "slot": "22:00"
+    },
+    {
+      "slug": "keep-building",
+      "category": "motivation",
+      "artDirection": "Road stripes and sunrise",
+      "copy": {
+        "en": {
+          "headline": "Keep building your own lane.",
+          "detail": "Progress is made through the work you choose to repeat.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Sigue construyendo tu propio camino.",
+          "detail": "El progreso nace del trabajo que eliges repetir.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 8,
+      "slot": "10:00"
+    },
+    {
+      "slug": "business-name",
+      "category": "engagement",
+      "artDirection": "Name sketches on a notebook",
+      "copy": {
+        "en": {
+          "headline": "How did you name your business?",
+          "detail": "Every business name has a story. What is yours?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Cómo nombraste tu negocio?",
+          "detail": "Cada nombre de negocio tiene una historia. ¿Cuál es la tuya?",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 8,
+      "slot": "22:00"
+    },
+    {
+      "slug": "auto-concept",
+      "category": "showcase",
+      "artDirection": "Auto shop concept using generic shapes",
+      "copy": {
+        "en": {
+          "headline": "A website built around auto services.",
+          "detail": "Explore an original auto business design study from SBC.",
+          "cta": "Explore the concept"
+        },
+        "es": {
+          "headline": "Una web centrada en servicios automotrices.",
+          "detail": "Explora un estudio de diseño original de SBC para negocios automotrices.",
+          "cta": "Explora el concepto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 9,
+      "slot": "10:00"
+    },
+    {
+      "slug": "business-cards",
+      "category": "sales",
+      "artDirection": "Stack of unbranded card mockups",
+      "copy": {
+        "en": {
+          "headline": "Leave a professional first impression.",
+          "detail": "Ask about business card design and printing for your brand.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Deja una primera impresión profesional.",
+          "detail": "Consulta diseño e impresión de tarjetas para tu marca.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 9,
+      "slot": "22:00"
+    },
+    {
+      "slug": "contact-check",
+      "category": "education",
+      "artDirection": "Contact button close-up",
+      "copy": {
+        "en": {
+          "headline": "Make it easy to contact you.",
+          "detail": "Keep contact details clear, current and easy to locate.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Facilita el contacto con tu negocio.",
+          "detail": "Mantén tus datos de contacto claros, actualizados y visibles.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 10,
+      "slot": "10:00"
+    },
+    {
+      "slug": "local-discovery",
+      "category": "engagement",
+      "artDirection": "Four discovery routes on a map",
+      "copy": {
+        "en": {
+          "headline": "How do customers find you?",
+          "detail": "Referrals, Google, social media or walk-ins?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Cómo te encuentran tus clientes?",
+          "detail": "Referencias, Google, redes sociales o visitas.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 10,
+      "slot": "22:00"
+    },
+    {
+      "slug": "entrepreneur-lesson",
+      "category": "engagement",
+      "artDirection": "Open notebook with lesson markers",
+      "copy": {
+        "en": {
+          "headline": "What did business teach you?",
+          "detail": "Share one lesson with someone just getting started.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué te enseñó tu negocio?",
+          "detail": "Comparte una lección con alguien que está comenzando.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 11,
+      "slot": "10:00"
+    },
+    {
+      "slug": "google-accuracy",
+      "category": "education",
+      "artDirection": "Matching business profile fields",
+      "copy": {
+        "en": {
+          "headline": "Keep your business details consistent.",
+          "detail": "Check your hours, address and phone across your public listings.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Mantén tus datos comerciales al día.",
+          "detail": "Revisa tus horarios, dirección y teléfono en tus perfiles públicos.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 11,
+      "slot": "22:00"
+    },
+    {
+      "slug": "hosting-domains",
+      "category": "sales",
+      "artDirection": "Domain and hosting architecture",
+      "copy": {
+        "en": {
+          "headline": "Give your business a home online.",
+          "detail": "Explore domain names, hosting and website services with SBC.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Dale un hogar digital a tu negocio.",
+          "detail": "Explora dominios, alojamiento y servicios web con SBC.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 12,
+      "slot": "10:00"
+    },
+    {
+      "slug": "small-wins",
+      "category": "motivation",
+      "artDirection": "Milestone flags",
+      "copy": {
+        "en": {
+          "headline": "Celebrate the small wins.",
+          "detail": "One completed task can bring your next goal closer.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Celebra las pequeñas victorias.",
+          "detail": "Una tarea terminada puede acercarte a tu próxima meta.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 12,
+      "slot": "22:00"
+    },
+    {
+      "slug": "brand-memory",
+      "category": "engagement",
+      "artDirection": "Abstract memory cards and brand cues",
+      "copy": {
+        "en": {
+          "headline": "What makes a brand memorable?",
+          "detail": "Is it the logo, the message or the experience?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué hace memorable una marca?",
+          "detail": "¿Es el logo, el mensaje o la experiencia?",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 13,
+      "slot": "10:00"
+    },
+    {
+      "slug": "food-concept",
+      "category": "showcase",
+      "artDirection": "Restaurant concept menu layout",
+      "copy": {
+        "en": {
+          "headline": "Give food businesses a welcoming web presence.",
+          "detail": "Explore an original food business website concept from SBC.",
+          "cta": "Explore the concept"
+        },
+        "es": {
+          "headline": "Una web acogedora para negocios de comida.",
+          "detail": "Explora un concepto web original de SBC para negocios de comida.",
+          "cta": "Explora el concepto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 13,
+      "slot": "22:00"
+    },
+    {
+      "slug": "logo-files",
+      "category": "education",
+      "artDirection": "Vector and pixel comparison",
+      "copy": {
+        "en": {
+          "headline": "One logo, different file formats.",
+          "detail": "Vector files are useful for scaling; transparent PNGs suit many digital uses.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Un logo, distintos formatos.",
+          "detail": "Los vectores permiten escalar; los PNG transparentes sirven para muchos usos digitales.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 14,
+      "slot": "10:00"
+    },
+    {
+      "slug": "customer-question",
+      "category": "engagement",
+      "artDirection": "FAQ bubbles on a mobile screen",
+      "copy": {
+        "en": {
+          "headline": "What do customers ask you most?",
+          "detail": "Your most common question could become useful content.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué preguntan más tus clientes?",
+          "detail": "Tu pregunta más frecuente puede convertirse en contenido útil.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 14,
+      "slot": "22:00"
+    },
+    {
+      "slug": "professional-email",
+      "category": "sales",
+      "artDirection": "Desktop inbox concept",
+      "copy": {
+        "en": {
+          "headline": "Make your business email your own.",
+          "detail": "Ask SBC about a domain-based professional email setup.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Personaliza tu correo empresarial.",
+          "detail": "Consulta a SBC sobre correo profesional con tu dominio.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 15,
+      "slot": "10:00"
+    },
+    {
+      "slug": "show-up",
+      "category": "motivation",
+      "artDirection": "Morning desk with checklist",
+      "copy": {
+        "en": {
+          "headline": "Show up for your business.",
+          "detail": "Make time for the work that moves your business forward.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Hazte presente por tu negocio.",
+          "detail": "Dedica tiempo al trabajo que hace avanzar tu negocio.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 15,
+      "slot": "22:00"
+    },
+    {
+      "slug": "business-upgrade",
+      "category": "engagement",
+      "artDirection": "Four upgrade tools on a workbench",
+      "copy": {
+        "en": {
+          "headline": "Which business upgrade comes first?",
+          "detail": "Website, signage, professional email or customer management?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué mejora harías primero?",
+          "detail": "Web, letreros, correo profesional o gestión de clientes.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 16,
+      "slot": "10:00"
+    },
+    {
+      "slug": "small-business-thanks",
+      "category": "community",
+      "artDirection": "Illustrated independent storefronts",
+      "copy": {
+        "en": {
+          "headline": "Thank you, small business owners.",
+          "detail": "Recognize the people who keep neighborhoods moving every day.",
+          "cta": "Celebrate local business"
+        },
+        "es": {
+          "headline": "Gracias, dueños de pequeños negocios.",
+          "detail": "Reconoce a quienes impulsan sus comunidades cada día.",
+          "cta": "Celebra el comercio local"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 16,
+      "slot": "22:00"
+    },
+    {
+      "slug": "signage",
+      "category": "sales",
+      "artDirection": "Illustrated storefront sign",
+      "copy": {
+        "en": {
+          "headline": "Put your brand where people can see it.",
+          "detail": "Ask about signs and branding options for your business location.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Pon tu marca donde puedan verla.",
+          "detail": "Consulta opciones de letreros e identidad para tu local.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 17,
+      "slot": "10:00"
+    },
+    {
+      "slug": "business-email",
+      "category": "education",
+      "artDirection": "Envelope and domain label",
+      "copy": {
+        "en": {
+          "headline": "Why use a business email address?",
+          "detail": "A domain-based address helps identify your business in customer communication.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "¿Por qué usar correo empresarial?",
+          "detail": "Un correo con tu dominio identifica tu negocio en las comunicaciones.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 17,
+      "slot": "22:00"
+    },
+    {
+      "slug": "make-plan",
+      "category": "motivation",
+      "artDirection": "Three-step sketch",
+      "copy": {
+        "en": {
+          "headline": "Turn your idea into a plan.",
+          "detail": "Write down the next three steps you can actually take.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Convierte tu idea en un plan.",
+          "detail": "Escribe los próximos tres pasos que puedes realizar.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 18,
+      "slot": "10:00"
+    },
+    {
+      "slug": "weekend-plan",
+      "category": "engagement",
+      "artDirection": "Weekend calendar and progress mark",
+      "copy": {
+        "en": {
+          "headline": "What are you building this weekend?",
+          "detail": "One useful step is better than another unfinished idea.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué crearás este fin de semana?",
+          "detail": "Un paso útil vale más que otra idea sin terminar.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 18,
+      "slot": "22:00"
+    },
+    {
+      "slug": "brand-concept",
+      "category": "showcase",
+      "artDirection": "Sample brand board with placeholders",
+      "copy": {
+        "en": {
+          "headline": "See how a brand can stay consistent.",
+          "detail": "Illustrative logo placement, colors and stationery concept; not a client project.",
+          "cta": "Explore the concept"
+        },
+        "es": {
+          "headline": "Mira cómo una marca puede ser coherente.",
+          "detail": "Concepto ilustrativo de logo, colores y papelería; no es un proyecto de cliente.",
+          "cta": "Explora el concepto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 19,
+      "slot": "10:00"
+    },
+    {
+      "slug": "print-branding",
+      "category": "sales",
+      "artDirection": "Coordinated stationery mockup",
+      "copy": {
+        "en": {
+          "headline": "Make your print materials match.",
+          "detail": "Discuss cards, flyers and branded materials with SBC.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Unifica tus materiales impresos.",
+          "detail": "Consulta tarjetas, volantes y materiales de marca con SBC.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 19,
+      "slot": "22:00"
+    },
+    {
+      "slug": "ssl-basics",
+      "category": "education",
+      "artDirection": "Lock and encrypted connection",
+      "copy": {
+        "en": {
+          "headline": "HTTPS protects the connection.",
+          "detail": "A valid certificate helps encrypt traffic between a browser and a website.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "HTTPS protege la conexión.",
+          "detail": "Un certificado válido ayuda a cifrar el tráfico entre el navegador y la web.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 20,
+      "slot": "10:00"
+    },
+    {
+      "slug": "business-pitch",
+      "category": "engagement",
+      "artDirection": "Single sentence on a bold speech card",
+      "copy": {
+        "en": {
+          "headline": "Describe your business in one sentence.",
+          "detail": "Who do you help, and what do you do for them?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "Describe tu negocio en una frase.",
+          "detail": "¿A quién ayudas y qué haces por esa persona?",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 20,
+      "slot": "22:00"
+    },
+    {
+      "slug": "favorite-local",
+      "category": "engagement",
+      "artDirection": "Store entrance and return arrow",
+      "copy": {
+        "en": {
+          "headline": "What makes you return to a business?",
+          "detail": "Great service, convenience, quality or a personal connection?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Por qué vuelves a un negocio?",
+          "detail": "Buen servicio, comodidad, calidad o conexión personal.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 21,
+      "slot": "10:00"
+    },
+    {
+      "slug": "print-preflight",
+      "category": "education",
+      "artDirection": "Print proof with crop marks",
+      "copy": {
+        "en": {
+          "headline": "Check before you print.",
+          "detail": "Confirm spelling, size, bleed and the supplier's print requirements.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Revisa antes de imprimir.",
+          "detail": "Confirma ortografía, tamaño, sangrado y requisitos de impresión.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 21,
+      "slot": "22:00"
+    },
+    {
+      "slug": "office-box",
+      "category": "sales",
+      "artDirection": "Abstract customer workflow, not live screenshot",
+      "copy": {
+        "en": {
+          "headline": "Organize your business relationships.",
+          "detail": "Explore Office Box and ask which customer management tools suit your workflow.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Organiza tus relaciones comerciales.",
+          "detail": "Explora Office Box y consulta qué herramientas se adaptan a tu negocio.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 22,
+      "slot": "10:00"
+    },
+    {
+      "slug": "build-trust",
+      "category": "motivation",
+      "artDirection": "Handshake-inspired abstract shapes",
+      "copy": {
+        "en": {
+          "headline": "Build trust one interaction at a time.",
+          "detail": "Keep your promises and communicate clearly with customers.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Construye confianza con cada interacción.",
+          "detail": "Cumple tus promesas y comunica con claridad.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 22,
+      "slot": "22:00"
+    },
+    {
+      "slug": "dream-customer",
+      "category": "engagement",
+      "artDirection": "Audience silhouette diagram",
+      "copy": {
+        "en": {
+          "headline": "Who is your ideal customer?",
+          "detail": "A clear audience makes your message easier to understand.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Quién es tu cliente ideal?",
+          "detail": "Un público claro ayuda a comunicar mejor tu mensaje.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 23,
+      "slot": "10:00"
+    },
+    {
+      "slug": "mobile-concept",
+      "category": "showcase",
+      "artDirection": "Mobile wireframe concept",
+      "copy": {
+        "en": {
+          "headline": "Design for the small screen.",
+          "detail": "An illustrative mobile layout with readable type and a clear next step.",
+          "cta": "Explore the concept"
+        },
+        "es": {
+          "headline": "Diseña para la pantalla pequeña.",
+          "detail": "Un diseño móvil ilustrativo con texto legible y un siguiente paso claro.",
+          "cta": "Explora el concepto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 23,
+      "slot": "22:00"
+    },
+    {
+      "slug": "booking-path",
+      "category": "education",
+      "artDirection": "Booking flow with three steps",
+      "copy": {
+        "en": {
+          "headline": "Make booking easy to understand.",
+          "detail": "Explain what customers should expect and verify the booking link works.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Haz que reservar sea fácil.",
+          "detail": "Explica qué esperar y verifica que el enlace de reserva funcione.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 24,
+      "slot": "10:00"
+    },
+    {
+      "slug": "business-challenge",
+      "category": "engagement",
+      "artDirection": "Four obstacle icons",
+      "copy": {
+        "en": {
+          "headline": "What is your biggest business challenge?",
+          "detail": "Time, visibility, organization or finding new customers?",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Cuál es tu mayor reto empresarial?",
+          "detail": "Tiempo, visibilidad, organización o conseguir clientes.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 24,
+      "slot": "22:00"
+    },
+    {
+      "slug": "website-refresh",
+      "category": "sales",
+      "artDirection": "Conceptual redesign comparison",
+      "copy": {
+        "en": {
+          "headline": "Ready for a website refresh?",
+          "detail": "Discuss your existing website and what you want customers to do next.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "¿Listo para renovar tu web?",
+          "detail": "Hablemos de tu web actual y del siguiente paso para tus clientes.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 25,
+      "slot": "10:00"
+    },
+    {
+      "slug": "own-vision",
+      "category": "motivation",
+      "artDirection": "Light beam on a message board",
+      "copy": {
+        "en": {
+          "headline": "Make your vision visible.",
+          "detail": "Your message matters. Give people a clear way to discover it.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Haz visible tu visión.",
+          "detail": "Tu mensaje importa. Dale a la gente una forma clara de descubrirlo.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 25,
+      "slot": "22:00"
+    },
+    {
+      "slug": "first-impression",
+      "category": "engagement",
+      "artDirection": "Phone screen with discovery lens",
+      "copy": {
+        "en": {
+          "headline": "What is your first impression online?",
+          "detail": "Look at your business as a new customer would.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué primera impresión das en línea?",
+          "detail": "Mira tu negocio como lo haría un cliente nuevo.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 26,
+      "slot": "10:00"
+    },
+    {
+      "slug": "community-support",
+      "category": "community",
+      "artDirection": "Neighborhood storefront map",
+      "copy": {
+        "en": {
+          "headline": "Support the businesses around you.",
+          "detail": "Discover a local business and learn what makes it special.",
+          "cta": "Celebrate local business"
+        },
+        "es": {
+          "headline": "Apoya los negocios de tu comunidad.",
+          "detail": "Descubre un negocio local y conoce qué lo hace especial.",
+          "cta": "Celebra el comercio local"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 26,
+      "slot": "22:00"
+    },
+    {
+      "slug": "business-launch",
+      "category": "sales",
+      "artDirection": "Launch checklist with service icons",
+      "copy": {
+        "en": {
+          "headline": "Start with the essentials.",
+          "detail": "Let's discuss your website, branding and online presence in one consultation.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Empieza con lo esencial.",
+          "detail": "Hablemos de tu web, marca y presencia digital en una consulta.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 27,
+      "slot": "10:00"
+    },
+    {
+      "slug": "website-copy",
+      "category": "education",
+      "artDirection": "Headline service CTA diagram",
+      "copy": {
+        "en": {
+          "headline": "Write for your customer first.",
+          "detail": "Explain what you offer, who it helps and the next step.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Escribe pensando en tu cliente.",
+          "detail": "Explica qué ofreces, a quién ayudas y cuál es el siguiente paso.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 27,
+      "slot": "22:00"
+    },
+    {
+      "slug": "finish-strong",
+      "category": "motivation",
+      "artDirection": "Calendar and forward arrow",
+      "copy": {
+        "en": {
+          "headline": "Finish the month with intention.",
+          "detail": "Review what worked and choose your next meaningful action.",
+          "cta": "Take the next step"
+        },
+        "es": {
+          "headline": "Termina el mes con intención.",
+          "detail": "Revisa qué funcionó y elige tu siguiente acción importante.",
+          "cta": "Da el siguiente paso"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 28,
+      "slot": "10:00"
+    },
+    {
+      "slug": "founder-tools",
+      "category": "engagement",
+      "artDirection": "Organized desk and timer",
+      "copy": {
+        "en": {
+          "headline": "What tool saves you the most time?",
+          "detail": "Share one business tool you would recommend.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Qué herramienta te ahorra más tiempo?",
+          "detail": "Comparte una herramienta empresarial que recomendarías.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 28,
+      "slot": "22:00"
+    },
+    {
+      "slug": "social-concept",
+      "category": "showcase",
+      "artDirection": "Three social layout mockups",
+      "copy": {
+        "en": {
+          "headline": "One message, multiple formats.",
+          "detail": "An illustrative campaign adapted for different social layouts.",
+          "cta": "Explore the concept"
+        },
+        "es": {
+          "headline": "Un mensaje, varios formatos.",
+          "detail": "Una campaña ilustrativa adaptada a distintos formatos sociales.",
+          "cta": "Explora el concepto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 29,
+      "slot": "10:00"
+    },
+    {
+      "slug": "merch-branding",
+      "category": "sales",
+      "artDirection": "Unbranded apparel flat lay",
+      "copy": {
+        "en": {
+          "headline": "Wear your brand with confidence.",
+          "detail": "Ask about DTF apparel and coordinated branding options.",
+          "cta": "Discuss your project"
+        },
+        "es": {
+          "headline": "Lleva tu marca con confianza.",
+          "detail": "Consulta opciones de prendas DTF e identidad coordinada.",
+          "cta": "Hablemos de tu proyecto"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 29,
+      "slot": "22:00"
+    },
+    {
+      "slug": "backup-habit",
+      "category": "education",
+      "artDirection": "Backup and restore arrows",
+      "copy": {
+        "en": {
+          "headline": "A backup is only useful if it restores.",
+          "detail": "Keep secure backups and test recovery before you need it.",
+          "cta": "Learn more with SBC"
+        },
+        "es": {
+          "headline": "Una copia útil se puede restaurar.",
+          "detail": "Guarda copias seguras y prueba la recuperación antes de necesitarla.",
+          "cta": "Aprende con SBC"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 30,
+      "slot": "10:00"
+    },
+    {
+      "slug": "next-year-vision",
+      "category": "engagement",
+      "artDirection": "Roadmap with destination marker",
+      "copy": {
+        "en": {
+          "headline": "Where do you want your business to go?",
+          "detail": "Describe the next milestone you are working toward.",
+          "cta": "Share your perspective"
+        },
+        "es": {
+          "headline": "¿Hasta dónde quieres llevar tu negocio?",
+          "detail": "Describe el próximo objetivo que quieres alcanzar.",
+          "cta": "Comparte tu opinión"
+        }
+      },
+      "requiresOriginalLogo": true,
+      "publicationReady": false,
+      "reviewRequired": true,
+      "day": 30,
+      "slot": "22:00"
+    }
+  ]
+}

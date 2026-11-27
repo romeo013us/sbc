@@ -1,0 +1,5 @@
+# Scheduled replenishment projection
+
+planReplenishment extends the existing projectInventory read model. Supply the current campaign bank (holiday and evergreen arrays), authoritative SBC-only asset/review/readback records, complete source-use history and approved logo digest. The default planning horizon includes today and the next two Eastern calendar dates; days may be 1–7. No past slots are automatically replayed. Required feed work is ordered by local slot time, with portrait work separate and optional. Format variants are not new concepts. Even a currently verified asset requires a fresh prepublication check. The return value is an advisory work list, never publication authority.
+
+No database adapter, media creation, live schedule changes or platform posting is included. The current writer-lease test replaces the missing v6528 reference in the two package scripts; the actual current source heartbeat test was exercised locally. The other four missing historical paths still need individually verified replacements. The release gate is not complete.

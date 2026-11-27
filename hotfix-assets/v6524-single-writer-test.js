@@ -14,7 +14,9 @@ if(fs.existsSync(path.join(sourceRoot,'server.js'))){
     assert.match(s,/SBC_RUNTIME_READ_ONLY\)\{return \{skipped:true/);
     assert.match(s,/runtime role=readonly; read-only MySQL hydration complete/);
     assert.match(s,/runtime role=writer; this Published runtime owns MySQL mutations/);
-    assert.match(s,/autonomous sweep and all background mutation timers skipped/);
+    // Verify the actual startup guard before any autonomous sweep, not a retired log message.
+    assert.match(s,/\.then\(async\(\)=>\{if\(SBC_RUNTIME_READ_ONLY \|\| !SBC_DDL_ENABLED \|\| !MYSQL_RECOVERY_EVALUATED \|\| MYSQL_RECOVERY_REQUIRED \|\| !sbcWriterLeaseReady\)\{console\.warn\('\[SBC_V6539_SAFE_NO_DDL_STARTUP\] autonomous sweep held:[^']+'\);return;\}/);
+    assert.match(s,/const startOperationalRuntime=async\(\)=>\{if\(SBC_RUNTIME_READ_ONLY\)\{console\.log\([^}]+?;return;\}/);
     assert.match(s,/background workers and WebSockets not started/);
   });
 }else{

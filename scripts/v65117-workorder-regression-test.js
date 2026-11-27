@@ -35,9 +35,9 @@ assert.match(server, /SBC_FULFILLMENT_MAX_ATTEMPTS/, 'automatic retries have a h
 assert.match(server, /async function loadNewDurableFulfillmentJobs\(\)/, 'durable worker jobs are loaded');
 assert.match(server, /MYSQL_RECOVERY_REQUIRED\)return \{processed:0,recovered:0,requeued:0,paused:'MYSQL_RECOVERY_REQUIRED'\}/, 'recovery lock pauses automatic fulfillment');
 assert.match(server, /value:Number\(r\.value\|\|0\)/, 'durable order amount is reloaded');
-assert.match(server, /value=VALUES\(value\)/, 'durable order amount is persisted');
+assert.match(server, /await SNAPSHOT_TENANTS\.persist\(conn,snapshotRows,\{sqlDate,sqlDateTime,now\}\)/, 'authoritative snapshot uses tenant-aware persistence');
 assert.match(server, /fulfillment_status VARCHAR\(40\) NOT NULL DEFAULT 'Not Started'/, 'order lifecycle status has a MySQL field');
-assert.match(server, /fulfillment_status=VALUES\(fulfillment_status\)/, 'lifecycle status persists independently from payment status');
+const snapshotTenants = require('../enterprise/integration/sbc-snapshot-tenants.cjs');
 assert.match(server, /job\.status='needs_reconciliation';job\.vendorStatus='submission_outcome_unknown'/, 'ambiguous in-flight work is held for reconciliation');
 assert.match(server, /Vendor submission outcome is ambiguous; automatic retry is paused to prevent a duplicate external order\./, 'ambiguous provider outcomes are not blindly retried');
 assert.match(server, /shipping_webhook_secret_not_configured/, 'shipping callback fails closed without a secret');
@@ -58,7 +58,39 @@ function testOrder() {
     notes: JSON.stringify({ items: [{ id: 'item-1', name: 'Test product', qty: 1, unitPrice: 10 }] })
   };
 }
+async function checkDurableColumns() {
+  const stamp='2026-11-26 12:00:00';
+  const source={orders:[{id:'order-fixture',tenantId:7,status:'Paid',fulfillmentStatus:'Ready for Fulfillment',price:199}],megaOpsStore:{fulfillmentJobs:[{id:'job-fixture',tenantId:7,orderId:'order-fixture',value:199,status:'ready'}]}};
+  const records=new Map();
+  const conn={async query(sql,params){
+    const table=sql.match(/(?:FROM|INTO|UPDATE) (sbc_[a-z_]+)/)?.[1];
+    assert(['sbc_orders','sbc_fulfillment_jobs'].includes(table));
+    if(sql.startsWith('SELECT'))return [[...(records.has(table)?[records.get(table)]:[])]];
+    if(sql.startsWith('INSERT')){
+      const columns=sql.match(/\(([^)]+)\) VALUES/)[1].split(', ');
+      records.set(table,Object.fromEntries(columns.map((c,i)=>[c,params[i]])));
+    }else{
+      assert.match(sql,/ WHERE id=\? AND tenant_id=\?$/);
+      const r=records.get(table);assert.deepEqual(params.slice(-2),[r.id,r.tenant_id]);
+      const cols=sql.split(' SET ')[1].split(' WHERE ')[0].split(', ').map(x=>x.slice(0,-2));
+      for(const [i,c] of cols.entries())r[c]=params[i];
+    }
+    return [{affectedRows:1}];
+  }};
+  const dates={sqlDate:v=>v||null,sqlDateTime:v=>v||stamp,now:()=>stamp};
+  await snapshotTenants.persist(conn,snapshotTenants.prepare(source,7),dates);
+  assert.equal(records.get('sbc_orders').price,199);
+  assert.equal(records.get('sbc_orders').status,'Paid');
+  assert.equal(records.get('sbc_orders').fulfillment_status,'Ready for Fulfillment');
+  assert.equal(records.get('sbc_fulfillment_jobs').value,199);
+  source.orders[0].fulfillmentStatus='Submitted to Vendor';source.megaOpsStore.fulfillmentJobs[0].value=299;
+  await snapshotTenants.persist(conn,snapshotTenants.prepare(source,7),dates);
+  assert.equal(records.get('sbc_orders').status,'Paid');
+  assert.equal(records.get('sbc_orders').fulfillment_status,'Submitted to Vendor');
+  assert.equal(records.get('sbc_fulfillment_jobs').value,299);
+}
 async function run() {
+  await checkDurableColumns();
   const db = { customers: [{ id: 'c-1', businessName: 'Test business' }] };
   const common = {
     requestUser: { id: 'owner', role: 'owner' },

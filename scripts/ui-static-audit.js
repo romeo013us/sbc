@@ -16,7 +16,10 @@ const canonicalServer=read(path.join(root,'server.js'));
 const hrStage=require('./v66149-stage-hr-workstation.cjs');
 const stagedServer=hrStage.patchServer(canonicalServer);
 if(!stagedServer.includes(hrStage.MARK))throw Error('HR_ROUTE_ABSENT_IN_STAGED_AUDIT');
-const srv=[stagedServer,...readModules(path.join(root,'routes'))].join('\n');
+// Creative routes are registered by the existing Website Studio owner module.
+// Read its actual literal declarations rather than exempting any frontend API path.
+const creativeRoutes=path.join(root,'enterprise','creative-intelligence','workspace.cjs');
+const srv=[stagedServer,...readModules(path.join(root,'routes')),...(fs.existsSync(creativeRoutes)?[read(creativeRoutes)]:[])].join('\n');
 const routes=[...srv.matchAll(/\b(?:app|router)\.(?:get|post|put|patch|delete|all|use)\(\s*['"`]([^'"`]+)['"`]/g)].map(m=>m[1]);
 // Registered feature routers build absolute API paths from a constant prefix and
 // typed relative routes. Resolve ONLY declarations actually present in the source;

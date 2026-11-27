@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { resolveSessionSecret, KEY_FILE } = require('./durable-session-secret');
+const { resolveSessionSecret, KEY_FILE } = require('../enterprise/durable-session-secret');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sbc-v6532-session-key-'));
 try {
@@ -20,16 +20,17 @@ try {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
-const patch = fs.readFileSync(path.join(__dirname, 'apply-v6533-startup-ddl-gate.js'), 'utf8');
-assert.match(patch, /sessionMysqlPool\|\|mysqlPool/, 'session storage has a dedicated-pool-first binding');
-assert.match(patch, /ENABLE_DDL \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'true'/, 'schema changes require explicit ENABLE_DDL=true');
-assert.match(patch, /SBC_RUNTIME_READ_ONLY \|\| !SBC_DDL_ENABLED/, 'startup hydration skips schema-changing operations unless opted in');
-assert.match(patch, /ENABLE_DDL \|\| ''\)\.trim\(\)\.toLowerCase\(\) !== 'true'/, 'query guard blocks DDL unless explicitly enabled');
-assert.match(patch, /skip schema-dependent startup workers without DDL opt-in/, 'startup workers are not run when DDL is disabled');
-assert.match(patch, /connectionLimit:2/, 'auth traffic uses a bounded independent pool');
-assert.match(patch, /MYSQL_RECOVERY_NOT_EVALUATED/, 'sign-in is rejected while authoritative recovery is still evaluating');
-assert.match(patch, /early dedicated session pool initialization/, 'session pool is available before lengthy schema reconciliation');
-assert.match(patch, /close isolated session pool on shutdown/, 'dedicated pool is closed during graceful shutdown');
-assert.match(fs.readFileSync(path.join(__dirname, 'apply-v6529-open-readiness.js'), 'utf8'), /tenantId:Number\(r\.tenant_id\)/, 'the prior release already hydrates tenant identity from MySQL');
-assert.match(patch, /TENANT_CONTEXT_REQUIRED/, 'autopilot holds when tenant provenance is absent');
-console.log('[SBC V65.1.33] startup DDL gate, durable session key, isolated auth pool, and tenant-context safety checks PASS');
+const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+assert.match(server, /getMysqlPool:\(\)=>sessionMysqlPool\|\|mysqlPool/, 'dedicated-pool-first binding');
+assert.match(server, /let SBC_DDL_ENABLED = String\(process.env.ENABLE_DDL \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'true'/);
+assert.match(server, /function sbcMayAutoEnableDdl\(\)\{return false;\}/);
+assert.match(server, /SBC_RUNTIME_READ_ONLY \|\| !SBC_DDL_ENABLED \|\| !MYSQL_RECOVERY_EVALUATED \|\| MYSQL_RECOVERY_REQUIRED \|\| !sbcWriterLeaseReady/);
+assert.match(server, /if\(!MYSQL_RECOVERY_EVALUATED\) return res.status\(503\)[^\n]+MYSQL_RECOVERY_NOT_EVALUATED/);
+const poolStart=server.indexOf('sessionMysqlPool = wrapMySQLPool(mysql.createPool(');
+const poolEnd=server.indexOf('if(!SBC_DDL_ENABLED)',poolStart);
+assert(poolStart>0&&poolEnd>poolStart);
+assert.match(server.slice(poolStart,poolEnd),/connectionLimit:2/);
+assert.match(server,/if\(sessionMysqlPool\)await sessionMysqlPool.end\(\)/);
+assert.match(server,/customers:customers.map\(r=>\(\{id:r.id,tenantId:Number\(r.tenant_id\)/);
+assert.match(server,/function __sbcRequireTenantId[^\n]+TENANT_CONTEXT_REQUIRED/);
+console.log('[SBC session stability] PASS: durable key, current runtime DDL opt-in, isolated pool, recovery and tenant scope');

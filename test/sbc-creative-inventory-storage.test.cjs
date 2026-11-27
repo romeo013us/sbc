@@ -1,0 +1,14 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {loadInventoryInputs}=require('../enterprise/creative-intelligence/marketing-inventory-storage.cjs');
+const sha='a'.repeat(64),source='b'.repeat(64),logo='c'.repeat(64);
+const bank={holiday:[{slug:'holiday'}],campaigns:[{slug:'evergreen'}]};
+const row={tenantId:'7',slug:'holiday',format:'square',jobId:'job1',sha256:sha,sourceAssetId:source,logoSha256:logo,reviewVersion:2,finalApprovedSha256:sha,verifiedAt:'2026-11-26T18:00:00.000Z'};
+function fixture({rows=[row],history=[],review={state:'approved',version:2,assetId:source}}={}){
+ const calls=[];const pool={async execute(q,p){calls.push([q,p]);assert.match(q.sql,/^SELECT/);assert.equal(p[0],7);return [calls.length===1?rows:history];}};
+ return {calls,pool,options:{tenantId:7,bank,logoSha256:logo,reviews:{get(scope,id){assert.deepEqual(scope,{tenantId:7,projectId:'sbc-marketing'});assert.equal(id,'job1');return review;}},now:Date.parse('2026-11-26T18:01:00.000Z')}};
+}
+test('hydrates bounded tenant-scoped rows and checks current source review',async()=>{const f=fixture();const r=await loadInventoryInputs(f.pool,f.options);assert.deepEqual(f.calls[0][1],[7,'holiday','evergreen']);assert.equal(r.assets[0].reviewState,'approved');assert.equal(r.assets[0].currentReviewVersion,2);assert.equal(r.assets[0].verifiedAt,row.verifiedAt);assert.deepEqual(r.usedSourceIds,[]);assert.equal(r.logoSha256,logo);assert.equal(r.bank,bank);});
+test('revoked, unavailable, changed-source or changed-version review cannot preserve a verified state',async()=>{for(const review of [null,{state:'rejected',version:3,assetId:source},{state:'approved',version:2,assetId:logo},{state:'approved',version:3,assetId:source}]){const f=fixture({review});const r=await loadInventoryInputs(f.pool,f.options);assert.equal(r.assets[0].reviewState,'unreviewed');assert.equal(r.assets[0].verifiedAt,null);assert.equal(r.assets[0].finalApprovedSha256,null);}});
+test('publication history excludes both used source and reused final JPEG bytes',async()=>{const f=fixture({history:[{tenantId:'7',sourceAssetId:'d'.repeat(64),sha256:sha}]});const r=await loadInventoryInputs(f.pool,f.options);assert.deepEqual(r.usedSourceIds.sort(),[source,'d'.repeat(64)].sort());});
+test('foreign rows, duplicate slots, unplanned records and database failure fail closed',async()=>{for(const rows of [[{...row,tenantId:'8'}],[row,row],[{...row,slug:'other'}]]){const f=fixture({rows});await assert.rejects(loadInventoryInputs(f.pool,f.options),/INVALID_INVENTORY_STORAGE_ROW/);}const f=fixture({history:[{tenantId:'8',sourceAssetId:source,sha256:sha}]});await assert.rejects(loadInventoryInputs(f.pool,f.options),/INVALID_INVENTORY_HISTORY/);await assert.rejects(loadInventoryInputs({execute:async()=>{throw Error('offline');}},f.options),/offline/);});

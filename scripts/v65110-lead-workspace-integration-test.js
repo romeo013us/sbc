@@ -3,11 +3,42 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const registerCRM = require('../routes/crm');
+const {runWithTenantContext} = require('../enterprise/tenant-context.cjs');
+// This test covers the default CRM mount. Optional account-social routes have their own contract.
+delete process.env.SBC_ACCOUNT_SOCIAL_V1;
 const root = path.resolve(__dirname, '..');
 const routeSource = fs.readFileSync(path.join(root, 'routes/crm.js'), 'utf8');
 const appJs = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
 const legacyV9 = fs.readFileSync(path.join(root, 'public/v9.js'), 'utf8');
 const expected = [
+  'GET /api/owner/renewals/overview',
+  'POST /api/owner/renewals/enroll',
+  'POST /api/owner/renewals/contact',
+  'POST /api/sbc/design-briefs',
+  'GET /api/sbc/design-briefs/customer/:customerId',
+  'POST /api/sbc/design-briefs/:id/revoke',
+  'POST /api/sbc/design-briefs/:id/review',
+  'GET /request/:token',
+  'GET /api/sbc/design-briefs/public/:token',
+  'POST /api/sbc/design-briefs/public/:token',
+  'GET /api/v6606/crm/account-portfolios/mine',
+  'GET /api/v6606/crm/account-portfolios/:id/call-preflight',
+  'GET /api/v6606/crm/account-portfolios/launch-readiness',
+  'GET /api/v6606/crm/account-portfolios/summary',
+  'POST /api/v6606/crm/account-portfolios/assign-batch',
+  'POST /api/v6606/crm/account-portfolios/:id/transfer',
+  'POST /api/v6606/crm/account-portfolios/:id/follow-up',
+  'GET /api/v6606/crm/account-portfolios/:id/history',
+  'POST /api/v6606/crm/account-portfolios/:id/note',
+  'POST /api/v6606/crm/account-portfolios/:id/interaction',
+  'GET /api/sbc/free-actions/today',
+  'GET /api/v6606/crm/account-portfolios/:id/call-readiness',
+  'POST /api/v6606/crm/account-portfolios/:id/call-authorization',
+  'POST /api/v6606/crm/account-portfolios/:id/call-revoke',
+  'POST /api/v6606/crm/account-portfolios/:id/call-start',
+  'POST /api/v6606/crm/call-command/twiml',
+  'POST /api/v6606/crm/call-command/status',
+  'GET /api/v6606/crm/account-portfolios/:id/call-history',
   'GET /api/v566/crm/customer-360/:id',
   'GET /api/v566/crm/customer-360-relational/:id',
   'GET /api/v6519/crm/leads',
@@ -36,8 +67,7 @@ async function main() {
     recoveryRequired: () => true
   }) });
   const actual = bootApp.routes.map(r => `${r.method} ${r.path}`);
-  for (const route of expected) assert.ok(actual.includes(route), `missing startup registration: ${route}`);
-  assert.equal(bootApp.routes.length, expected.length, 'all CRM routes register exactly once at startup');
+  assert.deepEqual(actual.slice().sort(), expected.slice().sort(), 'exact default CRM route set; no duplicate or unexpected mounts');
 
   const lockedRes = mockResponse();
   await findHandler(bootApp, 'POST', '/api/v65110/crm/leads')({ user: { role: 'owner', username: 'owner' }, tenantId: 1, body: { businessName: 'Locked Test Lead' } }, lockedRes);
@@ -52,6 +82,8 @@ async function main() {
     async ping() {}, async beginTransaction() {},
     async query(sql, params=[]) {
       statements.push({ sql, params });
+      if (/^SELECT GET_LOCK\(/i.test(sql)) return [[{acquired:1}], []];
+      if (/^SELECT RELEASE_LOCK\(/i.test(sql)) return [[{released:1}], []];
       if (/^\s*SELECT id, business_name FROM sbc_customers/i.test(sql)) return [[], []];
       if (/^\s*INSERT INTO sbc_customers/i.test(sql)) return [{ affectedRows: 1, insertId: 1 }, []];
       if (/^\s*SELECT id,business_name,contact_name,email,phone,status,source,tenant_id FROM sbc_customers/i.test(sql)) return [[{ id: params[1], business_name: 'Example Business', contact_name: 'Owner', email: 'owner@example.com', phone: '3055550100', status: 'Lead', source: 'SBC Lead Workspace', tenant_id: 1 }], []];
@@ -69,10 +101,15 @@ async function main() {
     saveData: async () => { saveCalls++; }
   }) });
   const savedRes = mockResponse();
-  await findHandler(writeApp, 'POST', '/api/v65110/crm/leads')({
+  const createLead = findHandler(writeApp, 'POST', '/api/v65110/crm/leads');
+  const noContext = mockResponse();
+  await createLead({user:{role:'owner'},tenantId:1,body:{businessName:'Untrusted'}},noContext);
+  assert.equal(noContext.statusCode,403,'missing authenticated tenant context fails closed');
+  assert.equal(statements.length,0,'untrusted tenant must not reach SQL');
+  await runWithTenantContext({tenantId:1,actorId:'owner',role:'owner'},()=>createLead({
     user: { role: 'owner', username: 'owner' }, tenantId: 1, requestId: 'test-request',
     body: { businessName: 'Example Business', contactName: 'Owner', email: 'OWNER@example.com', phone: '(305) 555-0100', source: 'Integration Test' }
-  }, savedRes);
+  }, savedRes));
   assert.equal(savedRes.statusCode, 201, 'successful verified fake-DB write returns 201');
   assert.equal(savedRes.body.durable, true);
   assert.equal(committed, 1, 'transaction commits after read-after-write verification');

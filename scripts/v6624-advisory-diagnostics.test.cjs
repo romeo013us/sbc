@@ -345,3 +345,15 @@ test('verification bottleneck breaks down 560 records without promotion, disclos
  const output=JSON.stringify([logs,result.operatingPlan]);
  assert(!output.includes('private-'));assert(!output.includes('private@example.test'));assert(!output.includes('foreign-secret'));
 });
+
+test('owner plan shows reconciled verification breakdown and rejects incomplete or conflicting evidence',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const db={orders:[],customers:[customer('one',1,'Warm','Needs Verification'),customer('two',1,'Hot','Unverified'),customer('three',1,'Hot','Owner Review',{phone:'3055550100'})]};
+ const plan=(await createController({db,tenBrain:{BRAINS:[]},logger:{info(){}}}).cycle({tenantId:1,advisoryOnly:true})).operatingPlan;
+ const win={},calls=[];vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/kim-operations-os.js'),'utf8'),{window:win,document:{querySelector:()=>null},addEventListener(){},fetch:async(url,opts)=>{calls.push(opts);return {ok:true,json:async()=>url.endsWith('/operating-plan')?{ok:true,operatingPlan:plan}:{ok:true,production:{}}}}});
+ const html=await win.sbcKimOperationsView();
+ assert.match(html,/Lead verification breakdown/);assert.match(html,/Needs verification<\/span><strong>1<\/strong>/);assert.match(html,/Explicitly unverified<\/span><strong>1<\/strong>/);assert.match(html,/Owner review<\/span><strong>1<\/strong>/);assert.match(html,/Missing contact method<\/span><strong>2<\/strong>/);
+ assert.match(html,/Do not mark leads verified without supporting evidence/);assert(calls.every(c=>!c.method||c.method==='GET'));
+ plan.leadVerificationReview.total=999;assert.match(await win.sbcKimOperationsView(),/Verification breakdown unavailable/);
+ delete plan.leadVerificationReview;assert.match(await win.sbcKimOperationsView(),/Verification breakdown unavailable/);
+});

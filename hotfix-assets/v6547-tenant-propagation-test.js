@@ -1,25 +1,17 @@
 'use strict';
-const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const releasePatch=require('./apply-v6547-tenant-propagation');
-const root=path.resolve(__dirname,'..'),patch=fs.readFileSync(path.join(root,'hotfix-assets/apply-v6547-tenant-propagation.js'),'utf8');
-const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')),lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
-assert.equal(pkg.version,lock.version);assert.equal(lock.packages[''].version,pkg.version);assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
-for(const p of [/requireMappedRequestTenant\(req\)/,/tenantId:rec\.tenantId/,/tenantId:requireRequestTenant\(req\)/,/Customer not found in the authenticated tenant/,/public host is not mapped to a tenant/,/SBC_V6547_TENANT_PROPAGATION/])assert.match(patch,p);
-assert.doesNotMatch(patch,/tenantId\s*\|\|\s*1/);assert.doesNotMatch(patch,/SBC_RUNTIME_READ_ONLY\s*=\s*false/);assert.doesNotMatch(patch,/MYSQL_RECOVERY_REQUIRED\s*=\s*false/);
-const b=fs.readFileSync(path.join(root,'bootstrap.js'),'utf8');assert.match(b,/apply-v6547-tenant-propagation\.js/);assert.match(b,/apply-v6548-lead-import-cache-contract\.js/);assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));assert.ok(b.includes('apply-v6558-economic-control-ddl-gate.js'));assert.ok(b.includes('apply-v6559-launch-phone-theme-layout.js'));assert.ok(b.includes('apply-v6550-remove-floating-ask-kim.js'));assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));assert.ok(b.includes('apply-v6558-economic-control-ddl-gate.js'));assert.ok(b.includes('apply-v6553-command-center-redesign.js'));assert.ok(b.includes('apply-v6555-theme-contrast.js'));assert.ok(b.includes('apply-v6556-twilio-voice-sdk.js'));assert.ok(b.includes('apply-v6560-live-call-notes.js'));assert.ok(b.includes('apply-v6561-brand-system.js'));assert.ok(b.includes('apply-v6562-executive-dashboard.js'));assert.ok(b.includes('apply-v6557-owner-force-unlock.js'));
-
-{
- const fixture=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-v6547-release-pin-'));
- try{
-  for(const rel of ['public/app.js','browser_public/app.js','enterprise/release-guard.js'])fs.mkdirSync(path.dirname(path.join(fixture,rel)),{recursive:true});
-  fs.writeFileSync(path.join(fixture,'public/app.js'),"const EXPECTED_RELEASE_VERSION = '65.1.59';");
-  fs.writeFileSync(path.join(fixture,'browser_public/app.js'),"const EXPECTED_RELEASE_VERSION = '65.1.45';");
-  fs.writeFileSync(path.join(fixture,'enterprise/release-guard.js'),"throw new Error('RELEASE_IDENTITY_MISMATCH package version does not match 65.1.59');");
-  releasePatch.alignReleaseIdentityPins(fixture);
-  assert.match(fs.readFileSync(path.join(fixture,'public/app.js'),'utf8'),/EXPECTED_RELEASE_VERSION = '65\.1\.46'/);
-  assert.match(fs.readFileSync(path.join(fixture,'browser_public/app.js'),'utf8'),/EXPECTED_RELEASE_VERSION = '65\.1\.46'/);
-  assert.match(fs.readFileSync(path.join(fixture,'enterprise/release-guard.js'),'utf8'),/65\.1\.46/);
- }finally{fs.rmSync(fixture,{recursive:true,force:true});}
-}
-
-console.log('[SBC '+pkg.version+'] tenant propagation and executive-dashboard release contract PASS');
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const server=read('server.js'),host=require('../enterprise/v569-production-expansion.js'),hardening=require('../enterprise/production-hardening-v56-25-3.js');
+const extract=name=>{const line=server.split('\n').find(x=>x.startsWith('function '+name+'('));assert(line,'missing current tenant resolver: '+name);return line;};
+test('authenticated and public tenant resolvers use current runtime, reject missing or unmapped identity',()=>{
+ const ctx={PRODUCTION_HARDENING:hardening,V569_PRODUCTION_EXPANSION:host};vm.runInNewContext(extract('requireRequestTenant')+'\n'+extract('requireMappedRequestTenant'),ctx,{timeout:1000});
+ assert.equal(ctx.requireRequestTenant({tenantId:7}),7);assert.throws(()=>ctx.requireRequestTenant({}),/TENANT_CONTEXT_REQUIRED/);assert.throws(()=>ctx.requireRequestTenant({tenantId:0}),/TENANT_CONTEXT_REQUIRED/);
+ assert.equal(ctx.requireMappedRequestTenant({headers:{host:'sbcmia.com'}}),1);assert.throws(()=>ctx.requireMappedRequestTenant({headers:{host:'unmapped.example.invalid'}}),/TENANT_CONTEXT_REQUIRED/);
+ for(const [name,mapping] of Object.entries(host.loadHostMap()))assert.equal(ctx.requireMappedRequestTenant({headers:{host:name}}),Number(mapping.tenantId));
+});
+test('current release identity and compatibility launcher agree without replaying patches or starting a second writer',()=>{
+ const pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),identity=require('../config/release-identity.js');
+ assert.equal(pkg.version,lock.version);assert.equal(lock.packages[''].version,pkg.version);assert.equal(identity.RELEASE_VERSION,pkg.version);
+ assert.equal(pkg.main,'sbc-godaddy-flat-entrypoint.cjs');assert.equal(pkg.scripts.start,'node sbc-godaddy-flat-entrypoint.cjs');
+ const calls=[];vm.runInNewContext(read('bootstrap.js'),{console:{log(){}},require:id=>{calls.push(id);return {};}},{timeout:1000});assert.deepEqual(calls,['./sbc-godaddy-flat-entrypoint.cjs']);
+});

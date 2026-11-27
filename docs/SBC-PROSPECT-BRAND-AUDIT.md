@@ -1,0 +1,11 @@
+# SBC prospect brand audit — review-only candidate
+
+Run with the repository's development dependencies installed:
+
+    node scripts/audit-prospect-brand.cjs TENANT_REF lead.json
+
+The trusted local operator supplies a JSON object with tenantRef, leadId, businessName and websiteUrl. The tool performs one bounded HTTPS HTML capture against a public IPv4 DNS answer pinned to the TLS connection, with original hostname certificate verification, a 10-second total deadline and a 512 KiB response cap. It rejects private/reserved addresses, IP literals, credentials, nondefault ports, redirects, non-HTML and compressed responses. No page scripts execute or subresources load. Do not expose this CLI as a request handler; production network isolation, DNS/transport tests and authorization review are required before integration. IPv6-only and redirecting sites remain unsupported.
+
+Ten source-HTML checks are not a brand valuation or a customer-loss estimate. Missing/failed/stale evidence stays unknown; a missing URL does not prove no website exists. Findings carry the capture URL, date and digest. The $199 starter package is only a suggested conversation after confirmed markup gaps, not a quote or a claim that a replacement is required. No GBP or social consistency score is inferred from one web page. No outreach, preview claim, lead verification mutation, order, automatic lead upgrade, or customer contact. Review findings and use the existing owner-approved sales script, suppression controls and human follow-up rules. The snapshot interface requires trusted operator evidence; it is not an attestation or a security authorization boundary. No customer data is published. Use the lead-specific brief only after reviewing the source page and its actual rendered behavior.
+
+The focused pure tests exercise URL and IP restrictions, DNS-answer policy, stale and missing evidence, tenant checks and recommendation behavior. The separate DOM fixture runs with jsdom in CI. Live TLS, redirect and network policy tests, real client integration, authenticated persistence, rate limits and actual marketing outcomes remain unverified. Do not activate batch scans or change the existing enrichment path based on these tests alone.
