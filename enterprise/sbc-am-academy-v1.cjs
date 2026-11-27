@@ -5,6 +5,562 @@
  * Tenant/customer information is NEVER included in built-in lessons.
  */
 const VERSION='2026.11.22.2';
+const CURRICULUM_VERSION='2026.11.26.1';
+// Additive bilingual study content; preserve practical/certification version and historical attempts.
+const DEPTH={
+ "am-01": {
+  "en": [
+   "SBC is Successful By Choice LLC, a Miami small-business services company. Use the official name, authentic SBC logo and motto 'Because Why Not?' consistently. Do not create another logo, claim to represent a provider, or promise a service that is not on the approved catalog.",
+   "Match the customer's need to the correct service: a website explains the business, a domain is its address, hosting runs the site, SSL protects the connection, professional email supports communication, and search visibility helps people discover accurate information. None guarantees new sales.",
+   "Print, business cards, flyers, banners, DTF apparel and signage are physical deliverables: collect quantities, dimensions, artwork, finish, delivery destination and proof approval before requesting an exact quote. Florida notary work is a separate regulated service; route it to the authorized notary rather than promising legal advice.",
+   "Daily work means reviewing assigned accounts, preparing real evidence, recording actual outcomes and protecting customer information. Use only approved prices and terms; when uncertain, record the question and escalate instead of inventing an answer."
+  ],
+  "es": [
+   "SBC es Successful By Choice LLC, una empresa de servicios para pequeños negocios de Miami. Use el nombre oficial, el logotipo auténtico y el lema 'Because Why Not?'. No invente otro logotipo, ni diga que representa a un proveedor, ni prometa servicios fuera del catálogo aprobado.",
+   "Relacione la necesidad con el servicio: el sitio explica el negocio, el dominio es su dirección, el alojamiento permite su funcionamiento, SSL protege la conexión, el correo profesional facilita la comunicación y la visibilidad ayuda a encontrar datos correctos. Ninguno garantiza ventas.",
+   "Las tarjetas, volantes, pancartas, ropa DTF y letreros son productos físicos: confirme cantidad, medidas, diseño, acabado, destino y aprobación de prueba antes de solicitar una cotización. La notaría de Florida es un servicio regulado separado; remita al notario autorizado, sin dar asesoría legal.",
+   "El trabajo diario incluye revisar cuentas asignadas, preparar evidencia real, registrar resultados verdaderos y proteger datos. Use condiciones aprobadas y, si tiene dudas, documente la pregunta y escálela en lugar de inventar una respuesta."
+  ],
+  "q": [
+   [
+    "A prospect asks whether SBC guarantees sales after buying a website.",
+    [
+     "Promise a minimum number of leads",
+     "Explain the website's purpose without guaranteeing results",
+     "Promise a refund if there are no sales"
+    ],
+    "Un prospecto pregunta si SBC garantiza ventas con un sitio web.",
+    [
+     "Prometa un mínimo de prospectos",
+     "Explique la función del sitio sin garantizar resultados",
+     "Prometa una devolución si no vende"
+    ],
+    1
+   ],
+   [
+    "A customer wants 500 business cards and branded shirts.",
+    [
+     "Order immediately from a vendor",
+     "Quote from memory without specifications",
+     "Confirm quantity, artwork, sizing, proof and approved scope first"
+    ],
+    "Un cliente pide 500 tarjetas y camisetas.",
+    [
+     "Compre de inmediato al proveedor",
+     "Cotice de memoria sin especificaciones",
+     "Confirme cantidad, diseño, tallas, prueba y alcance aprobado"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-02": {
+  "en": [
+   "Think of the Fantastic 4 as four separate responsibilities: sbcmia.com is the service storefront, sbcwebsites.com handles reseller offerings and renewals, Command Center manages SBC's own operations, and Office Box is a distinct customer workspace. Never use an employee login as a customer account.",
+   "Domains, hosting, SSL and Microsoft 365 email may have provider-specific terms. Check the live catalog, ownership, billing period and renewal obligations before offering a bundle. A reseller order and an SBC design project are separate records and must be reconciled rather than assumed identical.",
+   "Square is the approved payment evidence rail where configured. GoDaddy, VistaPrint Pro, 4over4 and approved signage vendors are fulfillment partners, not permission to spend. Employees prepare accurate orders and proofs; only authorized purchasing workflows submit them.",
+   "Trace a fictional inquiry through Account 360, discovery, a private preview, approved quote, verified payment, production, delivery and renewal. At every handoff record who owns the next task, which system is authoritative and what evidence is still missing."
+  ],
+  "es": [
+   "Considere Fantastic 4 como cuatro responsabilidades: sbcmia.com presenta servicios, sbcwebsites.com maneja ofertas y renovaciones de revendedor, Command Center administra operaciones internas y Office Box es un espacio separado para clientes. No use cuentas de empleados como cuentas de clientes.",
+   "Dominios, alojamiento, SSL y Microsoft 365 pueden tener condiciones de proveedor distintas. Consulte catálogo, titularidad, período de cobro y renovaciones. Un pedido de revendedor y un proyecto de diseño SBC son registros distintos que deben conciliarse.",
+   "Square aporta evidencia de pago cuando está configurado. GoDaddy, VistaPrint Pro, 4over4 y proveedores aprobados de letreros son socios de entrega, no permiso para gastar. El empleado prepara pedidos y pruebas; solo el proceso autorizado los envía.",
+   "Siga una consulta ficticia por Account 360, descubrimiento, vista privada, cotización aprobada, pago verificado, producción, entrega y renovación. En cada paso registre el responsable, el sistema de referencia y la evidencia pendiente."
+  ],
+  "q": [
+   [
+    "A customer asks for Office Box with every hosting renewal.",
+    [
+     "Verify separate Office Box entitlement and quote",
+     "Automatically add a free CRM",
+     "Use your employee CRM login"
+    ],
+    "Un cliente pide Office Box con cada renovación de alojamiento.",
+    [
+     "Verifique la licencia y cotización separada de Office Box",
+     "Agregue un CRM gratis",
+     "Use su acceso interno de empleado"
+    ],
+    0
+   ],
+   [
+    "Who submits a paid print vendor order?",
+    [
+     "Anyone who prepared the mockup",
+     "The approved purchasing workflow after owner clearance",
+     "The lead researcher automatically"
+    ],
+    "¿Quién envía un pedido pagado al proveedor de impresión?",
+    [
+     "Cualquiera que preparó el diseño",
+     "El proceso de compra autorizado tras aprobación del dueño",
+     "El investigador automáticamente"
+    ],
+    1
+   ]
+  ]
+ },
+ "am-03": {
+  "en": [
+   "Open the assigned account and confirm the actual business name, decision maker, primary phone, email, physical address, industry, website, GBP listing, source and current disposition. Distinguish street address from a map listing or service-area location; do not overwrite a discrepancy without evidence.",
+   "Use Account 360 as the central case file. Review the prior note, current owner or account manager assignment, appointment date, call history and saved website status before opening a composer or dialer. A Hot score is prioritization, not an authorization or a promise of interest.",
+   "Keep each note actionable: who actually answered, what they said, what was verified, what remains unknown, the disposition and agreed next step. Example: a fictional shop owner says it has an outdated site and requests a Thursday demo; record that statement, date and unresolved scope.",
+   "Use the appropriate status for a genuine bad number, a request for callback, a language handoff or an opt-out. Do not delete or mark a lead lost because it cannot be handled in English; preserve history and route it to the approved bilingual queue."
+  ],
+  "es": [
+   "Abra la cuenta asignada y confirme nombre, decisor, teléfono principal, correo, dirección física, sector, sitio, perfil de Google, fuente y estado. Distinga dirección física de ubicación en mapas o área de servicio; no cambie discrepancias sin evidencia.",
+   "Use Account 360 como expediente central. Revise la nota previa, asignación, cita, historial de llamadas y estado del sitio guardado antes de abrir el marcador o un mensaje. Una puntuación Hot indica prioridad, no permiso ni garantía de interés.",
+   "Haga útil cada nota: quién respondió, qué dijo, qué se verificó, qué falta, resultado y siguiente paso acordado. Ejemplo: un dueño ficticio dice que su sitio es anticuado y pide una demostración el jueves; registre su declaración, fecha y alcance pendiente.",
+   "Use el estado correcto para número incorrecto, devolución de llamada, transferencia por idioma o exclusión. No elimine ni marque perdido a quien no habla inglés; conserve el historial y remita a la cola bilingüe autorizada."
+  ],
+  "q": [
+   [
+    "A map listing and the CRM street address disagree.",
+    [
+     "Overwrite both with your guess",
+     "Record the mismatch and seek reliable evidence",
+     "Delete the address"
+    ],
+    "La ubicación en mapas y la dirección CRM no coinciden.",
+    [
+     "Cambie ambas según su suposición",
+     "Registre la diferencia y busque evidencia fiable",
+     "Elimine la dirección"
+    ],
+    1
+   ],
+   [
+    "A valid business contact speaks Spanish only.",
+    [
+     "Mark bad number",
+     "Mark not interested",
+     "Record language handoff and preserve the account"
+    ],
+    "Un contacto válido solo habla español.",
+    [
+     "Marque número incorrecto",
+     "Marque sin interés",
+     "Registre transferencia por idioma y conserve la cuenta"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-04": {
+  "en": [
+   "Start with Lorna's research evidence, not assumptions about names, accents, reviews or appearance. Confirm the business identity and source, reconcile website and Google profile status, and record missing fields. Do not infer a person's language or willingness to buy from ethnicity or a name.",
+   "Before contact, consult the current assignment, suppression, consent and applicable calling rules. A verified telephone number is only evidence of a number; it does not authorize every channel or automated contact. A working dialer does not override permission.",
+   "If a person requests no further contact, log the real request and use the approved suppression action immediately. Never change phone numbers, send another channel message or use a different employee to work around the request. For a bad number, follow the documented re-verification path.",
+   "When a prospect says they prefer Spanish, politely offer a bilingual callback if permitted. Record the preference and route it to the Spanish callback queue for owner-authorized assignment; do not call the number repeatedly or invent an outcome. Use company-approved instructions for outreach hours and escalation."
+  ],
+  "es": [
+   "Comience con evidencia de Lorna, no con suposiciones por nombres, acentos, reseñas o apariencia. Confirme identidad y fuente, concilie sitio y perfil de Google, y registre campos faltantes. No deduzca idioma ni intención de compra por etnia o nombre.",
+   "Antes del contacto, consulte asignación, exclusiones, consentimiento y reglas aplicables. Un teléfono verificado solo comprueba el número; no autoriza todos los canales ni contacto automatizado. Un marcador funcional no anula los permisos.",
+   "Si alguien pide no recibir más contacto, registre la solicitud real y aplique la exclusión aprobada. No cambie números, mensajes ni empleados para evadirla. Si el número es incorrecto, siga la ruta documentada de nueva verificación.",
+   "Si el prospecto prefiere español, ofrezca con cortesía una devolución bilingüe si está permitida. Registre la preferencia y remita a la cola de español con asignación autorizada por el dueño; no repita llamadas ni invente resultados. Siga los horarios y escalaciones aprobados."
+  ],
+  "q": [
+   [
+    "A Hot lead has an explicit do-not-contact request.",
+    [
+     "Use another channel",
+     "Honor the suppression and stop sales contact",
+     "Call from a personal number"
+    ],
+    "Un prospecto Hot pidió no recibir más contacto.",
+    [
+     "Use otro canal",
+     "Respete la exclusión y cese el contacto comercial",
+     "Llame desde un número personal"
+    ],
+    1
+   ],
+   [
+    "The prospect speaks a language you cannot support.",
+    [
+     "Guess based on their name",
+     "Record a bad number",
+     "Ask their preferred language and route an authorized callback"
+    ],
+    "El prospecto habla un idioma que no domina.",
+    [
+     "Deduzca por el nombre",
+     "Registre número incorrecto",
+     "Pregunte el idioma preferido y remita una devolución autorizada"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-05": {
+  "en": [
+   "Use John's approved conversational approach: introduce yourself, confirm the decision maker and ask whether the business has a website. Adapt the introduction to the employee's real name; do not pretend to be John. Only say a site was built when an actual reviewed account-specific preview exists.",
+   "Discover the customer's current channels, most important services, typical customers and friction: contact, hours, appointments, menus, photos, inquiries or outdated details. Separate observed facts from hypotheses. Do not assume that having only social media is a problem.",
+   "Examples: for a barber, ask about booking and an existing Booksy link; for an auto shop, ask about services and phone inquiries; for a restaurant, ask how people find current menus and hours. For a shop, ask about online inventory, payment and shipping needs before proposing e-commerce.",
+   "Close discovery with a specific permission-based next step: an agreed ten-minute meeting, a scope clarification, a requested quote or no further contact. Record the real outcome and date in Account 360. Prepare a private concept before the agreed demonstration if it does not yet exist."
+  ],
+  "es": [
+   "Use el enfoque conversacional aprobado de John: preséntese, confirme al decisor y pregunte si tiene sitio. Adapte la presentación al nombre real del empleado; no finja ser John. Solo diga que creó un sitio si existe una vista previa real y revisada de esa cuenta.",
+   "Descubra canales actuales, servicios principales, clientes típicos y dificultades: contacto, horarios, citas, menús, fotos, consultas o datos desactualizados. Separe hechos de hipótesis. No presuponga que usar solo redes sociales sea un problema.",
+   "Ejemplos: en barberías pregunte por reservas y Booksy; en talleres, servicios y llamadas; en restaurantes, menús y horarios actuales. En tiendas, confirme inventario, cobro y envío antes de proponer comercio electrónico.",
+   "Cierre el descubrimiento con permiso y un paso concreto: reunión de diez minutos, aclarar alcance, cotización solicitada o no más contacto. Registre resultado y fecha en Account 360. Prepare el concepto privado antes de la demostración si aún no existe."
+  ],
+  "q": [
+   [
+    "No approved preview exists yet; the owner asks what you built.",
+    [
+     "Say you already built it",
+     "Explain that you can prepare a private concept",
+     "Send another customer's site as theirs"
+    ],
+    "No hay vista previa aprobada; el dueño pregunta qué creó.",
+    [
+     "Diga que ya la creó",
+     "Explique que puede preparar un concepto privado",
+     "Envíe el sitio de otro cliente como propio"
+    ],
+    1
+   ],
+   [
+    "A barber asks about online booking.",
+    [
+     "Promise a working Booksy integration without a link",
+     "Ignore the question",
+     "Confirm the existing booking provider/link and scope before promising integration"
+    ],
+    "Una barbería pregunta por reservas en línea.",
+    [
+     "Prometa Booksy sin enlace",
+     "Ignore la pregunta",
+     "Confirme proveedor, enlace y alcance antes de prometer integración"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-06": {
+  "en": [
+   "Learn the current website package reference ladder: Starter $199, Custom $499, Advanced $799 and Growth $999. These are starting reference offers, not permission to quote an old screenshot. Confirm deliverables, domain and hosting term, SSL inclusion, renewal, editable content, pages, revisions and any add-ons in the current approved catalog.",
+   "Explain the separate economics of a domain, hosting, SSL and professional email. Domains and hosting can renew; SSL can be included or separately charged depending on the offer; email seats, backups, SEO, management and extra work may have distinct fees. Never say 'free forever' or 'unlimited' without approved terms.",
+   "Office Box is separately priced by plan, usage and team requirements. Print and apparel depend on specifications and shipping. Signage depends on dimensions, mounting and approved proof. Notary pricing and eligible service scope must be confirmed with the authorized Florida notary.",
+   "Practice pricing from the live catalog: compare one-page and multi-page needs; identify the recurring services; explain the difference between a design deposit, full quoted total and actual payment. If a requested price, discount, monthly care amount or deal limit is not verified, escalate for written approval."
+  ],
+  "es": [
+   "Aprenda la escala web de referencia: Starter $199, Custom $499, Advanced $799 y Growth $999. Son ofertas de referencia, no permiso para cotizar una captura antigua. Confirme entregables, plazo de dominio y alojamiento, SSL, renovación, edición, páginas, revisiones y extras en el catálogo aprobado vigente.",
+   "Explique por separado dominio, alojamiento, SSL y correo profesional. Dominio y alojamiento pueden renovarse; SSL depende del paquete; buzones, respaldos, SEO, gestión y trabajo extra pueden tener cargos distintos. Nunca diga gratis para siempre ni ilimitado sin condiciones aprobadas.",
+   "Office Box tiene precio separado según plan, uso y equipo. Impresión y ropa dependen de especificaciones y envío; letreros, de medidas, montaje y prueba. Precio y alcance notarial deben confirmarse con el notario autorizado de Florida.",
+   "Practique con el catálogo vigente: compare necesidades de una o varias páginas, identifique servicios recurrentes y distinga anticipo, total cotizado y pago real. Si precio, descuento, mantenimiento mensual o límite de trato no está verificado, escale para aprobación escrita."
+  ],
+  "q": [
+   [
+    "A customer wants unlimited lifetime hosting with the $199 Starter.",
+    [
+     "Confirm term and renewal in the approved quote",
+     "Agree because it is easier to close",
+     "Promise lifetime hosting verbally"
+    ],
+    "Un cliente pide alojamiento ilimitado de por vida con Starter de $199.",
+    [
+     "Confirme plazo y renovación en la cotización aprobada",
+     "Acepte para cerrar",
+     "Prometa alojamiento de por vida verbalmente"
+    ],
+    0
+   ],
+   [
+    "An old sales sheet lists an unconfirmed care-plan price.",
+    [
+     "Offer it immediately",
+     "Use the current catalog or request owner approval",
+     "Invent a lower price"
+    ],
+    "Una hoja antigua indica un precio de mantenimiento no confirmado.",
+    [
+     "Ofrézcalo de inmediato",
+     "Use catálogo vigente o solicite aprobación del dueño",
+     "Invente un precio inferior"
+    ],
+    1
+   ]
+  ]
+ },
+ "am-07": {
+  "en": [
+   "Website Production starts with a verified brief: correct business name, industry, services, location, contact routes, brand assets, approved pricing and desired goal. Unknown information stays explicitly marked. Use private concepts or uploaded ZIP previews only for the correct account and inspect actual content before showing it.",
+   "Check the preview on phone and desktop. Confirm navigation, visible contact buttons, accessibility, text contrast and image rights. For booking or forms, verify the actual destination and implementation; a button, placeholder or unconfigured form is not proof that messages or appointments are working.",
+   "Use original or properly licensed images; never fabricate testimonials, awards, certifications, staff images or client authorizations. Do not imply that a concept is already live or owned by the prospect. Keep private previews separate from public customer websites and production publication.",
+   "Demo flow: show the problem, explain one real improvement, ask for feedback, confirm scope and request an approved quote. Track feedback, ZIP/preview version, approval and next meeting. Do not publish, buy a domain, set up email or promise final delivery until the relevant approval and verified payment."
+  ],
+  "es": [
+   "Website Production comienza con un brief verificado: nombre, sector, servicios, ubicación, contacto, marca, precios aprobados y objetivo. Marque lo desconocido. Use conceptos privados o ZIP solo de la cuenta correcta y revise contenido real antes de mostrarlo.",
+   "Revise la vista en móvil y escritorio: navegación, contacto, accesibilidad, contraste y derechos de imágenes. Para reservas o formularios, verifique destino e implementación; un botón o formulario sin configurar no demuestra que funcionen mensajes o citas.",
+   "Use imágenes propias o licenciadas; nunca invente testimonios, premios, certificaciones, fotos de empleados o autorizaciones. No diga que el concepto está publicado ni que pertenece al prospecto. Separe vistas privadas de sitios públicos.",
+   "En la demostración: muestre el problema, explique una mejora real, pida comentarios, confirme alcance y solicite cotización aprobada. Registre comentarios, versión, aprobación y próxima reunión. No publique, compre dominio, configure correo ni prometa entrega sin autorización y pago verificado."
+  ],
+  "q": [
+   [
+    "A private demo has a contact button with no configured backend.",
+    [
+     "Claim the form works",
+     "Label it as unconfigured and verify before launch",
+     "Send a fake confirmation"
+    ],
+    "Una demostración privada tiene contacto sin backend.",
+    [
+     "Afirme que funciona",
+     "Indique que no está configurado y verifique antes de publicar",
+     "Envíe confirmación falsa"
+    ],
+    1
+   ],
+   [
+    "Which evidence is required before saying a preview exists?",
+    [
+     "A guessed link",
+     "A screenshot from a different customer",
+     "The actual reviewed account-specific preview"
+    ],
+    "¿Qué evidencia permite decir que existe una vista previa?",
+    [
+     "Un enlace supuesto",
+     "Captura de otro cliente",
+     "Vista real revisada de la cuenta específica"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-08": {
+  "en": [
+   "Handle objections with acknowledge, clarify, respond, next action. Price can mean affordability, cash timing, unclear scope or mistrust; ask which before suggesting an approved alternative. Never create false scarcity, pressure the owner or invent a discount.",
+   "If the owner already uses Facebook or Instagram, recognize that those tools may work. Ask whether customers can easily find current hours, services or contact details; explain the complementary role of an accurate website only if relevant.",
+   "If a prospect says a competitor is cheaper, compare verified deliverables, renewals, ownership, support and payment terms, not unsupported competitor claims. Explain what SBC can verify and offer to put the exact scope in writing.",
+   "Practice in both English and Spanish. If the answer is unknown, say you will verify with the owner or current catalog. A request to stop is not an objection to overcome: honor the opt-out, log the real disposition and do not schedule unsolicited follow-up."
+  ],
+  "es": [
+   "Maneje objeciones reconociendo, aclarando, respondiendo y acordando el siguiente paso. El precio puede ser presupuesto, momento de pago, alcance confuso o desconfianza; pregunte antes de ofrecer alternativa aprobada. No invente urgencia ni descuentos.",
+   "Si el dueño usa Facebook o Instagram, reconozca que pueden servirle. Pregunte si clientes encuentran horarios, servicios y contacto; explique el papel complementario de un sitio correcto solo si es pertinente.",
+   "Si un competidor es más barato, compare entregables, renovaciones, titularidad, soporte y condiciones verificadas, no afirmaciones sin respaldo. Explique lo que SBC puede comprobar y ofrezca alcance por escrito.",
+   "Practique en inglés y español. Si desconoce la respuesta, diga que verificará con el dueño o catálogo. Una solicitud de no contactar no es una objeción que superar: respete, registre y no programe seguimiento no solicitado."
+  ],
+  "q": [
+   [
+    "A prospect says $499 is too much.",
+    [
+     "Promise any discount",
+     "Ask what concern matters and compare approved scopes",
+     "Insult cheaper competitors"
+    ],
+    "Un prospecto dice que $499 es demasiado.",
+    [
+     "Prometa cualquier descuento",
+     "Pregunte qué le preocupa y compare alcances aprobados",
+     "Insulte a competidores"
+    ],
+    1
+   ],
+   [
+    "A customer asks a question outside your knowledge.",
+    [
+     "Make up a confident answer",
+     "Avoid documenting it",
+     "Record the question and verify with the current approved source"
+    ],
+    "Un cliente pregunta algo que usted no sabe.",
+    [
+     "Invente una respuesta segura",
+     "No lo documente",
+     "Registre la pregunta y verifique con fuente aprobada"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-09": {
+  "en": [
+   "After an actual conversation, record the disposition, contact person, objection, preferred channel and permission, commitments and agreed next date. No answer is not a completed conversation, and a callback request is not a sale. Avoid duplicate calls and conflicting dates.",
+   "Book a ten-minute website demo through the existing appointment editor only with an agreed time and time zone. Verify the assigned account, event title, duration, meeting method/link and whether confirmation was actually sent. Do not claim a Zoom meeting exists when no meeting link is ready.",
+   "Follow-up must continue the prior discussion, not restart from a generic pitch. Prepare the private preview or scope the customer requested, check whether the original question was resolved, and keep the next action specific. If the customer requested email only, honor that restriction.",
+   "Review overdue tasks, callbacks, missed appointments and account handoffs at shift start and end. Preserve the chronology and distinguish proposal, booked meeting, quote sent, paid and completed. Escalate an unassigned bilingual callback or missing owner decision instead of leaving a record without next action."
+  ],
+  "es": [
+   "Después de una conversación real, registre resultado, contacto, objeción, canal preferido y permiso, compromisos y fecha acordada. Sin respuesta no es conversación completa, y pedir devolución no es venta. Evite llamadas duplicadas y fechas contradictorias.",
+   "Reserve una demostración de diez minutos con el editor existente solo con horario y zona acordados. Verifique cuenta, título, duración, método o enlace y confirmación realmente enviada. No afirme que existe Zoom si no hay enlace.",
+   "El seguimiento debe continuar la conversación previa. Prepare vista privada o alcance solicitado, revise si la pregunta se resolvió y haga concreto el siguiente paso. Si el cliente pidió solo correo, respete esa restricción.",
+   "Revise tareas vencidas, devoluciones, citas perdidas y transferencias al inicio y fin del turno. Conserve la cronología y distinga propuesta, reunión, cotización, pago y entrega. Escale una devolución bilingüe sin asignación o una aprobación pendiente en vez de dejarla sin acción."
+  ],
+  "q": [
+   [
+    "A customer verbally requests a demo at 2 PM but the time zone is unknown.",
+    [
+     "Guess the time zone",
+     "Confirm date, zone and method before booking",
+     "Mark the quote paid"
+    ],
+    "Un cliente pide demostración a las 2, sin zona horaria.",
+    [
+     "Suponga la zona",
+     "Confirme fecha, zona y método antes de reservar",
+     "Marque cotización pagada"
+    ],
+    1
+   ],
+   [
+    "An email confirmation fails.",
+    [
+     "Claim it was sent",
+     "Call repeatedly",
+     "Record the failure and use the approved recovery workflow"
+    ],
+    "Falla la confirmación por correo.",
+    [
+     "Diga que se envió",
+     "Llame repetidamente",
+     "Registre la falla y use el proceso de recuperación aprobado"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-10": {
+  "en": [
+   "A quote describes proposed scope; a signed or approved quote establishes terms; a checkout link is a payment invitation; a completed provider capture is payment evidence. Settlement to a bank is another event. Do not treat quote totals, open orders, test payments or links as actual collected customer revenue.",
+   "Use approved Square checkout and reconcile the customer, order ID, provider payment ID, amount, currency and completion status. If status is pending, missing, disputed, duplicate, refunded or reversed, hold paid fulfillment and escalate. Do not collect card numbers or secrets in CRM notes.",
+   "Production handoff requires the agreed deliverable, payment evidence, customer contact and approved assets. Print work needs approved artwork proof and specifications; hosting or domain provisioning needs correct ownership and terms; web work needs approved scope and tested preview. Only authorized workflows commit vendor purchases.",
+   "Refunds, chargebacks, price exceptions, payroll and money movement require explicit owner review and controlled financial workflows. An employee may collect facts, explain the next step and prepare an escalation, but must never manually invent a receipt, alter money or mark an order complete before evidence."
+  ],
+  "es": [
+   "Una cotización propone alcance; una cotización firmada o aprobada establece condiciones; un enlace invita a pagar; una captura completada del proveedor aporta evidencia de pago. El depósito bancario es otro evento. No trate cotizaciones, pedidos abiertos, pagos de prueba o enlaces como ingresos cobrados.",
+   "Use Square aprobado y concilie cliente, pedido, identificador de pago, importe, moneda y estado. Si está pendiente, ausente, disputado, duplicado, reembolsado o revertido, detenga la entrega pagada y escale. No guarde tarjetas ni secretos en notas.",
+   "La transferencia a producción necesita entregable acordado, pago, contacto y activos aprobados. Impresión requiere prueba y especificaciones; dominio y alojamiento, titularidad y condiciones; sitio, alcance y vista probada. Solo procesos autorizados realizan compras.",
+   "Devoluciones, contracargos, precios especiales, nómina y movimiento de dinero requieren revisión del dueño y procesos controlados. El empleado reúne hechos y prepara escalación; nunca inventa recibos, altera fondos ni marca entrega sin evidencia."
+  ],
+  "q": [
+   [
+    "An open order has a large quoted value and no confirmed capture.",
+    [
+     "Report it as collected revenue",
+     "Keep it separate from collected revenue",
+     "Mark paid from the customer's message"
+    ],
+    "Un pedido abierto tiene valor alto sin captura confirmada.",
+    [
+     "Repórtelo como ingreso cobrado",
+     "Manténgalo separado del ingreso cobrado",
+     "Márquelo pagado por mensaje"
+    ],
+    1
+   ],
+   [
+    "A print customer pays but has not approved the artwork.",
+    [
+     "Order immediately",
+     "Invent an approval",
+     "Hold vendor purchase until required proof and approvals are confirmed"
+    ],
+    "Un cliente de impresión paga pero no aprobó el diseño.",
+    [
+     "Compre de inmediato",
+     "Invente aprobación",
+     "Detenga la compra hasta confirmar prueba y aprobaciones"
+    ],
+    2
+   ]
+  ]
+ },
+ "am-11": {
+  "en": [
+   "After sale, maintain one accountable owner for the customer record. Confirm which project or service was delivered, what is still pending, who owns each next action and what the customer actually accepted. A completed internal task does not prove public website or vendor delivery.",
+   "Review domains, hosting, SSL, email and managed services for actual renewal dates and terms. Notify customers using approved contact preferences and the current agreement. Never promise a free renewal, auto-charge, or transfer without verified entitlement and authorization.",
+   "Use Office Box discovery to determine real need: customer records, team size, tasks, lead imports or other verified features. Confirm current plan limits and price before offering it. Do not silently copy customer information between Office Box and Command Center or claim an unverified integration.",
+   "Retention workflow: check after delivery, resolve reported defects with factual tickets, review renewal needs, and propose an add-on only when it solves a stated problem. Document a 30/60/90-day care plan as appropriate, respect the customer's choices and escalate complaints rather than hiding them."
+  ],
+  "es": [
+   "Después de vender, mantenga un responsable de la cuenta. Confirme qué proyecto o servicio se entregó, qué falta, responsable de cada acción y aceptación real del cliente. Una tarea interna terminada no prueba sitio público ni entrega de proveedor.",
+   "Revise fechas y condiciones reales de renovación de dominios, alojamiento, SSL, correo y gestión. Avise según preferencias de contacto y acuerdo vigente. No prometa renovación gratis, cobro automático ni transferencia sin derecho y autorización verificados.",
+   "Descubra necesidad real de Office Box: registros, equipo, tareas, importación de prospectos u otras funciones verificadas. Confirme límites y precio vigentes. No copie datos silenciosamente entre Office Box y Command Center ni afirme integración sin verificación.",
+   "Retención: compruebe después de entrega, resuelva defectos con tickets factuales, revise renovaciones y ofrezca extras solo si resuelven un problema declarado. Documente plan de cuidado de 30/60/90 días según corresponda, respete decisiones y escale quejas."
+  ],
+  "q": [
+   [
+    "A customer believes their domain renewal is free forever.",
+    [
+     "Verify the actual agreement and renewal terms",
+     "Confirm the assumption",
+     "Charge without informing them"
+    ],
+    "Un cliente cree que el dominio se renueva gratis para siempre.",
+    [
+     "Verifique acuerdo y condiciones reales",
+     "Confirme la suposición",
+     "Cobre sin informarle"
+    ],
+    0
+   ],
+   [
+    "A customer has an unresolved website defect.",
+    [
+     "Mark the project completed and ignore it",
+     "Record the problem, route support, track the resolution",
+     "Sell another package instead"
+    ],
+    "Un cliente tiene un defecto de sitio sin resolver.",
+    [
+     "Marque terminado e ignórelo",
+     "Registre el problema, remita soporte y siga la solución",
+     "Venda otro paquete"
+    ],
+    1
+   ]
+  ]
+ },
+ "am-12": {
+  "en": [
+   "Use a fictional account only. Start by identifying the correct Fantastic 4 system, verifying research, checking contact eligibility and choosing an appropriate discovery question. Explain the difference between an account note, a lead status, a booked appointment, an approved quote and actual payment.",
+   "Demonstrate a complete call in English and Spanish: genuine introduction, permission, discovery, objection, truthful website status, agreed next action and factual note. If the case includes a language handoff or opt-out, route it correctly; never contact a real customer in training.",
+   "Use the current catalog to compare two appropriate offers, explain recurring service terms, prepare the private website concept and demonstrate its actual limitations. For a print or Office Box add-on, identify separate scope, proof and approval. Escalate any unknown price, permission, payout or legal question.",
+   "Complete the server-graded knowledge checks, isolated practical samples and owner-observed capstone. The 90% minimum and critical-error rules still apply. Training time remains recorded; at the two-shift/eight-hour review point, request authorized paid remediation if needed. Certification is granted by the owner, not a quiz or employee self-assessment."
+  ],
+  "es": [
+   "Use solo una cuenta ficticia. Identifique el sistema de Fantastic 4 correcto, verifique investigación, revise permiso de contacto y elija una pregunta. Distinga nota, estado, cita, cotización aprobada y pago real.",
+   "Demuestre llamada completa en inglés y español: presentación genuina, permiso, descubrimiento, objeción, estado real del sitio, siguiente paso y nota factual. Si hay transferencia por idioma o exclusión, use la ruta correcta; nunca contacte clientes reales en capacitación.",
+   "Use catálogo actual para comparar dos ofertas apropiadas, explicar recurrencia, preparar concepto privado y mostrar límites reales. Para impresión u Office Box, identifique alcance separado, prueba y aprobación. Escale precios, permisos, pagos o preguntas legales desconocidos.",
+   "Complete pruebas del servidor, muestras aisladas y simulación observada por el dueño. Siguen el mínimo del 90% y reglas de errores críticos. Registre tiempo; al revisar dos turnos u ocho horas, solicite recuperación pagada autorizada si hace falta. Certifica el dueño, no una prueba ni autoevaluación."
+  ],
+  "q": [
+   [
+    "An employee passes every quiz but has not completed the observed capstone.",
+    [
+     "Unlock live calling",
+     "Self-certify",
+     "Complete owner-observed review and obtain explicit certification"
+    ],
+    "Un empleado aprueba pruebas pero no completa simulación observada.",
+    [
+     "Desbloquee llamadas reales",
+     "Autocertifíquese",
+     "Complete revisión observada y obtenga certificación explícita"
+    ],
+    2
+   ],
+   [
+    "The eight-hour training review point is reached without mastery.",
+    [
+     "Stop the clock and continue unpaid",
+     "Request owner-approved paid remediation; preserve the training gate",
+     "Pretend the employee passed"
+    ],
+    "Se alcanzan ocho horas sin dominar el contenido.",
+    [
+     "Pare el reloj y siga sin pago",
+     "Solicite recuperación pagada aprobada y conserve el bloqueo",
+     "Finja que aprobó"
+    ],
+    1
+   ]
+  ]
+ }
+};
 const ES=require('./sbc-am-academy-es-v2.cjs');
 const PRACTICE=require('./sbc-am-practice-v2.cjs');
 const COURSE_ID='sbc-account-manager-mastery-20261122';
@@ -266,15 +822,15 @@ const COURSE=Object.freeze({
  id:COURSE_ID,title:'SBC Academy 360 · Account Manager Mastery',
  role:'account_manager',version:VERSION,status:'published',
  description:'SBC-specific customer relationship apprenticeship: 12 intensive lessons, narrated visual simulations, role-play, objective quizzes, scenario evidence and owner-approved certification.',
- source:'SBC owner-commissioned Academy 360 V66.165',curriculumVersion:VERSION,
+ source:'SBC owner-commissioned Academy 360 V66.165',curriculumVersion:CURRICULUM_VERSION,
  estimatedMinutes:480,coreMinutes:400,reviewAndFlexMinutes:80,
  completionStandard:'Read/watch narrated simulations, score at least 90% on server-graded knowledge checks, submit observed role-play evidence, and obtain explicit owner certification. A quiz does not authorize outreach.',
  certification:{ownerApprovalRequired:true,liveAccountAccessNotGranted:true,knowledgeThreshold:90,capstoneObserved:true},
  modules:M.map((m,i)=>({
   id:m.id,role:'account_manager',order:i+1,minutes:[15,20,25,25,35,30,35,35,25,30,35,90][i],title:m.title,description:m.objective,
-  translations:{es:ES.LESSONS[m.id]},
+  translations:{es:{...ES.LESSONS[m.id],deepDive:DEPTH[m.id].es}},
   status:'published',phase:i<4?'Operating standards':i<8?'Sales mastery':'Account stewardship',
-  lesson:{objective:m.objective,learn:m.learn,practice:{prompt:m.practice,evidence:'Owner-reviewed fictional case, attributed notes and a specific next action.'},
+  lesson:{objective:m.objective,learn:m.learn,deepDive:DEPTH[m.id].en,practice:{prompt:m.practice,evidence:'Owner-reviewed fictional case, attributed notes and a specific next action.'},
   knowledgeCheck:{prompt:m.case,passingRule:'At least 90% on server-graded multiple choice, plus authentic scenario evidence and owner observation.'}},
   academyMedia:{skill:m.skill,script:m.say,redFlags:m.red,scenario:m.case,spanish:m.es,
     sceneLabels:['See the customer problem','Ask a grounded question','Show the approved workflow','Confirm the next step'],
@@ -284,10 +840,10 @@ const COURSE=Object.freeze({
    {id:m.id+'-proof',prompt:'Document your action, evidence, approval boundary, and next-step plan.',answerType:'text'}]}
  }))
 });
-const QUESTIONS=Object.freeze(Object.fromEntries(M.map(m=>[m.id,m.quiz.map(([prompt,choices,correct,rationale],i)=>({
+const QUESTIONS=Object.freeze(Object.fromEntries(M.map(m=>[m.id,[...m.quiz,...DEPTH[m.id].q.map(([prompt,choices,_es,_esChoices,correct])=>[prompt,choices,correct,'Review the corresponding bilingual SBC study guide and verify the approved process.'])].map(([prompt,choices,correct,rationale],i)=>({
  id:m.id+'-q'+(i+1),prompt,choices,correct,rationale}))])));
 function publicQuestions(id,lang='en'){
- const l=PRACTICE.language(lang),q=QUESTIONS[id],translated=ES.QUESTIONS[Number(String(id).slice(-2))-1];
+ const l=PRACTICE.language(lang),q=QUESTIONS[id],translated=q?[...ES.QUESTIONS[Number(String(id).slice(-2))-1],...DEPTH[id].q.map(([_en,_choices,prompt,choices])=>[prompt,choices])]:[];
  return q?q.map(({id,prompt,choices},i)=>({id,prompt:l==='es'?translated[i][0]:prompt,choices:l==='es'?translated[i][1]:choices})):null;
 }
 function grade(id,answers,lang='en'){
@@ -305,7 +861,7 @@ function install(s,normalizeCourse,clock=()=>new Date().toISOString()){
  if(!s||!Array.isArray(s.courses)||typeof normalizeCourse!=='function')throw Error('TRAINING_CATALOG_REQUIRED');
  const existing=s.courses.find(c=>String(c.id)===COURSE_ID);
  if(existing){
-  if(existing.curriculumVersion===VERSION)return false;
+  if(existing.curriculumVersion===CURRICULUM_VERSION)return false;
   const refreshed=normalizeCourse(COURSE,'SBC Academy 360 Account Manager Mastery');
   Object.assign(existing,refreshed,{status:existing.status,createdAt:existing.createdAt||refreshed.createdAt});
   s.migration=s.migration||{};s.migration.amAcademyV2PendingSave=true;s.updatedAt=clock();return true;
@@ -315,4 +871,4 @@ function install(s,normalizeCourse,clock=()=>new Date().toISOString()){
  s.migration.amAcademy20261122At=clock();s.migration.elite2026PendingSave=true;s.updatedAt=clock();
  return true;
 }
-module.exports={VERSION,COURSE_ID,COURSE,QUESTIONS,publicQuestions,grade,install};
+module.exports={VERSION,CURRICULUM_VERSION,COURSE_ID,COURSE,QUESTIONS,publicQuestions,grade,install};
