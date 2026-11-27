@@ -163,3 +163,37 @@ test('owner can grant no profile privileges to managers via API and new self-rea
  assert.equal(ROLE.allowed('GET','/api/owner/sales-command/workstation/profile'),false);
  assert.equal(ROLE.allowed('POST','/api/owner/sales-command/workstation/profile'),false);
 });
+
+test('owner can provision and promote the same employee with revision checks and transactional audit',async()=>{
+ const state=new Map(),audit=[],transactions=[];
+ const key=(t,m)=>t+':'+m;
+ const db={users:[{id:'m1',tenantId:1,role:'account_manager',active:true},{id:'m2',tenantId:2,role:'account_manager',active:true}]};
+ const handlers=new Map();
+ const conn={async beginTransaction(){transactions.push('begin');},async commit(){transactions.push('commit');},async rollback(){transactions.push('rollback');},release(){},
+  async query(sql,args){
+   if(sql.startsWith('SELECT tier, revision FROM sbc_am_workstation_profile_v2'))return [state.has(key(...args.slice(0,2)))?[state.get(key(...args.slice(0,2)))]:[]];
+   if(sql.startsWith('INSERT INTO sbc_am_workstation_profile_v2')){const [t,m,tier,revision]=args;state.set(key(t,m),{tier,revision});return [{affectedRows:1}];}
+   if(sql.startsWith('UPDATE sbc_am_workstation_profile_v2')){const [tier,revision,actor,t,m,expected]=args;if(state.get(key(t,m))?.revision!==expected)return [{affectedRows:0}];state.set(key(t,m),{tier,revision});return [{affectedRows:1}];}
+   if(sql.startsWith('INSERT INTO sbc_commission_audit_v1')){audit.push(args);return [{affectedRows:1}];}
+   throw Error('unexpected SQL '+sql);
+  }};
+ const pool={query:conn.query,getConnection:async()=>conn};
+ ROUTE.register({get:(p,a,f)=>handlers.set('GET '+p,f),post:(p,a,f)=>handlers.set('POST '+p,f)},{
+  auth:()=>{},getContext:()=>({db,mysqlPool:pool,recoveryRequired:()=>false}),tenantForRead:req=>req.tenantId,writer:()=>{}
+ });
+ const uri='/api/owner/sales-command/workstation/profile',owner={id:'owner',role:'owner',tenantId:1};
+ const call=async(method,path,user,body={},query={})=>{let code=200,json;const res={setHeader(){},status(n){code=n;return this},json(v){json=v;return this}};await handlers.get(method+' '+path)({tenantId:1,user,body,query},res);return {code,json};};
+ const base={managerId:'m1',tier:'standard',expectedRevision:0,confirm:'OWNER_CONFIRMED_WORKSTATION_TIER'};
+ assert.equal((await call('POST',uri,owner,base)).code,200);
+ assert.deepEqual(state.get('1:m1'),{tier:'standard',revision:1});
+ assert.equal((await call('POST',uri,owner,base)).code,409);
+ assert.equal((await call('POST',uri,owner,{...base,tier:'senior',expectedRevision:1})).code,422);
+ assert.equal((await call('POST',uri,owner,{...base,tier:'senior',expectedRevision:1,bilingualEvidenceConfirmed:true})).code,200);
+ assert.deepEqual(state.get('1:m1'),{tier:'senior',revision:2});
+ const self=await call('GET','/api/sbc/sales/workstation/me',{id:'m1',role:'account_manager',tenantId:1});
+ assert.equal(self.json.profile.weeklyQuotaCents,100000);assert.equal(self.json.profile.spanishAccessGranted,false);
+ assert.equal((await call('POST',uri,owner,{...base,managerId:'m2'})).code,422);
+ assert.equal(audit.length,2);assert(audit.every(x=>x[1]===1&&x[2]==='m1'&&x[4]==='WORKSTATION_PROFILE_CONFIGURED'));
+ assert.equal(transactions.filter(x=>x==='commit').length,2);
+ assert.equal(transactions.filter(x=>x==='rollback').length,1);
+});
