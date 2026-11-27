@@ -17,7 +17,7 @@ const checks={
  mount_does_not_fetch:mount.includes('render();')&&!/\b(?:loadStatus|fetch|api)\s*\(/.test(mount)&&mount.includes("if(window.state?.view==='notifications'&&!lastHistory&&!historyError)loadHistory();")&&history.includes("if(window.state?.view!=='notifications'||historyInFlight||!force&&(lastHistory||historyError))return;")&&history.includes('historyInFlight=true;'),
  notification_poll_reduced:/setInterval\(\(\)=>\{if\(document\.visibilityState==='visible'&&shouldShow\(\)\)loadStatus\(\);\},60000\)/.test(notifications),
  cinematic_cache_busted:bundle.files.includes('v569-cinematic.js')&&html.split('/'+bundle.filename).length===2&&fs.readFileSync(path.join(root,'public',bundle.filename),'utf8')===bundle.content&&!html.includes('src="/v569-cinematic.js'),
- notification_cache_busted:html.split('/sbc-unattended-notifications-v6504.js?v=66.0.87-durable-destinations').length===2,
+ notification_cache_busted:html.split('/sbc-unattended-notifications-v6504.js?v=66.0.88-focused-home').length===2,
  recovery_guard_ui_preserved:notifications.includes("api('/api/owner/recovery/status')")&&notifications.includes('No data changed.'),
  owner_authorization_preserved:cinematic.includes('/api/v5691/financial/approve/')&&cinematic.includes('if(!c.lockId)return')
 };
