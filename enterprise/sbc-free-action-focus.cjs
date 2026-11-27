@@ -6,7 +6,7 @@
  */
 const ID=/^[A-Za-z0-9_.:-]{3,80}$/;
 const SUPPRESSED=/^(?:do not call|do not contact|dnc|opt out|unsubscribe|bad number|wrong number|lost)$/i;
-const CLOSED=/^(?:deleted|archived)$/i;
+const CLOSED=/^(?:deleted|archived|duplicate)$/i;
 const MS_DAY=86400000;
 const clean=(v,n)=>String(v??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,n);
 function easternToday(date=new Date()){

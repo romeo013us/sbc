@@ -47,6 +47,7 @@ async function commitStage({order,stage,pool,saveData,paid,stamp=new Date().toIS
   order.status=vals[0];order.fulfillmentStatus=vals[1];order.updatedAt=stamp;
   const result=await saveData();
   if(result?.skipped===true)throw fail('FULFILLMENT_WRITER_READ_ONLY');
+  if(result===false||result?.ok===false||result?.persisted===false)throw fail('FULFILLMENT_COMMIT_NOT_ACKNOWLEDGED');
   const [rows]=await pool.query(
    'SELECT status,fulfillment_status FROM sbc_orders WHERE id=? AND tenant_id=? LIMIT 1',
    [String(order.id),tid]);

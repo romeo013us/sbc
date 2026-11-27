@@ -85,8 +85,10 @@ function createRecovery(service,{enabled=()=>false,senders={}}={}){
    // Recheck after the durable claim and before reaching the provider.
    const current=(db.customers||[]).find(c=>sameTenant(c,tid)&&c.id===item.customerId),meeting=(db.appointments||[]).find(a=>sameTenant(a,tid)&&a.id===item.appointmentId);
    let result,status='UNKNOWN',providerId='';
+   const dispatchTime=Date.parse(now()),scheduledTime=Date.parse(item.scheduledSendAt),maxLag=item.kind==='confirmation'?3600000:900000;
+   const inDispatchWindow=Number.isFinite(dispatchTime)&&Number.isFinite(scheduledTime)&&dispatchTime>=scheduledTime&&dispatchTime-scheduledTime<=maxLag;
    try{
-    if(!current||!meeting||!eligible(current,meeting,item.channel)||hash(channelTarget(current,item.channel))!==hash(channelTarget(claimed.customer,item.channel))||meeting.startAt!==claimed.appointment.startAt||quiet())status='CANCELLED_BEFORE_SEND';
+    if(!current||!meeting||!eligible(current,meeting,item.channel)||hash(channelTarget(current,item.channel))!==hash(channelTarget(claimed.customer,item.channel))||meeting.startAt!==claimed.appointment.startAt||!inDispatchWindow||quiet())status='CANCELLED_BEFORE_SEND';
     else{
      const time=new Date(meeting.startAt).toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'medium',timeStyle:'short'});
      const message='SBC appointment '+(item.kind==='confirmation'?'confirmation':'reminder')+': '+time+' Eastern. '+safeMeetingLink(meeting.meetingUrl||meeting.location)+' Manage your appointment securely: '+service.publicOrigin+'/account.php';

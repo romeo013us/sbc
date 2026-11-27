@@ -66,3 +66,9 @@ assert.equal(desk.lanes[3].decisionCount,1);
 assert.equal(desk.lanes.reduce((n,x)=>n+x.decisionCount,0),desk.total);
 assert.equal(desk.lanes.reduce((n,x)=>n+x.recordCount,0),48);
 assert(!JSON.stringify(desk.lanes).includes('305555'));
+
+// Closed and duplicate records must not crowd either active daily workspace.
+for(const role of ['owner','account_manager']){
+ const active=planActions({tenantId,actor:{id:'manager_001',role,active:true},today,rows:[row(9100,{assigned_to:'manager_001',follow_up:'2026-11-20'}),row(9101,{assigned_to:'manager_001',status:' Duplicate ',follow_up:'2026-11-19'}),row(9102,{assigned_to:'manager_001',status:'Archived',follow_up:'2026-11-19'})]});
+ assert.equal(active.total,1);assert.equal(active.actions[0].accountId,'lead_09100');
+}
