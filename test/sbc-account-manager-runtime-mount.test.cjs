@@ -62,3 +62,26 @@ test('staged GoDaddy ZIP must include role authorization and employee onboarding
  assert(fs.existsSync(path.join(ROOT,'public/sbc-account-manager-v1.html')));
  assert(fs.existsSync(path.join(ROOT,'public/sbc-account-manager-v1.js')));
 });
+
+test('account manager sign-out is visible even when optional services fail and uses the authenticated server logout',()=>{
+ for(const dir of ['public','browser_public']){
+  const html=read(dir+'/sbc-account-manager-v1.html'),js=read(dir+'/sbc-account-manager-v1.js');
+  assert.match(html,/<button[^>]*id="amSignOut"[^>]*>/);
+  assert.match(js,/\$\('amSignOut'\)\.addEventListener\('click',signOut\)/);
+  assert.match(js,/fetch\('\/api\/logout',[\s\S]*?method:'POST'/);
+  assert.match(js,/signedOut!==true/);
+  assert.match(js,/location\.replace\('\/'\)/);
+ }
+});
+test('optional research and social errors remain local to their panels, not the CRM authorization state',()=>{
+ for(const dir of ['public','browser_public']){
+  const js=read(dir+'/sbc-account-manager-v1.js');
+  const load=js.slice(js.indexOf('async function load(){'),js.indexOf('function openAccount('));
+  assert.match(load,/renderAccountGrid\(\)/);
+  assert.match(load,/void loadHandoffs\(\)/);
+  assert.doesNotMatch(load,/await api\('\/api\/account-social\/v1\/research\/queue'\)/);
+  assert.doesNotMatch(load,/await socialLoad\(\)/);
+  assert.match(js,/handoffStatus='unavailable'/);
+  assert.match(js,/Research handoffs unavailable/);
+ }
+});
