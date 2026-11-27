@@ -281,3 +281,20 @@ test('employee award history is self-scoped, read-only and excludes private owne
  assert.equal((await env.call('POST','/api/owner/sales-command/workforce/awards',user)).code,403);
  assert.equal((await env.call('POST','/api/owner/sales-command/workforce/awards',{id:'owner',role:'owner',tenantId:1})).code,423);
 });
+
+test('trial academy snapshot uses existing server training state, not submitted scores or other employee ids',async()=>{
+ const env=setup(true);const m={id:'m1',role:'account_manager',tenantId:1};
+ const uri='/api/sbc/sales/workforce/academy/me';
+ const r=await env.call('GET',uri,m,{}, {managerId:'m2',ready:true,score:100});
+ assert.equal(r.code,200);assert.equal(r.json.academy.completedModules,0);assert.equal(r.json.academy.totalModules,12);
+ assert.equal(r.json.academy.certified,false);assert.equal(r.json.academy.trainingMinutes,0);
+ assert.equal(r.json.academy.earnedPayUnaffected,true);assert.equal(env.writes,0);
+ assert.equal((await env.call('GET',uri,{...m,tenantId:2})).code,403);
+ const owner=await env.call('GET','/api/owner/sales-command/workforce/academy',{id:'owner',role:'owner',tenantId:1},{},{managerId:'m1'});
+ assert.equal(owner.code,200);assert.deepEqual(owner.json.academy,r.json.academy);
+ assert.equal((await env.call('GET','/api/owner/sales-command/workforce/academy',m,{},{managerId:'m1'})).code,403);
+ assert.equal(ROLE.allowed('GET',uri),true);assert.equal(ROLE.allowed('POST',uri),false);
+ const G=require('../enterprise/sbc-am-academy-gates-v1.cjs');
+ assert.equal(G.isTrainingSafeRoute('GET',uri),true);assert.equal(G.isTrainingSafeRoute('POST',uri),false);
+ assert.equal(G.isTrainingSafeRoute('GET','/api/owner/sales-command/workforce/academy'),false);
+});
