@@ -46,6 +46,14 @@
    else for(const a of d.awards){const item=document.createElement('p');item.textContent=(labels[a.code]||a.code)+' · '+(a.periodKey==='LIFETIME'?'Milestone':a.periodKey);awardNode.append(item);}
   }catch{if(seq===awardRead){status.textContent='Achievement history unavailable.';awardNode.replaceChildren(heading,status);}}
  }
+ const academyNode=document.getElementById('sbcMyAcademyReadiness');let academyRead=0;
+ async function loadAcademy(){
+  if(!academyNode)return;const seq=++academyRead;
+  try{const r=await fetch('/api/sbc/sales/workforce/academy/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const d=await r.json();if(!r.ok||d.ok!==true)throw Error('UNAVAILABLE');if(seq!==academyRead)return;
+   const a=d.academy;academyNode.textContent='Academy 360 · '+a.completedModules+'/'+a.totalModules+' modules · '+(a.certified?'Certified':'Certification pending')+' · '+a.trainingMinutes+' / '+a.approvedMinutes+' training minutes'+(a.ownerReviewRequired?' · Owner review required':'')+'. Training budget does not cap earned pay.';
+  }catch{if(seq===academyRead)academyNode.textContent='Academy readiness unavailable.';}
+ }
  function renderProfile(){
   if(!profileNode)return;
   const es=document.documentElement.lang==='es';
@@ -86,8 +94,8 @@
    current=json;render();
   }catch{current=null;render();}
  }
- document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();void loadTrial();void loadAwards();});
- document.getElementById('refresh')?.addEventListener('click',()=>{void loadProfile();void loadTrial();void loadAwards();});
+ document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();void loadTrial();void loadAwards();void loadAcademy();});
+ document.getElementById('refresh')?.addEventListener('click',()=>{void loadProfile();void loadTrial();void loadAwards();void loadAcademy();});
  for(const id of ['lang-en','lang-es'])document.getElementById(id)?.addEventListener('click',()=>setTimeout(render,0));
- load();void loadProfile();void loadTrial();void loadAwards();
+ load();void loadProfile();void loadTrial();void loadAwards();void loadAcademy();
 })();

@@ -125,7 +125,7 @@
  };
  const ask=message=>window.confirm(message);
  let profileSnapshot=null,profileRequest=0;
- function resetProfile(){profileRequest++;profileSnapshot=null;$('workstationSave').disabled=true;$('workstationBilingual').checked=false;}
+ function resetProfile(){profileRequest++;profileSnapshot=null;$('workstationSave').disabled=true;$('promotionReview').disabled=true;for(const id of ['workstationBilingual','promotionLedger','promotionTrial','promotionQuality','promotionReliability'])$(id).checked=false;$('promotionAgreement').value='';$('promotionStatus').textContent='Load and review employee evidence.';$('workstationAcademy').textContent='Academy readiness not loaded.';}
  async function loadProfile(){
   resetProfile();const seq=profileRequest,managerId=$('workstationManager').value,status=$('workstationStatus');
   if(!managerId){status.textContent='Choose an active Account Manager first.';return;}
@@ -135,18 +135,37 @@
    profileSnapshot={managerId,revision:data.profile.revision};$('workstationTier').value=data.profile.tier||'standard';
    status.textContent=data.profile.tier?'Current profile: '+data.profile.tier+' · revision '+data.profile.revision:'No profile configured. Select a tier and confirm.';
    $('workstationSave').disabled=false;
+   $('promotionReview').disabled=false;
+   try{
+    const a=await api('/api/owner/sales-command/workforce/academy?managerId='+encodeURIComponent(managerId));
+    if(seq===profileRequest){const r=a.academy;$('workstationAcademy').textContent='Academy: '+r.completedModules+'/'+r.totalModules+' modules · '+(r.certified?'Certified':'Not certified')+' · '+r.trainingMinutes+' training minutes'+(r.ownerReviewRequired?' · Owner review required':'');}
+   }catch(err){if(seq===profileRequest)$('workstationAcademy').textContent='Academy readiness unavailable: '+err.message;}
+
   }catch(e){if(seq===profileRequest)status.textContent='Profile unavailable: '+e.message+' · Check the approved workstation schema and owner access.';}
  }
  $('workstationManager').addEventListener('change',loadProfile);
  $('workstationLoad').addEventListener('click',loadProfile);
+ function promotionInputs(){
+  return {ledgerReviewed:$('promotionLedger').checked,trialAccepted:$('promotionTrial').checked,qualityPassed:$('promotionQuality').checked,reliabilityPassed:$('promotionReliability').checked,bilingualEvidenceConfirmed:$('workstationBilingual').checked,agreementReference:$('promotionAgreement').value.trim(),promotionConfirm:'OWNER_APPROVED_EARNED_SENIOR'};
+ }
+ $('promotionReview').addEventListener('click',async()=>{
+  const snapshot=profileSnapshot,seq=profileRequest,out=$('promotionStatus');if(!snapshot)return;
+  const button=$('promotionReview');button.disabled=true;
+  try{const d=await api('/api/owner/sales-command/workforce/senior-review','POST',{managerId:snapshot.managerId,...promotionInputs()});if(seq!==profileRequest)return;
+   const r=d.review;out.textContent=(r.eligible?'Eligible for owner review.':'Not yet eligible: '+r.missing.join(', '))+ ' · Completed weeks '+r.startDate+' to '+r.endDate+' · '+r.weeklyRevenueCents.map(money).join(' / ')+'. Proposed criteria; no promotion or pay change.';
+  }catch(err){if(seq===profileRequest)out.textContent='Senior review unavailable: '+err.message;}
+  finally{if(seq===profileRequest)button.disabled=false;}
+ });
  $('workstationProfileForm').addEventListener('submit',async e=>{
   e.preventDefault();const snapshot=profileSnapshot,tier=$('workstationTier').value,status=$('workstationStatus');
   if(!snapshot||snapshot.managerId!==$('workstationManager').value)return;
   const bilingual=$('workstationBilingual').checked;
   if(tier==='senior'&&!bilingual){status.textContent='Confirm live English and Spanish proficiency before assigning Senior.';return;}
-  if(!ask('Assign this workspace profile? This does not change compensation or calling permissions.'))return;
+  const promotion=promotionInputs();
+  if(tier==='senior'&&(!promotion.ledgerReviewed||!promotion.trialAccepted||!promotion.qualityPassed||!promotion.reliabilityPassed||promotion.agreementReference.length<12)){status.textContent='Complete Senior evidence review and enter the signed agreement reference.';return;}
+  if(!ask('Assign this workspace profile? Senior requires current evidence. This does not change compensation or calling permissions.'))return;
   resetProfile();const seq=profileRequest;
-  try{await api('/api/owner/sales-command/workstation/profile','POST',{managerId:snapshot.managerId,tier,expectedRevision:snapshot.revision,bilingualEvidenceConfirmed:bilingual,confirm:'OWNER_CONFIRMED_WORKSTATION_TIER'});
+  try{await api('/api/owner/sales-command/workstation/profile','POST',{managerId:snapshot.managerId,tier,expectedRevision:snapshot.revision,...promotion,bilingualEvidenceConfirmed:bilingual,confirm:'OWNER_CONFIRMED_WORKSTATION_TIER'});
    if(seq===profileRequest){await loadProfile();if(profileSnapshot?.managerId===snapshot.managerId)status.textContent='Profile saved and reloaded. Signed compensation and calling permissions are unchanged.';}
   }catch(err){if(seq===profileRequest)status.textContent='Profile not saved: '+err.message+'. Reload before retrying.';}
  });

@@ -69,3 +69,11 @@ test('recorded employee awards use explicit owner approval and private self-only
  assert(read('public/sbc-account-manager-v1.html').includes('id="sbcMyAwards"'));
  new (require('node:vm').Script)(owner);new (require('node:vm').Script)(employee);
 });
+
+test('earned senior review and Academy bridge are connected to owner and employee views',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8'),html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js'),emp=read('public/sbc-manager-sales-progress-v1.js');
+ assert(html.includes('id="promotionReview"'));assert(html.includes('id="promotionAgreement"'));
+ assert(js.includes('/api/owner/sales-command/workforce/senior-review'));assert(js.includes('OWNER_APPROVED_EARNED_SENIOR'));
+ assert(emp.includes("fetch('/api/sbc/sales/workforce/academy/me'"));assert(!emp.includes('/api/owner/sales-command/workforce/senior-review'));
+ new (require('node:vm').Script)(js);new (require('node:vm').Script)(emp);
+});
