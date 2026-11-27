@@ -62,3 +62,62 @@ test('staged GoDaddy ZIP must include role authorization and employee onboarding
  assert(fs.existsSync(path.join(ROOT,'public/sbc-account-manager-v1.html')));
  assert(fs.existsSync(path.join(ROOT,'public/sbc-account-manager-v1.js')));
 });
+
+test('account manager sign-out is visible even when optional services fail and uses the authenticated server logout',()=>{
+ for(const dir of ['public','browser_public']){
+  const html=read(dir+'/sbc-account-manager-v1.html'),js=read(dir+'/sbc-account-manager-v1.js');
+  assert.match(html,/<button[^>]*id="amSignOut"[^>]*>/);
+  assert.match(js,/\$\('amSignOut'\)\.addEventListener\('click',signOut\)/);
+  assert.match(js,/fetch\('\/api\/logout',[\s\S]*?method:'POST'/);
+  assert.match(js,/signedOut!==true/);
+  assert.match(js,/location\.replace\('\/'\)/);
+ }
+});
+test('optional research and social errors remain local to their panels, not the CRM authorization state',()=>{
+ for(const dir of ['public','browser_public']){
+  const js=read(dir+'/sbc-account-manager-v1.js');
+  const load=js.slice(js.indexOf('async function load(){'),js.indexOf('function openAccount('));
+  assert.match(load,/renderAccountGrid\(\)/);
+  assert.match(load,/void loadHandoffs\(\)/);
+  assert.doesNotMatch(load,/await api\('\/api\/account-social\/v1\/research\/queue'\)/);
+  assert.doesNotMatch(load,/await socialLoad\(\)/);
+  assert.match(js,/handoffStatus='unavailable'/);
+  assert.match(js,/Research handoffs unavailable/);
+ }
+});
+
+test('sign-out sends one POST and returns to login only after confirmed success',async()=>{
+ const vm=require('node:vm');
+ const js=read('public/sbc-account-manager-v1.js');
+ const fn=js.slice(js.indexOf('async function signOut(){'),js.indexOf('async function load(){'));
+ assert(fn.startsWith('async function signOut(){'));
+ for(const scenario of ['success','unconfirmed','network','activeCall']){
+  const button={disabled:false},workspace={hidden:false},requests=[],locations=[],messages=[];
+  const state={role:'account_manager',accounts:[{id:'account1'}],handoffs:[],channels:[],posts:[],accountAppointments:[],lang:'en'};
+  const sandbox={state,pendingQuick:null,$:()=>button,document:{getElementById:()=>workspace},
+   window:{SBCCallCommandLiveV3:{isBusy:()=>scenario==='activeCall'},SBCCallCommand:{clear(){}}},
+   location:{replace:url=>locations.push(url)},message:msg=>messages.push(msg),
+   fetch:async(url,options)=>{requests.push([url,options]);if(scenario==='network')throw Error('offline');
+    return {ok:true,json:async()=>({ok:true,signedOut:scenario==='success'})};}};
+  await vm.runInNewContext(fn+';signOut()',sandbox);
+  assert.equal(requests.length,scenario==='activeCall'?0:1);
+  if(requests.length){assert.equal(requests[0][0],'/api/logout');assert.equal(requests[0][1].method,'POST');}
+  assert.equal(workspace.hidden,scenario==='success');
+  assert.deepEqual(locations,scenario==='success'?['/']:[]);
+  assert.equal(state.role,scenario==='success'?'':'account_manager');
+  if(scenario!=='success'){assert.equal(button.disabled,false);assert.equal(messages.length,1);}
+ }
+});
+
+test('Account Manager displays the same local SBC brand image as the owner dashboard',()=>{
+ const owner=read('public/index.html').match(/<img class="brand-logo" src="([^"]+)"/);
+ assert(owner,'owner brand image missing');
+ for(const dir of ['public','browser_public']){
+  const html=read(dir+'/sbc-account-manager-v1.html');
+  const logo=html.match(/<img class="logo-mark" src="([^"]+)" alt="Successful By Choice"/);
+  assert(logo,'actual company image required instead of a monogram');
+  assert.equal(logo[1],owner[1]);
+  assert(fs.existsSync(path.join(ROOT,dir,logo[1].slice(1))));
+  assert(!html.includes('aria-hidden="true">S</span>'));
+ }
+});
