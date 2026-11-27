@@ -58,3 +58,14 @@ test('owner payroll and recognition previews are wired without payment or automa
  assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));
  new (require('node:vm').Script)(js);
 });
+
+test('recorded employee awards use explicit owner approval and private self-only history',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const owner=read('public/sbc-sales-command-v1.js'),employee=read('public/sbc-manager-sales-progress-v1.js');
+ assert(owner.includes('OWNER_CONFIRMED_NONFINANCIAL_AWARD'));
+ assert(owner.includes('/api/owner/sales-command/workforce/awards'));
+ assert(employee.includes("fetch('/api/sbc/sales/workforce/awards/me'"));
+ assert(!employee.includes('/api/owner/sales-command/workforce/awards'));
+ assert(read('public/sbc-account-manager-v1.html').includes('id="sbcMyAwards"'));
+ new (require('node:vm').Script)(owner);new (require('node:vm').Script)(employee);
+});

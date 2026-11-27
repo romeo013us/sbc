@@ -198,19 +198,37 @@
  });
  let recognitionEpoch=0;
  function resetRecognition(){
-  recognitionEpoch++;for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).checked=false;
+  recognitionEpoch++;$('recognitionAwardActions').replaceChildren();for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).checked=false;
   $('recognitionResult').textContent='Review the selected periods and manager before attesting evidence.';
  }
  for(const id of ['recognitionManager','recognitionWeek','month'])$(id).addEventListener('change',resetRecognition);
+ for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).addEventListener('change',()=>{recognitionEpoch++;$('recognitionAwardActions').replaceChildren();$('recognitionResult').textContent='Evidence changed. Review eligibility again.';});
  $('recognitionForm').addEventListener('submit',async e=>{
   e.preventDefault();const out=$('recognitionResult'),button=$('recognitionRun');if(button.disabled)return;
   const seq=++recognitionEpoch,managerId=$('recognitionManager').value,month=$('month').value,weekStart=$('recognitionWeek').value;
-  button.disabled=true;out.textContent='Reading reconciled sales and signed terms…';
+  button.disabled=true;$('recognitionAwardActions').replaceChildren();out.textContent='Reading reconciled sales and signed terms…';
   try{
    const d=await api('/api/owner/sales-command/workforce/recognition','POST',{managerId,month,weekStart,ledgerComplete:$('recognitionLedger').checked,qualityReviewed:$('recognitionQualityReviewed').checked,qualityPassed:$('recognitionQualityPassed').checked});
    if(seq!==recognitionEpoch)return;
    const names={RISING_STAR:'Rising Star',CERTIFIED_CLOSER:'Certified Closer',REVENUE_CHAMPION:'Revenue Champion',ELITE:'Elite Account Manager',PRESIDENTS_CLUB:"President’s Club"};
    const awards=d.result.eligibleForOwnerReview.map(x=>names[x]||x);
+   const actions=$('recognitionAwardActions');
+   const evidence={managerId,month,weekStart,ledgerComplete:$('recognitionLedger').checked,qualityReviewed:$('recognitionQualityReviewed').checked,qualityPassed:$('recognitionQualityPassed').checked};
+   for(const awardCode of d.result.eligibleForOwnerReview){
+    const grant=make('button','Record '+(names[awardCode]||awardCode));grant.type='button';
+    grant.addEventListener('click',async()=>{
+     if(seq!==recognitionEpoch||grant.disabled)return;
+     if(!evidence.ledgerComplete||!evidence.qualityReviewed||!evidence.qualityPassed)return;
+     if(!ask('Record this nonfinancial achievement for the selected employee? A closed statement and current evidence will be rechecked.'))return;
+     grant.disabled=true;
+     try{
+      await api('/api/owner/sales-command/workforce/awards','POST',{...evidence,awardCode,confirm:'OWNER_CONFIRMED_NONFINANCIAL_AWARD'});
+      if(seq===recognitionEpoch){grant.textContent='Recorded: '+(names[awardCode]||awardCode);out.append(make('p','Achievement recorded. No pay or promotion change.'));}
+     }catch(err){if(seq===recognitionEpoch){grant.disabled=false;out.append(make('p','Award not recorded: '+err.message));}}
+    });
+    actions.append(grant);
+   }
+
    out.replaceChildren(make('p','Recorded sales: week '+money(d.weeklyRevenueCents)+' · month '+money(d.monthlyRevenueCents)),make('p',awards.length?'Eligible for owner review: '+awards.join(' · '):'No eligible achievements on the submitted evidence.'),make('p','No award granted. Owner attestations are not independent verification. No compensation or promotion change.'));
   }catch(err){if(seq===recognitionEpoch)out.textContent='Recognition review unavailable: '+err.message;}
   finally{if(seq===recognitionEpoch)button.disabled=!managers.some(r=>r.active);else if(button.disabled&&managers.some(r=>r.active))button.disabled=false;}

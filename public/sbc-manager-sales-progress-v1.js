@@ -30,6 +30,22 @@
   }catch{if(seq===trialRead)trialNode.textContent='Paid trial progress unavailable. Ask the owner to verify your enrollment.';}
  }
 
+ const awardNode=document.getElementById('sbcMyAwards');let awardRead=0;
+ async function loadAwards(){
+  if(!awardNode)return;const seq=++awardRead;
+  const heading=document.createElement('h3');heading.textContent='My achievements';
+  const status=document.createElement('p');status.textContent='Checking your achievement history…';
+  awardNode.replaceChildren(heading,status);
+  try{
+   const r=await fetch('/api/sbc/sales/workforce/awards/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const d=await r.json();if(!r.ok||d.ok!==true||!Array.isArray(d.awards))throw Error('UNAVAILABLE');
+   if(seq!==awardRead)return;
+   const labels={RISING_STAR:'Rising Star',CERTIFIED_CLOSER:'Certified Closer',REVENUE_CHAMPION:'Revenue Champion',ELITE:'Elite Account Manager',PRESIDENTS_CLUB:"President’s Club"};
+   awardNode.replaceChildren(heading);
+   if(!d.awards.length){status.textContent='No achievements recorded yet.';awardNode.append(status);}
+   else for(const a of d.awards){const item=document.createElement('p');item.textContent=(labels[a.code]||a.code)+' · '+(a.periodKey==='LIFETIME'?'Milestone':a.periodKey);awardNode.append(item);}
+  }catch{if(seq===awardRead){status.textContent='Achievement history unavailable.';awardNode.replaceChildren(heading,status);}}
+ }
  function renderProfile(){
   if(!profileNode)return;
   const es=document.documentElement.lang==='es';
@@ -70,8 +86,8 @@
    current=json;render();
   }catch{current=null;render();}
  }
- document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();void loadTrial();});
- document.getElementById('refresh')?.addEventListener('click',()=>{void loadProfile();void loadTrial();});
+ document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();void loadTrial();void loadAwards();});
+ document.getElementById('refresh')?.addEventListener('click',()=>{void loadProfile();void loadTrial();void loadAwards();});
  for(const id of ['lang-en','lang-es'])document.getElementById(id)?.addEventListener('click',()=>setTimeout(render,0));
- load();void loadProfile();void loadTrial();
+ load();void loadProfile();void loadTrial();void loadAwards();
 })();
