@@ -1,9 +1,9 @@
 {
-  "sourceCommit": "1c95008e4654044bd811fa625203a8def56b605b",
-  "sourceFingerprint": "c0644df972aee772f0204de2049f769a0d06418682fcf67cdd2d31ab5fcfadca",
+  "sourceCommit": "98c5b185a0078b44bfa4a673db6c2dee52ae4806",
+  "sourceFingerprint": "a8eaa0927a6a19b89aecdb9fe12526a3d1970c477a7ff71b63c4ad81dabc3e23",
   "artifactType": "server.js",
-  "artifactSha256": "eec80a7261a1b704f9e472a17ec59d8a730541b0c7d8aa57c0186a63ba94f0cf",
+  "artifactSha256": "a92d1f6c768137683c9016c42ba6dd821cef2cb5d2d7fe0e77ec26aefc2f047f",
   "buildBranch": "a-sbc-master",
   "deployBranch": "a-sbc-master",
-  "createdBy": "SBC V66 Verified Master Release GitHub Actions"
+  "createdBy": "SBC native campaigns release build"
 }
