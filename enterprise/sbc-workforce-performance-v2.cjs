@@ -48,4 +48,18 @@ function trialPlan({startDate,tiers,reserveCents}={}){
   enrollmentAuthorized:false,payrollInitiated:false,ownerReviewRequired:true,
   limitations:'Planned six-hour weekdays only; actual earned hours and applicable pay rules govern. Reserve excludes commissions, fees and other liabilities. No payday inferred until signed schedule is reviewed.'};
 }
-module.exports={POLICY,review,miamiDay,trialPlan};
+function enrollmentPlan(input={}){
+ if(input.confirm!=='OWNER_CONFIRMED_PAID_TRIAL'||input.signedTermsConfirmed!==true||input.payScheduleReviewed!==true||input.fairOpportunityConfirmed!==true)throw Error('TRIAL_CONFIRMATION_REQUIRED');
+ if(!Array.isArray(input.members)||input.members.length<1||input.members.length>2)throw Error('INVALID_TRIAL_TIERS');
+ const seen=new Set();
+ const members=input.members.map(m=>{
+  if(!m||typeof m.managerId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/.test(m.managerId))throw Error('INVALID_SALES_IDENTIFIER');
+  if(seen.has(m.managerId))throw Error('DUPLICATE_TRIAL_MANAGER');seen.add(m.managerId);
+  if(typeof m.agreementReference!=='string'||m.agreementReference.trim().length<12||m.agreementReference.length>180)throw Error('SIGNED_TRIAL_AGREEMENT_REQUIRED');
+  return {managerId:m.managerId,tier:m.tier,agreementReference:m.agreementReference.trim()};
+ });
+ const plan=trialPlan({startDate:input.startDate,tiers:members.map(m=>m.tier),reserveCents:input.reserveCents});
+ if(plan.reserveCoversPlannedBase!==true)throw Error('TRIAL_RESERVE_INSUFFICIENT');
+ return {plan,members};
+}
+module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan};
