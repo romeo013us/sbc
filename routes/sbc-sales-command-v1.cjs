@@ -210,19 +210,65 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,readOnly:true,awards:await awardHistory(ctx,t,m)});}
   catch(e){return error(res,e)}
  });
- // Reconcile actual owner-reviewed payable minutes against the immutable enrolled tier.
+ // Payroll liability survives worker deactivation. No transfer capability.
+ function payrollStaff(ctx,t,m){
+  const u=(ctx.db.users||[]).find(u=>String(u.id)===m&&u.role==='account_manager'&&Number(u.tenantId??u.tenant_id)===t);
+  if(!u)throw Error('INVALID_PAYROLL_WORKER');return u;
+ }
+ async function calculateTrialPayroll(ctx,t,m,b,pool=ctx.mysqlPool){
+  const [rows]=await pool.query('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2 m JOIN sbc_am_trial_cohort_v2 c ON c.tenant_id=m.tenant_id AND c.cohort_id=m.cohort_id WHERE m.tenant_id=? AND m.manager_id=? LIMIT 1',[t,m]);
+  if(rows.length!==1)throw Error('SIGNED_TRIAL_ENROLLMENT_REQUIRED');
+  const row=rows[0];
+  if(WORKFORCE.trialPlan({startDate:row.start_day,tiers:[row.tier]}).endDate!==row.end_day)throw Error('INVALID_TRIAL_RECORD');
+  const p=WORKFORCE.trialPayroll({tier:row.tier,startDate:row.start_day,periodIndex:b.periodIndex,trainingMinutes:b.trainingMinutes,otherPaidMinutes:b.otherPaidMinutes,hoursReviewed:b.hoursReviewed,signedRateConfirmed:b.signedRateConfirmed});
+  if(p.periodEnd>=WORKFORCE.miamiDay(new Date()))throw Error('INVALID_PAYROLL_REQUIRES_COMPLETED_PERIOD');
+  return p;
+ }
  app.post('/api/owner/sales-command/workforce/payroll-preview',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
-  try{
-   const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
-   const [rows]=await ctx.mysqlPool.query('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2 m JOIN sbc_am_trial_cohort_v2 c ON c.tenant_id=m.tenant_id AND c.cohort_id=m.cohort_id WHERE m.tenant_id=? AND m.manager_id=? LIMIT 1',[t,m]);
-   if(rows.length!==1)throw Error('SIGNED_TRIAL_ENROLLMENT_REQUIRED');
-   const row=rows[0];
-   if(WORKFORCE.trialPlan({startDate:row.start_day,tiers:[row.tier]}).endDate!==row.end_day)throw Error('INVALID_TRIAL_RECORD');
-   const payroll=WORKFORCE.trialPayroll({tier:row.tier,startDate:row.start_day,periodIndex:b.periodIndex,trainingMinutes:b.trainingMinutes,otherPaidMinutes:b.otherPaidMinutes,hoursReviewed:b.hoursReviewed,signedRateConfirmed:b.signedRateConfirmed});
-   if(payroll.periodEnd>=WORKFORCE.miamiDay(new Date()))throw Error('INVALID_PAYROLL_REQUIRES_COMPLETED_PERIOD');
-   return res.json({ok:true,readOnly:true,payroll,source:'OWNER_REVIEWED_MINUTES_NOT_INDEPENDENT_CLOCK_VERIFICATION',automaticTransfers:false});
+  try{const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);payrollStaff(ctx,t,m);
+   return res.json({ok:true,readOnly:true,payroll:await calculateTrialPayroll(ctx,t,m,b),source:'OWNER_REVIEWED_MINUTES_NOT_INDEPENDENT_CLOCK_VERIFICATION',automaticTransfers:false});
   }catch(e){return error(res,e)}
+ });
+ function basePayrollView(row){
+  return {periodIndex:Number(row.period_index),tier:String(row.tier),periodStart:String(row.period_start),periodEnd:String(row.period_end),
+   trainingMinutes:Number(row.training_minutes),otherPaidMinutes:Number(row.other_paid_minutes),hourlyCents:Number(row.hourly_cents),basePayCents:Number(row.base_pay_cents),
+   status:String(row.status),approvedAt:row.approved_at||null,paidAt:row.paid_at||null,paymentInitiated:false};
+ }
+ app.get('/api/owner/sales-command/workforce/base-payroll',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);payrollStaff(ctx,t,m);
+   const [rows]=await ctx.mysqlPool.query('SELECT * FROM sbc_am_base_payroll_v2 WHERE tenant_id=? AND manager_id=? ORDER BY period_index',[t,m]);
+   return res.json({ok:true,readOnly:true,records:rows.map(basePayrollView)});
+  }catch(e){return error(res,e)}
+ });
+ app.post('/api/owner/sales-command/workforce/base-payroll/approve',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t,actor}=gate(req,'owner',true),b=req.body||{},m=CALC.id(b.managerId);payrollStaff(ctx,t,m);
+   if(b.confirm!=='OWNER_APPROVED_STRAIGHT_TIME_BASE'||b.otherObligationsReviewed!==true||b.legacyPayrollChecked!==true||typeof b.evidenceReference!=='string'||b.evidenceReference.trim().length<12||b.evidenceReference.length>180)throw Error('PAYROLL_APPROVAL_EVIDENCE_REQUIRED');
+   const payroll=await inTx(ctx,async conn=>{
+    const p=await calculateTrialPayroll(ctx,t,m,b,conn);
+    await conn.query('INSERT INTO sbc_am_base_payroll_v2 (tenant_id,manager_id,period_index,tier,period_start,period_end,training_minutes,other_paid_minutes,hourly_cents,base_pay_cents,evidence_hash,approved_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[t,m,p.periodIndex,p.tier,p.periodStart,p.periodEnd,p.trainingMinutes,p.otherPaidMinutes,p.hourlyCents,p.basePayCents,HASH(b.evidenceReference.trim()),actor]);
+    await audit(conn,t,m,p.periodEnd.slice(0,7),'TRIAL_BASE_PAY_APPROVED',actor,{periodIndex:p.periodIndex,basePayCents:p.basePayCents,hoursOwnerReviewed:true,otherObligationsReviewed:true,legacyPayrollChecked:true});
+    return p;
+   });
+   return res.status(201).json({ok:true,payroll,status:'APPROVED',paymentInitiated:false});
+  }catch(e){if(e?.code==='ER_DUP_ENTRY')return fail(res,409,'BASE_PAYROLL_ALREADY_APPROVED');return error(res,e)}
+ });
+ app.post('/api/owner/sales-command/workforce/base-payroll/record-paid',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t,actor}=gate(req,'owner',true),b=req.body||{},m=CALC.id(b.managerId);payrollStaff(ctx,t,m);
+   if(b.confirm!=='OWNER_RECORD_ALREADY_SENT_BASE_PAY'||!Number.isInteger(b.periodIndex)||b.periodIndex<0||b.periodIndex>2||typeof b.paymentReference!=='string'||b.paymentReference.trim().length<12||b.paymentReference.length>180||!Number.isSafeInteger(b.amountCents)||b.amountCents<=0)throw Error('INVALID_EXTERNAL_BASE_PAY_RECORD');
+   await inTx(ctx,async conn=>{
+    const [rows]=await conn.query('SELECT * FROM sbc_am_base_payroll_v2 WHERE tenant_id=? AND manager_id=? AND period_index=? FOR UPDATE',[t,m,b.periodIndex]);
+    if(rows.length!==1||rows[0].status!=='APPROVED')throw Object.assign(Error('BASE_PAYROLL_APPROVAL_REQUIRED_OR_ALREADY_RECORDED'),{status:409});
+    const row=rows[0];if(Number(row.base_pay_cents)!==b.amountCents)throw Error('INVALID_EXTERNAL_BASE_PAY_AMOUNT');
+    const [changed]=await conn.query("UPDATE sbc_am_base_payroll_v2 SET status='EXTERNAL_BASE_PAY_RECORDED',payment_hash=?,paid_by=?,paid_at=CURRENT_TIMESTAMP(3) WHERE tenant_id=? AND manager_id=? AND period_index=? AND status='APPROVED'",[HASH(b.paymentReference.trim()),actor,t,m,b.periodIndex]);
+    if(changed.affectedRows!==1)throw Object.assign(Error('BASE_PAYROLL_STATE_CHANGED'),{status:409});
+    await audit(conn,t,m,String(row.period_end).slice(0,7),'EXTERNAL_BASE_PAY_RECORDED',actor,{periodIndex:b.periodIndex,amountCents:b.amountCents,ownerAttested:true,paymentInitiated:false});
+   });
+   return res.json({ok:true,status:'EXTERNAL_BASE_PAY_RECORDED',paymentInitiated:false,independentlyVerified:false});
+  }catch(e){if(e?.code==='ER_DUP_ENTRY')return fail(res,409,'EXTERNAL_BASE_PAY_REFERENCE_ALREADY_USED');return error(res,e)}
  });
  // Enrollment records a previously signed paid trial, never hires or moves money.
  app.post('/api/owner/sales-command/workforce/enroll',auth,async(req,res)=>{
