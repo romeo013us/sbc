@@ -80,6 +80,7 @@
   const month=$('month').value;
   if(!/^\d{4}-\d{2}$/.test(month))throw Error('SELECT_A_REPORTING_MONTH');
   setActionButtons(false);
+  resetProfile();$('trialEnrollSave').disabled=true;$('trialEnrollReview').disabled=true;$('recognitionRun').disabled=true;resetRecognition();
   notice('Checking Sales Command database readiness…');
   const readiness=await api('/api/owner/sales-command/readiness');
   if(!readiness.ready){
@@ -91,6 +92,9 @@
     :'RESOLVE_MYSQL_RECOVERY_HOLD: staging writer unavailable; no commission actions are enabled.';
    throw Error(reason);
   }
+  try{const s=await api('/api/owner/sales-command/workforce/readiness');
+   $('workforceLaunchSchema').textContent=(s.schemaReady&&s.writeReady?'Workforce schema and writer available.':'Workforce readiness blocked: '+(s.missingTables||[]).join(', ')+(s.writeReady?'':' · writer unavailable'))+' · Live acceptance unverified.';
+  }catch(e){$('workforceLaunchSchema').textContent='Workforce schema check unavailable: '+e.message;}
   notice('Loading tenant-scoped financial records…');
   const [summary,paid]=await Promise.all([
    api('/api/owner/sales-command/overview?month='+encodeURIComponent(month)),
@@ -104,8 +108,18 @@
    ['Calculated commission liability',summary.commissionLiabilityCents,'Not a payment confirmation']
   ]);
   table(managers);
-  for(const id of ['termsManager','creditManager','actionManager'])
+  for(const id of ['termsManager','creditManager','actionManager','workforceManager'])
    options(id,managers,r=>r.name+' · '+r.managerId);
+  options('workstationManager',managers.filter(r=>r.active),r=>r.name+' · '+r.managerId);
+  void loadProfile();
+  options('trialPayrollManager',managers,r=>r.name+(r.active?'':' · inactive')+' · '+r.managerId);
+  resetPayrollPreview();
+  const active=managers.filter(r=>r.active);
+  options('recognitionManager',active,r=>r.name+' · '+r.managerId);
+  $('recognitionRun').disabled=!active.length;
+  options('trialEnrollFirst',active,r=>r.name+' · '+r.managerId);
+  options('trialEnrollSecond',[{managerId:'',name:'None'},...active],r=>r.name);
+  $('trialEnrollSave').disabled=!active.length;$('trialEnrollReview').disabled=!active.length;
   options('creditOrder',candidates,r=>r.orderId+' · '+money(r.grossCents));
   setActionButtons(true);
   notice('Loaded '+managers.length+' manager(s), '+candidates.length+
@@ -115,15 +129,226 @@
   try{await action();notice(message);await refresh()}catch(e){notice('Action not completed: '+e.message,true)}
  };
  const ask=message=>window.confirm(message);
+ let profileSnapshot=null,profileRequest=0;
+ function resetProfile(){profileRequest++;profileSnapshot=null;$('workstationSave').disabled=true;$('promotionReview').disabled=true;$('coachingReview').disabled=true;$('coachingLedger').checked=false;$('coachingResult').textContent='Load an employee for coaching review.';for(const id of ['workstationBilingual','promotionLedger','promotionTrial','promotionQuality','promotionReliability'])$(id).checked=false;$('promotionAgreement').value='';$('promotionStatus').textContent='Load and review employee evidence.';$('workstationAcademy').textContent='Academy readiness not loaded.';}
+ async function loadProfile(){
+  resetProfile();const seq=profileRequest,managerId=$('workstationManager').value,status=$('workstationStatus');
+  if(!managerId){status.textContent='Choose an active Account Manager first.';return;}
+  status.textContent='Loading current profile…';
+  try{const data=await api('/api/owner/sales-command/workstation/profile?managerId='+encodeURIComponent(managerId));
+   if(seq!==profileRequest||managerId!==$('workstationManager').value)return;
+   profileSnapshot={managerId,revision:data.profile.revision};$('workstationTier').value=data.profile.tier||'standard';
+   status.textContent=data.profile.tier?'Current profile: '+data.profile.tier+' · revision '+data.profile.revision:'No profile configured. Select a tier and confirm.';
+   $('workstationSave').disabled=false;
+   $('promotionReview').disabled=false;$('coachingReview').disabled=false;
+   try{
+    const a=await api('/api/owner/sales-command/workforce/academy?managerId='+encodeURIComponent(managerId));
+    if(seq===profileRequest){const r=a.academy;$('workstationAcademy').textContent='Academy: '+r.completedModules+'/'+r.totalModules+' modules · '+(r.certified?'Certified':'Not certified')+' · '+r.trainingMinutes+' training minutes'+(r.ownerReviewRequired?' · Owner review required':'');}
+   }catch(err){if(seq===profileRequest)$('workstationAcademy').textContent='Academy readiness unavailable: '+err.message;}
+
+  }catch(e){if(seq===profileRequest)status.textContent='Profile unavailable: '+e.message+' · Check the approved workstation schema and owner access.';}
+ }
+ $('workstationManager').addEventListener('change',loadProfile);
+ $('workstationLoad').addEventListener('click',loadProfile);
+ $('coachingReview').addEventListener('click',async()=>{
+  const snap=profileSnapshot,seq=profileRequest,out=$('coachingResult');if(!snap)return;
+  const btn=$('coachingReview');btn.disabled=true;
+  try{const d=await api('/api/owner/sales-command/workforce/coaching-review','POST',{managerId:snap.managerId,ledgerReviewed:$('coachingLedger').checked});
+   if(seq!==profileRequest)return;
+   const labels={REVIEW_PAID_TRAINING:'Review paid training allowance and support',COMPLETE_ACADEMY_AND_PRACTICE:'Complete Academy and practice',CONFIRM_TRIAL_ENROLLMENT:'Confirm trial enrollment',PREPARE_ASSIGNED_LEADS_AND_TOOLS:'Prepare assigned leads and tools',WAIT_FOR_COMPLETED_REPORTING_DAY:'Wait for a completed reporting day',RECONCILE_SALES_EVIDENCE:'Reconcile sales evidence',REVIEW_LEAD_AND_TOOL_ACCESS:'Check lead quality, assignment and tool access',PRACTICE_DISCOVERY_AND_CLOSING:'Coach discovery and closing skills',REVIEW_RETENTION_AND_FOLLOW_UP_QUALITY:'Review retention and follow-up quality',OWNER_TRIAL_REVIEW:'Complete owner trial review'};
+   out.textContent=(d.coaching.actions.map(x=>labels[x]||x).join(' · ')||'No current coaching action suggested.')+'. Rule-based suggestions; owner review required.';
+  }catch(err){if(seq===profileRequest)out.textContent='Coaching review unavailable: '+err.message;}
+  finally{if(seq===profileRequest)btn.disabled=false;}
+ });
+ function promotionInputs(){
+  return {ledgerReviewed:$('promotionLedger').checked,trialAccepted:$('promotionTrial').checked,qualityPassed:$('promotionQuality').checked,reliabilityPassed:$('promotionReliability').checked,bilingualEvidenceConfirmed:$('workstationBilingual').checked,agreementReference:$('promotionAgreement').value.trim(),promotionConfirm:'OWNER_APPROVED_EARNED_SENIOR'};
+ }
+ $('promotionReview').addEventListener('click',async()=>{
+  const snapshot=profileSnapshot,seq=profileRequest,out=$('promotionStatus');if(!snapshot)return;
+  const button=$('promotionReview');button.disabled=true;
+  try{const d=await api('/api/owner/sales-command/workforce/senior-review','POST',{managerId:snapshot.managerId,...promotionInputs()});if(seq!==profileRequest)return;
+   const r=d.review;out.textContent=(r.eligible?'Eligible for owner review.':'Not yet eligible: '+r.missing.join(', '))+ ' · Completed weeks '+r.startDate+' to '+r.endDate+' · '+r.weeklyRevenueCents.map(money).join(' / ')+'. Proposed criteria; no promotion or pay change.';
+  }catch(err){if(seq===profileRequest)out.textContent='Senior review unavailable: '+err.message;}
+  finally{if(seq===profileRequest)button.disabled=false;}
+ });
+ $('workstationProfileForm').addEventListener('submit',async e=>{
+  e.preventDefault();const snapshot=profileSnapshot,tier=$('workstationTier').value,status=$('workstationStatus');
+  if(!snapshot||snapshot.managerId!==$('workstationManager').value)return;
+  const bilingual=$('workstationBilingual').checked;
+  if(tier==='senior'&&!bilingual){status.textContent='Confirm live English and Spanish proficiency before assigning Senior.';return;}
+  const promotion=promotionInputs();
+  if(tier==='senior'&&(!promotion.ledgerReviewed||!promotion.trialAccepted||!promotion.qualityPassed||!promotion.reliabilityPassed||promotion.agreementReference.length<12)){status.textContent='Complete Senior evidence review and enter the signed agreement reference.';return;}
+  if(!ask('Assign this workspace profile? Senior requires current evidence. This does not change compensation or calling permissions.'))return;
+  resetProfile();const seq=profileRequest;
+  try{await api('/api/owner/sales-command/workstation/profile','POST',{managerId:snapshot.managerId,tier,expectedRevision:snapshot.revision,...promotion,bilingualEvidenceConfirmed:bilingual,confirm:'OWNER_CONFIRMED_WORKSTATION_TIER'});
+   if(seq===profileRequest){await loadProfile();if(profileSnapshot?.managerId===snapshot.managerId)status.textContent='Profile saved and reloaded. Signed compensation and calling permissions are unchanged.';}
+  }catch(err){if(seq===profileRequest)status.textContent='Profile not saved: '+err.message+'. Reload before retrying.';}
+ });
+
+ $('trialPlanForm').addEventListener('submit',async event=>{
+  event.preventDefault();const result=$('trialPlanResult');result.textContent='Calculating scheduled trial costs…';
+  try{const tiers=[$('trialPlanFirst').value,$('trialPlanSecond').value].filter(Boolean);
+   const r=await api('/api/owner/sales-command/workforce/trial-plan','POST',{startDate:$('trialPlanStart').value,tiers,reserveCents:cents('trialPlanReserve')});
+   const p=r.plan;
+   result.textContent=p.workdays+' scheduled working days · planned base pay '+money(p.plannedBaseCents)+' · reserve shortfall '+money(p.reserveShortfallCents)+' · Day 5: '+p.checkpoints.day5+' · Day 10: '+p.checkpoints.day10+' · Day 15: '+p.checkpoints.day15+' · Final: '+p.endDate+'. '+p.limitations;
+  }catch(e){result.textContent='Trial plan unavailable: '+e.message;}
+ });
+ function enrollmentInputs(){
+  const second=$('trialEnrollSecond').value,secondTier=$('trialPlanSecond').value;
+  if(Boolean(second)!==Boolean(secondTier))throw Error('Select matching second candidate and tier in the planner.');
+  const members=[{managerId:$('trialEnrollFirst').value,tier:$('trialPlanFirst').value,agreementReference:$('trialAgreementFirst').value.trim()}];
+  if(second)members.push({managerId:second,tier:secondTier,agreementReference:$('trialAgreementSecond').value.trim()});
+  return {startDate:$('trialPlanStart').value,reserveCents:cents('trialPlanReserve'),members,signedTermsConfirmed:$('trialSigned').checked,payScheduleReviewed:$('trialPay').checked,fairOpportunityConfirmed:$('trialFair').checked,confirm:'OWNER_CONFIRMED_PAID_TRIAL'};
+ }
+ $('trialEnrollForm').addEventListener('submit',async e=>{
+  e.preventDefault();const button=$('trialEnrollSave'),status=$('trialEnrollStatus');if(button.disabled)return;
+  try{
+   const body=enrollmentInputs();
+   if(!ask('Record the signed paid trial for '+body.members.length+' manager(s)? All earned pay remains due; no funds move.'))return;
+   button.disabled=true;
+   const r=await api('/api/owner/sales-command/workforce/enroll','POST',body);
+   status.textContent='Enrollment recorded · '+r.startDate+' to '+r.endDate+' · '+r.memberCount+' manager(s). No payment initiated.';
+   $('trialAgreementFirst').value='';$('trialAgreementSecond').value='';$('trialSigned').checked=false;$('trialPay').checked=false;$('trialFair').checked=false;
+  }catch(err){status.textContent='Enrollment not recorded: '+err.message;}
+  finally{button.disabled=false;}
+ });
+ $('trialEnrollReview').addEventListener('click',async()=>{
+  const id=$('trialEnrollFirst').value,status=$('trialEnrollStatus');
+  try{const d=await api('/api/owner/sales-command/workforce/enrollment?managerId='+encodeURIComponent(id));if(id!==$('trialEnrollFirst').value)return;
+   const t=d.trial,r=t?.review;
+   status.textContent=!t?'No enrolled trial for this manager.':t.tier+' · '+t.stage+' · '+t.startDate+' to '+t.endDate+(r?' · Recorded collected sales '+money(r.revenueCents)+' / '+money(r.targetCents)+' · '+r.newPayingCustomers+' new customers. Ledger completeness not verified; grade withheld.':' · No completed trial days yet.');
+  }catch(err){if(id===$('trialEnrollFirst').value)status.textContent='Enrollment review unavailable: '+err.message;}
+ });
+ $('payScheduleForm').addEventListener('submit',async e=>{
+  e.preventDefault();const out=$('payScheduleResult'),button=e.submitter;
+  if(button?.disabled)return;if(button)button.disabled=true;out.textContent='Checking reviewed schedule…';
+  try{
+   const d=await api('/api/owner/sales-command/workforce/pay-schedule','POST',{startDate:$('payScheduleStart').value,firstPayday:$('payScheduleFirst').value,agreementReference:$('payScheduleAgreement').value.trim(),scheduleReviewed:$('payScheduleReviewed').checked});
+   out.replaceChildren();
+   for(const p of d.schedule.periods){out.append(make('p',p.startDate+' – '+p.endDate+' · planned payday '+p.payday+(p.finalPartialPeriod?' · final partial period; check final-pay rules':'')));}
+   out.append(make('p','No payment initiated. '+d.schedule.limitations));
+  }catch(err){out.textContent='Calendar unavailable: '+err.message;}
+  finally{if(button)button.disabled=false;}
+ });
+ let payrollEpoch=0,payrollSnapshot=null;
+ function resetPayrollPreview(){
+  payrollEpoch++;payrollSnapshot=null;$('basePayrollApprove').disabled=true;
+  for(const id of ['trialPayrollHoursReviewed','trialPayrollRateReviewed','basePayrollOtherReviewed','basePayrollLegacyChecked'])$(id).checked=false;
+  $('basePayrollEvidence').value='';$('basePayrollRecords').replaceChildren();$('trialPayrollResult').textContent='Confirm the selected manager, completed period and actual minutes.';
+ }
+ for(const id of ['trialPayrollManager','trialPayrollPeriod','trialPayrollTraining','trialPayrollOther'])$(id).addEventListener('change',resetPayrollPreview);
+ function payrollInput(){
+  const parse=id=>{const raw=$(id).value;if(!/^\d+$/.test(raw))throw Error('ENTER_WHOLE_PAYABLE_MINUTES');return Number(raw);};
+  const managerId=$('trialPayrollManager').value;if(!managerId)throw Error('SELECT_ENROLLED_MANAGER');
+  return {managerId,periodIndex:Number($('trialPayrollPeriod').value),trainingMinutes:parse('trialPayrollTraining'),otherPaidMinutes:parse('trialPayrollOther'),hoursReviewed:$('trialPayrollHoursReviewed').checked,signedRateConfirmed:$('trialPayrollRateReviewed').checked};
+ }
+ $('trialPayrollForm').addEventListener('submit',async e=>{
+  e.preventDefault();const out=$('trialPayrollResult'),seq=++payrollEpoch;payrollSnapshot=null;$('basePayrollApprove').disabled=true;
+  try{
+   const body=payrollInput(),d=await api('/api/owner/sales-command/workforce/payroll-preview','POST',body);
+   if(seq!==payrollEpoch)return;const p=d.payroll;payrollSnapshot={body,p};$('basePayrollApprove').disabled=false;
+   out.textContent=p.tier+' · '+p.periodStart+' to '+p.periodEnd+' · '+p.totalPaidMinutes+' paid minutes · Straight-time base pay '+money(p.basePayCents)+'. No payment initiated. '+p.limitations;
+  }catch(err){if(seq===payrollEpoch)out.textContent='Payroll preview unavailable: '+err.message;}
+ });
+ $('basePayrollApprove').addEventListener('click',async()=>{
+  const seq=payrollEpoch,out=$('trialPayrollResult'),button=$('basePayrollApprove');if(!payrollSnapshot||button.disabled)return;
+  try{
+   const b=payrollInput();if(JSON.stringify(b)!==JSON.stringify(payrollSnapshot.body))throw Error('PREVIEW_CHANGED');
+   if(!$('basePayrollOtherReviewed').checked||!$('basePayrollLegacyChecked').checked||$('basePayrollEvidence').value.trim().length<12)throw Error('COMPLETE_PAYROLL_REVIEW_AND_EVIDENCE');
+   if(!ask('Approve straight-time base pay '+money(payrollSnapshot.p.basePayCents)+' for the selected period? This does not send money.'))return;
+   button.disabled=true;
+   const d=await api('/api/owner/sales-command/workforce/base-payroll/approve','POST',{...b,otherObligationsReviewed:true,legacyPayrollChecked:true,evidenceReference:$('basePayrollEvidence').value.trim(),confirm:'OWNER_APPROVED_STRAIGHT_TIME_BASE'});
+   if(seq===payrollEpoch){payrollSnapshot=null;out.textContent='Approved base pay '+money(d.payroll.basePayCents)+'. No payment initiated.';await loadBasePayroll();}
+  }catch(err){if(seq===payrollEpoch){out.textContent='Approval unavailable: '+err.message;button.disabled=!payrollSnapshot;}}
+ });
+ async function loadBasePayroll(){
+  const managerId=$('trialPayrollManager').value,seq=payrollEpoch,out=$('basePayrollRecords');out.replaceChildren();
+  if(!managerId)return;
+  try{
+   const d=await api('/api/owner/sales-command/workforce/base-payroll?managerId='+encodeURIComponent(managerId));
+   if(seq!==payrollEpoch)return;
+   if(!d.records.length){out.append(make('p','No approved base-pay records.'));return;}
+   for(const record of d.records){
+    const row=make('div');row.append(make('p',record.periodStart+' to '+record.periodEnd+' · '+money(record.basePayCents)+' · '+record.status));
+    if(record.status==='APPROVED'&&record.basePayCents>0){
+     const ref=make('input');ref.type='text';ref.maxLength=180;ref.setAttribute('aria-label','Already-sent external payment reference for '+record.periodStart);
+     const label=make('label','External payment reference');label.append(ref);
+     const btn=make('button','Record already-sent base pay');btn.type='button';
+     btn.addEventListener('click',async()=>{
+      if(seq!==payrollEpoch||btn.disabled)return;
+      if(ref.value.trim().length<12){row.append(make('p','Enter the actual external payment reference.'));return;}
+      if(!ask('Confirm '+money(record.basePayCents)+' was ALREADY sent externally for this exact period. No money will move.'))return;
+      btn.disabled=true;
+      try{await api('/api/owner/sales-command/workforce/base-payroll/record-paid','POST',{managerId,periodIndex:record.periodIndex,amountCents:record.basePayCents,paymentReference:ref.value.trim(),confirm:'OWNER_RECORD_ALREADY_SENT_BASE_PAY'});if(seq===payrollEpoch)await loadBasePayroll();}
+      catch(err){if(seq===payrollEpoch){btn.disabled=false;row.append(make('p','Record unavailable: '+err.message));}}
+     });row.append(label,btn);
+    }
+    out.append(row);
+   }
+  }catch(err){if(seq===payrollEpoch)out.append(make('p','Payroll records unavailable: '+err.message));}
+ }
+ $('basePayrollLoad').addEventListener('click',loadBasePayroll);
+ let recognitionEpoch=0;
+ function resetRecognition(){
+  recognitionEpoch++;$('recognitionAwardActions').replaceChildren();for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).checked=false;
+  $('recognitionResult').textContent='Review the selected periods and manager before attesting evidence.';
+ }
+ for(const id of ['recognitionManager','recognitionWeek','month'])$(id).addEventListener('change',resetRecognition);
+ for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).addEventListener('change',()=>{recognitionEpoch++;$('recognitionAwardActions').replaceChildren();$('recognitionResult').textContent='Evidence changed. Review eligibility again.';});
+ $('recognitionForm').addEventListener('submit',async e=>{
+  e.preventDefault();const out=$('recognitionResult'),button=$('recognitionRun');if(button.disabled)return;
+  const seq=++recognitionEpoch,managerId=$('recognitionManager').value,month=$('month').value,weekStart=$('recognitionWeek').value;
+  button.disabled=true;$('recognitionAwardActions').replaceChildren();out.textContent='Reading reconciled sales and signed terms…';
+  try{
+   const d=await api('/api/owner/sales-command/workforce/recognition','POST',{managerId,month,weekStart,ledgerComplete:$('recognitionLedger').checked,qualityReviewed:$('recognitionQualityReviewed').checked,qualityPassed:$('recognitionQualityPassed').checked});
+   if(seq!==recognitionEpoch)return;
+   const names={RISING_STAR:'Rising Star',CERTIFIED_CLOSER:'Certified Closer',REVENUE_CHAMPION:'Revenue Champion',ELITE:'Elite Account Manager',PRESIDENTS_CLUB:"President’s Club"};
+   const awards=d.result.eligibleForOwnerReview.map(x=>names[x]||x);
+   const actions=$('recognitionAwardActions');
+   const evidence={managerId,month,weekStart,ledgerComplete:$('recognitionLedger').checked,qualityReviewed:$('recognitionQualityReviewed').checked,qualityPassed:$('recognitionQualityPassed').checked};
+   for(const awardCode of d.result.eligibleForOwnerReview){
+    const grant=make('button','Record '+(names[awardCode]||awardCode));grant.type='button';
+    grant.addEventListener('click',async()=>{
+     if(seq!==recognitionEpoch||grant.disabled)return;
+     if(!evidence.ledgerComplete||!evidence.qualityReviewed||!evidence.qualityPassed)return;
+     if(!ask('Record this nonfinancial achievement for the selected employee? A closed statement and current evidence will be rechecked.'))return;
+     grant.disabled=true;
+     try{
+      await api('/api/owner/sales-command/workforce/awards','POST',{...evidence,awardCode,confirm:'OWNER_CONFIRMED_NONFINANCIAL_AWARD'});
+      if(seq===recognitionEpoch){grant.textContent='Recorded: '+(names[awardCode]||awardCode);out.append(make('p','Achievement recorded. No pay or promotion change.'));}
+     }catch(err){if(seq===recognitionEpoch){grant.disabled=false;out.append(make('p','Award not recorded: '+err.message));}}
+    });
+    actions.append(grant);
+   }
+
+   out.replaceChildren(make('p','Recorded sales: week '+money(d.weeklyRevenueCents)+' · month '+money(d.monthlyRevenueCents)),make('p',awards.length?'Eligible for owner review: '+awards.join(' · '):'No eligible achievements on the submitted evidence.'),make('p','No award granted. Owner attestations are not independent verification. No compensation or promotion change.'));
+  }catch(err){if(seq===recognitionEpoch)out.textContent='Recognition review unavailable: '+err.message;}
+  finally{if(seq===recognitionEpoch)button.disabled=!managers.some(r=>r.active);else if(button.disabled&&managers.some(r=>r.active))button.disabled=false;}
+ });
+ async function workforcePolicy(){
+  const r=await api('/api/owner/sales-command/workforce/policy'),p=r.policy;
+  const line=t=>money(t.hourlyCents)+'/hr · '+money(t.weeklyQuotaCents)+'/week · '+(t.commissionBps/100)+'% eligible gross profit · Spanish '+t.spanish;
+  $('workforcePolicy').textContent='Proposed new agreements: Standard '+line(p.standard)+'; Senior '+line(p.senior)+'. Biweekly base pay; payout lag pending compliance review. Existing signed terms unchanged; new V2 terms require exact monthly quota and rate confirmation.';
+ }
+ $('workforceReview').addEventListener('submit',async e=>{
+  e.preventDefault();const result=$('workforceResult');result.textContent='Reading reconciled sales ledger…';
+  try{
+   const params=new URLSearchParams({managerId:$('workforceManager').value,tier:$('workforceTier').value,startDate:$('workforceStart').value,throughDate:$('workforceThrough').value});
+   const data=await api('/api/owner/sales-command/workforce/review?'+params),r=data.review;
+   result.textContent='Collected '+money(r.revenueCents)+' / '+money(r.targetCents)+' · Grade '+(r.grade??'not graded')+' · '+r.newPayingCustomers+' new paying customers · Day 10 milestone: '+r.twoCustomerMilestone+'. Ledger completeness not verified; review lead quality and signed terms. No payroll or personnel action.';
+  }catch(err){result.textContent='Review unavailable: '+err.message;}
+ });
+ workforcePolicy().catch(e=>{$('workforcePolicy').textContent='Proposed policy unavailable: '+e.message;});
  $('month').value=monthNow();
  setActionButtons(false);
  $('refresh').addEventListener('click',()=>safeRun(refresh,'Report loaded.'));
  $('termsForm').addEventListener('submit',event=>{
   event.preventDefault();
   safeRun(async()=>{
-   if(!ask('Confirm you have a signed compensation agreement for this contractor and month?'))return;
+   const tier=$('tier').value,terms={standard_v2:{confirmMonthlyQuotaCents:216700,confirmCommissionBps:900},senior_v2:{confirmMonthlyQuotaCents:433300,confirmCommissionBps:1200}}[tier];
+   if(!ask('Confirm the signed compensation agreement for this contractor and month: '+$('tier').selectedOptions[0].textContent+'?'))return;
    await api('/api/owner/sales-command/terms','POST',{
-    managerId:$('termsManager').value,month:$('month').value,tier:$('tier').value,
+    managerId:$('termsManager').value,month:$('month').value,tier,...(terms||{}),
     agreementReference:$('agreementRef').value.trim(),confirm:'SIGNED_AGREEMENT_CONFIRMED'
    });
   },'Monthly terms recorded for owner review.');

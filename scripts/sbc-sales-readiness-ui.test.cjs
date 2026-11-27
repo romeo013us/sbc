@@ -11,3 +11,83 @@ test('owner UI fails closed on missing staging schema and does not attempt mutat
  const mirror=fs.readFileSync(path.join(root,'browser_public/sbc-sales-command-v1.js'),'utf8');
  assert.equal(js,mirror);
 });
+
+test('shared manager workstation and owner profile form are mirrored and wired to scoped endpoints',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ for(const name of ['sbc-sales-command.html','sbc-sales-command-v1.js','sbc-account-manager-v1.html','sbc-manager-sales-progress-v1.js']){
+  assert.equal(read('public/'+name),read('browser_public/'+name));
+ }
+ const owner=read('public/sbc-sales-command.html'),ownerJS=read('public/sbc-sales-command-v1.js');
+ assert.match(owner,/<form id="workstationProfileForm">/);
+ assert.match(owner,/<button type="submit" id="workstationSave" disabled>/);
+ assert(owner.includes('id="workstationBilingual"'));
+ assert(ownerJS.includes('expectedRevision:snapshot.revision'));
+ assert(ownerJS.includes('OWNER_CONFIRMED_WORKSTATION_TIER'));
+ assert(ownerJS.includes('profileSnapshot=null'));
+ const employee=read('public/sbc-account-manager-v1.html'),employeeJS=read('public/sbc-manager-sales-progress-v1.js');
+ assert(employee.includes('id="sbcMyWorkstationProfile"'));
+ assert(employeeJS.includes("fetch('/api/sbc/sales/workstation/me'"));
+ assert(!employeeJS.includes('/api/owner/sales-command/workstation'));
+ assert(employeeJS.includes('Workstation tier not verified'));
+ assert(employeeJS.includes('Signed compensation and calling permissions are separate.'));
+ new (require('node:vm').Script)(ownerJS);new (require('node:vm').Script)(employeeJS);
+});
+
+test('paid trial enrollment requires explicit owner attestations and employee reads are self scoped',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js'),employee=read('public/sbc-manager-sales-progress-v1.js');
+ assert(html.includes('id="trialEnrollForm"'));assert(html.includes('id="trialSigned"'));assert(html.includes('id="trialPay"'));assert(html.includes('id="trialFair"'));
+ assert(js.includes("confirm:'OWNER_CONFIRMED_PAID_TRIAL'"));assert(js.includes('/api/owner/sales-command/workforce/enroll'));
+ assert(employee.includes("fetch('/api/sbc/sales/workforce/trial/me'"));assert(!employee.includes('/api/owner/sales-command/workforce/enroll'));
+ assert(read('public/sbc-account-manager-v1.html').includes('id="sbcMyTrialProgress"'));
+ new (require('node:vm').Script)(js);new (require('node:vm').Script)(employee);
+});
+
+test('owner payroll and recognition previews are wired without payment or automatic awards',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js');
+ for(const id of ['payScheduleForm','payScheduleReviewed','payScheduleFirst','payScheduleAgreement','recognitionForm','recognitionManager','recognitionWeek','recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])assert(html.includes('id="'+id+'"'),id);
+ assert(js.includes('/api/owner/sales-command/workforce/pay-schedule'));
+ assert(js.includes('/api/owner/sales-command/workforce/recognition'));
+ assert(js.includes('scheduleReviewed:'));
+ assert(js.includes('qualityReviewed:'));
+ assert(js.includes('ledgerComplete:'));
+ assert(js.includes('No payment initiated'));
+ assert(js.includes('No award granted'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));
+ assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));
+ new (require('node:vm').Script)(js);
+});
+
+test('recorded employee awards use explicit owner approval and private self-only history',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const owner=read('public/sbc-sales-command-v1.js'),employee=read('public/sbc-manager-sales-progress-v1.js');
+ assert(owner.includes('OWNER_CONFIRMED_NONFINANCIAL_AWARD'));
+ assert(owner.includes('/api/owner/sales-command/workforce/awards'));
+ assert(employee.includes("fetch('/api/sbc/sales/workforce/awards/me'"));
+ assert(!employee.includes('/api/owner/sales-command/workforce/awards'));
+ assert(read('public/sbc-account-manager-v1.html').includes('id="sbcMyAwards"'));
+ new (require('node:vm').Script)(owner);new (require('node:vm').Script)(employee);
+});
+
+test('earned senior review and Academy bridge are connected to owner and employee views',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8'),html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js'),emp=read('public/sbc-manager-sales-progress-v1.js');
+ assert(html.includes('id="promotionReview"'));assert(html.includes('id="promotionAgreement"'));
+ assert(js.includes('/api/owner/sales-command/workforce/senior-review'));assert(js.includes('OWNER_APPROVED_EARNED_SENIOR'));
+ assert(emp.includes("fetch('/api/sbc/sales/workforce/academy/me'"));assert(!emp.includes('/api/owner/sales-command/workforce/senior-review'));
+ new (require('node:vm').Script)(js);new (require('node:vm').Script)(emp);
+});
+
+test('actual trial payroll preview uses owner-reviewed minutes and existing enrolled manager selector',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8'),html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js');
+ for(const id of ['trialPayrollForm','trialPayrollTraining','trialPayrollOther','trialPayrollHoursReviewed','trialPayrollRateReviewed'])assert(html.includes('id="'+id+'"'));
+ assert(js.includes('/api/owner/sales-command/workforce/payroll-preview'));assert(js.includes('signedRateConfirmed:'));assert(js.includes('hoursReviewed:'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));new (require('node:vm').Script)(js);
+});
+
+test('base payroll approval and external payment recording require owner review and exact selected period',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8'),html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js');
+ for(const id of ['trialPayrollManager','basePayrollOtherReviewed','basePayrollLegacyChecked','basePayrollEvidence','basePayrollApprove','basePayrollRecords'])assert(html.includes('id="'+id+'"'));
+ assert(js.includes('OWNER_APPROVED_STRAIGHT_TIME_BASE'));assert(js.includes('OWNER_RECORD_ALREADY_SENT_BASE_PAY'));assert(js.includes('PREVIEW_CHANGED'));assert(js.includes('No payment initiated.'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));new (require('node:vm').Script)(js);
+});

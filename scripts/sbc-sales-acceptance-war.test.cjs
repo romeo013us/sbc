@@ -8,7 +8,7 @@ const clone=x=>structuredClone(x);
 const key=(t,m,month)=>t+':'+m+':'+month;
 const orderKey=(t,o)=>t+':'+o;
 function fakeDb(){
- let data={customers:new Map(),orders:new Map(),credits:new Map(),terms:new Map(),statements:new Map(),audit:[]};
+ let data={customers:new Map(),orders:new Map(),credits:new Map(),terms:new Map(),statements:new Map(),awards:new Map(),audit:[]};
  const sql=(state,query,params)=>{
   if(query.startsWith('SELECT id,assigned_to FROM sbc_customers')){
    const [tenant,id]=params,x=state.customers.get(orderKey(tenant,id));return [x?[clone(x)]:[]];
@@ -50,6 +50,15 @@ function fakeDb(){
    const [t,m,month,tier,quota,revenue,profit,commission,status,created_by]=params;
    state.statements.set(key(t,m,month),{tier,quota_cents:quota,revenue_cents:revenue,profit_cents:profit,
     commission_cents:commission,status,created_by,closed_at:'2026-11-02T00:00:00Z'});return [{affectedRows:1}];
+  }
+  if(query.startsWith('INSERT INTO sbc_am_award_v2')){
+   const [t,m,award_code,period_key,month_key,week_start,awarded_by]=params;
+   const k=key(t,m,award_code+':'+period_key);
+   if(state.awards.has(k))throw Object.assign(Error('duplicate award'),{code:'ER_DUP_ENTRY'});
+   state.awards.set(k,{tenant_id:t,manager_id:m,award_code,period_key,month_key,week_start,awarded_by,awarded_at:'2026-11-02'});return [{affectedRows:1}];
+  }
+  if(query.startsWith('SELECT award_code,period_key,month_key,week_start,awarded_at FROM sbc_am_award_v2')){
+   const [t,m]=params;return [[...state.awards.values()].filter(a=>a.tenant_id===t&&a.manager_id===m).map(clone)];
   }
   if(query.startsWith('INSERT INTO sbc_commission_audit')){
    state.audit.push({tenant_id:params[1],manager_id:params[2],month_key:params[3],action:params[4]});return [{affectedRows:1}];
@@ -159,4 +168,48 @@ test('late chargeback prevents stale monthly statement closure',async()=>{
  order.paymentStatus='CHARGEBACK';
  const closed=await h.close();assert.notEqual(closed.code,200);
  assert.equal(h.fake.state().statements.size,0);
+});
+
+test('V2 signed terms are explicit, immutable, and survive close and approval using the original version',async()=>{
+ const h=appFixture(),path='/api/owner/sales-command/terms';
+ const terms={managerId:'alice',month:'2026-10',tier:'standard_v2',agreementReference:'SIGNED_NEW_V2_AGREEMENT',confirm:'SIGNED_AGREEMENT_CONFIRMED'};
+ assert.equal((await h.request('POST',path,terms)).code,422);
+ const signed={...terms,confirmMonthlyQuotaCents:216700,confirmCommissionBps:900};
+ assert.equal((await h.request('POST',path,signed)).code,201);
+ assert.equal((await h.request('POST',path,signed)).code,200);
+ assert.equal((await h.terms()).code,422);
+ for(let i=0;i<6;i++)assert.equal((await h.credit(h.addPaid('v2sale'+i))).code,201);
+ const v=await h.request('GET','/api/sbc/sales/compensation/me',{},h.alice,{}, {month:'2026-10'});
+ assert.equal(v.payload.commissionCents,12960);
+ assert.equal(v.payload.quotaCents,216700);assert.equal(v.payload.tier,'standard_v2');
+ const draft=await h.close();assert.equal(draft.code,200);
+ assert.equal(draft.payload.statement.commissionCents,12960);
+ assert.equal((await h.transition('approve')).code,200);
+ assert.equal((await h.transition('paid','EXT_V2_001')).code,200);
+ assert.equal(h.fake.state().statements.get(key(1,'alice','2026-10')).tier,'standard_v2');
+});
+
+test('closed reconciled statement permits one owner-approved award, no duplicate or peer visibility, and rejects late chargeback',async()=>{
+ const h=appFixture();
+ const terms={managerId:'alice',month:'2026-10',tier:'standard_v2',agreementReference:'SIGNED_NEW_V2_AGREEMENT',confirm:'SIGNED_AGREEMENT_CONFIRMED',confirmMonthlyQuotaCents:216700,confirmCommissionBps:900};
+ assert.equal((await h.request('POST','/api/owner/sales-command/terms',terms)).code,201);
+ const orders=Array.from({length:6},(_,i)=>h.addPaid('award'+i));
+ for(const o of orders)assert.equal((await h.credit(o)).code,201);
+ const base={managerId:'alice',month:'2026-10',weekStart:'2026-10-12',ledgerComplete:true,qualityReviewed:true,qualityPassed:true,awardCode:'CERTIFIED_CLOSER',confirm:'OWNER_CONFIRMED_NONFINANCIAL_AWARD'};
+ const route='/api/owner/sales-command/workforce/awards';
+ assert.equal((await h.request('POST',route,base)).code,422);
+ assert.equal((await h.close()).code,200);
+ const preview=await h.request('POST','/api/owner/sales-command/workforce/recognition',base);
+ assert.equal(preview.code,200);assert(preview.payload.result.eligibleForOwnerReview.includes('CERTIFIED_CLOSER'));
+ const award=await h.request('POST',route,base);
+ assert.equal(award.code,201,JSON.stringify(award));assert.equal(award.payload.compensationChanged,false);
+ assert.equal((await h.request('POST',route,base)).code,409);
+ const history=await h.request('GET','/api/sbc/sales/workforce/awards/me',{},h.alice,{}, {managerId:'bob'});
+ assert.equal(history.code,200);assert.equal(history.payload.awards.length,1);assert.equal(history.payload.awards[0].awarded_by,undefined);
+ const peer=await h.request('GET','/api/sbc/sales/workforce/awards/me',{},h.db.users[1]);
+ assert.equal(peer.code,200);assert.equal(peer.payload.awards.length,0);
+ orders[0].paymentStatus='CHARGEBACK';
+ assert.equal((await h.request('POST',route,{...base,awardCode:'ELITE'})).code,409);
+ assert.equal(h.fake.state().awards.size,1);
+ assert.equal(h.fake.state().audit.filter(a=>a.action==='NONFINANCIAL_AWARD_RECORDED').length,1);
 });
