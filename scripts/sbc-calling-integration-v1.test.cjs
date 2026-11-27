@@ -175,3 +175,24 @@ test('owner-confirmed language handoff without a call is durable, never fabricat
  assert.equal((await attempt({saveSkipped:true})).code,503);
  assert.equal((await attempt({readback:0})).code,503);
 });
+
+test('owner queue button works with a fresh queue record absent from the older CRM list, and never claims stale queue removal',async()=>{
+ for(const file of ['public/app.js','browser_public/app.js']){
+  const source=read(file),start=source.indexOf('async function moveSbcLeadToSpanishQueue('),end=source.indexOf('\nasync function loadSbcSpanishCallbackQueue(',start);
+  assert.ok(start>=0&&end>start);
+  const lead={id:'new-lead',businessName:'Synthetic business'};
+  let payload,prompt,notices=[],refresh={leads:[]};
+  const sandbox={state:{me:{role:'owner'},data:{customers:[]},salesQueue:{leads:[lead]}},
+   sbcVoiceStartedAt:0,sbcVoiceOpenCustomerId:'',sbcVoiceSessionId:'',SBC_SPANISH_HANDOFF_REASON:'Existing call evidence',
+   $:()=>null,window:{confirm:v=>{prompt=v;return true}},toast:v=>notices.push(v),
+   api:async(_url,opt)=>{payload=JSON.parse(opt.body);return {ok:true,durable:true}},
+   loadSalesQueue:async()=>refresh,loadSbcRecentCallLogs:async()=>{}};
+  const move=vm.runInNewContext(source.slice(start,end)+'\nmoveSbcLeadToSpanishQueue',sandbox,{timeout:1000});
+  await move(lead.id);
+  assert.equal(payload.ownerConfirmedLanguage,true);assert.match(prompt,/not a name or assumption/);
+  assert.match(notices.at(-1),/Saved to Spanish Calling Queue/);
+  refresh={leads:[lead]};await move(lead.id);
+  assert.match(notices.at(-1),/removal.*not confirmed/);
+  sandbox.state.data.customers=[lead];await move(lead.id,'history');assert.equal(payload.ownerConfirmedLanguage,false);
+ }
+});
