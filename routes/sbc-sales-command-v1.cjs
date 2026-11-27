@@ -419,6 +419,16 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
    return res.json({ok:true,profile:result});
   }catch(e){return error(res,e)}
  });
+ // Workforce launch schema is checked separately so legacy sales remains available.
+ app.get('/api/owner/sales-command/workforce/readiness',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t}=gate(req),tables=['sbc_am_workstation_profile_v2','sbc_am_trial_cohort_v2','sbc_am_trial_member_v2','sbc_am_award_v2','sbc_am_base_payroll_v2'],missingTables=[];
+   for(const table of tables){try{await ctx.mysqlPool.query('SELECT 1 FROM '+table+' WHERE tenant_id=? LIMIT 0',[t]);}catch(e){if(e?.code==='ER_NO_SUCH_TABLE')missingTables.push(table);else return fail(res,503,'WORKFORCE_SCHEMA_READ_UNAVAILABLE');}}
+   const writeReady=typeof ctx.recoveryRequired==='function'&&ctx.recoveryRequired()===false;
+   return res.json({ok:true,readOnly:true,schemaReady:missingTables.length===0,writeReady,missingTables,liveAcceptanceVerified:false,migrationsExecuted:false});
+  }catch(e){return error(res,e)}
+ });
  // Read-only preflight: table visibility and MySQL recovery, never auto-migrate.
  app.get('/api/owner/sales-command/readiness',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');

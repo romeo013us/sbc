@@ -109,6 +109,8 @@
    options(id,managers,r=>r.name+' · '+r.managerId);
   options('workstationManager',managers.filter(r=>r.active),r=>r.name+' · '+r.managerId);
   void loadProfile();
+  options('trialPayrollManager',managers,r=>r.name+(r.active?'':' · inactive')+' · '+r.managerId);
+  resetPayrollPreview();
   const active=managers.filter(r=>r.active);
   options('recognitionManager',active,r=>r.name+' · '+r.managerId);
   $('recognitionRun').disabled=!active.length;
@@ -215,19 +217,64 @@
   }catch(err){out.textContent='Calendar unavailable: '+err.message;}
   finally{if(button)button.disabled=false;}
  });
- let payrollEpoch=0;
- function resetPayrollPreview(){payrollEpoch++;$('trialPayrollHoursReviewed').checked=false;$('trialPayrollRateReviewed').checked=false;$('trialPayrollResult').textContent='Confirm the selected manager, completed period and actual minutes.';}
- for(const id of ['workstationManager','trialPayrollPeriod','trialPayrollTraining','trialPayrollOther'])$(id).addEventListener('change',resetPayrollPreview);
+ let payrollEpoch=0,payrollSnapshot=null;
+ function resetPayrollPreview(){
+  payrollEpoch++;payrollSnapshot=null;$('basePayrollApprove').disabled=true;
+  for(const id of ['trialPayrollHoursReviewed','trialPayrollRateReviewed','basePayrollOtherReviewed','basePayrollLegacyChecked'])$(id).checked=false;
+  $('basePayrollEvidence').value='';$('basePayrollRecords').replaceChildren();$('trialPayrollResult').textContent='Confirm the selected manager, completed period and actual minutes.';
+ }
+ for(const id of ['trialPayrollManager','trialPayrollPeriod','trialPayrollTraining','trialPayrollOther'])$(id).addEventListener('change',resetPayrollPreview);
+ function payrollInput(){
+  const parse=id=>{const raw=$(id).value;if(!/^\d+$/.test(raw))throw Error('ENTER_WHOLE_PAYABLE_MINUTES');return Number(raw);};
+  const managerId=$('trialPayrollManager').value;if(!managerId)throw Error('SELECT_ENROLLED_MANAGER');
+  return {managerId,periodIndex:Number($('trialPayrollPeriod').value),trainingMinutes:parse('trialPayrollTraining'),otherPaidMinutes:parse('trialPayrollOther'),hoursReviewed:$('trialPayrollHoursReviewed').checked,signedRateConfirmed:$('trialPayrollRateReviewed').checked};
+ }
  $('trialPayrollForm').addEventListener('submit',async e=>{
-  e.preventDefault();const out=$('trialPayrollResult'),seq=++payrollEpoch,managerId=$('workstationManager').value;
+  e.preventDefault();const out=$('trialPayrollResult'),seq=++payrollEpoch;payrollSnapshot=null;$('basePayrollApprove').disabled=true;
   try{
-   const parse=id=>{const raw=$(id).value;if(!/^\d+$/.test(raw))throw Error('ENTER_WHOLE_PAYABLE_MINUTES');return Number(raw);};
-   if(!managerId)throw Error('SELECT_ENROLLED_MANAGER');
-   const d=await api('/api/owner/sales-command/workforce/payroll-preview','POST',{managerId,periodIndex:Number($('trialPayrollPeriod').value),trainingMinutes:parse('trialPayrollTraining'),otherPaidMinutes:parse('trialPayrollOther'),hoursReviewed:$('trialPayrollHoursReviewed').checked,signedRateConfirmed:$('trialPayrollRateReviewed').checked});
-   if(seq!==payrollEpoch)return;const p=d.payroll;
-   out.textContent=p.tier+' · '+p.periodStart+' to '+p.periodEnd+' · '+p.totalPaidMinutes+' paid minutes · '+money(p.hourlyCents)+'/hr · Straight-time base pay '+money(p.basePayCents)+'. No payment initiated. '+p.limitations;
+   const body=payrollInput(),d=await api('/api/owner/sales-command/workforce/payroll-preview','POST',body);
+   if(seq!==payrollEpoch)return;const p=d.payroll;payrollSnapshot={body,p};$('basePayrollApprove').disabled=false;
+   out.textContent=p.tier+' · '+p.periodStart+' to '+p.periodEnd+' · '+p.totalPaidMinutes+' paid minutes · Straight-time base pay '+money(p.basePayCents)+'. No payment initiated. '+p.limitations;
   }catch(err){if(seq===payrollEpoch)out.textContent='Payroll preview unavailable: '+err.message;}
  });
+ $('basePayrollApprove').addEventListener('click',async()=>{
+  const seq=payrollEpoch,out=$('trialPayrollResult'),button=$('basePayrollApprove');if(!payrollSnapshot||button.disabled)return;
+  try{
+   const b=payrollInput();if(JSON.stringify(b)!==JSON.stringify(payrollSnapshot.body))throw Error('PREVIEW_CHANGED');
+   if(!$('basePayrollOtherReviewed').checked||!$('basePayrollLegacyChecked').checked||$('basePayrollEvidence').value.trim().length<12)throw Error('COMPLETE_PAYROLL_REVIEW_AND_EVIDENCE');
+   if(!ask('Approve straight-time base pay '+money(payrollSnapshot.p.basePayCents)+' for the selected period? This does not send money.'))return;
+   button.disabled=true;
+   const d=await api('/api/owner/sales-command/workforce/base-payroll/approve','POST',{...b,otherObligationsReviewed:true,legacyPayrollChecked:true,evidenceReference:$('basePayrollEvidence').value.trim(),confirm:'OWNER_APPROVED_STRAIGHT_TIME_BASE'});
+   if(seq===payrollEpoch){payrollSnapshot=null;out.textContent='Approved base pay '+money(d.payroll.basePayCents)+'. No payment initiated.';await loadBasePayroll();}
+  }catch(err){if(seq===payrollEpoch){out.textContent='Approval unavailable: '+err.message;button.disabled=!payrollSnapshot;}}
+ });
+ async function loadBasePayroll(){
+  const managerId=$('trialPayrollManager').value,seq=payrollEpoch,out=$('basePayrollRecords');out.replaceChildren();
+  if(!managerId)return;
+  try{
+   const d=await api('/api/owner/sales-command/workforce/base-payroll?managerId='+encodeURIComponent(managerId));
+   if(seq!==payrollEpoch)return;
+   if(!d.records.length){out.append(make('p','No approved base-pay records.'));return;}
+   for(const record of d.records){
+    const row=make('div');row.append(make('p',record.periodStart+' to '+record.periodEnd+' · '+money(record.basePayCents)+' · '+record.status));
+    if(record.status==='APPROVED'&&record.basePayCents>0){
+     const ref=make('input');ref.type='text';ref.maxLength=180;ref.setAttribute('aria-label','Already-sent external payment reference for '+record.periodStart);
+     const label=make('label','External payment reference');label.append(ref);
+     const btn=make('button','Record already-sent base pay');btn.type='button';
+     btn.addEventListener('click',async()=>{
+      if(seq!==payrollEpoch||btn.disabled)return;
+      if(ref.value.trim().length<12){row.append(make('p','Enter the actual external payment reference.'));return;}
+      if(!ask('Confirm '+money(record.basePayCents)+' was ALREADY sent externally for this exact period. No money will move.'))return;
+      btn.disabled=true;
+      try{await api('/api/owner/sales-command/workforce/base-payroll/record-paid','POST',{managerId,periodIndex:record.periodIndex,amountCents:record.basePayCents,paymentReference:ref.value.trim(),confirm:'OWNER_RECORD_ALREADY_SENT_BASE_PAY'});if(seq===payrollEpoch)await loadBasePayroll();}
+      catch(err){if(seq===payrollEpoch){btn.disabled=false;row.append(make('p','Record unavailable: '+err.message));}}
+     });row.append(label,btn);
+    }
+    out.append(row);
+   }
+  }catch(err){if(seq===payrollEpoch)out.append(make('p','Payroll records unavailable: '+err.message));}
+ }
+ $('basePayrollLoad').addEventListener('click',loadBasePayroll);
  let recognitionEpoch=0;
  function resetRecognition(){
   recognitionEpoch++;$('recognitionAwardActions').replaceChildren();for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).checked=false;

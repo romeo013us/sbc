@@ -84,3 +84,10 @@ test('actual trial payroll preview uses owner-reviewed minutes and existing enro
  assert(js.includes('/api/owner/sales-command/workforce/payroll-preview'));assert(js.includes('signedRateConfirmed:'));assert(js.includes('hoursReviewed:'));
  assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));new (require('node:vm').Script)(js);
 });
+
+test('base payroll approval and external payment recording require owner review and exact selected period',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8'),html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js');
+ for(const id of ['trialPayrollManager','basePayrollOtherReviewed','basePayrollLegacyChecked','basePayrollEvidence','basePayrollApprove','basePayrollRecords'])assert(html.includes('id="'+id+'"'));
+ assert(js.includes('OWNER_APPROVED_STRAIGHT_TIME_BASE'));assert(js.includes('OWNER_RECORD_ALREADY_SENT_BASE_PAY'));assert(js.includes('PREVIEW_CHANGED'));assert(js.includes('No payment initiated.'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));new (require('node:vm').Script)(js);
+});
