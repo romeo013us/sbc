@@ -136,6 +136,48 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
     ledgerCompletenessVerified:false,automaticTransfers:false,automaticPersonnelAction:false});
   }catch(e){return error(res,e)}
  });
+ // Workstation presentation tier is independently provisioned; no financial or language permission changes.
+ async function workstationProfile(pool,t,m){
+  const [rows]=await pool.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? LIMIT 1',[t,m]);
+  const row=rows[0];
+  if(!row)return {tier:null,revision:0,weeklyQuotaCents:null,spanishRequirement:null,spanishAccessGranted:false,compensationChanged:false};
+  if(!['standard','senior'].includes(row.tier)||!Number.isSafeInteger(Number(row.revision))||Number(row.revision)<1)throw Error('INVALID_WORKSTATION_PROFILE');
+  const policy=WORKFORCE.POLICY[row.tier];
+  return {tier:row.tier,revision:Number(row.revision),weeklyQuotaCents:policy.weeklyQuotaCents,
+   spanishRequirement:policy.spanish,spanishAccessGranted:false,compensationChanged:false};
+ }
+ app.get('/api/sbc/sales/workstation/me',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t,actor}=gate(req,'account_manager');staff(ctx,t,actor);
+   return res.json({ok:true,profile:await workstationProfile(ctx.mysqlPool,t,actor)});
+  }catch(e){return error(res,e)}
+ });
+ app.get('/api/owner/sales-command/workstation/profile',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);
+   return res.json({ok:true,profile:await workstationProfile(ctx.mysqlPool,t,m)});
+  }catch(e){return error(res,e)}
+ });
+ app.post('/api/owner/sales-command/workstation/profile',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t,actor}=gate(req,'owner',true),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+   if(!['standard','senior'].includes(b.tier)||!Number.isSafeInteger(b.expectedRevision)||b.expectedRevision<0||b.expectedRevision>=2147483647||
+    b.confirm!=='OWNER_CONFIRMED_WORKSTATION_TIER'||(b.tier==='senior'&&b.bilingualEvidenceConfirmed!==true))throw Error('INVALID_WORKSTATION_PROFILE_CONFIRMATION');
+   const result=await inTx(ctx,async conn=>{
+    const [rows]=await conn.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? FOR UPDATE',[t,m]);
+    const revision=rows.length?Number(rows[0].revision):0;
+    if(revision!==b.expectedRevision)throw Object.assign(Error('WORKSTATION_PROFILE_REVISION_MISMATCH'),{status:409});
+    if(rows.length){
+     const [changed]=await conn.query('UPDATE sbc_am_workstation_profile_v2 SET tier=?,revision=?,updated_by=?,updated_at=CURRENT_TIMESTAMP(3) WHERE tenant_id=? AND manager_id=? AND revision=?',[b.tier,revision+1,actor,t,m,revision]);
+     if(changed.affectedRows!==1)throw Object.assign(Error('WORKSTATION_PROFILE_REVISION_MISMATCH'),{status:409});
+    }else await conn.query('INSERT INTO sbc_am_workstation_profile_v2 (tenant_id,manager_id,tier,revision,updated_by) VALUES (?,?,?,?,?)',[t,m,b.tier,1,actor]);
+    await audit(conn,t,m,CALC.miamiMonth(new Date()),'WORKSTATION_PROFILE_CONFIGURED',actor,{priorTier:rows[0]?.tier||null,tier:b.tier,revision:revision+1,seniorEvidenceAttested:b.tier==='senior',compensationChanged:false});
+    return {tier:b.tier,revision:revision+1,compensationChanged:false,spanishAccessGranted:false};
+   });
+   return res.json({ok:true,profile:result});
+  }catch(e){return error(res,e)}
+ });
  // Read-only preflight: table visibility and MySQL recovery, never auto-migrate.
  app.get('/api/owner/sales-command/readiness',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
