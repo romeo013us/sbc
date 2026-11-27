@@ -13,7 +13,7 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS sbc_marketing_slot_receipts (
 const SLOT_COLUMNS = 'day_et,platform,slot,provider_id,published_at,permalink,verified_at';
 function error(code,status) { return Object.assign(Error(code), {code,status}); }
 function validateInput({platform,slot,postId}) {
-  if (!Object.hasOwn(CHANNELS,platform) || !['AM','PM'].includes(slot)) throw error('INVALID_SLOT',400);
+  if (!Object.hasOwn(CHANNELS,platform) || !(/^(AM|PM|[01][0-9]|2[0-3])$/.test(slot) && typeof slot==='string')) throw error('INVALID_SLOT',400);
   if (postId === '' || postId === null || postId === undefined) return null;
   if (typeof postId !== 'string' || postId.length > 225) throw error('INVALID_PROVIDER_ID',400);
   const formats = {
@@ -31,6 +31,7 @@ async function listSlots(pool, tenant, day) {
 }
 async function recordSlot(pool, tenant, day, input) {
   const postId = validateInput(input);
+  if (!['AM','PM'].includes(input.slot) && !require('../enterprise/sbc-campaign-core.cjs').daySlots(day).some(s=>s.slot===input.slot)) throw error('INVALID_SLOT',400);
   const key = [tenant,day,input.platform,input.slot];
   await pool.query(SCHEMA);
   // Insert the slot without a remote ID. A duplicate-key update then targets only this slot.
@@ -57,6 +58,12 @@ async function reconcileSlots(pool, tenant, report) {
     const channel = report.channels.find(item => item.platform === row.platform);
     const proof = channel?.receipts.find(item => item.id === row.provider_id);
     if (!proof) continue;
+    if (/^\d{2}$/.test(row.slot)) {
+      const {daySlots,INTERVAL}=require('../enterprise/sbc-campaign-core.cjs');
+      const window=daySlots(report.day).find(s=>s.slot===row.slot);
+      const posted=Date.parse(proof.publishedAt);
+      if(!window||posted<window.at-300000||posted>=window.at+INTERVAL-300000)continue;
+    }
     await pool.query('UPDATE '+TABLE+' SET verified_at=UTC_TIMESTAMP(3),published_at=?,permalink=? WHERE tenant_id=? AND day_et=? AND platform=? AND slot=? AND provider_id=? AND verified_at IS NULL',
       [proof.publishedAt,proof.link,tenant,report.day,row.platform,row.slot,row.provider_id]);
   }
@@ -67,7 +74,7 @@ function registerMarketingReceipts(app, {auth,ownerOnly,tenantOf,corporateTenant
   const read = createReadback({getKey,clock,request});
   const base = '/api/marketing/publication-receipts';
   function mount(method,path,handler) {
-    app[method](base+path,auth,ownerOnly,async (req,res) => {
+    app[method](base+path,auth,ownerOnly,...(method==='post'?[require('express').json({limit:'4kb'})]:[]),async (req,res) => {
       res.setHeader('Cache-Control','no-store');
       try {
         const tenant = tenantOf(req);

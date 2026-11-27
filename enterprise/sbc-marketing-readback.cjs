@@ -41,7 +41,7 @@ function ownsPublishingAccount(platform, id) {
 }
 function normalizedPost(platform, row) {
   const config = CHANNELS[platform];
-  let id, link, when, photo;
+  let id, link, when, photo, live;
   if (platform === 'instagram') {
     // The current Instagram login and Windsor media reporting use different numeric IDs.
     if (![config.account,config.reportingAccount].includes(row.account_id) || row.media_owner_username !== config.handle) return;
@@ -49,6 +49,7 @@ function normalizedPost(platform, row) {
     if (typeof id !== 'string' || !/^\d+$/.test(id)) return;
     link = httpsUrl(row.media_permalink,['instagram.com','www.instagram.com']);
     when = row.timestamp;
+    live = row.media_product_type === 'FEED' && ['IMAGE','CAROUSEL_ALBUM','VIDEO'].includes(row.media_type);
     photo = row.media_product_type === 'FEED' && row.media_type === 'IMAGE' && httpsUrl(row.media_url);
   } else {
     if (row.account_id !== config.account) return;
@@ -57,12 +58,14 @@ function normalizedPost(platform, row) {
       if (typeof id !== 'string' || !id.startsWith(config.account+'_') || !/^\d+_\d+$/.test(id)) return;
       link = httpsUrl(row.permalink_url,['facebook.com','www.facebook.com','m.facebook.com']);
       when = row.post_created_time;
+      live = ['true','1'].includes(String(row.is_published).toLowerCase());
       photo = ['true','1'].includes(String(row.is_published).toLowerCase()) &&
         String(row.media_type).toLowerCase() === 'photo' && httpsUrl(row.full_picture);
     } else if (platform === 'google') {
       if (typeof id !== 'string' || !/^accounts\/\d+\/locations\/\d+\/localPosts\/\d+$/.test(id) || !id.includes('/'+config.account+'/localPosts/')) return;
       link = httpsUrl(row.post_search_url,['local.google.com','www.google.com','search.google.com','maps.google.com']);
       when = row.post_create_time;
+      live = row.post_state === 'LIVE';
       photo = row.post_state === 'LIVE' && row.post_media_format === 'PHOTO' && httpsUrl(row.post_media_google_url);
     } else {
       if (row.share_owner !== 'urn:li:organization:'+config.account) return;
@@ -72,10 +75,11 @@ function normalizedPost(platform, row) {
       const activity = typeof row.share_activity === 'string' && /^urn:li:activity:\d+$/.test(row.share_activity) ? row.share_activity : id;
       link = 'https://www.linkedin.com/feed/update/' + activity + '/';
       when = row.share_published_time;
+      live = Boolean(row.share_published_time);
       photo = ['image','multiimage'].includes(String(row.share_post_type).toLowerCase()) && httpsUrl(row.share_image_url);
     }
   }
-  return {id,link,time:instant(when),photo:Boolean(photo)};
+  return {id,link,time:instant(when),photo:Boolean(photo),live:Boolean(live)};
 }
 function reconcileChannel(platform, payload, day, now) {
   if (!payload || payload.error || (payload.status && payload.status !== 'done') || !Array.isArray(payload.data)) throw Error('PROVIDER_DATA_UNAVAILABLE');
@@ -86,7 +90,7 @@ function reconcileChannel(platform, payload, day, now) {
     const post = normalizedPost(platform, row);
     if (!post || !Number.isFinite(post.time)) { unresolved++; continue; }
     if (businessDate(post.time) !== day || post.time > now) continue;
-    if (!post.link || !post.photo) { unresolved++; continue; }
+    if (!post.link || !(post.time >= Date.parse('2026-11-27T18:38:00Z') ? post.live : post.photo)) { unresolved++; continue; }
     posts.set(post.id,{id:post.id,link:post.link,publishedAt:new Date(post.time).toISOString()});
   }
   const receipts = [...posts.values()].sort((a,b) => a.publishedAt.localeCompare(b.publishedAt));
@@ -102,7 +106,8 @@ function createReadback({getKey,request=fetch,clock=Date.now}) {
     const nextUtcDate = new Date(Date.parse(day+'T00:00:00Z')+86400000).toISOString().slice(0,10);
     const utcToday = new Date(now).toISOString().slice(0,10);
     const channels = await Promise.all(Object.entries(CHANNELS).map(async ([platform, config]) => {
-      const base = {platform, name:config.name, target:2};
+      const schedule=require('./sbc-campaign-core.cjs').daySlots(day);
+      const base = {platform, name:config.name, target:schedule.length||2};
       if (!key) return {...base,status:'ACCESS_UNCONFIGURED',receipts:[]};
       try {
         const url = new URL('https://connectors.windsor.ai/'+config.connector);
@@ -113,7 +118,8 @@ function createReadback({getKey,request=fetch,clock=Date.now}) {
         return {...base,...reconcileChannel(platform,await r.json(),day,now)};
       } catch { return {...base,status:'PROVIDER_UNAVAILABLE',receipts:[]}; }
     }));
-    return {day,timezone:'America/New_York',observedAt:new Date(now).toISOString(),channels};
+    const schedule=require('./sbc-campaign-core.cjs').daySlots(day);
+    return {day,schedule:schedule.length?schedule:[{slot:'AM',label:'10 AM ET'},{slot:'PM',label:'10 PM ET'}],timezone:'America/New_York',observedAt:new Date(now).toISOString(),channels};
   }
   return function read(day) {
     const now = clock();
