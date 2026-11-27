@@ -125,3 +125,16 @@ test('workforce policy and trial review are owner-only, tenant-scoped and read-o
   assert.equal(denied.code,403);
  }
 });
+
+test('owner can record tier-specific interview observations without writing or automatically selecting a candidate',async()=>{
+ const env=setup(true),owner={id:'owner',role:'owner',tenantId:1};
+ const scores={independentClosing:25,coldCalling:20,objectionHandling:15,spokenCommunication:10,customerDiscovery:10,accountOwnership:5,technicalAptitude:5,professionalism:5,reliability:5};
+ const evidence={englishLive:true,closingSimulationPassed:true};
+ const uri='/api/owner/sales-command/hiring/evaluate';
+ const standard=await env.call('POST',uri,owner,{tier:'standard',scores,evidence});
+ assert.equal(standard.code,200);assert.equal(standard.json.result.minimumScore,80);assert.deepEqual(standard.json.result.missing,[]);
+ const senior=await env.call('POST',uri,owner,{tier:'senior',scores,evidence});
+ assert.equal(senior.code,200);assert(senior.json.result.missing.includes('LIVE_SPANISH_REQUIRED'));
+ assert.equal(senior.json.result.automaticHiring,false);assert.equal(senior.json.result.decision,undefined);assert.equal(env.writes,0);
+ const denied=await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},{tier:'standard',scores,evidence});assert.equal(denied.code,403);
+});
