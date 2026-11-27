@@ -32,7 +32,7 @@ assert(en.some(s=>s.id==='objections'&&s.items.some(x=>x.id==='dnc')&&s.items.so
 assert(en.some(s=>s.id==='finish'&&s.items.some(x=>x.id==='handoff')));
 assert(html.indexOf('src="/sbc-sales-playbook-v66106.js')>0);
 assert(html.indexOf('src="/sbc-sales-playbook-v66106.js')<html.indexOf('src="/sales-caller.js'));
-assert(html.includes('sales-caller.js?v=3')&&html.includes('sales-caller.css?v=4'),'cache-bust changed frontend assets');
+assert(html.includes('sales-caller.js?v=4')&&html.includes('sales-caller.css?v=5'),'cache-bust changed frontend assets');
 assert(caller.includes('window.SBCSalesPlaybook')&&caller.includes('sbc-script-search')&&caller.includes('navigator.clipboard.writeText'));
 assert(caller.includes("renderScripts(chosen)"),'language switch updates script content');
 assert(caller.includes("lead=data.leads.find"),'assigned dialer unchanged');
