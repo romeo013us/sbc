@@ -17,7 +17,7 @@ function verifyStagingEvidence({source,runId,run,jobs}){
  assert.equal(run.conclusion,'success','Staging failed');
  assert(Number.isSafeInteger(run.run_attempt)&&run.run_attempt>0,'Missing attempt evidence');
  assert(Array.isArray(jobs),'Missing job evidence');
- for(const name of ['verified-staged-zip','github-preview-branch']){
+ for(const name of ['SBC consolidated source release gate','verified-staged-zip','github-preview-branch']){
   const matches=jobs.filter(j=>j.name===name);
   assert.equal(matches.length,1,'Missing or ambiguous required job: '+name);
   const job=matches[0];
