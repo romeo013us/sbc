@@ -145,3 +145,30 @@ test('actual Express owner routes parse campaign JSON before general application
  assert.equal((await fetch(url,options)).status,200);assert.equal(captured.title,C.evergreen[0].title);
  writer=false;assert.equal((await fetch(url,options)).status,423);
 });
+
+test('SQL reconciliation preserves dispatch boundary and attributes inquiries before delayed confirmation',{skip:!process.env.SBC_CAMPAIGN_CI_PORT},async t=>{
+ const mysql=require('mysql2/promise');
+ const pool=mysql.createPool({host:'127.0.0.1',port:Number(process.env.SBC_CAMPAIGN_CI_PORT),user:'root',password:process.env.SBC_CAMPAIGN_CI_PASSWORD||'',database:'sbc_campaign_ci'});
+ t.after(()=>pool.end());
+ const tenant=731,db=createStore(pool,tenant);
+ await db.setup();await pool.query('DELETE FROM sbc_organic_deliveries WHERE tenant=?',[tenant]);
+ const s=C.buildSlot(at,'facebook',C.evergreen),dispatch=at+1000,discovered=at+200000;
+ await db.seed([s]);let token=await db.claim(s,at);assert(token);assert(await db.fence(s,token,dispatch));
+ assert(await db.settle(s,token,'UNKNOWN','AMBIGUOUS_DELIVERY',at+60000,null,at+2000));
+ let pending=(await db.pending(discovered))[0];assert.equal(pending.acceptedAt,null);
+ await db.reconcile(pending,'lost-receipt',true,discovered);
+ let [row]=await db.history(at,at);assert.equal(row.acceptedAt,dispatch);
+ const data={customers:[{id:'c',tenantId:tenant,leadIntelligence:{customerJourney:{inquiries:[{sourcePage:s.url,at:new Date(dispatch+1).toISOString()},{sourcePage:s.url,at:new Date(dispatch-1).toISOString()}]}}}],orders:[]};
+ assert.equal(C.measure([row],data,tenant)[0].inquiries,1);
+ const crash=C.buildSlot(at,'google',C.evergreen);
+ await db.seed([crash]);token=await db.claim(crash,at);assert(token);assert(await db.fence(crash,token,dispatch));
+ await db.recover(discovered);pending=(await db.pending(discovered)).find(s=>s.platform==='google');assert.equal(pending.state,'UNKNOWN');
+ await db.reconcile(pending,'crash-receipt',true,discovered);
+ row=(await db.history(at,at)).find(s=>s.platform==='google');assert.equal(row.acceptedAt,dispatch);
+ const retry=C.buildSlot(at,'linkedin',C.evergreen);
+ await db.seed([retry]);token=await db.claim(retry,at);assert(token);assert(await db.fence(retry,token,dispatch));
+ assert(await db.settle(retry,token,'READY','PROVIDER_REJECTED',at+3000,null,at+2000));
+ token=await db.claim(retry,at+3000);assert(token);assert(await db.fence(retry,token,at+4000));
+ assert(await db.settle(retry,token,'ACCEPTED',null,at+5000,'retry-receipt',at+5000));
+ row=(await db.history(at,at)).find(s=>s.platform==='linkedin');assert.equal(row.acceptedAt,at+4000);
+});
