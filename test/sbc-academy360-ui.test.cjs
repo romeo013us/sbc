@@ -29,14 +29,16 @@ function check(d,name,value){const el=d.querySelector('input[name="'+name+'"][va
 function click(d,id){const e=d.getElementById(id);assert(e&&!e.disabled,'enabled '+id);e.click();}
 function submit(dom,id){const form=dom.window.document.getElementById(id);form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));}
 const plans={
- 'am-01':[{truth:1,approval:2,next:0},[1,2,1]],'am-02':[{systems:0,scope:0,handoff:0},[0,0,1]],'am-03':[{systems:0,facts:2,next:0},[1,2,1]],'am-04':[{contact:1,facts:2,next:0},[1,2,0]],'am-05':[{discover:0,facts:2,next:0},[1,0,1]],'am-07':[{preview:2,truth:1,next:0},[1,0,2]],'am-06':[{scope:0,approval:2,renew:1},[0,1,2]],'am-08':[{objection:1,discover:0,approval:2},[0,1,2]],'am-10':[{payment:1,approval:2,handoff:0},[1,2,0]],'am-09':[{next:0,contact:1,facts:2},[1,0,2]],'am-11':[{handoff:0,renew:1,next:0},[2,0,1]],'am-12':[{discover:0,preview:2,scope:0,payment:1,contact:1,handoff:0,renew:1},[1,0,2]]};
+ 'am-01':[{truth:1,approval:2,next:0},[1,2,1,1,2]],'am-02':[{systems:0,scope:0,handoff:0},[0,0,1,0,1]],'am-03':[{systems:0,facts:2,next:0},[1,2,1,1,2]],'am-04':[{contact:1,facts:2,next:0},[1,2,0,1,2]],'am-05':[{discover:0,facts:2,next:0},[1,0,1,1,2]],'am-07':[{preview:2,truth:1,next:0},[1,0,2,1,2]],'am-06':[{scope:0,approval:2,renew:1},[0,1,2,0,1]],'am-08':[{objection:1,discover:0,approval:2},[0,1,2,1,2]],'am-10':[{payment:1,approval:2,handoff:0},[1,2,0,1,2]],'am-09':[{next:0,contact:1,facts:2},[1,0,2,1,2]],'am-11':[{handoff:0,renew:1,next:0},[2,0,1,0,1]],'am-12':[{discover:0,preview:2,scope:0,payment:1,contact:1,handoff:0,renew:1},[1,0,2,2,1]]};
 test('learner interface completes all twelve Spanish labs and owner interface records review, extension, certification and history',async()=>{
  const f=fixture(),learner=await ui('sbc-am-academy',f),{dom,d}=learner;
  try{
-  await wait(()=>d.querySelectorAll('#quizQuestions input').length===9,'initial lesson');assert.equal(d.querySelectorAll('#moduleNav button').length,3);assert.equal(d.getElementById('labSubmit').disabled,true);
+  await wait(()=>d.querySelectorAll('#quizQuestions input').length===15,'initial lesson — five questions');assert.equal(d.querySelectorAll('#moduleNav button').length,3);assert.equal(d.getElementById('labSubmit').disabled,true);
   click(d,'clockInAcademy');await wait(()=>!d.getElementById('labSubmit').disabled,'official clock');click(d,'langEs');await wait(()=>d.documentElement.lang==='es'&&d.querySelector('#quizQuestions legend')?.textContent.includes('función'),'Spanish questions');
+  assert.match(d.getElementById('academyDeepSummary').textContent,/Guía de estudio/);assert.equal(d.querySelectorAll('#academyDeepResults li').length,4);
+  const search=d.getElementById('academyDeepSearch');search.value='alojamiento';search.dispatchEvent(new dom.window.Event('input',{bubbles:true}));assert(d.querySelectorAll('#academyDeepResults h3').length>1,'search spans the bilingual curriculum');search.value='';search.dispatchEvent(new dom.window.Event('input',{bubbles:true}));assert.equal(d.querySelectorAll('#academyDeepResults li').length,4);
   for(const [id,[decisions,answers]] of Object.entries(plans)){
-   await wait(()=>d.querySelector('input[name="quiz-'+id+'-q1"]'),'lesson '+id);
+   await wait(()=>d.querySelector('input[name="quiz-'+id+'-q5"]'),'lesson '+id+' — all five questions');assert.equal(answers.length,5);assert.equal(d.querySelectorAll('#quizQuestions input').length,15);
    click(d,'tabKnowledge');d.getElementById('proofSample').open=true;for(const [key,value] of Object.entries(decisions))check(d,'lab-'+key,value);d.getElementById('caseArtifact').value=note;
    if(['am-08','am-12'].includes(id)){for(let n=0;n<3;n++)d.querySelector('#dialogueChoices button').click();}
    submit(dom,'labForm');await wait(()=>d.getElementById('labFeedback').textContent.startsWith('APROBADO'),'sample '+id);await wait(()=>!d.getElementById('submitPractice').disabled,'sample saved');
