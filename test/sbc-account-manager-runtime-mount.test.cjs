@@ -108,3 +108,16 @@ test('sign-out sends one POST and returns to login only after confirmed success'
   if(scenario!=='success'){assert.equal(button.disabled,false);assert.equal(messages.length,1);}
  }
 });
+
+test('Account Manager displays the same local SBC brand image as the owner dashboard',()=>{
+ const owner=read('public/index.html').match(/<img class="brand-logo" src="([^"]+)"/);
+ assert(owner,'owner brand image missing');
+ for(const dir of ['public','browser_public']){
+  const html=read(dir+'/sbc-account-manager-v1.html');
+  const logo=html.match(/<img class="logo-mark" src="([^"]+)" alt="Successful By Choice"/);
+  assert(logo,'actual company image required instead of a monogram');
+  assert.equal(logo[1],owner[1]);
+  assert(fs.existsSync(path.join(ROOT,dir,logo[1].slice(1))));
+  assert(!html.includes('aria-hidden="true">S</span>'));
+ }
+});
