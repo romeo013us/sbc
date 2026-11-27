@@ -12,7 +12,11 @@ async function probe({origin,secret,transport=fetch,at=Date.now(),nonce=crypto.r
  if(typeof secret!=='string'||secret.length<32)throw fail('OFFICEBOX_PROBE_SIGNING_NOT_CONFIGURED');
  if(!/^[a-f0-9]{24}$/.test(String(nonce||'')))throw fail('OFFICEBOX_PROBE_NONCE_INVALID');
  // Inherits Command Center's restricted HTTPS origin policy, preventing SSRF.
- const target=baseUrl(origin)+'/api/sbc/activation-status';
+ // Production exposes a dedicated public Office Box origin. Prefer it when
+ // present; the older SBC_OFFICE_BOX_URL may point at an internal/preview
+ // address that is unreachable from the published Command Center runtime.
+ const publicOrigin=String(process.env.SBC_OFFICE_BOX_PUBLIC_URL||'').trim();
+ const target=baseUrl(publicOrigin||origin)+'/api/sbc/activation-status';
  const timestamp=String(Math.floor(at/1000));
  if(!/^\d{10}$/.test(timestamp))throw fail('OFFICEBOX_PROBE_CLOCK_INVALID');
  const payload={schema:'sbc.office-box.activation-lookup.v1',
@@ -26,7 +30,9 @@ async function probe({origin,secret,transport=fetch,at=Date.now(),nonce=crypto.r
   response=await transport(target,{method:'POST',redirect:'error',cache:'no-store',
    headers:{'content-type':'application/json','x-sbc-timestamp':timestamp,
     'x-sbc-signature-v2':'sha256='+signature},
-   body:raw,signal:AbortSignal.timeout(10000)});
+   // Return a controlled diagnostic before GoDaddy/Cloudflare's request
+   // gateway can replace it with a generic 502 page.
+   body:raw,signal:AbortSignal.timeout(4000)});
   reply=await response.json();
  }catch{throw fail('OFFICEBOX_PROBE_TRANSPORT_FAILED',502)}
  // 404 from a non-existent route is NOT proof. This exact JSON comes from
