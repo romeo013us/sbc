@@ -62,4 +62,42 @@ function enrollmentPlan(input={}){
  if(plan.reserveCoversPlannedBase!==true)throw Error('TRIAL_RESERVE_INSUFFICIENT');
  return {plan,members};
 }
-module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan};
+// Planning only. The first payday is entered from a reviewed signed schedule,
+// not inferred from an employee's performance or from an unapproved wage lag.
+function paySchedule(input={}){
+ if(input.scheduleReviewed!==true||typeof input.agreementReference!=='string'||input.agreementReference.trim().length<12||input.agreementReference.length>180)throw Error('PAY_SCHEDULE_REVIEW_REQUIRED');
+ const start=day(input.startDate),first=day(input.firstPayday);
+ const endFirst=new Date(+start+13*86400000);
+ const lag=(first-endFirst)/86400000;
+ if(lag<1||lag>14)throw Error('INVALID_FIRST_PAYDAY');
+ const fmt=d=>d.toISOString().slice(0,10);
+ const periods=[];
+ for(let offset=0;offset<30;offset+=14){
+  periods.push({startDate:fmt(new Date(+start+offset*86400000)),endDate:fmt(new Date(+start+Math.min(offset+13,29)*86400000)),
+   payday:fmt(new Date(+first+offset*86400000)),finalPartialPeriod:offset+14>30});
+ }
+ return {intervalDays:14,firstPayday:input.firstPayday,periods,earnedPayNeverPerformanceGated:true,
+  paymentInitiated:false,complianceCertified:false,finalPayReviewRequired:true,
+  limitations:'Calendar planning only. Confirm local payday, holidays, final-pay deadlines, actual hours and applicable rules before each payment. Pay earned is never conditioned on revenue.'};
+}
+// Recognition is nonfinancial, evidence-gated and requires a human decision.
+function recognition(input={}){
+ if(!['standard','senior'].includes(input.tier))throw Error('INVALID_TIER');
+ const count=money(input.newPayingCustomers),week=money(input.weeklyRevenueCents),month=money(input.monthlyRevenueCents);
+ const monthlyQuota=input.tier==='standard'?216700:433300;
+ if(input.monthlyQuotaCents!==monthlyQuota)throw Error('INVALID_MONTHLY_QUOTA');
+ const weeklyQuota=POLICY[input.tier].weeklyQuotaCents;
+ const complete=input.ledgerComplete===true&&input.qualityReviewed===true&&input.qualityPassed===true;
+ const eligible=[];
+ if(complete){
+  if(count>=1)eligible.push('RISING_STAR');
+  if(week>=weeklyQuota)eligible.push('CERTIFIED_CLOSER');
+  if(week*4>=weeklyQuota*5)eligible.push('REVENUE_CHAMPION');
+  if(week*2>=weeklyQuota*3)eligible.push('ELITE');
+  if(month>=monthlyQuota*2)eligible.push('PRESIDENTS_CLUB');
+ }
+ return {eligibleForOwnerReview:eligible,evidenceComplete:complete,automaticAward:false,
+  automaticPromotion:false,compensationChanged:false,earnedPayUnaffected:true,
+  limitations:'Recognition only. Complete reconciled sales and quality review are required. Leadership eligibility needs a separate sustained performance and coaching review.'};
+}
+module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition};
