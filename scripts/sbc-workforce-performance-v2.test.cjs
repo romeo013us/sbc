@@ -50,3 +50,25 @@ test('enrollment validates the signed paid trial, unique members and funded base
  assert.throws(()=>enrollmentPlan({...input,members:[input.members[0],input.members[0]]}),/DUPLICATE_TRIAL_MANAGER/);
  assert.throws(()=>enrollmentPlan({...input,members:[{...input.members[0],agreementReference:'x'}]}),/SIGNED_TRIAL_AGREEMENT_REQUIRED/);
 });
+
+test('biweekly schedule requires explicit reviewed payday and never gates earned pay on sales',()=>{
+ const {paySchedule}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const input={startDate:'2026-11-30',firstPayday:'2026-12-18',scheduleReviewed:true,agreementReference:'signed-pay-schedule-01'};
+ const p=paySchedule(input);
+ assert.equal(p.intervalDays,14);assert.equal(p.periods[0].startDate,'2026-11-30');
+ assert.equal(p.periods[0].endDate,'2026-12-13');assert.equal(p.periods[1].payday,'2027-01-01');
+ assert.equal(p.periods[2].endDate,'2026-12-29');assert.equal(p.earnedPayNeverPerformanceGated,true);
+ assert.equal(p.paymentInitiated,false);assert.equal(p.complianceCertified,false);
+ assert.throws(()=>paySchedule({...input,scheduleReviewed:false}),/PAY_SCHEDULE_REVIEW_REQUIRED/);
+ assert.throws(()=>paySchedule({...input,firstPayday:'2026-11-29'}),/INVALID_FIRST_PAYDAY/);
+});
+test('recognition is provisional on incomplete ledger and does not grant pay or promotion',()=>{
+ const {recognition}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const input={tier:'standard',newPayingCustomers:1,weeklyRevenueCents:75000,monthlyRevenueCents:433400,monthlyQuotaCents:216700,ledgerComplete:true,qualityReviewed:true,qualityPassed:true};
+ const r=recognition(input);
+ assert.deepEqual(r.eligibleForOwnerReview,['RISING_STAR','CERTIFIED_CLOSER','REVENUE_CHAMPION','ELITE','PRESIDENTS_CLUB']);
+ assert.equal(r.automaticAward,false);assert.equal(r.compensationChanged,false);
+ assert.deepEqual(recognition({...input,ledgerComplete:false}).eligibleForOwnerReview,[]);
+ assert.deepEqual(recognition({...input,qualityPassed:false}).eligibleForOwnerReview,[]);
+ assert.throws(()=>recognition({...input,monthlyQuotaCents:1}),/INVALID_MONTHLY_QUOTA/);
+});
