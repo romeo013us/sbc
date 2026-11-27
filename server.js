@@ -6313,6 +6313,38 @@ app.post('/api/sales/spanish-callbacks/:id/move',auth,async(req,res)=>{
  if(SBC_CALL_ROUTING.hasDnc(c))return res.status(409).json({ok:false,error:'CONTACT_SUPPRESSED'});
  const reason=String(req.body?.reason||'').trim().slice(0,1200);
  if(reason.length<12)return res.status(400).json({ok:false,error:'LANGUAGE_HANDOFF_REASON_REQUIRED'});
+ // Owner-confirmed language preference is a CRM routing decision, not a call event.
+ // Preserve all existing call attempts and their actual outcomes.
+ if(req.body?.ownerConfirmedLanguage===true){
+  if(actor.role!=='owner')return res.status(403).json({ok:false,error:'OWNER_LANGUAGE_CONFIRMATION_REQUIRED'});
+  const alreadyQueued=['spanish_callback','callback_assigned'].includes(String(c.salesQueueState||''));
+  if(!alreadyQueued&&!SBC_CALL_ROUTING.eligibleForEnglish(c,db.callLogs||[],tenant,new Date()))return res.status(409).json({ok:false,error:'LEAD_NOT_ELIGIBLE_FOR_MANUAL_LANGUAGE_ROUTING'});
+  const before=JSON.parse(JSON.stringify(c)),auditBefore=(db.auditLog||[]).length,activityBefore=(db.activities||[]).length;
+  let saved=false;
+  try{
+   if(!mysqlPool)throw Error('VOICE_HANDOFF_MYSQL_NOT_AVAILABLE');
+   if(!alreadyQueued){
+    c.preferredContactLanguage='es';c.salesQueueState='spanish_callback';c.salesCallbackAssignedTo='';
+    c.salesCallbackRequestedAt=now();c.salesNextAttemptAt='';c.updatedAt=now();
+    audit(actor,'spanish_owner_language_confirmation','Owner confirmed Spanish language preference without changing call history',{customerId:c.id,reason});
+    addActivity('call','Owner-confirmed Spanish-language routing; no call recorded',{customerId:c.id,source:'owner_language_confirmation'});
+    const persisted=await saveData();
+    if(persisted?.skipped)throw Error('SPANISH_HANDOFF_READ_ONLY');
+    saved=true;
+   }
+   const [rows]=await mysqlPool.query("SELECT JSON_CONTAINS(payload,JSON_OBJECT('id',?,'tenantId',?,'fields',JSON_OBJECT('salesQueueState',?,'preferredContactLanguage','es')),'$.callRoutingStateV1.customers') AS confirmed FROM sbc_workspace WHERE id=1",[String(c.id),Number(tenant),String(c.salesQueueState)]);
+   if(Number(rows?.[0]?.confirmed)!==1)throw Error('SPANISH_HANDOFF_READBACK_UNCONFIRMED');
+   return res.json({ok:true,durable:true,alreadyQueued,customerId:c.id,queueState:c.salesQueueState,source:'owner_language_confirmation'});
+  }catch(e){
+   // Do not roll back in-memory state after a potentially committed write merely
+   // because readback failed. Return unconfirmed, not success, and reconcile.
+   if(!saved&&!alreadyQueued){
+    SBC_CALL_ROUTING.restoreSnapshot(c,before);
+    db.auditLog=(db.auditLog||[]).slice(0,auditBefore);db.activities=(db.activities||[]).slice(0,activityBefore);
+   }
+   return res.status(503).json({ok:false,error:saved||alreadyQueued?'SPANISH_HANDOFF_READBACK_UNCONFIRMED':'SPANISH_HANDOFF_SAVE_FAILED'});
+  }
+ }
  const log=SBC_CALL_ROUTING.lastAttempt(c,db.callLogs||[],tenant);
  if(!log)return res.status(409).json({ok:false,error:'NO_COMPLETED_SBC_CALL_TO_HANDOFF'});
  if(String(c.salesQueueState)==='spanish_callback'||String(c.salesQueueState)==='callback_assigned')return res.json({ok:true,alreadyQueued:true,customerId:c.id});
