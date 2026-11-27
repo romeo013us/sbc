@@ -6,7 +6,7 @@
   "serverSha256": "eec80a7261a1b704f9e472a17ec59d8a730541b0c7d8aa57c0186a63ba94f0cf",
   "runtimePatch": "v66.0.24-static-assets-routed",
   "runtimePatchFrom": "a-sbc-master",
-  "stagedInventorySha256": "1f5c286385ab438ea79d98de12fbc1eb9d1eee8850f3dcec078f795d500edd98",
+  "stagedInventorySha256": "2b6a9eff73bab7db7a523eb0c7ed12e76bf91aaae6dbea1e3457a33a028746fe",
   "candidateOnly": true,
   "baselineSourceCommit": "f5d95fbef4ce2669e0f2e7bd06e9827e652dd604",
   "productionCertified": false,

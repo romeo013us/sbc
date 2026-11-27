@@ -35,6 +35,9 @@ function eligibleForEnglish(customer,logs,tenantId,nowDate=new Date()){
 }
 function routingUpdate(customer,log,stamp=new Date()){
  if(!customer||!isTerminalLog(log)||!OUTCOMES.has(String(log.outcome||'')))return {changed:false,reason:'not-final-or-invalid'};
+ // Defense in depth: the legacy scoped sales-report adapter omits customerId.
+ // Voice logs carry it and must match; both paths require a valid matching tenant.
+ if(!validTenant(userTenant(customer))||userTenant(log)!==userTenant(customer)||!String(customer.id??'').trim()||(Object.prototype.hasOwnProperty.call(log,'customerId')&&String(log.customerId??'')!==String(customer.id)))return {changed:false,reason:'routing-identity-mismatch'};
  const now=+new Date(stamp);if(!Number.isFinite(now))throw Error('CALL_ROUTING_INVALID_DATE');
  const outcome=String(log.outcome||'Pending'),logId=String(log.id||'');
  if(logId&&String(customer.salesLastRoutedCallLogId||'')===logId&&customer.salesLastRoutedOutcome===outcome){
