@@ -3,13 +3,14 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const ROUTE=require('../routes/sbc-sales-command-v1.cjs');
 const STAGE=require('./v66160-stage-sales-command.cjs');
 const ROLE=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
-function setup(recovery=false,locked=null){
+function setup(recovery=false,locked=null,profiles=[]){
  const handlers=new Map(),calls=[];
  const db={users:[{id:'m1',tenantId:1,role:'account_manager',name:'Manager One',active:true},
                   {id:'m2',tenantId:2,role:'account_manager',name:'Foreign Worker',active:true}]};
  const pool={async query(sql,args){
   calls.push({sql,args});
   if(sql.startsWith('SELECT * FROM sbc_sales_credit_v1'))return [[]];
+  if(sql.startsWith('SELECT tier, revision FROM sbc_am_workstation_profile_v2'))return [profiles.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
   if(sql.startsWith('SELECT tier FROM sbc_commission_terms_v1'))return [[{tier:'standard'}]];
   if(sql.startsWith('SELECT * FROM sbc_commission_statement_v1'))return [locked?[locked]:[]];
   if(sql.startsWith('SELECT order_id FROM sbc_sales_credit_v1'))return [[]];
@@ -137,4 +138,28 @@ test('owner can record tier-specific interview observations without writing or a
  assert.equal(senior.code,200);assert(senior.json.result.missing.includes('LIVE_SPANISH_REQUIRED'));
  assert.equal(senior.json.result.automaticHiring,false);assert.equal(senior.json.result.decision,undefined);assert.equal(env.writes,0);
  const denied=await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},{tier:'standard',scores,evidence});assert.equal(denied.code,403);
+});
+
+test('workstation profile is self-scoped and never derives signed compensation from a presentation tier',async()=>{
+ const env=setup(false,null,[{tenant_id:1,manager_id:'m1',tier:'standard',revision:2},{tenant_id:2,manager_id:'m2',tier:'senior',revision:1}]);
+ const member={id:'m1',role:'account_manager',tenantId:1};
+ const r=await env.call('GET','/api/sbc/sales/workstation/me',member,{}, {managerId:'m2',tier:'senior'});
+ assert.equal(r.code,200);assert.equal(r.json.profile.tier,'standard');assert.equal(r.json.profile.weeklyQuotaCents,50000);
+ assert.equal(r.json.profile.spanishRequirement,'preferred');assert.equal(r.json.profile.spanishAccessGranted,false);assert.equal(r.json.profile.compensationChanged,false);
+ assert.equal(r.json.profile.revision,2);assert(env.calls.every(c=>c.args[0]===1&&c.args[1]==='m1'));
+ const cross=await env.call('GET','/api/sbc/sales/workstation/me',{...member,tenantId:2});assert.equal(cross.code,403);
+ const denied=await env.call('GET','/api/owner/sales-command/workstation/profile',member,{}, {managerId:'m1'});assert.equal(denied.code,403);
+ const owner=await env.call('GET','/api/owner/sales-command/workstation/profile',{id:'owner',role:'owner',tenantId:1},{},{managerId:'m2'});assert.equal(owner.code,422);
+});
+test('unconfigured manager is not silently labeled senior or standard; no writes on profile reads',async()=>{
+ const env=setup(true);const r=await env.call('GET','/api/sbc/sales/workstation/me',{id:'m1',role:'account_manager',tenantId:1});
+ assert.equal(r.code,200);assert.equal(r.json.profile.tier,null);assert.equal(r.json.profile.weeklyQuotaCents,null);assert.equal(env.writes,0);
+ const blocked=await env.call('POST','/api/owner/sales-command/workstation/profile',{id:'owner',role:'owner',tenantId:1},{managerId:'m1',tier:'standard'});
+ assert.equal(blocked.code,423);assert.equal(env.writes,0);
+});
+test('owner can grant no profile privileges to managers via API and new self-read is narrowly allowlisted',()=>{
+ assert.equal(ROLE.allowed('GET','/api/sbc/sales/workstation/me'),true);
+ assert.equal(ROLE.allowed('POST','/api/sbc/sales/workstation/me'),false);
+ assert.equal(ROLE.allowed('GET','/api/owner/sales-command/workstation/profile'),false);
+ assert.equal(ROLE.allowed('POST','/api/owner/sales-command/workstation/profile'),false);
 });
