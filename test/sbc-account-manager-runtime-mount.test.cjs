@@ -45,9 +45,15 @@ test('staged GoDaddy ZIP must include role authorization and employee onboarding
   for(const token of [
    'SBC_ACCOUNT_MANAGER_ROLE_V2','SBC_ACCOUNT_MANAGER_ROLE_GATE.allowAccountManager',
    "if(u?.role==='account_manager')return res.redirect(302,'/sbc-account-manager-v1.html')",
-   "'caller','account_manager','lead_researcher'",
-   "const role=['caller','account_manager','lead_researcher'"
+   "if(u?.role==='fulfillment')return res.redirect(302,'/sbc-production-workstation.html')",
+   "if(u?.role==='hr_manager')return res.redirect(302,'/hr-workstation.html')",
+   'WORKFORCE_ROLE_REQUIRED'
   ])assert(server.includes(token),'missing compiled role token: '+token);
+  const create=server.slice(server.indexOf("app.post('/api/users',auth,ownerOnly"),server.indexOf("app.put('/api/users/:id'"));
+  const roles=create.match(/const role=String\(b\.role\|\|''\);if\(!\[([^\]]+)\]\.includes\(role\)\)/);
+  assert(roles,'compiled employee provisioning requires an explicit role');
+  assert.deepEqual(roles[1].split(',').map(x=>x.trim().replaceAll("'","")).sort(),['account_manager','fulfillment','hr_manager','lead_researcher']);
+  for(const dir of ['public','browser_public'])for(const file of ['sbc-production-workstation.html','sbc-production-workstation.js'])assert(fs.existsSync(path.join(ROOT,dir,file)),'missing production workstation asset '+dir+'/'+file);
  }
  const gate=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
  assert(gate.allowed('POST','/api/v6606/crm/account-portfolios/c7/interaction'));
