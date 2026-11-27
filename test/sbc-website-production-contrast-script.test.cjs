@@ -33,7 +33,7 @@ test('website script does not claim Google profile discovery when absent or site
  assert.doesNotMatch(txt,/couldn.t find your website/i);
  assert.match(txt,/do you have a website/i);
  const notBuilt=createCallScript(sample,{...approved,status:'Draft'});
- assert.match(notBuilt,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.doesNotMatch(notBuilt,/I BUILT YOU ONE!/);
  assert.match(notBuilt,/prepare the actual private concept before the presentation/i);
 });
 

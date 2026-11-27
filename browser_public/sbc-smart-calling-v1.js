@@ -111,9 +111,9 @@
    '<button type="button" class="btn" data-sc-action="copy">Copy script</button></div>' +
    '<p class="sbc-sc-muted">'+(ctx.hasVerifiedDemo?'Approved website preview verified in SBC.':'No saved preview yet. Call first and book the 10-minute Zoom if interested; prepare the private concept after booking and before the presentation.') +
    (!ctx.canOpenCall?(hasNumber?' Calling requires verified readiness and authorization.':' Verify a working phone before calling.'):' Calling still requires server-side Twilio clearance.')+'</p>' +
-   '<pre class="sbc-sc-script" id="sbcSmartCallScript">'+esc(script)+'</pre>' +
+   '<details class="sbc-sc-coaching"><summary>Owner-approved call script &amp; objection coaching</summary><pre class="sbc-sc-script" id="sbcSmartCallScript">'+esc(script)+'</pre></details>' +
    (ctx.canLog?'<form class="sbc-sc-form" id="sbcSmartCallOutcome"><label>What happened?' +
-    '<select name="outcome" required><option value="CONNECTED">Spoke to owner (connected)</option>' +
+    '<select name="outcome" required><option value="" selected disabled>Choose outcome</option><option value="CONNECTED">Spoke to owner (connected)</option>' +
     '<option value="NO_ANSWER">No answer</option><option value="FOLLOW_UP_REQUESTED">Requested callback</option>' +
     '<option value="BAD_NUMBER">Bad number</option><option value="DO_NOT_CONTACT">Do not contact</option></select></label>' +
     '<label>Agreed follow-up date (required for callback)<input type="date" name="dueDate"></label>' +
