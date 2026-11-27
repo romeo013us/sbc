@@ -102,7 +102,7 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
  // Stateless advisory endpoints: no applicant storage, no worker mutation or provider calls.
  app.post('/api/owner/sales-command/hiring/evaluate',auth,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
-  try{gate(req);return res.json({ok:true,readOnly:true,result:HIRING.evaluate(req.body?.scores,req.body?.evidence)});}
+  try{gate(req);return res.json({ok:true,readOnly:true,result:req.body?.tier===undefined?HIRING.evaluate(req.body?.scores,req.body?.evidence):HIRING.evaluateTier(req.body.tier,req.body.scores,req.body.evidence)});}
   catch(e){return error(res,e)}
  });
  app.post('/api/owner/sales-command/hiring/forecast',auth,(req,res)=>{
