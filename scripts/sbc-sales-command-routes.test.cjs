@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const ROUTE=require('../routes/sbc-sales-command-v1.cjs');
 const STAGE=require('./v66160-stage-sales-command.cjs');
 const ROLE=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
-function setup(recovery=false,locked=null,profiles=[],trials=[]){
+function setup(recovery=false,locked=null,profiles=[],trials=[],termsTier='standard'){
  const handlers=new Map(),calls=[];
  const db={users:[{id:'m1',tenantId:1,role:'account_manager',name:'Manager One',active:true},
                   {id:'m2',tenantId:2,role:'account_manager',name:'Foreign Worker',active:true}]};
@@ -12,7 +12,7 @@ function setup(recovery=false,locked=null,profiles=[],trials=[]){
   if(sql.startsWith('SELECT * FROM sbc_sales_credit_v1'))return [[]];
   if(sql.startsWith('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2'))return [trials.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
   if(sql.startsWith('SELECT tier, revision FROM sbc_am_workstation_profile_v2'))return [profiles.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
-  if(sql.startsWith('SELECT tier FROM sbc_commission_terms_v1'))return [[{tier:'standard'}]];
+  if(sql.startsWith('SELECT tier FROM sbc_commission_terms_v1'))return [[{tier:termsTier}]];
   if(sql.startsWith('SELECT * FROM sbc_commission_statement_v1'))return [locked?[locked]:[]];
   if(sql.startsWith('SELECT order_id FROM sbc_sales_credit_v1'))return [[]];
   throw Error('Unexpected read query: '+sql);
@@ -257,4 +257,15 @@ test('owner-only payroll calendar is advisory and does not invoke writer or trus
  assert.equal(r.json.schedule.periods.length,3);assert.equal(r.json.schedule.earnedPayNeverPerformanceGated,true);
  assert.equal(r.json.schedule.paymentInitiated,false);assert.equal(env.writes,0);
  assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},input)).code,403);
+});
+
+test('recognition ignores browser-submitted revenue and is owner-only and read-only',async()=>{
+ const env=setup(true,null,[],[],'standard_v2'),owner={id:'owner',role:'owner',tenantId:1};
+ const uri='/api/owner/sales-command/workforce/recognition',input={managerId:'m1',month:'2020-11',weekStart:'2020-11-02',ledgerComplete:true,qualityReviewed:true,qualityPassed:true,weeklyRevenueCents:99999999,monthlyRevenueCents:99999999};
+ const r=await env.call('POST',uri,owner,input);
+ assert.equal(r.code,200);assert.deepEqual(r.json.result.eligibleForOwnerReview,[]);
+ assert.equal(r.json.weeklyRevenueCents,0);assert.equal(r.json.independentlyVerified,false);assert.equal(env.writes,0);
+ assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},input)).code,403);
+ assert.equal((await env.call('POST',uri,owner,{...input,managerId:'m2'})).code,422);
+ assert.equal((await env.call('POST',uri,owner,{...input,weekStart:'2020-11-03'})).code,422);
 });
