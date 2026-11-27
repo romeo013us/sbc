@@ -7,7 +7,7 @@
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 10%,#17436d 0,transparent 32%),#07101b}
 button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
 header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px max(20px,calc((100vw - 1200px)/2))}
-.brand{display:flex;gap:13px;align-items:center}.logo{width:44px;height:44px;border-radius:13px;background:linear-gradient(140deg,#66dbd4,#2e87ff);color:#04131e;display:grid;place-items:center;font-weight:900}.brand strong{font-size:17px}.sub{color:#9cb3ca;font-size:13px;margin-top:3px}
+.brand{display:flex;gap:13px;align-items:center}.logo{display:block;width:52px;height:52px;flex:0 0 52px;object-fit:contain;border-radius:6px}.brand strong{font-size:17px}.sub{color:#9cb3ca;font-size:13px;margin-top:3px}
 main{max-width:1200px;margin:auto;padding:6px 20px 65px}.panel{border:1px solid #2a415b;background:#0d1a29e8;border-radius:17px;padding:24px;box-shadow:0 20px 50px #0002}
 h1{font-size:clamp(28px,5vw,43px);letter-spacing:-1.1px;margin:0 0 8px}h2{font-size:19px;margin:0 0 14px}h3{font-size:16px;margin:0 0 12px}p{line-height:1.5}.muted{color:#a4bad1}.tiny{font-size:12px}.tag{background:#103246;color:#92e6e2;padding:5px 9px;border-radius:99px;font-size:11px;letter-spacing:.05em;font-weight:800}
 .hero{display:flex;gap:18px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:0 0 24px}
@@ -46,8 +46,8 @@ footer{font-size:12px;color:#839ab1;text-align:center;margin-top:24px}
 @media(max-width:480px){.sbc-hr-tabs{position:static}}
 </style><link rel="stylesheet" href="/sbc-chatgpt-os-v1.css?v=66.0.132-resume">
 </head><body>
-<header><div class="brand"><div class="logo">SBC</div><div><strong>SUCCESSFUL BY CHOICE</strong><div class="sub">HR DEPARTMENT · People Operations</div></div></div>
-<div class="actions"><span class="tag">OWNER-GOVERNED</span><button id="signout" hidden>Sign Out</button></div></header>
+<header><div class="brand"><img class="logo" src="/assets/sbc-logo.jpg" width="52" height="52" alt="Successful By Choice"><div><strong>SUCCESSFUL BY CHOICE</strong><div class="sub">HR DEPARTMENT · People Operations</div></div></div>
+<div class="actions"><span class="tag">OWNER-GOVERNED</span><button type="button" id="signout">Sign out</button></div></header>
 <main><div id="message" role="status" aria-live="polite"></div>
 <section id="signin" class="panel" hidden><h2>HR Department Sign In</h2>
 <p class="muted">Use your individual SBC account. HR managers can access this workstation only, and cannot enter the owner's payment or CRM controls.</p>
@@ -107,7 +107,7 @@ async function api(url,method='GET',data){
  if(!r.ok)throw new Error(json.error||json.message||('Request failed: '+r.status));
  return json;
 }
-function showLogin(){ $('workspace').hidden=true;$('signin').hidden=false;$('signout').hidden=true; }
+function showLogin(){ $('workspace').hidden=true;$('signin').hidden=false;$('signout').hidden=false; }
 function showWork(){ $('signin').hidden=true;$('workspace').hidden=false;$('signout').hidden=false; }
 function persons(){
  const people=model.people||[];
@@ -145,7 +145,7 @@ $('loginForm').onsubmit=e=>{e.preventDefault();action(async()=>{
  $('password').value='';await reload();});
 };
 $('reload').onclick=()=>action(async()=>{await reload();});
-$('signout').onclick=()=>action(async()=>{await api('/api/logout','POST');current=null;model=null;showLogin();});
+$('signout').onclick=async()=>{const b=$('signout');if(b.disabled||busy)return;b.disabled=true;try{const result=await api('/api/logout','POST');if(result.ok!==true||result.signedOut!==true)throw Error('Sign-out not confirmed.');current=null;model=null;$('workspace').hidden=true;location.replace('/');}catch(e){b.disabled=false;notice('Sign-out not confirmed. Please retry.',true);}};
 $('providerForm').onsubmit=e=>{e.preventDefault();action(()=>api('/api/hr/payout-preferences','POST',{
  workerId:$('providerWorker').value,provider:$('providerChoice').value}));};
 $('draftForm').onsubmit=e=>{e.preventDefault();action(()=>api('/api/hr/drafts','POST',{
