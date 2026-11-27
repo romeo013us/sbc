@@ -1,0 +1,36 @@
+name: SBC organic campaign delivery
+on:
+  pull_request:
+    paths:
+      - 'enterprise/sbc-campaign-*.cjs'
+      - 'routes/sbc-organic-campaigns.cjs'
+      - 'enterprise/sbc-marketing-readback.cjs'
+      - 'routes/sbc-marketing-receipts.cjs'
+      - 'test/sbc-organic-campaigns.test.cjs'
+      - '.github/workflows/sbc-organic-campaigns.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  database-and-provider-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local-test-only
+          MYSQL_DATABASE: sbc_campaign_ci
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=3s --health-retries=20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test test/sbc-organic-campaigns.test.cjs test/sbc-marketing-readback.test.cjs scripts/super-sbc-marketing-hub-safety.test.cjs test/sbc-connected-journey.test.cjs
+        env:
+          SBC_CAMPAIGN_CI_PORT: '3306'
+          SBC_CAMPAIGN_CI_PASSWORD: local-test-only
