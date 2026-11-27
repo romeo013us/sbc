@@ -136,6 +136,10 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
     ledgerCompletenessVerified:false,automaticTransfers:false,automaticPersonnelAction:false});
   }catch(e){return error(res,e)}
  });
+ app.post('/api/owner/sales-command/workforce/trial-plan',auth,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{gate(req);return res.json({ok:true,readOnly:true,plan:WORKFORCE.trialPlan(req.body||{})});}catch(e){return error(res,e)}
+ });
  // Workstation presentation tier is independently provisioned; no financial or language permission changes.
  async function workstationProfile(pool,t,m){
   const [rows]=await pool.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? LIMIT 1',[t,m]);
