@@ -100,3 +100,16 @@ test('trial payroll reconciliation uses enrolled tier and reviewed actual paid m
  assert.throws(()=>trialPayroll({...input,trainingMinutes:-1}),/INVALID_PAID_MINUTES/);
  assert.throws(()=>trialPayroll({...input,periodIndex:3}),/INVALID_PAY_PERIOD/);
 });
+
+test('coaching prioritizes training and evidence review rather than blaming employees for incomplete records',()=>{
+ const {coaching}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const academy={certified:false,ownerReviewRequired:true};
+ assert.deepEqual(coaching({academy,trial:null}).actions,['REVIEW_PAID_TRAINING','CONFIRM_TRIAL_ENROLLMENT']);
+ const trial={stage:'IN_PROGRESS',review:{workdays:10,revenueCents:0,targetCents:100000,newPayingCustomers:0,twoCustomerMilestone:'not_met'}};
+ const incomplete=coaching({academy:{certified:true},trial});
+ assert(incomplete.actions.includes('RECONCILE_SALES_EVIDENCE'));assert(incomplete.actions.includes('REVIEW_LEAD_AND_TOOL_ACCESS'));
+ assert.equal(incomplete.automaticPersonnelAction,false);assert.equal(incomplete.earnedPayUnaffected,true);
+ const confirmed=coaching({academy:{certified:true},trial,ledgerReviewed:true});
+ assert(confirmed.actions.includes('PRACTICE_DISCOVERY_AND_CLOSING'));assert(confirmed.actions.includes('REVIEW_LEAD_AND_TOOL_ACCESS'));
+ assert.equal(confirmed.automaticOutreach,false);
+});
