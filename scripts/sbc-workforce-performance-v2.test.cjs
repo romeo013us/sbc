@@ -39,3 +39,14 @@ test('trial plan never invents a payday or accepts invalid dates, tiers or reser
  const p=trialPlan({startDate:'2026-11-30',tiers:['standard']});
  assert.equal(p.firstPayday,null);assert.equal(p.reserveCoversPlannedBase,null);
 });
+
+test('enrollment validates the signed paid trial, unique members and funded base-pay commitment',()=>{
+ const {enrollmentPlan}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const input={startDate:'2026-11-30',members:[{managerId:'a',tier:'standard',agreementReference:'signed-agreement-a'},{managerId:'b',tier:'senior',agreementReference:'signed-agreement-b'}],reserveCents:145200,confirm:'OWNER_CONFIRMED_PAID_TRIAL',signedTermsConfirmed:true,payScheduleReviewed:true,fairOpportunityConfirmed:true};
+ const p=enrollmentPlan(input);
+ assert.equal(p.plan.plannedBaseCents,145200);assert.equal(p.members.length,2);
+ assert.throws(()=>enrollmentPlan({...input,reserveCents:145199}),/TRIAL_RESERVE_INSUFFICIENT/);
+ assert.throws(()=>enrollmentPlan({...input,payScheduleReviewed:false}),/TRIAL_CONFIRMATION_REQUIRED/);
+ assert.throws(()=>enrollmentPlan({...input,members:[input.members[0],input.members[0]]}),/DUPLICATE_TRIAL_MANAGER/);
+ assert.throws(()=>enrollmentPlan({...input,members:[{...input.members[0],agreementReference:'x'}]}),/SIGNED_TRIAL_AGREEMENT_REQUIRED/);
+});
