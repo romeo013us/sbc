@@ -19,3 +19,23 @@ test('three-week senior target, dates, empty evidence and duplicate orders',()=>
  assert.throws(()=>review({tier:'standard',startDate:'2026-02-30',throughDate:'2026-03-04'}),/INVALID_DATE/);
  assert.throws(()=>review({tier:'standard',startDate:'2026-11-30',throughDate:'2026-12-18',credits:[sale('1','a','2026-12-01',10),sale('1','b','2026-12-02',20)]}),/DUPLICATE_ORDER/);
 });
+
+test('paid competitive trial budget covers all scheduled weekdays in the full 30 calendar days',()=>{
+ const {trialPlan}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const p=trialPlan({startDate:'2026-11-30',tiers:['standard','senior'],reserveCents:145200});
+ assert.equal(p.endDate,'2026-12-29');assert.equal(p.workdays,22);
+ assert.equal(p.plannedBaseCents,145200);assert.equal(p.reserveShortfallCents,0);
+ assert.equal(p.checkpoints.day5,'2026-12-04');assert.equal(p.checkpoints.day10,'2026-12-11');assert.equal(p.checkpoints.day15,'2026-12-18');
+ assert.equal(p.enrollmentAuthorized,false);assert.equal(p.payrollInitiated,false);
+ assert.equal(p.currentLongTermOpenings,1);
+ const insufficient=trialPlan({startDate:'2026-11-30',tiers:['standard','standard'],reserveCents:120000});
+ assert.equal(insufficient.reserveShortfallCents,12000);assert.equal(insufficient.reserveCoversPlannedBase,false);
+});
+test('trial plan never invents a payday or accepts invalid dates, tiers or reserve amounts',()=>{
+ const {trialPlan}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ assert.throws(()=>trialPlan({startDate:'2026-02-30',tiers:['standard']}),/INVALID_DATE/);
+ assert.throws(()=>trialPlan({startDate:'2026-11-30',tiers:['standard','senior','senior']}),/INVALID_TRIAL_TIERS/);
+ assert.throws(()=>trialPlan({startDate:'2026-11-30',tiers:['standard'],reserveCents:-1}),/INVALID_CREDIT_AMOUNT/);
+ const p=trialPlan({startDate:'2026-11-30',tiers:['standard']});
+ assert.equal(p.firstPayday,null);assert.equal(p.reserveCoversPlannedBase,null);
+});
