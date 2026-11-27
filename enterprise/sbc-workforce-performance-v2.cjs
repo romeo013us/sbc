@@ -100,4 +100,13 @@ function recognition(input={}){
   automaticPromotion:false,compensationChanged:false,earnedPayUnaffected:true,
   limitations:'Recognition only. Complete reconciled sales and quality review are required. Leadership eligibility needs a separate sustained performance and coaching review.'};
 }
-module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition};
+// Proposed advancement criteria; owner approval and signed pay remain separate.
+function seniorReview(input={}){
+ if(!Array.isArray(input.weeklyRevenueCents)||input.weeklyRevenueCents.length!==4)throw Error('INVALID_PROMOTION_WEEKS');
+ const weeks=input.weeklyRevenueCents.map(money),missing=[];
+ for(const key of ['trialCompleted','academyCertified','ledgerReviewed','trialAccepted','bilingualVerified','qualityPassed','reliabilityPassed'])if(input[key]!==true)missing.push(key);
+ if(weeks.some(v=>v<POLICY.standard.weeklyQuotaCents))missing.push('fourStandardTargetWeeks');
+ if(weeks.filter(v=>v>=POLICY.senior.weeklyQuotaCents).length<2)missing.push('twoSeniorTargetWeeks');
+ return {eligible:missing.length===0,missing,weeklyRevenueCents:weeks,criteriaVersion:'SBC_SENIOR_ADVANCEMENT_PROPOSED_V1',ownerApprovalRequired:true,automaticPromotion:false,compensationChanged:false,earnedPayUnaffected:true};
+}
+module.exports={POLICY,review,miamiDay,trialPlan,enrollmentPlan,paySchedule,recognition,seniorReview};

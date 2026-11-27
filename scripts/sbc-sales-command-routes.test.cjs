@@ -166,7 +166,7 @@ test('owner can grant no profile privileges to managers via API and new self-rea
  assert.equal(ROLE.allowed('POST','/api/owner/sales-command/workstation/profile'),false);
 });
 
-test('owner can provision and promote the same employee with revision checks and transactional audit',async()=>{
+test('owner can provision Standard but cannot bypass earned Senior promotion with revision checks and transactional audit',async()=>{
  const state=new Map(),audit=[],transactions=[];
  const key=(t,m)=>t+':'+m;
  const db={users:[{id:'m1',tenantId:1,role:'account_manager',active:true},{id:'m2',tenantId:2,role:'account_manager',active:true}]};
@@ -190,14 +190,14 @@ test('owner can provision and promote the same employee with revision checks and
  assert.deepEqual(state.get('1:m1'),{tier:'standard',revision:1});
  assert.equal((await call('POST',uri,owner,base)).code,409);
  assert.equal((await call('POST',uri,owner,{...base,tier:'senior',expectedRevision:1})).code,422);
- assert.equal((await call('POST',uri,owner,{...base,tier:'senior',expectedRevision:1,bilingualEvidenceConfirmed:true})).code,200);
- assert.deepEqual(state.get('1:m1'),{tier:'senior',revision:2});
+ assert.equal((await call('POST',uri,owner,{...base,tier:'senior',expectedRevision:1,bilingualEvidenceConfirmed:true})).code,422);
+ assert.deepEqual(state.get('1:m1'),{tier:'standard',revision:1});
  const self=await call('GET','/api/sbc/sales/workstation/me',{id:'m1',role:'account_manager',tenantId:1});
- assert.equal(self.json.profile.weeklyQuotaCents,100000);assert.equal(self.json.profile.spanishAccessGranted,false);
+ assert.equal(self.json.profile.weeklyQuotaCents,50000);assert.equal(self.json.profile.spanishAccessGranted,false);
  assert.equal((await call('POST',uri,owner,{...base,managerId:'m2'})).code,422);
- assert.equal(audit.length,2);assert(audit.every(x=>x[1]===1&&x[2]==='m1'&&x[4]==='WORKSTATION_PROFILE_CONFIGURED'));
- assert.equal(transactions.filter(x=>x==='commit').length,2);
- assert.equal(transactions.filter(x=>x==='rollback').length,1);
+ assert.equal(audit.length,1);assert(audit.every(x=>x[1]===1&&x[2]==='m1'&&x[4]==='WORKSTATION_PROFILE_CONFIGURED'));
+ assert.equal(transactions.filter(x=>x==='commit').length,1);
+ assert.equal(transactions.filter(x=>x==='rollback').length,2);
 });
 
 test('trial planning is owner-only, does not enroll workers, and does not initiate payroll',async()=>{

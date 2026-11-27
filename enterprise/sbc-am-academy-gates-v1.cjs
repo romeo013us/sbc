@@ -63,7 +63,7 @@ function hasClearance(s,db,userId){
 function isTrainingSafeRoute(method,url){
  const verb=String(method||'').toUpperCase(),path=String(url||'').split('?')[0];
  if(!path.startsWith('/api/')||path.includes('%')||path.includes('..')||path.includes('//')||path.includes('\\'))return false;
- if(verb==='GET')return ['/api/me','/api/training','/api/v9/time/status','/api/sbc/academy-am/v1/window'].includes(path)||
+ if(verb==='GET')return ['/api/me','/api/training','/api/v9/time/status','/api/sbc/academy-am/v1/window','/api/sbc/sales/workforce/academy/me'].includes(path)||
  /^\/api\/training\/courses\/sbc-account-manager-mastery-20261122$/.test(path)||
  /^\/api\/sbc\/academy-am\/v1\/(?:quiz|lab)\/am-[0-9]{2}$/.test(path);
  if(verb==='POST')return ['/api/logout','/api/v9/time/clock','/api/training/progress','/api/sbc/academy-am/v1/window/start'].includes(path)||

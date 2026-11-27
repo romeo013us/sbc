@@ -7,6 +7,8 @@ const crypto=require('node:crypto');
 const CALC=require('../enterprise/sbc-sales-compensation-v1.cjs');
 const HIRING=require('../enterprise/sbc-sales-hiring-scorecard-v1.cjs');
 const WORKFORCE=require('../enterprise/sbc-workforce-performance-v2.cjs');
+const ACADEMY_GATES=require('../enterprise/sbc-am-academy-gates-v1.cjs');
+const ACADEMY_BUDGET=require('../enterprise/sbc-am-training-budget-v1.cjs');
 const MONEY=require('../enterprise/v6640-payment-evidence.cjs');
 const TRUTH=require('../enterprise/sbc-revenue-reporting-truth-v66142.cjs');
 const NEGATIVE=new Set(['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED']);
@@ -259,6 +261,56 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,trial:await enrolledTrial(ctx,t,m),ledgerCompletenessVerified:false,automaticPersonnelAction:false});}
   catch(e){return error(res,e)}
  });
+ // Read the original Academy authority; never create training state or change wages.
+ function academySnapshot(ctx,m){
+  const state=ctx.db.settings?.trainingCenterV2;
+  const readiness=ACADEMY_GATES.readiness(state,ctx.db,m),budget=ACADEMY_BUDGET.asOf(state,ctx.db,m);
+  return {completedModules:readiness.done,totalModules:readiness.total,readyForOwnerCertification:readiness.ready,
+   certified:ACADEMY_GATES.hasClearance(state,ctx.db,m),trainingMinutes:budget.trainingMinutes,
+   approvedMinutes:budget.approvedMinutes,shiftsUsed:budget.shiftsUsed,ownerReviewRequired:budget.ownerReviewRequired,
+   missingModules:readiness.missing,earnedPayUnaffected:true};
+ }
+ app.get('/api/sbc/sales/workforce/academy/me',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t,actor}=gate(req,'account_manager');staff(ctx,t,actor);return res.json({ok:true,readOnly:true,academy:academySnapshot(ctx,actor)});}
+  catch(e){return error(res,e)}
+ });
+ app.get('/api/owner/sales-command/workforce/academy',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,readOnly:true,academy:academySnapshot(ctx,m)});}
+  catch(e){return error(res,e)}
+ });
+ // Four complete Monday-Sunday weeks, all after the employee's trial start.
+ async function seniorEvidence(ctx,t,m,b,pool=ctx.mysqlPool,lock=false){
+  const [trial]=await pool.query('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2 m JOIN sbc_am_trial_cohort_v2 c ON c.tenant_id=m.tenant_id AND c.cohort_id=m.cohort_id WHERE m.tenant_id=? AND m.manager_id=? LIMIT 1',[t,m]);
+  const today=WORKFORCE.miamiDay(new Date()),d=new Date(today+'T00:00:00Z');
+  const monday=new Date(+d-((d.getUTCDay()+6)%7)*86400000);
+  const start=new Date(+monday-28*86400000).toISOString().slice(0,10),end=new Date(+monday-86400000).toISOString().slice(0,10);
+  const row=trial[0];
+  const trialCompleted=Boolean(row&&row.tier==='standard'&&WORKFORCE.trialPlan({startDate:row.start_day,tiers:['standard']}).endDate===row.end_day&&row.end_day<today&&row.start_day<=start);
+  const [rows]=await pool.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? AND manager_id=? ORDER BY captured_at DESC LIMIT 10001'+(lock?' FOR UPDATE':''),[t,m]);
+  if(rows.length>10000)throw Error('SALES_LEDGER_QUERY_TRUNCATED');
+  const credits=rows.map(row=>{const c=creditRow(row);CALC.credit(c,{tenantId:t,managerId:m});return {...c,customerId:CALC.id(row.customer_id)};});
+  // Recheck each included capture; stale/disputed orders cannot support promotion.
+  for(const c of credits){
+   const date=WORKFORCE.miamiDay(c.capturedAt);if(date<start||date>end)continue;
+   const {order,proof,grossCents}=findOrder(ctx,t,c.orderId);
+   const row=rows.find(r=>String(r.order_id)===c.orderId);
+   if(grossCents!==c.grossCents||String(order.customerId)!==c.customerId||HASH(proof.id)!==String(row.square_payment_hash))throw Error('CAPTURE_OR_ORDER_CHANGED_RECONCILIATION_REQUIRED');
+  }
+  const weeks=[];
+  for(let i=0;i<4;i++){const a=new Date(Date.parse(start+'T00:00:00Z')+i*7*86400000),z=new Date(+a+6*86400000);
+   weeks.push(WORKFORCE.review({tier:'standard',startDate:a.toISOString().slice(0,10),throughDate:z.toISOString().slice(0,10),credits}).revenueCents);}
+  return {...WORKFORCE.seniorReview({trialCompleted,academyCertified:academySnapshot(ctx,m).certified,
+   ledgerReviewed:b.ledgerReviewed===true,trialAccepted:b.trialAccepted===true,bilingualVerified:b.bilingualEvidenceConfirmed===true,
+   qualityPassed:b.qualityPassed===true,reliabilityPassed:b.reliabilityPassed===true,weeklyRevenueCents:weeks}),startDate:start,endDate:end};
+ }
+ app.post('/api/owner/sales-command/workforce/senior-review',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+   return res.json({ok:true,readOnly:true,review:await seniorEvidence(ctx,t,m,b)});
+  }catch(e){return error(res,e)}
+ });
  // Workstation presentation tier is independently provisioned; no financial or language permission changes.
  async function workstationProfile(pool,t,m){
   const [rows]=await pool.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? LIMIT 1',[t,m]);
@@ -291,11 +343,17 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
     const [rows]=await conn.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? FOR UPDATE',[t,m]);
     const revision=rows.length?Number(rows[0].revision):0;
     if(revision!==b.expectedRevision)throw Object.assign(Error('WORKSTATION_PROFILE_REVISION_MISMATCH'),{status:409});
+    let promotion=null;
+    if(b.tier==='senior'&&rows[0]?.tier!=='senior'){
+     if(rows[0]?.tier!=='standard'||b.promotionConfirm!=='OWNER_APPROVED_EARNED_SENIOR'||typeof b.agreementReference!=='string'||b.agreementReference.trim().length<12||b.agreementReference.length>180)throw Error('EARNED_SENIOR_PROMOTION_REQUIRED');
+     promotion=await seniorEvidence(ctx,t,m,b,conn,true);
+     if(!promotion.eligible)throw Error('SENIOR_EVIDENCE_REQUIRED');
+    }
     if(rows.length){
      const [changed]=await conn.query('UPDATE sbc_am_workstation_profile_v2 SET tier=?,revision=?,updated_by=?,updated_at=CURRENT_TIMESTAMP(3) WHERE tenant_id=? AND manager_id=? AND revision=?',[b.tier,revision+1,actor,t,m,revision]);
      if(changed.affectedRows!==1)throw Object.assign(Error('WORKSTATION_PROFILE_REVISION_MISMATCH'),{status:409});
     }else await conn.query('INSERT INTO sbc_am_workstation_profile_v2 (tenant_id,manager_id,tier,revision,updated_by) VALUES (?,?,?,?,?)',[t,m,b.tier,1,actor]);
-    await audit(conn,t,m,CALC.miamiMonth(new Date()),'WORKSTATION_PROFILE_CONFIGURED',actor,{priorTier:rows[0]?.tier||null,tier:b.tier,revision:revision+1,seniorEvidenceAttested:b.tier==='senior',compensationChanged:false});
+    await audit(conn,t,m,CALC.miamiMonth(new Date()),'WORKSTATION_PROFILE_CONFIGURED',actor,{priorTier:rows[0]?.tier||null,tier:b.tier,revision:revision+1,seniorEvidenceAttested:b.tier==='senior',promotionEvidence:promotion,promotionAgreementHash:promotion?HASH(b.agreementReference.trim()):null,compensationChanged:false});
     return {tier:b.tier,revision:revision+1,compensationChanged:false,spanishAccessGranted:false};
    });
    return res.json({ok:true,profile:result});
