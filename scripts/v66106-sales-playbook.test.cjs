@@ -32,7 +32,8 @@ assert(en.some(s=>s.id==='objections'&&s.items.some(x=>x.id==='dnc')&&s.items.so
 assert(en.some(s=>s.id==='finish'&&s.items.some(x=>x.id==='handoff')));
 assert(html.indexOf('src="/sbc-sales-playbook-v66106.js')>0);
 assert(html.indexOf('src="/sbc-sales-playbook-v66106.js')<html.indexOf('src="/sales-caller.js'));
-assert(html.includes('sales-caller.js?v=3')&&html.includes('sales-caller.css?v=4'),'cache-bust changed frontend assets');
+const jsCache=html.match(/src="\/sales-caller\.js\?v=(\d+)"/),cssCache=html.match(/href="\/sales-caller\.css\?v=(\d+)"/);
+assert(jsCache&&Number(jsCache[1])>=3&&cssCache&&Number(cssCache[1])>=4,'cache-bust changed frontend assets; versions must not regress');
 assert(caller.includes('window.SBCSalesPlaybook')&&caller.includes('sbc-script-search')&&caller.includes('navigator.clipboard.writeText'));
 assert(caller.includes("renderScripts(chosen)"),'language switch updates script content');
 assert(caller.includes("lead=data.leads.find"),'assigned dialer unchanged');
