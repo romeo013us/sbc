@@ -80,6 +80,7 @@
   const month=$('month').value;
   if(!/^\d{4}-\d{2}$/.test(month))throw Error('SELECT_A_REPORTING_MONTH');
   setActionButtons(false);
+  resetProfile();
   notice('Checking Sales Command database readiness…');
   const readiness=await api('/api/owner/sales-command/readiness');
   if(!readiness.ready){
@@ -106,6 +107,8 @@
   table(managers);
   for(const id of ['termsManager','creditManager','actionManager','workforceManager'])
    options(id,managers,r=>r.name+' · '+r.managerId);
+  options('workstationManager',managers.filter(r=>r.active),r=>r.name+' · '+r.managerId);
+  void loadProfile();
   options('creditOrder',candidates,r=>r.orderId+' · '+money(r.grossCents));
   setActionButtons(true);
   notice('Loaded '+managers.length+' manager(s), '+candidates.length+
@@ -115,6 +118,33 @@
   try{await action();notice(message);await refresh()}catch(e){notice('Action not completed: '+e.message,true)}
  };
  const ask=message=>window.confirm(message);
+ let profileSnapshot=null,profileRequest=0;
+ function resetProfile(){profileRequest++;profileSnapshot=null;$('workstationSave').disabled=true;$('workstationBilingual').checked=false;}
+ async function loadProfile(){
+  resetProfile();const seq=profileRequest,managerId=$('workstationManager').value,status=$('workstationStatus');
+  if(!managerId){status.textContent='Choose an active Account Manager first.';return;}
+  status.textContent='Loading current profile…';
+  try{const data=await api('/api/owner/sales-command/workstation/profile?managerId='+encodeURIComponent(managerId));
+   if(seq!==profileRequest||managerId!==$('workstationManager').value)return;
+   profileSnapshot={managerId,revision:data.profile.revision};$('workstationTier').value=data.profile.tier||'standard';
+   status.textContent=data.profile.tier?'Current profile: '+data.profile.tier+' · revision '+data.profile.revision:'No profile configured. Select a tier and confirm.';
+   $('workstationSave').disabled=false;
+  }catch(e){if(seq===profileRequest)status.textContent='Profile unavailable: '+e.message+' · Check the approved workstation schema and owner access.';}
+ }
+ $('workstationManager').addEventListener('change',loadProfile);
+ $('workstationLoad').addEventListener('click',loadProfile);
+ $('workstationProfileForm').addEventListener('submit',async e=>{
+  e.preventDefault();const snapshot=profileSnapshot,tier=$('workstationTier').value,status=$('workstationStatus');
+  if(!snapshot||snapshot.managerId!==$('workstationManager').value)return;
+  const bilingual=$('workstationBilingual').checked;
+  if(tier==='senior'&&!bilingual){status.textContent='Confirm live English and Spanish proficiency before assigning Senior.';return;}
+  if(!ask('Assign this workspace profile? This does not change compensation or calling permissions.'))return;
+  resetProfile();const seq=profileRequest;
+  try{await api('/api/owner/sales-command/workstation/profile','POST',{managerId:snapshot.managerId,tier,expectedRevision:snapshot.revision,bilingualEvidenceConfirmed:bilingual,confirm:'OWNER_CONFIRMED_WORKSTATION_TIER'});
+   if(seq===profileRequest){await loadProfile();if(profileSnapshot?.managerId===snapshot.managerId)status.textContent='Profile saved and reloaded. Signed compensation and calling permissions are unchanged.';}
+  }catch(err){if(seq===profileRequest)status.textContent='Profile not saved: '+err.message+'. Reload before retrying.';}
+ });
+
  async function workforcePolicy(){
   const r=await api('/api/owner/sales-command/workforce/policy'),p=r.policy;
   const line=t=>money(t.hourlyCents)+'/hr · '+money(t.weeklyQuotaCents)+'/week · '+(t.commissionBps/100)+'% eligible gross profit · Spanish '+t.spanish;
