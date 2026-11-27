@@ -210,6 +210,20 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,readOnly:true,awards:await awardHistory(ctx,t,m)});}
   catch(e){return error(res,e)}
  });
+ // Reconcile actual owner-reviewed payable minutes against the immutable enrolled tier.
+ app.post('/api/owner/sales-command/workforce/payroll-preview',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t}=gate(req),b=req.body||{},m=CALC.id(b.managerId);staff(ctx,t,m);
+   const [rows]=await ctx.mysqlPool.query('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2 m JOIN sbc_am_trial_cohort_v2 c ON c.tenant_id=m.tenant_id AND c.cohort_id=m.cohort_id WHERE m.tenant_id=? AND m.manager_id=? LIMIT 1',[t,m]);
+   if(rows.length!==1)throw Error('SIGNED_TRIAL_ENROLLMENT_REQUIRED');
+   const row=rows[0];
+   if(WORKFORCE.trialPlan({startDate:row.start_day,tiers:[row.tier]}).endDate!==row.end_day)throw Error('INVALID_TRIAL_RECORD');
+   const payroll=WORKFORCE.trialPayroll({tier:row.tier,startDate:row.start_day,periodIndex:b.periodIndex,trainingMinutes:b.trainingMinutes,otherPaidMinutes:b.otherPaidMinutes,hoursReviewed:b.hoursReviewed,signedRateConfirmed:b.signedRateConfirmed});
+   if(payroll.periodEnd>=WORKFORCE.miamiDay(new Date()))throw Error('INVALID_PAYROLL_REQUIRES_COMPLETED_PERIOD');
+   return res.json({ok:true,readOnly:true,payroll,source:'OWNER_REVIEWED_MINUTES_NOT_INDEPENDENT_CLOCK_VERIFICATION',automaticTransfers:false});
+  }catch(e){return error(res,e)}
+ });
  // Enrollment records a previously signed paid trial, never hires or moves money.
  app.post('/api/owner/sales-command/workforce/enroll',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');

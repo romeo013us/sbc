@@ -215,6 +215,19 @@
   }catch(err){out.textContent='Calendar unavailable: '+err.message;}
   finally{if(button)button.disabled=false;}
  });
+ let payrollEpoch=0;
+ function resetPayrollPreview(){payrollEpoch++;$('trialPayrollHoursReviewed').checked=false;$('trialPayrollRateReviewed').checked=false;$('trialPayrollResult').textContent='Confirm the selected manager, completed period and actual minutes.';}
+ for(const id of ['workstationManager','trialPayrollPeriod','trialPayrollTraining','trialPayrollOther'])$(id).addEventListener('change',resetPayrollPreview);
+ $('trialPayrollForm').addEventListener('submit',async e=>{
+  e.preventDefault();const out=$('trialPayrollResult'),seq=++payrollEpoch,managerId=$('workstationManager').value;
+  try{
+   const parse=id=>{const raw=$(id).value;if(!/^\d+$/.test(raw))throw Error('ENTER_WHOLE_PAYABLE_MINUTES');return Number(raw);};
+   if(!managerId)throw Error('SELECT_ENROLLED_MANAGER');
+   const d=await api('/api/owner/sales-command/workforce/payroll-preview','POST',{managerId,periodIndex:Number($('trialPayrollPeriod').value),trainingMinutes:parse('trialPayrollTraining'),otherPaidMinutes:parse('trialPayrollOther'),hoursReviewed:$('trialPayrollHoursReviewed').checked,signedRateConfirmed:$('trialPayrollRateReviewed').checked});
+   if(seq!==payrollEpoch)return;const p=d.payroll;
+   out.textContent=p.tier+' · '+p.periodStart+' to '+p.periodEnd+' · '+p.totalPaidMinutes+' paid minutes · '+money(p.hourlyCents)+'/hr · Straight-time base pay '+money(p.basePayCents)+'. No payment initiated. '+p.limitations;
+  }catch(err){if(seq===payrollEpoch)out.textContent='Payroll preview unavailable: '+err.message;}
+ });
  let recognitionEpoch=0;
  function resetRecognition(){
   recognitionEpoch++;$('recognitionAwardActions').replaceChildren();for(const id of ['recognitionLedger','recognitionQualityReviewed','recognitionQualityPassed'])$(id).checked=false;

@@ -77,3 +77,10 @@ test('earned senior review and Academy bridge are connected to owner and employe
  assert(emp.includes("fetch('/api/sbc/sales/workforce/academy/me'"));assert(!emp.includes('/api/owner/sales-command/workforce/senior-review'));
  new (require('node:vm').Script)(js);new (require('node:vm').Script)(emp);
 });
+
+test('actual trial payroll preview uses owner-reviewed minutes and existing enrolled manager selector',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8'),html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js');
+ for(const id of ['trialPayrollForm','trialPayrollTraining','trialPayrollOther','trialPayrollHoursReviewed','trialPayrollRateReviewed'])assert(html.includes('id="'+id+'"'));
+ assert(js.includes('/api/owner/sales-command/workforce/payroll-preview'));assert(js.includes('signedRateConfirmed:'));assert(js.includes('hoursReviewed:'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));new (require('node:vm').Script)(js);
+});
