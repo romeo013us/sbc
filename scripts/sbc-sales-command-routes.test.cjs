@@ -298,3 +298,14 @@ test('trial academy snapshot uses existing server training state, not submitted 
  assert.equal(G.isTrainingSafeRoute('GET',uri),true);assert.equal(G.isTrainingSafeRoute('POST',uri),false);
  assert.equal(G.isTrainingSafeRoute('GET','/api/owner/sales-command/workforce/academy'),false);
 });
+
+test('trial payroll preview derives worker and tier from enrolled record, not browser rate or revenue',async()=>{
+ const env=setup(true,null,[],[{tenant_id:1,manager_id:'m1',tier:'standard',start_day:'2020-11-02',end_day:'2020-12-01'}]);
+ const owner={id:'owner',role:'owner',tenantId:1},uri='/api/owner/sales-command/workforce/payroll-preview';
+ const b={managerId:'m1',periodIndex:0,trainingMinutes:480,otherPaidMinutes:3120,hoursReviewed:true,signedRateConfirmed:true,tier:'senior',hourlyCents:9999,revenueCents:0};
+ const r=await env.call('POST',uri,owner,b);
+ assert.equal(r.code,200);assert.equal(r.json.payroll.basePayCents,30000);assert.equal(r.json.payroll.tier,'standard');assert.equal(r.json.readOnly,true);assert.equal(env.writes,0);
+ assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},b)).code,403);
+ assert.equal((await env.call('POST',uri,owner,{...b,managerId:'m2'})).code,422);
+ assert.equal((await env.call('POST',uri,owner,{...b,hoursReviewed:false})).code,422);
+});
