@@ -3,13 +3,13 @@ const {test}=require('node:test');const assert=require('node:assert/strict');
 const {createService}=require('../enterprise/sbc-connected-journey.cjs');
 const {createRecovery}=require('../enterprise/sbc-appointment-recovery.cjs');
 const owner={id:'boss',tenantId:1,role:'owner',active:true};
-async function fixture(){let stamp='2026-11-20T15:00:00Z',enabled=false,failSave=false,sent=0,failSend=false;
+async function fixture(){let stamp='2026-11-20T15:00:00Z',enabled=false,failSave=false,sent=0,failSend=false,afterSave=null;
  const db={users:[owner],customers:[{id:'one',tenantId:1,assignedTo:'boss',businessName:'Synthetic Test',email:'test@example.invalid',phone:'+13055550123',status:'Lead'}],tasks:[],activities:[],orders:[],appointments:[{id:'a1',tenantId:1,customerId:'one',status:'Scheduled',startAt:'2026-11-20T16:00:00Z',endAt:'2026-11-20T16:10:00Z',location:'https://zoom.us/j/123456789',createdAt:'2026-11-19T10:00:00Z'}]};
- const service=createService({db,id:p=>p+'_test',now:()=>stamp,writerReady:()=>true,save:async()=>{if(failSave)throw Error('storage failed');return {persisted:true}}});
+ const service=createService({db,id:p=>p+'_test',now:()=>stamp,writerReady:()=>true,save:async()=>{if(failSave)throw Error('storage failed');if(afterSave){const hook=afterSave;afterSave=null;hook();}return {persisted:true}}});
  const sender=async()=>{sent++;if(failSend)throw Error('synthetic uncertain timeout');return {messageId:'synthetic-mail-1',sid:'SM'+'1'.repeat(32),providerStatus:'queued',deliveryConfirmed:false}};
  const recovery=createRecovery(service,{enabled:()=>enabled,senders:{email:sender,sms:sender}});
  await recovery.recordConsent('one',owner,1,{channel:'email',granted:true,proof:'Synthetic explicit appointment opt-in',capturedAt:'2026-11-20T14:00:00Z'});
- return {db,service,recovery,get sent(){return sent},enable:()=>{enabled=true},failSave:()=>{failSave=true},failSend:()=>{failSend=true},setTime:s=>{stamp=s}};
+ return {db,service,recovery,get sent(){return sent},enable:()=>{enabled=true},failSave:()=>{failSave=true},failSend:()=>{failSend=true},setTime:s=>{stamp=s},afterNextSave:fn=>{afterSave=fn}};
 }
 test('reminders remain off by default; a consented one-hour reminder is claimed durably once across concurrent runs',async()=>{
  const f=await fixture();assert.equal((await f.recovery.run(1,owner)).processed,0);assert.equal(f.sent,0);
@@ -84,5 +84,15 @@ test('the next allowed quiet-hours window uses Eastern daylight-saving offset, n
  const rows=f.recovery.preview(owner,1).rows;
  assert.equal(rows.filter(x=>x.kind==='24h'&&x.quietHoursHeld).length,1);
  assert.equal(rows.find(x=>x.kind==='24h').scheduledSendAt,'2027-03-14T12:00:00.000Z');
+ await f.recovery.run(1,owner);assert.equal(f.sent,1);
+});
+
+test('a slow durable claim cannot dispatch a reminder after its allowed window',async()=>{
+ const f=await fixture();f.enable();f.afterNextSave(()=>f.setTime('2026-11-20T15:16:00Z'));
+ await f.recovery.run(1,owner);assert.equal(f.sent,0);
+ assert.equal(f.recovery.preview(owner,1).receipts[0].status,'CANCELLED_BEFORE_SEND');
+});
+test('a durable claim within the allowed window still dispatches once',async()=>{
+ const f=await fixture();f.enable();f.afterNextSave(()=>f.setTime('2026-11-20T15:01:00Z'));
  await f.recovery.run(1,owner);assert.equal(f.sent,1);
 });
