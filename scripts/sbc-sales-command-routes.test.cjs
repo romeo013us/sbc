@@ -3,13 +3,14 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const ROUTE=require('../routes/sbc-sales-command-v1.cjs');
 const STAGE=require('./v66160-stage-sales-command.cjs');
 const ROLE=require('../enterprise/sbc-account-manager-role-gate-v2.cjs');
-function setup(recovery=false,locked=null,profiles=[]){
+function setup(recovery=false,locked=null,profiles=[],trials=[]){
  const handlers=new Map(),calls=[];
  const db={users:[{id:'m1',tenantId:1,role:'account_manager',name:'Manager One',active:true},
                   {id:'m2',tenantId:2,role:'account_manager',name:'Foreign Worker',active:true}]};
  const pool={async query(sql,args){
   calls.push({sql,args});
   if(sql.startsWith('SELECT * FROM sbc_sales_credit_v1'))return [[]];
+  if(sql.startsWith('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2'))return [trials.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
   if(sql.startsWith('SELECT tier, revision FROM sbc_am_workstation_profile_v2'))return [profiles.filter(p=>p.tenant_id===args[0]&&p.manager_id===args[1])];
   if(sql.startsWith('SELECT tier FROM sbc_commission_terms_v1'))return [[{tier:'standard'}]];
   if(sql.startsWith('SELECT * FROM sbc_commission_statement_v1'))return [locked?[locked]:[]];
@@ -206,4 +207,22 @@ test('trial planning is owner-only, does not enroll workers, and does not initia
  assert.equal(r.json.plan.enrollmentAuthorized,false);assert.equal(r.json.plan.firstPayday,null);
  assert.equal(r.json.plan.payrollInitiated,false);assert.equal(env.writes,0);
  assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},body)).code,403);
+});
+
+test('employee trial progress derives identity and dates from persisted enrollment, not query input',async()=>{
+ const env=setup(false,null,[],[{tenant_id:1,manager_id:'m1',tier:'standard',start_day:'2020-11-02',end_day:'2020-12-01'},{tenant_id:2,manager_id:'m2',tier:'senior',start_day:'2020-11-02',end_day:'2020-12-01'}]);
+ const uri='/api/sbc/sales/workforce/trial/me',member={id:'m1',role:'account_manager',tenantId:1};
+ const r=await env.call('GET',uri,member,{}, {managerId:'m2',tier:'senior',startDate:'2026-11-30'});
+ assert.equal(r.code,200);assert.equal(r.json.trial.tier,'standard');assert.equal(r.json.trial.startDate,'2020-11-02');
+ assert.equal(r.json.trial.review.throughDate,'2020-12-01');assert.equal(r.json.trial.review.workdays,22);
+ assert.equal(r.json.trial.review.grade,null);assert.equal(r.json.ledgerCompletenessVerified,false);
+ assert(env.calls.every(c=>c.args[0]===1&&c.args[1]==='m1'));assert.equal(env.writes,0);
+ assert.equal((await env.call('GET',uri,{...member,tenantId:2})).code,403);
+ assert.equal((await env.call('GET',uri,{id:'owner',role:'owner',tenantId:1})).code,403);
+ assert.equal(ROLE.allowed('GET',uri),true);assert.equal(ROLE.allowed('POST',uri),false);
+});
+test('trial enrollment writes are owner-only and blocked on recovery hold',async()=>{
+ const env=setup(true),uri='/api/owner/sales-command/workforce/enroll';
+ assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1})).code,403);
+ assert.equal((await env.call('POST',uri,{id:'owner',role:'owner',tenantId:1})).code,423);assert.equal(env.writes,0);
 });
