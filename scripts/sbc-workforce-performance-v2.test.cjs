@@ -85,3 +85,17 @@ test('Senior advancement needs four completed weeks, demonstrated Senior capacit
  assert.equal(seniorReview({...base,weeklyRevenueCents:[50000,50000,50000,100000]}).eligible,false);
  assert.throws(()=>seniorReview({...base,weeklyRevenueCents:[50000]}),/INVALID_PROMOTION_WEEKS/);
 });
+
+test('trial payroll reconciliation uses enrolled tier and reviewed actual paid minutes, including training, never sales quota',()=>{
+ const {trialPayroll}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const input={tier:'standard',startDate:'2026-11-30',periodIndex:0,trainingMinutes:480,otherPaidMinutes:3120,hoursReviewed:true,signedRateConfirmed:true};
+ const p=trialPayroll(input);
+ assert.equal(p.periodStart,'2026-11-30');assert.equal(p.periodEnd,'2026-12-13');assert.equal(p.totalPaidMinutes,3600);assert.equal(p.basePayCents,30000);
+ assert.equal(p.paymentInitiated,false);assert.equal(p.earnedPayNeverPerformanceGated,true);
+ assert.equal(trialPayroll({...input,tier:'senior'}).basePayCents,36000);
+ assert.equal(trialPayroll({...input,trainingMinutes:600,otherPaidMinutes:3600}).basePayCents,35000);
+ assert.equal(trialPayroll({...input,periodIndex:2}).periodEnd,'2026-12-29');
+ assert.throws(()=>trialPayroll({...input,hoursReviewed:false}),/PAYROLL_REVIEW_REQUIRED/);
+ assert.throws(()=>trialPayroll({...input,trainingMinutes:-1}),/INVALID_PAID_MINUTES/);
+ assert.throws(()=>trialPayroll({...input,periodIndex:3}),/INVALID_PAY_PERIOD/);
+});
