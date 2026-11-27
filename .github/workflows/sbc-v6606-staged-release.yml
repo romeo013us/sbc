@@ -781,7 +781,8 @@ jobs:
 
 
   portable-readonly-boot:
-    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'rebuild/god-tier-portable-runtime')
+    # Creative Intelligence also needs isolated runtime acceptance before promotion.
+    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'rebuild/god-tier-portable-runtime') || github.head_ref == 'a-sbc-creative-intelligence-foundation')
     needs: verified-staged-zip
     runs-on: ubuntu-latest
     timeout-minutes: 15
