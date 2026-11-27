@@ -772,7 +772,7 @@ function sbcOwnerDailyModel(data, now=new Date(), capture=window.sbcRecordedSqua
  return {revenueCents,targetCents:60000,qualified:count(eligible,x=>['Qualified','Sales Ready','Contacted'].includes(x.status)),pipelineValue:openQuotes?openQuotes.reduce((n,q)=>{const v=Number(q.total);return n+(Number.isFinite(v)&&v>=0?v:0);},0):null,openQuotes:openQuotes?.length??null,overdue:count(eligible,x=>day(x.followUp)&&day(x.followUp)<today),tasksToday:count(tasks,x=>x&&x.status!=='Completed'&&day(x.dueAt)===today),appointmentsToday:count(appointments,x=>x&&x.status!=='Cancelled'&&day(x.startAt)===today),pendingCalls:count(calls,x=>x?.status==='Pending'),team:count(users,x=>x&&x.role!=='owner'&&x.active!==false),digitalOrders:digital!==null&&digital!==undefined&&digital!==''&&Number.isInteger(Number(digital))&&Number(digital)>=0?Number(digital):null,renewals:count(renewals,x=>x&&x.status!=='Paid'&&day(x.dueDate)&&day(x.dueDate)<=next30)};
 }
 function sbcOwnerDailyMarkup(session, now=new Date(), capture=window.sbcRecordedSquareCapture){
- if(session?.me?.role!=='owner'||session.view!=='dashboard'||session.data?.recovery?.required!==false)return '';
+ if(session?.me?.role!=='owner'||session.view!=='dashboard'||session.data?.readOnly===true||session.data?.recovery?.required!==false)return '';
  const m=sbcOwnerDailyModel(session.data,now,capture);
  const fmt=v=>v===null?'Unavailable':Number(v).toLocaleString('en-US');
  const usd=v=>v===null?'Unavailable':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(v);
