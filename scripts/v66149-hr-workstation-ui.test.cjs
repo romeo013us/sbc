@@ -8,7 +8,7 @@ assert.equal(src,mirror,'Workforce users UI mirrors identical');
 const out=S.patchV10(src);
 assert.equal(S.patchV10(out),out);
 assert(out.includes(S.MARK));
-assert(out.includes('HR Department Manager</option>'));
+assert.match(out,/<option value="hr_manager"[^\n]*?>HR &amp; Workforce<\/option>/);
 assert(out.includes('value="hr_manager"'));
 assert(out.includes('/hr-workstation.html'));
 new vm.Script(out,{filename:'owner-workforce-hr-role.js'});
