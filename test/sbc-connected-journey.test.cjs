@@ -134,3 +134,19 @@ test('synthetic and fractional-cent orders do not create customer work; valid un
  assert.equal(f.service.queue(owner,1).rows[0].paidOrders,1);
  assert.equal(f.db.tasks.filter(t=>t.journeyTaskKey?.startsWith('delivery:')).length,1);
 });
+
+test('customer portal exposes proof only after current QA; staff retains private proof access',async()=>{
+ const f=fixture();await f.service.intake(1,lead());const c=f.db.customers[0];f.db.orders.push(paidOrder(c.id));await f.service.reconcile(owner,1);
+ const req={portalCustomer:c,portalAccount:{id:'portal1',customerId:c.id,tenantId:1,active:true}};
+ const staff=()=>f.service.detail(c.id,owner,1).orders[0],portal=()=>f.service.portalSummary(req).orders[0];
+ const act=(step,extra={})=>f.service.progress('order1',owner,1,{step,expectedRevision:staff().revision,...extra});
+ const proof='https://example.invalid/private-proof';
+ await act('intake');await act('build');await act('preview',{previewUrl:proof});
+ assert.equal(staff().previewUrl,proof);assert.equal(portal().previewUrl,'');assert.equal(portal().canApprove,false);
+ await act('qa');assert.equal(portal().previewUrl,proof);assert.equal(portal().canApprove,true);
+ await f.service.approve(req,'order1',{expectedRevision:staff().revision,decision:'changes_requested',note:'Revise proof'});
+ assert.equal(staff().previewUrl,proof);assert.equal(portal().previewUrl,'');assert.equal(portal().canApprove,false);
+ const revised='https://example.invalid/revised-proof';await act('preview',{previewUrl:revised});
+ assert.equal(portal().previewUrl,'');await act('qa');assert.equal(portal().previewUrl,revised);
+ f.db.orders[0].paymentStatus='Refunded';assert.equal(portal().previewUrl,'');assert.equal(portal().canApprove,false);
+});
