@@ -6,6 +6,7 @@
 const crypto=require('node:crypto');
 const CALC=require('../enterprise/sbc-sales-compensation-v1.cjs');
 const HIRING=require('../enterprise/sbc-sales-hiring-scorecard-v1.cjs');
+const WORKFORCE=require('../enterprise/sbc-workforce-performance-v2.cjs');
 const MONEY=require('../enterprise/v6640-payment-evidence.cjs');
 const TRUTH=require('../enterprise/sbc-revenue-reporting-truth-v66142.cjs');
 const NEGATIVE=new Set(['REFUNDED','CHARGEBACK','CHARGED_BACK','VOID','VOIDED']);
@@ -108,6 +109,32 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   res.setHeader('Cache-Control','no-store');
   try{gate(req);return res.json({ok:true,readOnly:true,result:HIRING.forecast(req.body||{})});}
   catch(e){return error(res,e)}
+ });
+ // V2 workforce policy and owner-only revenue checkpoint; no signed terms or payroll mutations.
+ app.get('/api/owner/sales-command/workforce/policy',auth,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{gate(req);return res.json({ok:true,readOnly:true,policy:WORKFORCE.POLICY,activeCompensationTermsUnchanged:true});}
+  catch(e){return error(res,e)}
+ });
+ app.get('/api/owner/sales-command/workforce/review',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);
+   staff(ctx,t,m);
+   const tier=val(req.query?.tier),startDate=val(req.query?.startDate),throughDate=val(req.query?.throughDate);
+   if(throughDate>=WORKFORCE.miamiDay(new Date()))throw Error('INVALID_REVIEW_REQUIRES_COMPLETED_DATE');
+   WORKFORCE.review({tier,startDate,throughDate,credits:[]});
+   const [rows]=await ctx.mysqlPool.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? AND manager_id=? ORDER BY captured_at DESC LIMIT 10001',[t,m]);
+   if(rows.length>10000)throw Error('SALES_LEDGER_QUERY_TRUNCATED');
+   const credits=rows.map(row=>{
+    const c=creditRow(row);
+    CALC.credit(c,{tenantId:t,managerId:m});
+    return {...c,customerId:CALC.id(row.customer_id)};
+   });
+   return res.json({ok:true,readOnly:true,managerId:m,review:WORKFORCE.review({tier,startDate,throughDate,credits}),
+    dataScope:'OWNER_RECONCILED_PAID_ORDERS_ONLY',reviewInputs:'OWNER_SELECTED_TIER_AND_TRIAL_DATES_NOT_SIGNED_TERMS',
+    ledgerCompletenessVerified:false,automaticTransfers:false,automaticPersonnelAction:false});
+  }catch(e){return error(res,e)}
  });
  // Read-only preflight: table visibility and MySQL recovery, never auto-migrate.
  app.get('/api/owner/sales-command/readiness',auth,async(req,res)=>{
