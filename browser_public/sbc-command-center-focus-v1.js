@@ -62,6 +62,8 @@ function wrapDashboardDetails(root){
  }
  var briefing=root.querySelector('.ai-role-briefing');
  wrap(briefing,'briefing','AI briefing');
+ // Keep the original shortcut controls, but collapse the duplicate dashboard rail.
+ if(root.querySelector('#sbc-owner-daily-home'))wrap(root.querySelector('#sbcOwnerQuickRail'),'shortcuts','System shortcuts');
  var cards=Array.from(root.querySelectorAll('.card'));
  var named=function(title){return cards.find(function(card){return card.querySelector('.card-head h2')?.textContent.trim()===title;});};
  var catalog=named('Internal package catalog · includes legacy offers'),recent=named('Recent activity');

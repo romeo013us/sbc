@@ -65,7 +65,7 @@ try{
  assert.equal(ui,mirror,'browser assets must be mirrored');
  assert.equal(html,htmlMirror,'browser HTML must be mirrored');
  new vm.Script(ui);
- assert.match(html,/sbc-unattended-notifications-v6504\.js\?v=66\.0\.87-durable-destinations/);
+ assert.match(html,/sbc-unattended-notifications-v6504\.js\?v=66\.0\.88-focused-home/);
  assert.match(ui,/storage\.emailSaved/);
  assert.match(ui,/storage\.phoneSaved/);
  assert.match(ui,/Saved on server:/);
