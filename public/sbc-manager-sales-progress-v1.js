@@ -17,6 +17,23 @@
    noTerms:'No se registraron términos firmados para este mes.'}
  };
  let current=null;
+ const profileNode=document.getElementById('sbcMyWorkstationProfile');
+ let profile=null,profileRead=0;
+ function renderProfile(){
+  if(!profileNode)return;
+  const es=document.documentElement.lang==='es';
+  if(!profile?.tier){profileNode.textContent=es?'Perfil de puesto sin verificar. Consulte al propietario.':'Workstation tier not verified. Ask the owner to configure your profile.';return;}
+  const label=profile.tier==='senior'?(es?'Gerente de cuentas sénior':'Senior Account Manager'):(es?'Gerente de cuentas estándar':'Standard Account Manager');
+  profileNode.textContent=label+' · '+(es?'Meta semanal: ':'Weekly revenue target: ')+money(profile.weeklyQuotaCents)+' · '+(es?'Compensación y permisos por separado.':'Signed compensation and calling permissions are separate.');
+ }
+ async function loadProfile(){
+  if(!profileNode)return;const seq=++profileRead;profile=null;renderProfile();
+  try{const response=await fetch('/api/sbc/sales/workstation/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const data=await response.json();if(!response.ok||data.ok!==true)throw Error('UNAVAILABLE');
+   if(seq===profileRead){profile=data.profile;renderProfile();}
+  }catch{if(seq===profileRead){profile=null;renderProfile();}}
+ }
+
  function card(label,value){
   const art=document.createElement('article');art.className='panel';
   const title=document.createElement('h3'),amount=document.createElement('p');
@@ -24,6 +41,7 @@
   art.append(title,amount);return art;
  }
  function render(){
+  renderProfile();
   const t=translations[document.documentElement.lang==='es'?'es':'en'];
   root.replaceChildren();
   if(!current){status.textContent=t.unavailable;return;}
@@ -41,7 +59,8 @@
    current=json;render();
   }catch{current=null;render();}
  }
- document.getElementById('sbcSalesProgressRefresh').addEventListener('click',load);
+ document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();});
+ document.getElementById('refresh')?.addEventListener('click',loadProfile);
  for(const id of ['lang-en','lang-es'])document.getElementById(id)?.addEventListener('click',()=>setTimeout(render,0));
- load();
+ load();void loadProfile();
 })();
