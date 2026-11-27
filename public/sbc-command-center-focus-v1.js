@@ -9,7 +9,7 @@ function compact(){try{return localStorage.getItem(preferenceKey())!=='all';}cat
 function syncDisplay(){
  var on=compact(),isOwner=owner();
  document.documentElement.dataset.sbcOwnerClean=isOwner&&on?'true':'false';
- document.documentElement.dataset.sbcOwnerRoutine=isOwner&&on&&window.state?.data?.recovery?.required===false?'true':'false';
+ document.documentElement.dataset.sbcOwnerRoutine=isOwner&&on&&window.state?.data?.readOnly!==true&&window.state?.data?.recovery?.required===false?'true':'false';
  document.documentElement.dataset.sbcFocusMode=on?'focus':'all';
  var advancedSummary=document.querySelector('#sbcAdvancedNav > summary');if(advancedSummary)advancedSummary.textContent=isOwner?'＋ Administration & System Tools':'＋ More tools';
  var toggle=document.getElementById('sbcFocusToggle');
@@ -44,7 +44,7 @@ function reconcileTopShortcuts(){
 function wrapDashboardDetails(root){
  // Only exact, reviewed dashboard cards. Do not fold alerts, sales actions,
  // recovery notices, production work, statistics, or employee workstations.
- var active=owner()&&compact()&&window.state?.view==='dashboard'&&window.state?.data?.recovery?.required!==true;
+ var active=owner()&&compact()&&window.state?.view==='dashboard'&&window.state?.data?.readOnly!==true&&window.state?.data?.recovery?.required===false;
  if(!active){
   root.querySelectorAll('details[data-sbc-owner-dashboard-detail]').forEach(function(group){
    var parent=group.parentElement,body=group.querySelector('.sbc-owner-detail-body');

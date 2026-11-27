@@ -27,6 +27,7 @@ FIXTURE="""<!doctype html><html><head><meta charset="utf-8"></head><body>
 <button id="sbc-website-sales-pipeline-topbar" hidden>Pipeline restricted</button>
 <button id="sbcThemeToggle">Theme</button></div></header>
 <div id="content">
+<section id="sbcV56240GrowthHardening">Growth</section><section id="sbcSalesOperatingModelV6563">Old hiring plan</section>
 <div class="hero"><div class="hero-actions"><button id="daily1">New Lead</button><button id="daily2">Quote</button><button id="daily3">Checkout</button><button id="daily4">Order</button></div></div>
 <section id="sbcProductionControlDashboard">Production</section>
 <div class="card section ai-role-briefing"><button id="briefing">Kim briefing</button></div>
@@ -34,7 +35,7 @@ FIXTURE="""<!doctype html><html><head><meta charset="utf-8"></head><body>
 <div class="card"><div class="card-head"><h2>Upcoming attention</h2></div></div>
 <div class="grid two section"><div class="card"><div class="card-head"><h2>Recent activity</h2></div><button id="activity">Activity</button></div>
 <div class="card"><div class="card-head"><h2>Internal package catalog · includes legacy offers</h2></div></div></div>
-</div><section id="sbcV329Panel">Legacy enterprise</section><section id="sbcV330Panel">Legacy launch</section></main></div>
+</div><section id="sbcGodTierBroadcastMount">Old revenue</section><section id="sbcConsultativeRevenueMount">Old solution engine</section><section id="sbcV329Panel">Legacy enterprise</section><section id="sbcV330Panel">Legacy launch</section></main></div>
 <script>
 window.state={me:{role:'owner'},view:'dashboard',data:{recovery:{required:false}}};
 window.calls=0;document.getElementById('sbc-connected-journey-owner').onclick=()=>window.calls++;
@@ -61,6 +62,13 @@ def run(browser,viewport):
     assert page.locator('details[data-sbc-owner-dashboard-detail="reference"]').count()==1
     assert page.locator('details[data-sbc-owner-dashboard-detail]').count()==2
     assert not page.locator('#activity').is_visible()
+    legacy=['#sbcV56240GrowthHardening','#sbcSalesOperatingModelV6563','#sbcGodTierBroadcastMount','#sbcConsultativeRevenueMount']
+    for panel in legacy:
+        assert not page.locator(panel).is_visible(), panel
+    page.evaluate("window.state.view='customers';window.dispatchEvent(new Event('sbc:view-rendered'))")
+    for panel in legacy:
+        assert not page.locator(panel).is_visible(), panel+' on Leads & Accounts'
+    page.evaluate("window.state.view='dashboard';window.dispatchEvent(new Event('sbc:view-rendered'))")
     assert not page.locator('#sbcV329Panel').is_visible()
     assert not page.locator('#sbcV330Panel').is_visible()
     assert page.locator('#sbc-revenue-today-owner').is_visible()
@@ -94,12 +102,16 @@ def run(browser,viewport):
     page.evaluate("""() => {const b=document.createElement('button');b.id='lateLegacyNav';b.textContent='Legacy report';document.querySelector('nav.v56-primary-nav').appendChild(b);}""")
     page.wait_for_function("document.querySelector('#sbcAdvancedNav #lateLegacyNav')!==null")
     page.evaluate("""() => {window.state.data.recovery.required=true;window.dispatchEvent(new Event('sbc:view-rendered'));}""")
+    for panel in legacy:
+        assert page.locator(panel).is_visible(), panel+' during recovery'
     assert page.locator('#sbcV329Panel').is_visible()
     assert page.locator('#sbcV330Panel').is_visible()
     assert not home.is_visible()
     assert page.locator('[data-sbc-owner-legacy-daily]').is_visible()
     assert page.locator('#activity').is_visible()
     page.evaluate("""() => {window.state.data.recovery.required=false;window.SBC_COMMAND_FOCUS.showAll();}""")
+    for panel in legacy:
+        assert page.locator(panel).is_visible(), panel+' in Show all tools'
     assert page.locator('#sbcOwnerExtraShortcuts').count()==0
     assert page.locator('.top-actions > #sbc-connected-journey-owner').is_visible()
     assert page.locator('#sbcAdvancedNav').get_attribute('open') is not None

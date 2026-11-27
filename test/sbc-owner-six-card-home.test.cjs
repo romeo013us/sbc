@@ -41,3 +41,16 @@ test('six owner cards, existing action routes, recovery and employee role bounda
  assert.match(app,/sbcOwnerDailyMarkup\(state\)/);assert.match(html,/data-sbc-owner-routine="true"[\s\S]*sbc-owner-daily-home/);
  for(const p of ['app.js','v32-2-upgrade.js','index.html'])assert.equal(read('public/'+p),read('browser_public/'+p),p);
 });
+
+test('healthy bootstrap explicitly establishes recovery clearance; unknown, recovery, Preview and no writer remain fail-closed',()=>{
+ const s=read('server.js'),a=s.indexOf('/* SBC_OWNER_ROUTINE_RECOVERY_EVIDENCE_BEGIN */'),b=s.indexOf('/* SBC_OWNER_ROUTINE_RECOVERY_EVIDENCE_END */');assert(a>=0&&b>a);
+ const evidence=vm.runInNewContext(s.slice(a,b)+'\nsbcOwnerRoutineRecoveryEvidence');
+ const input={readOnly:false,recoveryEvaluated:true,recoveryRequired:false,writerLeaseReady:true,mysqlConnected:true,storage:'mysql-relational'};
+ assert.equal(evidence(input).required,false);
+ for(const k of ['recoveryEvaluated','writerLeaseReady','mysqlConnected'])assert.equal(evidence({...input,[k]:false}),null,k);
+ for(const k of ['readOnly','recoveryRequired'])assert.equal(evidence({...input,[k]:true}),null,k);
+ assert.equal(evidence({...input,storage:'file'}),null);assert.equal(evidence({}),null);
+ const route=s.slice(s.indexOf("app.get('/api/bootstrap'"),s.indexOf('const projectedCustomers=db.customers;'));
+ assert.match(route,/if\(recovery===null&&req\.user\.role==='owner'\)recovery=sbcOwnerRoutineRecoveryEvidence/);
+ const w=load();assert.equal(w.dailyMarkup({me:{role:'owner'},view:'dashboard',data:{...fixture,readOnly:true}},now,w.sbcRecordedSquareCapture),'');
+});
