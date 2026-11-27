@@ -31,4 +31,21 @@ function review({tier,startDate,throughDate,credits=[]}={}){
  const grade=attainment===null?null:attainment>=125?'A+':attainment>=100?'A':attainment>=90?'B+':attainment>=80?'B':attainment>=60?'C':revenueCents>0?'D':'F';
  return {tier,startDate,throughDate,workdays,targetCents,revenueCents,attainmentPercent:attainment===null?null:Math.round(attainment*100)/100,grade,newPayingCustomers:customers.size,newPayingCustomersByDay10:early.size,twoCustomerMilestone:early.size>=2?'met':workdays>=10?'not_met':'pending',ownerReviewRequired:true,automaticPersonnelAction:false,earnedPayUnaffected:true,limitations:'Calendar weekdays only; owner must review training, holidays, outages, lead quality and ledger completeness. Not a payroll or retention decision.'};
 }
-module.exports={POLICY,review,miamiDay};
+// A budget and calendar only; no worker enrollment, actual payroll, or hiring decision.
+function trialPlan({startDate,tiers,reserveCents}={}){
+ const start=day(startDate);
+ if(!Array.isArray(tiers)||tiers.length<1||tiers.length>2||tiers.some(t=>!['standard','senior'].includes(t)))throw Error('INVALID_TRIAL_TIERS');
+ const reserve=reserveCents===undefined?null:money(reserveCents);
+ const workDates=[];
+ for(let i=0;i<30;i++){const d=new Date(+start+i*86400000);if(d.getUTCDay()!==0&&d.getUTCDay()!==6)workDates.push(d.toISOString().slice(0,10));}
+ const endDate=new Date(+start+29*86400000).toISOString().slice(0,10);
+ const members=tiers.map(tier=>({tier,plannedHours:workDates.length*6,plannedBaseCents:workDates.length*6*POLICY[tier].hourlyCents,plannedRevenueTargetCents:workDates.length*POLICY[tier].weeklyQuotaCents/5}));
+ const plannedBaseCents=members.reduce((a,m)=>a+m.plannedBaseCents,0);
+ return {startDate,endDate,workdays:workDates.length,members,plannedBaseCents,reserveCents:reserve,
+  reserveShortfallCents:reserve===null?null:Math.max(0,plannedBaseCents-reserve),reserveCoversPlannedBase:reserve===null?null:reserve>=plannedBaseCents,
+  checkpoints:{day5:workDates[4],day10:workDates[9],day15:workDates[14],day30:endDate},
+  currentLongTermOpenings:1,possibleLongTermOpenings:2,firstPayday:null,payrollIntervalDays:14,
+  enrollmentAuthorized:false,payrollInitiated:false,ownerReviewRequired:true,
+  limitations:'Planned six-hour weekdays only; actual earned hours and applicable pay rules govern. Reserve excludes commissions, fees and other liabilities. No payday inferred until signed schedule is reviewed.'};
+}
+module.exports={POLICY,review,miamiDay,trialPlan};
