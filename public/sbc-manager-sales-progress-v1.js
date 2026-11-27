@@ -19,6 +19,17 @@
  let current=null;
  const profileNode=document.getElementById('sbcMyWorkstationProfile');
  let profile=null,profileRead=0;
+ const trialNode=document.getElementById('sbcMyTrialProgress');let trialRead=0;
+ async function loadTrial(){
+  if(!trialNode)return;const seq=++trialRead;trialNode.textContent='Checking your enrolled trial…';
+  try{
+   const response=await fetch('/api/sbc/sales/workforce/trial/me',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const data=await response.json();if(!response.ok||data.ok!==true)throw Error('UNAVAILABLE');
+   if(seq!==trialRead)return;const t=data.trial,r=t?.review;
+   trialNode.textContent=!t?'No paid trial enrollment recorded.':('Paid trial · '+t.startDate+' to '+t.endDate+' · '+t.stage+' · Day 5: '+t.checkpoints.day5+' · Day 10: '+t.checkpoints.day10+' · Day 15: '+t.checkpoints.day15+(r?' · Recorded sales '+money(r.revenueCents)+' / '+money(r.targetCents)+' · '+r.newPayingCustomers+' new customers. Results provisional; ledger completeness not verified.':' · No completed trial days yet.'));
+  }catch{if(seq===trialRead)trialNode.textContent='Paid trial progress unavailable. Ask the owner to verify your enrollment.';}
+ }
+
  function renderProfile(){
   if(!profileNode)return;
   const es=document.documentElement.lang==='es';
@@ -59,8 +70,8 @@
    current=json;render();
   }catch{current=null;render();}
  }
- document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();});
- document.getElementById('refresh')?.addEventListener('click',loadProfile);
+ document.getElementById('sbcSalesProgressRefresh').addEventListener('click',()=>{void load();void loadProfile();void loadTrial();});
+ document.getElementById('refresh')?.addEventListener('click',()=>{void loadProfile();void loadTrial();});
  for(const id of ['lang-en','lang-es'])document.getElementById(id)?.addEventListener('click',()=>setTimeout(render,0));
- load();void loadProfile();
+ load();void loadProfile();void loadTrial();
 })();
