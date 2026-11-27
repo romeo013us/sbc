@@ -121,3 +121,21 @@ test('Account Manager displays the same local SBC brand image as the owner dashb
   assert(!html.includes('aria-hidden="true">S</span>'));
  }
 });
+
+test('all five canonical workstations use the SBC brand asset and a visible header sign-out control',()=>{
+ const desks=[
+ ['index.html','logoutBtn','app.js'],
+ ['lead-research.html','sign-out','lead-research.js'],
+ ['sbc-account-manager-v1.html','amSignOut','sbc-account-manager-v1.js'],
+ ['hr-workstation.html','signout','hr-workstation.html'],
+ ['sbc-production-workstation.html','logout','sbc-production-workstation.js']
+ ];
+ for(const dir of ['public','browser_public'])for(const [html,id,script] of desks){
+  const page=read(dir+'/'+html),code=read(dir+'/'+script);
+  assert.match(page,/<img[^>]*src="\/assets\/sbc-logo\.jpg"/,html);
+  const header=page.match(/<header\b[^>]*>[\s\S]*?<\/header>/);
+  assert(header&&header[0].includes('id="'+id+'"'),html+' requires header sign-out');
+  assert.match(code,/\/api\/logout/);
+  assert.match(code,/signedOut!==true/,html+' requires confirmed logout');
+ }
+});
