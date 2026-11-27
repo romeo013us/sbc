@@ -140,6 +140,11 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   res.setHeader('Cache-Control','no-store');
   try{gate(req);return res.json({ok:true,readOnly:true,plan:WORKFORCE.trialPlan(req.body||{})});}catch(e){return error(res,e)}
  });
+ app.post('/api/owner/sales-command/workforce/pay-schedule',auth,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{gate(req);return res.json({ok:true,readOnly:true,schedule:WORKFORCE.paySchedule(req.body||{})});}
+  catch(e){return error(res,e)}
+ });
  // Enrollment records a previously signed paid trial, never hires or moves money.
  app.post('/api/owner/sales-command/workforce/enroll',auth,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
