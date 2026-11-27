@@ -27,7 +27,9 @@ test('paid competitive trial budget covers all scheduled weekdays in the full 30
  assert.equal(p.plannedBaseCents,145200);assert.equal(p.reserveShortfallCents,0);
  assert.equal(p.checkpoints.day5,'2026-12-04');assert.equal(p.checkpoints.day10,'2026-12-11');assert.equal(p.checkpoints.day15,'2026-12-18');
  assert.equal(p.enrollmentAuthorized,false);assert.equal(p.payrollInitiated,false);
- assert.equal(p.currentLongTermOpenings,1);
+ assert.equal(p.currentLongTermOpenings,2);
+ assert.deepEqual(p.launchTiers,['standard','standard']);
+ assert.equal(p.seniorRequiresProvenPerformance,true);
  const insufficient=trialPlan({startDate:'2026-11-30',tiers:['standard','standard'],reserveCents:120000});
  assert.equal(insufficient.reserveShortfallCents,12000);assert.equal(insufficient.reserveCoversPlannedBase,false);
 });
