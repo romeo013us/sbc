@@ -440,12 +440,17 @@ function salesQueuePanel(){
 }
 
 const SBC_SPANISH_HANDOFF_REASON='SBC employee encountered a Spanish-language barrier on an answered call; bilingual Account Manager review needed.';
-async function moveSbcLeadToSpanishQueue(customerId){
+async function moveSbcLeadToSpanishQueue(customerId,source='queue'){
  if(!customerId)return toast('Select a CRM customer first.');
  if(sbcVoiceStartedAt)return toast('Finish the active call and save the notes before moving this lead.');
- const c=(state.data.customers||[]).find(x=>String(x.id)===String(customerId));
- if(!c)return toast('CRM customer was not found.');
- if(!window.confirm('Move '+(c.businessName||c.contactName||'this lead')+' to the Spanish Calling Queue? This does not call them.'))return;
+ const c=(state.data.customers||[]).find(x=>String(x.id)===String(customerId))||(state.salesQueue?.leads||[]).find(x=>String(x.id)===String(customerId));
+ if(!c)return toast('CRM customer was not found. Refresh the queue and try again.');
+ const hasOpenCall=String(sbcVoiceOpenCustomerId||'')===String(customerId)&&Boolean(sbcVoiceSessionId)&&Boolean($('#sbcLiveCallOutcome'));
+ const ownerConfirmedLanguage=state.me?.role==='owner'&&source==='queue'&&!hasOpenCall;
+ const confirmation=ownerConfirmedLanguage
+  ? 'Confirm Spanish is the verified contact language for '+(c.businessName||c.contactName||'this lead')+' based on a real conversation or customer statement, not a name or assumption. Move to the Spanish Calling Queue without creating or changing a call record?'
+  : 'Confirm a real Spanish-language interaction with '+(c.businessName||c.contactName||'this lead')+' and move to the Spanish Calling Queue? This does not call them.';
+ if(!window.confirm(confirmation))return;
  try{
   const current=String(sbcVoiceOpenCustomerId||'')===String(customerId),o=$('#sbcLiveCallOutcome');
   if(current&&sbcVoiceSessionId&&o){
@@ -454,13 +459,21 @@ async function moveSbcLeadToSpanishQueue(customerId){
    if(!await saveSbcBusinessCallNotes(true))throw Error('Finish saving the existing call notes before trying again.');
   }
   const result=await api('/api/sales/spanish-callbacks/'+encodeURIComponent(customerId)+'/move',{
-   method:'POST',body:JSON.stringify({reason:SBC_SPANISH_HANDOFF_REASON})
+   method:'POST',body:JSON.stringify({reason:ownerConfirmedLanguage?'Owner confirmed Spanish contact language from a real conversation or customer statement.':SBC_SPANISH_HANDOFF_REASON,ownerConfirmedLanguage})
   });
   if(result?.ok!==true)throw Error(result?.error||'The handoff was not confirmed.');
-  toast(result.alreadyQueued?'Already in the Spanish Calling Queue.':'Saved to Spanish Calling Queue. No automatic callback.');
-  await loadSalesQueue();
+  const refreshed=await loadSalesQueue();
+  if(!refreshed||!Array.isArray(refreshed.leads)||refreshed.leads.some(x=>String(x.id)===String(customerId))){
+   toast('Handoff accepted, but removal from the regular calling queue is not confirmed. Refresh before dialing.');
+  }else{
+   toast(result.alreadyQueued?'Already in the Spanish Calling Queue.':'Saved to Spanish Calling Queue. No automatic callback.');
+  }
   if(current)loadSbcRecentCallLogs(customerId).catch(()=>{});
- }catch(e){toast('Spanish handoff not saved: '+String(e.message||e));}
+ }catch(e){
+  const code=String(e.message||e);
+  const message=code==='NO_COMPLETED_SBC_CALL_TO_HANDOFF'?'No completed SBC call found. Ask the owner to confirm the customer’s language preference using the regular queue.':code==='SPANISH_HANDOFF_READBACK_UNCONFIRMED'?'The database readback could not confirm the handoff. Refresh and reconcile before retrying.':code;
+  toast('Spanish handoff not confirmed: '+message);
+ }
 }
 async function loadSbcSpanishCallbackQueue(){
  const host=$('#sbcSpanishCallingPanel');if(!host)return;
@@ -553,7 +566,7 @@ async function loadSbcCallLedger(offset=0){
     }catch(e){button.disabled=false;feedback.textContent='Correction unconfirmed. '+String(e.message||e)+'. Review the current entry before retrying.';}
    });
   }
-  if(typeof host.querySelectorAll==='function')for(const btn of host.querySelectorAll('[data-sbc-history-handoff]'))btn.addEventListener('click',()=>moveSbcLeadToSpanishQueue(btn.dataset.sbcHistoryHandoff));
+  if(typeof host.querySelectorAll==='function')for(const btn of host.querySelectorAll('[data-sbc-history-handoff]'))btn.addEventListener('click',()=>moveSbcLeadToSpanishQueue(btn.dataset.sbcHistoryHandoff,'history'));
  }catch(e){if(host.isConnected&&host.sbcHistoryRequest===request)host.innerHTML=head+'<div class="card-body">'+hint+controls+'<p role="alert">Dialed Number History unavailable: '+esc(String(e.message||e))+'</p></div>'}
 }
 
