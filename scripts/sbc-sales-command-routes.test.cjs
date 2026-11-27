@@ -248,3 +248,13 @@ test('two paid trial members are committed together; a mismatched profile or dup
  assert(state.members.every(m=>/^[a-f0-9]{64}$/.test(m[4])));
  assert.equal((await call(body)).code,409);assert.equal(state.cohorts.length,1);assert.equal(state.members.length,2);
 });
+
+test('owner-only payroll calendar is advisory and does not invoke writer or trust sales results',async()=>{
+ const env=setup(true),owner={id:'owner',role:'owner',tenantId:1};
+ const uri='/api/owner/sales-command/workforce/pay-schedule';
+ const input={startDate:'2026-11-30',firstPayday:'2026-12-18',agreementReference:'signed-pay-schedule-01',scheduleReviewed:true};
+ const r=await env.call('POST',uri,owner,input);assert.equal(r.code,200);
+ assert.equal(r.json.schedule.periods.length,3);assert.equal(r.json.schedule.earnedPayNeverPerformanceGated,true);
+ assert.equal(r.json.schedule.paymentInitiated,false);assert.equal(env.writes,0);
+ assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},input)).code,403);
+});
