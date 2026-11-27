@@ -111,7 +111,9 @@ body.sbcAcademyTrainingOnly .sbc-v56240-hardening{display:none!important}
 <style id="sbc-owner-clean-display-v2">
 #sbc-owner-daily-home{display:none}
 html[data-sbc-owner-routine="true"] #content #sbc-owner-daily-home{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px}
-html[data-sbc-owner-routine="true"] #content:has(#sbc-owner-daily-home) [data-sbc-owner-legacy-daily]{display:none!important}
+/* Win the cascade against the legacy executive grid's forced display. */
+html[data-sbc-owner-routine="true"] #app #content:has(#sbc-owner-daily-home) [data-sbc-owner-legacy-daily]{display:none!important}
+html[data-sbc-owner-routine="true"] #app #content:has(#sbc-owner-daily-home) #sbcUnattendedNotificationsMount[data-sbc-notification-routine="true"]{display:none!important}
 #sbc-owner-daily-home .sbc-owner-daily-card{min-width:0;overflow-wrap:anywhere}
 #sbc-owner-daily-home .sbc-owner-daily-metric{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding:5px 0}
 #sbc-owner-daily-home progress{width:100%;height:12px;margin:8px 0}
@@ -133,7 +135,10 @@ html[data-sbc-owner-routine="true"] #app #sbcV330Panel,
 html[data-sbc-owner-routine="true"] #app #sbcV56240GrowthHardening,
 html[data-sbc-owner-routine="true"] #app #sbcSalesOperatingModelV6563,
 html[data-sbc-owner-routine="true"] #app #sbcGodTierBroadcastMount,
-html[data-sbc-owner-routine="true"] #app #sbcConsultativeRevenueMount{display:none!important}
+html[data-sbc-owner-routine="true"] #app #sbcConsultativeRevenueMount,
+/* These legacy mount functions may fall back to document.body before the shell exists. */
+html[data-sbc-owner-routine="true"] body #sbcGodTierBroadcastMount,
+html[data-sbc-owner-routine="true"] body #sbcConsultativeRevenueMount{display:none!important}
 #content .sbc-owner-dashboard-detail{padding:0;overflow:visible}
 #content .sbc-owner-dashboard-detail>summary{cursor:pointer;padding:14px 16px;font-size:14px;font-weight:750;min-height:44px;box-sizing:border-box}
 #content .sbc-owner-dashboard-detail>summary:focus-visible{outline:3px solid #f5a94f;outline-offset:2px}
@@ -180,7 +185,7 @@ html[data-sbc-owner-routine="true"] #app #sbcConsultativeRevenueMount{display:no
 <script src="/sbc-v66-legacy-enterprise-controls.96bebe4fadee6bc3.js"></script><script src="/kim-god-tier-os.js?v=66.0.13-profile-stability"></script><script src="/sbc-v66-architecture-rail.fe34729ca379a42c.js"></script><script src="/v5610-commerce.js?v=66.0.13-profile-stability"></script><script src="/sbc-universal-button-router-v56-13-2.js?v=66.0.13-profile-stability"></script>
 <script src="/sbc-mobile-final.js?v=66.0.13-profile-stability"></script><script defer src="/sbc-v66-deferred-revenue-rail.8167e13c7750edcf.js"></script><script src="/v56150-revenue-autopilot.js?v=66.0.13-profile-stability" defer></script><script src="/sbc-critical-navigation-v56-13-5.js?v=66.0.13-profile-stability"></script><script src="/v56251-ui-finalize.js?v=66.0.0-ui-identity-fix"></script><script src="/v56-13-5-navigation-hotfix.js?v=66.0.13-profile-stability"></script><script src="/sbc-critical-surfaces-guardian-v56-25-3.js?v=66.0.13-profile-stability"></script><script src="/sbc-master-control-theme-v56-25-3.js?v=66.0.13-profile-stability"></script><script src="/sbc-agent-os-v56-25-3.js?v=66.0.13-profile-stability"></script><script src="/v56260-research-superbrain-ui.js?v=66.0.13-profile-stability"></script><script src="/ask-kim-redesign-v56-13-3.js?v=66.0.13-profile-stability"></script>
 <script>/* SBC V65.1.26 CANONICAL DASHBOARD LOCK: Home must remain the executive dashboard after login/data refresh. Revenue Autopilot is a separate revenue surface and must never replace Home automatically. */(function(){function lock(){if(typeof window.dashboard==='function'){window.__SBC_CANONICAL_DASHBOARD__=window.dashboard;window.sbcFlowView=window.dashboard;window.__SBC_DASHBOARD_LOCKED__=true;}}lock();window.addEventListener('load',lock);setTimeout(lock,0);setTimeout(lock,250);setTimeout(lock,1000);})();</script>
-<script src="/sbc-kim-canonical-v6424.js?v=66.0.13-profile-stability"></script><script src="/sbc-v66-kim-advisory-rail.2de4ec335adc3510.js"></script><script src="/sbc-unattended-notifications-v6504.js?v=66.0.87-durable-destinations" defer></script><script src="/sbc-lead-workspace-v6519.js?v=66.0.13-profile-stability" defer></script><script src="/sbc-lead-edit-v6606.js?v=66.0.13-profile-stability" defer></script>
+<script src="/sbc-kim-canonical-v6424.js?v=66.0.13-profile-stability"></script><script src="/sbc-v66-kim-advisory-rail.2de4ec335adc3510.js"></script><script src="/sbc-unattended-notifications-v6504.js?v=66.0.88-focused-home" defer></script><script src="/sbc-lead-workspace-v6519.js?v=66.0.13-profile-stability" defer></script><script src="/sbc-lead-edit-v6606.js?v=66.0.13-profile-stability" defer></script>
 <script src="/sbc-customer360-workspace-v6525.js?v=66.0.13-profile-stability"></script>
 <script src="/sbc-website-sales-script-v1.js?v=20261126-account360"></script>
 <script id="sbc-lazy-website-studio">
@@ -404,7 +409,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script defer src="/v66-128-owner-while-away.js?v=66.0.128"></script>
 <script defer src="/v66-129-owner-checkout-lab.js?v=66.0.129"></script>
 <script defer src="/sbc-nextday-sales-prep-v1.js?v=1"></script>
-<script defer src="/sbc-command-center-focus-v1.js?v=20261126-owner-clean-readiness"></script>
+<script defer src="/sbc-command-center-focus-v1.js?v=20261126-owner-clean-cascade"></script>
 <script>
 /* Owner-only nav visibility; API remains the authority. */
 (function(){

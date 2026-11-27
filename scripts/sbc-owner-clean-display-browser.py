@@ -124,9 +124,49 @@ def run(browser,viewport):
     assert page.locator('details[data-sbc-owner-dashboard-detail]').count()==0
     page.close()
 
+def run_cascade(browser,viewport):
+    """Use the actual release CSS, including the legacy forced-grid rules."""
+    page=browser.new_page(viewport=viewport)
+    page.set_content('''<html data-sbc-owner-routine="true"><body><div id="app" class="app"><main class="main"><div id="content" class="content"><section id="sbc-owner-daily-home">Six cards</section><div id="sbcProductionControlDashboard">Production</div><div id="legacyGrid" class="grid two section" data-sbc-owner-legacy-daily>Duplicate pipeline</div><div id="quote" data-sbc-owner-legacy-daily>Quotes</div><div id="attention" data-sbc-owner-legacy-daily>Attention</div></div></main></div><div id="sbcGodTierBroadcastMount">Revenue</div><div id="sbcConsultativeRevenueMount">Solutions</div></body></html>''')
+    canonical=re.search(r'href="/(sbc-v6636-styles\.[a-f0-9]+\.css)"',HTML).group(1)
+    page.add_style_tag(content=(ROOT/'public'/canonical).read_text())
+    page.add_style_tag(content=STYLE)
+    duplicates=['#legacyGrid','#quote','#attention','#sbcGodTierBroadcastMount','#sbcConsultativeRevenueMount']
+    for selector in duplicates:
+        assert not page.locator(selector).is_visible(), 'legacy cascade leak '+selector
+    assert page.locator('#sbc-owner-daily-home').is_visible()
+    assert page.locator('#sbcProductionControlDashboard').is_visible()
+    app=(ROOT/'public/app.js').read_text()
+    for title in ['Quote Pipeline','Upcoming attention']:
+        assert '<div class="card" data-sbc-owner-legacy-daily><div class="card-head"><h2>'+title+'</h2>' in app
+    # Use the actual notification controller with a strictly read-only fake provider.
+    page.evaluate('''() => {window.state={me:{role:'owner'},view:'dashboard'};window.statusCode=200;window.notice={recoveryRequired:false,channels:{email:{configured:true},sms:{configured:true}}};window.fetch=async(url,opts={})=>{if(url!=='/api/owner/notifications/status'||(opts.method&&opts.method!=='GET'))throw Error('Unexpected request');return new Response(JSON.stringify(window.notice),{status:window.statusCode});};}''')
+    page.add_script_tag(path=str(ROOT/'public/sbc-unattended-notifications-v6504.js'))
+    page.evaluate('window.SBCNotificationsV6504.refresh()')
+    notice=page.locator('#sbcUnattendedNotificationsMount')
+    assert notice.get_attribute('data-sbc-notification-routine')=='true'
+    assert not notice.is_visible(), 'configured settings belong in Action Queue'
+    page.evaluate('window.notice.recoveryRequired=true;window.SBCNotificationsV6504.refresh()')
+    assert notice.is_visible(), 'recovery must remain visible'
+    page.evaluate('window.notice.recoveryRequired=false;window.notice.channels.email.configured=false;window.SBCNotificationsV6504.refresh()')
+    assert notice.is_visible(), 'unconfigured notification channel must remain visible'
+    page.evaluate('window.notice.channels.email.configured=true;window.SBCNotificationsV6504.refresh()')
+    assert not notice.is_visible()
+    page.evaluate('window.statusCode=503;window.SBCNotificationsV6504.refresh()')
+    assert notice.is_visible(), 'status request failure must remain visible'
+    page.evaluate('window.statusCode=200;window.SBCNotificationsV6504.refresh()')
+    page.evaluate("document.documentElement.dataset.sbcOwnerRoutine='false'")
+    assert notice.is_visible()
+    for selector in duplicates:
+        assert page.locator(selector).is_visible(), 'Show all or recovery '+selector
+    page.evaluate("document.documentElement.dataset.sbcOwnerRoutine='true';document.getElementById('sbc-owner-daily-home').remove()")
+    assert notice.is_visible(), 'dedicated Notifications page has no home suppression'
+    page.close()
+
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
     for viewport in [{'width':1440,'height':900},{'width':390,'height':844}]:
+        run_cascade(browser,viewport)
         run(browser,viewport)
     browser.close()
 print('PASS owner clean display: desktop/mobile, actual controller, late navigation, intact handlers, recovery visibility, and role switch')
