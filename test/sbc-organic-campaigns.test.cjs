@@ -90,3 +90,58 @@ test('SQL worker races, stale dispatch, provider outage, delayed Google visibili
  assert.equal(history.find(s=>s.platform==='facebook').state,'UNKNOWN');
  assert.equal(sends.has(next.content),false);
 });
+test('dated regional campaigns own only their selected channel and Eastern window',()=>{
+ const spec=C.validateCampaign({...C.evergreen[0],channels:['linkedin'],start:'2026-11-28',end:'2026-11-28'}),catalog=[...C.evergreen,{...spec,id:'regional'}];
+ const slot=C.daySlots('2026-11-28')[2].at;
+ assert.equal(C.buildSlot(slot,'linkedin',catalog).campaign,'regional');
+ assert.notEqual(C.buildSlot(slot,'google',catalog).campaign,'regional');
+ assert.notEqual(C.buildSlot(slot+86400000,'linkedin',catalog).campaign,'regional');
+ assert.throws(()=>C.validateCampaign({...spec,start:'2026-02-30'}));
+});
+test('direct gateways pin accounts and support feed images, text fallback and delayed Google visibility',async()=>{
+ const s=p=>C.buildSlot(at,p,C.evergreen),ids=CHANNELS,fb=ids.facebook.account,ig=ids.instagram.account;
+ const posts=new Map(),calls=[];let live=false;
+ const parent='accounts/1/'+ids.google.account,googleId=parent+'/localPosts/12';
+ const authorize=async platform=>({platform,verified:true,igId:ig,pageId:fb,locationId:ids.google.account.split('/')[1],parent,graphBase:'https://graph.facebook.com/v26.0',pageToken:'fixture',accessToken:'fixture'});
+ const gateway=createGateway({authorize,request:async(url,o)=>{
+   calls.push([url,o]);if(o.method==='HEAD')return new Response(null,{headers:{'content-type':'image/jpeg'}});
+   if(url.endsWith('/photos'))return Response.json({id:'1234'});
+   if(url.endsWith('/feed')){assert.equal(JSON.parse(o.body.get('attached_media[0]')).media_fbid,'1234');posts.set('facebook',o.body.get('message'));return Response.json({id:fb+'_11'});}
+   if(url.includes(fb+'_11?'))return Response.json({id:fb+'_11',is_published:true,message:posts.get('facebook')});
+   if(url.endsWith('/media')){posts.set('instagram',o.body.get('caption'));return Response.json({id:'33'});}
+   if(url.includes('fields=status_code'))return Response.json({status_code:'FINISHED'});
+   if(url.endsWith('media_publish')){assert.equal(o.body.get('creation_id'),'33');return Response.json({id:'44'});}
+   if(url.includes('/44?'))return Response.json({id:'44',owner:{id:ig},media_product_type:'FEED',caption:posts.get('instagram')});
+   if(url.endsWith('/localPosts')){const data=JSON.parse(o.body);assert.equal(data.media[0].mediaFormat,'PHOTO');posts.set('google',data.callToAction.url);return Response.json({name:googleId,state:'PROCESSING'});}
+   if(url.endsWith(googleId))return Response.json({name:googleId,state:live?'LIVE':'PROCESSING',callToAction:{url:posts.get('google')}});
+   throw Error('Unexpected URL');
+ }});
+ for(const platform of ['facebook','instagram','google']){
+   const slot=s(platform),p=await gateway.connect(platform),asset=await gateway.prepare(slot,p),id=await gateway.publish(slot,p,asset);
+   assert.equal(await gateway.verify(slot,p,id),platform!=='google');
+   if(platform==='google'){live=true;assert(await gateway.verify(slot,p,id));}
+   if(platform!=='instagram')assert.equal(await gateway.prepare({...slot,attempts:1},p),null);
+ }
+ assert(calls.length>=10);
+ const wrong=createGateway({authorize:async()=>({verified:true,pageId:'2'})});
+ await assert.rejects(wrong.connect('facebook'),/ACCOUNT_MISMATCH/);
+});
+test('actual Express owner routes parse campaign JSON before general application middleware',async t=>{
+ const express=require('express'),{register}=require('../routes/sbc-organic-campaigns.cjs');
+ let captured=null,writer=true;
+ const app=express();
+ const pool={query:async(sql,args)=>{
+   if(sql.startsWith('INSERT INTO sbc_organic_campaigns')){captured=JSON.parse(args[2]);return [{affectedRows:1}];}
+   if(sql.startsWith('SELECT'))return [[]];return [{}];
+ }};
+ const timer=register(app,{corporateTenant:1,getPool:()=>pool,canWrite:()=>writer,getData:()=>({customers:[],orders:[]}),clock:()=>at,cutover:()=>'',
+   auth:(req,res,next)=>req.get('x-owner')?next():res.sendStatus(401),ownerOnly:(req,res,next)=>req.get('x-owner')==='owner'?next():res.sendStatus(403),tenantOf:req=>Number(req.get('x-tenant'))});
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{timer.stop();return new Promise(r=>server.close(r));});
+ const url='http://127.0.0.1:'+server.address().port+'/api/marketing/campaigns';
+ const h={'x-owner':'owner','x-tenant':'1','content-type':'application/json'};
+ assert.equal((await fetch(url)).status,401);assert.equal((await fetch(url,{headers:{...h,'x-tenant':'2'}})).status,403);
+ const snapshot=await (await fetch(url,{headers:h})).json();assert.equal(snapshot.plan.length,24);assert.equal(snapshot.mode.mode,'external');
+ const options={method:'POST',headers:h,body:JSON.stringify(C.evergreen[0])};
+ assert.equal((await fetch(url,options)).status,200);assert.equal(captured.title,C.evergreen[0].title);
+ writer=false;assert.equal((await fetch(url,options)).status,423);
+});

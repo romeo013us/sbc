@@ -6,6 +6,7 @@ const {createGateway}=require('../enterprise/sbc-campaign-gateway.cjs');
 
 function register(app,{auth,ownerOnly,tenantOf,corporateTenant,getPool,canWrite,getData,authorize,secret,
  cutover=()=>process.env.SBC_NATIVE_MARKETING_FROM_UTC,trackingOrigin=process.env.SBC_MARKETING_TRACKING_ORIGIN,clock=Date.now,log=()=>{}}){
+ const parse=require('express').json({limit:'12kb',strict:true});
  const gateway=createGateway({authorize,secret});
  const worker=createWorker({tenant:corporateTenant,getPool,canWrite,gateway,cutover,clock,log,trackingOrigin});
  const timer=setInterval(()=>worker.run().catch(()=>log('campaign_cycle_unavailable')),60000);
@@ -28,7 +29,7 @@ function register(app,{auth,ownerOnly,tenantOf,corporateTenant,getPool,canWrite,
    }catch(e){return res.sendStatus(e.code==='ER_NO_SUCH_TABLE'?404:503);}
  });
  function mount(method,path,action){
-   app[method]('/api/marketing/campaigns'+path,auth,ownerOnly,async(req,res)=>{
+   app[method]('/api/marketing/campaigns'+path,auth,ownerOnly,...(method==='post'?[parse]:[]),async(req,res)=>{
      res.setHeader('Cache-Control','private, no-store');
      try{
        if(tenantOf(req)!==corporateTenant)return res.status(403).json({ok:false,error:'SBC_BUSINESS_ACCOUNT_REQUIRED'});

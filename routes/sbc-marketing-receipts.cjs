@@ -74,7 +74,7 @@ function registerMarketingReceipts(app, {auth,ownerOnly,tenantOf,corporateTenant
   const read = createReadback({getKey,clock,request});
   const base = '/api/marketing/publication-receipts';
   function mount(method,path,handler) {
-    app[method](base+path,auth,ownerOnly,async (req,res) => {
+    app[method](base+path,auth,ownerOnly,...(method==='post'?[require('express').json({limit:'4kb'})]:[]),async (req,res) => {
       res.setHeader('Cache-Control','no-store');
       try {
         const tenant = tenantOf(req);
