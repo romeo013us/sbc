@@ -144,3 +144,55 @@ test('reassigned active Account Manager and caller portfolios cannot remain in a
  const candidates=vm.runInNewContext(source.slice(start,stop)+'\nsalesQueueCandidates',sandbox,{timeout:1000});
  assert.equal(candidates('owner1').map(x=>x.id).join(','),'owner-owned','candidate refill must also exclude other active sales owners');
 });
+
+test('owner-confirmed language handoff without a call is durable, never fabricates call history, and rejects unauthorized routing',async()=>{
+ const source=read('server.js'),start=source.indexOf("app.post('/api/sales/spanish-callbacks/:id/move'"),end=source.indexOf("app.post('/api/sales/spanish-callbacks/:id/assign'",start);
+ assert.ok(start>=0&&end>start);
+ const routing=require('../enterprise/sbc-call-routing-v1.cjs');
+ async function attempt({role='owner',confirmed=true,readback=1,saveSkipped=false,suppressed=false,foreign=false}={}){
+  const customer={id:'synthetic-lead',tenantId:foreign?2:1,status:'Lead',phone:'+13055550101',assignedTo:'owner-test',doNotCall:suppressed};
+  const db={customers:[customer],callLogs:[],auditLog:[],activities:[]};
+  let handler,saveCount=0,readCount=0,code=200,body;
+  const sandbox={app:{post:(_path,_auth,h)=>{handler=h}},auth:()=>{},db,SBC_CALL_ROUTING:routing,
+   requireRequestTenant:()=>1,now:()=> '2026-11-27T13:00:00Z',
+   audit:(_actor,event,_msg,meta)=>db.auditLog.push({event,meta}),addActivity:(_type,_msg,meta)=>db.activities.push(meta),
+   saveData:async()=>{saveCount++;return saveSkipped?{skipped:true}:undefined},
+   mysqlPool:{query:async(sql,args)=>{readCount++;assert.match(sql,/callRoutingStateV1\.customers/);assert.equal(args[0],customer.id);assert.equal(args[1],1);return [[{confirmed:readback}]]}}};
+  vm.runInNewContext(source.slice(start,end),sandbox,{timeout:1000});
+  const res={status(n){code=n;return this},json(v){body=v;return this}};
+  await handler({user:{role,id:'owner-test'},params:{id:customer.id},body:{reason:'Customer confirmed Spanish language preference.',ownerConfirmedLanguage:confirmed}},res);
+  return {customer,db,saveCount,readCount,code,body};
+ }
+ const ok=await attempt();
+ assert.equal(ok.code,200);assert.equal(ok.body.durable,true);assert.equal(ok.customer.preferredContactLanguage,'es');
+ assert.equal(ok.customer.salesQueueState,'spanish_callback');assert.equal(ok.customer.phone,'+13055550101');
+ assert.equal(ok.db.callLogs.length,0);assert.equal(ok.saveCount,1);assert.equal(ok.readCount,1);
+ assert.equal(routing.eligibleForEnglish(ok.customer,[],1),false);assert.equal(routing.spanishCallbacks([ok.customer],1).length,1);
+ assert.equal((await attempt({role:'caller'})).code,403);
+ assert.equal((await attempt({confirmed:false})).code,409);
+ assert.equal((await attempt({suppressed:true})).code,409);
+ assert.equal((await attempt({foreign:true})).code,404);
+ assert.equal((await attempt({saveSkipped:true})).code,503);
+ assert.equal((await attempt({readback:0})).code,503);
+});
+
+test('owner queue button works with a fresh queue record absent from the older CRM list, and never claims stale queue removal',async()=>{
+ for(const file of ['public/app.js','browser_public/app.js']){
+  const source=read(file),start=source.indexOf('async function moveSbcLeadToSpanishQueue('),end=source.indexOf('\nasync function loadSbcSpanishCallbackQueue(',start);
+  assert.ok(start>=0&&end>start);
+  const lead={id:'new-lead',businessName:'Synthetic business'};
+  let payload,prompt,notices=[],refresh={leads:[]};
+  const sandbox={state:{me:{role:'owner'},data:{customers:[]},salesQueue:{leads:[lead]}},
+   sbcVoiceStartedAt:0,sbcVoiceOpenCustomerId:'',sbcVoiceSessionId:'',SBC_SPANISH_HANDOFF_REASON:'Existing call evidence',
+   $:()=>null,window:{confirm:v=>{prompt=v;return true}},toast:v=>notices.push(v),
+   api:async(_url,opt)=>{payload=JSON.parse(opt.body);return {ok:true,durable:true}},
+   loadSalesQueue:async()=>refresh,loadSbcRecentCallLogs:async()=>{}};
+  const move=vm.runInNewContext(source.slice(start,end)+'\nmoveSbcLeadToSpanishQueue',sandbox,{timeout:1000});
+  await move(lead.id);
+  assert.equal(payload.ownerConfirmedLanguage,true);assert.match(prompt,/not a name or assumption/);
+  assert.match(notices.at(-1),/Saved to Spanish Calling Queue/);
+  refresh={leads:[lead]};await move(lead.id);
+  assert.match(notices.at(-1),/removal.*not confirmed/);
+  sandbox.state.data.customers=[lead];await move(lead.id,'history');assert.equal(payload.ownerConfirmedLanguage,false);
+ }
+});
