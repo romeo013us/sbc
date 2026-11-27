@@ -45,3 +45,10 @@ test('owner Launch Readiness surfaces coverage in both published browser assets'
  assert.match(publicCode,/not evidence of deleted leads/);
  assert.match(publicCode,/Verification alone is not calling\/SMS consent/);
 });
+test('explicit unverified status overrides stale notes and nested approval, and suppression cannot enter the human review sample',()=>{
+ const lead=(id,extra={})=>({id,tenantId:1,status:'Lead',leadTemperature:'Hot',phone:'3055551212',...extra});
+ const rows=[lead('stale-note',{verificationStatus:'Unverified',notes:'Verification: Verified'}),lead('nested-conflict',{verificationStatus:'Needs Verification',leadIntelligence:{verificationStatus:'Sales Ready'}}),lead('notes-only',{notes:'Verification: Verified'}),lead('passed',{verificationStatus:'Passed'}),lead('legacy-verified',{verified:true}),lead('dnc',{verificationStatus:'Sales Ready',doNotCall:true}),lead('opted-out',{verificationStatus:'Verified',optedOut:true}),lead('customer',{verificationStatus:'Sales Ready',status:'active_customer'}),lead('terminal',{verificationStatus:'Verified',status:'DNC'}),lead('foreign',{tenantId:2,verificationStatus:'Verified'})];
+ const before=JSON.stringify(rows),out=inspect(rows,1);
+ assert.equal(out.totalTenantRecords,9);assert.equal(out.needsRecordVerification,3);assert.equal(out.verifiedHumanCallReady,2);assert.equal(out.suppressedOrTerminal,4);
+ assert.deepEqual(out.manualCallLeadIds,['passed','legacy-verified']);assert.deepEqual(out.researchLeadIds,['stale-note','nested-conflict','notes-only']);assert.equal(JSON.stringify(rows),before);assert.equal(out.noAutomaticCalls,true);assert.equal(out.noAutomaticSMS,true);
+});
