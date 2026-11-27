@@ -44,7 +44,7 @@ function trialPlan({startDate,tiers,reserveCents}={}){
  return {startDate,endDate,workdays:workDates.length,members,plannedBaseCents,reserveCents:reserve,
   reserveShortfallCents:reserve===null?null:Math.max(0,plannedBaseCents-reserve),reserveCoversPlannedBase:reserve===null?null:reserve>=plannedBaseCents,
   checkpoints:{day5:workDates[4],day10:workDates[9],day15:workDates[14],day30:endDate},
-  currentLongTermOpenings:1,possibleLongTermOpenings:2,firstPayday:null,payrollIntervalDays:14,
+  currentLongTermOpenings:2,possibleLongTermOpenings:2,launchTiers:['standard','standard'],seniorRequiresProvenPerformance:true,firstPayday:null,payrollIntervalDays:14,
   enrollmentAuthorized:false,payrollInitiated:false,ownerReviewRequired:true,
   limitations:'Planned six-hour weekdays only; actual earned hours and applicable pay rules govern. Reserve excludes commissions, fees and other liabilities. No payday inferred until signed schedule is reviewed.'};
 }
