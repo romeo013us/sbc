@@ -11,3 +11,24 @@ test('owner UI fails closed on missing staging schema and does not attempt mutat
  const mirror=fs.readFileSync(path.join(root,'browser_public/sbc-sales-command-v1.js'),'utf8');
  assert.equal(js,mirror);
 });
+
+test('shared manager workstation and owner profile form are mirrored and wired to scoped endpoints',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ for(const name of ['sbc-sales-command.html','sbc-sales-command-v1.js','sbc-account-manager-v1.html','sbc-manager-sales-progress-v1.js']){
+  assert.equal(read('public/'+name),read('browser_public/'+name));
+ }
+ const owner=read('public/sbc-sales-command.html'),ownerJS=read('public/sbc-sales-command-v1.js');
+ assert.match(owner,/<form id="workstationProfileForm">/);
+ assert.match(owner,/<button type="submit" id="workstationSave" disabled>/);
+ assert(owner.includes('id="workstationBilingual"'));
+ assert(ownerJS.includes('expectedRevision:snapshot.revision'));
+ assert(ownerJS.includes('OWNER_CONFIRMED_WORKSTATION_TIER'));
+ assert(ownerJS.includes('profileSnapshot=null'));
+ const employee=read('public/sbc-account-manager-v1.html'),employeeJS=read('public/sbc-manager-sales-progress-v1.js');
+ assert(employee.includes('id="sbcMyWorkstationProfile"'));
+ assert(employeeJS.includes("fetch('/api/sbc/sales/workstation/me'"));
+ assert(!employeeJS.includes('/api/owner/sales-command/workstation'));
+ assert(employeeJS.includes('Workstation tier not verified'));
+ assert(employeeJS.includes('Signed compensation and calling permissions are separate.'));
+ new (require('node:vm').Script)(ownerJS);new (require('node:vm').Script)(employeeJS);
+});
