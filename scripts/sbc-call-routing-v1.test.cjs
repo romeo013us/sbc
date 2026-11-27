@@ -111,3 +111,30 @@ test('old callback retry cannot replace an existing schedule, suppression or oth
  c.doNotContact=true;l.followUpAt=new Date(Date.UTC(2026,10,25,14)).toISOString();
  assert.equal(flow.routingUpdate(c,l,at).changed,false);assert.equal(c.salesQueueState,'followup_unscheduled');
 });
+
+{
+const identityAt='2026-11-27T15:00:00.000Z';
+const account=()=>({id:'lead-1',tenantId:1,status:'Lead'});
+const attempt=(overrides={})=>({id:'call-1',customerId:'lead-1',tenantId:1,status:'completed',outcome:'Spanish callback needed',endedAt:identityAt,...overrides});
+test('foreign tenant, mismatched account and missing tenant cannot mutate routing or suppression',()=>{
+ for(const outcome of ['Spanish callback needed','Do Not Call','Bad number']){
+  for(const patch of [{tenantId:2},{customerId:'lead-2'},{tenantId:undefined},{tenantId:0}]){
+   const c=account(),before=structuredClone(c);
+   assert.equal(flow.routingUpdate(c,attempt({...patch,outcome}),identityAt).changed,false);
+   assert.deepEqual(c,before);
+  }
+ }
+});
+test('same tenant and account retain normal Spanish handoff',()=>{
+ const c=account();assert.equal(flow.routingUpdate(c,attempt(),identityAt).changed,true);
+ assert.equal(c.salesQueueState,'spanish_callback');
+});
+test('legacy scoped sales-report adapter without explicit customerId remains compatible',()=>{
+ const c=account(),l=attempt();delete l.customerId;
+ assert.equal(flow.routingUpdate(c,l,identityAt).changed,true);assert.equal(c.salesQueueState,'spanish_callback');
+});
+test('snake-case tenant identity remains compatible',()=>{
+ const c={id:'lead-1',tenant_id:1,status:'Lead'},l=attempt({tenantId:undefined,tenant_id:1});
+ assert.equal(flow.routingUpdate(c,l,identityAt).changed,true);
+});
+}
