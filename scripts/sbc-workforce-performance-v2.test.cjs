@@ -94,7 +94,8 @@ test('trial payroll reconciliation uses enrolled tier and reviewed actual paid m
  assert.equal(p.paymentInitiated,false);assert.equal(p.earnedPayNeverPerformanceGated,true);
  assert.equal(trialPayroll({...input,tier:'senior'}).basePayCents,36000);
  assert.equal(trialPayroll({...input,trainingMinutes:600,otherPaidMinutes:3600}).basePayCents,35000);
- assert.equal(trialPayroll({...input,periodIndex:2}).periodEnd,'2026-12-29');
+ assert.equal(trialPayroll({...input,periodIndex:2,trainingMinutes:0,otherPaidMinutes:720}).periodEnd,'2026-12-29');
+ assert.throws(()=>trialPayroll({...input,periodIndex:2}),/INVALID_PAID_MINUTES/);
  assert.throws(()=>trialPayroll({...input,hoursReviewed:false}),/PAYROLL_REVIEW_REQUIRED/);
  assert.throws(()=>trialPayroll({...input,trainingMinutes:-1}),/INVALID_PAID_MINUTES/);
  assert.throws(()=>trialPayroll({...input,periodIndex:3}),/INVALID_PAY_PERIOD/);
