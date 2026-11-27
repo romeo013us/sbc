@@ -32,3 +32,13 @@ test('shared manager workstation and owner profile form are mirrored and wired t
  assert(employeeJS.includes('Signed compensation and calling permissions are separate.'));
  new (require('node:vm').Script)(ownerJS);new (require('node:vm').Script)(employeeJS);
 });
+
+test('paid trial enrollment requires explicit owner attestations and employee reads are self scoped',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-command-v1.js'),employee=read('public/sbc-manager-sales-progress-v1.js');
+ assert(html.includes('id="trialEnrollForm"'));assert(html.includes('id="trialSigned"'));assert(html.includes('id="trialPay"'));assert(html.includes('id="trialFair"'));
+ assert(js.includes("confirm:'OWNER_CONFIRMED_PAID_TRIAL'"));assert(js.includes('/api/owner/sales-command/workforce/enroll'));
+ assert(employee.includes("fetch('/api/sbc/sales/workforce/trial/me'"));assert(!employee.includes('/api/owner/sales-command/workforce/enroll'));
+ assert(read('public/sbc-account-manager-v1.html').includes('id="sbcMyTrialProgress"'));
+ new (require('node:vm').Script)(js);new (require('node:vm').Script)(employee);
+});
