@@ -860,7 +860,7 @@ $('import-text').addEventListener('input',function(){if(!importRunning){importBa
 $('import-format').addEventListener('change',function(){if(!importRunning){importBatch=null;drawImportPreview();}});
 $('clock-in').addEventListener('click',function(){doClock('in');});
 $('clock-out').addEventListener('click',function(){doClock('out');});
-$('sign-out').addEventListener('click',async function(){try{await api('/api/logout',{method:'POST'});}finally{location.replace('/');}});
+$('sign-out').addEventListener('click',async function(){var b=$('sign-out');if(b.disabled)return;b.disabled=true;try{var result=await api('/api/logout',{method:'POST'});if(result.ok!==true||result.signedOut!==true)throw Error('Sign-out not confirmed.');$('workspace').hidden=true;location.replace('/');}catch(e){b.disabled=false;$('sync-label').textContent='Sign-out not confirmed. Please retry.';}});
 (async function start(){
  try{
   var me=await api('/api/me');
