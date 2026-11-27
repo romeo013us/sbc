@@ -25,3 +25,13 @@ test('an incomplete or unsuccessful run is rejected even with green job records'
   const x=fixture();Object.assign(x.run,patch);assert.throws(()=>verifyStagingEvidence(x));
  }
 });
+test('consolidated source gate must be independently present and successful on the exact attempt',()=>{
+ const name='SBC consolidated source release gate';
+ const withGate=()=>{const x=fixture();x.jobs.push({...x.jobs[0],name});return x;};
+ assert.equal(verifyStagingEvidence(withGate()).stagingVerified,true);
+ assert.throws(()=>verifyStagingEvidence(fixture()),/source release gate/);
+ for(const patch of [{conclusion:'failure'},{conclusion:'skipped'},{run_attempt:1},{head_sha:'b'.repeat(40)},{run_id:99},{status:'in_progress'}]){
+  const x=withGate();Object.assign(x.jobs.at(-1),patch);assert.throws(()=>verifyStagingEvidence(x));
+ }
+ const duplicate=withGate();duplicate.jobs.push({...duplicate.jobs.at(-1)});assert.throws(()=>verifyStagingEvidence(duplicate),/ambiguous/);
+});
