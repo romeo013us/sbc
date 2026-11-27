@@ -140,6 +140,57 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   res.setHeader('Cache-Control','no-store');
   try{gate(req);return res.json({ok:true,readOnly:true,plan:WORKFORCE.trialPlan(req.body||{})});}catch(e){return error(res,e)}
  });
+ // Enrollment records a previously signed paid trial, never hires or moves money.
+ app.post('/api/owner/sales-command/workforce/enroll',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const {ctx,t,actor}=gate(req,'owner',true);
+   const {plan,members}=WORKFORCE.enrollmentPlan(req.body||{});
+   if(plan.startDate<WORKFORCE.miamiDay(new Date()))throw Error('INVALID_TRIAL_START_IN_PAST');
+   for(const m of members)staff(ctx,t,m.managerId);
+   const cohortId=crypto.randomUUID();
+   await inTx(ctx,async conn=>{
+    for(const m of [...members].sort((a,b)=>a.managerId.localeCompare(b.managerId))){
+     const [profile]=await conn.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? FOR UPDATE',[t,m.managerId]);
+     if(profile.length!==1||profile[0].tier!==m.tier)throw Error('WORKSTATION_PROFILE_MISMATCH');
+    }
+    await conn.query('INSERT INTO sbc_am_trial_cohort_v2 (tenant_id,cohort_id,start_day,end_day,reserve_cents,planned_base_cents,created_by) VALUES (?,?,?,?,?,?,?)',[t,cohortId,plan.startDate,plan.endDate,plan.reserveCents,plan.plannedBaseCents,actor]);
+    for(const m of members){
+     await conn.query('INSERT INTO sbc_am_trial_member_v2 (tenant_id,manager_id,cohort_id,tier,agreement_hash) VALUES (?,?,?,?,?)',[t,m.managerId,cohortId,m.tier,HASH(m.agreementReference)]);
+     await audit(conn,t,m.managerId,plan.startDate.slice(0,7),'PAID_TRIAL_ENROLLED',actor,{cohortId,tier:m.tier,startDate:plan.startDate,endDate:plan.endDate,signedTermsConfirmed:true,payScheduleReviewed:true,fairOpportunityConfirmed:true});
+    }
+   });
+   return res.status(201).json({ok:true,cohortId,startDate:plan.startDate,endDate:plan.endDate,memberCount:members.length,automaticPersonnelAction:false,payrollInitiated:false});
+  }catch(e){if(e?.code==='ER_DUP_ENTRY')return fail(res,409,'TRIAL_ALREADY_ENROLLED');return error(res,e)}
+ });
+ async function enrolledTrial(ctx,t,m){
+  const [rows]=await ctx.mysqlPool.query('SELECT m.tier,c.start_day,c.end_day FROM sbc_am_trial_member_v2 m JOIN sbc_am_trial_cohort_v2 c ON c.tenant_id=m.tenant_id AND c.cohort_id=m.cohort_id WHERE m.tenant_id=? AND m.manager_id=? LIMIT 1',[t,m]);
+  if(!rows.length)return null;
+  const row=rows[0],plan=WORKFORCE.trialPlan({startDate:row.start_day,tiers:[row.tier]});
+  if(plan.endDate!==row.end_day)throw Error('INVALID_TRIAL_RECORD');
+  const today=WORKFORCE.miamiDay(new Date());
+  const yesterday=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10);
+  let review=null;
+  if(yesterday>=plan.startDate){
+   const throughDate=yesterday<plan.endDate?yesterday:plan.endDate;
+   const [credits]=await ctx.mysqlPool.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? AND manager_id=? ORDER BY captured_at DESC LIMIT 10001',[t,m]);
+   if(credits.length>10000)throw Error('SALES_LEDGER_QUERY_TRUNCATED');
+   const validated=credits.map(row=>{const c=creditRow(row);CALC.credit(c,{tenantId:t,managerId:m});return {...c,customerId:CALC.id(row.customer_id)};});
+   const r=WORKFORCE.review({tier:row.tier,startDate:plan.startDate,throughDate,credits:validated});
+   review={...r,grade:null,gradeWithheldReason:'LEDGER_COMPLETENESS_NOT_VERIFIED'};
+  }
+  return {tier:row.tier,startDate:plan.startDate,endDate:plan.endDate,checkpoints:plan.checkpoints,review,stage:today<plan.startDate?'UPCOMING':today>plan.endDate?'OWNER_REVIEW_DUE':'IN_PROGRESS'};
+ }
+ app.get('/api/sbc/sales/workforce/trial/me',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t,actor}=gate(req,'account_manager');staff(ctx,t,actor);return res.json({ok:true,trial:await enrolledTrial(ctx,t,actor),ledgerCompletenessVerified:false,automaticPersonnelAction:false});}
+  catch(e){return error(res,e)}
+ });
+ app.get('/api/owner/sales-command/workforce/enrollment',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{const {ctx,t}=gate(req),m=CALC.id(req.query?.managerId);staff(ctx,t,m);return res.json({ok:true,trial:await enrolledTrial(ctx,t,m),ledgerCompletenessVerified:false,automaticPersonnelAction:false});}
+  catch(e){return error(res,e)}
+ });
  // Workstation presentation tier is independently provisioned; no financial or language permission changes.
  async function workstationProfile(pool,t,m){
   const [rows]=await pool.query('SELECT tier, revision FROM sbc_am_workstation_profile_v2 WHERE tenant_id=? AND manager_id=? LIMIT 1',[t,m]);
