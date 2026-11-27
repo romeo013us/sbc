@@ -45,3 +45,7 @@ jobs:
         env:
           SBC_LEDGER_DISPOSABLE_CI: '1'
           SBC_LEDGER_CI_PASSWORD: sbc_ledger_disposable_ci_password
+      - run: node --test scripts/sbc-marketing-analytics-mysql.test.cjs
+        env:
+          SBC_LEDGER_DISPOSABLE_CI: '1'
+          SBC_LEDGER_CI_PASSWORD: sbc_ledger_disposable_ci_password
