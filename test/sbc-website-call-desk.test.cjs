@@ -37,7 +37,7 @@ test('real readiness: Lorna verified, owner-approved 85%-built site, phone, tena
  assert.match(byId.get('ready').script,/WELL, THE THING IS, I BUILT YOU ONE!/);
  assert.match(byId.get('ready').script,/today or tomorrow/i);
  assert.match(byId.get('ready').script,/\$199/);
- assert.match(byId.get('needsite').script,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.doesNotMatch(byId.get('needsite').script,/I BUILT YOU ONE!/);
  assert.doesNotMatch(byId.get('already').script,/noticed you (?:had|didn't have) (?:a )?website/i);
  assert(!JSON.stringify(p).includes('Foreign Secret'));
 });
@@ -47,7 +47,7 @@ test('script avoids invented Google Business Profile research and premature webs
  assert.doesNotMatch(s,/I was (?:on|looking at) your Google Business Profile/i);
  assert.match(s,/looking up your business online/i);
  const noWeb=createCallScript(notVerified,null);
- assert.match(noWeb,/WELL, THE THING IS, I BUILT YOU ONE!/);
+ assert.doesNotMatch(noWeb,/I BUILT YOU ONE!/);
 });
 test('outcome handling: no-answer, no-contact, and invalid numbers leave reliable sales notes; bad number cooldown 15 days',()=>{
  const c=customer('ready'),d=website('w','ready');

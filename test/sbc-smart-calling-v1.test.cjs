@@ -24,8 +24,7 @@ test('SBC approved owner script keeps the direct John introduction, hook and Zoo
  for(const partial of [null,{...evidence,websiteUrl:''},{...evidence,stage:'REVIEW_WEBSITE'},{...evidence,websiteId:null}]){
   const view=smart.project(customer,partial);
   assert.equal(view.hasVerifiedDemo,false);
-  // This is the owner's verbatim manual sales script, not an automatic website-status claim.
-  assert.match(sales.build(view.scriptOptions),/WELL, THE THING IS, I BUILT YOU ONE!/);
+  assert.doesNotMatch(sales.build(view.scriptOptions),/I BUILT YOU ONE!/);
  }
 });
 test('cannot claim a missing Google website from unverified CRM research',()=>{
@@ -94,7 +93,7 @@ test('owner and Account Managers can call and book first without a website previ
   assert.equal(view.hasVerifiedDemo,false);
   assert.equal(view.canOpenCall,true);
   assert.equal(view.canSchedule,true);
-  assert.match(sales.build(view.scriptOptions),/WELL, THE THING IS, I BUILT YOU ONE!/);
+  assert.doesNotMatch(sales.build(view.scriptOptions),/I BUILT YOU ONE!/);
  }
  for(const root of ['public','browser_public']){
   const ui=fs.readFileSync(path.join(__dirname,'..',root,'sbc-smart-calling-v1.js'),'utf8');
@@ -104,3 +103,5 @@ test('owner and Account Managers can call and book first without a website previ
   assert.doesNotMatch(ui,/Qualify interest, then generate the concept and arrange the Zoom demo/);
  }
 });
+
+require('./sbc-account360-cleanup.test.cjs');

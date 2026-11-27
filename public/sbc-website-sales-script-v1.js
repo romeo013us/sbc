@@ -14,7 +14,7 @@
   return String(v??'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120)||fallback;
  }
  function build({businessName='your business',contactName='',callerName='John',
-  googleVerified=false,websitePresence='not_checked'}={}){
+  googleVerified=false,websitePresence='not_checked',approved=false}={}){
   const business=clean(businessName,'your business');
   const caller=clean(callerName,'John');
   const contact=clean(contactName);
@@ -31,11 +31,11 @@
    '01 · OPEN — FRIENDLY OWNER CHECK',intro,askOwner,'',
    '02 · ASK — WEBSITE QUESTION',websiteQuestion,'',
    '03 · IF THEY DO NOT HAVE A WEBSITE — THE HOOK',
-   'WELL, THE THING IS, I BUILT YOU ONE!','',
+   approved===true?'WELL, THE THING IS, I BUILT YOU ONE!':'Well, I can prepare a private website concept for you.','',
    'IF THEY ALREADY HAVE A WEBSITE',
    "Oh, that's good! Is there anything you wish your current website did better? I can show you what I had in mind.",'',
    '04 · ASK FOR 10 MINUTES',
-   'If you have about 10 minutes today or tomorrow, we can jump on a quick Zoom and I can show you what I put together. [PAUSE]',
+   approved===true?'If you have about 10 minutes today or tomorrow, we can jump on a quick Zoom and I can show you what I put together. [PAUSE]':'If you have about 10 minutes today or tomorrow, we can jump on a quick Zoom and discuss a website concept. [PAUSE]',
    'Which works better for you, today or tomorrow? [PAUSE]','',
    'IF INTERESTED — Great! What works better, later today or tomorrow? Confirm the appointment and prepare the actual private concept before the presentation.',
    'IF PRICE COMES UP — Our one-page Starter starts at $199. I can show you the idea and we can see which package fits.',
@@ -46,7 +46,6 @@
    'BUILD TRUST: Show accurate contact details, hours and professional design.',
    'GENERATE INQUIRIES: Help visitors call or ask a question when the contact tools are active.',
    'IF THEY ASK ABOUT MONTHLY CARE — An optional 79/month website-care idea is under review, not a live approved package. Verify terms before offering it.',
-   'IF THEY ASK WHY A WEBSITE HELPS — People can see your services, trust your business details, and contact you from one place.',
    'IF THEY SAY NO — Understood. Appreciate your time. Honor any do-not-contact request.',
    '',
    'AFTER THE CALL — Record the real outcome. If interested, create and review the ZIP concept, book the 10-minute Zoom and have the actual preview ready.',
