@@ -74,3 +74,14 @@ test('recognition is provisional on incomplete ledger and does not grant pay or 
  assert.deepEqual(recognition({...input,qualityPassed:false}).eligibleForOwnerReview,[]);
  assert.throws(()=>recognition({...input,monthlyQuotaCents:1}),/INVALID_MONTHLY_QUOTA/);
 });
+
+test('Senior advancement needs four completed weeks, demonstrated Senior capacity, certification and explicit quality review',()=>{
+ const {seniorReview}=require('../enterprise/sbc-workforce-performance-v2.cjs');
+ const base={trialCompleted:true,academyCertified:true,ledgerReviewed:true,trialAccepted:true,bilingualVerified:true,qualityPassed:true,reliabilityPassed:true,weeklyRevenueCents:[50000,100000,50000,100000]};
+ const result=seniorReview(base);
+ assert.equal(result.eligible,true);assert.equal(result.automaticPromotion,false);assert.equal(result.compensationChanged,false);
+ for(const key of ['trialCompleted','academyCertified','ledgerReviewed','trialAccepted','bilingualVerified','qualityPassed','reliabilityPassed'])assert.equal(seniorReview({...base,[key]:false}).eligible,false,key);
+ assert.equal(seniorReview({...base,weeklyRevenueCents:[49999,150000,50000,100000]}).eligible,false);
+ assert.equal(seniorReview({...base,weeklyRevenueCents:[50000,50000,50000,100000]}).eligible,false);
+ assert.throws(()=>seniorReview({...base,weeklyRevenueCents:[50000]}),/INVALID_PROMOTION_WEEKS/);
+});
