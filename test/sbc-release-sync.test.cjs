@@ -43,3 +43,21 @@ test('candidate runtime records verified bytes without claiming production certi
  assert.equal(headers['x-sbc-server-sha256'],id.serverSha256);assert.equal(headers['x-sbc-release-candidate'],'true');assert.equal(headers['x-sbc-source-commit'],id.sourceCommit);
  assert.throws(()=>mod.recordVerifiedRelease({...id,serverSha256:'f'.repeat(64)}));
 });
+
+test('production preflight requires independently pinned release and private logo bytes without granting production approval',async t=>{
+ const {verifyProductionReleaseGate}=require('../scripts/verify-production-release-gate.cjs');
+ const f=fixture(t),privateRoot=fs.mkdtempSync(path.join(os.tmpdir(),'sbc-private-brand-'));t.after(()=>fs.rmSync(privateRoot,{recursive:true,force:true}));
+ // Synthetic test artwork only; never the real SBC brand asset.
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAALElEQVR4nO3NMQEAMAjAsDExWEQ5PybgSwU0kdXvsn96BwAAAAAAAAAAAIsNl5kB0n2SFzMAAAAASUVORK5CYII=','base64');
+ const logoPath=path.join(privateRoot,'fixture.png');fs.writeFileSync(logoPath,png);
+ const pins={root:f.root,sourceCommit:f.id.sourceCommit,serverSha256:f.id.serverSha256,sourceFingerprint:f.id.sourceFingerprint,stagedInventorySha256:f.id.stagedInventorySha256,logoPath,logoSha256:sha(png)};
+ const result=await verifyProductionReleaseGate(pins);
+ assert.equal(result.status,'RELEASE_AND_BRAND_PINS_VERIFIED');assert.equal(result.productionCertified,false);assert.equal(result.publicationReady,false);assert.equal(result.logo.width,32);assert.equal(result.logo.sha256,pins.logoSha256);assert.equal(result.release.candidateOnly,true);
+ for(const key of ['sourceCommit','serverSha256','sourceFingerprint','stagedInventorySha256','logoSha256'])await assert.rejects(verifyProductionReleaseGate({...pins,[key]:undefined}),/INDEPENDENT_PIN_REQUIRED/);
+ for(const key of ['sourceCommit','serverSha256','sourceFingerprint','stagedInventorySha256'])await assert.rejects(verifyProductionReleaseGate({...pins,[key]:'e'.repeat(pins[key].length)}),/PIN_MISMATCH/);
+ await assert.rejects(verifyProductionReleaseGate({...pins,logoSha256:'e'.repeat(64)}),/LOGO_INTEGRITY/);
+ const alias=path.join(privateRoot,'alias.png');fs.symlinkSync(logoPath,alias);await assert.rejects(verifyProductionReleaseGate({...pins,logoPath:alias}),/LOGO_INTEGRITY/);
+ const inside=path.join(f.root,'logo.png');fs.writeFileSync(inside,png);await assert.rejects(verifyProductionReleaseGate({...pins,logoPath:inside}),/PRIVATE_LOGO_REQUIRED/);fs.unlinkSync(inside);
+ fs.writeFileSync(logoPath,Buffer.concat([png,Buffer.from('tampered')]));await assert.rejects(verifyProductionReleaseGate(pins),/LOGO_INTEGRITY/);fs.writeFileSync(logoPath,png);
+ f.put('browser_public/index.html','tampered');await assert.rejects(verifyProductionReleaseGate(pins),/checksum mismatch/);
+});
