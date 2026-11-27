@@ -36,6 +36,7 @@ function openJobQueue({filename,clock=Date.now,leaseMs=300000,maxAttempts=3}={})
   if(one("SELECT count(*) AS n FROM creative_jobs WHERE tenant=? AND status IN ('queued','running')",t).n>=100)throw Error('JOB_QUEUE_LIMIT');
   const id=randomUUID(),n=now();run("INSERT INTO creative_jobs(id,tenant,project,idem,request,digest,status,available,created) VALUES(?,?,?,?,?,?,'queued',?,?)",id,t,p,key,json,digest,n,n);return view(row(s,id));
  });}
+ function findByKey(s,request,key){const [t,p]=scopeOf(s);if(!idOK(key))throw Error('INVALID_JOB_KEY');const prior=one('SELECT * FROM creative_jobs WHERE tenant=? AND project=? AND idem=?',t,p,key);if(prior&&prior.digest!==createHash('sha256').update(JSON.stringify(normalize(request))).digest('hex'))throw Error('IDEMPOTENCY_CONFLICT');return view(prior);}
  function claim(w){const n=now();if(!w||!idOK(w.id)||!Number.isSafeInteger(w.tenantId)||w.tenantId<1||w.authorized!==true||w.healthy!==true||w.billing!=='local'||w.commercialApproved!==true||w.mode!=='cpu'||w.engine!=='ffmpeg'||!Number.isSafeInteger(w.heartbeatAt)||w.heartbeatAt>n||w.heartbeatAt<n-60000||!Number.isSafeInteger(w.availableSlots)||w.availableSlots<1)return null;
   return tx(()=>{
    run("UPDATE creative_jobs SET status=CASE WHEN attempts>=? THEN 'failed' ELSE 'queued' END,worker=NULL,token=NULL,expires=NULL,available=?,error='LEASE_EXPIRED' WHERE tenant=? AND status='running' AND expires<=?",maxAttempts,n,w.tenantId,n);
@@ -52,6 +53,6 @@ function openJobQueue({filename,clock=Date.now,leaseMs=300000,maxAttempts=3}={})
  async function complete(s,id,token,assetId,service){if(!hashOK(assetId)||typeof service?.get!=='function')throw Error('ASSET_NOT_VERIFIED');const [t,p]=scopeOf(s),scope={tenantId:t,projectId:p},r=active(scope,id,token,now());const asset=(await service.get(scope,assetId))?.asset;const mime=JSON.parse(r.request).kind==='template-image'?'image/png':'video/mp4';if(!asset||asset.id!==assetId||asset.tenantId!==t||asset.projectId!==p||asset.mime!==mime||asset.reviewState!=='draft')throw Error('ASSET_NOT_VERIFIED');return tx(()=>{active(scope,id,token,now());run("UPDATE creative_jobs SET status='completed',asset=?,worker=NULL,token=NULL,expires=NULL,error=NULL WHERE id=?",assetId,id);return view(row(scope,id));});}
  function list(s){const [t,p]=scopeOf(s);return db.prepare('SELECT * FROM creative_jobs WHERE tenant=? AND project=? ORDER BY created DESC,id DESC LIMIT 30').all(t,p).map(view);}
  function captions(s,id){const r=row(s,id);if(!r||r.status!=='completed')return null;const req=JSON.parse(r.request);return req.kind==='template-video'?sceneCaptions(req.slides.map(slide=>({headline:slide.design.headline,seconds:slide.seconds}))):null;}
- return Object.freeze({submit,claim,renew,fail,complete,list,captions,get:(s,id)=>view(row(s,id)),close:()=>db.close()});
+ return Object.freeze({submit,findByKey,claim,renew,fail,complete,list,captions,get:(s,id)=>view(row(s,id)),close:()=>db.close()});
 }
 module.exports={openJobQueue};
