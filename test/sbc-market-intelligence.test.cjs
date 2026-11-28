@@ -681,3 +681,19 @@ test('owner briefing includes decisions even when evidence is missing',async()=>
   assert(d.decisionPlan.exceptions.length>0);
  });
 });
+
+test('decision dashboard preserves evidence distinctions and provides no automatic execution action',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const html=ctx.window.SBCMarketIntelligence.briefingPanel({decisionPlan:{policyVersion:'SBC_DECISION_V1',executionAllowed:false,
+  researchReview:{status:'available',markets:[{state:'TX',applications:1000}]},
+  revenueReview:{status:'available',markets:[{state:'FL',paidOrders:3,capturedCents:89700}],unknownLocation:{paidOrders:1,capturedCents:19900}},
+  intakeReview:{status:'available',markets:[{state:'CA',newCrmRecords:25}]},
+  urgentCampaigns:[{market:'Scotland',eventDate:'2026-11-15',title:'<script>test</script>'}],
+  exceptions:[{code:'SOURCE_UNAVAILABLE',market:'Miami'}],limitation:'Independent evidence, not a conversion rate.'}});
+ assert.match(html,/Executive decision brief/);assert.match(html,/Recorded gross captures/);assert.match(html,/\$897\.00/);
+ assert.match(html,/Unknown location/);assert.match(html,/25/);assert.match(html,/&lt;script&gt;/);
+ assert.doesNotMatch(html,/<script>|data-mi-auto-execute/);assert.match(html,/not a conversion rate/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
