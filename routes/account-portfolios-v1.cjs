@@ -7,6 +7,8 @@ const {requireTenantContext}=require('../enterprise/tenant-context.cjs');
 const {positiveTenantId}=require('../enterprise/repositories/customer-repository.cjs');
 const AccountManagerReadiness=require('../enterprise/sbc-account-manager-readiness-v6.cjs');
 const SBCVoicePreflightV2=require('../enterprise/sbc-call-command-voice-preflight-v2.cjs');
+const Routing=require('../enterprise/sbc-call-routing-v1.cjs');
+const Revenue=require('../enterprise/sbc-revenue-reporting-truth-v66142.cjs');
 const STATUS_BLOCKED=new Set(['do not call','do not contact','dnc','opt out','unsubscribe','lost','bad number','wrong number','deleted']);
 const fail=(res,status,code)=>res.status(status).json({ok:false,code});
 function safeTenant(req){
@@ -54,6 +56,45 @@ async function withTx(ctx,callback){
   throw error;
  }finally{try{conn.release()}catch(_){}}
 }
+// Read-only allocation suggestions: authoritative SQL ownership plus matching
+// tenant CRM evidence. Never transfer, assign, grant social access or contact.
+function planAllocation({rows,customers,users,callLogs,tenantId,limit=25,now=Date.now()}){
+ const tid=Number(tenantId),validId=x=>typeof x==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/.test(x);
+ if(!Number.isSafeInteger(tid)||tid<1||!Number.isInteger(limit)||limit<1||limit>100||!Number.isFinite(now)||!Array.isArray(rows)||rows.length>5000||!Array.isArray(customers)||!Array.isArray(users)||!Array.isArray(callLogs))throw Error('ALLOCATION_SCOPE');
+ if(rows.some(r=>!validId(r.id)||Number(r.tenant_id)!==tid)||new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('ALLOCATION_SCOPE');
+ const same=x=>Number(x?.tenantId??x?.tenant_id)===tid&&!(x.tenantId!=null&&x.tenant_id!=null&&Number(x.tenantId)!==Number(x.tenant_id));
+ const unique=(list)=>{const index=new Map();for(const x of list){if(!same(x)||!validId(x.id))continue;index.set(x.id,index.has(x.id)?null:x);}return index;};
+ const staff=unique(users),cache=unique(customers),managers=new Map(),holds={};
+ const hold=code=>{holds[code]=(holds[code]||0)+1;};
+ const status=x=>String(x||'').trim().toLowerCase();
+ const phone=x=>{let p=String(x||'').trim().replace(/[\s().-]/g,'');if(/^\d{10}$/.test(p))p='+1'+p;else if(/^1\d{10}$/.test(p))p='+'+p;return /^\+[1-9]\d{7,14}$/.test(p)?p:'';};
+ const today=new Date(now).toISOString().slice(0,10);
+ for(const [id,u] of staff)if(u?.role==='account_manager'&&u.active!==false)managers.set(id,{id,name:String(u.name||u.username||id).slice(0,130),currentAccounts:0,overdue:0,projectedAccounts:0,accountIds:[],spanishApproved:Routing.isSpanishApproved(u)});
+ const candidates=[];
+ for(const r of rows){
+  const st=status(r.status),assigned=String(r.assigned_to||'');
+  if(['deleted','archived','duplicate'].includes(st))continue;
+  if(assigned){const m=managers.get(assigned);if(m){m.currentAccounts++;m.projectedAccounts++;if(r.follow_up&&String(r.follow_up).slice(0,10)<today)m.overdue++;}continue;}
+  const c=cache.get(r.id);
+  if(!c||String(c.assignedTo??c.assigned_to??'')!==assigned||status(c.status)!==st){hold('CRM_RECONCILIATION_REQUIRED');continue;}
+  if(st==='customer'){hold('EXISTING_CUSTOMER_REVIEW');continue;}
+  if(STATUS_BLOCKED.has(st)||['opt-out','closed','not qualified'].includes(st)||Routing.hasDnc(c)||c.optedOut===true||c.isTestRecord===true||c.test===true||Revenue.isQaCustomer(c)||Date.parse(c.websiteSalesBadNumberUntil||'')>now){hold('CONTACT_RESTRICTED');continue;}
+  if(String(c.preferredContactLanguage||'').toLowerCase()==='es'||['spanish_callback','callback_assigned'].includes(String(c.salesQueueState||''))){hold('SPANISH_QUEUE');continue;}
+  if(String(c.preferredContactLanguage||'').toLowerCase()!=='en'){hold('LANGUAGE_UNCONFIRMED');continue;}
+  if(!['lead','prospect','contacted'].includes(st)||!Routing.eligibleForEnglish(c,callLogs,tid,new Date(now))||!phone(r.phone)||phone(r.phone)!==phone(c.phone||c.primaryPhone)){hold('CONTACT_RESTRICTED');continue;}
+  if(!['Verified','Sales Ready'].includes(String(c.verificationStatus||''))||c.researchRejected===true){hold('RESEARCH_UNVERIFIED');continue;}
+  const brief=c.leadIntelligence?.researchBrief;
+  candidates.push({id:r.id,gap:brief?.websitePresence==='not_found'&&brief?.googleBusinessPresence==='found'});
+ }
+ candidates.sort((a,b)=>Number(b.gap)-Number(a.gap)||a.id.localeCompare(b.id));
+ const eligibleManagers=[...managers.values()];
+ for(const c of candidates.slice(0,limit)){
+  const m=eligibleManagers.slice().sort((a,b)=>a.projectedAccounts-b.projectedAccounts||a.overdue-b.overdue||a.id.localeCompare(b.id))[0];
+  if(!m)break;m.accountIds.push(c.id);m.projectedAccounts++;
+ }
+ return {policyVersion:'SBC_ALLOCATION_V1',status:eligibleManagers.length?'review_required':'no_active_managers',executionAllowed:false,totalEligible:candidates.length,totalProposed:eligibleManagers.reduce((n,m)=>n+m.accountIds.length,0),managers:eligibleManagers.sort((a,b)=>a.id.localeCompare(b.id)),holds,limitation:'Relative CRM workload is not staff capacity or availability. Confirm English capability, availability and existing portfolio obligations before any owner-approved assignment. Spanish callbacks remain in their dedicated workflow. No contact or social permission is inferred.'};
+}
+
 function register(app,{auth,getContext}){
  const context=(req,res,write=false)=>{
   const ctx=getContext();
@@ -158,6 +199,22 @@ function register(app,{auth,getContext}){
     permission:'OWNER_ONLY',writes:0});
   }catch{return fail(res,503,'ACCOUNT_MANAGER_READINESS_UNAVAILABLE')}
   finally{try{conn?.release()}catch(_){ }}
+ });
+ app.get('/api/v6606/crm/account-portfolios/allocation-preview',auth,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  const x=context(req,res);if(x.denied)return;
+  if(req.user.role!=='owner'||req.user.active===false)return fail(res,403,'OWNER_REQUIRED');
+  const q=req.query||{},raw=q.limit??'25';
+  if(Object.keys(q).some(k=>k!=='limit')||typeof raw!=='string'||!(/^(?:[1-9]|[1-9][0-9]|100)$/.test(raw)))return fail(res,400,'ALLOCATION_LIMIT_INVALID');
+  let conn;
+  try{
+   conn=await x.ctx.mysqlPool.getConnection();
+   const [rows]=await conn.query('SELECT id,assigned_to,status,phone,follow_up,tenant_id FROM sbc_customers WHERE tenant_id=? ORDER BY id ASC LIMIT ?',[x.tenant,5001]);
+   const db=x.ctx.db||{};
+   const plan=planAllocation({rows,customers:db.customers||[],users:db.users||[],callLogs:db.callLogs||[],tenantId:x.tenant,limit:Number(raw)});
+   return res.json({ok:true,readOnly:true,plan});
+  }catch{return fail(res,503,'ALLOCATION_PREVIEW_UNAVAILABLE')}
+  finally{try{conn?.release()}catch{}}
  });
  app.get('/api/v6606/crm/account-portfolios/summary',auth,async(req,res)=>{
   const x=context(req,res);
@@ -462,3 +519,4 @@ function register(app,{auth,getContext}){
 
 }
 module.exports=register;
+module.exports.planAllocation=planAllocation;
