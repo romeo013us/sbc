@@ -24,6 +24,7 @@ const expected = [
   'GET /api/v6606/crm/account-portfolios/mine',
   'GET /api/v6606/crm/account-portfolios/:id/call-preflight',
   'GET /api/v6606/crm/account-portfolios/launch-readiness',
+  'GET /api/v6606/crm/account-portfolios/allocation-preview',
   'GET /api/v6606/crm/account-portfolios/summary',
   'POST /api/v6606/crm/account-portfolios/assign-batch',
   'POST /api/v6606/crm/account-portfolios/:id/transfer',
@@ -68,6 +69,15 @@ async function main() {
   }) });
   const actual = bootApp.routes.map(r => `${r.method} ${r.path}`);
   assert.deepEqual(actual.slice().sort(), expected.slice().sort(), 'exact default CRM route set; no duplicate or unexpected mounts');
+
+  const allocationRoute=findHandler(bootApp,'GET','/api/v6606/crm/account-portfolios/allocation-preview');
+  const noTenant=mockResponse();
+  await allocationRoute({user:{role:'owner',tenantId:1},query:{}},noTenant);
+  assert.equal(noTenant.statusCode,403,'allocation requires authenticated tenant context');
+  const staffDenied=mockResponse();
+  await runWithTenantContext({tenantId:1,actorId:'manager',role:'account_manager'},()=>allocationRoute({user:{role:'account_manager',tenantId:1},query:{}},staffDenied));
+  assert.equal(staffDenied.statusCode,403,'allocation preview is owner only');
+  assert.equal(recoveryConnections,0,'unauthorized preview must never connect to SQL');
 
   const lockedRes = mockResponse();
   await findHandler(bootApp, 'POST', '/api/v65110/crm/leads')({ user: { role: 'owner', username: 'owner' }, tenantId: 1, body: { businessName: 'Locked Test Lead' } }, lockedRes);
