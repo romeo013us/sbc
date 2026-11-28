@@ -643,3 +643,41 @@ test('native marketing form accepts only review-only calendar proposals and requ
  assert.match(source,/confirm\('Add this reviewed regional campaign to the existing organic rotation/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-v6567-marketing-hub.js'),'utf8'));
 });
+
+test('decision policy keeps demand proxies, recorded sales and research intake distinct and never authorizes execution',()=>{
+ const {buildDecisionPlan}=require('../enterprise/sbc-market-intelligence.cjs');
+ const national={status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',rows:bfsStates.map((state,i)=>({state,applications:(i+1)*100})).reverse()};
+ const geography={status:'available',period:{startDate:'2026-10-13',endDate:'2026-11-11'},rows:[
+  {state:'FL',newCrmRecords:12,paidOrders:3,capturedCents:89700},
+  {state:'TX',newCrmRecords:8,paidOrders:1,capturedCents:19900},
+  {state:'CA',newCrmRecords:25,paidOrders:0,capturedCents:0},
+  {state:'unknown',newCrmRecords:100,paidOrders:50,capturedCents:999999}
+ ]};
+ const briefing={research:{target:16,markets:[{state:'WY',target:6},{state:'WI',target:5},{state:'WV',target:5}]},campaigns:[{market:'Scotland',eventDate:'2026-11-15',source:'https://www.gov.uk/bank-holidays',title:'Fixture holiday',sendAllowed:false,status:'DRAFT_REVIEW_REQUIRED'}],exceptions:[{code:'SOURCE_UNAVAILABLE',market:'Miami'}]};
+ const plan=buildDecisionPlan(national,geography,briefing,TIME);
+ assert.equal(plan.policyVersion,'SBC_DECISION_V1');assert.equal(plan.executionAllowed,false);
+ assert.equal(plan.revenueReview.status,'available');assert.deepEqual(plan.revenueReview.markets.map(x=>x.state),['FL','TX']);
+ assert.equal(plan.revenueReview.markets[0].capturedCents,89700);assert.equal(plan.revenueReview.unknownLocation.paidOrders,50);
+ assert.equal(plan.intakeReview.markets[0].state,'CA');assert.equal(plan.intakeReview.markets[0].newCrmRecords,25);
+ assert.equal(plan.researchReview.markets[0].state,'WY');
+ assert.equal(plan.urgentCampaigns.length,1);assert.equal(plan.urgentCampaigns[0].sendAllowed,false);
+ assert.equal(plan.exceptions[0].code,'SOURCE_UNAVAILABLE');
+ assert(!Object.hasOwn(plan.revenueReview.markets[0],'conversionRate'));
+ assert.match(plan.limitation,/not.*conversion/i);
+ const degraded=buildDecisionPlan(national,{status:'unavailable'},briefing,TIME);
+ assert.equal(degraded.revenueReview.status,'unavailable');assert.deepEqual(degraded.revenueReview.markets,[]);
+ assert.equal(degraded.intakeReview.status,'unavailable');
+ assert.equal(buildDecisionPlan(null,geography,{campaigns:[],exceptions:[]},TIME).researchReview.status,'unavailable');
+ const empty=buildDecisionPlan(national,{status:'available',rows:[],period:geography.period},briefing,TIME);
+ assert.equal(empty.revenueReview.status,'available');assert.equal(empty.revenueReview.markets.length,0);assert.equal(empty.revenueReview.unknownLocation,null);
+ const invalid=buildDecisionPlan(national,{status:'available',rows:[{state:'FL',newCrmRecords:1,paidOrders:1,capturedCents:-1}],period:geography.period},briefing,TIME);
+ assert.equal(invalid.revenueReview.status,'unavailable');
+});
+test('owner briefing includes decisions even when evidence is missing',async()=>{
+ await withReport({nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.decisionPlan.policyVersion,'SBC_DECISION_V1');assert.equal(d.decisionPlan.executionAllowed,false);
+  assert.equal(d.decisionPlan.researchReview.status,'unavailable');assert.equal(d.decisionPlan.revenueReview.status,'unavailable');
+  assert(d.decisionPlan.exceptions.length>0);
+ });
+});
