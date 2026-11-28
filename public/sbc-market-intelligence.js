@@ -111,6 +111,16 @@
     ].join('\n');
     return {total:target,markets,brief};
   }
+  function planResearchHandoff(data,proposal){
+    const result={states:[],target:16,autoDraft:false,approved:false};
+    if(!proposal||data?.status!=='available'||data.coverage!==51||!Array.isArray(data.rows)||data.rows.length!==51)return result;
+    if(!Array.isArray(proposal.states)||proposal.states.length<1||proposal.states.length>3||new Set(proposal.states).size!==proposal.states.length||![16,20].includes(proposal.target))return result;
+    const current=new Set(data.rows.map(x=>x.state));
+    if(current.size!==51||proposal.states.some(x=>!current.has(x)))return result;
+    if(proposal.periodStart!==data.periodStart||proposal.periodEnd!==data.periodEnd)return result;
+    return {states:proposal.states.slice(),target:proposal.target,autoDraft:true,approved:false};
+  }
+
   function researchControls(data){
     const options=data.rows.map(r=>'<option value="'+escape(r.state)+'">'+escape(r.state)+' — '+count.format(r.applications)+' applications</option>').join('');
     const industries=Object.entries(researchIndustries).map(([key,label])=>'<option value="'+key+'">'+escape(label)+'</option>').join('');
@@ -184,7 +194,7 @@
     const labels={NATIONAL_EVIDENCE_UNAVAILABLE:'National Census evidence unavailable',CRM_EVIDENCE_UNAVAILABLE:'Tenant CRM evidence unavailable',RADAR_UNAVAILABLE:'Public market sources unavailable',SOURCE_UNAVAILABLE:'Public source unavailable'};
     const rows=rankings.map(r=>'<tr><th scope="row">'+escape(r.state)+'</th><td>'+count.format(r.applications)+'</td><td>'+(r.crmEvidence?count.format(r.crmEvidence.newCrmRecords):'Not available')+'</td><td>'+(r.crmEvidence?money.format(r.crmEvidence.capturedCents/100):'Not available')+'</td></tr>').join('');
     const states=markets.map(x=>x.state).filter(x=>/^[A-Z]{2}$/.test(x));
-    const research=markets.length?'<div class="mi-competitor"><h4>'+escape(report.research.target)+' research candidates</h4><p>'+markets.map(x=>escape(x.state)+': '+escape(x.target)).join(' · ')+'</p><p>Owner review required. This is a suggested allocation, not verified leads or a saved assignment.</p><button type="button" class="secondary" data-mi-briefing-research="'+escape(states.join(','))+'">Review suggested research plan</button></div>':'<p>No current national research plan can be confirmed.</p>';
+    const research=markets.length?'<div class="mi-competitor"><h4>'+escape(report.research.target)+' research candidates</h4><p>'+markets.map(x=>escape(x.state)+': '+escape(x.target)).join(' · ')+'</p><p>Owner review required. This is a suggested allocation, not verified leads or a saved assignment.</p><button type="button" class="secondary" data-mi-briefing-research="'+escape(states.join(','))+'" data-mi-period-start="'+escape(report.research.periodStart||'')+'" data-mi-period-end="'+escape(report.research.periodEnd||'')+'" data-mi-target="'+escape(report.research.target)+'">Review suggested research plan</button></div>':'<p>No current national research plan can be confirmed.</p>';
     return '<section class="mi-panel" aria-labelledby="mi-briefing-title"><h3 id="mi-briefing-title">Automatic opportunity briefing</h3><p class="mi-period">'+escape(report?.generatedAt||'Refresh to retrieve current evidence')+'</p>'+worker+'<p>Owner review required before assignments or campaigns. No automatic assignment, publication or customer contact.</p>'+
       (rankings.length?'<h4>Top US states by comparable business-application volume</h4><p class="mi-footnote">Census '+escape(report?.rankingPeriod?.start||'')+' to '+escape(report?.rankingPeriod?.end||'')+'; CRM evidence uses a separate 30-day window. These are research signals, not sales probabilities.</p><div style="overflow-x:auto"><table class="table"><thead><tr><th>State</th><th>Applications</th><th>Recorded CRM intake</th><th>Recorded captures</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>National ranking unavailable.</p>')+
       '<h4>Suggested research allocation</h4>'+research+'<h4>Calendar campaign preparation</h4>'+
@@ -260,7 +270,7 @@
       finally{if(button.isConnected)button.disabled=false}
     });
 
-    let radarResearchStates=[];
+    let radarResearchStates=[],briefingProposal=null;
     root.querySelector('[data-mi-national]').addEventListener('click',async()=>{
       const button=root.querySelector('[data-mi-national]'),panel=root.querySelector('[data-mi-national-results]');
       button.disabled=true;panel.setAttribute('aria-busy','true');panel.textContent='Loading official Census research data…';
@@ -271,7 +281,9 @@
         if(active()){
           panel.innerHTML=nationalPanel(data);
           const requestedStates=radarResearchStates;radarResearchStates=[];
-          if(requestedStates.length){const select=panel.querySelector('[data-mi-research-states]');if(select){for(const option of select.options)option.selected=requestedStates.includes(option.value);const details=select.closest('details');if(details)details.open=true;}}
+          const proposed=briefingProposal;briefingProposal=null;
+          const handoff=planResearchHandoff(data,proposed);
+          if(requestedStates.length||proposed){const select=panel.querySelector('[data-mi-research-states]');if(select){for(const option of select.options)option.selected=(proposed?handoff.states:requestedStates).includes(option.value);const details=select.closest('details');if(details)details.open=true;}if(handoff.autoDraft){const target=panel.querySelector('[data-mi-research-target]');if(target)target.value=String(handoff.target);}}
           const form=panel.querySelector('[data-mi-research-form]'),assignment=panel.querySelector('[data-mi-assignment]');
           let draft=null,pending=null,locked=false;
           if(form&&assignment){
@@ -298,6 +310,7 @@
                 const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Select an active researcher';staff.append(placeholder);
                 for(const user of payload.assignees){const option=document.createElement('option');option.value=String(user.id);option.textContent=String(user.name);staff.append(option);}
                 staff.disabled=payload.readOnly===true||!payload.assignees.length;
+                if(!staff.disabled&&payload.assignees.length===1)staff.value=String(payload.assignees[0].id);
                 feedback.textContent=payload.readOnly?'Published writer required to assign.':payload.assignees.length?'Choose a researcher and due date, then approve.':'No active researchers available.';
                 sync();
               }catch(error){if(active()){status.textContent=error.message;staff.disabled=true;sync();}}
@@ -322,9 +335,11 @@
               }catch(error){if(active()){feedback.textContent='Assignment not confirmed. Retry the same request before changing the plan. '+error.message;assign.textContent='Retry same assignment';assign.disabled=false;}}
               finally{locked=false;}
             });
+            if(handoff.autoDraft){form.requestSubmit();}
+            else if(proposed){status.textContent='Market evidence changed or is unavailable. Select a fresh research plan before approval.';}
           }
         }
-      }catch{if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
+      }catch{briefingProposal=null;radarResearchStates=[];if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
       finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
     });
 
@@ -345,7 +360,7 @@
       if(!action||!active())return;
       const target=root.querySelector('[data-mi-national]');
       if(target.disabled)return;
-      radarResearchStates=['IL','MI','FL','NY'].includes(action.dataset.miRadarResearch)?[action.dataset.miRadarResearch]:[];
+      briefingProposal=null;radarResearchStates=['IL','MI','FL','NY'].includes(action.dataset.miRadarResearch)?[action.dataset.miRadarResearch]:[];
       target.click();
       root.querySelector('[data-mi-national-results]').scrollIntoView({block:'start'});
     });
@@ -377,7 +392,7 @@
       if(target.disabled)return;
       const states=String(action.dataset.miBriefingResearch||'').split(',').filter(x=>/^[A-Z]{2}$/.test(x)).slice(0,3);
       if(!states.length)return;
-      radarResearchStates=[...new Set(states)];target.click();
+      briefingProposal={states,periodStart:action.dataset.miPeriodStart,periodEnd:action.dataset.miPeriodEnd,target:Number(action.dataset.miTarget)};target.click();
       root.querySelector('[data-mi-national-results]').scrollIntoView({block:'start'});
     });
     const geoButton=root.querySelector('[data-mi-geography]'),geoPanel=root.querySelector('[data-mi-geography-results]');
