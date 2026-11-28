@@ -6,10 +6,21 @@ const assert = require('node:assert/strict');
 
 const MARK = 'SBC_MARKET_INTELLIGENCE';
 
+// Extend an already-compiled release without reapplying unrelated transforms.
+const MARKET_POOL_LINE="  getPool:()=>MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED?mysqlPool:null,";
+const MARKET_WRITER_LINE="  marketCanWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,";
+function patchMarketWriter(source){
+ if(source.includes(MARKET_WRITER_LINE))return source;
+ const anchor=MARKET_POOL_LINE+"\n";
+ assert.equal(source.split(anchor).length-1,1,'Unique Market Intelligence pool anchor required');
+ return source.replace(anchor,anchor+MARKET_WRITER_LINE+"\n");
+}
+
+
 // These replacements run on the disposable release checkout before the existing
 // pipeline hashes server.js and publishes the compiled runtime.
 function patchServer(source) {
-  if (source.includes(MARK)) return source;
+  if (source.includes(MARK)) return patchMarketWriter(source);
   const replacements = [
     [
     "const SBC_V6660_BRIDGE=require('./enterprise/v6660-website-bridge.cjs');",
@@ -145,7 +156,7 @@ function patchServer(source) {
     source = source.replace(before, () => after);
   }
   assert(source.includes(MARK));
-  return source;
+  return patchMarketWriter(source);
 }
 
 if (require.main === module) {

@@ -453,6 +453,9 @@ function trainedToday(){
 }
 
 var assignedTaskSequence=0;
+function shouldRefreshAssignedTasks(state){
+ return state.visible===true&&state.tab==='today'&&state.signedIn===true&&!state.busy&&!state.importRunning&&!state.refreshing&&!state.focused;
+}
 async function loadAssignedTasks(){
  var list=$('assigned-task-list'),status=$('assigned-task-status'),button=$('assigned-task-refresh');
  if(!list||!status||!button||!user)return;
@@ -870,7 +873,12 @@ $('sign-out').addEventListener('click',async function(){var b=$('sign-out');if(b
   prioritizeAttention(true);
   renderShiftPlan();
   $('access').hidden=true;$('workspace').hidden=false;
-  setInterval(function(){if(document.visibilityState==='visible'&&!busy&&!importRunning){renderShiftPlan();Promise.allSettled([loadLeads(),loadProgress()]);}},60000);
+  setInterval(function(){
+   if(document.visibilityState!=='visible'||busy||importRunning)return;
+   renderShiftPlan();Promise.allSettled([loadLeads(),loadProgress()]);
+   var list=$('assigned-task-list'),button=$('assigned-task-refresh');
+   if(list&&button&&shouldRefreshAssignedTasks({visible:true,tab:active,signedIn:!!user,busy:!!busy,importRunning:!!importRunning,refreshing:button.disabled,focused:list.contains(document.activeElement)||button===document.activeElement}))void loadAssignedTasks();
+  },60000);
  }catch(e){
   var msg=errorMessage(e);txt('access',msg);
   if(/session|authentication|expired/i.test(msg)){location.replace('/');}

@@ -111,6 +111,16 @@
     ].join('\n');
     return {total:target,markets,brief};
   }
+  function planResearchHandoff(data,proposal){
+    const result={states:[],target:16,autoDraft:false,approved:false};
+    if(!proposal||data?.status!=='available'||data.coverage!==51||!Array.isArray(data.rows)||data.rows.length!==51)return result;
+    if(!Array.isArray(proposal.states)||proposal.states.length<1||proposal.states.length>3||new Set(proposal.states).size!==proposal.states.length||![16,20].includes(proposal.target))return result;
+    const current=new Set(data.rows.map(x=>x.state));
+    if(current.size!==51||proposal.states.some(x=>!current.has(x)))return result;
+    if(proposal.periodStart!==data.periodStart||proposal.periodEnd!==data.periodEnd)return result;
+    return {states:proposal.states.slice(),target:proposal.target,autoDraft:true,approved:false};
+  }
+
   function researchControls(data){
     const options=data.rows.map(r=>'<option value="'+escape(r.state)+'">'+escape(r.state)+' — '+count.format(r.applications)+' applications</option>').join('');
     const industries=Object.entries(researchIndustries).map(([key,label])=>'<option value="'+key+'">'+escape(label)+'</option>').join('');
@@ -168,20 +178,45 @@
     return '<section class="mi-panel" aria-labelledby="mi-radar-title"><h3 id="mi-radar-title">Global Opportunity Radar</h3><p>'+escape(coverage)+'</p><p>Public research and campaign-planning signals. Coverage is limited to the listed sources; signals are not ranked against each other or treated as verified leads.</p><button type="button" class="secondary" data-mi-radar-research="">Open national research assignments</button><div class="mi-watchlist">'+rows+'</div></section>';
   }
 
+  function decisionPanel(plan){
+    if(plan?.policyVersion!=='SBC_DECISION_V1'||plan.executionAllowed!==false)return '';
+    const list=(lane,render)=>lane?.status!=='available'?'<p>Evidence unavailable; no ranking inferred.</p>':Array.isArray(lane.markets)&&lane.markets.length?'<ol>'+lane.markets.map(r=>'<li>'+render(r)+'</li>').join('')+'</ol>':'<p>No qualifying records in the observed window.</p>';
+    const period=lane=>lane?.period?'<p class="mi-footnote">'+escape(lane.period.startDate||lane.period.start)+' to '+escape(lane.period.endDate||lane.period.end)+'</p>':'';
+    const unknown=plan.revenueReview?.unknownLocation;
+    const events=Array.isArray(plan.urgentCampaigns)?plan.urgentCampaigns:[];
+    const exceptions=Array.isArray(plan.exceptions)?plan.exceptions:[];
+    return '<section class="mi-panel" aria-label="Executive decision brief"><h4>Executive decision brief</h4><p>Automatic policy analysis · review only. No assignment, campaign or financial action is authorized.</p>'+
+      '<div class="mi-watchlist"><article class="mi-competitor"><h4>Explore · business applications</h4>'+period(plan.researchReview)+list(plan.researchReview,r=>escape(r.state)+' · '+count.format(r.applications)+' applications')+'<p>Use the research plan below to investigate actual business needs.</p></article>'+
+      '<article class="mi-competitor"><h4>Review · Recorded gross captures</h4>'+period(plan.revenueReview)+list(plan.revenueReview,r=>escape(r.state)+' · '+money.format(r.capturedCents/100)+' · '+count.format(r.paidOrders)+' captured orders')+(unknown?'<p>Unknown location (excluded from ranking): '+money.format(unknown.capturedCents/100)+' · '+count.format(unknown.paidOrders)+' captured orders.</p>':'')+'<p>Review repeat-business and follow-up possibilities; these are not profit figures.</p></article>'+
+      '<article class="mi-competitor"><h4>Investigate · intake without recorded captures</h4>'+period(plan.intakeReview)+list(plan.intakeReview,r=>escape(r.state)+' · '+count.format(r.newCrmRecords)+' new CRM records')+'<p>Check lead quality, follow-up and location evidence. Not a matched customer cohort.</p></article>'+
+      '<article class="mi-competitor"><h4>Time-sensitive · calendar events</h4>'+(events.length?'<ul>'+events.map(e=>'<li>'+escape(e.eventDate)+' · '+escape(e.market)+' · '+escape(e.title)+'</li>').join('')+'</ul>':'<p>No eligible events returned for the next seven days.</p>')+'<p>Review campaign suggestions below.</p></article></div>'+
+      (exceptions.length?'<p class="mi-footnote">Evidence exceptions: '+exceptions.map(x=>escape(x.market)).join(' · ')+'</p>':'')+'<p class="mi-footnote">'+escape(plan.limitation)+'</p></section>';
+  }
+
   function briefingPanel(report){
+    const background=report?.backgroundRefresh;
+    const outcomes={available:'All configured sources available',partial:'Partial source availability',unavailable:'Sources unavailable',writer_unavailable:'Waiting for authorized database writer',storage_unavailable:'Evidence storage unavailable',busy:'Another collector holds the database lock',not_due:'Durable schedule not yet due'};
+    const worker=background?'<p class="mi-footnote">Unattended collection '+(background.mode==='enabled'?'enabled':'disabled')+' · '+(background.running?'Refresh running':escape(outcomes[background.lastOutcome]||'No background result yet'))+(background.nextRunAt?' · Next check '+escape(background.nextRunAt):'')+''+(background.persistence==='mysql_public_evidence'?' · MySQL public evidence '+(background.lastPersistedAt?'last recorded '+escape(background.lastPersistedAt):'not yet confirmed by this process'):' · State held in process memory; not durable evidence history.')+'</p>':'';
+    const history=report?.evidenceHistory;
+    const metricLabels={license_records:'license records',active_license_records:'active license records',recent_start_records:'reported business-start records',event_permit_records:'upcoming permit records',calendar_events:'regional calendar records'};
+    const historyRows=Array.isArray(history?.rows)?history.rows.slice(0,24):[];
+    const historical=history?.status==='available'?'<details class="mi-connect"><summary>Recorded market evidence history ('+historyRows.length+' recent observations)</summary><p class="mi-footnote">Historical observations, not live counts. Different source metrics are not comparable. All times UTC.</p>'+
+      (historyRows.length?'<div style="overflow-x:auto"><table class="table"><thead><tr><th>Collected at</th><th>Source health</th><th>Recorded signals</th></tr></thead><tbody>'+historyRows.map(r=>'<tr><th scope="row">'+escape(r.collectedAt)+'</th><td>'+escape(outcomes[r.outcome]||'Unknown')+'</td><td>'+((r.sources||[]).map(x=>escape(x.market)+': '+(x.status==='available'&&Number.isSafeInteger(x.kind==='calendar_events'?x.eventCount:x.count)?count.format(x.kind==='calendar_events'?x.eventCount:x.count)+' '+escape(metricLabels[x.kind]||'records'):'unavailable')).join(' · '))+'</td></tr>').join('')+'</tbody></table></div>':'<p>No recorded observations yet.</p>')+'</details>':history?.status==='unavailable'?'<p class="mi-footnote">Evidence history unavailable. Live source data is reported separately.</p>':'';
     const rankings=Array.isArray(report?.rankings)?report.rankings:[];
     const markets=Array.isArray(report?.research?.markets)?report.research.markets:[];
     const campaigns=Array.isArray(report?.campaigns)?report.campaigns:[];
+    const campaignReview=x=>x.source==='https://www.gov.uk/bank-holidays'&&x.status==='DRAFT_REVIEW_REQUIRED'&&x.sendAllowed===false?'<button type="button" class="secondary" data-mi-campaign-draft data-region="'+escape(x.market)+'" data-event-date="'+escape(x.eventDate)+'" data-event-title="'+escape(x.title)+'">Prepare campaign for review</button>':'';
     const exceptions=Array.isArray(report?.exceptions)?report.exceptions:[];
     const labels={NATIONAL_EVIDENCE_UNAVAILABLE:'National Census evidence unavailable',CRM_EVIDENCE_UNAVAILABLE:'Tenant CRM evidence unavailable',RADAR_UNAVAILABLE:'Public market sources unavailable',SOURCE_UNAVAILABLE:'Public source unavailable'};
     const rows=rankings.map(r=>'<tr><th scope="row">'+escape(r.state)+'</th><td>'+count.format(r.applications)+'</td><td>'+(r.crmEvidence?count.format(r.crmEvidence.newCrmRecords):'Not available')+'</td><td>'+(r.crmEvidence?money.format(r.crmEvidence.capturedCents/100):'Not available')+'</td></tr>').join('');
     const states=markets.map(x=>x.state).filter(x=>/^[A-Z]{2}$/.test(x));
-    const research=markets.length?'<div class="mi-competitor"><h4>'+escape(report.research.target)+' research candidates</h4><p>'+markets.map(x=>escape(x.state)+': '+escape(x.target)).join(' · ')+'</p><p>Owner review required. This is a suggested allocation, not verified leads or a saved assignment.</p><button type="button" class="secondary" data-mi-briefing-research="'+escape(states.join(','))+'">Review suggested research plan</button></div>':'<p>No current national research plan can be confirmed.</p>';
-    return '<section class="mi-panel" aria-labelledby="mi-briefing-title"><h3 id="mi-briefing-title">Automatic opportunity briefing</h3><p class="mi-period">'+escape(report?.generatedAt||'Refresh to retrieve current evidence')+'</p><p>Owner review required before assignments or campaigns. No automatic writes, publication or customer contact.</p>'+
+    const research=markets.length?'<div class="mi-competitor"><h4>'+escape(report.research.target)+' research candidates</h4><p>'+markets.map(x=>escape(x.state)+': '+escape(x.target)).join(' · ')+'</p><p>Owner review required. This is a suggested allocation, not verified leads or a saved assignment.</p><button type="button" class="secondary" data-mi-briefing-research="'+escape(states.join(','))+'" data-mi-period-start="'+escape(report.research.periodStart||'')+'" data-mi-period-end="'+escape(report.research.periodEnd||'')+'" data-mi-target="'+escape(report.research.target)+'">Review suggested research plan</button></div>':'<p>No current national research plan can be confirmed.</p>';
+    return '<section class="mi-panel" aria-labelledby="mi-briefing-title"><h3 id="mi-briefing-title">Automatic opportunity briefing</h3><p class="mi-period">'+escape(report?.generatedAt||'Refresh to retrieve current evidence')+'</p>'+worker+'<p>Owner review required before assignments or campaigns. No automatic assignment, publication or customer contact.</p>'+decisionPanel(report?.decisionPlan)+
       (rankings.length?'<h4>Top US states by comparable business-application volume</h4><p class="mi-footnote">Census '+escape(report?.rankingPeriod?.start||'')+' to '+escape(report?.rankingPeriod?.end||'')+'; CRM evidence uses a separate 30-day window. These are research signals, not sales probabilities.</p><div style="overflow-x:auto"><table class="table"><thead><tr><th>State</th><th>Applications</th><th>Recorded CRM intake</th><th>Recorded captures</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>National ranking unavailable.</p>')+
       '<h4>Suggested research allocation</h4>'+research+'<h4>Calendar campaign preparation</h4>'+
-      (campaigns.length?'<ul>'+campaigns.map(x=>'<li>'+escape(x.eventDate)+' · '+escape(x.market)+' · '+escape(x.title)+' — review-only draft</li>').join('')+'</ul>':'<p>No verified calendar suggestions returned in the next 30 days.</p>')+
+      (campaigns.length?'<ul>'+campaigns.map(x=>'<li>'+escape(x.eventDate)+' · '+escape(x.market)+' · '+escape(x.title)+' — review-only draft '+campaignReview(x)+'</li>').join('')+'</ul>':'<p>No verified calendar suggestions returned in the next 30 days.</p>')+
       (exceptions.length?'<h4>Evidence exceptions</h4><ul>'+exceptions.map(x=>'<li>'+escape(labels[x.code]||'Evidence unavailable')+' — '+escape(x.market)+'</li>').join('')+'</ul>':'')+
+      historical+
       (report?.status==='unavailable'?'<p class="mi-alert">Evidence unavailable; no unverified ranking or draft is substituted.</p>':'')+'</section>';
   }
 
@@ -251,7 +286,7 @@
       finally{if(button.isConnected)button.disabled=false}
     });
 
-    let radarResearchStates=[];
+    let radarResearchStates=[],briefingProposal=null;
     root.querySelector('[data-mi-national]').addEventListener('click',async()=>{
       const button=root.querySelector('[data-mi-national]'),panel=root.querySelector('[data-mi-national-results]');
       button.disabled=true;panel.setAttribute('aria-busy','true');panel.textContent='Loading official Census research data…';
@@ -262,7 +297,9 @@
         if(active()){
           panel.innerHTML=nationalPanel(data);
           const requestedStates=radarResearchStates;radarResearchStates=[];
-          if(requestedStates.length){const select=panel.querySelector('[data-mi-research-states]');if(select){for(const option of select.options)option.selected=requestedStates.includes(option.value);const details=select.closest('details');if(details)details.open=true;}}
+          const proposed=briefingProposal;briefingProposal=null;
+          const handoff=planResearchHandoff(data,proposed);
+          if(requestedStates.length||proposed){const select=panel.querySelector('[data-mi-research-states]');if(select){for(const option of select.options)option.selected=(proposed?handoff.states:requestedStates).includes(option.value);const details=select.closest('details');if(details)details.open=true;}if(handoff.autoDraft){const target=panel.querySelector('[data-mi-research-target]');if(target)target.value=String(handoff.target);}}
           const form=panel.querySelector('[data-mi-research-form]'),assignment=panel.querySelector('[data-mi-assignment]');
           let draft=null,pending=null,locked=false;
           if(form&&assignment){
@@ -289,6 +326,7 @@
                 const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Select an active researcher';staff.append(placeholder);
                 for(const user of payload.assignees){const option=document.createElement('option');option.value=String(user.id);option.textContent=String(user.name);staff.append(option);}
                 staff.disabled=payload.readOnly===true||!payload.assignees.length;
+                if(!staff.disabled&&payload.assignees.length===1)staff.value=String(payload.assignees[0].id);
                 feedback.textContent=payload.readOnly?'Published writer required to assign.':payload.assignees.length?'Choose a researcher and due date, then approve.':'No active researchers available.';
                 sync();
               }catch(error){if(active()){status.textContent=error.message;staff.disabled=true;sync();}}
@@ -313,9 +351,11 @@
               }catch(error){if(active()){feedback.textContent='Assignment not confirmed. Retry the same request before changing the plan. '+error.message;assign.textContent='Retry same assignment';assign.disabled=false;}}
               finally{locked=false;}
             });
+            if(handoff.autoDraft){form.requestSubmit();}
+            else if(proposed){status.textContent='Market evidence changed or is unavailable. Select a fresh research plan before approval.';}
           }
         }
-      }catch{if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
+      }catch{briefingProposal=null;radarResearchStates=[];if(active())panel.innerHTML=nationalPanel({status:'unavailable'});}
       finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
     });
 
@@ -336,7 +376,7 @@
       if(!action||!active())return;
       const target=root.querySelector('[data-mi-national]');
       if(target.disabled)return;
-      radarResearchStates=['IL','MI','FL','NY'].includes(action.dataset.miRadarResearch)?[action.dataset.miRadarResearch]:[];
+      briefingProposal=null;radarResearchStates=['IL','MI','FL','NY'].includes(action.dataset.miRadarResearch)?[action.dataset.miRadarResearch]:[];
       target.click();
       root.querySelector('[data-mi-national-results]').scrollIntoView({block:'start'});
     });
@@ -361,6 +401,20 @@
       if(!active())return;
       briefingTimer=setTimeout(async()=>{briefingTimer=null;if(!active())return;if(!document.hidden)await loadBriefing();scheduleBriefing();},300000);
     }
+    briefingResults.addEventListener('click',async event=>{
+      const action=event.target.closest('[data-mi-campaign-draft]');
+      if(!active()||!action||action.disabled)return;
+      action.disabled=true;const original=action.textContent;action.textContent='Checking event evidence…';
+      try{
+        const query=new URLSearchParams({region:action.dataset.region,eventDate:action.dataset.eventDate,title:action.dataset.eventTitle});
+        const response=await fetch('/api/owner/market-intelligence/campaign-draft?'+query.toString(),{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(16000)});
+        const result=await response.json();
+        if(!response.ok||result.ok!==true||result.status!=='DRAFT_REVIEW_REQUIRED'||result.sendAllowed!==false)throw Error('Event evidence unavailable or changed. Refresh the briefing.');
+        if(!active())return;
+        if(!window.SBCMarketingHub?.openMarketCampaignDraft?.(result))throw Error('Campaign review workspace unavailable.');
+      }catch(error){if(active())status.textContent=error.message||'Campaign draft unavailable.';}
+      finally{if(action.isConnected){action.disabled=false;action.textContent=original;}}
+    });
     briefingResults.addEventListener('click',event=>{
       const action=event.target.closest('[data-mi-briefing-research]');
       if(!active()||!action)return;
@@ -368,7 +422,7 @@
       if(target.disabled)return;
       const states=String(action.dataset.miBriefingResearch||'').split(',').filter(x=>/^[A-Z]{2}$/.test(x)).slice(0,3);
       if(!states.length)return;
-      radarResearchStates=[...new Set(states)];target.click();
+      briefingProposal={states,periodStart:action.dataset.miPeriodStart,periodEnd:action.dataset.miPeriodEnd,target:Number(action.dataset.miTarget)};target.click();
       root.querySelector('[data-mi-national-results]').scrollIntoView({block:'start'});
     });
     const geoButton=root.querySelector('[data-mi-geography]'),geoPanel=root.querySelector('[data-mi-geography-results]');

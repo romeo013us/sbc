@@ -372,7 +372,177 @@ function buildOpportunityBrief(national,radar,geography,now){
   automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
 }
 
-function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now }) {
+// Decision lanes intentionally use independent metrics and explicit evidence.
+// Recorded captures are not profits, conversion rates or proof of incremental lift.
+function buildDecisionPlan(national,geography,briefing,now){
+ const goodCount=n=>Number.isSafeInteger(n)&&n>=0;
+ const geoRows=geography?.rows;
+ const geoReady=geography?.status==='available'&&Array.isArray(geoRows)&&geoRows.length<=52&&new Set(geoRows.map(r=>r.state)).size===geoRows.length&&geoRows.every(r=>(BFS_STATES.includes(r.state)||r.state==='unknown')&&goodCount(r.newCrmRecords)&&goodCount(r.paidOrders)&&goodCount(r.capturedCents));
+ const nRows=national?.rows;
+ const nationalReady=national?.status==='available'&&national.coverage===51&&Array.isArray(nRows)&&nRows.length===51&&new Set(nRows.map(r=>r.state)).size===51&&nRows.every(r=>BFS_STATES.includes(r.state)&&goodCount(r.applications));
+ const rows=geoReady?geoRows.filter(r=>BFS_STATES.includes(r.state)).map(r=>({state:r.state,newCrmRecords:r.newCrmRecords,paidOrders:r.paidOrders,capturedCents:r.capturedCents})):[];
+ const unknown=geoReady?geoRows.find(r=>r.state==='unknown'):null;
+ const captured=rows.filter(r=>r.paidOrders>0&&r.capturedCents>0).sort((a,b)=>b.capturedCents-a.capturedCents||b.paidOrders-a.paidOrders||a.state.localeCompare(b.state)).slice(0,5);
+ const intake=rows.filter(r=>r.newCrmRecords>0&&r.paidOrders===0&&r.capturedCents===0).sort((a,b)=>b.newCrmRecords-a.newCrmRecords||a.state.localeCompare(b.state)).slice(0,5);
+ const publicMarkets=nationalReady?nRows.filter(r=>r.applications>0).slice().sort((a,b)=>b.applications-a.applications||a.state.localeCompare(b.state)).slice(0,3).map(r=>({state:r.state,applications:r.applications})):[];
+ const day=date(now),weekEnd=date(now+7*DAY);
+ const urgentCampaigns=(Array.isArray(briefing?.campaigns)?briefing.campaigns:[]).filter(x=>x.source==='https://www.gov.uk/bank-holidays'&&x.status==='DRAFT_REVIEW_REQUIRED'&&x.sendAllowed===false&&radarDate(x.eventDate)&&x.eventDate>=day&&x.eventDate<weekEnd&&Object.values(RADAR_REGIONS).includes(x.market)&&typeof x.title==='string'&&x.title.length<=200).map(x=>({market:x.market,eventDate:x.eventDate,title:x.title,source:x.source,sendAllowed:false,status:'DRAFT_REVIEW_REQUIRED'})).sort((a,b)=>a.eventDate.localeCompare(b.eventDate)||a.market.localeCompare(b.market)||a.title.localeCompare(b.title)).slice(0,5);
+ const exceptions=(Array.isArray(briefing?.exceptions)?briefing.exceptions:[]).filter(x=>['NATIONAL_EVIDENCE_UNAVAILABLE','CRM_EVIDENCE_UNAVAILABLE','RADAR_UNAVAILABLE','SOURCE_UNAVAILABLE'].includes(x.code)&&typeof x.market==='string').slice(0,10).map(x=>({code:x.code,market:x.market}));
+ return {policyVersion:'SBC_DECISION_V1',executionAllowed:false,
+  researchReview:{status:nationalReady?'available':'unavailable',basis:'CENSUS_APPLICATION_VOLUME',period:nationalReady?{start:national.periodStart,end:national.periodEnd}:null,markets:publicMarkets,action:'Review the existing research plan before assigning verified research work.'},
+  revenueReview:{status:geoReady?'available':'unavailable',basis:'RECORDED_GROSS_CAPTURES',period:geoReady?geography.period:null,markets:captured,unknownLocation:unknown?{newCrmRecords:unknown.newCrmRecords,paidOrders:unknown.paidOrders,capturedCents:unknown.capturedCents}:null,action:'Review captured orders and follow-up opportunities; do not assume repeat demand or margin.'},
+  intakeReview:{status:geoReady?'available':'unavailable',basis:'RECORDED_INTAKE_WITH_NO_CAPTURE_IN_WINDOW',period:geoReady?geography.period:null,markets:intake,action:'Review lead quality, follow-up and address evidence. Intake and captures are not a matched customer cohort.'},
+  urgentCampaigns,exceptions,limitation:'Independent evidence lanes, not a combined demand score or conversion rate. Recorded gross captures are not profit or bank settlement. All actions require existing review and authorization.'};
+}
+
+// A calendar record can justify preparing copy, not claims of regional demand,
+// local offices, discounts, platform eligibility or permission to publish.
+function eventCampaignDraft(radar,query,now){
+ const region=query.region,eventDate=query.eventDate,title=query.title;
+ const today=date(now),limit=date(now+30*DAY);
+ if(!Object.values(RADAR_REGIONS).includes(region)||!radarDate(eventDate)||typeof title!=='string'||!title.trim()||title.length>200)return {code:'CAMPAIGN_QUERY_INVALID',http:400};
+ if(eventDate<today||eventDate>=limit)return {code:'CAMPAIGN_EVIDENCE_CHANGED',http:409};
+ const matches=Array.isArray(radar?.sources)?radar.sources.filter(x=>x.market==='United Kingdom'&&x.kind==='calendar_events'&&x.source==='https://www.gov.uk/bank-holidays'):[];
+ const source=matches.length===1?matches[0]:null;
+ if(source?.status!=='available'||!Array.isArray(source.events))return {code:'CAMPAIGN_EVIDENCE_UNAVAILABLE',http:503};
+ if(!source.events.some(x=>x.region===region&&x.date===eventDate&&x.title===title))return {code:'CAMPAIGN_EVIDENCE_CHANGED',http:409};
+ const start=date(Math.max(Date.parse(today+'T00:00:00Z'),Date.parse(eventDate+'T00:00:00Z')-3*DAY));
+ const market=region+', United Kingdom';
+ return {http:200,status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false,
+  evidence:{source:source.source,region,eventDate,title,checkedAt:source.checkedAt??null},
+  draft:{title:'SBC regional business readiness · '+region+' · '+eventDate,audience:'Independent businesses reviewing their online presence',market,locale:'en',start,end:eventDate,channels:null,image:null,
+   body:'Business owners in '+region+': ahead of your next local holiday, check that customers can find your current opening hours, services and contact details online. Successful By Choice helps businesses plan website updates and organize customer follow-ups. Tell us what your business needs at sbcmia.com.'},
+  limitation:'Suggested organic copy only. Dates use the existing campaign rotation’s Miami calendar. Confirm regional service eligibility, artwork, channel and timing before approval.'};
+}
+
+// Public aggregate evidence only. Do not serialize credentials, CRM records,
+// provider response bodies or arbitrary properties. Source semantics remain distinct.
+function publicMarketEvidence(national,radar){
+ const n=national?.status==='available'&&national.coverage===51&&Array.isArray(national.rows)&&national.rows.length===51&&new Set(national.rows.map(r=>r.state)).size===51&&national.rows.every(r=>BFS_STATES.includes(r.state)&&Number.isSafeInteger(r.applications)&&r.applications>=0&&Number.isSafeInteger(r.priorApplications)&&r.priorApplications>=0);
+ const names=new Map([['Chicago, Illinois, US','license_records'],['Detroit, Michigan, US','active_license_records'],['Miami-Dade County, Florida, US','recent_start_records'],['New York City, New York, US','event_permit_records'],['United Kingdom','calendar_events']]);
+ const stamp=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?new Date(v).toISOString():null;
+ const day=v=>radarDate(v)?v:null;
+ const month=v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v)?v:null;
+ const sources=[];
+ for(const [market,kind] of names){
+  const matches=Array.isArray(radar?.sources)?radar.sources.filter(x=>x.market===market&&x.kind===kind):[];
+  const x=matches.length===1?matches[0]:null;
+  const available=x?.status==='available'&&(kind==='calendar_events'?Array.isArray(x.events):Number.isSafeInteger(x.count)&&x.count>=0);
+  const entry={market,kind,status:available?'available':'unavailable',checkedAt:available?stamp(x.checkedAt):null,startDate:day(x?.startDate),endDateExclusive:day(x?.endDateExclusive),count:available&&kind!=='calendar_events'?x.count:null};
+  if(kind==='calendar_events')entry.events=available?x.events.filter(e=>radarDate(e.date)&&Object.values(RADAR_REGIONS).includes(e.region)&&typeof e.title==='string'&&e.title.length<=200).slice(0,300).map(e=>({date:e.date,region:e.region,title:e.title})):[];
+  sources.push(entry);
+ }
+ const available=sources.filter(x=>x.status==='available').length;
+ const radarStatus=available===sources.length?'available':available?'partial':'unavailable';
+ return {national:{status:n?'available':'unavailable',periodStart:n?month(national.periodStart):null,periodEnd:n?month(national.periodEnd):null,fetchedAt:n?stamp(national.fetchedAt):null,rows:n?national.rows.map(r=>({state:r.state,applications:r.applications,priorApplications:r.priorApplications})):[]},radar:{status:radarStatus,sources}};
+}
+const MARKET_LOCK='sbc.market.public.evidence.v1';
+const MARKET_TABLE='sbc_public_market_evidence';
+const MARKET_SCHEMA="CREATE TABLE IF NOT EXISTS "+MARKET_TABLE+" (slot_ms BIGINT UNSIGNED PRIMARY KEY, completed_ms BIGINT UNSIGNED NOT NULL, next_ms BIGINT UNSIGNED NOT NULL, outcome VARCHAR(16) NOT NULL, evidence_json MEDIUMTEXT NOT NULL, degraded INT UNSIGNED NOT NULL, KEY market_completed(completed_ms)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+function createDurableMarketCycle({getPool,canWrite,readNational,readRadar,clock=Date.now}){
+ let initializedPool=null;
+ const deferred=(outcome,delay=300000)=>({outcome,delay,persisted:false});
+ return async()=>{
+  let cx,acquired=false,discard=false;
+  const permitted=()=>canWrite()===true;
+  try{
+   if(!permitted())return deferred('writer_unavailable');
+   const pool=getPool();if(!pool||typeof pool.getConnection!=='function')return deferred('writer_unavailable');
+   cx=await pool.getConnection();
+   const query=async(sql,args=[])=>{const [rows]=await cx.query({sql,timeout:5000},args);return rows;};
+   if(!permitted())return deferred('writer_unavailable');
+   // A connection-scoped advisory lock serializes the public collector across
+   // instances sharing the same MySQL server. Never return a locked connection
+   // to the pool if ownership/release cannot be confirmed.
+   discard=true;
+   const [lock]=await query('SELECT GET_LOCK(?,0) AS acquired',[MARKET_LOCK]);
+   if(Number(lock?.acquired)!==1){discard=lock?.acquired===null||lock?.acquired===undefined;return deferred('busy');}
+   acquired=true;
+   if(!permitted())return deferred('writer_unavailable');
+   if(initializedPool!==pool){await query(MARKET_SCHEMA);initializedPool=pool;}
+   const [last]=await query('SELECT completed_ms,next_ms,outcome,degraded FROM '+MARKET_TABLE+' ORDER BY slot_ms DESC LIMIT 1');
+   const now=clock(),due=Number(last?.next_ms);
+   if(!Number.isSafeInteger(now)||now<0)throw Error('MARKET_CLOCK');
+   if(last&&(!Number.isSafeInteger(due)||due<0||due>now+3600000))throw Error('MARKET_SCHEDULE');
+   if(last&&due>now)return deferred('not_due',Math.max(1000,due-now));
+   if(!permitted())return deferred('writer_unavailable');
+   const result=await Promise.allSettled([Promise.resolve().then(readNational),Promise.resolve().then(readRadar)]);
+   const snapshot=publicMarketEvidence(result[0].status==='fulfilled'?result[0].value:null,result[1].status==='fulfilled'?result[1].value:null);
+   const states=[snapshot.national.status,snapshot.radar.status];
+   const outcome=states.every(x=>x==='available')?'available':states.some(x=>x==='available'||x==='partial')?'partial':'unavailable';
+   const previous=Number(last?.degraded)||0,degraded=outcome==='available'?0:Math.min(1000000,Math.max(0,previous)+1);
+   const delay=outcome==='available'?3600000:Math.min(3600000,300000*2**Math.min(degraded-1,4));
+   const done=clock(),slot=Math.floor(now/300000)*300000,payload=JSON.stringify(snapshot);
+   if(!Number.isSafeInteger(done)||done<now||payload.length>100000)throw Error('MARKET_EVIDENCE');
+   if(!permitted())return deferred('writer_unavailable');
+   const [owner]=await query('SELECT IS_USED_LOCK(?) = CONNECTION_ID() AS owned',[MARKET_LOCK]);
+   if(Number(owner?.owned)!==1||!permitted())return deferred('writer_unavailable');
+   const row=await query('INSERT INTO '+MARKET_TABLE+' (slot_ms,completed_ms,next_ms,outcome,evidence_json,degraded) VALUES (?,?,?,?,?,?)',[slot,done,done+delay,outcome,payload,degraded]);
+   if(row?.affectedRows!==1)throw Error('MARKET_INSERT');
+   return {outcome,delay,persisted:true,completedAt:new Date(done).toISOString(),degraded};
+  }catch{return deferred('storage_unavailable');}
+  finally{
+   if(cx){
+    if(acquired)try{const [rows]=await cx.query({sql:'SELECT RELEASE_LOCK(?) AS released',timeout:5000},[MARKET_LOCK]);discard=Number(rows?.[0]?.released)!==1;}catch{discard=true;}
+    try{if(discard)cx.destroy();else cx.release();}catch{}
+   }
+  }
+ };
+}
+
+// Historical public aggregates are read-only and separately labeled from live evidence.
+async function readMarketEvidenceHistory(pool){
+ const unavailable={status:'unavailable',rows:[]};
+ if(!pool)return unavailable;
+ try{
+  const [rows]=await pool.query({sql:'SELECT slot_ms,completed_ms,next_ms,outcome,evidence_json,degraded FROM '+MARKET_TABLE+' ORDER BY slot_ms DESC LIMIT 24',timeout:4000},[]);
+  if(!Array.isArray(rows)||rows.length>24)throw Error('MARKET_HISTORY');
+  const snapshots=rows.map(r=>{
+   const slot=Number(r.slot_ms),completed=Number(r.completed_ms),next=Number(r.next_ms),degraded=Number(r.degraded);
+   if(![slot,completed,next,degraded].every(Number.isSafeInteger)||slot<0||completed<slot||next<completed||next-completed>3600000||degraded<0||!['available','partial','unavailable'].includes(r.outcome)||typeof r.evidence_json!=='string'||r.evidence_json.length>100000)throw Error('MARKET_HISTORY_ROW');
+   const raw=JSON.parse(r.evidence_json);
+   const safe=publicMarketEvidence({...raw.national,coverage:Array.isArray(raw.national?.rows)?raw.national.rows.length:0},raw.radar);
+   return {collectedAt:new Date(completed).toISOString(),nextDueAt:new Date(next).toISOString(),outcome:r.outcome,degraded,nationalStatus:safe.national.status,nationalPeriodEnd:safe.national.periodEnd,
+    sources:safe.radar.sources.map(x=>({market:x.market,kind:x.kind,status:x.status,count:x.count,eventCount:x.kind==='calendar_events'&&x.status==='available'?x.events.length:null,checkedAt:x.checkedAt}))};
+  });
+  return {status:'available',rows:snapshots,limit:24,scope:'public_aggregate_evidence'};
+ }catch{return unavailable;}
+}
+
+// Public-data refresh only; never schedules assignments, billing or outbound campaigns.
+// Each process has one timer and at most one in-flight refresh; it shares the
+// same bounded source readers as interactive requests.
+function createMarketRefreshWorker({readNational,readRadar,clock=Date.now,schedule=setTimeout,cancel=clearTimeout,durableCycle=null}){
+ let enabled=false,running=false,timer=null,nextRunAt=null,lastStartedAt=null,lastCompletedAt=null,lastOutcome=null,consecutiveDegraded=0,lastPersistedAt=null;
+ function enqueue(delay){
+  if(!enabled||running||timer!==null)return;
+  nextRunAt=new Date(clock()+delay).toISOString();
+  timer=schedule(async()=>{
+   timer=null;nextRunAt=null;
+   if(!enabled||running)return;
+   running=true;lastStartedAt=new Date(clock()).toISOString();
+   let nextDelay=null;
+   try{
+    if(durableCycle){const result=await durableCycle();lastOutcome=result.outcome;nextDelay=result.delay;if(result.persisted){lastPersistedAt=result.completedAt;consecutiveDegraded=result.degraded;}return;}
+    const results=await Promise.allSettled([Promise.resolve().then(readNational),Promise.resolve().then(readRadar)]);
+    const states=results.map(r=>r.status==='fulfilled'?r.value?.status:'unavailable');
+    lastOutcome=states.every(v=>v==='available')?'available':states.some(v=>v==='available'||v==='partial')?'partial':'unavailable';
+    consecutiveDegraded=lastOutcome==='available'?0:Math.min(consecutiveDegraded+1,1000000);
+   }finally{
+    running=false;lastCompletedAt=new Date(clock()).toISOString();
+    enqueue(nextDelay??(lastOutcome==='available'?3600000:Math.min(3600000,300000*2**Math.min(Math.max(consecutiveDegraded-1,0),4))));
+   }
+  },delay);
+  timer?.unref?.();
+ }
+ return {
+  start(){if(enabled)return;enabled=true;enqueue(0);},
+  stop(){enabled=false;if(timer!==null)cancel(timer);timer=null;nextRunAt=null;},
+  status(){return {mode:enabled?'enabled':'disabled',running,lastStartedAt,lastCompletedAt,lastOutcome,consecutiveDegraded,nextRunAt,lastPersistedAt,persistence:durableCycle?'mysql_public_evidence':'process_memory'};}
+ };
+}
+
+function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now, backgroundRefresh=process.env.NODE_ENV==='production'&&process.env.SBC_MARKET_BACKGROUND_REFRESH==='true', marketCanWrite=null }) {
   const readRadar=createRadarReader(radarFetcher,clock);
   app.get('/api/owner/market-intelligence/radar',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
@@ -381,6 +551,19 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
     if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'RADAR_QUERY_INVALID'});
     try{return res.json({ok:true,...await readRadar()});}
     catch{return res.status(503).json({ok:false,code:'RADAR_UNAVAILABLE'});}
+  });
+
+  app.get('/api/owner/market-intelligence/campaign-draft',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try{const tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
+    catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    const q=req.query||{};
+    if(Object.keys(q).length!==3||!['region','eventDate','title'].every(k=>typeof q[k]==='string')||!Object.values(RADAR_REGIONS).includes(q.region)||!radarDate(q.eventDate)||!q.title.trim()||q.title.length>200)return res.status(400).json({ok:false,code:'CAMPAIGN_QUERY_INVALID'});
+    try{
+      const result=eventCampaignDraft(await readRadar(),q,clock());
+      const {http,...body}=result;
+      return res.status(http).json({ok:http===200,...body});
+    }catch{return res.status(503).json({ok:false,code:'CAMPAIGN_EVIDENCE_UNAVAILABLE'});}
   });
 
   app.get('/api/owner/market-intelligence/geography',auth,ownerOnly,async(req,res)=>{
@@ -395,6 +578,9 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   });
 
   const readNational=createNationalReader(nationalFetcher,clock);
+  const durableCycle=typeof marketCanWrite==='function'?createDurableMarketCycle({getPool,canWrite:marketCanWrite,readNational,readRadar,clock}):null;
+  const marketRefresh=createMarketRefreshWorker({readNational,readRadar,clock,durableCycle});
+  if(backgroundRefresh===true)marketRefresh.start();
   app.get('/api/owner/market-intelligence/briefing',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     let tenantId;
@@ -403,11 +589,13 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
     if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'BRIEFING_QUERY_INVALID'});
     try{
       const now=clock(),pool=getPool();
-      const [national,radar,geography]=await Promise.all([
+      const [national,radar,geography,evidenceHistory]=await Promise.all([
         readNational().catch(()=>null),readRadar().catch(()=>null),
-        pool?readGeography(pool,tenantId,30,now).catch(()=>null):null
+        pool?readGeography(pool,tenantId,30,now).catch(()=>null):null,
+        durableCycle?readMarketEvidenceHistory(pool):Promise.resolve({status:'not_configured',rows:[]})
       ]);
-      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now)});
+      const briefing=buildOpportunityBrief(national,radar,geography,now);
+      return res.json({ok:true,...briefing,decisionPlan:buildDecisionPlan(national,geography,briefing,now),backgroundRefresh:marketRefresh.status(),evidenceHistory});
     }catch{return res.status(503).json({ok:false,code:'BRIEFING_UNAVAILABLE'});}
   });
 
@@ -443,6 +631,7 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
       actions: recommendedActions(site, search)
     });
   });
+  return {stopMarketRefresh:()=>marketRefresh.stop()};
 }
 
-module.exports = { register };
+module.exports = { register, createMarketRefreshWorker, createDurableMarketCycle, buildDecisionPlan };

@@ -438,3 +438,262 @@ test('automatic briefing UI separates recommendations, unavailable evidence and 
  assert.match(html,/data-mi-briefing-research/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('unattended public market refresh runs without owner requests, retries partial failures, and stops cleanly',async()=>{
+ const {createMarketRefreshWorker}=require('../enterprise/sbc-market-intelligence.cjs');
+ let time=TIME,seq=0,nationalCalls=0,radarCalls=0,partial=true;
+ const timers=new Map();
+ const worker=createMarketRefreshWorker({
+  clock:()=>time,readNational:async()=>{nationalCalls++;return {status:'available'};},
+  readRadar:async()=>{radarCalls++;return {status:partial?'partial':'available'};},
+  schedule:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id;},cancel:id=>timers.delete(id)
+ });
+ const next=async delay=>{assert.equal(timers.size,1);const [id,timer]=timers.entries().next().value;assert.equal(timer.delay,delay);timers.delete(id);time+=delay;await timer.fn();};
+ assert.equal(worker.status().mode,'disabled');assert.equal(timers.size,0);
+ worker.start();worker.start();await next(0);
+ assert.equal(nationalCalls,1);assert.equal(radarCalls,1);
+ assert.equal(worker.status().lastOutcome,'partial');assert.equal(worker.status().consecutiveDegraded,1);
+ partial=false;await next(300000);
+ assert.equal(worker.status().lastOutcome,'available');assert.equal(worker.status().consecutiveDegraded,0);
+ assert.equal(worker.status().nextRunAt,new Date(time+3600000).toISOString());
+ worker.stop();assert.equal(timers.size,0);assert.equal(worker.status().mode,'disabled');
+ assert.equal(worker.status().nextRunAt,null);
+});
+test('market refresh single-flight survives stop and restart while a source is pending',async()=>{
+ const {createMarketRefreshWorker}=require('../enterprise/sbc-market-intelligence.cjs');
+ let release,seq=0,calls=0;
+ const timers=new Map();
+ const worker=createMarketRefreshWorker({clock:()=>TIME,
+ readNational:()=>{calls++;return new Promise(resolve=>{release=resolve;});},readRadar:async()=>({status:'available'}),
+ schedule:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id;},cancel:id=>timers.delete(id)});
+ worker.start();const [id,timer]=timers.entries().next().value;timers.delete(id);
+ const pending=timer.fn();await Promise.resolve();
+ assert.equal(calls,1);assert.equal(worker.status().running,true);
+ worker.stop();worker.start();assert.equal(timers.size,0);
+ release({status:'available'});await pending;
+ assert.equal(timers.size,1);assert.equal(calls,1);
+ worker.stop();assert.equal(timers.size,0);
+});
+test('owner briefing exposes background refresh status without starting an unconfigured worker',async()=>{
+ await withReport({nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')},backgroundRefresh:false},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.backgroundRefresh.mode,'disabled');
+  assert.equal(d.backgroundRefresh.running,false);
+  assert.equal(d.backgroundRefresh.persistence,'process_memory');
+  assert.equal(d.backgroundRefresh.nextRunAt,null);
+ });
+});
+
+test('briefing distinguishes unattended server collection from dashboard refresh and memory-only state',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.briefingPanel;
+ const disabled=render({status:'partial',backgroundRefresh:{mode:'disabled',persistence:'process_memory',running:false}});
+ assert.match(disabled,/Unattended collection disabled/);
+ const enabled=render({status:'partial',backgroundRefresh:{mode:'enabled',persistence:'process_memory',lastOutcome:'partial',nextRunAt:'2026-11-12T14:05:00.000Z'}});
+ assert.match(enabled,/Unattended collection enabled/);assert.match(enabled,/Partial source availability/);
+ assert.match(enabled,/process memory/i);assert.match(enabled,/2026-11-12T14:05:00.000Z/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
+
+test('durable market collector fences concurrent runs, persists public evidence only and honors writer revocation',async()=>{
+ const {createDurableMarketCycle}=require('../enterprise/sbc-market-intelligence.cjs');
+ let writable=true,locked=false,latest=null,fetches=0,now=TIME,releaseCount=0,insertCount=0;
+ const writes=[];
+ const conn={query:async({sql},args=[])=>{
+  if(sql.includes('GET_LOCK')){if(locked)return [[{acquired:0}]];locked=true;return [[{acquired:1}]];}
+  if(sql.includes('RELEASE_LOCK')){locked=false;return [[{released:1}]];}
+  if(sql.includes('IS_USED_LOCK'))return [[{owned:locked?1:0}]];
+  if(sql.startsWith('CREATE TABLE'))return [{}];
+  if(sql.startsWith('SELECT'))return [latest?[latest]:[]];
+  if(sql.startsWith('INSERT')){insertCount++;writes.push(JSON.parse(args[4]));latest={completed_ms:args[1],next_ms:args[2],outcome:args[3],degraded:args[5]};return [{affectedRows:1}];}
+  throw Error('unexpected SQL');
+ },release(){releaseCount++;},destroy(){locked=false;}};
+ const pool={getConnection:async()=>conn};
+ const cycle=createDurableMarketCycle({getPool:()=>pool,canWrite:()=>writable,clock:()=>now,
+  readNational:async()=>{fetches++;return {status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',fetchedAt:new Date(now).toISOString(),rows:bfsStates.map(state=>({state,applications:10,priorApplications:5,yearOverYearPct:100})),private:'do-not-store'};},
+  readRadar:async()=>({status:'partial',sources:[{market:'Chicago, Illinois, US',kind:'license_records',status:'available',count:0,checkedAt:new Date(now).toISOString(),private:'do-not-store'},{market:'Miami-Dade County, Florida, US',kind:'recent_start_records',status:'unavailable',count:null}]})});
+ writable=false;assert.equal((await cycle()).outcome,'writer_unavailable');assert.equal(fetches,0);
+ writable=true;locked=true;assert.equal((await cycle()).outcome,'busy');assert.equal(fetches,0);locked=false;
+ const result=await cycle();assert.equal(result.outcome,'partial');assert.equal(result.delay,300000);assert.equal(insertCount,1);
+ assert.equal(writes[0].radar.sources.find(x=>x.kind==='license_records').count,0);assert.equal(writes[0].radar.sources.find(x=>x.kind==='recent_start_records').count,null);
+ assert.doesNotMatch(JSON.stringify(writes[0]),/do-not-store/);
+ assert.equal((await cycle()).outcome,'not_due');assert.equal(fetches,1);
+ now+=300000;
+ const revoke=createDurableMarketCycle({getPool:()=>pool,canWrite:()=>writable,clock:()=>now,
+ readNational:async()=>{writable=false;return {status:'unavailable'};},readRadar:async()=>({status:'unavailable'})});
+ assert.equal((await revoke()).outcome,'writer_unavailable');assert.equal(insertCount,1);assert.equal(locked,false);assert(releaseCount>=4);
+});
+test('durable market writer is only wired through the existing staged writer gate',()=>{
+ const source=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ const staged=patchServer(source);
+ assert.match(staged,/marketCanWrite:\(\)=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady/);
+ assert.equal(patchServer(staged),staged);
+});
+
+test('owner briefing reads bounded durable public evidence history without exposing arbitrary stored fields',async()=>{
+ const payload={national:{status:'unavailable',rows:[]},radar:{sources:[{market:'Chicago, Illinois, US',kind:'license_records',status:'available',count:0},{market:'Miami-Dade County, Florida, US',kind:'recent_start_records',status:'unavailable',count:null}],private:'not-public'},private:'not-public'};
+ const historyRows=[{slot_ms:TIME,completed_ms:TIME,next_ms:TIME+300000,outcome:'partial',evidence_json:JSON.stringify(payload),degraded:1}];
+ const query=async({sql,timeout},args)=>{
+  assert.equal(timeout,4000);
+  if(sql.includes('sbc_public_market_evidence')){assert.match(sql,/ORDER BY slot_ms DESC LIMIT 24/);assert.deepEqual(args,[]);return [historyRows];}
+  return [[]];
+ };
+ await withReport({backgroundRefresh:false,marketCanWrite:()=>false,getPool:()=>({query}),nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.evidenceHistory.status,'available');assert.equal(d.evidenceHistory.rows.length,1);
+  assert.equal(d.evidenceHistory.rows[0].sources.find(x=>x.kind==='license_records').count,0);
+  assert.equal(d.evidenceHistory.rows[0].sources.find(x=>x.kind==='recent_start_records').count,null);
+  assert.doesNotMatch(JSON.stringify(d.evidenceHistory),/not-public/);
+  assert.equal(d.backgroundRefresh.mode,'disabled');
+ });
+ await withReport({backgroundRefresh:false,marketCanWrite:()=>false,getPool:()=>({query:async()=>{throw Error('private SQL');}}),nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();assert.equal(d.evidenceHistory.status,'unavailable');assert.doesNotMatch(JSON.stringify(d),/private SQL/);
+ });
+});
+
+test('briefing shows historical public evidence separately from live signals and distinguishes zero from unavailable',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.briefingPanel;
+ const html=render({status:'partial',evidenceHistory:{status:'available',rows:[{collectedAt:'2026-11-12T14:00:00.000Z',outcome:'partial',nationalStatus:'unavailable',sources:[{market:'Chicago',kind:'license_records',status:'available',count:0},{market:'Miami',kind:'recent_start_records',status:'unavailable',count:null}]}]}});
+ assert.match(html,/Recorded market evidence history/);assert.match(html,/Chicago: 0 license records/);assert.match(html,/Miami: unavailable/);assert.match(html,/Historical observations, not live counts/);
+ assert.match(render({evidenceHistory:{status:'unavailable',rows:[]}}),/Evidence history unavailable/);
+ assert.match(render({evidenceHistory:{status:'available',rows:[]}}),/No recorded observations yet/);
+});
+
+test('automatic workforce handoff revalidates suggested states and prepares a reviewable draft without assigning staff work',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, planResearchHandoff };'),ctx);
+ const prepare=ctx.window.SBCMarketIntelligence.planResearchHandoff;
+ const data={status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',rows:bfsStates.map(state=>({state,applications:100}))};
+ const result=prepare(data,{states:['TX','FL','GA'],periodStart:'2026-08',periodEnd:'2026-10',target:16});
+ assert.deepEqual(Array.from(result.states),['TX','FL','GA']);assert.equal(result.target,16);
+ assert.equal(result.autoDraft,true);assert.equal(result.approved,false);
+ assert.equal(prepare(data,{states:['TX'],periodStart:'2026-07',periodEnd:'2026-09',target:16}).autoDraft,false);
+ assert.equal(prepare(data,{states:['XX'],periodStart:'2026-08',periodEnd:'2026-10',target:16}).autoDraft,false);
+ assert.equal(prepare(data,{states:['TX','TX'],periodStart:'2026-08',periodEnd:'2026-10',target:16}).autoDraft,false);
+ assert.equal(prepare(data,{states:['TX'],periodStart:'2026-08',periodEnd:'2026-10',target:99}).autoDraft,false);
+ assert.equal(prepare({status:'unavailable'},{states:['TX'],target:16}).autoDraft,false);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
+
+test('researcher assignment polling avoids active work, hidden views and focused task controls',()=>{
+ const source=fs.readFileSync(path.join(root,'public/lead-research.js'),'utf8');
+ const start=source.indexOf('function shouldRefreshAssignedTasks('),end=source.indexOf('\nasync function loadAssignedTasks',start);
+ assert(start>=0&&end>start);
+ const check=vm.runInNewContext(source.slice(start,end)+'\nshouldRefreshAssignedTasks');
+ const eligible={visible:true,tab:'today',signedIn:true,busy:false,importRunning:false,refreshing:false,focused:false};
+ assert.equal(check(eligible),true);
+ for(const patch of [{visible:false},{tab:'add'},{signedIn:false},{busy:true},{importRunning:true},{refreshing:true},{focused:true}])assert.equal(check({...eligible,...patch}),false);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/lead-research.js'),'utf8'));
+});
+
+test('calendar campaign draft is owner-scoped and revalidates exact upcoming official event before preparing native rotation copy',async()=>{
+ const radarFetcher=async url=>{
+  if(url.includes('gov.uk'))return new Response(JSON.stringify(Object.fromEntries(['england-and-wales','scotland','northern-ireland'].map(k=>[k,{events:[{date:'2026-11-20',title:'Fixture holiday'},{date:'2026-12-25',title:'Later holiday'}]}]))));
+  if(url.includes('arcgis'))return new Response(JSON.stringify({count:0}));
+  return new Response(JSON.stringify([{count:'0'}]));
+ };
+ const q=new URLSearchParams({region:'Scotland',eventDate:'2026-11-20',title:'Fixture holiday'}).toString();
+ await withReport({radarFetcher},async request=>{
+  assert.equal((await request('/campaign-draft?'+q,{})).status,401);
+  assert.equal((await request('/campaign-draft?'+q,{'x-test-role':'lead_researcher'})).status,403);
+  assert.equal((await request('/campaign-draft?'+q+'&url=https://evil.invalid')).status,400);
+  const response=await request('/campaign-draft?'+q),d=await response.json();
+  assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(d.status,'DRAFT_REVIEW_REQUIRED');
+  assert.equal(d.sendAllowed,false);assert.equal(d.draft.market,'Scotland, United Kingdom');
+  assert.equal(d.draft.start,'2026-11-17');assert.equal(d.draft.end,'2026-11-20');
+  assert.equal(d.draft.locale,'en');assert.equal(d.draft.image,null);assert.equal(d.draft.channels,null);
+  assert.match(d.draft.body,/Scotland/);assert.doesNotMatch(d.draft.body,/Fixture holiday|guaranteed|discount/i);
+  assert.equal(d.evidence.source,'https://www.gov.uk/bank-holidays');
+  assert.equal((await request('/campaign-draft?'+q.replace('Fixture+holiday','Made+up'))).status,409);
+  assert.equal((await request('/campaign-draft?'+q.replace('2026-11-20','2026-12-25').replace('Fixture+holiday','Later+holiday'))).status,409);
+ });
+ await withReport({radarFetcher:async()=>{throw Error('offline');}},async request=>assert.equal((await request('/campaign-draft?'+q)).status,503));
+});
+test('calendar campaign UI exposes review handoff only for eligible official events and avoids unsafe embedded markup',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.briefingPanel;
+ const html=render({campaigns:[{market:'Scotland',eventDate:'2026-11-20',title:'<script>fixture</script>',source:'https://www.gov.uk/bank-holidays',status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false}]});
+ assert.match(html,/data-mi-campaign-draft/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
+ assert.doesNotMatch(render({campaigns:[{market:'Scotland',eventDate:'2026-11-20',title:'Unverified',source:'https://evil.invalid'}]}),/data-mi-campaign-draft/);
+});
+
+test('native marketing form accepts only review-only calendar proposals and requires channel and approved artwork selection',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-v6567-marketing-hub.js'),'utf8');
+ const begin=source.indexOf('function normalizeMarketCampaignDraft('),end=source.indexOf('\nfunction openMarketCampaignDraft(',begin);
+ assert(begin>=0&&end>begin);
+ const normalize=vm.runInNewContext(source.slice(begin,end)+'\nnormalizeMarketCampaignDraft');
+ const proposal={status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false,evidence:{source:'https://www.gov.uk/bank-holidays',region:'Scotland',eventDate:'2026-11-20',title:'Fixture holiday'},draft:{title:'SBC regional readiness',audience:'Independent businesses',market:'Scotland, United Kingdom',locale:'en',start:'2026-11-17',end:'2026-11-20',body:'Check your opening hours.',channels:null,image:null}};
+ const now=Date.parse('2026-11-12T14:00:00Z');
+ assert.equal(normalize(proposal,now).market,'Scotland, United Kingdom');
+ assert.equal(normalize({...proposal,sendAllowed:true},now),null);
+ assert.equal(normalize({...proposal,evidence:{...proposal.evidence,source:'https://evil.invalid'}},now),null);
+ assert.equal(normalize({...proposal,draft:{...proposal.draft,image:'https://evil.invalid/a.jpg'}},now),null);
+ assert.equal(normalize({...proposal,draft:{...proposal.draft,channels:['facebook']}},now),null);
+ assert.equal(normalize(proposal,Date.parse('2026-11-21T00:00:00Z')),null);
+ assert.match(source,/Choose a channel or explicitly select all four/);
+ assert.match(source,/Choose approved artwork/);
+ assert.match(source,/confirm\('Add this reviewed regional campaign to the existing organic rotation/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-v6567-marketing-hub.js'),'utf8'));
+});
+
+test('decision policy keeps demand proxies, recorded sales and research intake distinct and never authorizes execution',()=>{
+ const {buildDecisionPlan}=require('../enterprise/sbc-market-intelligence.cjs');
+ const national={status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',rows:bfsStates.map((state,i)=>({state,applications:(i+1)*100})).reverse()};
+ const geography={status:'available',period:{startDate:'2026-10-13',endDate:'2026-11-11'},rows:[
+  {state:'FL',newCrmRecords:12,paidOrders:3,capturedCents:89700},
+  {state:'TX',newCrmRecords:8,paidOrders:1,capturedCents:19900},
+  {state:'CA',newCrmRecords:25,paidOrders:0,capturedCents:0},
+  {state:'unknown',newCrmRecords:100,paidOrders:50,capturedCents:999999}
+ ]};
+ const briefing={research:{target:16,markets:[{state:'WY',target:6},{state:'WI',target:5},{state:'WV',target:5}]},campaigns:[{market:'Scotland',eventDate:'2026-11-15',source:'https://www.gov.uk/bank-holidays',title:'Fixture holiday',sendAllowed:false,status:'DRAFT_REVIEW_REQUIRED'}],exceptions:[{code:'SOURCE_UNAVAILABLE',market:'Miami'}]};
+ const plan=buildDecisionPlan(national,geography,briefing,TIME);
+ assert.equal(plan.policyVersion,'SBC_DECISION_V1');assert.equal(plan.executionAllowed,false);
+ assert.equal(plan.revenueReview.status,'available');assert.deepEqual(plan.revenueReview.markets.map(x=>x.state),['FL','TX']);
+ assert.equal(plan.revenueReview.markets[0].capturedCents,89700);assert.equal(plan.revenueReview.unknownLocation.paidOrders,50);
+ assert.equal(plan.intakeReview.markets[0].state,'CA');assert.equal(plan.intakeReview.markets[0].newCrmRecords,25);
+ assert.equal(plan.researchReview.markets[0].state,'WY');
+ assert.equal(plan.urgentCampaigns.length,1);assert.equal(plan.urgentCampaigns[0].sendAllowed,false);
+ assert.equal(plan.exceptions[0].code,'SOURCE_UNAVAILABLE');
+ assert(!Object.hasOwn(plan.revenueReview.markets[0],'conversionRate'));
+ assert.match(plan.limitation,/not.*conversion/i);
+ const degraded=buildDecisionPlan(national,{status:'unavailable'},briefing,TIME);
+ assert.equal(degraded.revenueReview.status,'unavailable');assert.deepEqual(degraded.revenueReview.markets,[]);
+ assert.equal(degraded.intakeReview.status,'unavailable');
+ assert.equal(buildDecisionPlan(null,geography,{campaigns:[],exceptions:[]},TIME).researchReview.status,'unavailable');
+ const empty=buildDecisionPlan(national,{status:'available',rows:[],period:geography.period},briefing,TIME);
+ assert.equal(empty.revenueReview.status,'available');assert.equal(empty.revenueReview.markets.length,0);assert.equal(empty.revenueReview.unknownLocation,null);
+ const invalid=buildDecisionPlan(national,{status:'available',rows:[{state:'FL',newCrmRecords:1,paidOrders:1,capturedCents:-1}],period:geography.period},briefing,TIME);
+ assert.equal(invalid.revenueReview.status,'unavailable');
+});
+test('owner briefing includes decisions even when evidence is missing',async()=>{
+ await withReport({nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.decisionPlan.policyVersion,'SBC_DECISION_V1');assert.equal(d.decisionPlan.executionAllowed,false);
+  assert.equal(d.decisionPlan.researchReview.status,'unavailable');assert.equal(d.decisionPlan.revenueReview.status,'unavailable');
+  assert(d.decisionPlan.exceptions.length>0);
+ });
+});
+
+test('decision dashboard preserves evidence distinctions and provides no automatic execution action',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const html=ctx.window.SBCMarketIntelligence.briefingPanel({decisionPlan:{policyVersion:'SBC_DECISION_V1',executionAllowed:false,
+  researchReview:{status:'available',markets:[{state:'TX',applications:1000}]},
+  revenueReview:{status:'available',markets:[{state:'FL',paidOrders:3,capturedCents:89700}],unknownLocation:{paidOrders:1,capturedCents:19900}},
+  intakeReview:{status:'available',markets:[{state:'CA',newCrmRecords:25}]},
+  urgentCampaigns:[{market:'Scotland',eventDate:'2026-11-15',title:'<script>test</script>'}],
+  exceptions:[{code:'SOURCE_UNAVAILABLE',market:'Miami'}],limitation:'Independent evidence, not a conversion rate.'}});
+ assert.match(html,/Executive decision brief/);assert.match(html,/Recorded gross captures/);assert.match(html,/\$897\.00/);
+ assert.match(html,/Unknown location/);assert.match(html,/25/);assert.match(html,/&lt;script&gt;/);
+ assert.doesNotMatch(html,/<script>|data-mi-auto-execute/);assert.match(html,/not a conversion rate/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});

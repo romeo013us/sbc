@@ -138,6 +138,7 @@ function operatingPlan(db,screened,started){
  const plan={schema:1,scope:'TENANT_CANONICAL_SNAPSHOT',execution:'ADVISORY_ONLY',
   coverage:{customers:'SCOPED_SNAPSHOT',orders:'SCOPED_SNAPSHOT',fulfillment:coverage},
   leadVerificationReview:review,
+  revenueIntelligence:REVENUE_TRUTH.revenueWindows(summary,Date.now()),
   commercial:{recognizedRevenueCents:summary.revenueCents,recognizedPaidOrders:summary.orderCount,
    paymentIdentityConflicts:summary.reconciliation.paymentIdentityConflicts,reconciliationOrders:finance,proof:summary.proof},
   departments:[

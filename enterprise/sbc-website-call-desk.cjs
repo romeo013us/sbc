@@ -20,8 +20,8 @@ function accessible(customer,actor,tid){
  return role==='owner'||role==='manager'||(['caller','account_manager'].includes(role)&&!!assigned&&assigned===String(actor.id));
 }
 function suppressed(c){
- return c?.doNotCall===true||c?.doNotContact===true||c?.salesSuppressed===true||c?.isSuppressed===true||
-  ['dnc','do not call','do not contact','opt out','unsubscribe','lost'].includes(String(c?.status||'').trim().toLowerCase());
+ return c?.doNotCall===true||c?.doNotContact===true||c?.salesSuppressed===true||c?.isSuppressed===true||c?.optedOut===true||
+  ['dnc','do not call','do not contact','opt out','opt-out','unsubscribe','lost','bad number','wrong number'].includes(String(c?.status||'').trim().toLowerCase());
 }
 function cleanPhone(raw){
  let v=String(raw??'').trim().replace(/[\s().-]/g,'');
@@ -71,6 +71,20 @@ function latestSites(sites,tid){
  }
  return by;
 }
+// Prioritization is a review aid, not an authorization or a predicted close rate.
+// Never derive a callback deadline from the time of the recorded call.
+function salesPriority(row){
+ const result=(rank,code,dueAt=null)=>({rank,code,dueAt});
+ if(['SUPPRESSED','NUMBER_COOLDOWN','DECLINED'].includes(row.stage))return result(90,'BLOCKED');
+ if(['RESEARCH_REQUIRED','CONTACT_UNVERIFIED'].includes(row.stage))return result(80,'RESEARCH_REQUIRED');
+ if(row.stage==='APPOINTMENT_BOOKED')return result(10,'MEETING_PREPARATION',row.appointmentAt||null);
+ if(row.callAllowed!==true||row.verifiedResearch!==true)return result(80,'RESEARCH_REQUIRED');
+ if(row.lastOutcome==='CALLBACK_REQUESTED')return result(20,'CALLBACK_REVIEW');
+ if(row.stage==='INTERESTED')return result(30,'RECORDED_INTEREST');
+ if(row.websitePresence==='not_found'&&row.googleBusinessVerified===true)return result(40,'DOCUMENTED_WEBSITE_GAP');
+ return result(50,'VERIFIED_RESEARCH');
+}
+
 function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:tid,now=new Date().toISOString(),limit=100,customerId=''}={}){
  const id=int(tid);if(!sameTenant(actor,id)||!['owner','manager','caller','account_manager'].includes(String(actor.role)))throw Error('NOT_AUTHORIZED');
  const chosen=latestSites(sites,id);
@@ -118,9 +132,12 @@ function project({customers=[],sites=[],appointments=[],calls=[],actor,tenantId:
    }[stage]};
  });
  const priority=['APPOINTMENT_BOOKED','INTERESTED','READY_TO_CALL','BUILD_WEBSITE','REVIEW_WEBSITE','RESEARCH_REQUIRED','CONTACT_UNVERIFIED','NUMBER_COOLDOWN','DECLINED','SUPPRESSED'];
- rows.sort((a,b)=>priority.indexOf(a.stage)-priority.indexOf(b.stage)||a.businessName.localeCompare(b.businessName));
+ for(const row of rows)row.salesPriority=salesPriority(row);
+ const meetingTime=r=>Number.isFinite(Date.parse(r.salesPriority.dueAt))?Date.parse(r.salesPriority.dueAt):Number.MAX_SAFE_INTEGER;
+ rows.sort((a,b)=>a.salesPriority.rank-b.salesPriority.rank||(a.salesPriority.code==='MEETING_PREPARATION'&&b.salesPriority.code==='MEETING_PREPARATION'?meetingTime(a)-meetingTime(b):0)||priority.indexOf(a.stage)-priority.indexOf(b.stage)||a.businessName.localeCompare(b.businessName)||a.customerId.localeCompare(b.customerId));
  const max=Math.max(1,Math.min(200,int(limit)||100));
  return {ok:true,actorRole:String(actor.role),total:rows.length,rows:rows.slice(0,max),
+  priorityPolicy:{version:'SBC_SALES_PRIORITY_V1',basis:'Recorded meeting, callback request, interest and verified research. No prediction of sales or contact permission.',executionAllowed:false},
   summary:{readyToCall:rows.filter(x=>x.callAllowed).length,needsBuild:rows.filter(x=>x.stage==='BUILD_WEBSITE').length,
    requiresResearch:rows.filter(x=>['RESEARCH_REQUIRED','CONTACT_UNVERIFIED','NUMBER_COOLDOWN'].includes(x.stage)).length,
    awaitingReview:rows.filter(x=>x.stage==='REVIEW_WEBSITE').length,booked:rows.filter(x=>x.stage==='APPOINTMENT_BOOKED').length,

@@ -25,6 +25,7 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   return {
    async beginTransaction(){opened=true;},
    async query(sql,params){
+    if(sql.startsWith('SELECT id,assigned_to,status,phone,follow_up,tenant_id FROM sbc_customers'))return [working.filter(c=>c.tenant_id===params[0]).slice(0,params[1]),[]];
     if(sql.startsWith('SELECT COALESCE(assigned_to')) {
      const groups=new Map();
      for(const row of working.filter(c=>c.tenant_id===params[0])){
@@ -102,6 +103,12 @@ test('owner assigns batches, customer relationship persists, transfers are audit
  try{
   assert.equal((await call('GET',pre+'/summary',null,'guest')).status,401);
   assert.equal((await call('GET',pre+'/summary',null,'m1')).status,403);
+  assert.equal((await call('GET',pre+'/allocation-preview',null,'guest')).status,401);
+  assert.equal((await call('GET',pre+'/allocation-preview',null,'m1')).status,403);
+  assert.equal((await call('GET',pre+'/allocation-preview?tenantId=9',null)).status,400);
+  assert.equal((await call('GET',pre+'/allocation-preview?limit=101',null)).status,400);
+  const allocation=await call('GET',pre+'/allocation-preview?limit=5',null);
+  assert.equal(allocation.status,200);assert.equal(allocation.data.readOnly,true);assert.equal(allocation.data.plan.executionAllowed,false);assert.equal(allocation.data.plan.totalProposed,0);assert.equal(writes,0);
   const myFirst=await call('GET',pre+'/mine',null,'m1');
   assert.equal(myFirst.status,200);
   assert.deepEqual(myFirst.data.data.accounts.map(a=>a.id),['c'],'CRM assigned account visible to authenticated manager');
@@ -228,4 +235,36 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   assert.equal((await call('POST',pre+interaction,
    {requestId:'sbc-action-'+'f'.repeat(32),outcome:'CONNECTED',note:'Should never call a suppressed customer again.'},'m2')).status,409);
  }finally{await new Promise(resolve=>server.close(resolve));}
+});
+
+test('allocation planning balances projected CRM workload without taking ownership or inferring language',()=>{
+ const {planAllocation}=register;
+ const users=[{id:'m1',tenantId:5,role:'account_manager',active:true},{id:'m2',tenantId:5,role:'account_manager',active:true},{id:'legacy',tenantId:5,role:'caller'},{id:'foreign',tenantId:9,role:'account_manager'},{id:'inactive',tenantId:5,role:'account_manager',active:false}];
+ const row=(id,patch={})=>({id,tenant_id:5,assigned_to:'',status:'Lead',phone:'+13055550123',follow_up:null,...patch});
+ const rows=[row('old1',{assigned_to:'m1',status:'Customer'}),row('old2',{assigned_to:'m1',status:'Customer'}),row('a'),row('b'),row('c'),row('d'),row('spanish'),row('unknown'),row('suppressed'),row('bad'),row('stale'),row('not-ready'),row('existing',{status:'Customer'})];
+ const cache=rows.map(r=>({id:r.id,tenantId:5,assignedTo:r.assigned_to,status:r.status,phone:r.phone,verificationStatus:'Verified',preferredContactLanguage:'en',leadIntelligence:{researchBrief:{websitePresence:'not_found',googleBusinessPresence:'found'}}}));
+ const change=(id,patch)=>Object.assign(cache.find(x=>x.id===id),patch);
+ change('spanish',{preferredContactLanguage:'es',salesQueueState:'spanish_callback'});
+ change('unknown',{preferredContactLanguage:''});change('suppressed',{doNotContact:true});change('bad',{salesQueueState:'phone_hold'});change('stale',{assignedTo:'legacy'});change('not-ready',{verificationStatus:'Unverified'});
+ const plan=planAllocation({rows,customers:cache,users,callLogs:[],tenantId:5,limit:4,now:Date.parse('2026-11-28T14:00:00Z')});
+ assert.equal(plan.status,'review_required');assert.equal(plan.executionAllowed,false);assert.equal(plan.totalProposed,4);
+ const m1=plan.managers.find(m=>m.id==='m1'),m2=plan.managers.find(m=>m.id==='m2');
+ assert.equal(m1.currentAccounts,2);assert.equal(m2.currentAccounts,0);
+ assert.equal(m1.projectedAccounts,3);assert.equal(m2.projectedAccounts,3);
+ assert.deepEqual(new Set(plan.managers.flatMap(m=>m.accountIds)),new Set(['a','b','c','d']));
+ assert.equal(plan.holds.SPANISH_QUEUE,1);assert.equal(plan.holds.LANGUAGE_UNCONFIRMED,1);assert.equal(plan.holds.CONTACT_RESTRICTED,2);
+ assert.equal(plan.holds.CRM_RECONCILIATION_REQUIRED,1);assert.equal(plan.holds.RESEARCH_UNVERIFIED,1);assert.equal(plan.holds.EXISTING_CUSTOMER_REVIEW,1);
+ assert.equal(rows[2].assigned_to,'');assert.equal(cache[2].assignedTo,'');
+ assert(!JSON.stringify(plan).includes('+13055550123'));
+ assert(!plan.managers.some(m=>['legacy','foreign','inactive'].includes(m.id)));
+ assert.match(plan.limitation,/capacity|availability/i);
+ assert.throws(()=>planAllocation({rows:[...rows,row('foreign',{tenant_id:9})],customers:cache,users,callLogs:[],tenantId:5,limit:4}),/ALLOCATION_SCOPE/);
+});
+
+test('allocation panel is read-only, displays hold reasons and never submits the proposed IDs',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const ui=fs.readFileSync(path.join(__dirname,'../public/sbc-account-portfolios-v1.js'),'utf8');
+ assert.match(ui,/Intelligent allocation preview/);assert.match(ui,/SPANISH_QUEUE/);assert.match(ui,/LANGUAGE_UNCONFIRMED/);
+ assert.match(ui,/request\('\/allocation-preview\?limit='/);
+ assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-account-portfolios-v1.js'),'utf8'));
 });

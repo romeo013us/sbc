@@ -357,3 +357,19 @@ test('owner plan shows reconciled verification breakdown and rejects incomplete 
  plan.leadVerificationReview.total=999;assert.match(await win.sbcKimOperationsView(),/Verification breakdown unavailable/);
  delete plan.leadVerificationReview;assert.match(await win.sbcKimOperationsView(),/Verification breakdown unavailable/);
 });
+
+test('Kim revenue intelligence is read-only and explains unavailable profit rather than inventing a margin',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const stamp=new Date(Date.now()-60000).toISOString();
+ const db={customers:[customer('real',1,'Warm','Verified')],orders:[{id:'paid',tenantId:1,customerId:'real',price:299,status:'New',paymentStatus:'Paid',squareOrderId:'order_fixture',squarePaymentId:'capture_fixture',squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:stamp}],fulfillmentJobs:[]};
+ const before=JSON.stringify(db);
+ const plan=(await createController({db,tenBrain:{BRAINS:[]},saveData(){assert.fail('unexpected write')},logger:{info(){}}}).cycle({tenantId:1,advisoryOnly:true})).operatingPlan;
+ assert.equal(plan.revenueIntelligence.status,'available');
+ assert.equal(plan.revenueIntelligence.executionAllowed,false);assert.equal(plan.revenueIntelligence.profit.netProfitCents,null);assert.equal(plan.revenueIntelligence.windows.length,2);
+ assert.equal(JSON.stringify(db),before);
+ const win={},calls=[];vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/kim-operations-os.js'),'utf8'),{window:win,document:{querySelector:()=>null},addEventListener(){},fetch:async(url,opts)=>{calls.push(opts);return {ok:true,json:async()=>url.endsWith('/operating-plan')?{ok:true,operatingPlan:plan}:{ok:true,production:{}}}}});
+ const html=await win.sbcKimOperationsView();
+ assert.match(html,/Revenue Intelligence 360/);assert.match(html,/7 completed days/);assert.match(html,/30 completed days/);
+ assert.match(html,/Net profit unavailable/);assert.match(html,/UTC/);assert(calls.every(c=>!c.method||c.method==='GET'));
+ assert.equal(fs.readFileSync(path.join(__dirname,'../public/kim-operations-os.js'),'utf8'),fs.readFileSync(path.join(__dirname,'../browser_public/kim-operations-os.js'),'utf8'));
+});

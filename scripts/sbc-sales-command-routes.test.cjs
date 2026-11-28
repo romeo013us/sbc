@@ -353,3 +353,28 @@ test('owner coaching uses persisted Academy and trial data, not submitted perfor
  assert.equal(r.code,200);assert.deepEqual(r.json.coaching.actions,['COMPLETE_ACADEMY_AND_PRACTICE','CONFIRM_TRIAL_ENROLLMENT']);assert.equal(r.json.coaching.automaticPersonnelAction,false);assert.equal(env.writes,0);
  assert.equal((await env.call('POST',uri,{id:'m1',role:'account_manager',tenantId:1},{managerId:'m1'})).code,403);
 });
+
+test('owner profit coverage matches canonical captures to attested credit rows without inferring unrecorded costs',()=>{
+ const hash=v=>require('node:crypto').createHash('sha256').update(v).digest('hex');
+ const stamp='2026-11-20T18:00:00.000Z';
+ const order=(id,price,extra={})=>({id,tenantId:1,customerId:'c1',price,status:'New',paymentStatus:'Paid',squareOrderId:'order_'+id,squarePaymentId:'capture_'+id,squarePaymentStatus:'COMPLETED',squarePaymentCompletedAt:stamp,...extra});
+ const credit=(id,gross,extra={})=>({tenant_id:1,order_id:id,customer_id:'c1',manager_id:'m1',source:'NEW_CUSTOMER',gross_cents:gross,direct_cost_cents:3000,labor_cents:1000,processing_cents:500,refund_cents:0,captured_at:stamp,square_payment_hash:hash('capture_'+id),owner_actor:'owner',owner_evidence:'Invoice and time review',...extra});
+ const db={customers:[{id:'c1',tenantId:1,businessName:'Fixture shop'}],orders:[order('a',199),order('b',299),order('c',499),order('foreign',999,{tenantId:2}),order('dup',99),order('copy',99,{squarePaymentId:'capture_dup'}),order('qaorder_example',1)]};
+ const rows=[credit('a',19900),credit('c',49900,{square_payment_hash:hash('wrong')}),credit('dup',9900)];
+ const before=JSON.stringify([db,rows]);
+ const p=ROUTE.profitCoverage(db,rows,1,'2026-11',Date.parse('2026-11-28T14:00:00Z'));
+ assert.equal(p.status,'partial');assert.equal(p.capturedOrders,3);assert.equal(p.capturedCents,99700);
+ assert.equal(p.matchedOrders,1);assert.equal(p.matchedCapturedCents,19900);
+ assert.equal(p.matchedContributionCents,15400);assert.equal(p.unmatchedOrders,2);assert.equal(p.unmatchedCapturedCents,79800);
+ assert.equal(p.conflictingCreditRows,2);assert.equal(p.netProfitCents,null);assert.equal(p.executionAllowed,false);
+ assert.equal(JSON.stringify([db,rows]),before);assert(!JSON.stringify(p).includes('Invoice and time review'));
+ assert.equal(ROUTE.profitCoverage(db,[...rows,credit('a',19900)],1,'2026-11',Date.parse('2026-11-28T14:00:00Z')).matchedOrders,0);
+ assert.equal(ROUTE.profitCoverage(db,[...rows,credit('foreign',99900,{tenant_id:2})],1,'2026-11').status,'unavailable');
+ assert.equal(ROUTE.profitCoverage({},rows,1,'2026-11').status,'unavailable');
+});
+test('profit coverage is owner-only and returns explicit unavailable status without canonical snapshot',async()=>{
+ const env=setup(),r=await env.call('GET','/api/owner/sales-command/overview',{id:'owner',role:'owner',tenantId:1},{},{month:'2026-11'});
+ assert.equal(r.code,200);assert.equal(r.json.profitCoverage.status,'unavailable');assert.equal(env.writes,0);
+ const m=await env.call('GET','/api/sbc/sales/compensation/me',{id:'m1',role:'account_manager',tenantId:1},{},{month:'2026-11'});
+ assert.equal(m.json.profitCoverage,undefined);
+});

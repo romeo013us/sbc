@@ -51,7 +51,7 @@
   $('kpis').replaceChildren();
   for(const [label,amount,note] of rows){
    const box=make('article',undefined,'kpi');
-   box.append(make('span',label),make('strong',money(amount)),make('small',note));
+   box.append(make('span',label),make('strong',amount===null?'Unavailable':money(amount)),make('small',note));
    $('kpis').append(box);
   }
  }
@@ -75,6 +75,17 @@
    for(const c of cells)tr.append(make('td',c));
    $('managers').append(tr);
   }
+ }
+ function profitCoverageCards(p){
+  const unavailable=[['Matched contribution',null,'Cost coverage unavailable; company net profit not established']];
+  const valid=n=>Number.isSafeInteger(n)&&n>=0;
+  if(!p||!['partial','matched_snapshot'].includes(p.status)||p.executionAllowed!==false||p.netProfitCents!==null||!valid(p.capturedOrders)||!valid(p.matchedOrders)||!valid(p.unmatchedOrders)||!valid(p.capturedCents)||!valid(p.matchedCapturedCents)||!valid(p.unmatchedCapturedCents)||!valid(p.conflictingCreditRows)||p.matchedOrders+p.unmatchedOrders!==p.capturedOrders||p.matchedCapturedCents+p.unmatchedCapturedCents!==p.capturedCents||!(p.matchedOrders?Number.isSafeInteger(p.matchedContributionCents):p.matchedContributionCents===null))return unavailable;
+  return [
+   ['Reconciled gross captures',p.capturedCents,p.capturedOrders+' orders · Miami calendar month · company snapshot'],
+   ['Matched contribution',p.matchedContributionCents,p.matchedOrders+' matched orders · before base payroll, commissions and overhead'],
+   ['Unmatched capture value',p.unmatchedCapturedCents,p.unmatchedOrders+' orders without matched cost evidence · '+p.conflictingCreditRows+' conflicting credit rows'],
+   ['Company net profit',null,'Incomplete expense and settlement evidence; not inferred from contribution']
+  ];
  }
  async function refresh(){
   const month=$('month').value;
@@ -105,7 +116,8 @@
    ['Credited collected sales',summary.teamRevenueCents,'Owner-reconciled captured payments'],
    ['Monthly team target',summary.teamMonthlyTargetCents,'$600 per selling day · team'],
    ['Owner-attested gross profit',summary.teamGrossProfitCents,'Before base payroll and overhead'],
-   ['Calculated commission liability',summary.commissionLiabilityCents,'Not a payment confirmation']
+   ['Calculated commission liability',summary.commissionLiabilityCents,'Not a payment confirmation'],
+   ...profitCoverageCards(summary.profitCoverage)
   ]);
   table(managers);
   for(const id of ['termsManager','creditManager','actionManager','workforceManager'])
