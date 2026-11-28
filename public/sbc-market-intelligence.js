@@ -170,8 +170,8 @@
 
   function briefingPanel(report){
     const background=report?.backgroundRefresh;
-    const outcomes={available:'All configured sources available',partial:'Partial source availability',unavailable:'Sources unavailable'};
-    const worker=background?'<p class="mi-footnote">Unattended collection '+(background.mode==='enabled'?'enabled':'disabled')+' · '+(background.running?'Refresh running':escape(outcomes[background.lastOutcome]||'No background result yet'))+(background.nextRunAt?' · Next check '+escape(background.nextRunAt):'')+' · State held in process memory; not durable evidence history.</p>':'';
+    const outcomes={available:'All configured sources available',partial:'Partial source availability',unavailable:'Sources unavailable',writer_unavailable:'Waiting for authorized database writer',storage_unavailable:'Evidence storage unavailable',busy:'Another collector holds the database lock',not_due:'Durable schedule not yet due'};
+    const worker=background?'<p class="mi-footnote">Unattended collection '+(background.mode==='enabled'?'enabled':'disabled')+' · '+(background.running?'Refresh running':escape(outcomes[background.lastOutcome]||'No background result yet'))+(background.nextRunAt?' · Next check '+escape(background.nextRunAt):'')+''+(background.persistence==='mysql_public_evidence'?' · MySQL public evidence '+(background.lastPersistedAt?'last recorded '+escape(background.lastPersistedAt):'not yet confirmed by this process'):' · State held in process memory; not durable evidence history.')+'</p>':'';
     const rankings=Array.isArray(report?.rankings)?report.rankings:[];
     const markets=Array.isArray(report?.research?.markets)?report.research.markets:[];
     const campaigns=Array.isArray(report?.campaigns)?report.campaigns:[];
