@@ -190,6 +190,7 @@
     const rankings=Array.isArray(report?.rankings)?report.rankings:[];
     const markets=Array.isArray(report?.research?.markets)?report.research.markets:[];
     const campaigns=Array.isArray(report?.campaigns)?report.campaigns:[];
+    const campaignReview=x=>x.source==='https://www.gov.uk/bank-holidays'&&x.status==='DRAFT_REVIEW_REQUIRED'&&x.sendAllowed===false?'<button type="button" class="secondary" data-mi-campaign-draft data-region="'+escape(x.market)+'" data-event-date="'+escape(x.eventDate)+'" data-event-title="'+escape(x.title)+'">Prepare campaign for review</button>':'';
     const exceptions=Array.isArray(report?.exceptions)?report.exceptions:[];
     const labels={NATIONAL_EVIDENCE_UNAVAILABLE:'National Census evidence unavailable',CRM_EVIDENCE_UNAVAILABLE:'Tenant CRM evidence unavailable',RADAR_UNAVAILABLE:'Public market sources unavailable',SOURCE_UNAVAILABLE:'Public source unavailable'};
     const rows=rankings.map(r=>'<tr><th scope="row">'+escape(r.state)+'</th><td>'+count.format(r.applications)+'</td><td>'+(r.crmEvidence?count.format(r.crmEvidence.newCrmRecords):'Not available')+'</td><td>'+(r.crmEvidence?money.format(r.crmEvidence.capturedCents/100):'Not available')+'</td></tr>').join('');
@@ -198,7 +199,7 @@
     return '<section class="mi-panel" aria-labelledby="mi-briefing-title"><h3 id="mi-briefing-title">Automatic opportunity briefing</h3><p class="mi-period">'+escape(report?.generatedAt||'Refresh to retrieve current evidence')+'</p>'+worker+'<p>Owner review required before assignments or campaigns. No automatic assignment, publication or customer contact.</p>'+
       (rankings.length?'<h4>Top US states by comparable business-application volume</h4><p class="mi-footnote">Census '+escape(report?.rankingPeriod?.start||'')+' to '+escape(report?.rankingPeriod?.end||'')+'; CRM evidence uses a separate 30-day window. These are research signals, not sales probabilities.</p><div style="overflow-x:auto"><table class="table"><thead><tr><th>State</th><th>Applications</th><th>Recorded CRM intake</th><th>Recorded captures</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>National ranking unavailable.</p>')+
       '<h4>Suggested research allocation</h4>'+research+'<h4>Calendar campaign preparation</h4>'+
-      (campaigns.length?'<ul>'+campaigns.map(x=>'<li>'+escape(x.eventDate)+' · '+escape(x.market)+' · '+escape(x.title)+' — review-only draft</li>').join('')+'</ul>':'<p>No verified calendar suggestions returned in the next 30 days.</p>')+
+      (campaigns.length?'<ul>'+campaigns.map(x=>'<li>'+escape(x.eventDate)+' · '+escape(x.market)+' · '+escape(x.title)+' — review-only draft '+campaignReview(x)+'</li>').join('')+'</ul>':'<p>No verified calendar suggestions returned in the next 30 days.</p>')+
       (exceptions.length?'<h4>Evidence exceptions</h4><ul>'+exceptions.map(x=>'<li>'+escape(labels[x.code]||'Evidence unavailable')+' — '+escape(x.market)+'</li>').join('')+'</ul>':'')+
       historical+
       (report?.status==='unavailable'?'<p class="mi-alert">Evidence unavailable; no unverified ranking or draft is substituted.</p>':'')+'</section>';
@@ -385,6 +386,20 @@
       if(!active())return;
       briefingTimer=setTimeout(async()=>{briefingTimer=null;if(!active())return;if(!document.hidden)await loadBriefing();scheduleBriefing();},300000);
     }
+    briefingResults.addEventListener('click',async event=>{
+      const action=event.target.closest('[data-mi-campaign-draft]');
+      if(!active()||!action||action.disabled)return;
+      action.disabled=true;const original=action.textContent;action.textContent='Checking event evidence…';
+      try{
+        const query=new URLSearchParams({region:action.dataset.region,eventDate:action.dataset.eventDate,title:action.dataset.eventTitle});
+        const response=await fetch('/api/owner/market-intelligence/campaign-draft?'+query.toString(),{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(16000)});
+        const result=await response.json();
+        if(!response.ok||result.ok!==true||result.status!=='DRAFT_REVIEW_REQUIRED'||result.sendAllowed!==false)throw Error('Event evidence unavailable or changed. Refresh the briefing.');
+        if(!active())return;
+        if(!window.SBCMarketingHub?.openMarketCampaignDraft?.(result))throw Error('Campaign review workspace unavailable.');
+      }catch(error){if(active())status.textContent=error.message||'Campaign draft unavailable.';}
+      finally{if(action.isConnected){action.disabled=false;action.textContent=original;}}
+    });
     briefingResults.addEventListener('click',event=>{
       const action=event.target.closest('[data-mi-briefing-research]');
       if(!active()||!action)return;
