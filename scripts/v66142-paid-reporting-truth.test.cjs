@@ -109,3 +109,19 @@ test('canonical read model is deterministic under input reordering and preserves
  assert.equal(TRUTH.paidSummary(rows.slice().reverse(),[c],{tenantId:1}).revenueCents,r.revenueCents);
  assert.throws(()=>TRUTH.paidSummary(rows,[c],{tenantId:0}),/TENANT_CONTEXT_REQUIRED/);
 });
+
+test('reconciled revenue trends compare equal completed UTC windows and separate current partial day',()=>{
+ const captured=(id,price,time,extra={})=>({...paid(id,'real',1,price),squarePaymentCompletedAt:time,...extra});
+ const asOf=Date.parse('2026-11-28T14:00:00Z');
+ const orders=[captured('today',199,'2026-11-28T12:00:00Z'),captured('current',299,'2026-11-25T12:00:00Z'),captured('current2',100,'2026-11-21T00:00:00Z'),captured('prior',499,'2026-11-20T23:59:59Z'),captured('old',200,'2026-10-31T12:00:00Z'),captured('previousmonth',400,'2026-10-10T12:00:00Z'),captured('future',999,'2026-11-28T16:00:00Z'),captured('dup',500,'2026-11-22T12:00:00Z'),captured('dup_copy',500,'2026-09-01T12:00:00Z',{squarePaymentId:'spayment-dup'}),captured('foreign',999,'2026-11-25T12:00:00Z',{tenantId:2})];
+ const summary=TRUTH.paidSummary(orders,[customer('real')],{tenantId:1});
+ const trend=TRUTH.revenueWindows(summary,asOf);
+ assert.equal(trend.status,'available');assert.equal(trend.timezone,'UTC');assert.equal(trend.today.capturedCents,19900);assert.equal(trend.today.orders,1);
+ assert.equal(trend.windows[0].days,7);assert.equal(trend.windows[0].current.capturedCents,39900);assert.equal(trend.windows[0].previous.capturedCents,49900);assert.equal(trend.windows[0].changeCents,-10000);
+ assert.equal(trend.windows[1].days,30);assert.equal(trend.windows[1].current.capturedCents,109800);assert.equal(trend.windows[1].previous.capturedCents,40000);
+ assert.equal(trend.futureDatedCaptures,1);assert.equal(trend.profit.status,'unavailable');assert.equal(trend.profit.netProfitCents,null);assert.equal(trend.executionAllowed,false);
+ assert.equal(TRUTH.revenueWindows(null,asOf).status,'unavailable');
+ const empty=TRUTH.revenueWindows(TRUTH.paidSummary([],[],{tenantId:1}),asOf);
+ assert.equal(empty.windows[0].current.capturedCents,0);assert.equal(empty.windows[0].changePct,null);
+ assert.equal(TRUTH.revenueWindows({...summary,revenueCents:1},asOf).status,'unavailable');
+});
