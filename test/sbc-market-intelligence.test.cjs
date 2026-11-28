@@ -591,3 +591,36 @@ test('researcher assignment polling avoids active work, hidden views and focused
  for(const patch of [{visible:false},{tab:'add'},{signedIn:false},{busy:true},{importRunning:true},{refreshing:true},{focused:true}])assert.equal(check({...eligible,...patch}),false);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/lead-research.js'),'utf8'));
 });
+
+test('calendar campaign draft is owner-scoped and revalidates exact upcoming official event before preparing native rotation copy',async()=>{
+ const radarFetcher=async url=>{
+  if(url.includes('gov.uk'))return new Response(JSON.stringify(Object.fromEntries(['england-and-wales','scotland','northern-ireland'].map(k=>[k,{events:[{date:'2026-11-20',title:'Fixture holiday'},{date:'2026-12-25',title:'Later holiday'}]}]))));
+  if(url.includes('arcgis'))return new Response(JSON.stringify({count:0}));
+  return new Response(JSON.stringify([{count:'0'}]));
+ };
+ const q=new URLSearchParams({region:'Scotland',eventDate:'2026-11-20',title:'Fixture holiday'}).toString();
+ await withReport({radarFetcher},async request=>{
+  assert.equal((await request('/campaign-draft?'+q,{})).status,401);
+  assert.equal((await request('/campaign-draft?'+q,{'x-test-role':'lead_researcher'})).status,403);
+  assert.equal((await request('/campaign-draft?'+q+'&url=https://evil.invalid')).status,400);
+  const response=await request('/campaign-draft?'+q),d=await response.json();
+  assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(d.status,'DRAFT_REVIEW_REQUIRED');
+  assert.equal(d.sendAllowed,false);assert.equal(d.draft.market,'Scotland, United Kingdom');
+  assert.equal(d.draft.start,'2026-11-17');assert.equal(d.draft.end,'2026-11-20');
+  assert.equal(d.draft.locale,'en');assert.equal(d.draft.image,null);assert.equal(d.draft.channels,null);
+  assert.match(d.draft.body,/Scotland/);assert.doesNotMatch(d.draft.body,/Fixture holiday|guaranteed|discount/i);
+  assert.equal(d.evidence.source,'https://www.gov.uk/bank-holidays');
+  assert.equal((await request('/campaign-draft?'+q.replace('Fixture+holiday','Made+up'))).status,409);
+  assert.equal((await request('/campaign-draft?'+q.replace('2026-11-20','2026-12-25').replace('Fixture+holiday','Later+holiday'))).status,409);
+ });
+ await withReport({radarFetcher:async()=>{throw Error('offline');}},async request=>assert.equal((await request('/campaign-draft?'+q)).status,503));
+});
+test('calendar campaign UI exposes review handoff only for eligible official events and avoids unsafe embedded markup',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.briefingPanel;
+ const html=render({campaigns:[{market:'Scotland',eventDate:'2026-11-20',title:'<script>fixture</script>',source:'https://www.gov.uk/bank-holidays',status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false}]});
+ assert.match(html,/data-mi-campaign-draft/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
+ assert.doesNotMatch(render({campaigns:[{market:'Scotland',eventDate:'2026-11-20',title:'Unverified',source:'https://evil.invalid'}]}),/data-mi-campaign-draft/);
+});
