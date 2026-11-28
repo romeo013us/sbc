@@ -57,6 +57,12 @@ test('website production review text stays easy to read on mobile without changi
  const mirror=read('browser_public/sbc-command-center-focus-v1.css');
  assert.equal(css,mirror,'browser and GoDaddy CSS mirrors must match byte-for-byte');
  const index=read('public/index.html');
- assert.match(index,/sbc-command-center-focus-v1\.css/);
+ const theme=require('../scripts/v66-owner-ui-css-bundle.cjs').compile(root);
+ assert(index.includes('href="/'+theme.filename+'"'),'canonical owner CSS must load');
+ assert(theme.content.includes(css.trimEnd()),'owner legibility rules must remain in compiled theme');
+ assert.equal(read('public/'+theme.filename),theme.content);
+ assert.equal(read('browser_public/'+theme.filename),theme.content);
+ assert(!index.includes('href="/sbc-command-center-focus-v1.css'),'avoid duplicate source stylesheet');
+ assert.match(css,/#sbcFocusNav > \[hidden\]\{display:none!important\}/,'role-hidden navigation must remain hidden');
  assert(!css.includes('@import'),'do not add remote CSS or paid CDN dependency');
 });

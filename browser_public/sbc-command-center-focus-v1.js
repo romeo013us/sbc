@@ -116,10 +116,18 @@ function watchLateNavigation(nav,main,advanced,groups){
   // Late-injected legacy controls must not escape the existing More tools group.
   // Keep the original DOM nodes and event listeners, including role-hidden nodes.
   if(!owner()||!compact())return;
+  // Website Production is a daily route even if its module mounts after the shell.
+  // Only relocate direct children of the nav or our own secondary group; do not
+  // extract controls from unrelated permission-scoped ancestor containers.
+  var production=document.getElementById('sbc-website-production-nav');
+  if(production&&(production.parentElement===nav||production.parentElement===groups)){
+   production.classList.add('sbc-focus-link');
+   main.insertBefore(production,main.querySelector('.nav-item[data-view="orders"]'));
+  }
   Array.from(nav.children).forEach(function(child){if(child!==main&&child!==advanced)groups.appendChild(child);});
  }
  settleLateNav=settle;
- new MutationObserver(function(){if(!pending){pending=true;queueMicrotask(settle);}}).observe(nav,{childList:true});
+ new MutationObserver(function(){if(!pending){pending=true;queueMicrotask(settle);}}).observe(nav,{childList:true,subtree:true});
  window.addEventListener('sbc:authenticated',settle);
  window.addEventListener('sbc:view-rendered',settle);
  settle();

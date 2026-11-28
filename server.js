@@ -3069,6 +3069,13 @@ app.get('/api/kim/v350/leads',auth,(req,res)=>{if(!['owner','kim_operator','lead
 // SBC_V6522_API_STABILIZATION: bound slow MySQL projection so the UI receives explicit degraded state instead of hanging.
 
 // SBC_V6567_MARKETING_API: tenant-scoped durable content workflow; public publishing remains disabled until provider verification.
+require('./routes/sbc-organic-campaigns.cjs').register(app,{
+  auth,ownerOnly,tenantOf:requireRequestTenant,corporateTenant:TENANT_DEFAULT_ID,
+  getPool:()=>mysqlPool,getData:()=>db,
+  canWrite:()=>!SBC_RUNTIME_READ_ONLY && !sbcShutdownStarted && MYSQL_RECOVERY_EVALUATED && !MYSQL_RECOVERY_REQUIRED && sbcWriterLeaseReady,
+  authorize:p=>sbcMarketingProviderAuth(p,TENANT_DEFAULT_ID),secret:name=>sbcMarketingSecret(name,TENANT_DEFAULT_ID),
+  log:event=>jsonLog('warn',event,{})
+});
 require('./routes/sbc-marketing-receipts.cjs').registerMarketingReceipts(app,{
   auth,ownerOnly,tenantOf:requireRequestTenant,corporateTenant:TENANT_DEFAULT_ID,
   getPool:() => mysqlPool,
