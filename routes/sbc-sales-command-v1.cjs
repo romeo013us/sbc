@@ -50,6 +50,37 @@ function createReport(t,m,month,credits,terms,statementRow){
    hasExternalPaymentReference:Boolean(statementRow.external_payment_reference)
   }:null};
 }
+// Aggregate only. The owner-attested commission ledger covers a subset of
+// captured sales. Never extrapolate its costs or subtract payroll twice.
+function profitCoverage(db,credits,tenant,month,asOf=Date.now()){
+ const unavailable={status:'unavailable',month,timezone:'America/New_York',capturedOrders:null,capturedCents:null,matchedOrders:null,matchedCapturedCents:null,matchedContributionCents:null,unmatchedOrders:null,unmatchedCapturedCents:null,conflictingCreditRows:null,netProfitCents:null,executionAllowed:false};
+ try{
+  CALC.tenant(tenant);CALC.monthKey(month);
+  if(!Number.isSafeInteger(asOf)||!Array.isArray(db?.orders)||!Array.isArray(db?.customers)||!Array.isArray(credits)||credits.length>10000)return unavailable;
+  if(credits.some(r=>Number(r.tenant_id)!==tenant))return unavailable;
+  const summary=TRUTH.paidSummary(db.orders,db.customers,{tenantId:tenant});
+  const stamp=v=>v instanceof Date?v.getTime():typeof v==='string'?Date.parse(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(?:\.\d{1,3})?$/.test(v)?v.replace(' ','T')+'Z':v):NaN;
+  const scoped=summary.orders.filter(o=>{const t=Date.parse(MONEY.proofFields(o).completedAt);return t<asOf&&CALC.miamiMonth(t)===month;});
+  const index=new Map(scoped.map(o=>[String(o.id),o])),creditCounts=new Map(),hashCounts=new Map();
+  for(const row of credits){const id=String(row.order_id||''),hash=String(row.square_payment_hash||'');creditCounts.set(id,(creditCounts.get(id)||0)+1);if(hash)hashCounts.set(hash,(hashCounts.get(hash)||0)+1);}
+  let capturedCents=0,matchedCapturedCents=0,matchedOrders=0,contribution=0,conflictingCreditRows=0;
+  const cents=o=>Math.round(Number(o.price??o.total)*100);
+  for(const o of scoped)capturedCents+=cents(o);
+  for(const r of credits){
+   const time=stamp(r.captured_at);
+   if(!Number.isFinite(time))return unavailable;
+   if(CALC.miamiMonth(time)!==month||time>=asOf)continue;
+   const o=index.get(String(r.order_id)),proof=o?MONEY.proofFields(o):null;
+   const values=['gross_cents','direct_cost_cents','labor_cents','processing_cents','refund_cents'].map(k=>r[k]===null||r[k]===undefined||r[k]===''?NaN:Number(r[k]));
+   const [gross,direct,labor,processing,refund]=values;
+   if(!o||!proof||creditCounts.get(String(r.order_id))!==1||hashCounts.get(String(r.square_payment_hash))!==1||HASH(proof.id)!==r.square_payment_hash||Date.parse(proof.completedAt)!==time||String(o.customerId??o.customer_id??'')!==String(r.customer_id||'')||!String(r.customer_id||'')||gross!==cents(o)||values.some(v=>!Number.isSafeInteger(v)||v<0||v>100000000000)||refund>gross||!String(r.owner_actor||'').trim()||String(r.owner_evidence||'').trim().length<12||!['NEW_CUSTOMER','ACTIVE_UPSELL','MANUALLY_SOLD_RENEWAL'].includes(r.source)){conflictingCreditRows++;continue;}
+   matchedOrders++;matchedCapturedCents+=gross;contribution+=gross-refund-direct-labor-processing;
+  }
+  if(![capturedCents,matchedCapturedCents,contribution].every(Number.isSafeInteger))return unavailable;
+  return {status:conflictingCreditRows||matchedOrders!==scoped.length?'partial':'matched_snapshot',month,timezone:'America/New_York',capturedOrders:scoped.length,capturedCents,matchedOrders,matchedCapturedCents,matchedContributionCents:matchedOrders?contribution:null,unmatchedOrders:scoped.length-matchedOrders,unmatchedCapturedCents:capturedCents-matchedCapturedCents,conflictingCreditRows,netProfitCents:null,executionAllowed:false,limitation:'Only owner-attested cost records matched to current reconciled captures. Contribution excludes unmatched sales, base payroll, commissions and overhead. Not net profit, independent bank settlement or authorization to pay.'};
+ }catch{return unavailable;}
+}
+
 function register(app,{auth,getContext,tenantForRead,writer}={}){
  if(!app||typeof app.get!=='function'||typeof app.post!=='function'||
     typeof auth!=='function'||typeof getContext!=='function'||
@@ -475,7 +506,12 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
    const total=rows.reduce((a,r)=>a+r.revenueCents,0);
    const profit=rows.reduce((a,r)=>a+r.profitCents,0);
    const liability=rows.reduce((a,r)=>a+(r.lockedStatement?.commissionCents??r.commissionCents),0);
-   return res.json({ok:true,readOnly:true,month,teamDailyTargetCents:CALC.TEAM_DAILY_TARGET_CENTS,
+   let coverage=profitCoverage(ctx.db,null,t,month);
+   try{
+    const [credits]=await ctx.mysqlPool.query('SELECT * FROM sbc_sales_credit_v1 WHERE tenant_id=? ORDER BY captured_at ASC LIMIT 10001',[t]);
+    coverage=profitCoverage(ctx.db,credits,t,month);
+   }catch{/* keep missing evidence explicit without breaking the existing owner view */}
+   return res.json({ok:true,readOnly:true,month,profitCoverage:coverage,teamDailyTargetCents:CALC.TEAM_DAILY_TARGET_CENTS,
      teamMonthlyTargetCents:CALC.TEAM_MONTHLY_TARGET_CENTS,teamRevenueCents:total,
      teamGrossProfitCents:profit,commissionLiabilityCents:liability,managers:rows,
      dataScope:'OWNER_RECONCILED_PAID_ORDERS_ONLY',ownerSalesExcluded:true,
@@ -667,4 +703,4 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
  app.post('/api/owner/sales-command/statements/:managerId/:month/paid',auth,(req,res)=>transition(req,res,'PAID'));
  return {registered:true,providerActions:false,ownerApprovals:true};
 }
-module.exports={register,createReport,creditRow};
+module.exports={profitCoverage,register,createReport,creditRow};
