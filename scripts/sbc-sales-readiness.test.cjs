@@ -2,13 +2,13 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {register}=require('../routes/sbc-sales-command-v1.cjs');
 const names=['sbc_sales_credit_v1','sbc_commission_terms_v1','sbc_commission_statement_v1','sbc_commission_audit_v1'];
-function setup({missing=[],recovery=false,unavailable=false}={}){
+function setup({missing=[],recovery=false,unavailable=false,writable=true}={}){
  const handlers=new Map(),queries=[];let writes=0;
  const pool={async query(sql,params){queries.push({sql,params});if(unavailable)throw Object.assign(Error('Database read unavailable'),{code:'ER_ACCESS_DENIED_ERROR'});
   if(missing.some(name=>sql.includes('FROM '+name+' ')))throw Object.assign(Error('Missing table'),{code:'ER_NO_SUCH_TABLE'});
   return [[]];},async getConnection(){throw Error('Unexpected write connection')}};
  register({get:(url,_auth,fn)=>handlers.set('GET '+url,fn),post:(url,_auth,fn)=>handlers.set('POST '+url,fn)},
- {auth:(req,res,next)=>next?.(),getContext:()=>({db:{users:[]},mysqlPool:pool,recoveryRequired:()=>recovery}),
+ {auth:(req,res,next)=>next?.(),getContext:()=>({db:{users:[]},mysqlPool:pool,recoveryRequired:()=>recovery,canWrite:()=>writable}),
   tenantForRead:req=>req.tenantId,writer:()=>{writes++}});
  async function request(user={id:'owner',tenantId:1,role:'owner',active:true}){
   const h=handlers.get('GET /api/owner/sales-command/readiness');assert(h,'readiness route should exist');
@@ -40,4 +40,11 @@ test('owner authentication and DB read errors fail closed without leaking raw SQ
  const failure=await setup({unavailable:true}).request();assert.equal(failure.code,503);
  assert.equal(failure.body.code,'SALES_SCHEMA_READ_UNAVAILABLE');
  assert(!JSON.stringify(failure.body).includes('Database read unavailable'));
+});
+
+test('complete schema does not imply writable runtime or active lease',async()=>{
+ const x=setup({writable:false}),r=await x.request();
+ assert.equal(r.code,200);assert.equal(r.body.schemaReady,true);
+ assert.equal(r.body.writeReady,false);assert.equal(r.body.ready,false);
+ assert.equal(x.writes,0);
 });
