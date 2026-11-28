@@ -483,3 +483,16 @@ test('owner briefing exposes background refresh status without starting an uncon
   assert.equal(d.backgroundRefresh.nextRunAt,null);
  });
 });
+
+test('briefing distinguishes unattended server collection from dashboard refresh and memory-only state',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.briefingPanel;
+ const disabled=render({status:'partial',backgroundRefresh:{mode:'disabled',persistence:'process_memory',running:false}});
+ assert.match(disabled,/Unattended collection disabled/);
+ const enabled=render({status:'partial',backgroundRefresh:{mode:'enabled',persistence:'process_memory',lastOutcome:'partial',nextRunAt:'2026-11-12T14:05:00.000Z'}});
+ assert.match(enabled,/Unattended collection enabled/);assert.match(enabled,/Partial source availability/);
+ assert.match(enabled,/process memory/i);assert.match(enabled,/2026-11-12T14:05:00.000Z/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
