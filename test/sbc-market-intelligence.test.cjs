@@ -312,3 +312,129 @@ test('geographic report UI distinguishes unknown location, recorded capture and 
  assert.match(render({status:'volume_limit'}),/No partial totals/);assert.match(render({status:'unavailable'}),/no totals can be confirmed/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('opportunity radar isolates source failures, distinguishes zero and calendar signals, and rejects unauthorized requests', async()=>{
+ const calls=[];
+ const radarFetcher=async(url,opts)=>{
+  calls.push(url);assert.equal(opts.method,'GET');assert.equal(opts.redirect,'error');assert.ok(opts.signal);
+  if(url.startsWith('https://data.cityofchicago.org/'))return new Response(JSON.stringify([{count:'0'}]));
+  if(url.startsWith('https://services2.arcgis.com/')){assert.match(url,/returnCountOnly=true/);return new Response(JSON.stringify({count:21}));}
+  if(url.startsWith('https://gisweb.miamidade.gov/')){assert.match(decodeURIComponent(url),/BUSSDATE/);return new Response(JSON.stringify({count:0}));}
+  if(url.startsWith('https://data.cityofnewyork.us/')){assert.match(decodeURIComponent(url),/start_date_time/);return new Response(JSON.stringify([{count:'8'}]));}
+  assert.equal(url,'https://www.gov.uk/bank-holidays.json');
+  const groups={};for(const region of ['england-and-wales','scotland','northern-ireland'])groups[region]={events:[{date:'2026-12-25',title:'Christmas Day'},{date:'2026-01-01',title:'Past'},{date:'2027-12-25',title:'Outside'}]};
+  return new Response(JSON.stringify(groups));
+ };
+ await withReport({radarFetcher},async request=>{
+  assert.equal((await request('/radar',{})).status,401);
+  assert.equal((await request('/radar',{'x-test-role':'lead_researcher'})).status,403);
+  assert.equal((await request('/radar',{'x-test-role':'owner','x-test-tenant':'0'})).status,403);
+  assert.equal((await request('/radar?url=https://example.com')).status,400);
+  assert.equal(calls.length,0);
+  const response=await request('/radar'),d=await response.json();
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal(d.status,'available');
+  assert.equal(d.sources[0].count,0);assert.equal(d.sources[0].kind,'license_records');
+  assert.equal(d.sources[1].kind,'calendar_events');assert.equal(d.sources[1].events.length,3);
+  assert.match(d.sources[0].limitation,/not.*website/i);
+  assert.match(calls[0],/r5kz-chrr/);assert.match(decodeURIComponent(calls[0]),/date_issued/);
+  assert.equal(d.sources.length,5);
+  assert.deepEqual(d.sources.slice(2).map(x=>[x.kind,x.count]),[['active_license_records',21],['recent_start_records',0],['event_permit_records',8]]);
+  assert.equal(d.coverage.available,5);assert.equal(d.coverage.configured,5);
+  assert.equal(d.sources[2].startDate,undefined);
+  assert.match(d.sources[2].limitation,/not.*new/i);
+  await request('/radar');assert.equal(calls.length,5);
+ });
+ await withReport({radarFetcher:async url=>url.includes('chicago')?new Response('bad'):radarFetcher(url,{method:'GET',redirect:'error',signal:AbortSignal.timeout(1000)})},async request=>{
+  const d=await (await request('/radar')).json();assert.equal(d.status,'partial');assert.equal(d.sources[0].status,'unavailable');assert.equal(d.sources[0].count,null);assert.equal(d.sources[1].status,'available');
+ });
+});
+test('radar panel escapes event text and distinguishes missing source from a zero count',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, radarPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.radarPanel;
+ const html=render({status:'partial',sources:[{market:'Chicago',kind:'license_records',status:'available',count:0,limitation:'Not evidence of website demand.'},{market:'UK',kind:'calendar_events',status:'available',events:[{region:'Scotland',date:'2026-12-25',title:'<script>bad</script>'}],limitation:'Calendar signal only.'},{market:'Other',status:'unavailable',limitation:'Missing.'}]});
+ assert.match(html,/0 license records/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);assert.match(html,/Unavailable/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
+
+test('radar rejects ArcGIS errors, unsafe counts and mislabeled event counts without discarding valid sources',async()=>{
+ const radarFetcher=async url=>{
+  if(url.includes('services2.arcgis.com'))return new Response(JSON.stringify({error:{code:400},count:10}));
+  if(url.includes('miamidade'))return new Response(JSON.stringify({count:-1}));
+  if(url.includes('cityofnewyork'))return new Response(JSON.stringify([{count:'9007199254740992'}]));
+  if(url.includes('chicago'))return new Response(JSON.stringify([{count:'0'}]));
+  return new Response(JSON.stringify(Object.fromEntries(['england-and-wales','scotland','northern-ireland'].map(k=>[k,{events:[{date:'2026-12-25',title:'Holiday'}]}]))));
+ };
+ await withReport({radarFetcher},async request=>{
+  const d=await (await request('/radar')).json();
+  assert.equal(d.status,'partial');
+  assert.equal(d.coverage.available,2);
+  assert.deepEqual(d.sources.slice(2).map(x=>[x.status,x.count]),[['unavailable',null],['unavailable',null],['unavailable',null]]);
+ });
+});
+
+test('radar renders distinct source metrics and a research workflow handoff',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, radarPanel };'),ctx);
+ const html=ctx.window.SBCMarketIntelligence.radarPanel({status:'partial',coverage:{available:3,configured:5},sources:[
+ {market:'Detroit',kind:'active_license_records',status:'available',count:21},
+ {market:'Miami',kind:'recent_start_records',status:'available',count:0},
+ {market:'NYC',kind:'event_permit_records',status:'available',count:8}]});
+ assert.match(html,/3 of 5 sources available/);
+ assert.match(html,/21 active license records/);
+ assert.match(html,/0 reported business-start records/);
+ assert.match(html,/8 upcoming permit records/);
+ assert.match(html,/data-mi-radar-research/);
+ assert.match(html,/not ranked against each other/);
+ assert.doesNotMatch(html,/new businesses confirmed/);
+});
+
+test('automatic opportunity briefing ranks comparable national data, prepares a bounded research plan and calendar drafts, and exposes failures',async()=>{
+ let nationalCalls=0,radarCalls=0;
+ const nationalFetcher=async()=>{nationalCalls++;return new Response(bfsFixture());};
+ const radarFetcher=async url=>{
+  radarCalls++;
+  if(url.includes('chicago'))return new Response(JSON.stringify([{count:'0'}]));
+  if(url.includes('services2'))return new Response(JSON.stringify({count:21}));
+  if(url.includes('miamidade'))return new Response('bad');
+  if(url.includes('cityofnewyork'))return new Response(JSON.stringify([{count:'8'}]));
+  return new Response(JSON.stringify(Object.fromEntries(['england-and-wales','scotland','northern-ireland'].map(k=>[k,{events:[{date:'2026-11-20',title:'Fixture holiday'},{date:'2026-12-25',title:'Future holiday'}]}]))));
+ };
+ await withReport({nationalFetcher,radarFetcher,getPool:()=>null},async request=>{
+  assert.equal((await request('/briefing',{})).status,401);
+  assert.equal((await request('/briefing',{'x-test-role':'lead_researcher'})).status,403);
+  assert.equal((await request('/briefing?tenantId=2')).status,400);
+  assert.equal(nationalCalls+radarCalls,0);
+  const response=await request('/briefing'),d=await response.json();
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal(d.status,'partial');
+  assert.equal(d.rankings.length,10);assert.equal(d.rankings[0].state,'WY');
+  assert.equal(d.rankings[0].basis,'CENSUS_APPLICATION_VOLUME');
+  assert.equal(d.rankings[0].crmEvidence,null);
+  assert.deepEqual(d.research.markets.map(x=>[x.state,x.target]),[['WY',6],['WI',5],['WV',5]]);
+  assert.equal(d.research.target,16);assert.equal(d.research.status,'DRAFT_REVIEW_REQUIRED');
+  assert.equal(d.campaigns.length,3);
+  assert(d.campaigns.every(x=>x.status==='DRAFT_REVIEW_REQUIRED'&&x.eventDate==='2026-11-20'&&x.sendAllowed===false));
+  assert(d.exceptions.some(x=>x.code==='SOURCE_UNAVAILABLE'&&x.market.includes('Miami')));
+  assert(d.exceptions.some(x=>x.code==='CRM_EVIDENCE_UNAVAILABLE'));
+  assert.equal(d.automaticWrites,false);
+  await request('/briefing');assert.equal(nationalCalls,1);assert.equal(radarCalls,5);
+ });
+ await withReport({nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.status,'unavailable');assert.deepEqual(d.rankings,[]);assert.equal(d.research,null);assert.deepEqual(d.campaigns,[]);
+ });
+});
+test('automatic briefing UI separates recommendations, unavailable evidence and owner review',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const html=ctx.window.SBCMarketIntelligence.briefingPanel({status:'partial',rankings:[{state:'TX',applications:2000,crmEvidence:null}],research:{target:16,markets:[{state:'TX',target:16}]},campaigns:[{market:'Scotland',eventDate:'2026-11-20',title:'<script>test</script>'}],exceptions:[{code:'SOURCE_UNAVAILABLE',market:'Miami'}]});
+ assert.match(html,/Automatic opportunity briefing/i);assert.match(html,/2,000/);assert.match(html,/Not available/);assert.match(html,/16 research candidates/);
+ assert.match(html,/Owner review required/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
+ assert.match(html,/data-mi-briefing-research/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});

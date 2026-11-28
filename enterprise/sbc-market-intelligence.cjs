@@ -249,7 +249,140 @@ async function readGeography(pool,tenantId,days,time){
  return {status:'available',rows,totals,currency:'USD',period:{startDate:date(range.current),endDate:date(range.end-DAY)},conflictingPaymentIds:conflicts.size,methodology:GEO_METHOD};
 }
 
-function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, clock = Date.now }) {
+
+const RADAR_CHICAGO='https://data.cityofchicago.org/resource/r5kz-chrr.json';
+const RADAR_UK='https://www.gov.uk/bank-holidays.json';
+const RADAR_DETROIT='https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/bseed_active_business_licenses/FeatureServer/0/query';
+const RADAR_MIAMI='https://gisweb.miamidade.gov/arcgis/rest/services/BusinessTracker/MapServer/0/query';
+const RADAR_NYC='https://data.cityofnewyork.us/resource/tvpp-9vvx.json';
+const RADAR_REGIONS={'england-and-wales':'England and Wales',scotland:'Scotland','northern-ireland':'Northern Ireland'};
+function radarDate(value){
+ if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const n=Date.parse(value+'T00:00:00Z');return Number.isFinite(n)&&date(n)===value;
+}
+async function radarJson(fetcher,url){
+ const response=await fetcher(url,{method:'GET',redirect:'error',signal:AbortSignal.timeout(10000),headers:{Accept:'application/json'}});
+ return JSON.parse(await readBfsResponse(response));
+}
+async function radarCount(fetcher,source,url,format,now){
+ try{
+  const data=await radarJson(fetcher,url);
+  let count;
+  if(format==='arcgis'){
+   if(!data||data.error||typeof data.count!=='number')throw Error('RADAR_COUNT');
+   count=data.count;
+  }else{
+   if(!Array.isArray(data)||data.length!==1||typeof data[0]?.count!=='string'||!/^\d+$/.test(data[0].count))throw Error('RADAR_COUNT');
+   count=Number(data[0].count);
+  }
+  if(!Number.isSafeInteger(count)||count<0)throw Error('RADAR_COUNT');
+  return {...source,status:'available',count,checkedAt:new Date(now).toISOString()};
+ }catch{return {...source,status:'unavailable',count:null};}
+}
+function createRadarReader(fetcher,clock){
+ let cache=null,inflight=null;
+ return async()=>{
+  const now=clock();
+  if(!Number.isFinite(now))throw Error('RADAR_CLOCK');
+  const today=date(now),start=date(now-30*DAY),end=date(now+60*DAY);
+  if(cache&&now>=cache.at&&today===cache.day&&now-cache.at<(cache.data.status==='available'?3600000:300000))return cache.data;
+  if(inflight)return inflight;
+  inflight=(async()=>{
+   const chicago={market:'Chicago, Illinois, US',kind:'license_records',source:'https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses/r5kz-chrr',startDate:start,endDateExclusive:today,limitation:'License records may include renewals and changes; not unique businesses, verified website demand, or qualified leads.'};
+   const uk={market:'United Kingdom',kind:'calendar_events',source:'https://www.gov.uk/bank-holidays',startDate:today,endDateExclusive:end,limitation:'Regional holiday dates are campaign-planning signals, not measured purchase demand or permission to contact anyone.'};
+   const detroit={market:'Detroit, Michigan, US',kind:'active_license_records',source:'https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/bseed_active_business_licenses/FeatureServer/0',limitation:'Active license inventory, not new businesses, unique businesses, website demand or qualified leads.'};
+   const miami={market:'Miami-Dade County, Florida, US',kind:'recent_start_records',source:'https://gisweb.miamidade.gov/arcgis/rest/services/BusinessTracker/MapServer/0',startDate:start,endDateExclusive:today,limitation:'Tax receipt layer records with a reported business start date in the window; may be incomplete or repeated, not confirmed newly registered businesses or website demand.'};
+   const nyc={market:'New York City, New York, US',kind:'event_permit_records',source:'https://data.cityofnewyork.us/City-Government/NYC-Permitted-Event-Information/tvpp-9vvx',startDate:today,endDateExclusive:end,limitation:'Permit records with scheduled start times, possibly including setup; not confirmed event attendance, unique events or buying intent.'};
+   const arcQuery=where=>'?f=json&returnCountOnly=true&where='+encodeURIComponent(where);
+   const socQuery=where=>'?%24select='+encodeURIComponent('count(*) as count')+'&%24where='+encodeURIComponent(where);
+   const sources=await Promise.all([
+    (async()=>{
+     try{
+      const where="date_issued >= '"+start+"T00:00:00' AND date_issued < '"+today+"T00:00:00'";
+      const url=RADAR_CHICAGO+'?$select='+encodeURIComponent('count(*) as count')+'&$where='+encodeURIComponent(where);
+      const payload=await radarJson(fetcher,url);
+      if(!Array.isArray(payload)||payload.length!==1||typeof payload[0]?.count!=='string'||!/^\d+$/.test(payload[0].count))throw Error('RADAR_COUNT');
+      const count=Number(payload[0].count);
+      if(!Number.isSafeInteger(count)||count<0)throw Error('RADAR_COUNT');
+      return {...chicago,status:'available',count,checkedAt:new Date(now).toISOString()};
+     }catch{return {...chicago,status:'unavailable',count:null};}
+    })(),
+    (async()=>{
+     try{
+      const payload=await radarJson(fetcher,RADAR_UK);
+      const events=[],seen=new Set();
+      for(const [id,region] of Object.entries(RADAR_REGIONS)){
+       const rows=payload?.[id]?.events;
+       if(!Array.isArray(rows)||!rows.length||rows.length>500)throw Error('RADAR_CALENDAR');
+       for(const item of rows){
+        if(!radarDate(item?.date)||typeof item?.title!=='string'||!item.title.trim()||item.title.length>200)throw Error('RADAR_EVENT');
+        if(item.date<today||item.date>=end)continue;
+        const key=JSON.stringify([id,item.date,item.title]);if(seen.has(key))continue;seen.add(key);
+        events.push({region,date:item.date,title:item.title});
+       }
+      }
+      events.sort((x,y)=>x.date.localeCompare(y.date)||x.region.localeCompare(y.region)||x.title.localeCompare(y.title));
+      return {...uk,status:'available',events,checkedAt:new Date(now).toISOString()};
+     }catch{return {...uk,status:'unavailable',events:[]};}
+    })(),
+    radarCount(fetcher,detroit,RADAR_DETROIT+arcQuery('1=1'),'arcgis',now),
+    radarCount(fetcher,miami,RADAR_MIAMI+arcQuery("BUSSDATE >= DATE '"+start+"' AND BUSSDATE < DATE '"+today+"'"),'arcgis',now),
+    radarCount(fetcher,nyc,RADAR_NYC+socQuery("start_date_time >= '"+today+"T00:00:00' AND start_date_time < '"+end+"T00:00:00'"),'socrata',now)
+   ]);
+   const available=sources.filter(x=>x.status==='available').length;
+   const data={status:available===sources.length?'available':available?'partial':'unavailable',generatedAt:new Date(now).toISOString(),coverage:{available,configured:sources.length},sources};
+   cache={at:now,day:today,data};return data;
+  })();
+  try{return await inflight;}finally{inflight=null;}
+ };
+}
+
+// A read-only daily action brief: compare like with like, never combine permits,
+// licenses and applications into an invented demand score. Tenant data is never
+// cached in the public source readers.
+function buildOpportunityBrief(national,radar,geography,now){
+ const today=date(now),campaignEnd=date(now+30*DAY);
+ const exceptions=[];
+ const hasNational=national?.status==='available'&&national.coverage===51&&Array.isArray(national.rows)&&national.rows.length===51;
+ const geoAvailable=geography?.status==='available'&&Array.isArray(geography.rows);
+ if(!hasNational)exceptions.push({code:'NATIONAL_EVIDENCE_UNAVAILABLE',market:'United States'});
+ if(!geoAvailable)exceptions.push({code:'CRM_EVIDENCE_UNAVAILABLE',market:'Your CRM'});
+ const geo=new Map(geoAvailable?geography.rows.map(x=>[x.state,x]):[]);
+ const rankings=hasNational?national.rows.slice(0,10).map((r,i)=>{
+  const recorded=geo.get(r.state);
+  return {rank:i+1,state:r.state,applications:r.applications,yearOverYearPct:r.yearOverYearPct,basis:'CENSUS_APPLICATION_VOLUME',
+   crmEvidence:geoAvailable?{newCrmRecords:recorded?.newCrmRecords??0,paidOrders:recorded?.paidOrders??0,capturedCents:recorded?.capturedCents??0}:null};
+ }):[];
+ const picks=rankings.filter(x=>x.applications>0).slice(0,3),target=16;
+ const research=picks.length?{status:'DRAFT_REVIEW_REQUIRED',target,stretchTarget:20,
+  markets:picks.map((x,i)=>({state:x.state,target:Math.floor(target/picks.length)+(i<target%picks.length?1:0)})),
+  periodStart:national.periodStart,periodEnd:national.periodEnd,source:national.source,
+  reason:'Recent comparable business application volume; verify actual business, website gap, contact and language individually. No assignments saved.'}:null;
+ const sources=Array.isArray(radar?.sources)?radar.sources:[];
+ if(!sources.length)exceptions.push({code:'RADAR_UNAVAILABLE',market:'Public market sources'});
+ for(const source of sources)if(source.status!=='available')exceptions.push({code:'SOURCE_UNAVAILABLE',market:source.market});
+ const campaigns=sources.filter(x=>x.kind==='calendar_events'&&x.status==='available').flatMap(source=>source.events.filter(e=>radarDate(e.date)&&e.date>=today&&e.date<campaignEnd).map(e=>({
+  market:e.region,eventDate:e.date,title:e.title,source:source.source,status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false,
+  objective:'Prepare localized organic business-service messaging; validate relevance, offer terms and channel eligibility before scheduling.'
+ }))).sort((a,b)=>a.eventDate.localeCompare(b.eventDate)||a.market.localeCompare(b.market)||a.title.localeCompare(b.title)).slice(0,20);
+ const anyEvidence=hasNational||geoAvailable||sources.some(x=>x.status==='available');
+ return {status:!anyEvidence?'unavailable':exceptions.length?'partial':'available',generatedAt:new Date(now).toISOString(),
+  rankingPeriod:hasNational?{start:national.periodStart,end:national.periodEnd,source:national.source}:null,
+  crmPeriod:geoAvailable?geography.period:null,rankings,research,campaigns,exceptions,radarCoverage:radar?.coverage??{available:0,configured:0},
+  automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
+}
+
+function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now }) {
+  const readRadar=createRadarReader(radarFetcher,clock);
+  app.get('/api/owner/market-intelligence/radar',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try{const tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
+    catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'RADAR_QUERY_INVALID'});
+    try{return res.json({ok:true,...await readRadar()});}
+    catch{return res.status(503).json({ok:false,code:'RADAR_UNAVAILABLE'});}
+  });
+
   app.get('/api/owner/market-intelligence/geography',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     let tenantId;try{tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
@@ -262,6 +395,22 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   });
 
   const readNational=createNationalReader(nationalFetcher,clock);
+  app.get('/api/owner/market-intelligence/briefing',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    let tenantId;
+    try{tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
+    catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'BRIEFING_QUERY_INVALID'});
+    try{
+      const now=clock(),pool=getPool();
+      const [national,radar,geography]=await Promise.all([
+        readNational().catch(()=>null),readRadar().catch(()=>null),
+        pool?readGeography(pool,tenantId,30,now).catch(()=>null):null
+      ]);
+      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now)});
+    }catch{return res.status(503).json({ok:false,code:'BRIEFING_UNAVAILABLE'});}
+  });
+
   app.get('/api/owner/market-intelligence/national',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     try{const tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
