@@ -441,10 +441,29 @@ function createDurableMarketCycle({getPool,canWrite,readNational,readRadar,clock
   finally{
    if(cx){
     if(acquired)try{const [rows]=await cx.query({sql:'SELECT RELEASE_LOCK(?) AS released',timeout:5000},[MARKET_LOCK]);discard=Number(rows?.[0]?.released)!==1;}catch{discard=true;}
-    if(discard)cx.destroy();else cx.release();
+    try{if(discard)cx.destroy();else cx.release();}catch{}
    }
   }
  };
+}
+
+// Historical public aggregates are read-only and separately labeled from live evidence.
+async function readMarketEvidenceHistory(pool){
+ const unavailable={status:'unavailable',rows:[]};
+ if(!pool)return unavailable;
+ try{
+  const [rows]=await pool.query({sql:'SELECT slot_ms,completed_ms,next_ms,outcome,evidence_json,degraded FROM '+MARKET_TABLE+' ORDER BY slot_ms DESC LIMIT 24',timeout:4000},[]);
+  if(!Array.isArray(rows)||rows.length>24)throw Error('MARKET_HISTORY');
+  const snapshots=rows.map(r=>{
+   const slot=Number(r.slot_ms),completed=Number(r.completed_ms),next=Number(r.next_ms),degraded=Number(r.degraded);
+   if(![slot,completed,next,degraded].every(Number.isSafeInteger)||slot<0||completed<slot||next<completed||next-completed>3600000||degraded<0||!['available','partial','unavailable'].includes(r.outcome)||typeof r.evidence_json!=='string'||r.evidence_json.length>100000)throw Error('MARKET_HISTORY_ROW');
+   const raw=JSON.parse(r.evidence_json);
+   const safe=publicMarketEvidence({...raw.national,coverage:Array.isArray(raw.national?.rows)?raw.national.rows.length:0},raw.radar);
+   return {collectedAt:new Date(completed).toISOString(),nextDueAt:new Date(next).toISOString(),outcome:r.outcome,degraded,nationalStatus:safe.national.status,nationalPeriodEnd:safe.national.periodEnd,
+    sources:safe.radar.sources.map(x=>({market:x.market,kind:x.kind,status:x.status,count:x.count,eventCount:x.kind==='calendar_events'&&x.status==='available'?x.events.length:null,checkedAt:x.checkedAt}))};
+  });
+  return {status:'available',rows:snapshots,limit:24,scope:'public_aggregate_evidence'};
+ }catch{return unavailable;}
 }
 
 // Public-data refresh only; never schedules assignments, billing or outbound campaigns.
@@ -514,11 +533,12 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
     if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'BRIEFING_QUERY_INVALID'});
     try{
       const now=clock(),pool=getPool();
-      const [national,radar,geography]=await Promise.all([
+      const [national,radar,geography,evidenceHistory]=await Promise.all([
         readNational().catch(()=>null),readRadar().catch(()=>null),
-        pool?readGeography(pool,tenantId,30,now).catch(()=>null):null
+        pool?readGeography(pool,tenantId,30,now).catch(()=>null):null,
+        durableCycle?readMarketEvidenceHistory(pool):Promise.resolve({status:'not_configured',rows:[]})
       ]);
-      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now),backgroundRefresh:marketRefresh.status()});
+      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now),backgroundRefresh:marketRefresh.status(),evidenceHistory});
     }catch{return res.status(503).json({ok:false,code:'BRIEFING_UNAVAILABLE'});}
   });
 
