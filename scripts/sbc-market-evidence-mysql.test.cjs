@@ -17,6 +17,13 @@ test('real isolated MySQL: cross-instance lock, restart schedule, evidence proje
  const opts={canWrite:()=>writable,clock:()=>now,readNational:async()=>{calls++;return national();},readRadar:async()=>radar()};
  let pending;
  try{
+  // Disposable CI database only: prove the collector does not create missing schema.
+  const missing=await createDurableMarketCycle({...opts,getPool:()=>a})();
+  assert.equal(missing.outcome,'storage_unavailable');assert.equal(calls,0);
+  const [[absent]]=await a.query("SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='sbc_public_market_evidence'");
+  assert.equal(Number(absent.n),0);
+  const migration=require('node:fs').readFileSync(require('node:path').join(__dirname,'../migrations/20261128_001_sbc_public_market_evidence.sql'),'utf8');
+  await a.query(migration);
   const first=createDurableMarketCycle({...opts,getPool:()=>a,readNational:async()=>{calls++;started();await hold;return national();}});
   const second=createDurableMarketCycle({...opts,getPool:()=>b});
   pending=first();
