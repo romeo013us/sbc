@@ -318,6 +318,9 @@ test('opportunity radar isolates source failures, distinguishes zero and calenda
  const radarFetcher=async(url,opts)=>{
   calls.push(url);assert.equal(opts.method,'GET');assert.equal(opts.redirect,'error');assert.ok(opts.signal);
   if(url.startsWith('https://data.cityofchicago.org/'))return new Response(JSON.stringify([{count:'0'}]));
+  if(url.startsWith('https://services2.arcgis.com/')){assert.match(url,/returnCountOnly=true/);return new Response(JSON.stringify({count:21}));}
+  if(url.startsWith('https://gisweb.miamidade.gov/')){assert.match(decodeURIComponent(url),/BUSSDATE/);return new Response(JSON.stringify({count:0}));}
+  if(url.startsWith('https://data.cityofnewyork.us/')){assert.match(decodeURIComponent(url),/start_date_time/);return new Response(JSON.stringify([{count:'8'}]));}
   assert.equal(url,'https://www.gov.uk/bank-holidays.json');
   const groups={};for(const region of ['england-and-wales','scotland','northern-ireland'])groups[region]={events:[{date:'2026-12-25',title:'Christmas Day'},{date:'2026-01-01',title:'Past'},{date:'2027-12-25',title:'Outside'}]};
   return new Response(JSON.stringify(groups));
@@ -335,7 +338,12 @@ test('opportunity radar isolates source failures, distinguishes zero and calenda
   assert.equal(d.sources[1].kind,'calendar_events');assert.equal(d.sources[1].events.length,3);
   assert.match(d.sources[0].limitation,/not.*website/i);
   assert.match(calls[0],/r5kz-chrr/);assert.match(decodeURIComponent(calls[0]),/date_issued/);
-  await request('/radar');assert.equal(calls.length,2);
+  assert.equal(d.sources.length,5);
+  assert.deepEqual(d.sources.slice(2).map(x=>[x.kind,x.count]),[['active_license_records',21],['recent_start_records',0],['event_permit_records',8]]);
+  assert.equal(d.coverage.available,5);assert.equal(d.coverage.configured,5);
+  assert.equal(d.sources[2].startDate,undefined);
+  assert.match(d.sources[2].limitation,/not.*new/i);
+  await request('/radar');assert.equal(calls.length,5);
  });
  await withReport({radarFetcher:async url=>url.includes('chicago')?new Response('bad'):radarFetcher(url,{method:'GET',redirect:'error',signal:AbortSignal.timeout(1000)})},async request=>{
   const d=await (await request('/radar')).json();assert.equal(d.status,'partial');assert.equal(d.sources[0].status,'unavailable');assert.equal(d.sources[0].count,null);assert.equal(d.sources[1].status,'available');
@@ -349,4 +357,20 @@ test('radar panel escapes event text and distinguishes missing source from a zer
  const html=render({status:'partial',sources:[{market:'Chicago',kind:'license_records',status:'available',count:0,limitation:'Not evidence of website demand.'},{market:'UK',kind:'calendar_events',status:'available',events:[{region:'Scotland',date:'2026-12-25',title:'<script>bad</script>'}],limitation:'Calendar signal only.'},{market:'Other',status:'unavailable',limitation:'Missing.'}]});
  assert.match(html,/0 license records/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);assert.match(html,/Unavailable/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
+
+test('radar rejects ArcGIS errors, unsafe counts and mislabeled event counts without discarding valid sources',async()=>{
+ const radarFetcher=async url=>{
+  if(url.includes('services2.arcgis.com'))return new Response(JSON.stringify({error:{code:400},count:10}));
+  if(url.includes('miamidade'))return new Response(JSON.stringify({count:-1}));
+  if(url.includes('cityofnewyork'))return new Response(JSON.stringify([{count:'9007199254740992'}]));
+  if(url.includes('chicago'))return new Response(JSON.stringify([{count:'0'}]));
+  return new Response(JSON.stringify(Object.fromEntries(['england-and-wales','scotland','northern-ireland'].map(k=>[k,{events:[{date:'2026-12-25',title:'Holiday'}]}]))));
+ };
+ await withReport({radarFetcher},async request=>{
+  const d=await (await request('/radar')).json();
+  assert.equal(d.status,'partial');
+  assert.equal(d.coverage.available,2);
+  assert.deepEqual(d.sources.slice(2).map(x=>[x.status,x.count]),[['unavailable',null],['unavailable',null],['unavailable',null]]);
+ });
 });
