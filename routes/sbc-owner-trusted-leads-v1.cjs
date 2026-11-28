@@ -55,7 +55,11 @@ function register(app,{auth,ownerOnly,getContext,tenantForRead,writer,audit}={})
      if(!live||TRUST.reason(live))continue;
      const [rows]=await conn.query('SELECT id,tenant_id,business_name,phone,email,status,notes,lead_intelligence_json FROM sbc_customers WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE',[tenant,id]);
      if(rows.length!==1)continue;
-     const row=rows[0];let intelligence={};
+     const row=rows[0];
+     if(String(row.id)!==id||Number(row.tenant_id)!==tenant)continue;
+     // The reviewed snapshot must still identify the same business and contact.
+     if(String(row.business_name??'').trim()!==String(live.businessName??'').trim()||String(row.phone??'').trim()!==String(live.phone??'').trim()||String(row.email??'').trim()!==String(live.email??'').trim())continue;
+     let intelligence={};
      try{intelligence=JSON.parse(row.lead_intelligence_json||'{}')}catch{throw Error('TRUSTED_PERSISTED_RESEARCH_INVALID')}
      if(!intelligence||typeof intelligence!=='object'||Array.isArray(intelligence))throw Error('TRUSTED_PERSISTED_RESEARCH_INVALID');
      const copy={...live,businessName:row.business_name??live.businessName,phone:row.phone??live.phone,
@@ -64,11 +68,15 @@ function register(app,{auth,ownerOnly,getContext,tenantForRead,writer,audit}={})
      if(TRUST.reason(copy))continue;
      const result=TRUST.trust(copy,{actorId:req.user.id,basis:'OWNER_EXISTING_BATCH'});
      if(!result.applied)continue;
+     if(ctx.recoveryRequired()!==false)throw Object.assign(Error('TRUSTED_RECOVERY_HOLD'),{status:423});
+     writer();
      const [update]=await conn.query('UPDATE sbc_customers SET lead_intelligence_json=?,updated_at=UTC_TIMESTAMP(3) WHERE tenant_id=? AND id=?',
       [JSON.stringify(copy.leadIntelligence),tenant,id]);
      if(update.affectedRows!==1)throw Error('TRUSTED_PERSISTENCE_FAILED');
      committed.push({live,intelligence:copy.leadIntelligence,at:copy.updatedAt});
     }
+    if(ctx.recoveryRequired()!==false)throw Object.assign(Error('TRUSTED_RECOVERY_HOLD'),{status:423});
+    writer();
     await conn.commit();open=false;
    }catch(e){if(open)try{await conn.rollback()}catch{}throw e}
    finally{try{conn.release()}catch{}}
