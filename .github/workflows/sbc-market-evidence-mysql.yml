@@ -28,3 +28,8 @@ jobs:
         env:
           SBC_MARKET_DISPOSABLE_CI: '1'
           SBC_MARKET_CI_PASSWORD: sbc_market_disposable_ci_password
+      - name: Verify Sales Command and workforce migrations on disposable MySQL
+        run: node --test scripts/sbc-sales-workforce-mysql.test.cjs
+        env:
+          SBC_MARKET_DISPOSABLE_CI: '1'
+          SBC_MARKET_CI_PASSWORD: sbc_market_disposable_ci_password
