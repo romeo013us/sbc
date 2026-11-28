@@ -438,9 +438,7 @@ function publicMarketEvidence(national,radar){
 }
 const MARKET_LOCK='sbc.market.public.evidence.v1';
 const MARKET_TABLE='sbc_public_market_evidence';
-const MARKET_SCHEMA="CREATE TABLE IF NOT EXISTS "+MARKET_TABLE+" (slot_ms BIGINT UNSIGNED PRIMARY KEY, completed_ms BIGINT UNSIGNED NOT NULL, next_ms BIGINT UNSIGNED NOT NULL, outcome VARCHAR(16) NOT NULL, evidence_json MEDIUMTEXT NOT NULL, degraded INT UNSIGNED NOT NULL, KEY market_completed(completed_ms)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 function createDurableMarketCycle({getPool,canWrite,readNational,readRadar,clock=Date.now}){
- let initializedPool=null;
  const deferred=(outcome,delay=300000)=>({outcome,delay,persisted:false});
  return async()=>{
   let cx,acquired=false,discard=false;
@@ -459,7 +457,7 @@ function createDurableMarketCycle({getPool,canWrite,readNational,readRadar,clock
    if(Number(lock?.acquired)!==1){discard=lock?.acquired===null||lock?.acquired===undefined;return deferred('busy');}
    acquired=true;
    if(!permitted())return deferred('writer_unavailable');
-   if(initializedPool!==pool){await query(MARKET_SCHEMA);initializedPool=pool;}
+   // The operator-approved migration owns schema changes; a missing table holds collection before any source fetch.
    const [last]=await query('SELECT completed_ms,next_ms,outcome,degraded FROM '+MARKET_TABLE+' ORDER BY slot_ms DESC LIMIT 1');
    const now=clock(),due=Number(last?.next_ms);
    if(!Number.isSafeInteger(now)||now<0)throw Error('MARKET_CLOCK');

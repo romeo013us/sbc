@@ -697,3 +697,24 @@ test('decision dashboard preserves evidence distinctions and provides no automat
  assert.doesNotMatch(html,/<script>|data-mi-auto-execute/);assert.match(html,/not a conversion rate/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('market background collector never performs runtime schema changes and holds until explicit migration',async()=>{
+ const {createDurableMarketCycle}=require('../enterprise/sbc-market-intelligence.cjs');
+ let installed=false,fetches=0,ddl=0,released=0,inserts=0;
+ const conn={query:async({sql})=>{
+  if(sql.includes('GET_LOCK'))return [[{acquired:1}]];
+  if(sql.includes('RELEASE_LOCK')){released++;return [[{released:1}]];}
+  if(sql.includes('IS_USED_LOCK'))return [[{owned:1}]];
+  if(/^(CREATE|ALTER|DROP)\b/i.test(sql)){ddl++;installed=true;return [{}];}
+  if(sql.startsWith('SELECT')){if(!installed)throw Object.assign(Error('missing table'),{code:'ER_NO_SUCH_TABLE'});return [[]];}
+  if(sql.startsWith('INSERT')){inserts++;return [{affectedRows:1}];}
+  throw Error('unexpected SQL');
+ },release(){},destroy(){}};
+ const cycle=createDurableMarketCycle({getPool:()=>({getConnection:async()=>conn}),canWrite:()=>true,clock:()=>TIME,readNational:async()=>{fetches++;return {status:'unavailable'};},readRadar:async()=>({status:'unavailable'})});
+ const held=await cycle();assert.equal(held.outcome,'storage_unavailable');assert.equal(held.persisted,false);
+ assert.equal(fetches,0);assert.equal(ddl,0);assert.equal(inserts,0);assert.equal(released,1);
+ installed=true;
+ assert.equal((await cycle()).persisted,true);assert.equal(ddl,0);assert.equal(fetches,1);assert.equal(inserts,1);assert.equal(released,2);
+ const migration=fs.readFileSync(path.join(root,'migrations/20261128_001_sbc_public_market_evidence.sql'),'utf8');
+ assert.match(migration,/CREATE TABLE IF NOT EXISTS sbc_public_market_evidence/);
+});

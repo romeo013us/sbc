@@ -17,7 +17,10 @@ function synthetic(c){return Boolean(c?.sbcTest===true||c?.testMode===true||c?.t
 function phoneKey(v){const d=String(v||'').replace(/\D/g,'');return d.length===11&&d[0]==='1'?d.slice(1):d.length===10?d:'';}
 function emailKey(v){const s=normalize(v);return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s)?s:'';}
 function reason(c){
- if(suppressed(c))return 'SUPPRESSED';
+ if(suppressed(c)||c.deleted===true||c.archived===true||c.duplicate===true||['deleted','archived','bad number','wrong number'].includes(normalize(c.status))||['phone_hold','retired'].includes(normalize(c.salesQueueState)))return 'SUPPRESSED';
+ if(!String(c.id??'').trim())return 'MISSING_RECORD_ID';
+ if(c.tenantId!=null&&c.tenant_id!=null&&Number(c.tenantId)!==Number(c.tenant_id))return 'TENANT_IDENTITY_CONFLICT';
+ if(['failed','rejected'].includes(normalize(c.verificationStatus))||c.researchRejected===true)return 'VERIFICATION_FAILED';
  if(synthetic(c))return 'SYNTHETIC';
  if(!String(c.businessName||'').trim())return 'MISSING_BUSINESS';
  if(!phoneKey(c.phone)&&!emailKey(c.email))return 'MISSING_CONTACT';
@@ -28,13 +31,15 @@ function reason(c){
 function plan(customers,tenant,{limit=10000}={}){
  const t=tenantId(tenant),list=Array.isArray(customers)?customers:[];
  const selected=list.filter(c=>Number(c?.tenantId??c?.tenant_id)===t);
- const counts=new Map(),skip={},ids=[];
+ const counts=new Map(),recordCounts=new Map(),skip={},ids=[];
  for(const c of selected){
+  const id=String(c.id??'').trim();if(id)recordCounts.set(id,(recordCounts.get(id)||0)+1);
   for(const key of [phoneKey(c.phone)&&'P:'+phoneKey(c.phone),emailKey(c.email)&&'E:'+emailKey(c.email)].filter(Boolean))
    counts.set(key,(counts.get(key)||0)+1);
  }
  for(const c of selected){
   let why=reason(c);
+  if(!why&&recordCounts.get(String(c.id??'').trim())>1)why='DUPLICATE_RECORD_ID';
   if(!why){
    const keys=[phoneKey(c.phone)&&'P:'+phoneKey(c.phone),emailKey(c.email)&&'E:'+emailKey(c.email)].filter(Boolean);
    if(keys.some(k=>counts.get(k)>1))why='DUPLICATE_IDENTITY';
