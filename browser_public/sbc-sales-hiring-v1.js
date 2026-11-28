@@ -35,7 +35,8 @@
     standardManagers:Number($('forecastStandard').value),seniorManagers:Number($('forecastSenior').value),
     hoursPerWeek:Number($('forecastHours').value),fixedOverheadCents:cents('forecastOverhead')};
    const r=await api('/api/owner/sales-command/hiring/forecast',body);
-   output('forecastResult','Revenue '+money(r.monthlyRevenueCents)+' · Product gross profit '+money(r.monthlyGrossProfitCents)+' · Base pay '+money(r.monthlyBasePayCents)+' · Commission '+money(r.monthlyCommissionCents)+' · Other overhead '+money(r.fixedOverheadCents)+' · Estimated operating contribution '+money(r.estimatedOperatingContributionCents)+'. Legacy commission assumptions only; not actual net profit.',false);
+   if(r.compensationPolicy!=='V2_PROPOSED_SIGNED_TERMS'||r.isForecast!==true||r.paymentInitiated!==false)throw Error('V2 forecast policy unavailable');
+   output('forecastResult','Revenue '+money(r.monthlyRevenueCents)+' · Product gross profit '+money(r.monthlyGrossProfitCents)+' · Base pay '+money(r.monthlyBasePayCents)+' · Commission '+money(r.monthlyCommissionCents)+' · Other overhead '+money(r.fixedOverheadCents)+' · Estimated operating contribution '+money(r.estimatedOperatingContributionCents)+'. V2 proposed signed terms; equal revenue allocation; not actual net profit.',false);
   }catch(err){output('forecastResult','Forecast unavailable: '+err.message,true)}
  });
 })();

@@ -2,6 +2,7 @@
 /* SBC Sales Hiring V1. Advisory-only; no autonomous hiring, rejection or worker classification.
  * Scores are structured observations, not a predictor of legal eligibility or protected traits.
  */
+const COMPENSATION=require('./sbc-sales-compensation-v1.cjs');
 const RUBRIC=Object.freeze({
  verifiedClosingHistory:20,englishRoleplay:15,spanishRoleplay:20,
  objectionClosing:20,crmFluency:10,accountOwnership:10,reliability:5
@@ -60,20 +61,22 @@ function forecast({monthlyRevenueCents,productGrossMarginBps,standardManagers=0,
  !Number.isFinite(weeksPerMonth)||weeksPerMonth<0||weeksPerMonth>5)
   throw Error('INVALID_FORECAST_INPUT');
  const grossProfit=Math.round(revenue*margin/10000);
- const monthlyBasePay=Math.round((std*500+sen*600)*hoursPerWeek*weeksPerMonth);
- // Conservative planning assumes everyone reaches quota and shares collected revenue equally.
+ const standard=COMPENSATION.TIERS.standard_v2,senior=COMPENSATION.TIERS.senior_v2;
+ const monthlyBasePay=Math.round((std*standard.hourlyCents+sen*senior.hourlyCents)*hoursPerWeek*weeksPerMonth);
+ // New-hire planning assumes equal revenue allocation and applies each proposed V2 monthly threshold.
  const managers=std+sen;
  const perManager=managers?revenue/managers:0;
  const profitPerManager=managers?grossProfit/managers:0;
  const commission=Math.round(
- (perManager>=260000?std*profitPerManager*0.10:0)+
- (perManager>=433300?sen*profitPerManager*0.15:0));
+ (perManager>=standard.quotaCents?std*profitPerManager*standard.commissionBps/10000:0)+
+ (perManager>=senior.quotaCents?sen*profitPerManager*senior.commissionBps/10000:0));
  const contribution=grossProfit-monthlyBasePay-commission-overhead;
  return {monthlyRevenueCents:revenue,productGrossMarginBps:margin,
   monthlyGrossProfitCents:grossProfit,monthlyBasePayCents:monthlyBasePay,
   monthlyCommissionCents:commission,fixedOverheadCents:overhead,
   estimatedOperatingContributionCents:contribution,
-  isForecast:true,assumptions:'Equal revenue split; no taxes, owner labor, refunds or other unlisted costs; not actual financial results.'};
+  isForecast:true,compensationPolicy:'V2_PROPOSED_SIGNED_TERMS',paymentInitiated:false,
+  assumptions:'Equal revenue split; V2 monthly quotas and rates require signed terms. No taxes, owner labor, refunds or other unlisted costs; not actual financial results.'};
 }
 
 const TIER_RUBRIC=Object.freeze({independentClosing:25,coldCalling:20,objectionHandling:15,spokenCommunication:10,customerDiscovery:10,accountOwnership:5,technicalAptitude:5,professionalism:5,reliability:5});

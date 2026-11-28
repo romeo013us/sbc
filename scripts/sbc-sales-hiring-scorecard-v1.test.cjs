@@ -64,3 +64,18 @@ test('tier interview validates all scores and never issues a personnel decision'
  const r=H.evaluateTier('standard',{...v2Full,independentClosing:0},{englishLive:true,closingSimulationPassed:true});
  assert.equal(r.scoreThresholdMet,false);assert.equal(r.ownerReviewRequired,true);assert.equal(r.decision,undefined);
 });
+
+test('new-hire forecast uses signed V2 policy thresholds and rates, not legacy assumptions',()=>{
+ const scenario={monthlyRevenueCents:1300000,productGrossMarginBps:4000,standardManagers:1,seniorManagers:1,hoursPerWeek:30,weeksPerMonth:52/12,fixedOverheadCents:100000};
+ const r=H.forecast(scenario);
+ assert.equal(r.monthlyCommissionCents,54600);
+ assert.equal(r.estimatedOperatingContributionCents,222400);
+ assert.equal(r.compensationPolicy,'V2_PROPOSED_SIGNED_TERMS');
+ assert.equal(r.paymentInitiated,false);
+ const standard={...scenario,standardManagers:1,seniorManagers:0,monthlyRevenueCents:216700};
+ assert.equal(H.forecast(standard).monthlyCommissionCents,7801);
+ assert.equal(H.forecast({...standard,monthlyRevenueCents:216699}).monthlyCommissionCents,0);
+ const senior={...scenario,standardManagers:0,seniorManagers:1,monthlyRevenueCents:433300};
+ assert.equal(H.forecast(senior).monthlyCommissionCents,20798);
+ assert.equal(H.forecast({...senior,monthlyRevenueCents:433299}).monthlyCommissionCents,0);
+});
