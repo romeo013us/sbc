@@ -44,3 +44,24 @@ test('idempotency preserves previously qualified independent-verification record
  assert.equal(TRUST.trust(c,{actorId:'owner',basis:'OWNER_EXISTING_BATCH'}).applied,false);
  assert.equal(c.leadIntelligence.verifiedSignals.source,'independent');
 });
+
+test('bulk trust quarantines conflicting tenant aliases, duplicate record IDs and unsafe lifecycle records',()=>{
+ const rows=[
+  sample('same',{phone:'3055551001'}),sample('same',{phone:'3055551002'}),
+  sample('conflict',{tenant_id:2,phone:'3055551003'}),
+  sample('',{phone:'3055551004'}),
+  sample('deleted',{deleted:true,phone:'3055551005'}),
+  sample('archived',{archived:true,phone:'3055551006'}),
+  sample('bad',{salesQueueState:'phone_hold',phone:'3055551007'}),
+  sample('rejected',{verificationStatus:'Failed',phone:'3055551008'}),
+  sample('safe',{phone:'3055551009'})
+ ];
+ const report=TRUST.plan(rows,1);
+ assert.deepEqual(report.ids,['safe']);
+ assert.equal(report.skipped.DUPLICATE_RECORD_ID,2);
+ assert.equal(report.skipped.TENANT_IDENTITY_CONFLICT,1);
+ assert.equal(report.skipped.MISSING_RECORD_ID,1);
+ assert.equal(report.skipped.SUPPRESSED,3);
+ assert.equal(report.skipped.VERIFICATION_FAILED,1);
+ assert.equal(report.totalTenant,9);
+});
