@@ -28,6 +28,16 @@ async function refreshSummary(){
    '</tbody></table></div>';
  }catch(e){host.textContent='Portfolio report unavailable: '+String(e.message||e);}
 }
+function allocationPanel(plan){
+ if(plan?.policyVersion!=='SBC_ALLOCATION_V1'||plan.executionAllowed!==false)return '<p>Allocation evidence unavailable.</p>';
+ const labels={SPANISH_QUEUE:'Spanish-language workflow',LANGUAGE_UNCONFIRMED:'Language not confirmed',CONTACT_RESTRICTED:'Contact restrictions or routing hold',CRM_RECONCILIATION_REQUIRED:'CRM evidence requires reconciliation',RESEARCH_UNVERIFIED:'Research unverified',EXISTING_CUSTOMER_REVIEW:'Existing customer · relationship review'};
+ const managers=Array.isArray(plan.managers)?plan.managers:[];
+ return '<p><strong>'+esc(plan.totalProposed)+'</strong> suggested accounts of '+esc(plan.totalEligible)+' eligible · '+esc(plan.status==='no_active_managers'?'No active Account Managers':'Owner review required')+'</p>'+
+ '<div class="table-wrap"><table class="table"><thead><tr><th>Manager</th><th>Current</th><th>Overdue</th><th>Suggested</th><th>Projected</th></tr></thead><tbody>'+managers.map(m=>'<tr><td>'+esc(m.name)+'</td><td>'+esc(m.currentAccounts)+'</td><td>'+esc(m.overdue)+'</td><td>'+esc(m.accountIds?.length||0)+'</td><td>'+esc(m.projectedAccounts)+'</td></tr>').join('')+'</tbody></table></div>'+
+ managers.filter(m=>m.accountIds?.length).map(m=>'<details><summary>'+esc(m.name)+' · proposed CRM IDs</summary><p>'+m.accountIds.map(esc).join(' · ')+'</p></details>').join('')+
+ '<h4>Excluded from this plan</h4>'+Object.entries(plan.holds||{}).map(([k,v])=>'<p>'+esc(labels[k]||'Owner review')+' · '+esc(v)+'</p>').join('')+
+ '<p>'+esc(plan.limitation)+'</p><p>No assignments have been saved. Use the existing owner-controlled assignment process after reviewing the evidence.</p>';
+}
 function open(accountId){
  if(!owner())return;
  const db=window.state?.data||{},people=(db.users||[]).filter(u=>u.active!==false&&u.role==='account_manager');
@@ -47,6 +57,7 @@ function open(accountId){
    '<div id="sbcManagerReadinessResults"></div>'+
   '</section>'+
 
+  '<section aria-label="Intelligent allocation preview" style="border:1px solid #aebdcc;border-radius:12px;padding:16px;margin:16px 0"><h3>Intelligent allocation preview</h3><p>Review verified unowned opportunities and relative workload. Spanish callbacks stay in their dedicated workflow.</p><label>Maximum suggestions<input id="sbcAllocationLimit" type="number" min="1" max="100" value="25"></label><button id="sbcAllocationPreview" type="button" class="btn">Prepare allocation plan</button><div id="sbcAllocationResults" aria-live="polite">No preview prepared.</div></section>'+
   '<form id="sbcPortfolioBatch" style="padding:15px;border:1px solid #d7e1ea;border-radius:12px;margin:18px 0">'+
    '<h3>Assign a batch of business accounts</h3>'+
    '<label>Account manager<select name="managerId" required>'+options+'</select></label>'+
@@ -69,6 +80,20 @@ function open(accountId){
   '<p id="sbcPortfolioStatus" role="status" aria-live="polite" style="margin-top:16px">Ready. No portfolio changes have been made.</p></section>';
  if(typeof window.openModal!=='function')return;
  window.openModal('Account Manager Portfolios',html);
+ const allocationButton=document.getElementById('sbcAllocationPreview'),allocationResults=document.getElementById('sbcAllocationResults');
+ allocationButton?.addEventListener('click',async()=>{
+  if(!owner()||!allocationResults||allocationButton.disabled)return;
+  const limit=Number(document.getElementById('sbcAllocationLimit')?.value),actor=String(window.state.me.id||'');
+  if(!Number.isInteger(limit)||limit<1||limit>100){allocationResults.textContent='Choose 1–100 suggestions.';return;}
+  allocationButton.disabled=true;allocationResults.textContent='Reading current account ownership and research evidence…';
+  try{
+   const r=await request('/allocation-preview?limit='+encodeURIComponent(limit));
+   if(!owner()||String(window.state.me.id||'')!==actor||!allocationResults.isConnected)return;
+   if(r.readOnly!==true||r.plan?.executionAllowed!==false)throw Error('ALLOCATION_RECEIPT_NOT_VERIFIED');
+   allocationResults.innerHTML=allocationPanel(r.plan);
+  }catch(e){if(allocationResults.isConnected)allocationResults.textContent='Allocation preview unavailable. No changes made. '+String(e.message||e);}
+  finally{allocationButton.disabled=false;}
+ });
  const batch=document.getElementById('sbcPortfolioBatch');
  batch?.addEventListener('submit',async event=>{
   event.preventDefault();
