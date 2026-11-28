@@ -148,13 +148,26 @@
       '<p class="mi-footnote">'+escape(report.methodology)+'</p></section>';
   }
 
+  function radarPanel(report) {
+    const items=Array.isArray(report?.sources)?report.sources:[];
+    if(!items.length)return '<section class="mi-panel"><h3>Global Opportunity Radar</h3><p>Sources unavailable. No opportunity counts confirmed.</p></section>';
+    const rows=items.map(item=>{
+      let details='Unavailable — no signal confirmed.';
+      if(item.status==='available'&&item.kind==='license_records'&&Number.isSafeInteger(item.count)&&item.count>=0)details=count.format(item.count)+' license records';
+      if(item.status==='available'&&item.kind==='calendar_events'&&Array.isArray(item.events))details=item.events.length?'<ul>'+item.events.map(e=>'<li>'+escape(e.date)+' · '+escape(e.region)+' · '+escape(e.title)+'</li>').join('')+'</ul>':'No calendar events returned in this window.';
+      const source=typeof item.source==='string'&&['https://www.gov.uk/bank-holidays','https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses/r5kz-chrr'].includes(item.source)?'<a href="'+escape(item.source)+'" target="_blank" rel="noopener noreferrer">Official source</a>':'';
+      return '<article class="mi-competitor"><h4>'+escape(item.market)+'</h4><p>'+escape(item.startDate||'')+(item.endDateExclusive?' to '+escape(item.endDateExclusive)+' (exclusive)':'')+'</p><div>'+details+'</div><p class="mi-footnote">'+escape(item.limitation)+'</p>'+source+'</article>';
+    }).join('');
+    return '<section class="mi-panel" aria-labelledby="mi-radar-title"><h3 id="mi-radar-title">Global Opportunity Radar</h3><p>Public research and campaign-planning signals. Coverage is limited to the listed sources; signals are not ranked against each other or treated as verified leads.</p><div class="mi-watchlist">'+rows+'</div></section>';
+  }
+
   function mount(content) {
     if (!isOwner() || content.querySelector('[data-sbc-market-intelligence]')) return;
     const account = ownerKey();
     content.innerHTML = `<section data-sbc-market-intelligence aria-label="Market Intelligence">
       <header class="mi-header"><div><h2>Market Intelligence</h2><p>Track how customers find SBC, where checkout records convert, and which public offers are worth studying.</p></div>
-      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button><button type="button" class="secondary" data-mi-national>National Market Research</button><button type="button" class="secondary" data-mi-geography>Geographic Revenue</button></div></header>
-      <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div><div data-mi-national-results aria-live="polite"></div><div data-mi-geography-results aria-live="polite"></div></section>`;
+      <div class="mi-controls"><label for="sbc-market-window">Report window</label><select id="sbc-market-window"><option value="30">30 days</option><option value="90">90 days</option></select><button type="button" class="secondary" data-mi-refresh>Refresh</button><button type="button" class="secondary" data-mi-prospect>✦ Prospect Intelligence</button><button type="button" class="secondary" data-mi-national>National Market Research</button><button type="button" class="secondary" data-mi-geography>Geographic Revenue</button><button type="button" class="secondary" data-mi-radar>Global Opportunity Radar</button></div></header>
+      <p class="mi-status" data-mi-status role="status"></p><div data-mi-results></div><div data-mi-national-results aria-live="polite"></div><div data-mi-geography-results aria-live="polite"></div><div data-mi-radar-results aria-live="polite"></div></section>`;
     const root = content.firstElementChild;
     const refresh = root.querySelector('[data-mi-refresh]');
     const windowSelect = root.querySelector('select');
@@ -279,6 +292,18 @@
       finally{if(active()){button.disabled=false;panel.removeAttribute('aria-busy');}}
     });
 
+    const radarButton=root.querySelector('[data-mi-radar]'),radarResults=root.querySelector('[data-mi-radar-results]');
+    radarButton.addEventListener('click',async()=>{
+      if(!active())return;
+      radarButton.disabled=true;radarResults.setAttribute('aria-busy','true');radarResults.textContent='Loading official market signals…';
+      try{
+        const response=await fetch('/api/owner/market-intelligence/radar',{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(16000)});
+        if(!response.ok)throw Error('Unavailable');
+        const data=await response.json();
+        if(active())radarResults.innerHTML=radarPanel(data);
+      }catch{if(active())radarResults.innerHTML=radarPanel({status:'unavailable'});}
+      finally{if(active()){radarButton.disabled=false;radarResults.removeAttribute('aria-busy');}}
+    });
     const geoButton=root.querySelector('[data-mi-geography]'),geoPanel=root.querySelector('[data-mi-geography-results]');
     let geoSequence=0;
     async function loadGeography(){
