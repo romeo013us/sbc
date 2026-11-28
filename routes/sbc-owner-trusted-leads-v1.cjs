@@ -21,6 +21,7 @@ function register(app,{auth,ownerOnly,getContext,tenantForRead,writer,audit}={})
    if(!ctx?.mysqlPool||typeof ctx.mysqlPool.getConnection!=='function')throw Error('TRUSTED_MYSQL_REQUIRED');
    if(typeof ctx.recoveryRequired!=='function'||ctx.recoveryRequired()!==false)
     throw Object.assign(Error('TRUSTED_RECOVERY_HOLD'),{status:423});
+   if(ctx.canWrite?.()!==true)throw Object.assign(Error('TRUSTED_WRITER_UNAVAILABLE'),{status:423});
    writer();
   }
   return {tenant,ctx};
@@ -33,7 +34,7 @@ function register(app,{auth,ownerOnly,getContext,tenantForRead,writer,audit}={})
    const {ids,...safe}=report;
    return res.json({ok:true,readOnly:true,...safe,approvedBasis:'OWNER_TRUSTED_HUMAN_RESEARCH',
     independentVerificationPerformed:false,automaticExternalCalls:false,automaticOutbound:false,
-    databaseWritable:Boolean(ctx.mysqlPool)&&ctx.recoveryRequired?.()===false});
+    databaseWritable:Boolean(ctx.mysqlPool)&&ctx.recoveryRequired?.()===false&&ctx.canWrite?.()===true});
   }catch(e){return failure(res,e)}
  });
  app.post(PATH+'/approve-batch',auth,ownerOnly,async(req,res)=>{
