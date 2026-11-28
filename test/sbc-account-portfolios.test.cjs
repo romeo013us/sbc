@@ -25,6 +25,7 @@ test('owner assigns batches, customer relationship persists, transfers are audit
   return {
    async beginTransaction(){opened=true;},
    async query(sql,params){
+    if(sql.startsWith('SELECT id,assigned_to,status,phone,follow_up,tenant_id FROM sbc_customers'))return [working.filter(c=>c.tenant_id===params[0]).slice(0,params[1]),[]];
     if(sql.startsWith('SELECT COALESCE(assigned_to')) {
      const groups=new Map();
      for(const row of working.filter(c=>c.tenant_id===params[0])){
@@ -102,6 +103,12 @@ test('owner assigns batches, customer relationship persists, transfers are audit
  try{
   assert.equal((await call('GET',pre+'/summary',null,'guest')).status,401);
   assert.equal((await call('GET',pre+'/summary',null,'m1')).status,403);
+  assert.equal((await call('GET',pre+'/allocation-preview',null,'guest')).status,401);
+  assert.equal((await call('GET',pre+'/allocation-preview',null,'m1')).status,403);
+  assert.equal((await call('GET',pre+'/allocation-preview?tenantId=9',null)).status,400);
+  assert.equal((await call('GET',pre+'/allocation-preview?limit=101',null)).status,400);
+  const allocation=await call('GET',pre+'/allocation-preview?limit=5',null);
+  assert.equal(allocation.status,200);assert.equal(allocation.data.readOnly,true);assert.equal(allocation.data.plan.executionAllowed,false);assert.equal(allocation.data.plan.totalProposed,0);assert.equal(writes,0);
   const myFirst=await call('GET',pre+'/mine',null,'m1');
   assert.equal(myFirst.status,200);
   assert.deepEqual(myFirst.data.data.accounts.map(a=>a.id),['c'],'CRM assigned account visible to authenticated manager');
@@ -252,4 +259,12 @@ test('allocation planning balances projected CRM workload without taking ownersh
  assert(!plan.managers.some(m=>['legacy','foreign','inactive'].includes(m.id)));
  assert.match(plan.limitation,/capacity|availability/i);
  assert.throws(()=>planAllocation({rows:[...rows,row('foreign',{tenant_id:9})],customers:cache,users,callLogs:[],tenantId:5,limit:4}),/ALLOCATION_SCOPE/);
+});
+
+test('allocation panel is read-only, displays hold reasons and never submits the proposed IDs',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const ui=fs.readFileSync(path.join(__dirname,'../public/sbc-account-portfolios-v1.js'),'utf8');
+ assert.match(ui,/Intelligent allocation preview/);assert.match(ui,/SPANISH_QUEUE/);assert.match(ui,/LANGUAGE_UNCONFIRMED/);
+ assert.match(ui,/request\('\/allocation-preview\?limit='/);
+ assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-account-portfolios-v1.js'),'utf8'));
 });
