@@ -372,6 +372,29 @@ function buildOpportunityBrief(national,radar,geography,now){
   automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
 }
 
+// Decision lanes intentionally use independent metrics and explicit evidence.
+// Recorded captures are not profits, conversion rates or proof of incremental lift.
+function buildDecisionPlan(national,geography,briefing,now){
+ const goodCount=n=>Number.isSafeInteger(n)&&n>=0;
+ const geoRows=geography?.rows;
+ const geoReady=geography?.status==='available'&&Array.isArray(geoRows)&&geoRows.length<=52&&new Set(geoRows.map(r=>r.state)).size===geoRows.length&&geoRows.every(r=>(BFS_STATES.includes(r.state)||r.state==='unknown')&&goodCount(r.newCrmRecords)&&goodCount(r.paidOrders)&&goodCount(r.capturedCents));
+ const nRows=national?.rows;
+ const nationalReady=national?.status==='available'&&national.coverage===51&&Array.isArray(nRows)&&nRows.length===51&&new Set(nRows.map(r=>r.state)).size===51&&nRows.every(r=>BFS_STATES.includes(r.state)&&goodCount(r.applications));
+ const rows=geoReady?geoRows.filter(r=>BFS_STATES.includes(r.state)).map(r=>({state:r.state,newCrmRecords:r.newCrmRecords,paidOrders:r.paidOrders,capturedCents:r.capturedCents})):[];
+ const unknown=geoReady?geoRows.find(r=>r.state==='unknown'):null;
+ const captured=rows.filter(r=>r.paidOrders>0&&r.capturedCents>0).sort((a,b)=>b.capturedCents-a.capturedCents||b.paidOrders-a.paidOrders||a.state.localeCompare(b.state)).slice(0,5);
+ const intake=rows.filter(r=>r.newCrmRecords>0&&r.paidOrders===0&&r.capturedCents===0).sort((a,b)=>b.newCrmRecords-a.newCrmRecords||a.state.localeCompare(b.state)).slice(0,5);
+ const publicMarkets=nationalReady?nRows.filter(r=>r.applications>0).slice().sort((a,b)=>b.applications-a.applications||a.state.localeCompare(b.state)).slice(0,3).map(r=>({state:r.state,applications:r.applications})):[];
+ const day=date(now),weekEnd=date(now+7*DAY);
+ const urgentCampaigns=(Array.isArray(briefing?.campaigns)?briefing.campaigns:[]).filter(x=>x.source==='https://www.gov.uk/bank-holidays'&&x.status==='DRAFT_REVIEW_REQUIRED'&&x.sendAllowed===false&&radarDate(x.eventDate)&&x.eventDate>=day&&x.eventDate<weekEnd&&Object.values(RADAR_REGIONS).includes(x.market)&&typeof x.title==='string'&&x.title.length<=200).map(x=>({market:x.market,eventDate:x.eventDate,title:x.title,source:x.source,sendAllowed:false,status:'DRAFT_REVIEW_REQUIRED'})).sort((a,b)=>a.eventDate.localeCompare(b.eventDate)||a.market.localeCompare(b.market)||a.title.localeCompare(b.title)).slice(0,5);
+ const exceptions=(Array.isArray(briefing?.exceptions)?briefing.exceptions:[]).filter(x=>['NATIONAL_EVIDENCE_UNAVAILABLE','CRM_EVIDENCE_UNAVAILABLE','RADAR_UNAVAILABLE','SOURCE_UNAVAILABLE'].includes(x.code)&&typeof x.market==='string').slice(0,10).map(x=>({code:x.code,market:x.market}));
+ return {policyVersion:'SBC_DECISION_V1',executionAllowed:false,
+  researchReview:{status:nationalReady?'available':'unavailable',basis:'CENSUS_APPLICATION_VOLUME',period:nationalReady?{start:national.periodStart,end:national.periodEnd}:null,markets:publicMarkets,action:'Review the existing research plan before assigning verified research work.'},
+  revenueReview:{status:geoReady?'available':'unavailable',basis:'RECORDED_GROSS_CAPTURES',period:geoReady?geography.period:null,markets:captured,unknownLocation:unknown?{newCrmRecords:unknown.newCrmRecords,paidOrders:unknown.paidOrders,capturedCents:unknown.capturedCents}:null,action:'Review captured orders and follow-up opportunities; do not assume repeat demand or margin.'},
+  intakeReview:{status:geoReady?'available':'unavailable',basis:'RECORDED_INTAKE_WITH_NO_CAPTURE_IN_WINDOW',period:geoReady?geography.period:null,markets:intake,action:'Review lead quality, follow-up and address evidence. Intake and captures are not a matched customer cohort.'},
+  urgentCampaigns,exceptions,limitation:'Independent evidence lanes, not a combined demand score or conversion rate. Recorded gross captures are not profit or bank settlement. All actions require existing review and authorization.'};
+}
+
 // A calendar record can justify preparing copy, not claims of regional demand,
 // local offices, discounts, platform eligibility or permission to publish.
 function eventCampaignDraft(radar,query,now){
@@ -571,7 +594,8 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
         pool?readGeography(pool,tenantId,30,now).catch(()=>null):null,
         durableCycle?readMarketEvidenceHistory(pool):Promise.resolve({status:'not_configured',rows:[]})
       ]);
-      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now),backgroundRefresh:marketRefresh.status(),evidenceHistory});
+      const briefing=buildOpportunityBrief(national,radar,geography,now);
+      return res.json({ok:true,...briefing,decisionPlan:buildDecisionPlan(national,geography,briefing,now),backgroundRefresh:marketRefresh.status(),evidenceHistory});
     }catch{return res.status(503).json({ok:false,code:'BRIEFING_UNAVAILABLE'});}
   });
 
@@ -610,4 +634,4 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   return {stopMarketRefresh:()=>marketRefresh.stop()};
 }
 
-module.exports = { register, createMarketRefreshWorker, createDurableMarketCycle };
+module.exports = { register, createMarketRefreshWorker, createDurableMarketCycle, buildDecisionPlan };
