@@ -463,7 +463,7 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
   try{
    const {ctx,t}=gate(req),tables=['sbc_am_workstation_profile_v2','sbc_am_trial_cohort_v2','sbc_am_trial_member_v2','sbc_am_award_v2','sbc_am_base_payroll_v2'],missingTables=[];
    for(const table of tables){try{await ctx.mysqlPool.query('SELECT 1 FROM '+table+' WHERE tenant_id=? LIMIT 0',[t]);}catch(e){if(e?.code==='ER_NO_SUCH_TABLE')missingTables.push(table);else return fail(res,503,'WORKFORCE_SCHEMA_READ_UNAVAILABLE');}}
-   const writeReady=typeof ctx.recoveryRequired==='function'&&ctx.recoveryRequired()===false;
+   const writeReady=typeof ctx.recoveryRequired==='function'&&ctx.recoveryRequired()===false&&typeof ctx.canWrite==='function'&&ctx.canWrite()===true;
    return res.json({ok:true,readOnly:true,schemaReady:missingTables.length===0,writeReady,missingTables,liveAcceptanceVerified:false,migrationsExecuted:false});
   }catch(e){return error(res,e)}
  });
@@ -483,7 +483,7 @@ function register(app,{auth,getContext,tenantForRead,writer}={}){
     }
    }
    const schemaReady=missingTables.length===0;
-   const writeReady=typeof ctx.recoveryRequired==='function'&&ctx.recoveryRequired()===false;
+   const writeReady=typeof ctx.recoveryRequired==='function'&&ctx.recoveryRequired()===false&&typeof ctx.canWrite==='function'&&ctx.canWrite()===true;
    return res.json({ok:true,ready:schemaReady&&writeReady,schemaReady,writeReady,
     missingTables,migrationExecuted:false,providerCalls:0,readOnly:true,
     nextAction:!schemaReady?'REVIEW_AND_APPLY_STAGING_MIGRATION':
