@@ -372,11 +372,86 @@ function buildOpportunityBrief(national,radar,geography,now){
   automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
 }
 
+// Public aggregate evidence only. Do not serialize credentials, CRM records,
+// provider response bodies or arbitrary properties. Source semantics remain distinct.
+function publicMarketEvidence(national,radar){
+ const n=national?.status==='available'&&national.coverage===51&&Array.isArray(national.rows)&&national.rows.length===51&&new Set(national.rows.map(r=>r.state)).size===51&&national.rows.every(r=>BFS_STATES.includes(r.state)&&Number.isSafeInteger(r.applications)&&r.applications>=0&&Number.isSafeInteger(r.priorApplications)&&r.priorApplications>=0);
+ const names=new Map([['Chicago, Illinois, US','license_records'],['Detroit, Michigan, US','active_license_records'],['Miami-Dade County, Florida, US','recent_start_records'],['New York City, New York, US','event_permit_records'],['United Kingdom','calendar_events']]);
+ const stamp=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?new Date(v).toISOString():null;
+ const day=v=>radarDate(v)?v:null;
+ const month=v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v)?v:null;
+ const sources=[];
+ for(const [market,kind] of names){
+  const matches=Array.isArray(radar?.sources)?radar.sources.filter(x=>x.market===market&&x.kind===kind):[];
+  const x=matches.length===1?matches[0]:null;
+  const available=x?.status==='available'&&(kind==='calendar_events'?Array.isArray(x.events):Number.isSafeInteger(x.count)&&x.count>=0);
+  const entry={market,kind,status:available?'available':'unavailable',checkedAt:available?stamp(x.checkedAt):null,startDate:day(x?.startDate),endDateExclusive:day(x?.endDateExclusive),count:available&&kind!=='calendar_events'?x.count:null};
+  if(kind==='calendar_events')entry.events=available?x.events.filter(e=>radarDate(e.date)&&Object.values(RADAR_REGIONS).includes(e.region)&&typeof e.title==='string'&&e.title.length<=200).slice(0,300).map(e=>({date:e.date,region:e.region,title:e.title})):[];
+  sources.push(entry);
+ }
+ const available=sources.filter(x=>x.status==='available').length;
+ const radarStatus=available===sources.length?'available':available?'partial':'unavailable';
+ return {national:{status:n?'available':'unavailable',periodStart:n?month(national.periodStart):null,periodEnd:n?month(national.periodEnd):null,fetchedAt:n?stamp(national.fetchedAt):null,rows:n?national.rows.map(r=>({state:r.state,applications:r.applications,priorApplications:r.priorApplications})):[]},radar:{status:radarStatus,sources}};
+}
+const MARKET_LOCK='sbc.market.public.evidence.v1';
+const MARKET_TABLE='sbc_public_market_evidence';
+const MARKET_SCHEMA="CREATE TABLE IF NOT EXISTS "+MARKET_TABLE+" (slot_ms BIGINT UNSIGNED PRIMARY KEY, completed_ms BIGINT UNSIGNED NOT NULL, next_ms BIGINT UNSIGNED NOT NULL, outcome VARCHAR(16) NOT NULL, evidence_json MEDIUMTEXT NOT NULL, degraded INT UNSIGNED NOT NULL, KEY market_completed(completed_ms)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+function createDurableMarketCycle({getPool,canWrite,readNational,readRadar,clock=Date.now}){
+ let initializedPool=null;
+ const deferred=(outcome,delay=300000)=>({outcome,delay,persisted:false});
+ return async()=>{
+  let cx,acquired=false,discard=false;
+  const permitted=()=>canWrite()===true;
+  try{
+   if(!permitted())return deferred('writer_unavailable');
+   const pool=getPool();if(!pool||typeof pool.getConnection!=='function')return deferred('writer_unavailable');
+   cx=await pool.getConnection();
+   const query=async(sql,args=[])=>{const [rows]=await cx.query({sql,timeout:5000},args);return rows;};
+   if(!permitted())return deferred('writer_unavailable');
+   // A connection-scoped advisory lock serializes the public collector across
+   // instances sharing the same MySQL server. Never return a locked connection
+   // to the pool if ownership/release cannot be confirmed.
+   discard=true;
+   const [lock]=await query('SELECT GET_LOCK(?,0) AS acquired',[MARKET_LOCK]);
+   if(Number(lock?.acquired)!==1){discard=lock?.acquired===null||lock?.acquired===undefined;return deferred('busy');}
+   acquired=true;
+   if(!permitted())return deferred('writer_unavailable');
+   if(initializedPool!==pool){await query(MARKET_SCHEMA);initializedPool=pool;}
+   const [last]=await query('SELECT completed_ms,next_ms,outcome,degraded FROM '+MARKET_TABLE+' ORDER BY slot_ms DESC LIMIT 1');
+   const now=clock(),due=Number(last?.next_ms);
+   if(!Number.isSafeInteger(now)||now<0)throw Error('MARKET_CLOCK');
+   if(last&&(!Number.isSafeInteger(due)||due<0||due>now+3600000))throw Error('MARKET_SCHEDULE');
+   if(last&&due>now)return deferred('not_due',Math.max(1000,due-now));
+   if(!permitted())return deferred('writer_unavailable');
+   const result=await Promise.allSettled([Promise.resolve().then(readNational),Promise.resolve().then(readRadar)]);
+   const snapshot=publicMarketEvidence(result[0].status==='fulfilled'?result[0].value:null,result[1].status==='fulfilled'?result[1].value:null);
+   const states=[snapshot.national.status,snapshot.radar.status];
+   const outcome=states.every(x=>x==='available')?'available':states.some(x=>x==='available'||x==='partial')?'partial':'unavailable';
+   const previous=Number(last?.degraded)||0,degraded=outcome==='available'?0:Math.min(1000000,Math.max(0,previous)+1);
+   const delay=outcome==='available'?3600000:Math.min(3600000,300000*2**Math.min(degraded-1,4));
+   const done=clock(),slot=Math.floor(now/300000)*300000,payload=JSON.stringify(snapshot);
+   if(!Number.isSafeInteger(done)||done<now||payload.length>100000)throw Error('MARKET_EVIDENCE');
+   if(!permitted())return deferred('writer_unavailable');
+   const [owner]=await query('SELECT IS_USED_LOCK(?) = CONNECTION_ID() AS owned',[MARKET_LOCK]);
+   if(Number(owner?.owned)!==1||!permitted())return deferred('writer_unavailable');
+   const row=await query('INSERT INTO '+MARKET_TABLE+' (slot_ms,completed_ms,next_ms,outcome,evidence_json,degraded) VALUES (?,?,?,?,?,?)',[slot,done,done+delay,outcome,payload,degraded]);
+   if(row?.affectedRows!==1)throw Error('MARKET_INSERT');
+   return {outcome,delay,persisted:true,completedAt:new Date(done).toISOString(),degraded};
+  }catch{return deferred('storage_unavailable');}
+  finally{
+   if(cx){
+    if(acquired)try{const [rows]=await cx.query({sql:'SELECT RELEASE_LOCK(?) AS released',timeout:5000},[MARKET_LOCK]);discard=Number(rows?.[0]?.released)!==1;}catch{discard=true;}
+    if(discard)cx.destroy();else cx.release();
+   }
+  }
+ };
+}
+
 // Public-data refresh only; never schedules assignments, billing or outbound campaigns.
 // Each process has one timer and at most one in-flight refresh; it shares the
 // same bounded source readers as interactive requests.
-function createMarketRefreshWorker({readNational,readRadar,clock=Date.now,schedule=setTimeout,cancel=clearTimeout}){
- let enabled=false,running=false,timer=null,nextRunAt=null,lastStartedAt=null,lastCompletedAt=null,lastOutcome=null,consecutiveDegraded=0;
+function createMarketRefreshWorker({readNational,readRadar,clock=Date.now,schedule=setTimeout,cancel=clearTimeout,durableCycle=null}){
+ let enabled=false,running=false,timer=null,nextRunAt=null,lastStartedAt=null,lastCompletedAt=null,lastOutcome=null,consecutiveDegraded=0,lastPersistedAt=null;
  function enqueue(delay){
   if(!enabled||running||timer!==null)return;
   nextRunAt=new Date(clock()+delay).toISOString();
@@ -384,14 +459,16 @@ function createMarketRefreshWorker({readNational,readRadar,clock=Date.now,schedu
    timer=null;nextRunAt=null;
    if(!enabled||running)return;
    running=true;lastStartedAt=new Date(clock()).toISOString();
+   let nextDelay=null;
    try{
+    if(durableCycle){const result=await durableCycle();lastOutcome=result.outcome;nextDelay=result.delay;if(result.persisted){lastPersistedAt=result.completedAt;consecutiveDegraded=result.degraded;}return;}
     const results=await Promise.allSettled([Promise.resolve().then(readNational),Promise.resolve().then(readRadar)]);
     const states=results.map(r=>r.status==='fulfilled'?r.value?.status:'unavailable');
     lastOutcome=states.every(v=>v==='available')?'available':states.some(v=>v==='available'||v==='partial')?'partial':'unavailable';
     consecutiveDegraded=lastOutcome==='available'?0:Math.min(consecutiveDegraded+1,1000000);
    }finally{
     running=false;lastCompletedAt=new Date(clock()).toISOString();
-    enqueue(lastOutcome==='available'?3600000:Math.min(3600000,300000*2**Math.min(Math.max(consecutiveDegraded-1,0),4)));
+    enqueue(nextDelay??(lastOutcome==='available'?3600000:Math.min(3600000,300000*2**Math.min(Math.max(consecutiveDegraded-1,0),4))));
    }
   },delay);
   timer?.unref?.();
@@ -399,11 +476,11 @@ function createMarketRefreshWorker({readNational,readRadar,clock=Date.now,schedu
  return {
   start(){if(enabled)return;enabled=true;enqueue(0);},
   stop(){enabled=false;if(timer!==null)cancel(timer);timer=null;nextRunAt=null;},
-  status(){return {mode:enabled?'enabled':'disabled',running,lastStartedAt,lastCompletedAt,lastOutcome,consecutiveDegraded,nextRunAt,persistence:'process_memory'};}
+  status(){return {mode:enabled?'enabled':'disabled',running,lastStartedAt,lastCompletedAt,lastOutcome,consecutiveDegraded,nextRunAt,lastPersistedAt,persistence:durableCycle?'mysql_public_evidence':'process_memory'};}
  };
 }
 
-function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now, backgroundRefresh=process.env.NODE_ENV==='production'&&process.env.SBC_MARKET_BACKGROUND_REFRESH==='true' }) {
+function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now, backgroundRefresh=process.env.NODE_ENV==='production'&&process.env.SBC_MARKET_BACKGROUND_REFRESH==='true', marketCanWrite=null }) {
   const readRadar=createRadarReader(radarFetcher,clock);
   app.get('/api/owner/market-intelligence/radar',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
@@ -426,7 +503,8 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   });
 
   const readNational=createNationalReader(nationalFetcher,clock);
-  const marketRefresh=createMarketRefreshWorker({readNational,readRadar,clock});
+  const durableCycle=typeof marketCanWrite==='function'?createDurableMarketCycle({getPool,canWrite:marketCanWrite,readNational,readRadar,clock}):null;
+  const marketRefresh=createMarketRefreshWorker({readNational,readRadar,clock,durableCycle});
   if(backgroundRefresh===true)marketRefresh.start();
   app.get('/api/owner/market-intelligence/briefing',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
@@ -479,4 +557,4 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   return {stopMarketRefresh:()=>marketRefresh.stop()};
 }
 
-module.exports = { register, createMarketRefreshWorker };
+module.exports = { register, createMarketRefreshWorker, createDurableMarketCycle };
