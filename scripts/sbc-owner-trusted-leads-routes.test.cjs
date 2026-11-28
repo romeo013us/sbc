@@ -67,3 +67,12 @@ test('confirmation required and strict batch size cap',async()=>{
  assert.equal((await h.request('POST','/api/owner/trusted-leads/approve-batch','owner',{confirm:'OWNER_TRUSTED_ALL_EXISTING',limit:501})).status,422);
  assert.equal(h.writes,0);
 });
+
+test('bulk approval holds changed persisted contact identities and failed verification, without changing CRM status',async()=>{
+ const h=harness();
+ h.records.get('1:1001').phone=h.records.get('1:1002').phone;
+ h.records.get('1:1002').lead_intelligence_json=JSON.stringify({verificationStatus:'Failed'});
+ const r=await h.request('POST','/api/owner/trusted-leads/approve-batch','owner',{confirm:'OWNER_TRUSTED_ALL_EXISTING'});
+ assert.equal(r.status,200);assert.equal(r.data.approved,0);assert.equal(h.writes,0);
+ assert(h.db.customers.every(c=>c.verificationStatus==='Needs Verification'));
+});
