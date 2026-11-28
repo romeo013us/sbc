@@ -11,6 +11,7 @@
   REVIEW_WEBSITE:'Review private concept',BUILD_WEBSITE:'Call ready · concept later',RESEARCH_REQUIRED:'Return to Lorna',
   CONTACT_UNVERIFIED:'Verify contact',NUMBER_COOLDOWN:'Bad number · 15-day hold',
   DECLINED:'Declined',SUPPRESSED:'Do not contact'};
+ const priorityLabels={MEETING_PREPARATION:'Confirmed Zoom · prepare first',CALLBACK_REVIEW:'Callback requested · confirm timing',RECORDED_INTEREST:'Recorded customer interest',DOCUMENTED_WEBSITE_GAP:'Documented website gap',VERIFIED_RESEARCH:'Verified research · review readiness',RESEARCH_REQUIRED:'Research or contact verification needed',BLOCKED:'Contact blocked'};
  const statuses={
   NO_ANSWER:'No answer',INTERESTED:'Interested',CALLBACK_REQUESTED:'Asked for a callback',
   NOT_INTERESTED:'Not interested',BAD_NUMBER:'Bad number · 15-day research hold',
@@ -37,7 +38,7 @@
    (x.customerId===selectedId?'#e8f4ef':'#fff')+';border:1px solid '+(x.customerId===selectedId?'#16846d':'#dfe5e8')+
    ';border-radius:12px;padding:13px;margin:0 0 9px;cursor:pointer;color:#132534">'+
    '<strong style="display:block;font-size:13px">'+esc(x.businessName)+'</strong>'+
-   '<span style="display:block;font-size:11px;margin:6px 0;color:#586679">'+esc(labels[x.stage]||x.stage)+'</span>'+
+   '<span style="display:block;font-size:11px;margin:6px 0;color:#586679">'+esc(labels[x.stage]||x.stage)+'</span>'+ (priorityLabels[x.salesPriority?.code]?'<span style="display:block;font-size:11px;font-weight:700;margin:4px 0;color:#23534b">'+esc(priorityLabels[x.salesPriority.code])+'</span>':'')+
    '<small style="font-size:10px">'+esc(x.websiteTier==='starter'?'$199 one-page site':x.websiteTier==='essentials'?'Multi-page concept':'No website created yet')+'</small></button>'
   ).join('')||'<p>No visible assigned leads. Research, verification or assignment may still be needed.</p>';
  }
