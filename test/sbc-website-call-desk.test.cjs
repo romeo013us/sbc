@@ -187,3 +187,39 @@ test('real call outcomes outrank missing website concept',()=>{
  assert.equal(p.rows.find(x=>x.customerId==='already').stage,'DECLINED');
  assert.match(p.rows.find(x=>x.customerId==='needsite').nextAction,/meeting|zoom/i);
 });
+
+test('sales priority uses confirmed meetings, requested callbacks and verified website gaps before alphabetical order',()=>{
+ const clients=[
+  customer('a-ordinary'),customer('z-gap'),customer('z-callback'),customer('z-interest'),
+  customer('a-later-meeting'),customer('z-sooner-meeting'),customer('blocked',{doNotContact:true}),
+  customer('foreign',{tenantId:2}),customer('other',{assignedTo:'other1'}),
+  customer('unknown',{verificationStatus:'Unverified'}),customer('opted-out',{optedOut:true}),
+  customer('cooldown',{websiteSalesBadNumberUntil:'2026-11-27T22:00:00Z'})
+ ];
+ clients[0].leadIntelligence={researchBrief:{websitePresence:'found',googleBusinessPresence:'found'}};
+ const calls=[{tenantId:1,customerId:'z-callback',kind:'CALLBACK_REQUESTED',createdAt:'2026-11-12T20:00:00Z'},
+ {tenantId:1,customerId:'z-interest',kind:'INTERESTED',createdAt:'2026-11-12T21:00:00Z'},
+ {tenantId:2,customerId:'a-ordinary',kind:'CALLBACK_REQUESTED',createdAt:'2026-11-12T21:30:00Z'}];
+ const appointments=['a-later-meeting','z-sooner-meeting'].map((customerId,i)=>({tenantId:1,customerId,title:'10-minute SBC website preview',status:'Scheduled',startAt:'2026-11-13T'+(i?'14':'18')+':00:00Z',endAt:'2026-11-13T'+(i?'14':'18')+':10:00Z'}));
+ const p=project({customers:clients,calls,appointments,actor:caller,tenantId:1,now,limit:200});
+ assert.deepEqual(p.rows.slice(0,5).map(r=>r.customerId),['z-sooner-meeting','a-later-meeting','z-callback','z-interest','z-gap']);
+ const by=new Map(p.rows.map(r=>[r.customerId,r]));
+ assert.equal(by.get('z-callback').salesPriority.code,'CALLBACK_REVIEW');
+ assert.equal(by.get('z-callback').salesPriority.dueAt,null);
+ assert.equal(by.get('z-gap').salesPriority.code,'DOCUMENTED_WEBSITE_GAP');
+ assert.equal(by.get('a-ordinary').salesPriority.code,'VERIFIED_RESEARCH');
+ assert.equal(by.get('blocked').salesPriority.code,'BLOCKED');
+ assert.equal(by.get('opted-out').stage,'SUPPRESSED');
+ assert.equal(by.get('unknown').salesPriority.code,'RESEARCH_REQUIRED');
+ assert.equal(by.get('cooldown').salesPriority.code,'BLOCKED');
+ assert(!by.has('foreign'));assert(!by.has('other'));
+ assert.equal(p.safety.autoDialEnabled,false);
+ assert.equal(project({customers:clients,calls,appointments,actor:caller,tenantId:1,now,limit:1}).rows[0].customerId,'z-sooner-meeting');
+});
+test('call desk displays review priority and does not invent a callback due date',()=>{
+ const ui=fs.readFileSync(path.join(__dirname,'../public/sbc-website-call-desk-v1.js'),'utf8');
+ assert.match(ui,/Callback requested · confirm timing/);
+ assert.match(ui,/Documented website gap/);
+ assert.match(ui,/salesPriority/);
+ assert.equal(ui,fs.readFileSync(path.join(__dirname,'../browser_public/sbc-website-call-desk-v1.js'),'utf8'));
+});
