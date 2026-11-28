@@ -552,3 +552,14 @@ test('owner briefing reads bounded durable public evidence history without expos
   const d=await(await request('/briefing')).json();assert.equal(d.evidenceHistory.status,'unavailable');assert.doesNotMatch(JSON.stringify(d),/private SQL/);
  });
 });
+
+test('briefing shows historical public evidence separately from live signals and distinguishes zero from unavailable',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, briefingPanel };'),ctx);
+ const render=ctx.window.SBCMarketIntelligence.briefingPanel;
+ const html=render({status:'partial',evidenceHistory:{status:'available',rows:[{collectedAt:'2026-11-12T14:00:00.000Z',outcome:'partial',nationalStatus:'unavailable',sources:[{market:'Chicago',kind:'license_records',status:'available',count:0},{market:'Miami',kind:'recent_start_records',status:'unavailable',count:null}]}]}});
+ assert.match(html,/Recorded market evidence history/);assert.match(html,/Chicago: 0 license records/);assert.match(html,/Miami: unavailable/);assert.match(html,/Historical observations, not live counts/);
+ assert.match(render({evidenceHistory:{status:'unavailable',rows:[]}}),/Evidence history unavailable/);
+ assert.match(render({evidenceHistory:{status:'available',rows:[]}}),/No recorded observations yet/);
+});
