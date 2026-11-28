@@ -438,3 +438,48 @@ test('automatic briefing UI separates recommendations, unavailable evidence and 
  assert.match(html,/data-mi-briefing-research/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('unattended public market refresh runs without owner requests, retries partial failures, and stops cleanly',async()=>{
+ const {createMarketRefreshWorker}=require('../enterprise/sbc-market-intelligence.cjs');
+ let time=TIME,seq=0,nationalCalls=0,radarCalls=0,partial=true;
+ const timers=new Map();
+ const worker=createMarketRefreshWorker({
+  clock:()=>time,readNational:async()=>{nationalCalls++;return {status:'available'};},
+  readRadar:async()=>{radarCalls++;return {status:partial?'partial':'available'};},
+  schedule:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id;},cancel:id=>timers.delete(id)
+ });
+ const next=async delay=>{assert.equal(timers.size,1);const [id,timer]=timers.entries().next().value;assert.equal(timer.delay,delay);timers.delete(id);time+=delay;await timer.fn();};
+ assert.equal(worker.status().mode,'disabled');assert.equal(timers.size,0);
+ worker.start();worker.start();await next(0);
+ assert.equal(nationalCalls,1);assert.equal(radarCalls,1);
+ assert.equal(worker.status().lastOutcome,'partial');assert.equal(worker.status().consecutiveDegraded,1);
+ partial=false;await next(300000);
+ assert.equal(worker.status().lastOutcome,'available');assert.equal(worker.status().consecutiveDegraded,0);
+ assert.equal(worker.status().nextRunAt,new Date(time+3600000).toISOString());
+ worker.stop();assert.equal(timers.size,0);assert.equal(worker.status().mode,'disabled');
+ assert.equal(worker.status().nextRunAt,null);
+});
+test('market refresh single-flight survives stop and restart while a source is pending',async()=>{
+ const {createMarketRefreshWorker}=require('../enterprise/sbc-market-intelligence.cjs');
+ let release,seq=0,calls=0;
+ const timers=new Map();
+ const worker=createMarketRefreshWorker({clock:()=>TIME,
+ readNational:()=>{calls++;return new Promise(resolve=>{release=resolve;});},readRadar:async()=>({status:'available'}),
+ schedule:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id;},cancel:id=>timers.delete(id)});
+ worker.start();const [id,timer]=timers.entries().next().value;timers.delete(id);
+ const pending=timer.fn();await Promise.resolve();
+ assert.equal(calls,1);assert.equal(worker.status().running,true);
+ worker.stop();worker.start();assert.equal(timers.size,0);
+ release({status:'available'});await pending;
+ assert.equal(timers.size,1);assert.equal(calls,1);
+ worker.stop();assert.equal(timers.size,0);
+});
+test('owner briefing exposes background refresh status without starting an unconfigured worker',async()=>{
+ await withReport({nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')},backgroundRefresh:false},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.backgroundRefresh.mode,'disabled');
+  assert.equal(d.backgroundRefresh.running,false);
+  assert.equal(d.backgroundRefresh.persistence,'process_memory');
+  assert.equal(d.backgroundRefresh.nextRunAt,null);
+ });
+});
