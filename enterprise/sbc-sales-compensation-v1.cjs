@@ -5,7 +5,10 @@
  */
 const TIERS=Object.freeze({
  standard:Object.freeze({hourlyCents:500,quotaCents:260000,commissionBps:1000}),
- senior:Object.freeze({hourlyCents:600,quotaCents:433300,commissionBps:1500})
+ senior:Object.freeze({hourlyCents:600,quotaCents:433300,commissionBps:1500}),
+ // Versioned contract keys are stored in the existing immutable monthly terms and statement tier fields.
+ standard_v2:Object.freeze({hourlyCents:500,quotaCents:216700,commissionBps:900}),
+ senior_v2:Object.freeze({hourlyCents:600,quotaCents:433300,commissionBps:1200})
 });
 const TEAM_DAILY_TARGET_CENTS=60000;
 const TEAM_MONTHLY_TARGET_CENTS=1300000;

@@ -242,3 +242,6 @@ body #modal #sbcAiDesk #sbcAIImageCurrent{display:block;max-height:210px;max-wid
 body #modal #sbcAiDesk #sbcAIImageCurrent[hidden]{display:none!important}
 body #modal #sbcAiDesk .sbc-ai-image-editor :is(button,select,input):disabled{opacity:.6;cursor:not-allowed}
 body #modal #sbcAiDesk .sbc-ai-image-editor small{display:block;margin-top:10px;line-height:1.6}
+
+/* Preserve role-hidden shortcuts even when focused navigation sets display:flex. */
+#sbcFocusNav > [hidden]{display:none!important}

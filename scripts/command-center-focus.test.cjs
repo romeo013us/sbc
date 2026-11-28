@@ -38,7 +38,7 @@ assert.match(js,/parent\.insertBefore\(node,group\)/,'full mode restores origina
 const cleanStyle=html.match(/<style id="sbc-owner-clean-display-v2">([\s\S]*?)<\/style>/)?.[1];
 assert(cleanStyle,'owner-scoped duplicate shortcut styling is present');
 for(const id of ['sbc-website-call-desk-topbar','sbc-website-sales-pipeline-topbar','sbc-connected-journey-owner'])assert(js.includes("'"+id+"'"));
-assert.match(js,/function watchLateNavigation/);assert.match(js,/observe\(nav,\{childList:true\}\)/);
+assert.match(js,/function watchLateNavigation/);assert.match(js,/observe\(nav,\{childList:true,subtree:true\}\)/);
 assert.match(js,/window\.state\?\.data\?\.recovery\?\.required===false/);
 assert.match(cleanStyle,/data-sbc-owner-routine="true"/);assert.match(cleanStyle,/#sbcV329Panel/);assert.match(cleanStyle,/#sbcV330Panel/);
 assert.match(cleanStyle,/html\[data-sbc-owner-clean="true"\]/);

@@ -43,3 +43,24 @@ test('profit forecast includes base payroll, commissions and fixed costs, not ju
  assert(p.estimatedOperatingContributionCents<300000);
  assert.equal(p.isForecast,true);
 });
+
+const v2Full={independentClosing:25,coldCalling:20,objectionHandling:15,spokenCommunication:10,customerDiscovery:10,accountOwnership:5,technicalAptitude:5,professionalism:5,reliability:5};
+test('standard interview rubric is 100 points and does not require Spanish or prior sales verification',()=>{
+ const r=H.evaluateTier('standard',v2Full,{englishLive:true,closingSimulationPassed:true});
+ assert.equal(r.score,100);assert.equal(r.minimumScore,80);assert.deepEqual(r.missing,[]);
+ assert.equal(r.ownerReviewRequired,true);assert.equal(r.automaticHiring,false);
+});
+test('senior requires live bilingual skills and demonstrated prior closing evidence',()=>{
+ const r=H.evaluateTier('senior',v2Full,{englishLive:true,closingSimulationPassed:true});
+ assert.equal(r.minimumScore,90);assert(r.missing.includes('LIVE_SPANISH_REQUIRED'));
+ assert(r.missing.includes('VERIFIED_SALES_RESULTS_REQUIRED'));
+ const complete=H.evaluateTier('senior',v2Full,{englishLive:true,spanishLive:true,closingSimulationPassed:true,salesEvidenceVerified:true,referenceVerified:true});
+ assert.deepEqual(complete.missing,[]);assert.equal(complete.scoreThresholdMet,true);
+});
+test('tier interview validates all scores and never issues a personnel decision',()=>{
+ assert.throws(()=>H.evaluateTier('director',v2Full,{}),/INVALID_TIER/);
+ assert.throws(()=>H.evaluateTier('standard',{...v2Full,independentClosing:26},{}),/INVALID_SCORE/);
+ assert.throws(()=>H.evaluateTier('standard',{...v2Full,coldCalling:undefined},{}),/INVALID_SCORE/);
+ const r=H.evaluateTier('standard',{...v2Full,independentClosing:0},{englishLive:true,closingSimulationPassed:true});
+ assert.equal(r.scoreThresholdMet,false);assert.equal(r.ownerReviewRequired,true);assert.equal(r.decision,undefined);
+});

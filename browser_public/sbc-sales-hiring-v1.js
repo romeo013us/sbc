@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id);
- const criteria=[['verifiedClosingHistory','Verified B2B sales results',20],['englishRoleplay','English role-play',15],['spanishRoleplay','Spanish role-play',20],['objectionClosing','Objection handling and closing',20],['crmFluency','CRM fluency',10],['accountOwnership','Long-term account ownership',10],['reliability','Reliability and follow-through',5]];
+ const criteria=[['independentClosing','Independent closing ability',25],['coldCalling','Cold calling',20],['objectionHandling','Objection handling',15],['spokenCommunication','Spoken communication',10],['customerDiscovery','Customer discovery',10],['accountOwnership','Account ownership',5],['technicalAptitude','Technical aptitude',5],['professionalism','Professionalism',5],['reliability','Reliability',5]];
  const grid=$('hiringScores');
  if(!grid)return;
  for(const [key,title,max] of criteria){
@@ -22,8 +22,8 @@
   const scores=Object.fromEntries(criteria.map(([key])=>[key,Number($('score_'+key).value)]));
   const evidence=Object.fromEntries(['referenceVerified','salesEvidenceVerified','englishLive','spanishLive','closingSimulationPassed'].map(k=>[k,$('evidence_'+k).checked]));
   try{
-   const r=await api('/api/owner/sales-command/hiring/evaluate',{scores,evidence});
-   output('hiringResult',r.score+'/100 · '+r.decision+' · '+(r.missing.length?'Missing: '+r.missing.join(', '):'Evidence checklist complete')+' · Owner interview required.',false);
+   const r=await api('/api/owner/sales-command/hiring/evaluate',{tier:$('hiringTier').value,scores,evidence});
+   output('hiringResult',r.score+'/100 · Target '+r.minimumScore+' · '+(r.scoreThresholdMet?'Score target met':'Score below target')+' · '+(r.missing.length?'Missing: '+r.missing.join(', '):'Required evidence recorded')+' · Owner review required.',false);
   }catch(err){output('hiringResult','Evaluation unavailable: '+err.message,true)}
  });
  const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
@@ -35,7 +35,7 @@
     standardManagers:Number($('forecastStandard').value),seniorManagers:Number($('forecastSenior').value),
     hoursPerWeek:Number($('forecastHours').value),fixedOverheadCents:cents('forecastOverhead')};
    const r=await api('/api/owner/sales-command/hiring/forecast',body);
-   output('forecastResult','Revenue '+money(r.monthlyRevenueCents)+' · Product gross profit '+money(r.monthlyGrossProfitCents)+' · Base pay '+money(r.monthlyBasePayCents)+' · Commission '+money(r.monthlyCommissionCents)+' · Other overhead '+money(r.fixedOverheadCents)+' · Estimated operating contribution '+money(r.estimatedOperatingContributionCents)+'. Planning estimate only; not actual net profit.',false);
+   output('forecastResult','Revenue '+money(r.monthlyRevenueCents)+' · Product gross profit '+money(r.monthlyGrossProfitCents)+' · Base pay '+money(r.monthlyBasePayCents)+' · Commission '+money(r.monthlyCommissionCents)+' · Other overhead '+money(r.fixedOverheadCents)+' · Estimated operating contribution '+money(r.estimatedOperatingContributionCents)+'. Legacy commission assumptions only; not actual net profit.',false);
   }catch(err){output('forecastResult','Forecast unavailable: '+err.message,true)}
  });
 })();
