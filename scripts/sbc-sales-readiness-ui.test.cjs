@@ -91,3 +91,14 @@ test('base payroll approval and external payment recording require owner review 
  assert(js.includes('OWNER_APPROVED_STRAIGHT_TIME_BASE'));assert(js.includes('OWNER_RECORD_ALREADY_SENT_BASE_PAY'));assert(js.includes('PREVIEW_CHANGED'));assert(js.includes('No payment initiated.'));
  assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-command-v1.js'));new (require('node:vm').Script)(js);
 });
+
+test('new-hire economics uses V2 assumptions and defaults to two Standard managers',()=>{
+ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+ const html=read('public/sbc-sales-command.html'),js=read('public/sbc-sales-hiring-v1.js');
+ assert.match(html,/id="forecastStandard"[^>]*value="2"/);
+ assert.match(html,/id="forecastSenior"[^>]*value="0"/);
+ assert(html.includes('9% / 12%'));assert(!html.includes('Legacy 10%/15% commission assumptions'));
+ assert(js.includes('V2_PROPOSED_SIGNED_TERMS'));assert(!js.includes('Legacy commission assumptions only'));
+ assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-hiring-v1.js'));
+ new (require('node:vm').Script)(js);
+});
