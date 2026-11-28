@@ -105,3 +105,21 @@ test('owner and Account Managers can call and book first without a website previ
 });
 
 require('./sbc-account360-cleanup.test.cjs');
+
+test('owner can open existing SBC phone for a research-pending business without marking research verified',()=>{
+ const pending={customerId:customer.id,phone:customer.phone,stage:'RESEARCH_REQUIRED',callAllowed:false,verifiedResearch:false};
+ const owner=smart.project(customer,pending,{role:'owner'});
+ assert.equal(owner.canOpenCall,true);
+ assert.equal(owner.hasVerifiedDemo,false);
+ assert.equal(owner.scriptOptions.googleVerified,false);
+ assert.equal(smart.project(customer,pending,{role:'account_manager'}).canOpenCall,false);
+ for(const stage of ['SUPPRESSED','NUMBER_COOLDOWN','DECLINED','CONTACT_UNVERIFIED']){
+  assert.equal(smart.project(customer,{...pending,stage},{role:'owner'}).canOpenCall,false);
+ }
+ for(const c of [{...customer,doNotCall:true},{...customer,optedOut:true},{...customer,status:'Bad Number'},{...customer,phone:'invalid'},{...customer,phone:'+13055550199'}]){
+  assert.equal(smart.project(c,pending,{role:'owner'}).canOpenCall,false);
+ }
+ assert.equal(smart.project(customer,pending,{role:'owner',readOnly:true}).canOpenCall,false);
+ assert.equal(smart.project(customer,null,{role:'owner'}).canOpenCall,false);
+ assert.equal(smart.project(customer,{...pending,customerId:'foreign'},{role:'owner'}).canOpenCall,false);
+});

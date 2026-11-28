@@ -13,8 +13,14 @@
  const limited=(x,n=140)=>String(x??'').replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,n);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function suppressed(c){
-  return !!(c?.doNotCall||c?.doNotContact||c?.salesSuppressed||c?.isSuppressed||
-   ['do not call','do not contact','dnc','opt out','unsubscribe','lost'].includes(String(c?.status||'').toLowerCase().trim()));
+  return !!(c?.doNotCall||c?.doNotContact||c?.salesSuppressed||c?.isSuppressed||c?.optedOut||
+   ['do not call','do not contact','dnc','opt out','opt-out','unsubscribe','lost','bad number','wrong number','deleted','duplicate','archived'].includes(String(c?.status||'').toLowerCase().trim()));
+ }
+ function cleanPhone(value){
+  let v=String(value??'').trim().replace(/[\s().-]/g,'');
+  if(/^\d{10}$/.test(v))v='+1'+v;
+  else if(/^1\d{10}$/.test(v))v='+'+v;
+  return /^\+[1-9]\d{7,14}$/.test(v)?v:'';
  }
  function project(customer,row,settings={}){
   const c=customer||{},r=row&&String(row.customerId)===String(c.id)?row:null;
@@ -22,11 +28,17 @@
   const verified=r?.verifiedResearch===true;
   const hasVerifiedDemo=!!(r?.websiteId&&/^\/demo\/[a-zA-Z0-9%._~-]+$/.test(String(r.websiteUrl||''))&&
    !['REVIEW_WEBSITE','BUILD_WEBSITE','RESEARCH_REQUIRED'].includes(r.stage));
-  const canOpenCall=!!(!locked&&!suppressed(c)&&['owner','manager','caller','account_manager'].includes(role)&&
-   r?.callAllowed===true&&limited(c.phone||r?.phone));
+  // Opening the existing owner phone is not a research approval or a placed call.
+  // The authenticated call-desk row must match the exact business and number;
+  // explicit refusals, bad-number holds, suppression and recovery remain blocked.
+  const ownerResearchPending=role==='owner'&&r?.stage==='RESEARCH_REQUIRED'&&
+   r.verifiedResearch===false&&!!cleanPhone(c.phone)&&cleanPhone(c.phone)===cleanPhone(r.phone);
+  const hardBlocked=['SUPPRESSED','NUMBER_COOLDOWN','DECLINED','CONTACT_UNVERIFIED'].includes(r?.stage);
+  const canOpenCall=!!(!locked&&!suppressed(c)&&!hardBlocked&&['owner','manager','caller','account_manager'].includes(role)&&
+   (r?.callAllowed===true||ownerResearchPending)&&cleanPhone(c.phone));
   const canLog=!!(!locked&&!suppressed(c)&&['owner','account_manager'].includes(role)&&c.id);
   return {
-   hasVerifiedDemo,canOpenCall,canLog,canBuild:['owner','account_manager'].includes(role)&&!locked&&!suppressed(c),
+   hasVerifiedDemo,canOpenCall,ownerResearchPending,canLog,canBuild:['owner','account_manager'].includes(role)&&!locked&&!suppressed(c),
    canSchedule:['owner','manager','caller','account_manager'].includes(role)&&!locked&&!suppressed(c),
    stage:r?.stage||'UNVERIFIED',demoUrl:hasVerifiedDemo?r.websiteUrl:'',
    nextAction:r?.nextAction||'Verify business research and calling readiness. No concept preview is required to call or book.',
@@ -110,7 +122,7 @@
    '<button type="button" class="btn" data-sc-action="appointment" '+(!ctx.canSchedule?'disabled':'')+'>📅 Book 10-minute demo</button>' +
    '<button type="button" class="btn" data-sc-action="copy">Copy script</button></div>' +
    '<p class="sbc-sc-muted">'+(ctx.hasVerifiedDemo?'Approved website preview verified in SBC.':'No saved preview yet. Call first and book the 10-minute Zoom if interested; prepare the private concept after booking and before the presentation.') +
-   (!ctx.canOpenCall?(hasNumber?' Calling requires verified readiness and authorization.':' Verify a working phone before calling.'):' Calling still requires server-side Twilio clearance.')+'</p>' +
+   (!ctx.canOpenCall?(hasNumber?' Calling requires verified readiness and authorization.':' Verify a working phone before calling.'):(ctx.ownerResearchPending?' Research is pending; opening the owner phone does not verify this lead. Confirm the number, applicable calling rules and outreach eligibility before dialing. Existing Twilio and CRM checks still apply.':' Calling still requires server-side Twilio clearance.'))+'</p>' +
    '<details class="sbc-sc-coaching"><summary>Owner-approved call script &amp; objection coaching</summary><pre class="sbc-sc-script" id="sbcSmartCallScript">'+esc(script)+'</pre></details>' +
    (ctx.canLog?'<form class="sbc-sc-form" id="sbcSmartCallOutcome"><label>What happened?' +
     '<select name="outcome" required><option value="" selected disabled>Choose outcome</option><option value="CONNECTED">Spoke to owner (connected)</option>' +
@@ -131,6 +143,7 @@
    }
    if(action==='call'){
     if(!ctx.canOpenCall)return status('Calling readiness is not verified.',true);
+    if(!active())return;
     if(typeof win.openSbcDialer==='function')win.openSbcDialer(customer.id);
     else status('SBC dialer unavailable; no call placed.',true);
    }
