@@ -517,7 +517,7 @@ test('durable market collector fences concurrent runs, persists public evidence 
  writable=false;assert.equal((await cycle()).outcome,'writer_unavailable');assert.equal(fetches,0);
  writable=true;locked=true;assert.equal((await cycle()).outcome,'busy');assert.equal(fetches,0);locked=false;
  const result=await cycle();assert.equal(result.outcome,'partial');assert.equal(result.delay,300000);assert.equal(insertCount,1);
- assert.equal(writes[0].radar.sources[0].count,0);assert.equal(writes[0].radar.sources[1].count,null);
+ assert.equal(writes[0].radar.sources.find(x=>x.kind==='license_records').count,0);assert.equal(writes[0].radar.sources.find(x=>x.kind==='recent_start_records').count,null);
  assert.doesNotMatch(JSON.stringify(writes[0]),/do-not-store/);
  assert.equal((await cycle()).outcome,'not_due');assert.equal(fetches,1);
  now+=300000;
@@ -530,4 +530,25 @@ test('durable market writer is only wired through the existing staged writer gat
  const staged=patchServer(source);
  assert.match(staged,/marketCanWrite:\(\)=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady/);
  assert.equal(patchServer(staged),staged);
+});
+
+test('owner briefing reads bounded durable public evidence history without exposing arbitrary stored fields',async()=>{
+ const payload={national:{status:'unavailable',rows:[]},radar:{sources:[{market:'Chicago, Illinois, US',kind:'license_records',status:'available',count:0},{market:'Miami-Dade County, Florida, US',kind:'recent_start_records',status:'unavailable',count:null}],private:'not-public'},private:'not-public'};
+ const historyRows=[{slot_ms:TIME,completed_ms:TIME,next_ms:TIME+300000,outcome:'partial',evidence_json:JSON.stringify(payload),degraded:1}];
+ const query=async({sql,timeout},args)=>{
+  assert.equal(timeout,4000);
+  if(sql.includes('sbc_public_market_evidence')){assert.match(sql,/ORDER BY slot_ms DESC LIMIT 24/);assert.deepEqual(args,[]);return [historyRows];}
+  return [[]];
+ };
+ await withReport({backgroundRefresh:false,marketCanWrite:()=>false,getPool:()=>({query}),nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();
+  assert.equal(d.evidenceHistory.status,'available');assert.equal(d.evidenceHistory.rows.length,1);
+  assert.equal(d.evidenceHistory.rows[0].sources.find(x=>x.kind==='license_records').count,0);
+  assert.equal(d.evidenceHistory.rows[0].sources.find(x=>x.kind==='recent_start_records').count,null);
+  assert.doesNotMatch(JSON.stringify(d.evidenceHistory),/not-public/);
+  assert.equal(d.backgroundRefresh.mode,'disabled');
+ });
+ await withReport({backgroundRefresh:false,marketCanWrite:()=>false,getPool:()=>({query:async()=>{throw Error('private SQL');}}),nationalFetcher:async()=>new Response('bad'),radarFetcher:async()=>{throw Error('offline')}},async request=>{
+  const d=await(await request('/briefing')).json();assert.equal(d.evidenceHistory.status,'unavailable');assert.doesNotMatch(JSON.stringify(d),/private SQL/);
+ });
 });
