@@ -563,3 +563,20 @@ test('briefing shows historical public evidence separately from live signals and
  assert.match(render({evidenceHistory:{status:'unavailable',rows:[]}}),/Evidence history unavailable/);
  assert.match(render({evidenceHistory:{status:'available',rows:[]}}),/No recorded observations yet/);
 });
+
+test('automatic workforce handoff revalidates suggested states and prepares a reviewable draft without assigning staff work',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, planResearchHandoff };'),ctx);
+ const prepare=ctx.window.SBCMarketIntelligence.planResearchHandoff;
+ const data={status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',rows:bfsStates.map(state=>({state,applications:100}))};
+ const result=prepare(data,{states:['TX','FL','GA'],periodStart:'2026-08',periodEnd:'2026-10',target:16});
+ assert.deepEqual(Array.from(result.states),['TX','FL','GA']);assert.equal(result.target,16);
+ assert.equal(result.autoDraft,true);assert.equal(result.approved,false);
+ assert.equal(prepare(data,{states:['TX'],periodStart:'2026-07',periodEnd:'2026-09',target:16}).autoDraft,false);
+ assert.equal(prepare(data,{states:['XX'],periodStart:'2026-08',periodEnd:'2026-10',target:16}).autoDraft,false);
+ assert.equal(prepare(data,{states:['TX','TX'],periodStart:'2026-08',periodEnd:'2026-10',target:16}).autoDraft,false);
+ assert.equal(prepare(data,{states:['TX'],periodStart:'2026-08',periodEnd:'2026-10',target:99}).autoDraft,false);
+ assert.equal(prepare({status:'unavailable'},{states:['TX'],target:16}).autoDraft,false);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
+});
