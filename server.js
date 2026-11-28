@@ -3457,6 +3457,7 @@ app.use('/api', apiRateLimiter);
 require('./enterprise/sbc-market-intelligence.cjs').register(app,{
   auth,ownerOnly,requireTenant:requireRequestTenant,isSiteTenant:sbcMarketSiteTenant,
   getPool:()=>MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED?mysqlPool:null,
+  marketCanWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady,
   readSearchCredential:tenantId=>mysqlPool?vaultSecret(SBC_SEARCH_CONSOLE.CREDENTIAL,tenantId):''
 });
 app.post('/api/web-lead',express.json({limit:'64kb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}),async(req,res)=>{
