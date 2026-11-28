@@ -374,3 +374,20 @@ test('radar rejects ArcGIS errors, unsafe counts and mislabeled event counts wit
   assert.deepEqual(d.sources.slice(2).map(x=>[x.status,x.count]),[['unavailable',null],['unavailable',null],['unavailable',null]]);
  });
 });
+
+test('radar renders distinct source metrics and a research workflow handoff',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-market-intelligence.js'),'utf8');
+ const ctx={window:{},Intl,URL};vm.createContext(ctx);
+ vm.runInContext(source.replace('window.SBCMarketIntelligence = { mount };','window.SBCMarketIntelligence = { mount, radarPanel };'),ctx);
+ const html=ctx.window.SBCMarketIntelligence.radarPanel({status:'partial',coverage:{available:3,configured:5},sources:[
+ {market:'Detroit',kind:'active_license_records',status:'available',count:21},
+ {market:'Miami',kind:'recent_start_records',status:'available',count:0},
+ {market:'NYC',kind:'event_permit_records',status:'available',count:8}]});
+ assert.match(html,/3 of 5 sources available/);
+ assert.match(html,/21 active license records/);
+ assert.match(html,/0 reported business-start records/);
+ assert.match(html,/8 upcoming permit records/);
+ assert.match(html,/data-mi-radar-research/);
+ assert.match(html,/not ranked against each other/);
+ assert.doesNotMatch(html,/new businesses confirmed/);
+});
