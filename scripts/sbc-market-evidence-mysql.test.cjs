@@ -12,7 +12,7 @@ test('real isolated MySQL: cross-instance lock, restart schedule, evidence proje
  let now=Date.parse('2026-11-28T12:00:00Z'),writable=true,calls=0,release,started;
  const ready=new Promise(r=>{started=r;});
  const hold=new Promise(r=>{release=r;});
- const national=()=>({status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',fetchedAt:new Date(now).toISOString(),rows:states.map(state=>({state,applications:10,priorApplications:5,secret:'must-not-persist'})),private:'must-not-persist'});
+ const national=()=>({status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',fetchedAt:new Date(now).toISOString(),rows:states.map(state=>({state,applications:10,priorApplications:5,unexpectedField:'must-not-persist'})),private:'must-not-persist'});
  const radar=()=>({status:'partial',sources:[{market:'Chicago, Illinois, US',kind:'license_records',status:'available',count:0,checkedAt:new Date(now).toISOString()},{market:'Miami-Dade County, Florida, US',kind:'recent_start_records',status:'unavailable',count:null}]});
  const opts={canWrite:()=>writable,clock:()=>now,readNational:async()=>{calls++;return national();},readRadar:async()=>radar()};
  let pending;
