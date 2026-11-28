@@ -11,7 +11,7 @@ const ROUTE=[
  "require('./routes/sbc-public-discovery-v1.cjs').register(app);",
  "require('./routes/sbc-sales-command-v1.cjs').register(app,{",
  ' auth,',
- ' getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),',
+ ' getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,canWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}),',
  ' tenantForRead:req=>requireRequestTenant(req),',
  ' writer:()=>SBC_V6649_REQUIRE_WRITER()',
  '});',
@@ -19,7 +19,15 @@ const ROUTE=[
 ].join('\n');
 function patchServer(raw){
  const s=String(raw||'');
- if(s.includes(MARK))return s;
+ if(s.includes(MARK)){
+  const start=s.indexOf(MARK),end=s.indexOf('\n});',start);
+  if(end<start)throw Error('SALES_COMMAND_CONTEXT_MISSING');
+  const block=s.slice(start,end);
+  const old=" getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),",next=" getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,canWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}),";
+  if(block.includes(next))return s;
+  if(block.split(old).length!==2)throw Error('SALES_COMMAND_CONTEXT_ANCHOR_NOT_UNIQUE');
+  return s.slice(0,start)+block.replace(old,next)+s.slice(end);
+ }
  if(!s.includes('function v9data()')||!s.includes('SBC_V6649_REQUIRE_WRITER'))
   throw Error('SALES_COMMAND_REQUIRES_FULL_SECURE_SERVER');
  // Existing HR tests isolate the route block from HR -> payroll. Insert BEFORE HR.
