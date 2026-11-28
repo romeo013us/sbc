@@ -378,3 +378,17 @@ test('profit coverage is owner-only and returns explicit unavailable status with
  const m=await env.call('GET','/api/sbc/sales/compensation/me',{id:'m1',role:'account_manager',tenantId:1},{},{month:'2026-11'});
  assert.equal(m.json.profitCoverage,undefined);
 });
+
+test('readiness cannot advertise a writable preview or missing writer lease, even with complete schemas',async()=>{
+ for(const writable of [false,true]){
+  const handlers=new Map(),queries=[];let writerCalls=0;
+  const db={users:[]},pool={query:async(sql,args)=>{queries.push({sql,args});return [[]];},getConnection:async()=>{throw Error('read-only test');}};
+  ROUTE.register({get:(p,a,f)=>handlers.set(p,f),post(){}},{auth:()=>{},getContext:()=>({db,mysqlPool:pool,recoveryRequired:()=>false,canWrite:()=>writable}),tenantForRead:()=>1,writer:()=>{writerCalls++;}});
+  for(const path of ['/api/owner/sales-command/readiness','/api/owner/sales-command/workforce/readiness']){
+   let body;const res={setHeader(){},status(){return this},json(x){body=x;return this}};
+   await handlers.get(path)({user:{role:'owner',id:'owner',tenantId:1},query:{}},res);
+   assert.equal(body.ok,true);assert.equal(body.schemaReady,true);assert.equal(body.writeReady,writable);
+  }
+  assert.equal(writerCalls,0);assert(queries.every(q=>q.sql.startsWith('SELECT 1 FROM')&&q.args[0]===1));
+ }
+});
