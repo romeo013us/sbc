@@ -7062,7 +7062,7 @@ app.put('/api/v9/compensation/:userId',auth,ownerOnly,SBC_WORKFORCE_PAYROLL.upda
 // SBC_V66160_SALES_COMMAND_OWNER_LEDGER; owner-approved monthly commissions, read-only manager progress.
 require('./routes/sbc-sales-command-v1.cjs').register(app,{
  auth,
- getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),
+ getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,canWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}),
  tenantForRead:req=>requireRequestTenant(req),
  writer:()=>SBC_V6649_REQUIRE_WRITER()
 });
