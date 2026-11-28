@@ -624,3 +624,22 @@ test('calendar campaign UI exposes review handoff only for eligible official eve
  assert.match(html,/data-mi-campaign-draft/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
  assert.doesNotMatch(render({campaigns:[{market:'Scotland',eventDate:'2026-11-20',title:'Unverified',source:'https://evil.invalid'}]}),/data-mi-campaign-draft/);
 });
+
+test('native marketing form accepts only review-only calendar proposals and requires channel and approved artwork selection',()=>{
+ const source=fs.readFileSync(path.join(root,'public/sbc-v6567-marketing-hub.js'),'utf8');
+ const begin=source.indexOf('function normalizeMarketCampaignDraft('),end=source.indexOf('\nfunction openMarketCampaignDraft(',begin);
+ assert(begin>=0&&end>begin);
+ const normalize=vm.runInNewContext(source.slice(begin,end)+'\nnormalizeMarketCampaignDraft');
+ const proposal={status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false,evidence:{source:'https://www.gov.uk/bank-holidays',region:'Scotland',eventDate:'2026-11-20',title:'Fixture holiday'},draft:{title:'SBC regional readiness',audience:'Independent businesses',market:'Scotland, United Kingdom',locale:'en',start:'2026-11-17',end:'2026-11-20',body:'Check your opening hours.',channels:null,image:null}};
+ const now=Date.parse('2026-11-12T14:00:00Z');
+ assert.equal(normalize(proposal,now).market,'Scotland, United Kingdom');
+ assert.equal(normalize({...proposal,sendAllowed:true},now),null);
+ assert.equal(normalize({...proposal,evidence:{...proposal.evidence,source:'https://evil.invalid'}},now),null);
+ assert.equal(normalize({...proposal,draft:{...proposal.draft,image:'https://evil.invalid/a.jpg'}},now),null);
+ assert.equal(normalize({...proposal,draft:{...proposal.draft,channels:['facebook']}},now),null);
+ assert.equal(normalize(proposal,Date.parse('2026-11-21T00:00:00Z')),null);
+ assert.match(source,/Choose a channel or explicitly select all four/);
+ assert.match(source,/Choose approved artwork/);
+ assert.match(source,/confirm\('Add this reviewed regional campaign to the existing organic rotation/);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-v6567-marketing-hub.js'),'utf8'));
+});
