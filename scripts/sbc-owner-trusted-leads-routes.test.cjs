@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const MOD=require('../routes/sbc-owner-trusted-leads-v1.cjs');
 const mk=(id,tenant=1,other={})=>({id,tenantId:tenant,status:'Lead',verificationStatus:'Needs Verification',businessName:'Business '+id,phone:'305555'+String(id).padStart(4,'0'),leadTemperature:'Warm',...other});
-function harness({recovery=false,missingDb=false}={}){
+function harness({recovery=false,missingDb=false,writable=true}={}){
  const handlers={},records=new Map(),db={customers:[mk('1001'),mk('1002'),mk('2002',2)]};
  let writes=0,audits=0,transaction=0;
  for(const c of db.customers)records.set(c.tenantId+':'+c.id,{
@@ -19,7 +19,7 @@ function harness({recovery=false,missingDb=false}={}){
  }}};
  MOD.register({get:(p,_a,_b,f)=>handlers['GET '+p]=f,post:(p,_a,_b,f)=>handlers['POST '+p]=f},
  {auth:(req,res,next)=>next?.(),ownerOnly:(req,res,next)=>next?.(),
-  getContext:()=>({db,mysqlPool:pool,recoveryRequired:()=>recovery}),
+  getContext:()=>({db,mysqlPool:pool,recoveryRequired:()=>recovery,canWrite:()=>writable}),
   tenantForRead:req=>req.tenantId,writer:()=>{if(recovery)throw Object.assign(Error('WRITER_RECOVERY_HOLD'),{status:423})},
   audit:()=>{audits++}});
  async function request(method,path,role='owner',body={}){
@@ -75,4 +75,11 @@ test('bulk approval holds changed persisted contact identities and failed verifi
  const r=await h.request('POST','/api/owner/trusted-leads/approve-batch','owner',{confirm:'OWNER_TRUSTED_ALL_EXISTING'});
  assert.equal(r.status,200);assert.equal(r.data.approved,0);assert.equal(h.writes,0);
  assert(h.db.customers.every(c=>c.verificationStatus==='Needs Verification'));
+});
+
+test('read-only runtime and unavailable writer lease never advertise bulk approval readiness',async()=>{
+ const h=harness({writable:false}),r=await h.request('GET','/api/owner/trusted-leads/preview');
+ assert.equal(r.status,200);assert.equal(r.data.approvable,2);assert.equal(r.data.databaseWritable,false);
+ const held=await h.request('POST','/api/owner/trusted-leads/approve-batch','owner',{confirm:'OWNER_TRUSTED_ALL_EXISTING'});
+ assert.equal(held.status,423);assert.equal(h.writes,0);
 });
