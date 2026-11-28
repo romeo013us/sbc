@@ -7454,7 +7454,7 @@ app.post('/api/v10/orders/:id/assign',auth,async(req,res)=>{if(req.user.role!=='
 const SBC_TRUSTED_LEADS=require('./enterprise/sbc-trusted-research-v1.cjs');
 require('./routes/sbc-owner-trusted-leads-v1.cjs').register(app,{
  auth,ownerOnly,
- getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),
+ getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,canWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}),
  tenantForRead:req=>requireRequestTenant(req),
  writer:()=>SBC_V6649_REQUIRE_WRITER(),
  audit
