@@ -337,6 +337,41 @@ function createRadarReader(fetcher,clock){
  };
 }
 
+// A read-only daily action brief: compare like with like, never combine permits,
+// licenses and applications into an invented demand score. Tenant data is never
+// cached in the public source readers.
+function buildOpportunityBrief(national,radar,geography,now){
+ const today=date(now),campaignEnd=date(now+30*DAY);
+ const exceptions=[];
+ const hasNational=national?.status==='available'&&national.coverage===51&&Array.isArray(national.rows)&&national.rows.length===51;
+ const geoAvailable=geography?.status==='available'&&Array.isArray(geography.rows);
+ if(!hasNational)exceptions.push({code:'NATIONAL_EVIDENCE_UNAVAILABLE',market:'United States'});
+ if(!geoAvailable)exceptions.push({code:'CRM_EVIDENCE_UNAVAILABLE',market:'Your CRM'});
+ const geo=new Map(geoAvailable?geography.rows.map(x=>[x.state,x]):[]);
+ const rankings=hasNational?national.rows.slice(0,10).map((r,i)=>{
+  const recorded=geo.get(r.state);
+  return {rank:i+1,state:r.state,applications:r.applications,yearOverYearPct:r.yearOverYearPct,basis:'CENSUS_APPLICATION_VOLUME',
+   crmEvidence:geoAvailable?{newCrmRecords:recorded?.newCrmRecords??0,paidOrders:recorded?.paidOrders??0,capturedCents:recorded?.capturedCents??0}:null};
+ }):[];
+ const picks=rankings.filter(x=>x.applications>0).slice(0,3),target=16;
+ const research=picks.length?{status:'DRAFT_REVIEW_REQUIRED',target,stretchTarget:20,
+  markets:picks.map((x,i)=>({state:x.state,target:Math.floor(target/picks.length)+(i<target%picks.length?1:0)})),
+  periodStart:national.periodStart,periodEnd:national.periodEnd,source:national.source,
+  reason:'Recent comparable business application volume; verify actual business, website gap, contact and language individually. No assignments saved.'}:null;
+ const sources=Array.isArray(radar?.sources)?radar.sources:[];
+ if(!sources.length)exceptions.push({code:'RADAR_UNAVAILABLE',market:'Public market sources'});
+ for(const source of sources)if(source.status!=='available')exceptions.push({code:'SOURCE_UNAVAILABLE',market:source.market});
+ const campaigns=sources.filter(x=>x.kind==='calendar_events'&&x.status==='available').flatMap(source=>source.events.filter(e=>radarDate(e.date)&&e.date>=today&&e.date<campaignEnd).map(e=>({
+  market:e.region,eventDate:e.date,title:e.title,source:source.source,status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false,
+  objective:'Prepare localized organic business-service messaging; validate relevance, offer terms and channel eligibility before scheduling.'
+ }))).sort((a,b)=>a.eventDate.localeCompare(b.eventDate)||a.market.localeCompare(b.market)||a.title.localeCompare(b.title)).slice(0,20);
+ const anyEvidence=hasNational||geoAvailable||sources.some(x=>x.status==='available');
+ return {status:!anyEvidence?'unavailable':exceptions.length?'partial':'available',generatedAt:new Date(now).toISOString(),
+  rankingPeriod:hasNational?{start:national.periodStart,end:national.periodEnd,source:national.source}:null,
+  crmPeriod:geoAvailable?geography.period:null,rankings,research,campaigns,exceptions,radarCoverage:radar?.coverage??{available:0,configured:0},
+  automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
+}
+
 function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now }) {
   const readRadar=createRadarReader(radarFetcher,clock);
   app.get('/api/owner/market-intelligence/radar',auth,ownerOnly,async(req,res)=>{
@@ -360,6 +395,22 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   });
 
   const readNational=createNationalReader(nationalFetcher,clock);
+  app.get('/api/owner/market-intelligence/briefing',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    let tenantId;
+    try{tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
+    catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'BRIEFING_QUERY_INVALID'});
+    try{
+      const now=clock(),pool=getPool();
+      const [national,radar,geography]=await Promise.all([
+        readNational().catch(()=>null),readRadar().catch(()=>null),
+        pool?readGeography(pool,tenantId,30,now).catch(()=>null):null
+      ]);
+      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now)});
+    }catch{return res.status(503).json({ok:false,code:'BRIEFING_UNAVAILABLE'});}
+  });
+
   app.get('/api/owner/market-intelligence/national',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     try{const tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
