@@ -8,7 +8,14 @@ const RESEARCH="  c.leadIntelligence.researchSubmittedBy=String(req.user.id);";
 const QUEUE="enqueueLeadAssist(c.id,'lead_submission','high');";
 function patchServer(input){
  let s=String(input||'');
- if(s.includes('//'+MARK))return s;
+ if(s.includes('//'+MARK)){
+  const start=s.indexOf('//'+MARK),end=s.indexOf('\n});',start);
+  if(end<start)throw Error('TRUSTED_RESEARCH_CONTEXT_MISSING');
+  const block=s.slice(start,end),old=" getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),",next=" getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,canWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}),";
+  if(block.includes(next))return s;
+  if(block.split(old).length!==2)throw Error('TRUSTED_RESEARCH_CONTEXT_ANCHOR');
+  return s.slice(0,start)+block.replace(old,next)+s.slice(end);
+ }
  if(!s.includes(ENTRY)||!s.includes(RESEARCH)||!s.includes('SBC_V6649_REQUIRE_WRITER')||
  !s.includes("async function processLeadAssistQueue("))throw Error('TRUSTED_RESEARCH_UNSUPPORTED_SERVER');
  if(s.split(ENTRY).length!==2||s.split(RESEARCH).length!==2)throw Error('TRUSTED_RESEARCH_ANCHOR_NOT_UNIQUE');
@@ -17,7 +24,7 @@ function patchServer(input){
  "const SBC_TRUSTED_LEADS=require('./enterprise/sbc-trusted-research-v1.cjs');",
  "require('./routes/sbc-owner-trusted-leads-v1.cjs').register(app,{",
  ' auth,ownerOnly,',
- ' getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED}),',
+ ' getContext:()=>({db,mysqlPool,recoveryRequired:()=>MYSQL_RECOVERY_REQUIRED||!MYSQL_RECOVERY_EVALUATED,canWrite:()=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady}),',
  ' tenantForRead:req=>requireRequestTenant(req),',
  ' writer:()=>SBC_V6649_REQUIRE_WRITER(),',
  ' audit',

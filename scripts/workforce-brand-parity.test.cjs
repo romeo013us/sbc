@@ -27,3 +27,14 @@ for(const [label,css] of [['research',researchCss],['sales',salesCss]]){
  assert.match(css,/\.brand-logo\{[^}]*width:48px;[^}]*height:48px;[^}]*object-fit:contain;/,label+' official logo sizing');
 }
 console.log('PASS — Official SBC logo byte parity and branded staff workstation headers');
+
+for(const page of ['sbc-sales-command.html','sbc-trusted-leads.html']){
+ const html=read('public/'+page),mirror=read('browser_public/'+page);
+ assert.match(html,/<img class="brand-logo" src="\/assets\/sbc-logo\.jpg" alt="Successful By Choice official logo"/,page+' must display official logo');
+ assert.doesNotMatch(html,/<span class="mark">S<\/span>/,page+' must not substitute a letter for the logo');
+ assert.match(html,/<link rel="icon" href="\/assets\/sbc-logo\.jpg"/,page+' must use official favicon');
+ assert.equal(html,mirror,page+' mirrors must match');
+}
+const ownerCss=read('public/sbc-sales-command-v1.css');
+assert.match(ownerCss,/\.brand-logo\{[^}]*width:48px;[^}]*height:48px;[^}]*object-fit:contain;/);
+assert.equal(ownerCss,read('browser_public/sbc-sales-command-v1.css'));

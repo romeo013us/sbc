@@ -102,3 +102,16 @@ test('new-hire economics uses V2 assumptions and defaults to two Standard manage
  assert.equal(html,read('browser_public/sbc-sales-command.html'));assert.equal(js,read('browser_public/sbc-sales-hiring-v1.js'));
  new (require('node:vm').Script)(js);
 });
+
+test('workforce schema is checked even when commission schema is missing',async()=>{
+ const js=fs.readFileSync(path.join(root,'public/sbc-sales-command-v1.js'),'utf8');
+ const start=js.indexOf(' async function refresh(){'),end=js.indexOf(' const safeRun=',start);
+ const block=js.slice(start,end);
+ const state={month:{value:'2026-11'},workforceLaunchSchema:{},kpis:{replaceChildren(){}},managers:{replaceChildren(){}}};
+ const calls=[];
+ const refresh=new Function('$','api','setActionButtons','resetProfile','resetRecognition','notice','managers','candidates',block+';return refresh')(
+  id=>state[id]||(state[id]={}),async path=>{calls.push(path);return path.endsWith('/workforce/readiness')?{schemaReady:false,writeReady:true,missingTables:['sbc_am_trial_member_v2']}:{ready:false,nextAction:'REVIEW_AND_APPLY_STAGING_MIGRATION',missingTables:['sbc_sales_credit_v1']};},()=>{},()=>{},()=>{},()=>{},[],[]);
+ await assert.rejects(refresh(),/REVIEW_AND_APPLY_STAGING_MIGRATION/);
+ assert(calls.includes('/api/owner/sales-command/workforce/readiness'));
+ assert.match(state.workforceLaunchSchema.textContent,/sbc_am_trial_member_v2/);
+});

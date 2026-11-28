@@ -93,6 +93,9 @@
   setActionButtons(false);
   resetProfile();$('trialEnrollSave').disabled=true;$('trialEnrollReview').disabled=true;$('recognitionRun').disabled=true;resetRecognition();
   notice('Checking Sales Command database readiness…');
+  try{const s=await api('/api/owner/sales-command/workforce/readiness');
+   $('workforceLaunchSchema').textContent=(s.schemaReady&&s.writeReady?'Workforce schema and writer available.':'Workforce readiness blocked: '+(s.missingTables||[]).join(', ')+(s.writeReady?'':' · writer unavailable'))+' · Live acceptance unverified.';
+  }catch(e){$('workforceLaunchSchema').textContent='Workforce schema check unavailable: '+e.message;}
   const readiness=await api('/api/owner/sales-command/readiness');
   if(!readiness.ready){
    $('kpis').replaceChildren();$('managers').replaceChildren();
@@ -103,9 +106,6 @@
     :'RESOLVE_MYSQL_RECOVERY_HOLD: staging writer unavailable; no commission actions are enabled.';
    throw Error(reason);
   }
-  try{const s=await api('/api/owner/sales-command/workforce/readiness');
-   $('workforceLaunchSchema').textContent=(s.schemaReady&&s.writeReady?'Workforce schema and writer available.':'Workforce readiness blocked: '+(s.missingTables||[]).join(', ')+(s.writeReady?'':' · writer unavailable'))+' · Live acceptance unverified.';
-  }catch(e){$('workforceLaunchSchema').textContent='Workforce schema check unavailable: '+e.message;}
   notice('Loading tenant-scoped financial records…');
   const [summary,paid]=await Promise.all([
    api('/api/owner/sales-command/overview?month='+encodeURIComponent(month)),
