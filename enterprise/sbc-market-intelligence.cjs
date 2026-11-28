@@ -252,6 +252,9 @@ async function readGeography(pool,tenantId,days,time){
 
 const RADAR_CHICAGO='https://data.cityofchicago.org/resource/r5kz-chrr.json';
 const RADAR_UK='https://www.gov.uk/bank-holidays.json';
+const RADAR_DETROIT='https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/bseed_active_business_licenses/FeatureServer/0/query';
+const RADAR_MIAMI='https://gisweb.miamidade.gov/arcgis/rest/services/BusinessTracker/MapServer/0/query';
+const RADAR_NYC='https://data.cityofnewyork.us/resource/tvpp-9vvx.json';
 const RADAR_REGIONS={'england-and-wales':'England and Wales',scotland:'Scotland','northern-ireland':'Northern Ireland'};
 function radarDate(value){
  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
@@ -260,6 +263,21 @@ function radarDate(value){
 async function radarJson(fetcher,url){
  const response=await fetcher(url,{method:'GET',redirect:'error',signal:AbortSignal.timeout(10000),headers:{Accept:'application/json'}});
  return JSON.parse(await readBfsResponse(response));
+}
+async function radarCount(fetcher,source,url,format,now){
+ try{
+  const data=await radarJson(fetcher,url);
+  let count;
+  if(format==='arcgis'){
+   if(!data||data.error||typeof data.count!=='number')throw Error('RADAR_COUNT');
+   count=data.count;
+  }else{
+   if(!Array.isArray(data)||data.length!==1||typeof data[0]?.count!=='string'||!/^\d+$/.test(data[0].count))throw Error('RADAR_COUNT');
+   count=Number(data[0].count);
+  }
+  if(!Number.isSafeInteger(count)||count<0)throw Error('RADAR_COUNT');
+  return {...source,status:'available',count,checkedAt:new Date(now).toISOString()};
+ }catch{return {...source,status:'unavailable',count:null};}
 }
 function createRadarReader(fetcher,clock){
  let cache=null,inflight=null;
@@ -272,7 +290,12 @@ function createRadarReader(fetcher,clock){
   inflight=(async()=>{
    const chicago={market:'Chicago, Illinois, US',kind:'license_records',source:'https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses/r5kz-chrr',startDate:start,endDateExclusive:today,limitation:'License records may include renewals and changes; not unique businesses, verified website demand, or qualified leads.'};
    const uk={market:'United Kingdom',kind:'calendar_events',source:'https://www.gov.uk/bank-holidays',startDate:today,endDateExclusive:end,limitation:'Regional holiday dates are campaign-planning signals, not measured purchase demand or permission to contact anyone.'};
-   const [a,b]=await Promise.all([
+   const detroit={market:'Detroit, Michigan, US',kind:'active_license_records',source:'https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/bseed_active_business_licenses/FeatureServer/0',limitation:'Active license inventory, not new businesses, unique businesses, website demand or qualified leads.'};
+   const miami={market:'Miami-Dade County, Florida, US',kind:'recent_start_records',source:'https://gisweb.miamidade.gov/arcgis/rest/services/BusinessTracker/MapServer/0',startDate:start,endDateExclusive:today,limitation:'Tax receipt layer records with a reported business start date in the window; may be incomplete or repeated, not confirmed newly registered businesses or website demand.'};
+   const nyc={market:'New York City, New York, US',kind:'event_permit_records',source:'https://data.cityofnewyork.us/City-Government/NYC-Permitted-Event-Information/tvpp-9vvx',startDate:today,endDateExclusive:end,limitation:'Permit records with scheduled start times, possibly including setup; not confirmed event attendance, unique events or buying intent.'};
+   const arcQuery=where=>'?f=json&returnCountOnly=true&where='+encodeURIComponent(where);
+   const socQuery=where=>'?%24select='+encodeURIComponent('count(*) as count')+'&%24where='+encodeURIComponent(where);
+   const sources=await Promise.all([
     (async()=>{
      try{
       const where="date_issued >= '"+start+"T00:00:00' AND date_issued < '"+today+"T00:00:00'";
@@ -301,10 +324,13 @@ function createRadarReader(fetcher,clock){
       events.sort((x,y)=>x.date.localeCompare(y.date)||x.region.localeCompare(y.region)||x.title.localeCompare(y.title));
       return {...uk,status:'available',events,checkedAt:new Date(now).toISOString()};
      }catch{return {...uk,status:'unavailable',events:[]};}
-    })()
+    })(),
+    radarCount(fetcher,detroit,RADAR_DETROIT+arcQuery('1=1'),'arcgis',now),
+    radarCount(fetcher,miami,RADAR_MIAMI+arcQuery("BUSSDATE >= DATE '"+start+"' AND BUSSDATE < DATE '"+today+"'"),'arcgis',now),
+    radarCount(fetcher,nyc,RADAR_NYC+socQuery("start_date_time >= '"+today+"T00:00:00' AND start_date_time < '"+end+"T00:00:00'"),'socrata',now)
    ]);
-   const sources=[a,b],available=sources.filter(x=>x.status==='available').length;
-   const data={status:available===2?'available':available?'partial':'unavailable',generatedAt:new Date(now).toISOString(),sources};
+   const available=sources.filter(x=>x.status==='available').length;
+   const data={status:available===sources.length?'available':available?'partial':'unavailable',generatedAt:new Date(now).toISOString(),coverage:{available,configured:sources.length},sources};
    cache={at:now,day:today,data};return data;
   })();
   try{return await inflight;}finally{inflight=null;}
