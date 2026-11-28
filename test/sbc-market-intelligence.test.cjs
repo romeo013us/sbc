@@ -580,3 +580,14 @@ test('automatic workforce handoff revalidates suggested states and prepares a re
  assert.equal(prepare({status:'unavailable'},{states:['TX'],target:16}).autoDraft,false);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('researcher assignment polling avoids active work, hidden views and focused task controls',()=>{
+ const source=fs.readFileSync(path.join(root,'public/lead-research.js'),'utf8');
+ const start=source.indexOf('function shouldRefreshAssignedTasks('),end=source.indexOf('\nasync function loadAssignedTasks',start);
+ assert(start>=0&&end>start);
+ const check=vm.runInNewContext(source.slice(start,end)+'\nshouldRefreshAssignedTasks');
+ const eligible={visible:true,tab:'today',signedIn:true,busy:false,importRunning:false,refreshing:false,focused:false};
+ assert.equal(check(eligible),true);
+ for(const patch of [{visible:false},{tab:'add'},{signedIn:false},{busy:true},{importRunning:true},{refreshing:true},{focused:true}])assert.equal(check({...eligible,...patch}),false);
+ assert.equal(source,fs.readFileSync(path.join(root,'browser_public/lead-research.js'),'utf8'));
+});
