@@ -496,3 +496,38 @@ test('briefing distinguishes unattended server collection from dashboard refresh
  assert.match(enabled,/process memory/i);assert.match(enabled,/2026-11-12T14:05:00.000Z/);
  assert.equal(source,fs.readFileSync(path.join(root,'browser_public/sbc-market-intelligence.js'),'utf8'));
 });
+
+test('durable market collector fences concurrent runs, persists public evidence only and honors writer revocation',async()=>{
+ const {createDurableMarketCycle}=require('../enterprise/sbc-market-intelligence.cjs');
+ let writable=true,locked=false,latest=null,fetches=0,now=TIME,releaseCount=0,insertCount=0;
+ const writes=[];
+ const conn={query:async({sql},args=[])=>{
+  if(sql.includes('GET_LOCK')){if(locked)return [[{acquired:0}]];locked=true;return [[{acquired:1}]];}
+  if(sql.includes('RELEASE_LOCK')){locked=false;return [[{released:1}]];}
+  if(sql.includes('IS_USED_LOCK'))return [[{owned:locked?1:0}]];
+  if(sql.startsWith('CREATE TABLE'))return [{}];
+  if(sql.startsWith('SELECT'))return [latest?[latest]:[]];
+  if(sql.startsWith('INSERT')){insertCount++;writes.push(JSON.parse(args[4]));latest={completed_ms:args[1],next_ms:args[2],outcome:args[3],degraded:args[5]};return [{affectedRows:1}];}
+  throw Error('unexpected SQL');
+ },release(){releaseCount++;},destroy(){locked=false;}};
+ const pool={getConnection:async()=>conn};
+ const cycle=createDurableMarketCycle({getPool:()=>pool,canWrite:()=>writable,clock:()=>now,
+  readNational:async()=>{fetches++;return {status:'available',coverage:51,periodStart:'2026-08',periodEnd:'2026-10',fetchedAt:new Date(now).toISOString(),rows:bfsStates.map(state=>({state,applications:10,priorApplications:5,yearOverYearPct:100})),private:'do-not-store'};},
+  readRadar:async()=>({status:'partial',sources:[{market:'Chicago, Illinois, US',kind:'license_records',status:'available',count:0,checkedAt:new Date(now).toISOString(),private:'do-not-store'},{market:'Miami-Dade County, Florida, US',kind:'recent_start_records',status:'unavailable',count:null}]})});
+ writable=false;assert.equal((await cycle()).outcome,'writer_unavailable');assert.equal(fetches,0);
+ writable=true;locked=true;assert.equal((await cycle()).outcome,'busy');assert.equal(fetches,0);locked=false;
+ const result=await cycle();assert.equal(result.outcome,'partial');assert.equal(result.delay,300000);assert.equal(insertCount,1);
+ assert.equal(writes[0].radar.sources[0].count,0);assert.equal(writes[0].radar.sources[1].count,null);
+ assert.doesNotMatch(JSON.stringify(writes[0]),/do-not-store/);
+ assert.equal((await cycle()).outcome,'not_due');assert.equal(fetches,1);
+ now+=300000;
+ const revoke=createDurableMarketCycle({getPool:()=>pool,canWrite:()=>writable,clock:()=>now,
+ readNational:async()=>{writable=false;return {status:'unavailable'};},readRadar:async()=>({status:'unavailable'})});
+ assert.equal((await revoke()).outcome,'writer_unavailable');assert.equal(insertCount,1);assert.equal(locked,false);assert(releaseCount>=4);
+});
+test('durable market writer is only wired through the existing staged writer gate',()=>{
+ const source=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ const staged=patchServer(source);
+ assert.match(staged,/marketCanWrite:\(\)=>!SBC_RUNTIME_READ_ONLY&&!sbcShutdownStarted&&!!mysqlPool&&MYSQL_RECOVERY_EVALUATED&&!MYSQL_RECOVERY_REQUIRED&&sbcWriterLeaseReady/);
+ assert.equal(patchServer(staged),staged);
+});
