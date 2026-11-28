@@ -372,6 +372,26 @@ function buildOpportunityBrief(national,radar,geography,now){
   automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
 }
 
+// A calendar record can justify preparing copy, not claims of regional demand,
+// local offices, discounts, platform eligibility or permission to publish.
+function eventCampaignDraft(radar,query,now){
+ const region=query.region,eventDate=query.eventDate,title=query.title;
+ const today=date(now),limit=date(now+30*DAY);
+ if(!Object.values(RADAR_REGIONS).includes(region)||!radarDate(eventDate)||typeof title!=='string'||!title.trim()||title.length>200)return {code:'CAMPAIGN_QUERY_INVALID',http:400};
+ if(eventDate<today||eventDate>=limit)return {code:'CAMPAIGN_EVIDENCE_CHANGED',http:409};
+ const matches=Array.isArray(radar?.sources)?radar.sources.filter(x=>x.market==='United Kingdom'&&x.kind==='calendar_events'&&x.source==='https://www.gov.uk/bank-holidays'):[];
+ const source=matches.length===1?matches[0]:null;
+ if(source?.status!=='available'||!Array.isArray(source.events))return {code:'CAMPAIGN_EVIDENCE_UNAVAILABLE',http:503};
+ if(!source.events.some(x=>x.region===region&&x.date===eventDate&&x.title===title))return {code:'CAMPAIGN_EVIDENCE_CHANGED',http:409};
+ const start=date(Math.max(Date.parse(today+'T00:00:00Z'),Date.parse(eventDate+'T00:00:00Z')-3*DAY));
+ const market=region+', United Kingdom';
+ return {http:200,status:'DRAFT_REVIEW_REQUIRED',sendAllowed:false,
+  evidence:{source:source.source,region,eventDate,title,checkedAt:source.checkedAt??null},
+  draft:{title:'SBC regional business readiness · '+region+' · '+eventDate,audience:'Independent businesses reviewing their online presence',market,locale:'en',start,end:eventDate,channels:null,image:null,
+   body:'Business owners in '+region+': ahead of your next local holiday, check that customers can find your current opening hours, services and contact details online. Successful By Choice helps businesses plan website updates and organize customer follow-ups. Tell us what your business needs at sbcmia.com.'},
+  limitation:'Suggested organic copy only. Dates use the existing campaign rotation’s Miami calendar. Confirm regional service eligibility, artwork, channel and timing before approval.'};
+}
+
 // Public aggregate evidence only. Do not serialize credentials, CRM records,
 // provider response bodies or arbitrary properties. Source semantics remain distinct.
 function publicMarketEvidence(national,radar){
@@ -508,6 +528,19 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
     if(Object.keys(req.query||{}).length)return res.status(400).json({ok:false,code:'RADAR_QUERY_INVALID'});
     try{return res.json({ok:true,...await readRadar()});}
     catch{return res.status(503).json({ok:false,code:'RADAR_UNAVAILABLE'});}
+  });
+
+  app.get('/api/owner/market-intelligence/campaign-draft',auth,ownerOnly,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    try{const tenantId=requireTenant(req);if(!Number.isSafeInteger(tenantId)||tenantId<1)throw Error('tenant');}
+    catch{return res.status(403).json({ok:false,code:'TENANT_CONTEXT_REQUIRED'});}
+    const q=req.query||{};
+    if(Object.keys(q).length!==3||!['region','eventDate','title'].every(k=>typeof q[k]==='string')||!Object.values(RADAR_REGIONS).includes(q.region)||!radarDate(q.eventDate)||!q.title.trim()||q.title.length>200)return res.status(400).json({ok:false,code:'CAMPAIGN_QUERY_INVALID'});
+    try{
+      const result=eventCampaignDraft(await readRadar(),q,clock());
+      const {http,...body}=result;
+      return res.status(http).json({ok:http===200,...body});
+    }catch{return res.status(503).json({ok:false,code:'CAMPAIGN_EVIDENCE_UNAVAILABLE'});}
   });
 
   app.get('/api/owner/market-intelligence/geography',auth,ownerOnly,async(req,res)=>{
