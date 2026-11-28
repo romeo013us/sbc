@@ -372,7 +372,38 @@ function buildOpportunityBrief(national,radar,geography,now){
   automaticWrites:false,limitation:'Research priorities are ranked by Census business applications, not city demand, conversion probability or verified leads. Campaign suggestions are drafts only.'};
 }
 
-function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now }) {
+// Public-data refresh only; never schedules assignments, billing or outbound campaigns.
+// Each process has one timer and at most one in-flight refresh; it shares the
+// same bounded source readers as interactive requests.
+function createMarketRefreshWorker({readNational,readRadar,clock=Date.now,schedule=setTimeout,cancel=clearTimeout}){
+ let enabled=false,running=false,timer=null,nextRunAt=null,lastStartedAt=null,lastCompletedAt=null,lastOutcome=null,consecutiveDegraded=0;
+ function enqueue(delay){
+  if(!enabled||running||timer!==null)return;
+  nextRunAt=new Date(clock()+delay).toISOString();
+  timer=schedule(async()=>{
+   timer=null;nextRunAt=null;
+   if(!enabled||running)return;
+   running=true;lastStartedAt=new Date(clock()).toISOString();
+   try{
+    const results=await Promise.allSettled([Promise.resolve().then(readNational),Promise.resolve().then(readRadar)]);
+    const states=results.map(r=>r.status==='fulfilled'?r.value?.status:'unavailable');
+    lastOutcome=states.every(v=>v==='available')?'available':states.some(v=>v==='available'||v==='partial')?'partial':'unavailable';
+    consecutiveDegraded=lastOutcome==='available'?0:Math.min(consecutiveDegraded+1,1000000);
+   }finally{
+    running=false;lastCompletedAt=new Date(clock()).toISOString();
+    enqueue(lastOutcome==='available'?3600000:Math.min(3600000,300000*2**Math.min(Math.max(consecutiveDegraded-1,0),4)));
+   }
+  },delay);
+  timer?.unref?.();
+ }
+ return {
+  start(){if(enabled)return;enabled=true;enqueue(0);},
+  stop(){enabled=false;if(timer!==null)cancel(timer);timer=null;nextRunAt=null;},
+  status(){return {mode:enabled?'enabled':'disabled',running,lastStartedAt,lastCompletedAt,lastOutcome,consecutiveDegraded,nextRunAt,persistence:'process_memory'};}
+ };
+}
+
+function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, readSearchCredential, fetcher, nationalFetcher=globalThis.fetch, radarFetcher=globalThis.fetch, clock = Date.now, backgroundRefresh=process.env.NODE_ENV==='production'&&process.env.SBC_MARKET_BACKGROUND_REFRESH==='true' }) {
   const readRadar=createRadarReader(radarFetcher,clock);
   app.get('/api/owner/market-intelligence/radar',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
@@ -395,6 +426,8 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
   });
 
   const readNational=createNationalReader(nationalFetcher,clock);
+  const marketRefresh=createMarketRefreshWorker({readNational,readRadar,clock});
+  if(backgroundRefresh===true)marketRefresh.start();
   app.get('/api/owner/market-intelligence/briefing',auth,ownerOnly,async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     let tenantId;
@@ -407,7 +440,7 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
         readNational().catch(()=>null),readRadar().catch(()=>null),
         pool?readGeography(pool,tenantId,30,now).catch(()=>null):null
       ]);
-      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now)});
+      return res.json({ok:true,...buildOpportunityBrief(national,radar,geography,now),backgroundRefresh:marketRefresh.status()});
     }catch{return res.status(503).json({ok:false,code:'BRIEFING_UNAVAILABLE'});}
   });
 
@@ -443,6 +476,7 @@ function register(app, { auth, ownerOnly, requireTenant, isSiteTenant, getPool, 
       actions: recommendedActions(site, search)
     });
   });
+  return {stopMarketRefresh:()=>marketRefresh.stop()};
 }
 
-module.exports = { register };
+module.exports = { register, createMarketRefreshWorker };
