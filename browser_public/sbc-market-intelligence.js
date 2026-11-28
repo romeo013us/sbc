@@ -169,6 +169,9 @@
   }
 
   function briefingPanel(report){
+    const background=report?.backgroundRefresh;
+    const outcomes={available:'All configured sources available',partial:'Partial source availability',unavailable:'Sources unavailable'};
+    const worker=background?'<p class="mi-footnote">Unattended collection '+(background.mode==='enabled'?'enabled':'disabled')+' · '+(background.running?'Refresh running':escape(outcomes[background.lastOutcome]||'No background result yet'))+(background.nextRunAt?' · Next check '+escape(background.nextRunAt):'')+' · State held in process memory; not durable evidence history.</p>':'';
     const rankings=Array.isArray(report?.rankings)?report.rankings:[];
     const markets=Array.isArray(report?.research?.markets)?report.research.markets:[];
     const campaigns=Array.isArray(report?.campaigns)?report.campaigns:[];
@@ -177,7 +180,7 @@
     const rows=rankings.map(r=>'<tr><th scope="row">'+escape(r.state)+'</th><td>'+count.format(r.applications)+'</td><td>'+(r.crmEvidence?count.format(r.crmEvidence.newCrmRecords):'Not available')+'</td><td>'+(r.crmEvidence?money.format(r.crmEvidence.capturedCents/100):'Not available')+'</td></tr>').join('');
     const states=markets.map(x=>x.state).filter(x=>/^[A-Z]{2}$/.test(x));
     const research=markets.length?'<div class="mi-competitor"><h4>'+escape(report.research.target)+' research candidates</h4><p>'+markets.map(x=>escape(x.state)+': '+escape(x.target)).join(' · ')+'</p><p>Owner review required. This is a suggested allocation, not verified leads or a saved assignment.</p><button type="button" class="secondary" data-mi-briefing-research="'+escape(states.join(','))+'">Review suggested research plan</button></div>':'<p>No current national research plan can be confirmed.</p>';
-    return '<section class="mi-panel" aria-labelledby="mi-briefing-title"><h3 id="mi-briefing-title">Automatic opportunity briefing</h3><p class="mi-period">'+escape(report?.generatedAt||'Refresh to retrieve current evidence')+'</p><p>Owner review required before assignments or campaigns. No automatic writes, publication or customer contact.</p>'+
+    return '<section class="mi-panel" aria-labelledby="mi-briefing-title"><h3 id="mi-briefing-title">Automatic opportunity briefing</h3><p class="mi-period">'+escape(report?.generatedAt||'Refresh to retrieve current evidence')+'</p>'+worker+'<p>Owner review required before assignments or campaigns. No automatic writes, publication or customer contact.</p>'+
       (rankings.length?'<h4>Top US states by comparable business-application volume</h4><p class="mi-footnote">Census '+escape(report?.rankingPeriod?.start||'')+' to '+escape(report?.rankingPeriod?.end||'')+'; CRM evidence uses a separate 30-day window. These are research signals, not sales probabilities.</p><div style="overflow-x:auto"><table class="table"><thead><tr><th>State</th><th>Applications</th><th>Recorded CRM intake</th><th>Recorded captures</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>National ranking unavailable.</p>')+
       '<h4>Suggested research allocation</h4>'+research+'<h4>Calendar campaign preparation</h4>'+
       (campaigns.length?'<ul>'+campaigns.map(x=>'<li>'+escape(x.eventDate)+' · '+escape(x.market)+' · '+escape(x.title)+' — review-only draft</li>').join('')+'</ul>':'<p>No verified calendar suggestions returned in the next 30 days.</p>')+
