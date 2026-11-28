@@ -151,14 +151,21 @@
   function radarPanel(report) {
     const items=Array.isArray(report?.sources)?report.sources:[];
     if(!items.length)return '<section class="mi-panel"><h3>Global Opportunity Radar</h3><p>Sources unavailable. No opportunity counts confirmed.</p></section>';
+    const labels={license_records:'license records',active_license_records:'active license records',recent_start_records:'reported business-start records',event_permit_records:'upcoming permit records'};
+    const states={'Chicago, Illinois, US':'IL','Detroit, Michigan, US':'MI','Miami-Dade County, Florida, US':'FL','New York City, New York, US':'NY'};
+    const allowedSources=['https://www.gov.uk/bank-holidays','https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses/r5kz-chrr','https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/bseed_active_business_licenses/FeatureServer/0','https://gisweb.miamidade.gov/arcgis/rest/services/BusinessTracker/MapServer/0','https://data.cityofnewyork.us/City-Government/NYC-Permitted-Event-Information/tvpp-9vvx'];
+    const coverage=items.filter(x=>x.status==='available').length+' of '+(Number.isSafeInteger(report.coverage?.configured)&&report.coverage.configured>=items.length?report.coverage.configured:items.length)+' sources available';
     const rows=items.map(item=>{
       let details='Unavailable — no signal confirmed.';
-      if(item.status==='available'&&item.kind==='license_records'&&Number.isSafeInteger(item.count)&&item.count>=0)details=count.format(item.count)+' license records';
+      if(item.status==='available'&&Object.hasOwn(labels,item.kind)&&Number.isSafeInteger(item.count)&&item.count>=0)details=count.format(item.count)+' '+labels[item.kind];
       if(item.status==='available'&&item.kind==='calendar_events'&&Array.isArray(item.events))details=item.events.length?'<ul>'+item.events.map(e=>'<li>'+escape(e.date)+' · '+escape(e.region)+' · '+escape(e.title)+'</li>').join('')+'</ul>':'No calendar events returned in this window.';
-      const source=typeof item.source==='string'&&['https://www.gov.uk/bank-holidays','https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses/r5kz-chrr'].includes(item.source)?'<a href="'+escape(item.source)+'" target="_blank" rel="noopener noreferrer">Official source</a>':'';
-      return '<article class="mi-competitor"><h4>'+escape(item.market)+'</h4><p>'+escape(item.startDate||'')+(item.endDateExclusive?' to '+escape(item.endDateExclusive)+' (exclusive)':'')+'</p><div>'+details+'</div><p class="mi-footnote">'+escape(item.limitation)+'</p>'+source+'</article>';
+      const source=typeof item.source==='string'&&allowedSources.includes(item.source)?'<a href="'+escape(item.source)+'" target="_blank" rel="noopener noreferrer">Official source</a>':'';
+      const state=Object.hasOwn(states,item.market)?states[item.market]:null;
+      const action=state&&item.status==='available'?'<button type="button" class="secondary" data-mi-radar-research="'+state+'">Open state research plan</button>':'';
+      const windowText=item.startDate?escape(item.startDate)+(item.endDateExclusive?' to '+escape(item.endDateExclusive)+' (exclusive)':''):'Current source snapshot';
+      return '<article class="mi-competitor"><h4>'+escape(item.market)+'</h4><p>'+windowText+'</p><div>'+details+'</div><p class="mi-footnote">'+escape(item.limitation)+'</p>'+source+(item.checkedAt?'<p class="mi-footnote">Retrieved '+escape(item.checkedAt)+'</p>':'')+action+'</article>';
     }).join('');
-    return '<section class="mi-panel" aria-labelledby="mi-radar-title"><h3 id="mi-radar-title">Global Opportunity Radar</h3><p>Public research and campaign-planning signals. Coverage is limited to the listed sources; signals are not ranked against each other or treated as verified leads.</p><div class="mi-watchlist">'+rows+'</div></section>';
+    return '<section class="mi-panel" aria-labelledby="mi-radar-title"><h3 id="mi-radar-title">Global Opportunity Radar</h3><p>'+escape(coverage)+'</p><p>Public research and campaign-planning signals. Coverage is limited to the listed sources; signals are not ranked against each other or treated as verified leads.</p><button type="button" class="secondary" data-mi-radar-research="">Open national research assignments</button><div class="mi-watchlist">'+rows+'</div></section>';
   }
 
   function mount(content) {
@@ -227,6 +234,7 @@
       finally{if(button.isConnected)button.disabled=false}
     });
 
+    let radarResearchState=null;
     root.querySelector('[data-mi-national]').addEventListener('click',async()=>{
       const button=root.querySelector('[data-mi-national]'),panel=root.querySelector('[data-mi-national-results]');
       button.disabled=true;panel.setAttribute('aria-busy','true');panel.textContent='Loading official Census research data…';
@@ -236,6 +244,8 @@
         const data=await response.json();
         if(active()){
           panel.innerHTML=nationalPanel(data);
+          const requestedState=radarResearchState;radarResearchState=null;
+          if(requestedState){const select=panel.querySelector('[data-mi-research-states]');if(select)for(const option of select.options)option.selected=option.value===requestedState;}
           const form=panel.querySelector('[data-mi-research-form]'),assignment=panel.querySelector('[data-mi-assignment]');
           let draft=null,pending=null,locked=false;
           if(form&&assignment){
@@ -303,6 +313,15 @@
         if(active())radarResults.innerHTML=radarPanel(data);
       }catch{if(active())radarResults.innerHTML=radarPanel({status:'unavailable'});}
       finally{if(active()){radarButton.disabled=false;radarResults.removeAttribute('aria-busy');}}
+    });
+    radarResults.addEventListener('click',event=>{
+      const action=event.target.closest('[data-mi-radar-research]');
+      if(!action||!active())return;
+      const target=root.querySelector('[data-mi-national]');
+      if(target.disabled)return;
+      radarResearchState=['IL','MI','FL','NY'].includes(action.dataset.miRadarResearch)?action.dataset.miRadarResearch:null;
+      target.click();
+      root.querySelector('[data-mi-national-results]').scrollIntoView({block:'start'});
     });
     const geoButton=root.querySelector('[data-mi-geography]'),geoPanel=root.querySelector('[data-mi-geography-results]');
     let geoSequence=0;
